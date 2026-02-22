@@ -9,11 +9,39 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Custom CSS -->
-    <base href="https://aldiprem.github.io/wtb/">
-    <link rel="stylesheet" href="static/css/dashboard.css">
+    
+    {/* HAPUS base href */}
+    
+    {/* Gunakan url_for untuk Flask */}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/website-create.css') }}">
+    
     <!-- Base URL for API -->
     <meta name="base-url" content="https://climb-gzip-enquiry-other.trycloudflare.com">
+    
+    <!-- Fallback untuk GitHub Pages -->
+    <link rel="stylesheet" href="https://aldiprem.github.io/wtb/static/css/dashboard.css" id="github-css-dash" disabled>
+    <link rel="stylesheet" href="https://aldiprem.github.io/wtb/static/css/website-create.css" id="github-css-create" disabled>
+    
+    <script>
+        (function() {
+            const isFlask = !window.location.hostname.includes('github.io');
+            
+            if (isFlask) {
+                console.log('Running in Flask mode');
+                document.getElementById('github-css-dash').disabled = true;
+                document.getElementById('github-css-create').disabled = true;
+            } else {
+                console.log('Running in GitHub Pages mode');
+                // Disable Flask CSS
+                document.querySelectorAll('link[href*="dashboard.css"]:not([id])').forEach(el => el.disabled = true);
+                document.querySelectorAll('link[href*="website-create.css"]:not([id])').forEach(el => el.disabled = true);
+                // Enable GitHub CSS
+                document.getElementById('github-css-dash').disabled = false;
+                document.getElementById('github-css-create').disabled = false;
+            }
+        })();
+    </script>
 </head>
 <body class="dashboard-body">
     <div class="dashboard-container">
@@ -25,11 +53,11 @@
             </div>
             
             <nav class="sidebar-nav">
-                <a href="/owner/dashboard">
+                <a href="{{ url_for('owner_dashboard') }}">
                     <i class="fas fa-home"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="/owner/websites" class="active">
+                <a href="{{ url_for('owner_websites') }}" class="active">
                     <i class="fas fa-globe"></i>
                     <span>Websites</span>
                 </a>
@@ -37,7 +65,7 @@
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
                 </a>
-                <a href="/owner/logout">
+                <a href="{{ url_for('owner_logout') }}">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
@@ -143,7 +171,7 @@
                                 <i class="fas fa-save mr-2"></i>
                                 Simpan Website
                             </button>
-                            <a href="/owner/websites" class="btn btn-secondary" style="flex: 0 0 120px;">
+                            <a href="{{ url_for('owner_websites') }}" class="btn btn-secondary" style="flex: 0 0 120px;">
                                 Batal
                             </a>
                         </div>
@@ -158,9 +186,32 @@
         <div class="loading-spinner"></div>
     </div>
     
-    <!-- Dashboard JS -->
-    <script src="/static/js/dashboard.js"></script>
+    <!-- JavaScript Files -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/website-create.js') }}"></script>
+    
+    <!-- Fallback untuk GitHub Pages -->
+    <script src="https://aldiprem.github.io/wtb/static/js/dashboard.js" id="github-js-dash" disabled></script>
+    <script src="https://aldiprem.github.io/wtb/static/js/website-create.js" id="github-js-create" disabled></script>
+    
     <script>
+        (function() {
+            const isFlask = !window.location.hostname.includes('github.io');
+            
+            if (isFlask) {
+                document.getElementById('github-js-dash').disabled = true;
+                document.getElementById('github-js-create').disabled = true;
+            } else {
+                // Disable Flask JS
+                document.querySelectorAll('script[src*="dashboard.js"]:not([id])').forEach(el => el.disabled = true);
+                document.querySelectorAll('script[src*="website-create.js"]:not([id])').forEach(el => el.disabled = true);
+                // Enable GitHub JS
+                document.getElementById('github-js-dash').disabled = false;
+                document.getElementById('github-js-create').disabled = false;
+            }
+        })();
+
+        // Form submission
         document.getElementById('createWebsiteForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -171,7 +222,8 @@
             document.querySelector('.global-loader').style.display = 'flex';
             
             try {
-                const response = await fetch('/wtb/owner/websites/create', {
+                {/* PERBAIKAN: URL yang benar untuk API */}
+                const response = await fetch('{{ url_for("owner_website_create") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
