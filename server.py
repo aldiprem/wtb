@@ -21,14 +21,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         print(f"[{self.log_date_time_string()}] {args[0]} {args[1]} {args[2]}")
 
     def end_headers(self):
-        # Add CORS headers
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         super().end_headers()
 
 def check_files():
-    """Check if all required files exist"""
     required_files = ['index.html', 'css/style.css', 'js/game.js']
     missing_files = []
     
@@ -37,46 +35,15 @@ def check_files():
             missing_files.append(file)
     
     if missing_files:
-        print("⚠️  Warning: File berikut tidak ditemukan:")
+        print("⚠️ Warning: File berikut tidak ditemukan:")
         for file in missing_files:
             print(f"   - {file}")
-        print("   Pastikan struktur folder benar:")
-        print("   ./")
-        print("   ├── index.html")
-        print("   ├── server.py")
-        print("   ├── css/")
-        print("   │   └── style.css")
-        print("   └── js/")
-        print("       └── game.js")
         return False
     
     print("✅ Semua file required ditemukan!")
     return True
 
-def show_info():
-    """Display server information"""
-    print("\n" + "="*60)
-    print("🚀 AUTO BLOCK BUILDER 3D - SERVER")
-    print("="*60)
-    print(f"📁 Directory: {DIRECTORY}")
-    print(f"🌐 Local URL: http://localhost:{PORT}")
-    print(f"📡 Network URL: http://{get_local_ip()}:{PORT}")
-    print("\n🎮 Kontrol Game:")
-    print("   - Tekan 'R' untuk reset manual")
-    print("   - Tekan 'L' untuk simulasi like")
-    print("   - Tekan 'G' untuk simulasi hadiah kecil")
-    print("   - Tekan 'B' untuk simulasi hadiah besar")
-    print("\n📊 TikTok Integration Ready!")
-    print("   Like 1000 = Speed Boost")
-    print("   Like 5000 = Reset")
-    print("   Hadiah Kecil = +5 Random Blocks")
-    print("   Hadiah Besar = Instant Win")
-    print("\n🌐 Tunnel URL kamu:")
-    print("   https://benefits-structural-train-taking.trycloudflare.com")
-    print("="*60 + "\n")
-
 def get_local_ip():
-    """Get local IP address"""
     import socket
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -92,36 +59,24 @@ def main():
     print("🖥️  MEMULAI SERVER...")
     print("="*60)
     
-    # Check files
     if not check_files():
-        print("\n❌ Perbaiki struktur folder terlebih dahulu!")
+        print("\n❌ Perbaiki struktur folder!")
         return
     
-    # Show info
-    show_info()
+    print(f"\n📁 Directory: {DIRECTORY}")
+    print(f"🌐 Local URL: http://localhost:{PORT}")
+    print(f"📡 Network URL: http://{get_local_ip()}:{PORT}")
+    print("\n🔴 Tekan Ctrl+C untuk menghentikan server\n")
     
-    # Start server
     try:
         with socketserver.TCPServer(("", PORT), Handler) as httpd:
             print(f"✨ Server running at http://localhost:{PORT}")
-            print("🔴 Tekan Ctrl+C untuk menghentikan server\n")
-            print("📢 Untuk akses via internet:")
-            print(f"   https://benefits-structural-train-taking.trycloudflare.com")
-            print("   (Pastikan tunnel masih running di terminal lain)\n")
-            
-            # Auto-open browser
             webbrowser.open(f"http://localhost:{PORT}")
-            
-            # Keep server running
             httpd.serve_forever()
-            
     except KeyboardInterrupt:
-        print("\n\n👋 Server dihentikan. Terima kasih!")
-    except OSError as e:
-        print(f"❌ Error: Port {PORT} sudah digunakan!")
-        print("   Coba ganti PORT di file server.py")
+        print("\n\n👋 Server dihentikan.")
     except Exception as e:
-        print(f"❌ Error tidak terduga: {e}")
+        print(f"❌ Error: {e}")
 
 if __name__ == "__main__":
     main()
