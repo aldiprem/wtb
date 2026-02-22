@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - TopUp Store Manager</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <!-- Base URL for API -->
+    <meta name="base-url" content="https://formerly-colors-imposed-salem.trycloudflare.com">
+</head>
+<body class="dashboard-body">
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>TopUp Store</h2>
+                <p>Owner Panel</p>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="/owner/dashboard" class="active">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/owner/websites">
+                    <i class="fas fa-globe"></i>
+                    <span>Websites</span>
+                </a>
+                <a href="#">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+                <a href="/owner/logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="name">{{ current_user.full_name or current_user.username }}</div>
+                    <div class="role">Owner</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <header class="content-header">
+                <div class="header-title">
+                    <h1>Dashboard</h1>
+                    <p>Selamat datang kembali, {{ current_user.full_name or current_user.username }}!</p>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" style="display: none;">0</span>
+                    </button>
+                    
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <div class="profile-avatar">
+                            {{ current_user.username[0]|upper }}
+                        </div>
+                        <div class="profile-info">
+                            <div class="name">{{ current_user.username }}</div>
+                            <div class="role">Owner</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card" data-stat="websites">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Websites</span>
+                            <div class="stat-icon blue">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">{{ total_websites }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            12% dari bulan lalu
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card" data-stat="products">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Products</span>
+                            <div class="stat-icon green">
+                                <i class="fas fa-box"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">{{ total_products }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            8% dari bulan lalu
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card" data-stat="orders">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Orders</span>
+                            <div class="stat-icon purple">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">{{ total_orders }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            23% dari bulan lalu
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card" data-stat="customers">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Customers</span>
+                            <div class="stat-icon yellow">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">{{ total_customers }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            5% dari bulan lalu
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <h2 class="section-title">Quick Actions</h2>
+                    <div class="actions-grid">
+                        <a href="/owner/websites/create" class="action-item">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Buat Website Baru</span>
+                        </a>
+                        <a href="/owner/websites" class="action-item">
+                            <i class="fas fa-edit"></i>
+                            <span>Kelola Websites</span>
+                        </a>
+                        <a href="#" class="action-item">
+                            <i class="fas fa-cog"></i>
+                            <span>Pengaturan</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Recent Websites -->
+                <div class="table-container">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="section-title">Website Terbaru</h2>
+                        <a href="/owner/websites" class="text-sm" style="color: var(--primary);">Lihat Semua →</a>
+                    </div>
+                    
+                    <table class="data-table" id="recent-websites">
+                        <thead>
+                            <tr>
+                                <th>Nama Website</th>
+                                <th>Endpoint</th>
+                                <th>Produk</th>
+                                <th>Pesanan</th>
+                                <th>Status</th>
+                                <th>Dibuat</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for website in recent_websites %}
+                            <tr>
+                                <td>
+                                    <div class="font-medium">{{ website.name }}</div>
+                                    <div class="text-sm" style="color: var(--gray);">{{ website.description|truncate(50) }}</div>
+                                </td>
+                                <td>
+                                    <code class="bg-gray-100 px-2 py-1 rounded text-sm">{{ website.endpoint }}</code>
+                                </td>
+                                <td>{{ website.products|length }}</td>
+                                <td>{{ website.orders|length }}</td>
+                                <td>
+                                    {% if website.is_active %}
+                                    <span class="status-badge active">Active</span>
+                                    {% else %}
+                                    <span class="status-badge inactive">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ website.created_at.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <a href="/owner/websites/{{ website.id }}/edit" class="text-blue-600 hover:text-blue-800 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="/store/{{ website.endpoint }}" target="_blank" class="text-green-600 hover:text-green-800">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-8" style="color: var(--gray);">
+                                    <i class="fas fa-globe text-4xl mb-3" style="color: var(--gray); opacity: 0.5;"></i>
+                                    <p>Belum ada website. Buat website pertama Anda!</p>
+                                    <a href="/owner/websites/create" class="btn btn-primary mt-3" style="display: inline-block;">
+                                        Buat Website
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Spinner -->
+    <div class="global-loader" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <!-- Dashboard JS -->
+    <script src="/static/js/dashboard.js"></script>
+    <script>
+        // Initialize dashboard with data
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update stats with real data if available
+            const stats = {
+                websites: { value: '{{ total_websites }}', change: 12 },
+                products: { value: '{{ total_products }}', change: 8 },
+                orders: { value: '{{ total_orders }}', change: 23 },
+                customers: { value: '{{ total_customers }}', change: 5 }
+            };
+            
+            // You can call updateStats if needed
+            if (typeof updateStats === 'function') {
+                updateStats(stats);
+            }
+        });
+    </script>
+</body>
+</html>
