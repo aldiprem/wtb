@@ -21,4 +21,4 @@ OWNER_ID = int(os.getenv('OWNER_ID', '0'))
 # Interval cek pesan (detik)
 CHECK_INTERVAL = 0.1
 
-CLOUDFLARE_MODEL = "@cf/qwen/qwen1.5-14b-chat-awq"
+CLOUDFLARE_MODEL = "@cf/google/gemma-3-12b-it"
