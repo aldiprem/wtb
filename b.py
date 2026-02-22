@@ -15,99 +15,122 @@ ai = AIEngine(GEMINI_API_KEY)
 
 # Database pesan yang sudah diproses
 processed_wtb = set()
+processed_messages = set()  # Untuk cegah double process
 
 class WTBBot:
     def __init__(self):
         self.client = TelegramClient('wtb_session', API_ID, API_HASH)
-        self.channels_to_watch = []  # KOSONG! Anda akan isi via chat
-        
+        self.channels_to_watch = []
+        self.me = None  # Akan diisi setelah login
+        self.owner_id = OWNER_ID  # Dari config
+    
     async def start(self):
         """Mulai bot"""
         await self.client.start(phone=PHONE_NUMBER)
-        me = await self.client.get_me()
-        logger.info(f"✅ Bot started as {me.first_name}")
+        self.me = await self.client.get_me()
+        logger.info(f"✅ Bot started as {self.me.first_name} (ID: {self.me.id})")
         
-        # Handler untuk PESAN ANDA (mengajari AI)
-        @self.client.on(events.NewMessage(outgoing=True))
-        async def handle_my_teaching(event):
-            await self.process_teaching(event)
-        
-        # Handler untuk PESAN WTB (nanti diisi channelnya via chat)
-        @self.client.on(events.NewMessage(chats=self.channels_to_watch))
-        async def handle_wtb(event):
-            await self.process_wtb(event)
+        # Handler untuk SEMUA PESAN MASUK
+        @self.client.on(events.NewMessage)
+        async def handle_all_messages(event):
+            await self.handle_message(event)
         
         logger.info("🎯 Bot SIAP. Ajari saya dengan chat biasa!")
         await self.send_startup_message()
         await self.client.run_until_disconnected()
     
     async def send_startup_message(self):
-        """Kirim pesan siap ke diri sendiri"""
-        me = await self.client.get_me()
-        await self.client.send_message(me.id, 
+        """Kirim pesan siap ke owner"""
+        await self.client.send_message(self.owner_id,
             "🤖 **Bot AI Siap Belajar**\n\n"
-            "Cara menggunakan:\n"
-            "1. **Ajari saya** dengan chat biasa\n"
-            "   Contoh: 'saya jual diamond ML, harga 86=21k, 172=42k'\n"
-            "   Contoh: 'kalau promosi ML pakai gaya santai ya'\n\n"
-            "2. **Kasih tau channel yang dipantau**\n"
-            "   Ketik: 'pantau channel @nama_channel'\n\n"
-            "3. **Kasih aturan**\n"
-            "   Contoh: 'kalau ada yang cari ML, balas dengan pricelist'\n"
-            "   Contoh: 'jangan panjang-panjang promosinya'\n\n"
-            "Saya akan ingat SEMUA yang Anda ajarkan!"
+            f"Owner ID: {self.owner_id}\n"
+            f"Bot ID: {self.me.id}\n\n"
+            "**Cara menggunakan:**\n"
+            "1. Ajari saya dengan chat biasa\n"
+            "2. 'pantau channel @nama' untuk tambah channel\n"
+            "3. Tanya saya tentang produk yang sudah diajar"
         )
     
-    async def process_teaching(self, event):
-        """Proses ketika ANDA ngajarin AI"""
+    async def handle_message(self, event):
+        """Handle semua pesan yang masuk"""
         message = event.message
-        if not message.text:
+        
+        # CEK 1: Jangan proses pesan dari bot sendiri
+        if not message or not message.text:
             return
         
-        # Proses perintah khusus
-        if message.text.startswith('pantau channel'):
-            # Contoh: "pantau channel @basewib"
-            channel = message.text.split('@')[-1].strip()
-            if channel and channel not in self.channels_to_watch:
-                self.channels_to_watch.append(f'@{channel}')
-                await message.reply(f"✅ Sekarang saya akan pantau @{channel}")
-                logger.info(f"📡 Mulai pantau @{channel}")
+        # CEK 2: Jangan proses pesan dari diri sendiri (outgoing)
+        if message.out:
             return
         
-        # Selain itu, anggap sebagai teaching
-        response = ai.process_user_message(message.text)
-        await message.reply(response)
+        # CEK 3: Cegah duplikasi
+        message_key = f"{message.chat_id}_{message.id}"
+        if message_key in processed_messages:
+            return
+        processed_messages.add(message_key)
+        
+        # Dapatkan info pengirim
+        sender = await event.get_sender()
+        sender_id = sender.id
+        chat = await event.get_chat()
+        chat_id = chat.id
+        
+        # LOG untuk debugging
+        logger.info(f"📩 Pesan dari ID: {sender_id} (Owner: {sender_id == self.owner_id}) di chat {chat_id}")
+        
+        # KALAU DARI OWNER - Mode Belajar & Tanya Jawab
+        if sender_id == self.owner_id:
+            response = await self.handle_owner_message(message)
+            if response:
+                await message.reply(response)
+        
+        # KALAU DARI CHANNEL YANG DIPANTAU - Mode WTB
+        elif chat_id in self.channels_to_watch or f"@{chat.username}" in self.channels_to_watch:
+            await self.handle_wtb_message(message, chat)
+        
+        # Selain itu, abaikan
     
-    async def process_wtb(self, event):
-        """Proses pesan WTB dari channel"""
-        message = event.message
+    async def handle_owner_message(self, message):
+        """Handle pesan dari OWNER (belajar DAN tanya jawab)"""
+        text = message.text
         
-        # Cegah duplikasi
+        # Perintah khusus
+        if text.startswith('pantau channel'):
+            channel = text.split('@')[-1].strip()
+            if channel:
+                channel_full = f'@{channel}'
+                if channel_full not in self.channels_to_watch:
+                    self.channels_to_watch.append(channel_full)
+                    return f"✅ Sekarang saya akan pantau {channel_full}"
+                else:
+                    return f"✅ {channel_full} sudah dipantau"
+            return "❌ Format: pantau channel @nama_channel"
+        
+        # Selain itu, proses dengan AI (mode owner)
+        response = ai.process_user_message(text, is_owner=True)
+        return response
+    
+    async def handle_wtb_message(self, message, chat):
+        """Handle pesan WTB dari channel yang dipantau"""
+        # Cek duplikasi WTB
         if message.id in processed_wtb:
             return
         processed_wtb.add(message.id)
         
-        if not message.text:
-            return
-        
-        # Dapatkan info channel
-        channel = await event.get_chat()
-        channel_name = channel.username or str(channel.id)
-        
+        channel_name = chat.username or str(chat.id)
         logger.info(f"📨 WTB di {channel_name}: {message.text[:50]}...")
         
         # Tanya AI: Harus respon?
         decision = ai.should_respond_to_wtb(message.text, channel_name)
         
         if decision.get("should_respond"):
-            # Generate respon
             response_text = ai.generate_response(
                 message.text,
                 decision["product"],
                 channel_name
             )
             
-            # Kirim ke COMSET (reply ke pesan)
+            # Kirim ke COMSET
             try:
                 await message.reply(response_text)
                 logger.success(f"✅ Respon dikirim: {response_text[:50]}...")
