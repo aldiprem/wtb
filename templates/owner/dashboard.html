@@ -233,6 +233,8 @@
     <script>
         // Initialize dashboard with data
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard loaded');
+            
             // Update stats with real data if available
             const stats = {
                 websites: { value: '{{ total_websites }}', change: 12 },
@@ -242,8 +244,8 @@
             };
             
             // You can call updateStats if needed
-            if (typeof updateStats === 'function') {
-                updateStats(stats);
+            if (typeof window.updateStats === 'function') {
+                window.updateStats(stats);
             }
         });
     </script>
