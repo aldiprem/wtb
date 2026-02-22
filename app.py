@@ -332,7 +332,7 @@ if __name__ == '__main__':
     Username: owner
     Password: owner123
     
-    🌐 Server running at: http://0.0.0.0:5000
+    🌐 Server running at: http://0.0.0.0:5555
     """)
     
-    app.run(debug=True, host='0.0.0.0', port=5500)
+    app.run(debug=True, host='0.0.0.0', port=5555)
