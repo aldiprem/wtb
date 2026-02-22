@@ -249,7 +249,7 @@ async function createWebsite(formData) {
     showLoading();
     
     try {
-        const response = await fetch(`/owner/websites/create`, {
+        const response = await fetch(`/wtb/templates/owner/website-create.html`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
