@@ -100,8 +100,10 @@ class WTBBot:
                 if memories:
                     reply = "📚 **Memori yang diajarkan:**\n\n"
                     for i, m in enumerate(memories, 1):
-                        cat = m['category']
-                        preview = m['content'][:100].replace('\n', ' ')
+                        # PERBAIKAN: Gunakan .get() dengan default value
+                        cat = m.get('category', 'general')
+                        content = m.get('content', '')
+                        preview = content[:100].replace('\n', ' ')
                         reply += f"{i}. [{cat}] {preview}...\n"
                     await message.reply(reply)
                 else:
@@ -116,9 +118,6 @@ class WTBBot:
         # ========== BOT MODE ========== (sudah dicek di atas)
         
         # ========== BUYER MODE ==========
-        # Cek apakah ini dari channel WTB atau chat pribadi
-        is_buyer = True
-        
         # Kalau dari channel, cek apakah channel dipantau
         if hasattr(chat, 'username') and chat.username:
             channel_with_at = f"@{chat.username}"
@@ -133,26 +132,24 @@ class WTBBot:
                 decision = ai.should_respond_to_wtb(message.text, channel_with_at)
                 
                 if decision.get("should_respond"):
-                    resp = ai.generate_response(message.text, decision["product"], channel_with_at)
+                    resp = ai.generate_response(message.text, decision.get("product", ""), channel_with_at)
                     try:
                         await message.reply(resp)
                         logger.success(f"✅ Respon WTB: {resp[:50]}...")
                     except Exception as e:
                         logger.error(f"Gagal kirim: {e}")
                 else:
-                    logger.info(f"🤐 Tidak respon WTB")
+                    logger.info(f"🤐 Tidak respon WTB: {decision.get('reason', 'Tidak cocok')}")
                 return
             
             # Kalau channel tapi bukan dipantau, ignore
-            if chat.type == 'channel':
+            if getattr(chat, 'type', '') == 'channel':
                 return
         
         # BUYER di chat pribadi
         logger.info(f"💬 BUYER {sender_id}: {message.text[:50]}...")
         response = ai.process_buyer_message(message.text, sender_id, "private")
         await message.reply(response)
-    
-    # (process_wtb dihapus, digabung ke process_message)
 
 async def main():
     bot = WTBBot()
