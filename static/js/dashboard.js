@@ -1,7 +1,12 @@
 // ===== DASHBOARD JS - OWNER PANEL =====
+// DETECT ENVIRONMENT - TAMBAHKAN INI DI PALING ATAS
+const isFlask = !window.location.hostname.includes('github.io') && 
+                !window.location.hostname.includes('127.0.0.1') && 
+                window.location.port !== '';
+const BASE_URL = isFlask ? '' : 'https://aldiprem.github.io/wtb';
 
-// Base URL dari tunnel - bisa dikosongkan karena menggunakan relative path
-const BASE_URL = '';
+console.log('Dashboard JS running in', isFlask ? 'Flask' : 'GitHub Pages', 'mode');
+console.log('BASE_URL:', BASE_URL);
 
 // State management
 let currentWebsite = null;
@@ -25,7 +30,9 @@ function initializeSidebar() {
     // Set active menu based on current URL
     const currentPath = window.location.pathname;
     menuItems.forEach(item => {
-        if (item.getAttribute('href') === currentPath) {
+        const href = item.getAttribute('href');
+        // Untuk Flask, href bisa berupa url_for yang sudah diproses
+        if (href === currentPath || currentPath.includes(href)) {
             item.classList.add('active');
         }
     });
@@ -61,20 +68,26 @@ function initializeNotifications() {
 
 async function fetchNotifications() {
     try {
-        // Comment out for now as endpoint may not exist
-        // const response = await fetch(`${BASE_URL}/api/owner/notifications`);
-        // const data = await response.json();
-        
-        // if (data.success) {
-        //     notifications = data.notifications;
-        //     updateNotificationBadge();
-        // }
-        
-        // Mock data for testing
-        notifications = [];
-        updateNotificationBadge();
+        if (isFlask) {
+            // Di Flask, panggil API real
+            const response = await fetch(`/api/owner/notifications`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    notifications = data.notifications;
+                    updateNotificationBadge();
+                }
+            }
+        } else {
+            // Di GitHub Pages, gunakan mock data
+            notifications = [];
+            updateNotificationBadge();
+        }
     } catch (error) {
         console.error('Error fetching notifications:', error);
+        // Fallback ke mock data
+        notifications = [];
+        updateNotificationBadge();
     }
 }
 
@@ -103,8 +116,8 @@ function showNotifications() {
                             <i class="fas ${n.icon || 'fa-bell'}" style="color: var(--primary);"></i>
                         </div>
                         <div class="notification-content" style="flex: 1;">
-                            <div class="notification-title" style="font-weight: 600; margin-bottom: 0.25rem;">${n.title}</div>
-                            <div class="notification-message" style="color: var(--gray); font-size: 0.9rem; margin-bottom: 0.25rem;">${n.message}</div>
+                            <div class="notification-title" style="font-weight: 600; margin-bottom: 0.25rem;">${escapeHtml(n.title)}</div>
+                            <div class="notification-message" style="color: var(--gray); font-size: 0.9rem; margin-bottom: 0.25rem;">${escapeHtml(n.message)}</div>
                             <div class="notification-time" style="color: var(--gray); font-size: 0.8rem;">${formatTime(n.created_at)}</div>
                         </div>
                     </div>
@@ -125,21 +138,24 @@ function showNotifications() {
 
 async function markAllNotificationsRead() {
     try {
-        // Comment out for now
-        // const response = await fetch(`${BASE_URL}/api/owner/notifications/read-all`, {
-        //     method: 'POST'
-        // });
-        
-        // if (response.ok) {
-        //     notifications.forEach(n => n.read = true);
-        //     updateNotificationBadge();
-        // }
-        
-        notifications.forEach(n => n.read = true);
-        updateNotificationBadge();
-        showAlert('Semua notifikasi telah ditandai dibaca', 'success');
+        if (isFlask) {
+            const response = await fetch(`/api/owner/notifications/read-all`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                notifications.forEach(n => n.read = true);
+                updateNotificationBadge();
+                showAlert('Semua notifikasi telah ditandai dibaca', 'success');
+            }
+        } else {
+            notifications.forEach(n => n.read = true);
+            updateNotificationBadge();
+            showAlert('Semua notifikasi telah ditandai dibaca (mock)', 'success');
+        }
     } catch (error) {
         console.error('Error marking notifications as read:', error);
+        showAlert('Gagal menandai notifikasi', 'danger');
     }
 }
 
@@ -148,38 +164,36 @@ async function loadDashboardData() {
     showLoading();
     
     try {
-        // Comment out for now as endpoint may not exist
-        // const response = await fetch(`${BASE_URL}/api/owner/dashboard`);
-        // const data = await response.json();
-        
-        // if (data.success) {
-        //     updateStats(data.stats);
-        //     updateRecentWebsites(data.recent_websites);
-        //     updateCharts(data.charts);
-        // }
-        
-        // Mock data for testing
-        console.log('Dashboard data loaded');
-        
-        // Update stats with existing data from HTML
-        const stats = {
-            websites: { value: document.querySelector('[data-stat="websites"] .stat-value')?.textContent || '0', change: 12 },
-            products: { value: document.querySelector('[data-stat="products"] .stat-value')?.textContent || '0', change: 8 },
-            orders: { value: document.querySelector('[data-stat="orders"] .stat-value')?.textContent || '0', change: 23 },
-            customers: { value: document.querySelector('[data-stat="customers"] .stat-value')?.textContent || '0', change: 5 }
-        };
-        
-        updateStats(stats);
+        if (isFlask) {
+            const response = await fetch(`/api/owner/dashboard`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    updateStats(data.stats);
+                    updateRecentWebsites(data.recent_websites);
+                    updateCharts(data.charts);
+                }
+            }
+        } else {
+            // Mock data for GitHub Pages - ambil dari HTML
+            console.log('Using static data from HTML');
+            const stats = {
+                websites: { value: document.querySelector('[data-stat="websites"] .stat-value')?.textContent || '0', change: 12 },
+                products: { value: document.querySelector('[data-stat="products"] .stat-value')?.textContent || '0', change: 8 },
+                orders: { value: document.querySelector('[data-stat="orders"] .stat-value')?.textContent || '0', change: 23 },
+                customers: { value: document.querySelector('[data-stat="customers"] .stat-value')?.textContent || '0', change: 5 }
+            };
+            updateStats(stats);
+        }
     } catch (error) {
-        showAlert('Gagal memuat data dashboard', 'danger');
         console.error('Error loading dashboard data:', error);
+        showAlert('Gagal memuat data dashboard', 'danger');
     } finally {
         hideLoading();
     }
 }
 
 function updateStats(stats) {
-    // Update stat cards
     document.querySelectorAll('.stat-card').forEach(card => {
         const type = card.dataset.stat;
         if (type && stats[type]) {
@@ -207,8 +221,7 @@ function updateRecentWebsites(websites) {
     if (!tbody) return;
     
     if (!websites || websites.length === 0) {
-        // Keep existing HTML
-        return;
+        return; // Keep existing HTML
     }
     
     tbody.innerHTML = websites.map(website => `
@@ -249,7 +262,10 @@ async function createWebsite(formData) {
     showLoading();
     
     try {
-        const response = await fetch(`/wtb/templates/owner/website-create.html`, {
+        // PERBAIKAN: Gunakan path yang benar untuk API
+        const url = isFlask ? '/owner/websites/create' : `${BASE_URL}/owner/websites/create`;
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -269,6 +285,7 @@ async function createWebsite(formData) {
         }
     } catch (error) {
         showAlert('Error: ' + error.message, 'danger');
+        console.error('Create website error:', error);
     } finally {
         hideLoading();
     }
@@ -278,7 +295,9 @@ async function updateWebsite(id, formData) {
     showLoading();
     
     try {
-        const response = await fetch(`/owner/websites/${id}/edit`, {
+        const url = isFlask ? `/owner/websites/${id}/edit` : `${BASE_URL}/owner/websites/${id}/edit`;
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -308,7 +327,9 @@ async function deleteWebsite(id) {
     showLoading();
     
     try {
-        const response = await fetch(`/owner/websites/${id}/delete`, {
+        const url = isFlask ? `/owner/websites/${id}/delete` : `${BASE_URL}/owner/websites/${id}/delete`;
+        
+        const response = await fetch(url, {
             method: 'POST'
         });
         
@@ -334,7 +355,9 @@ async function loadProducts(websiteId) {
     showLoading();
     
     try {
-        const response = await fetch(`/api/owner/websites/${websiteId}/products`);
+        const url = isFlask ? `/api/owner/websites/${websiteId}/products` : `${BASE_URL}/api/owner/websites/${websiteId}/products`;
+        
+        const response = await fetch(url);
         const products = await response.json();
         
         renderProducts(products);
@@ -398,7 +421,9 @@ async function updateOrderStatus(orderId, status) {
     showLoading();
     
     try {
-        const response = await fetch(`/api/owner/orders/${orderId}/status`, {
+        const url = isFlask ? `/api/owner/orders/${orderId}/status` : `${BASE_URL}/api/owner/orders/${orderId}/status`;
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -444,9 +469,17 @@ function hideLoading() {
 }
 
 function showAlert(message, type = 'info') {
+    // Cek apakah alert dengan pesan sama sudah ada
+    const existingAlerts = document.querySelectorAll('.alert');
+    for (let alert of existingAlerts) {
+        if (alert.querySelector('span')?.textContent === message) {
+            return; // Jangan duplikasi
+        }
+    }
+    
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 1rem; border-radius: 8px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; display: flex; align-items: center; gap: 0.75rem; min-width: 300px;';
+    alert.style.cssText = 'position: fixed; top: 20px; right: 20px; padding: 1rem; border-radius: 8px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10000; display: flex; align-items: center; gap: 0.75rem; min-width: 300px; animation: slideIn 0.3s ease;';
     
     let bgColor, textColor, icon;
     switch(type) {
@@ -477,15 +510,20 @@ function showAlert(message, type = 'info') {
     alert.innerHTML = `
         <i class="fas fa-${icon}"></i>
         <span>${message}</span>
+        <button style="margin-left: auto; background: none; border: none; color: ${textColor}; cursor: pointer; font-size: 1.2rem;" onclick="this.parentElement.remove()">
+            <i class="fas fa-times"></i>
+        </button>
     `;
     
     document.body.appendChild(alert);
     
     setTimeout(() => {
-        alert.style.opacity = '0';
-        alert.style.transition = 'opacity 0.3s';
-        setTimeout(() => alert.remove(), 300);
-    }, 3000);
+        if (alert.parentNode) {
+            alert.style.opacity = '0';
+            alert.style.transition = 'opacity 0.3s';
+            setTimeout(() => alert.remove(), 300);
+        }
+    }, 5000);
 }
 
 function createModal({ title, content, actions = [] }) {
@@ -541,6 +579,7 @@ function createModal({ title, content, actions = [] }) {
 }
 
 function formatCurrency(amount) {
+    if (amount === undefined || amount === null) return 'Rp 0';
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -550,24 +589,32 @@ function formatCurrency(amount) {
 
 function formatDate(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    } catch (e) {
+        return '-';
+    }
 }
 
 function formatTime(dateString) {
     if (!dateString) return '-';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = Math.floor((now - date) / 1000); // difference in seconds
-    
-    if (diff < 60) return 'baru saja';
-    if (diff < 3600) return `${Math.floor(diff / 60)} menit yang lalu`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} jam yang lalu`;
-    return formatDate(dateString);
+    try {
+        const date = new Date(dateString);
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000); // difference in seconds
+        
+        if (diff < 60) return 'baru saja';
+        if (diff < 3600) return `${Math.floor(diff / 60)} menit yang lalu`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)} jam yang lalu`;
+        return formatDate(dateString);
+    } catch (e) {
+        return '-';
+    }
 }
 
 function escapeHtml(unsafe) {
@@ -591,6 +638,7 @@ function setupEventListeners() {
 
 function toggleProfileMenu() {
     console.log('Profile menu clicked');
+    // Implement profile dropdown menu jika diperlukan
 }
 
 // Export functions for use in HTML
@@ -600,3 +648,4 @@ window.deleteWebsite = deleteWebsite;
 window.updateOrderStatus = updateOrderStatus;
 window.formatCurrency = formatCurrency;
 window.updateStats = updateStats;
+window.showAlert = showAlert;
