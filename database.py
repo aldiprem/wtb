@@ -46,7 +46,7 @@ class Website(db.Model):
     
     # Informasi dasar
     name = db.Column(db.String(100), nullable=False)
-    endpoint = db.Column(db.String(50), unique=True, nullable=False)  # String unik untuk URL
+    endpoint = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.Text)
     logo_url = db.Column(db.String(200))
     favicon_url = db.Column(db.String(200))
@@ -64,10 +64,10 @@ class Website(db.Model):
     phone = db.Column(db.String(20))
     address = db.Column(db.Text)
     
-    # Bot Telegram (per website bisa beda bot)
+    # Bot Telegram
     telegram_bot_token = db.Column(db.String(100))
     telegram_bot_username = db.Column(db.String(100))
-    telegram_chat_id = db.Column(db.String(50))  # ID admin untuk notifikasi
+    telegram_chat_id = db.Column(db.String(50))
     
     # Tema dan tampilan
     theme_color = db.Column(db.String(20), default='#4f46e5')
@@ -103,7 +103,6 @@ class Website(db.Model):
     
     @property
     def url(self):
-        """Mendapatkan URL lengkap website"""
         return f"/store/{self.endpoint}"
 
 class Category(db.Model):
@@ -122,7 +121,6 @@ class Category(db.Model):
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relasi ke products
     products = db.relationship('Product', backref='category', lazy=True)
     
     def to_dict(self):
@@ -145,28 +143,24 @@ class Product(db.Model):
     website_id = db.Column(db.Integer, db.ForeignKey('websites.id'), nullable=False)
     category_id = db.Column(db.Integer, db.ForeignKey('categories.id'))
     
-    # Informasi produk
     name = db.Column(db.String(200), nullable=False)
     slug = db.Column(db.String(200))
     description = db.Column(db.Text)
     price = db.Column(db.Float, nullable=False, default=0)
-    compare_price = db.Column(db.Float)  # Harga sebelum diskon
-    cost_price = db.Column(db.Float)  # Harga modal
+    compare_price = db.Column(db.Float)
+    cost_price = db.Column(db.Float)
     stock = db.Column(db.Integer, default=0)
     sku = db.Column(db.String(50))
     
-    # Media
     image_url = db.Column(db.String(500))
-    gallery = db.Column(db.Text)  # JSON array of image URLs
+    gallery = db.Column(db.Text)
     
-    # Status
     is_active = db.Column(db.Boolean, default=True)
     is_digital = db.Column(db.Boolean, default=True)
     is_featured = db.Column(db.Boolean, default=False)
     
-    # Untuk produk digital
-    digital_content = db.Column(db.Text)  # Link atau konten digital
-    delivery_type = db.Column(db.String(20), default='auto')  # auto/manual
+    digital_content = db.Column(db.Text)
+    delivery_type = db.Column(db.String(20), default='auto')
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
@@ -195,24 +189,20 @@ class Customer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     website_id = db.Column(db.Integer, db.ForeignKey('websites.id'), nullable=False)
     
-    # Informasi customer
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100))
     phone = db.Column(db.String(20))
     whatsapp = db.Column(db.String(20))
     
-    # Akun
     username = db.Column(db.String(50))
     password_hash = db.Column(db.String(200))
     
-    # Telegram (untuk notifikasi)
     telegram_id = db.Column(db.String(50))
     telegram_username = db.Column(db.String(100))
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_order = db.Column(db.DateTime)
     
-    # Relasi ke orders
     orders = db.relationship('Order', backref='customer', lazy=True)
     
     def to_dict(self):
@@ -236,31 +226,26 @@ class Order(db.Model):
     website_id = db.Column(db.Integer, db.ForeignKey('websites.id'), nullable=False)
     customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'))
     
-    # Informasi pesanan
     order_number = db.Column(db.String(50), unique=True, nullable=False)
     total_amount = db.Column(db.Float, nullable=False, default=0)
-    status = db.Column(db.String(20), default='pending')  # pending, paid, processing, completed, cancelled
+    status = db.Column(db.String(20), default='pending')
     payment_status = db.Column(db.String(20), default='pending')
     payment_method = db.Column(db.String(50))
     payment_proof = db.Column(db.String(200))
     
-    # Customer info (snapshot)
     customer_name = db.Column(db.String(100))
     customer_email = db.Column(db.String(100))
     customer_phone = db.Column(db.String(20))
     customer_whatsapp = db.Column(db.String(20))
     
-    # Catatan
     notes = db.Column(db.Text)
     admin_notes = db.Column(db.Text)
     
-    # Waktu
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     paid_at = db.Column(db.DateTime)
     processed_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     
-    # Relasi ke items
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self):
@@ -288,9 +273,8 @@ class OrderItem(db.Model):
     price = db.Column(db.Float, nullable=False)
     subtotal = db.Column(db.Float, nullable=False)
     
-    # Untuk produk digital
     delivery_status = db.Column(db.String(20), default='pending')
-    delivery_data = db.Column(db.Text)  # JSON data
+    delivery_data = db.Column(db.Text)
     
     def to_dict(self):
         return {
@@ -316,8 +300,6 @@ class Setting(db.Model):
 def init_db(app):
     """Inisialisasi database"""
     with app.app_context():
-        db.create_all()
-        
         # Buat owner default jika belum ada
         if not Owner.query.filter_by(username='owner').first():
             owner = Owner(
@@ -327,8 +309,10 @@ def init_db(app):
             )
             owner.set_password('owner123')
             db.session.add(owner)
-            
-            # Buat setting default
+            print("✅ Owner default created")
+        
+        # Buat setting default
+        if not Setting.query.filter_by(key='site_name').first():
             settings = [
                 Setting(key='site_name', value='TopUp Store Manager'),
                 Setting(key='site_description', value='Manage your topup stores'),
@@ -336,6 +320,6 @@ def init_db(app):
             ]
             for setting in settings:
                 db.session.add(setting)
-            
-            db.session.commit()
-            print("✅ Owner default created!")
+            print("✅ Default settings created")
+        
+        db.session.commit()
