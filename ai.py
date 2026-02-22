@@ -46,23 +46,55 @@ Mulai dengan ingatan kosong."""
             
             # AI menganalisis: ini lagi ngajarin apa?
             analysis_prompt = f"""
-Pemilik berkata: "{message_text}"
-
-Analisis pesan ini:
-1. Apa yang sedang diajarkan? (produk baru / pricelist / gaya promosi / aturan)
-2. Ringkas inti ajarannya
-3. Kata kunci penting
-
-Format JSON:
-{{
-    "teaching_type": "product/pricelist/style/rule/other",
-    "summary": "ringkasan singkat",
-    "keywords": ["kata1", "kata2"]
-}}
-"""
+    Pemilik berkata: "{message_text}"
+    
+    Analisis pesan ini:
+    1. Apa yang sedang diajarkan? (produk baru / pricelist / gaya promosi / aturan)
+    2. Ringkas inti ajarannya
+    3. Kata kunci penting
+    
+    Format JSON:
+    {{
+        "teaching_type": "product/pricelist/style/rule/other",
+        "summary": "ringkasan singkat",
+        "keywords": ["kata1", "kata2"]
+    }}
+    """
             # Generate response
             response = self.model.generate_content(analysis_prompt)
-            analysis = json.loads(response.text)
+            
+            # CEK APAKAH RESPON VALID
+            if not response or not response.text:
+                raise Exception("Respons kosong dari Gemini API")
+            
+            # AMBIL TEKS JSON - kadang ada teks lain sebelum/sesudah JSON
+            response_text = response.text.strip()
+            
+            # Cari JSON dalam teks (kalau ada teks tambahan)
+            import re
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+            else:
+                json_str = response_text
+            
+            # Parse JSON
+            try:
+                analysis = json.loads(json_str)
+            except json.JSONDecodeError:
+                # Kalau gagal parse, buat default
+                logger.warning(f"Gagal parse JSON: {response_text[:200]}")
+                analysis = {
+                    "teaching_type": "other",
+                    "summary": message_text[:50],
+                    "keywords": []
+                }
+            
+            # Validasi field yang diperlukan
+            if 'teaching_type' not in analysis:
+                analysis['teaching_type'] = 'other'
+            if 'summary' not in analysis:
+                analysis['summary'] = message_text[:50]
             
             # Simpan sebagai memori
             memory = Memory(
@@ -89,8 +121,21 @@ Format JSON:
             return confirmation
             
         except Exception as e:
-            logger.error(f"Error: {e}")
-            return f"Maaf, saya gagal memproses. Error: {str(e)}"
+            logger.error(f"Error di process_user_message: {e}")
+            # Fallback: tetap simpan sebagai memori sederhana
+            try:
+                # Simpan sebagai memori dengan tipe 'other'
+                memory = Memory(
+                    memory_type='other',
+                    content=f"User: {message_text}",
+                    source_conversation_id=user_msg.id if 'user_msg' in locals() else None,
+                    created_at=datetime.now()
+                )
+                session.add(memory)
+                session.commit()
+                return f"📝 Saya catat pesan Anda (dalam mode sederhana)"
+            except:
+                return "Maaf, saya gagal memproses. Coba lagi nanti?"
         finally:
             session.close()
     
@@ -111,39 +156,48 @@ Format JSON:
                 "memori_yang_diajarkan": [
                     {
                         "type": m.memory_type,
-                        "content": m.content[:200]  # Potong biar tidak terlalu panjang
+                        "content": m.content[:200]
                     } for m in all_memories
                 ]
             }
             
             prompt = f"""
-Pesan WTB dari channel {channel_name}:
-"{wtb_message}"
-
-INILAH SATU-SATUNYA PENGETAHUAN SAYA:
-{json.dumps(context, indent=2)}
-
-Tugas:
-1. Apakah pesan WTB ini sesuai dengan APAPUN yang sudah diajarkan pemilik?
-2. Jika sesuai, apa produknya?
-3. Jika TIDAK sesuai sama sekali dengan yang diajarkan, jawab should_respond: false
-
-INGAT: Saya TIDAK BOLEH respon jika belum pernah diajarkan!
-
-Format JSON WAJIB:
-{{
-    "should_respond": true/false,
-    "product": "nama produk jika cocok, null jika tidak",
-    "reason": "penjelasan singkat"
-}}
-"""
+    Pesan WTB dari channel {channel_name}:
+    "{wtb_message}"
+    
+    INILAH SATU-SATUNYA PENGETAHUAN SAYA:
+    {json.dumps(context, indent=2)}
+    
+    Tugas:
+    Apakah pesan WTB ini sesuai dengan produk yang sudah diajarkan?
+    Jika sesuai, produk apa?
+    Jika TIDAK sesuai, jawab false.
+    
+    Format JSON WAJIB:
+    {{
+        "should_respond": true/false,
+        "product": "nama produk atau null",
+        "reason": "penjelasan singkat"
+    }}
+    """
             response = self.model.generate_content(prompt)
-            result = json.loads(response.text)
             
-            if result.get("should_respond"):
-                logger.info(f"✅ Akan respon: {result['product']} - {result['reason']}")
-            else:
-                logger.info(f"❌ Tidak respon: {result.get('reason', 'Belum diajarkan')}")
+            if not response or not response.text:
+                return {"should_respond": False, "reason": "Tidak ada respons dari AI"}
+            
+            # Parse JSON dengan aman
+            try:
+                response_text = response.text.strip()
+                # Cari JSON
+                import re
+                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+                else:
+                    result = json.loads(response_text)
+            except:
+                # Fallback
+                return {"should_respond": False, "reason": "Gagal memahami respons"}
             
             return result
             
