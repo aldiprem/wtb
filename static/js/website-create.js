@@ -1,4 +1,11 @@
 // ===== WEBSITE CREATE JS =====
+// DETECT ENVIRONMENT - TAMBAHKAN INI DI PALING ATAS
+const isFlask = !window.location.hostname.includes('github.io') && 
+                !window.location.hostname.includes('127.0.0.1') && 
+                window.location.port !== '';
+const BASE_URL = isFlask ? '' : 'https://aldiprem.github.io/wtb';
+
+console.log('Website Create JS running in', isFlask ? 'Flask' : 'GitHub Pages', 'mode');
 
 // State management
 let formState = {
@@ -33,6 +40,9 @@ function addStepIndicators() {
     const form = document.getElementById('createWebsiteForm');
     if (!form) return;
     
+    // Cek apakah sudah ada step indicators
+    if (form.querySelector('.progress-steps')) return;
+    
     const steps = [
         { label: 'Informasi Dasar', icon: 'fa-info-circle' },
         { label: 'Kontak', icon: 'fa-address-book' },
@@ -41,11 +51,11 @@ function addStepIndicators() {
     ];
     
     const stepsHTML = `
-        <div class="progress-steps">
+        <div class="progress-steps" style="display: flex; justify-content: space-between; margin-bottom: 2rem; padding: 0 1rem;">
             ${steps.map((step, index) => `
-                <div class="step ${index === 0 ? 'active' : ''}" data-step="${index + 1}">
-                    <div class="step-number">${index + 1}</div>
-                    <div class="step-label">
+                <div class="step ${index === 0 ? 'active' : ''}" data-step="${index + 1}" style="display: flex; flex-direction: column; align-items: center; position: relative; flex: 1;">
+                    <div class="step-number" style="width: 40px; height: 40px; border-radius: 50%; background: ${index === 0 ? 'var(--primary)' : 'white'}; border: 2px solid ${index === 0 ? 'var(--primary)' : '#e5e7eb'}; display: flex; align-items: center; justify-content: center; font-weight: 600; margin-bottom: 0.5rem; z-index: 2; color: ${index === 0 ? 'white' : 'var(--gray)'};">${index + 1}</div>
+                    <div class="step-label" style="font-size: 0.8rem; color: ${index === 0 ? 'var(--primary)' : 'var(--gray)'}; text-align: center;">
                         <i class="fas ${step.icon}"></i>
                         ${step.label}
                     </div>
@@ -81,7 +91,7 @@ function loadSavedData() {
             // Populate form fields
             Object.keys(data).forEach(key => {
                 const field = document.querySelector(`[name="${key}"]`);
-                if (field) {
+                if (field && field.type !== 'color') { // Skip color input
                     field.value = data[key];
                 }
             });
@@ -108,13 +118,19 @@ function setupFormValidation() {
 function validateField(field) {
     const value = field.value.trim();
     const name = field.name;
-    const errorElement = field.parentElement.querySelector('.error-message');
+    const parent = field.parentElement;
     
     // Remove existing error
-    if (errorElement) {
-        errorElement.remove();
+    const existingError = parent.querySelector('.error-message');
+    if (existingError) {
+        existingError.remove();
     }
     field.classList.remove('error');
+    
+    // Skip validation for non-required empty fields
+    if (!field.required && value === '') {
+        return true;
+    }
     
     // Validation rules
     let isValid = true;
@@ -122,13 +138,13 @@ function validateField(field) {
     
     switch(name) {
         case 'name':
-            if (!value) {
+            if (field.required && !value) {
                 isValid = false;
                 errorMessage = 'Nama website wajib diisi';
-            } else if (value.length < 3) {
+            } else if (value && value.length < 3) {
                 isValid = false;
                 errorMessage = 'Nama website minimal 3 karakter';
-            } else if (value.length > 100) {
+            } else if (value && value.length > 100) {
                 isValid = false;
                 errorMessage = 'Nama website maksimal 100 karakter';
             }
@@ -167,8 +183,9 @@ function validateField(field) {
         field.classList.add('error');
         const error = document.createElement('div');
         error.className = 'error-message';
+        error.style.cssText = 'color: var(--danger); font-size: 0.8rem; margin-top: 0.5rem; display: flex; align-items: center; gap: 0.25rem;';
         error.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${errorMessage}`;
-        field.parentElement.appendChild(error);
+        parent.appendChild(error);
     }
     
     return isValid;
@@ -229,7 +246,10 @@ async function submitForm(formData) {
     }
     
     try {
-        const response = await fetch('/owner/websites/create', {
+        // PERBAIKAN: Gunakan path yang benar
+        const url = isFlask ? '/owner/websites/create' : `${BASE_URL}/owner/websites/create`;
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -280,19 +300,19 @@ async function showSuccessMessage(message) {
     return new Promise(resolve => {
         const modal = document.createElement('div');
         modal.className = 'modal active';
-        modal.style.display = 'flex';
+        modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;';
         modal.innerHTML = `
-            <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <div class="modal-content" style="max-width: 400px; text-align: center; background: white; border-radius: 16px;">
                 <div class="modal-body" style="padding: 2rem;">
-                    <div class="success-checkmark">
-                        <div class="check-icon">
-                            <span class="icon-line line-tip"></span>
-                            <span class="icon-line line-long"></span>
+                    <div class="success-checkmark" style="width: 80px; height: 80px; margin: 0 auto 1.5rem;">
+                        <div class="check-icon" style="width: 80px; height: 80px; position: relative; border-radius: 50%; border: 4px solid var(--success);">
+                            <span class="icon-line line-tip" style="position: absolute; height: 5px; background-color: var(--success); border-radius: 2px; top: 46px; left: 14px; width: 25px; transform: rotate(45deg); animation: icon-line-tip 0.75s;"></span>
+                            <span class="icon-line line-long" style="position: absolute; height: 5px; background-color: var(--success); border-radius: 2px; top: 38px; right: 8px; width: 47px; transform: rotate(-45deg); animation: icon-line-long 0.75s;"></span>
                         </div>
                     </div>
                     <h3 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; color: var(--success);">Sukses!</h3>
                     <p style="color: var(--gray); margin-bottom: 1.5rem;">${message}</p>
-                    <div class="loading-spinner" style="width: 30px; height: 30px; margin: 0 auto;"></div>
+                    <div class="loading-spinner" style="width: 30px; height: 30px; margin: 0 auto; border: 3px solid #f3f4f6; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
                     <p style="color: var(--gray); font-size: 0.9rem; margin-top: 1rem;">Mengalihkan...</p>
                 </div>
             </div>
@@ -319,8 +339,22 @@ function autoSaveForm() {
     localStorage.setItem('websiteCreateForm', JSON.stringify(data));
     
     // Update last saved indicator
-    const indicator = document.querySelector('.auto-save-indicator') || createAutoSaveIndicator();
+    let indicator = document.querySelector('.auto-save-indicator');
+    if (!indicator) {
+        indicator = createAutoSaveIndicator();
+    }
     indicator.innerHTML = `<i class="fas fa-check-circle" style="color: var(--success);"></i> Tersimpan otomatis ${new Date().toLocaleTimeString()}`;
+    
+    // Hide indicator after 3 seconds
+    clearTimeout(window.autoSaveTimeout);
+    window.autoSaveTimeout = setTimeout(() => {
+        if (indicator) {
+            indicator.style.opacity = '0';
+            setTimeout(() => {
+                if (indicator) indicator.remove();
+            }, 300);
+        }
+    }, 3000);
 }
 
 function createAutoSaveIndicator() {
@@ -341,6 +375,7 @@ function createAutoSaveIndicator() {
         align-items: center;
         gap: 0.5rem;
         border: 1px solid rgba(0,0,0,0.05);
+        transition: opacity 0.3s;
     `;
     document.body.appendChild(indicator);
     return indicator;
@@ -369,14 +404,14 @@ function setupEventListeners() {
     });
     
     // Preview button (optional)
-    const previewBtn = document.createElement('button');
-    previewBtn.type = 'button';
-    previewBtn.className = 'btn btn-secondary';
-    previewBtn.innerHTML = '<i class="fas fa-eye"></i> Preview';
-    previewBtn.style.marginRight = 'auto';
-    
     const actionsDiv = document.querySelector('.form-actions');
-    if (actionsDiv) {
+    if (actionsDiv && !document.querySelector('.preview-btn')) {
+        const previewBtn = document.createElement('button');
+        previewBtn.type = 'button';
+        previewBtn.className = 'btn btn-secondary preview-btn';
+        previewBtn.innerHTML = '<i class="fas fa-eye"></i> Preview';
+        previewBtn.style.marginRight = 'auto';
+        
         actionsDiv.insertBefore(previewBtn, actionsDiv.firstChild);
         
         previewBtn.addEventListener('click', () => {
@@ -387,7 +422,8 @@ function setupEventListeners() {
             sessionStorage.setItem('previewData', JSON.stringify(data));
             
             // Open preview in new window
-            window.open('/owner/websites/preview', '_blank');
+            const previewUrl = isFlask ? '/owner/websites/preview' : `${BASE_URL}/owner/websites/preview`;
+            window.open(previewUrl, '_blank');
         });
     }
     
@@ -403,6 +439,14 @@ function setupEventListeners() {
 
 // ===== NOTIFICATION =====
 function showNotification(message, type = 'info') {
+    // Cek apakah notifikasi dengan pesan sama sudah ada
+    const existingNotifs = document.querySelectorAll('.alert');
+    for (let notif of existingNotifs) {
+        if (notif.querySelector('span')?.textContent === message) {
+            return;
+        }
+    }
+    
     const notification = document.createElement('div');
     notification.className = `alert alert-${type}`;
     notification.style.cssText = `
@@ -450,7 +494,7 @@ function showNotification(message, type = 'info') {
     notification.innerHTML = `
         <i class="fas fa-${icon}"></i>
         <span>${message}</span>
-        <button style="margin-left: auto; background: none; border: none; color: ${textColor}; cursor: pointer;" onclick="this.parentElement.remove()">
+        <button style="margin-left: auto; background: none; border: none; color: ${textColor}; cursor: pointer; font-size: 1.2rem;" onclick="this.parentElement.remove()">
             <i class="fas fa-times"></i>
         </button>
     `;
@@ -458,14 +502,17 @@ function showNotification(message, type = 'info') {
     document.body.appendChild(notification);
     
     setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.3s';
-        setTimeout(() => notification.remove(), 300);
+        if (notification.parentNode) {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s';
+            setTimeout(() => notification.remove(), 300);
+        }
     }, 5000);
 }
 
 // ===== UTILITY FUNCTIONS =====
 function formatCurrency(value) {
+    if (value === undefined || value === null) return 'Rp 0';
     return new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
@@ -482,7 +529,34 @@ function generateSlug(text) {
         .trim();
 }
 
+// Add keyframe animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    @keyframes icon-line-tip {
+        0% { width: 0; left: 1px; top: 19px; }
+        54% { width: 0; left: 1px; top: 19px; }
+        70% { width: 50px; left: -8px; top: 37px; }
+        84% { width: 17px; left: 21px; top: 48px; }
+        100% { width: 25px; left: 14px; top: 45px; }
+    }
+    @keyframes icon-line-long {
+        0% { width: 0; right: 46px; top: 54px; }
+        65% { width: 0; right: 46px; top: 54px; }
+        84% { width: 55px; right: 0px; top: 35px; }
+        100% { width: 47px; right: 8px; top: 38px; }
+    }
+`;
+document.head.appendChild(style);
+
 // Export functions for use in HTML
 window.submitForm = submitForm;
 window.validateForm = validateForm;
 window.showNotification = showNotification;
+window.formatCurrency = formatCurrency;
