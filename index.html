@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Block Builder 3D - Minecraft Style</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="ui-container">
+        <!-- Info Panel Kiri -->
+        <div class="panel panel-left">
+            <div class="panel-title">📊 BLOCK BUILDER 3D</div>
+            
+            <div class="stat-group">
+                <div class="stat-label">Total Blocks:</div>
+                <div class="stat-value" id="total-blocks">0</div>
+            </div>
+            
+            <div class="stat-group">
+                <div class="stat-label">Blocks Placed:</div>
+                <div class="stat-value" id="blocks-placed">0</div>
+            </div>
+            
+            <div class="stat-group">
+                <div class="stat-label">Progress:</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="stat-value" id="progress-percent">0%</div>
+            </div>
+            
+            <div class="stat-group">
+                <div class="stat-label">Status:</div>
+                <div class="game-status" id="game-status">🟢 BUILDING</div>
+            </div>
+            
+            <div class="stat-group">
+                <div class="stat-label">Time Elapsed:</div>
+                <div class="stat-value" id="time-elapsed">00:00</div>
+            </div>
+        </div>
+        
+        <!-- Info Panel Kanan -->
+        <div class="panel panel-right">
+            <div class="panel-title">🎮 TIKTOK INTERAKSI</div>
+            
+            <div class="tiktok-stats">
+                <div class="tiktok-item">
+                    <span>❤️ Likes:</span>
+                    <span id="like-count">0</span>
+                </div>
+                <div class="tiktok-item">
+                    <span>🎁 Hadiah:</span>
+                    <span id="gift-count">0</span>
+                </div>
+                <div class="tiktok-item">
+                    <span>👥 Viewers:</span>
+                    <span id="viewer-count">1.2K</span>
+                </div>
+            </div>
+            
+            <div class="tiktok-actions">
+                <div class="action-hint">💡 1000 Likes = Speed Boost</div>
+                <div class="action-hint">💡 5000 Likes = Reset World</div>
+                <div class="action-hint">💡 Hadiah Kecil = Block Random</div>
+                <div class="action-hint">💡 Hadiah Besar = INSTANT WIN</div>
+            </div>
+            
+            <div class="tiktok-alert" id="tiktok-alert"></div>
+        </div>
+        
+        <!-- Panel Bawah -->
+        <div class="panel-bottom">
+            <div class="block-preview">
+                <div class="block-preview-title">Block Aktif:</div>
+                <div class="block-preview-color" style="background: #8B6B4D"></div>
+                <div>Tanah</div>
+            </div>
+            
+            <div class="block-preview">
+                <div class="block-preview-title">Kecepatan:</div>
+                <div id="speed-indicator">Normal (1x)</div>
+            </div>
+            
+            <div class="block-preview">
+                <div class="block-preview-title">Mode:</div>
+                <div id="mode-indicator">Auto Build</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Victory Message -->
+    <div class="victory-overlay" id="victory-overlay">
+        <div class="victory-box">
+            <div class="victory-title">🎉 VICTORY! 🎉</div>
+            <div class="victory-subtitle">Ruang telah terisi penuh!</div>
+            <div class="victory-countdown" id="victory-countdown">5</div>
+            <div class="victory-message">Reset dalam <span id="countdown-number">5</span> detik...</div>
+            <div class="victory-stats">
+                <div>Block Terpasang: <span id="victory-blocks">0</span></div>
+                <div>Waktu: <span id="victory-time">00:00</span></div>
+                <div>Like Terkumpul: <span id="victory-likes">0</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Controls Hint -->
+    <div class="controls-hint">
+        🎮 Kamera: Drag Mouse | Zoom: Scroll | Auto-Build: ON
+    </div>
+    
+    <!-- WebGL Canvas -->
+    <canvas id="game-canvas"></canvas>
+    
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/controls/OrbitControls.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
