@@ -10,44 +10,43 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    {/* 
-        HAPUS atau KOMENTARI base href karena mengganggu path di tunnel
-        <base href="https://aldiprem.github.io/wtb/"> 
-    */}
+    <!-- HAPUS base href - ini yang bikin kacau -->
+    <!-- <base href="https://aldiprem.github.io/wtb/"> -->
     
-    {/* Gunakan path relatif untuk Flask (akan bekerja di tunnel) */}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <!-- UNTUK FLASK (via tunnel) - path relatif dari root -->
+    <link rel="stylesheet" href="/static/css/dashboard.css">
     
-    <!-- Base URL for API - gunakan meta tag saja -->
+    <!-- UNTUK GITHUB PAGES - path absolut dengan /wtb/ -->
+    <link rel="stylesheet" href="/wtb/static/css/dashboard.css" id="github-css" disabled>
+    
+    <!-- Base URL for API -->
     <meta name="base-url" content="https://climb-gzip-enquiry-other.trycloudflare.com">
-    
-    <!-- Fallback untuk GitHub Pages (hanya untuk styling statis) -->
-    <!-- Jika diakses via GitHub Pages, path ini yang akan digunakan -->
-    <link rel="stylesheet" href="https://aldiprem.github.io/wtb/static/css/dashboard.css" id="github-css" disabled>
     
     <script>
         // Script untuk memilih CSS yang tepat berdasarkan environment
         (function() {
-            // Deteksi apakah ini dijalankan di Flask atau di GitHub Pages
-            const isFlask = !window.location.hostname.includes('github.io');
+            // Deteksi apakah ini dijalankan di GitHub Pages
+            const isGitHub = window.location.hostname.includes('github.io');
             
-            if (isFlask) {
-                // Di Flask, gunakan url_for (tidak perlu action, karena sudah di-link)
-                console.log('Running in Flask mode');
-                document.getElementById('github-css').disabled = true;
-            } else {
-                // Di GitHub Pages, gunakan path absolut
-                console.log('Running in GitHub Pages mode');
-                const flaskCss = document.querySelector('link[href*="dashboard.css"]:not(#github-css)');
-                if (flaskCss) flaskCss.disabled = true;
+            if (isGitHub) {
+                console.log('GitHub Pages mode - using /wtb/ paths');
+                // Nonaktifkan CSS Flask
+                document.querySelectorAll('link[href="/static/css/dashboard.css"]').forEach(el => el.disabled = true);
+                // Aktifkan CSS GitHub
                 document.getElementById('github-css').disabled = false;
+            } else {
+                console.log('Flask mode - using /static/ paths');
+                // Nonaktifkan CSS GitHub
+                document.getElementById('github-css').disabled = true;
+                // Aktifkan CSS Flask
+                document.querySelectorAll('link[href="/static/css/dashboard.css"]').forEach(el => el.disabled = false);
             }
         })();
     </script>
 </head>
 <body class="dashboard-body">
     <div class="dashboard-container">
-        <!-- Sidebar - perbaiki href links -->
+        <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>TopUp Store</h2>
@@ -55,7 +54,7 @@
             </div>
             
             <nav class="sidebar-nav">
-                {/* Gunakan url_for untuk semua link internal */}
+                <!-- Gunakan url_for untuk semua link internal -->
                 <a href="{{ url_for('owner_dashboard') }}" class="active">
                     <i class="fas fa-home"></i>
                     <span>Dashboard</span>
@@ -82,7 +81,7 @@
             </div>
         </div>
         
-        <!-- Main Content (tetap sama) -->
+        <!-- Main Content -->
         <div class="main-content">
             <!-- Header -->
             <header class="content-header">
@@ -109,7 +108,7 @@
                 </div>
             </header>
             
-            <!-- Content Area (tetap sama) -->
+            <!-- Content Area -->
             <div class="content-area">
                 <!-- Stats Cards -->
                 <div class="stats-grid">
@@ -260,25 +259,29 @@
         <div class="loading-spinner"></div>
     </div>
     
-    <!-- Dashboard JS - Gunakan url_for -->
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <!-- Dashboard JS - Flask version -->
+    <script src="/static/js/dashboard.js"></script>
     
-    {/* Fallback untuk GitHub Pages */}
-    <script src="https://aldiprem.github.io/wtb/static/js/dashboard.js" id="github-js" disabled></script>
+    <!-- Dashboard JS - GitHub version (disabled by default) -->
+    <script src="/wtb/static/js/dashboard.js" id="github-js" disabled></script>
     
     <script>
         // Script untuk memilih JS yang tepat
         (function() {
-            const isFlask = !window.location.hostname.includes('github.io');
+            const isGitHub = window.location.hostname.includes('github.io');
             
-            if (isFlask) {
-                console.log('Using Flask JS');
-                document.getElementById('github-js').disabled = true;
-            } else {
-                console.log('Using GitHub JS');
-                const flaskJs = document.querySelector('script[src*="dashboard.js"]:not(#github-js)');
-                if (flaskJs) flaskJs.disabled = true;
+            if (isGitHub) {
+                console.log('GitHub Pages mode - using GitHub JS');
+                // Nonaktifkan JS Flask
+                document.querySelectorAll('script[src="/static/js/dashboard.js"]').forEach(el => el.disabled = true);
+                // Aktifkan JS GitHub
                 document.getElementById('github-js').disabled = false;
+            } else {
+                console.log('Flask mode - using Flask JS');
+                // Nonaktifkan JS GitHub
+                document.getElementById('github-js').disabled = true;
+                // Aktifkan JS Flask
+                document.querySelectorAll('script[src="/static/js/dashboard.js"]').forEach(el => el.disabled = false);
             }
         })();
 
