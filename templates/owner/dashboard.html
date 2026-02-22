@@ -3,21 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buat Website Baru - TopUp Store Manager</title>
+    <title>Dashboard - TopUp Store Manager</title>
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Custom CSS -->
-    <base href="https://aldiprem.github.io/wtb/">
-    <link rel="stylesheet" href="static/css/dashboard.css">
-    <!-- Base URL for API -->
+    
+    {/* 
+        HAPUS atau KOMENTARI base href karena mengganggu path di tunnel
+        <base href="https://aldiprem.github.io/wtb/"> 
+    */}
+    
+    {/* Gunakan path relatif untuk Flask (akan bekerja di tunnel) */}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    
+    <!-- Base URL for API - gunakan meta tag saja -->
     <meta name="base-url" content="https://climb-gzip-enquiry-other.trycloudflare.com">
+    
+    <!-- Fallback untuk GitHub Pages (hanya untuk styling statis) -->
+    <!-- Jika diakses via GitHub Pages, path ini yang akan digunakan -->
+    <link rel="stylesheet" href="https://aldiprem.github.io/wtb/static/css/dashboard.css" id="github-css" disabled>
+    
+    <script>
+        // Script untuk memilih CSS yang tepat berdasarkan environment
+        (function() {
+            // Deteksi apakah ini dijalankan di Flask atau di GitHub Pages
+            const isFlask = !window.location.hostname.includes('github.io');
+            
+            if (isFlask) {
+                // Di Flask, gunakan url_for (tidak perlu action, karena sudah di-link)
+                console.log('Running in Flask mode');
+                document.getElementById('github-css').disabled = true;
+            } else {
+                // Di GitHub Pages, gunakan path absolut
+                console.log('Running in GitHub Pages mode');
+                const flaskCss = document.querySelector('link[href*="dashboard.css"]:not(#github-css)');
+                if (flaskCss) flaskCss.disabled = true;
+                document.getElementById('github-css').disabled = false;
+            }
+        })();
+    </script>
 </head>
 <body class="dashboard-body">
     <div class="dashboard-container">
-        <!-- Sidebar -->
+        <!-- Sidebar - perbaiki href links -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>TopUp Store</h2>
@@ -25,11 +55,12 @@
             </div>
             
             <nav class="sidebar-nav">
-                <a href="/owner/dashboard">
+                {/* Gunakan url_for untuk semua link internal */}
+                <a href="{{ url_for('owner_dashboard') }}" class="active">
                     <i class="fas fa-home"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="/owner/websites" class="active">
+                <a href="{{ url_for('owner_websites') }}">
                     <i class="fas fa-globe"></i>
                     <span>Websites</span>
                 </a>
@@ -37,117 +68,188 @@
                     <i class="fas fa-cog"></i>
                     <span>Settings</span>
                 </a>
-                <a href="/owner/logout">
+                <a href="{{ url_for('owner_logout') }}">
                     <i class="fas fa-sign-out-alt"></i>
                     <span>Logout</span>
                 </a>
             </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="name">{{ current_user.full_name or current_user.username }}</div>
+                    <div class="role">Owner</div>
+                </div>
+            </div>
         </div>
         
-        <!-- Main Content -->
+        <!-- Main Content (tetap sama) -->
         <div class="main-content">
             <!-- Header -->
             <header class="content-header">
                 <div class="header-title">
-                    <h1>Buat Website Baru</h1>
-                    <p>Isi informasi untuk membuat website toko baru</p>
+                    <h1>Dashboard</h1>
+                    <p>Selamat datang kembali, {{ current_user.full_name or current_user.username }}!</p>
+                </div>
+                
+                <div class="header-actions">
+                    <button class="notification-btn" id="notificationBtn">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" style="display: none;">0</span>
+                    </button>
+                    
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <div class="profile-avatar">
+                            {{ current_user.username[0]|upper }}
+                        </div>
+                        <div class="profile-info">
+                            <div class="name">{{ current_user.username }}</div>
+                            <div class="role">Owner</div>
+                        </div>
+                    </div>
                 </div>
             </header>
             
-            <!-- Content Area -->
+            <!-- Content Area (tetap sama) -->
             <div class="content-area">
-                <div style="max-width: 800px; margin: 0 auto;">
-                    <form id="createWebsiteForm" style="background: white; border-radius: 24px; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-                        <!-- Informasi Dasar -->
-                        <h3 style="font-size: 1.2rem; font-weight: 600; margin-bottom: 1.5rem;">Informasi Dasar</h3>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Nama Website *</label>
-                            <input type="text" class="form-control" name="name" required placeholder="Contoh: TopUp Game Store">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Deskripsi</label>
-                            <textarea class="form-control" name="description" rows="3" placeholder="Deskripsi singkat tentang website"></textarea>
-                        </div>
-                        
-                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label class="form-label">Mata Uang</label>
-                                <select class="form-control" name="currency">
-                                    <option value="IDR">IDR - Rupiah</option>
-                                    <option value="USD">USD - Dollar</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Warna Tema</label>
-                                <input type="color" class="form-control" name="theme_color" value="#4f46e5" style="height: 44px;">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card" data-stat="websites">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Websites</span>
+                            <div class="stat-icon blue">
+                                <i class="fas fa-globe"></i>
                             </div>
                         </div>
-                        
-                        <!-- Kontak -->
-                        <h3 style="font-size: 1.2rem; font-weight: 600; margin: 2rem 0 1.5rem;">Informasi Kontak</h3>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Nomor WhatsApp</label>
-                            <input type="text" class="form-control" name="whatsapp_number" placeholder="Contoh: 628123456789">
+                        <div class="stat-value">{{ total_websites }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            12% dari bulan lalu
                         </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" name="email" placeholder="admin@example.com">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Telepon</label>
-                            <input type="text" class="form-control" name="phone" placeholder="021-1234567">
-                        </div>
-                        
-                        <!-- Bot Telegram -->
-                        <h3 style="font-size: 1.2rem; font-weight: 600; margin: 2rem 0 1.5rem;">Bot Telegram (Opsional)</h3>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Token Bot</label>
-                            <input type="text" class="form-control" name="telegram_bot_token" placeholder="Masukkan token dari @BotFather">
-                        </div>
-                        
-                        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="form-group">
-                                <label class="form-label">Username Bot</label>
-                                <input type="text" class="form-control" name="telegram_bot_username" placeholder="@namabot">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Chat ID Admin</label>
-                                <input type="text" class="form-control" name="telegram_chat_id" placeholder="ID Telegram untuk notifikasi">
+                    </div>
+                    
+                    <div class="stat-card" data-stat="products">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Products</span>
+                            <div class="stat-icon green">
+                                <i class="fas fa-box"></i>
                             </div>
                         </div>
-                        
-                        <!-- Meta Tags -->
-                        <h3 style="font-size: 1.2rem; font-weight: 600; margin: 2rem 0 1.5rem;">SEO Settings</h3>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Meta Title</label>
-                            <input type="text" class="form-control" name="meta_title" placeholder="Judul untuk SEO">
+                        <div class="stat-value">{{ total_products }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            8% dari bulan lalu
                         </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Meta Description</label>
-                            <textarea class="form-control" name="meta_description" rows="2" placeholder="Deskripsi untuk SEO"></textarea>
+                    </div>
+                    
+                    <div class="stat-card" data-stat="orders">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Orders</span>
+                            <div class="stat-icon purple">
+                                <i class="fas fa-shopping-cart"></i>
+                            </div>
                         </div>
-                        
-                        <!-- Actions -->
-                        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                            <button type="submit" class="btn btn-primary" style="flex: 1;">
-                                <i class="fas fa-save mr-2"></i>
-                                Simpan Website
-                            </button>
-                            <a href="/owner/websites" class="btn btn-secondary" style="flex: 0 0 120px;">
-                                Batal
-                            </a>
+                        <div class="stat-value">{{ total_orders }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            23% dari bulan lalu
                         </div>
-                    </form>
+                    </div>
+                    
+                    <div class="stat-card" data-stat="customers">
+                        <div class="stat-header">
+                            <span class="stat-title">Total Customers</span>
+                            <div class="stat-icon yellow">
+                                <i class="fas fa-users"></i>
+                            </div>
+                        </div>
+                        <div class="stat-value">{{ total_customers }}</div>
+                        <div class="stat-change positive">
+                            <i class="fas fa-arrow-up"></i>
+                            5% dari bulan lalu
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <h2 class="section-title">Quick Actions</h2>
+                    <div class="actions-grid">
+                        <a href="{{ url_for('owner_website_create') }}" class="action-item">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Buat Website Baru</span>
+                        </a>
+                        <a href="{{ url_for('owner_websites') }}" class="action-item">
+                            <i class="fas fa-edit"></i>
+                            <span>Kelola Websites</span>
+                        </a>
+                        <a href="#" class="action-item">
+                            <i class="fas fa-cog"></i>
+                            <span>Pengaturan</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Recent Websites -->
+                <div class="table-container">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="section-title">Website Terbaru</h2>
+                        <a href="{{ url_for('owner_websites') }}" class="text-sm" style="color: var(--primary);">Lihat Semua →</a>
+                    </div>
+                    
+                    <table class="data-table" id="recent-websites">
+                        <thead>
+                            <tr>
+                                <th>Nama Website</th>
+                                <th>Endpoint</th>
+                                <th>Produk</th>
+                                <th>Pesanan</th>
+                                <th>Status</th>
+                                <th>Dibuat</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for website in recent_websites %}
+                            <tr>
+                                <td>
+                                    <div class="font-medium">{{ website.name }}</div>
+                                    <div class="text-sm" style="color: var(--gray);">{{ website.description|truncate(50) }}</div>
+                                </td>
+                                <td>
+                                    <code class="bg-gray-100 px-2 py-1 rounded text-sm">{{ website.endpoint }}</code>
+                                </td>
+                                <td>{{ website.products|length }}</td>
+                                <td>{{ website.orders|length }}</td>
+                                <td>
+                                    {% if website.is_active %}
+                                    <span class="status-badge active">Active</span>
+                                    {% else %}
+                                    <span class="status-badge inactive">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ website.created_at.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <a href="{{ url_for('owner_website_edit', id=website.id) }}" class="text-blue-600 hover:text-blue-800 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('store_index', endpoint=website.endpoint) }}" target="_blank" class="text-green-600 hover:text-green-800">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-8" style="color: var(--gray);">
+                                    <i class="fas fa-globe text-4xl mb-3" style="color: var(--gray); opacity: 0.5;"></i>
+                                    <p>Belum ada website. Buat website pertama Anda!</p>
+                                    <a href="{{ url_for('owner_website_create') }}" class="btn btn-primary mt-3" style="display: inline-block;">
+                                        Buat Website
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -158,39 +260,43 @@
         <div class="loading-spinner"></div>
     </div>
     
-    <!-- Dashboard JS -->
-    <script src="/static/js/dashboard.js"></script>
+    <!-- Dashboard JS - Gunakan url_for -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    
+    {/* Fallback untuk GitHub Pages */}
+    <script src="https://aldiprem.github.io/wtb/static/js/dashboard.js" id="github-js" disabled></script>
+    
     <script>
-        document.getElementById('createWebsiteForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        // Script untuk memilih JS yang tepat
+        (function() {
+            const isFlask = !window.location.hostname.includes('github.io');
             
-            const formData = new FormData(this);
-            const data = Object.fromEntries(formData.entries());
+            if (isFlask) {
+                console.log('Using Flask JS');
+                document.getElementById('github-js').disabled = true;
+            } else {
+                console.log('Using GitHub JS');
+                const flaskJs = document.querySelector('script[src*="dashboard.js"]:not(#github-js)');
+                if (flaskJs) flaskJs.disabled = true;
+                document.getElementById('github-js').disabled = false;
+            }
+        })();
+
+        // Initialize dashboard with data
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard loaded');
             
-            // Show loading
-            document.querySelector('.global-loader').style.display = 'flex';
+            // Update stats with real data if available
+            const stats = {
+                websites: { value: '{{ total_websites }}', change: 12 },
+                products: { value: '{{ total_products }}', change: 8 },
+                orders: { value: '{{ total_orders }}', change: 23 },
+                customers: { value: '{{ total_customers }}', change: 5 }
+            };
             
-            try {
-                const response = await fetch('/wtb/templates/owner/dashboard.html', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('Website berhasil dibuat!');
-                    window.location.href = result.redirect;
-                } else {
-                    alert(result.message || 'Gagal membuat website');
-                }
-            } catch (error) {
-                alert('Error: ' + error.message);
-            } finally {
-                document.querySelector('.global-loader').style.display = 'none';
+            // You can call updateStats if needed
+            if (typeof window.updateStats === 'function') {
+                window.updateStats(stats);
             }
         });
     </script>
