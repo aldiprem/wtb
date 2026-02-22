@@ -3,7 +3,7 @@ import json
 import re
 from datetime import datetime
 from loguru import logger
-from database import Session, Conversation, Memory
+from database import Memory, Conversation  # Import class langsung
 from config import CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN, CLOUDFLARE_MODEL
 
 class AIEngine:
@@ -25,14 +25,6 @@ class AIEngine:
     def _call_cloudflare(self, prompt, system_prompt=None, max_tokens=500):
         """
         Panggil Cloudflare AI API
-        
-        Args:
-            prompt: Pesan user
-            system_prompt: Instruksi sistem (opsional)
-            max_tokens: Maksimal token response
-        
-        Returns:
-            String response dari AI atau None jika error
         """
         try:
             # Siapkan messages
@@ -89,27 +81,20 @@ Fokus pada produk: voucher game, top up, APK premium, Netflix, dll."""
         """
         Proses pesan dari user
         - is_owner=True: Mode MENGAJAR (simpan ke memori)
-        - is_owner=False: Untuk buyer (nanti di handle di fungsi lain)
         """
-        session = Session()
-        
         try:
-            # Simpan pesan ke database
-            user_msg = Conversation(
-                role='user',
-                message=message_text,
-                created_at=datetime.now()
-            )
-            session.add(user_msg)
-            session.flush()
+            # Simpan pesan user ke database
+            user_msg_id = Conversation.create('user', message_text)
             
             # HANYA OWNER yang bisa mengajar
             if is_owner:
                 # Ambil memori yang sudah ada
-                all_memories = session.query(Memory).order_by(Memory.created_at.desc()).limit(50).all()
+                all_memories = Memory.get_all(50)
                 
                 # CEK: Apakah ini pertanyaan tentang produk yang sudah diajarkan?
                 if all_memories:
+                    memories_text = "\n".join([f"- {m['content'][:200]}" for m in all_memories[:10]])
+                    
                     check_prompt = f"""
 Pesan dari OWNER: "{message_text}"
 
@@ -117,7 +102,7 @@ Tugas: Apakah ini PERTANYAAN tentang produk/harga yang SUDAH PERNAH diajarkan?
 Atau ini adalah informasi BARU yang harus disimpan?
 
 Memori yang sudah diajarkan:
-{chr(10).join([f"- {m.content[:200]}" for m in all_memories[:10]])}
+{memories_text}
 
 Format JSON WAJIB:
 {{
@@ -139,15 +124,17 @@ Format JSON WAJIB:
                                 product_keyword = check_result["related_product"].lower()
                                 product_memories = [
                                     m for m in all_memories 
-                                    if product_keyword in m.content.lower()
+                                    if product_keyword in m['content'].lower()
                                 ]
+                                
+                                product_memories_text = "\n".join([f"- {m['content']}" for m in product_memories[:5]])
                                 
                                 answer_prompt = f"""
 Pertanyaan dari OWNER: "{message_text}"
 Produk yang ditanyakan: {check_result['related_product']}
 
 Memori terkait:
-{chr(10).join([f"- {m.content}" for m in product_memories[:5]])}
+{product_memories_text}
 
 Tugas: Jawab pertanyaan owner dengan INFORMASI dari memori di atas.
 Gunakan bahasa santai, seperti ngobrol biasa.
@@ -158,19 +145,12 @@ JAWABAN:
                                 answer = self._call_cloudflare(answer_prompt, max_tokens=500)
                                 
                                 if answer:
-                                    # Simpan percakapan
-                                    ai_msg = Conversation(
-                                        role='assistant',
-                                        message=answer,
-                                        context=json.dumps({"type": "answer_to_owner"}),
-                                        created_at=datetime.now()
-                                    )
-                                    session.add(ai_msg)
-                                    session.commit()
-                                    
+                                    # Simpan percakapan AI
+                                    Conversation.create('assistant', answer, {"type": "answer_to_owner"})
                                     return answer
-                        except:
-                            # Gagal parse JSON, lanjut ke mode mengajar
+                        except Exception as e:
+                            logger.error(f"Error parsing check_response: {e}")
+                            # Lanjut ke mode mengajar
                             pass
                 
                 # KALAU BUKAN PERTANYAAN, PROSES SEBAGAI PENGAJARAN
@@ -197,38 +177,24 @@ Format JSON WAJIB:
                         
                         if analysis.get("is_teaching"):
                             # Simpan sebagai memori
-                            memory = Memory(
-                                memory_type=analysis.get('teaching_type', 'other'),
-                                content=f"User: {message_text}\nRingkasan: {analysis.get('summary', message_text[:50])}",
-                                source_conversation_id=user_msg.id,
-                                created_at=datetime.now()
+                            Memory.create(
+                                analysis.get('teaching_type', 'other'),
+                                f"User: {message_text}\nRingkasan: {analysis.get('summary', message_text[:50])}",
+                                user_msg_id
                             )
-                            session.add(memory)
                             
                             confirmation = f"📝 Saya catat: {analysis.get('summary', message_text[:50])}"
                             
-                            ai_msg = Conversation(
-                                role='assistant',
-                                message=confirmation,
-                                context=json.dumps({"teaching": analysis.get('teaching_type', 'other')}),
-                                created_at=datetime.now()
-                            )
-                            session.add(ai_msg)
-                            session.commit()
+                            # Simpan percakapan AI
+                            Conversation.create('assistant', confirmation, {"teaching": analysis.get('teaching_type', 'other')})
                             
                             return confirmation
                         else:
                             return "Maaf, saya tidak mengerti. Coba tanya tentang produk yang sudah diajarkan?"
-                    except:
+                    except Exception as e:
+                        logger.error(f"Error parsing analysis: {e}")
                         # Fallback: simpan sebagai memori sederhana
-                        memory = Memory(
-                            memory_type='other',
-                            content=f"User: {message_text}",
-                            source_conversation_id=user_msg.id,
-                            created_at=datetime.now()
-                        )
-                        session.add(memory)
-                        session.commit()
+                        Memory.create('other', f"User: {message_text}", user_msg_id)
                         return f"📝 Saya catat pesan Anda (mode sederhana)"
                 else:
                     return "Maaf, gagal memproses. Coba lagi nanti?"
@@ -240,24 +206,20 @@ Format JSON WAJIB:
         except Exception as e:
             logger.error(f"Error di process_user_message: {e}")
             return f"Maaf, error: {str(e)}"
-        finally:
-            session.close()
     
     def should_respond_to_wtb(self, wtb_message, channel_name):
         """
         Memutuskan apakah perlu respon untuk WTB
         """
-        session = Session()
-        
         try:
             # Ambil semua memori
-            all_memories = session.query(Memory).order_by(Memory.created_at.desc()).limit(50).all()
+            all_memories = Memory.get_all(50)
             
             if not all_memories:
                 return {"should_respond": False, "reason": "Belum diajarkan apapun"}
             
             # Buat konteks memori
-            memories_text = "\n".join([f"- {m.content[:200]}" for m in all_memories])
+            memories_text = "\n".join([f"- {m['content'][:200]}" for m in all_memories])
             
             prompt = f"""
 Pesan WTB dari channel {channel_name}:
@@ -292,22 +254,16 @@ Format JSON WAJIB:
         except Exception as e:
             logger.error(f"Error di should_respond: {e}")
             return {"should_respond": False, "reason": f"Error: {str(e)}"}
-        finally:
-            session.close()
     
     def generate_response(self, wtb_message, product_name, channel_name):
         """
         Generate respons promosi untuk WTB
         """
-        session = Session()
-        
         try:
             # Ambil memori terkait produk ini
-            memories = session.query(Memory).filter(
-                Memory.content.contains(product_name)
-            ).order_by(Memory.created_at.desc()).limit(20).all()
+            memories = Memory.get_by_content_contains(product_name, 20)
             
-            memories_text = "\n".join([f"- {m.content}" for m in memories]) if memories else "Tidak ada memori spesifik"
+            memories_text = "\n".join([f"- {m['content']}" for m in memories]) if memories else "Tidak ada memori spesifik"
             
             prompt = f"""
 Pesan WTB: "{wtb_message}"
@@ -339,5 +295,3 @@ RESPON LANGSUNG (tanpa pengantar):
         except Exception as e:
             logger.error(f"Error di generate_response: {e}")
             return f"Halo kak, saya bisa bantu untuk {product_name}. Chat aja ya :)"
-        finally:
-            session.close()
