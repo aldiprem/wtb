@@ -7,7 +7,13 @@ from loguru import logger
 class AIEngine:
     def __init__(self, api_key):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # GANTI DENGAN MODEL YANG VALID
+        # Pilih salah satu yang tersedia:
+        # - 'gemini-1.5-pro' (paling stabil)
+        # - 'gemini-1.0-pro' (ringan)
+        # - 'gemini-2.0-flash-exp' (terbaru, tapi experimental)
+        self.model = genai.GenerativeModel('gemini-1.5-pro')
         
         # System prompt: AI TIDAK TAHU APA-APA
         self.system_prompt = """Anda adalah AI baru lahir yang TIDAK TAHU APA-AP tentang bisnis.
@@ -19,38 +25,27 @@ Yang Anda tahu:
 - JANGAN PERNAH mengada-ada di luar yang saya ajarkan
 - Jika tidak yakin, lebih baik DIAM daripada salah
 
-Anda akan saya ajarkan tentang:
-- Produk apa saja yang saya jual
-- Harga dan pricelist
-- Gaya promosi yang saya suka
-- Cara merespon yang benar
-- Kapan harus diam
-
 Mulai dengan ingatan kosong."""
         
-        self.chat = self.model.start_chat(history=[
-            {"role": "user", "parts": [self.system_prompt]},
-            {"role": "model", "parts": ["Saya siap belajar. Silakan ajari saya SEMUANYA dari awal."]}
-        ])
+        # Inisialisasi chat (opsional, bisa di-comment dulu)
+        # self.chat = self.model.start_chat(history=[])
     
     def process_user_message(self, message_text):
-        """
-        Proses semua pesan dari Anda (pemilik)
-        AI akan menyimpannya sebagai memori
-        """
+        """Proses semua pesan dari Anda (pemilik)"""
         session = Session()
         
-        # Simpan pesan Anda ke database
-        user_msg = Conversation(
-            role='user',
-            message=message_text,
-            created_at=datetime.now()
-        )
-        session.add(user_msg)
-        session.flush()  # Dapatkan ID
-        
-        # AI menganalisis: ini lagi ngajarin apa?
-        analysis_prompt = f"""
+        try:
+            # Simpan pesan Anda ke database
+            user_msg = Conversation(
+                role='user',
+                message=message_text,
+                created_at=datetime.now()
+            )
+            session.add(user_msg)
+            session.flush()
+            
+            # AI menganalisis: ini lagi ngajarin apa?
+            analysis_prompt = f"""
 Pemilik berkata: "{message_text}"
 
 Analisis pesan ini:
@@ -65,8 +60,9 @@ Format JSON:
     "keywords": ["kata1", "kata2"]
 }}
 """
-        try:
-            analysis = json.loads(self.model.generate_content(analysis_prompt).text)
+            # Generate response
+            response = self.model.generate_content(analysis_prompt)
+            analysis = json.loads(response.text)
             
             # Simpan sebagai memori
             memory = Memory(
@@ -76,49 +72,51 @@ Format JSON:
                 created_at=datetime.now()
             )
             session.add(memory)
-            session.commit()
             
             # Generate respons konfirmasi
-            response = f"📝 Saya catat: {analysis['summary']}"
+            confirmation = f"📝 Saya catat: {analysis['summary']}"
             
             # Simpan respons AI
             ai_msg = Conversation(
                 role='assistant',
-                message=response,
+                message=confirmation,
                 context=json.dumps({"teaching": analysis['teaching_type']}),
                 created_at=datetime.now()
             )
             session.add(ai_msg)
             session.commit()
             
-            return response
+            return confirmation
             
         except Exception as e:
             logger.error(f"Error: {e}")
-            return "Maaf, saya gagal memproses. Coba lagi?"
+            return f"Maaf, saya gagal memproses. Error: {str(e)}"
         finally:
             session.close()
     
     def should_respond_to_wtb(self, wtb_message, channel_name):
-        """
-        Memutuskan apakah perlu respon berdasarkan YANG SUDAH DIAJARKAN
-        """
+        """Memutuskan apakah perlu respon"""
         session = Session()
         
-        # Ambil SEMUA memori yang pernah diajarkan
-        all_memories = session.query(Memory).order_by(Memory.created_at.desc()).limit(50).all()
-        
-        # Konteks dari database
-        context = {
-            "memori_yang_diajarkan": [
-                {
-                    "type": m.memory_type,
-                    "content": m.content
-                } for m in all_memories
-            ]
-        }
-        
-        prompt = f"""
+        try:
+            # Ambil SEMUA memori yang pernah diajarkan
+            all_memories = session.query(Memory).order_by(Memory.created_at.desc()).limit(50).all()
+            
+            if not all_memories:
+                logger.info("📭 Belum ada memori, pasti tidak akan respon")
+                return {"should_respond": False, "reason": "Belum diajarkan apapun"}
+            
+            # Konteks dari database
+            context = {
+                "memori_yang_diajarkan": [
+                    {
+                        "type": m.memory_type,
+                        "content": m.content[:200]  # Potong biar tidak terlalu panjang
+                    } for m in all_memories
+                ]
+            }
+            
+            prompt = f"""
 Pesan WTB dari channel {channel_name}:
 "{wtb_message}"
 
@@ -139,7 +137,6 @@ Format JSON WAJIB:
     "reason": "penjelasan singkat"
 }}
 """
-        try:
             response = self.model.generate_content(prompt)
             result = json.loads(response.text)
             
@@ -149,25 +146,28 @@ Format JSON WAJIB:
                 logger.info(f"❌ Tidak respon: {result.get('reason', 'Belum diajarkan')}")
             
             return result
+            
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Error di should_respond: {e}")
             return {"should_respond": False, "reason": "Error, lebih baik diam"}
         finally:
             session.close()
     
     def generate_response(self, wtb_message, product_name, channel_name):
-        """
-        Generate respons berdasarkan MEMORI yang diajarkan
-        """
+        """Generate respons berdasarkan MEMORI"""
         session = Session()
         
-        # Ambil semua memori terkait produk ini
-        memories = session.query(Memory).filter(
-            Memory.content.contains(product_name) | 
-            Memory.memory_type.in_(['style', 'rule'])
-        ).order_by(Memory.created_at.desc()).limit(20).all()
-        
-        prompt = f"""
+        try:
+            # Ambil semua memori terkait produk ini
+            memories = session.query(Memory).filter(
+                Memory.content.contains(product_name) | 
+                Memory.memory_type.in_(['style', 'rule'])
+            ).order_by(Memory.created_at.desc()).limit(20).all()
+            
+            if not memories:
+                return f"Halo kak, saya bisa bantu untuk {product_name}. Chat aja ya :)"
+            
+            prompt = f"""
 Pesan WTB: "{wtb_message}"
 Channel: {channel_name}
 Produk yang cocok: {product_name}
@@ -186,11 +186,11 @@ Buat RESPON PROMOSI dengan aturan WAJIB:
 
 RESPON LANGSUNG:
 """
-        try:
             response = self.model.generate_content(prompt)
             return response.text.strip()
+            
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Error di generate_response: {e}")
             return f"Halo kak, saya bisa bantu untuk {product_name}. Chat aja ya :)"
         finally:
             session.close()
