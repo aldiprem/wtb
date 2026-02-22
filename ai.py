@@ -13,7 +13,7 @@ class AIEngine:
         # - 'gemini-1.5-pro' (paling stabil)
         # - 'gemini-1.0-pro' (ringan)
         # - 'gemini-2.0-flash-exp' (terbaru, tapi experimental)
-        self.model = genai.GenerativeModel('gemini-1.5-pro')
+        self.model = genai.GenerativeModel('models/gemini-2.0-flash')
         
         # System prompt: AI TIDAK TAHU APA-APA
         self.system_prompt = """Anda adalah AI baru lahir yang TIDAK TAHU APA-AP tentang bisnis.
