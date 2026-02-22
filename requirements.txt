@@ -1,0 +1,7 @@
+telethon==1.34.0
+google-generativeai==0.3.0
+python-dotenv==1.0.0
+sqlalchemy==2.0.23
+sqlite3
+asyncio==3.4.3
+loguru==0.7.2
