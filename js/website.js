@@ -3,7 +3,7 @@
     console.log('🏪 Website Store - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
+    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
