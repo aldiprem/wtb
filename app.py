@@ -5,11 +5,11 @@ import json
 import os
 from datetime import datetime, timedelta
 import hashlib
-import hmac
 import secrets
 
 app = Flask(__name__, static_folder='.')
-CORS(app)  # Enable CORS for all routes
+# CORS lebih lengkap
+CORS(app, origins=['*'], methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allow_headers=['Content-Type', 'Accept'])
 
 # ==================== DATABASE SETUP ====================
 DATABASE = 'websites.db'
@@ -43,7 +43,7 @@ def init_db():
             )
         ''')
         
-        # Create owners table (for multiple owners)
+        # Create owners table
         db.execute('''
             CREATE TABLE IF NOT EXISTS owners (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,6 +137,12 @@ def serve_index():
 def serve_static(path):
     return send_from_directory('.', path)
 
+# Handle OPTIONS requests for CORS
+@app.route('/api/websites', methods=['OPTIONS'])
+@app.route('/api/websites/<path:path>', methods=['OPTIONS'])
+def handle_options(path=None):
+    return '', 200
+
 # ==================== WEBSITE API ====================
 
 @app.route('/api/websites', methods=['GET'])
@@ -163,6 +169,7 @@ def get_websites():
                 'websites': result
             })
     except Exception as e:
+        print(f"❌ Error in get_websites: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites/<int:website_id>', methods=['GET'])
@@ -185,6 +192,7 @@ def get_website(website_id):
                 'website': website_dict
             })
     except Exception as e:
+        print(f"❌ Error in get_website: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites/endpoint/<string:endpoint>', methods=['GET'])
@@ -203,7 +211,7 @@ def get_website_by_endpoint(endpoint):
             safe_data = {
                 'id': website_dict['id'],
                 'endpoint': website_dict['endpoint'],
-                'name': website_dict['username'],  # Use username as store name
+                'name': website_dict['username'],
                 'email': website_dict['email'],
                 'tunnel_url': website_dict['tunnel_url'],
                 'status': website_dict['status'],
@@ -218,6 +226,7 @@ def get_website_by_endpoint(endpoint):
                 'website': safe_data
             })
     except Exception as e:
+        print(f"❌ Error in get_website_by_endpoint: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites', methods=['POST'])
@@ -225,12 +234,38 @@ def create_website():
     """Create new website"""
     try:
         data = request.json
+        print(f"📥 Received data: {data}")
         
         # Validate required fields
         required = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email', 'tunnel_url']
+        missing_fields = []
+        
         for field in required:
-            if field not in data:
-                return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
+            if field not in data or not data[field]:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            return jsonify({
+                'success': False, 
+                'error': f'Missing fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        # Validate endpoint format (hanya huruf kecil, angka, dan strip)
+        endpoint = data['endpoint'].strip().lower()
+        if not endpoint.replace('-', '').isalnum():
+            return jsonify({
+                'success': False,
+                'error': 'Endpoint can only contain letters, numbers, and hyphens'
+            }), 400
+        
+        # Validate owner_id is integer
+        try:
+            owner_id = int(data['owner_id'])
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'Owner ID must be a number'
+            }), 400
         
         # Hash password
         hashed_password = hash_password(data['password'])
@@ -241,9 +276,12 @@ def create_website():
         
         with get_db() as db:
             # Check if endpoint exists
-            existing = db.execute('SELECT id FROM websites WHERE endpoint = ?', (data['endpoint'],)).fetchone()
+            existing = db.execute('SELECT id FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
             if existing:
-                return jsonify({'success': False, 'error': 'Endpoint already exists'}), 400
+                return jsonify({
+                    'success': False, 
+                    'error': f'Endpoint "{endpoint}" already exists'
+                }), 400
             
             # Insert new website
             cursor = db.execute('''
@@ -251,13 +289,13 @@ def create_website():
                 (endpoint, bot_token, owner_id, username, password, email, tunnel_url, status, start_date, end_date, settings)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                data['endpoint'],
-                data['bot_token'],
-                data['owner_id'],
-                data['username'],
+                endpoint,
+                data['bot_token'].strip(),
+                owner_id,
+                data['username'].strip(),
                 hashed_password,
-                data['email'],
-                data['tunnel_url'],
+                data['email'].strip().lower(),
+                data['tunnel_url'].strip(),
                 data.get('status', 'active'),
                 start_date,
                 end_date,
@@ -265,6 +303,9 @@ def create_website():
             ))
             
             website_id = cursor.lastrowid
+            db.commit()
+            
+            print(f"✅ Website created with ID: {website_id}")
             
             return jsonify({
                 'success': True,
@@ -272,8 +313,20 @@ def create_website():
                 'website_id': website_id
             })
             
+    except sqlite3.IntegrityError as e:
+        print(f"❌ Database integrity error: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Database error: Endpoint or data conflict'
+        }), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"❌ Error creating website: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Internal server error: {str(e)}'
+        }), 500
 
 @app.route('/api/websites/<int:website_id>', methods=['PUT'])
 def update_website(website_id):
@@ -331,6 +384,7 @@ def update_website(website_id):
             })
             
     except Exception as e:
+        print(f"❌ Error updating website: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites/<int:website_id>', methods=['DELETE'])
@@ -353,6 +407,7 @@ def delete_website(website_id):
             })
             
     except Exception as e:
+        print(f"❌ Error deleting website: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== PRODUCTS API ====================
@@ -373,6 +428,7 @@ def get_products(website_id):
                 'products': products
             })
     except Exception as e:
+        print(f"❌ Error getting products: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites/<int:website_id>/products', methods=['POST'])
@@ -424,6 +480,7 @@ def add_product(website_id):
             })
             
     except Exception as e:
+        print(f"❌ Error adding product: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites/<int:website_id>/products/<int:product_id>', methods=['PUT'])
@@ -461,6 +518,7 @@ def update_product(website_id, product_id):
             })
             
     except Exception as e:
+        print(f"❌ Error updating product: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites/<int:website_id>/products/<int:product_id>', methods=['DELETE'])
@@ -491,6 +549,7 @@ def delete_product(website_id, product_id):
             })
             
     except Exception as e:
+        print(f"❌ Error deleting product: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== ORDERS API ====================
@@ -515,6 +574,7 @@ def get_orders(website_id):
                 'orders': result
             })
     except Exception as e:
+        print(f"❌ Error getting orders: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/websites/<int:website_id>/orders', methods=['POST'])
@@ -567,6 +627,7 @@ def create_order(website_id):
             ))
             
             order_id = cursor.lastrowid
+            db.commit()
             
             return jsonify({
                 'success': True,
@@ -576,6 +637,7 @@ def create_order(website_id):
             })
             
     except Exception as e:
+        print(f"❌ Error creating order: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== STATS API ====================
@@ -629,6 +691,7 @@ def get_stats():
             })
             
     except Exception as e:
+        print(f"❌ Error getting stats: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== TEST BOT ====================
@@ -652,6 +715,7 @@ def test_bot(website_id):
         })
         
     except Exception as e:
+        print(f"❌ Error testing bot: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== HEALTH CHECK ====================
@@ -691,4 +755,6 @@ if __name__ == '__main__':
     print(f"📅 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("🔗 API available at: http://localhost:5050")
     print("📊 Database: websites.db")
+    print("⚠️  Make sure to use the same port in dashboard.js")
+    # Gunakan port 5050 dan host 0.0.0.0
     app.run(host='0.0.0.0', port=5050, debug=True)
