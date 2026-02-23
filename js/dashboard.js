@@ -732,13 +732,18 @@
             elements.createModal.classList.add('active');
             vibrate(10);
             setTimeout(() => setupKeyboardHandler(), 100);
+            console.log('🔓 Create modal opened');
         }
     }
 
     function closeModal() {
         if (elements.createModal) {
             elements.createModal.classList.remove('active');
-            elements.createWebsiteForm.reset();
+            // Reset form menggunakan referensi yang sudah diperbarui
+            if (elements.createWebsiteForm) {
+                elements.createWebsiteForm.reset();
+                console.log('📝 Create form reset');
+            }
         }
     }
 
@@ -909,13 +914,15 @@
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
         
-        // PERBAIKAN: Jangan clone node, langsung tambahkan event listener
+        // PERBAIKAN: Jangan clone node jika tidak perlu
+        // Tapi jika ingin memastikan tidak ada event listener ganda, gunakan pendekatan ini
         if (elements.createWebsiteForm) {
-            // Hapus event listener lama jika ada dengan replace
-            const newForm = elements.createWebsiteForm.cloneNode(true);
-            elements.createWebsiteForm.parentNode.replaceChild(newForm, elements.createWebsiteForm);
+            // Hapus event listener lama dengan replace node
+            const oldForm = elements.createWebsiteForm;
+            const newForm = oldForm.cloneNode(true);
+            oldForm.parentNode.replaceChild(newForm, oldForm);
             
-            // Update referensi form dan input fields
+            // Update referensi form
             elements.createWebsiteForm = newForm;
             
             // Update referensi input fields setelah clone
@@ -926,8 +933,19 @@
             elements.passwordInput = document.getElementById('password');
             elements.emailInput = document.getElementById('email');
             
+            console.log('🔄 Create form re-initialized');
+            console.log('📍 Endpoint input:', elements.endpointInput);
+            console.log('📍 BotToken input:', elements.botTokenInput);
+            console.log('📍 OwnerId input:', elements.ownerIdInput);
+            console.log('📍 Username input:', elements.usernameInput);
+            console.log('📍 Password input:', elements.passwordInput);
+            console.log('📍 Email input:', elements.emailInput);
+            
             // Tambahkan event listener baru
             elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
+            console.log('✅ Event listener attached to create form');
+        } else {
+            console.error('❌ Create website form not found!');
         }
         
         // Confirm delete button
@@ -1006,6 +1024,8 @@
     async function handleCreateSubmit(e) {
         e.preventDefault();
         
+        console.log('🎯 Create form submitted!');
+        
         // Gunakan referensi yang sudah diperbarui
         const endpoint = elements.endpointInput ? elements.endpointInput.value.trim() : '';
         const botToken = elements.botTokenInput ? elements.botTokenInput.value.trim() : '';
@@ -1026,6 +1046,7 @@
         
         // Validasi sederhana sebelum membuat formData
         if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
+            console.error('❌ Missing fields detected');
             showToast('Please fill all fields', 'error');
             return;
         }
@@ -1033,6 +1054,7 @@
         // Konversi ownerId ke number
         const ownerIdNum = parseInt(ownerId);
         if (isNaN(ownerIdNum)) {
+            console.error('❌ Owner ID is not a number');
             showToast('Owner ID must be a number', 'error');
             return;
         }
