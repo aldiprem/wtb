@@ -439,7 +439,7 @@
         elements.websitesTableBody.innerHTML = html;
     }
 
-    // ==================== FUNGSI CREATE WEBSITE (FIX VALIDATION) ====================
+    // ==================== FUNGSI CREATE WEBSITE (VERSI BARU - TANPA TUNNEL URL) ====================
     async function createWebsite(formData) {
       try {
         showToast('Creating website...', 'info');
@@ -447,12 +447,11 @@
         // Debug: lihat data yang dikirim
         console.log('📤 Form data received:', formData);
     
-        // Validasi sederhana - cek apakah semua field ada
-        const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email', 'tunnel_url'];
+        // Validasi sederhana - cek apakah semua field ada (tanpa tunnel_url)
+        const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
         const missingFields = [];
     
         for (const field of requiredFields) {
-          // Cek apakah field ada dan tidak undefined/null
           if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
             missingFields.push(field);
             console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
@@ -461,7 +460,6 @@
     
         if (missingFields.length > 0) {
           console.error('❌ Missing fields:', missingFields);
-          console.error('Form data:', formData);
           showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
           return;
         }
@@ -479,15 +477,9 @@
           return;
         }
     
-        // Validasi email (sederhana)
+        // Validasi email
         if (!formData.email.includes('@') || !formData.email.includes('.')) {
           showToast('Please enter a valid email address', 'error');
-          return;
-        }
-    
-        // Validasi URL (sederhana)
-        if (!formData.tunnel_url.startsWith('http://') && !formData.tunnel_url.startsWith('https://')) {
-          showToast('Tunnel URL must start with http:// or https://', 'error');
           return;
         }
     
@@ -539,7 +531,7 @@
         showToast(error.message || 'Failed to create website', 'error');
       }
     }
-
+    
     // ==================== FUNGSI DELETE WEBSITE ====================
     async function deleteWebsite(id) {
         try {
@@ -903,59 +895,57 @@
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
 
-        // Create Website form submit
-        if (elements.createWebsiteForm) {
-          elements.createWebsiteForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-        
-            // Ambil nilai dari form dengan trim()
-            const endpoint = document.getElementById('endpoint').value.trim();
-            const botToken = document.getElementById('botToken').value.trim();
-            const ownerId = document.getElementById('ownerId').value.trim();
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const email = document.getElementById('email').value.trim();
-            const tunnelUrl = document.getElementById('tunnelUrl').value.trim();
-        
-            // Debug: lihat nilai yang diambil
-            console.log('📝 Form values:', {
-              endpoint,
-              botToken,
-              ownerId,
-              username,
-              password: password ? '***' : '(empty)',
-              email,
-              tunnelUrl
-            });
-        
-            // Validasi sederhana sebelum membuat formData
-            if (!endpoint || !botToken || !ownerId || !username || !password || !email || !tunnelUrl) {
-              showToast('Please fill all fields', 'error');
-              return;
-            }
-        
-            // Konversi ownerId ke number
-            const ownerIdNum = parseInt(ownerId);
-            if (isNaN(ownerIdNum)) {
-              showToast('Owner ID must be a number', 'error');
-              return;
-            }
-        
-            const formData = {
-              endpoint: endpoint.toLowerCase(), // force lowercase
-              bot_token: botToken,
-              owner_id: ownerIdNum,
-              username: username,
-              password: password,
-              email: email.toLowerCase(),
-              tunnel_url: tunnelUrl,
-              status: 'active'
-            };
-        
-            console.log('📦 FormData prepared:', formData);
-            await createWebsite(formData);
+      // Update bagian form submit - HAPUS TUNNEL URL
+      if (elements.createWebsiteForm) {
+        elements.createWebsiteForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+  
+          // Ambil nilai dari form dengan trim()
+          const endpoint = document.getElementById('endpoint').value.trim();
+          const botToken = document.getElementById('botToken').value.trim();
+          const ownerId = document.getElementById('ownerId').value.trim();
+          const username = document.getElementById('username').value.trim();
+          const password = document.getElementById('password').value;
+          const email = document.getElementById('email').value.trim();
+  
+          // Debug: lihat nilai yang diambil
+          console.log('📝 Form values:', {
+            endpoint,
+            botToken,
+            ownerId,
+            username,
+            password: password ? '***' : '(empty)',
+            email
           });
-        }
+  
+          // Validasi sederhana sebelum membuat formData
+          if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
+            showToast('Please fill all fields', 'error');
+            return;
+          }
+  
+          // Konversi ownerId ke number
+          const ownerIdNum = parseInt(ownerId);
+          if (isNaN(ownerIdNum)) {
+            showToast('Owner ID must be a number', 'error');
+            return;
+          }
+  
+          const formData = {
+            endpoint: endpoint.toLowerCase(),
+            bot_token: botToken,
+            owner_id: ownerIdNum,
+            username: username,
+            password: password,
+            email: email.toLowerCase(),
+            status: 'active'
+            // tunnel_url TIDAK PERLU dikirim
+          };
+  
+          console.log('📦 FormData prepared:', formData);
+          await createWebsite(formData);
+        });
+      }
 
         // Confirm delete button
         if (elements.confirmDeleteBtn) {
