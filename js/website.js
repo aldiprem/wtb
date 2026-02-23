@@ -4,6 +4,8 @@
 
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com'; // URL backend Flask
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000;
 
     // ==================== FUNGSI GET ENDPOINT DARI URL ====================
     function getEndpointFromUrl() {
@@ -15,7 +17,7 @@
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
-        // Dynamic meta
+        loadingOverlay: document.getElementById('loadingOverlay'),
         dynamicTitle: document.getElementById('dynamicTitle'),
         dynamicDescription: document.getElementById('dynamicDescription'),
         dynamicKeywords: document.getElementById('dynamicKeywords'),
@@ -33,8 +35,7 @@
         
         // Header
         storeName: document.getElementById('storeName'),
-        headerLogo: document.getElementById('headerLogo'), // Ini perlu ditambahkan di HTML
-        headerLogoImg: document.getElementById('headerLogoImg'), // Ini perlu ditambahkan di HTML
+        headerLogo: document.getElementById('headerLogo'),
         searchToggle: document.getElementById('searchToggle'),
         cartBtn: document.getElementById('cartBtn'),
         cartBadge: document.getElementById('cartBadge'),
@@ -110,6 +111,22 @@
     let currentBannerIndex = 0;
     let touchStartX = 0;
     let touchEndX = 0;
+    let retryCount = 0;
+
+    // ==================== FUNGSI LOADING OVERLAY ====================
+    function showLoading(message = 'Memuat website...') {
+        if (elements.loadingOverlay) {
+            const loadingText = elements.loadingOverlay.querySelector('.loading-text');
+            if (loadingText) loadingText.textContent = message;
+            elements.loadingOverlay.style.display = 'flex';
+        }
+    }
+
+    function hideLoading() {
+        if (elements.loadingOverlay) {
+            elements.loadingOverlay.style.display = 'none';
+        }
+    }
 
     // ==================== FUNGSI UTILITY ====================
     function vibrate(duration = 20) {
@@ -119,7 +136,8 @@
     }
 
     function formatNumber(num) {
-        return num ? num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '0';
+        if (num === undefined || num === null) return '0';
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
     function formatPrice(price) {
@@ -154,28 +172,45 @@
         }, duration);
     }
 
+    // ==================== FUNGSI FETCH DENGAN RETRY ====================
+    async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+        try {
+            const response = await fetch(url, {
+                ...options,
+                mode: 'cors',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            if (retries > 0) {
+                console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return fetchWithRetry(url, options, retries - 1);
+            }
+            throw error;
+        }
+    }
+
     // ==================== FUNGSI LOAD WEBSITE DATA ====================
     async function loadWebsiteData(endpoint) {
+        showLoading('Memuat data website...');
+        
         try {
             console.log(`📡 Loading website data for endpoint: ${endpoint}`);
             
-            const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+            const result = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
-                },
-                mode: 'cors'
+                }
             });
             
-            if (!response.ok) {
-                if (response.status === 404) {
-                    throw new Error('Website tidak ditemukan');
-                }
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
             console.log('📥 Website data:', result);
             
             if (result.success && result.website) {
@@ -197,6 +232,7 @@
                 // Render semua komponen
                 renderAllComponents();
                 
+                hideLoading();
                 return data;
             } else {
                 throw new Error('Invalid response from server');
@@ -204,6 +240,7 @@
             
         } catch (error) {
             console.error('❌ Error loading website:', error);
+            hideLoading();
             
             // Tampilkan pesan error di halaman
             if (elements.storeName) {
@@ -224,35 +261,30 @@
         try {
             console.log(`📡 Loading tampilan data for website ID: ${websiteId}`);
             
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
+            const result = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
-                },
-                mode: 'cors'
+                }
             });
-            
-            if (response.status === 404) {
-                console.log('ℹ️ No tampilan data found, using defaults');
-                tampilanData = null;
-                return;
-            }
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            console.log('📥 Tampilan data:', result);
             
             if (result.success && result.tampilan) {
                 tampilanData = result.tampilan;
+                console.log('📥 Tampilan data:', tampilanData);
+            } else {
+                console.log('ℹ️ No tampilan data found, using defaults');
+                tampilanData = null;
             }
             
         } catch (error) {
-            console.error('❌ Error loading tampilan:', error);
-            tampilanData = null;
+            if (error.message.includes('404')) {
+                console.log('ℹ️ No tampilan data found, using defaults');
+                tampilanData = null;
+            } else {
+                console.error('❌ Error loading tampilan:', error);
+                tampilanData = null;
+            }
         }
     }
 
@@ -264,6 +296,9 @@
         if (elements.popularProducts) elements.popularProducts.innerHTML = '';
         if (elements.promoBanner) elements.promoBanner.innerHTML = '';
         if (elements.paymentIcons) elements.paymentIcons.innerHTML = '';
+        
+        // Sembunyikan banner slider
+        if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
     }
 
     function renderAllComponents() {
@@ -271,12 +306,12 @@
         renderLogo();
         
         // Render banner dari tampilanData
-        if (tampilanData?.banners && tampilanData.banners.length > 0) {
+        if (tampilanData?.banners && Array.isArray(tampilanData.banners) && tampilanData.banners.length > 0) {
             renderBanners(tampilanData.banners);
         } else if (tampilanData?.banner) {
             // Fallback ke banner lama (string)
             const banners = Array.isArray(tampilanData.banner) 
-                ? tampilanData.banner 
+                ? tampilanData.banner.map(b => ({ url: b, positionX: 50, positionY: 50 }))
                 : [{ url: tampilanData.banner, positionX: 50, positionY: 50 }];
             renderBanners(banners);
         } else if (websiteData?.settings?.banner) {
@@ -326,36 +361,44 @@
 
     // ==================== FUNGSI RENDER LOGO ====================
     function renderLogo() {
-        // Cek apakah elemen header logo ada, jika tidak buat secara dinamis
-        let headerLogoContainer = document.querySelector('.header-logo');
+        let headerLogoContainer = elements.headerLogo;
+        if (!headerLogoContainer) return;
         
         if (tampilanData?.logo) {
             // Jika ada logo, tampilkan gambar
-            if (headerLogoContainer) {
-                headerLogoContainer.innerHTML = `
-                    <img src="${tampilanData.logo}" alt="Logo" class="header-logo-img" style="height: 40px; width: auto; object-fit: contain;">
-                    <span id="storeName" style="display: none;">${websiteData?.username || 'Toko Online'}</span>
-                `;
-            }
-        } else {
-            // Jika tidak ada logo, tampilkan icon dan nama toko
-            if (headerLogoContainer) {
-                headerLogoContainer.innerHTML = `
+            headerLogoContainer.innerHTML = `
+                <img src="${tampilanData.logo}" alt="Logo" class="header-logo-img" style="height: 40px; width: auto; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="header-logo-fallback" style="display: none; align-items: center; gap: 8px;">
                     <i class="fas fa-store"></i>
                     <span id="storeName">${websiteData?.username || 'Toko Online'}</span>
-                `;
-            }
+                </div>
+            `;
+            
+            // Cek apakah logo berhasil dimuat
+            const logoImg = headerLogoContainer.querySelector('img');
+            const fallback = headerLogoContainer.querySelector('.header-logo-fallback');
+            
+            logoImg.onerror = function() {
+                this.style.display = 'none';
+                if (fallback) fallback.style.display = 'flex';
+            };
+        } else {
+            // Jika tidak ada logo, tampilkan icon dan nama toko
+            headerLogoContainer.innerHTML = `
+                <i class="fas fa-store"></i>
+                <span id="storeName">${websiteData?.username || 'Toko Online'}</span>
+            `;
         }
     }
 
     // ==================== FUNGSI RENDER PAYMENT METHODS DARI TAMPILAN ====================
     function renderPaymentMethodsFromTampilan() {
-        if (!elements.paymentIcons || !tampilanData) return;
+        if (!elements.paymentIcons) return;
         
         let html = '';
         
         // Render bank accounts
-        if (tampilanData.banks && tampilanData.banks.length > 0) {
+        if (tampilanData?.banks && tampilanData.banks.length > 0) {
             tampilanData.banks.forEach(bank => {
                 if (bank.enabled) {
                     html += `
@@ -369,7 +412,7 @@
         }
         
         // Render e-wallet accounts
-        if (tampilanData.ewallets && tampilanData.ewallets.length > 0) {
+        if (tampilanData?.ewallets && tampilanData.ewallets.length > 0) {
             tampilanData.ewallets.forEach(ewallet => {
                 if (ewallet.enabled) {
                     html += `
@@ -383,7 +426,7 @@
         }
         
         // Render QRIS
-        if (tampilanData.qris && tampilanData.qris.enabled) {
+        if (tampilanData?.qris && tampilanData.qris.enabled) {
             html += `
                 <div class="payment-icon">
                     <i class="fas fa-qrcode"></i>
@@ -393,13 +436,19 @@
         }
         
         // Render crypto
-        if (tampilanData.crypto && tampilanData.crypto.enabled) {
+        if (tampilanData?.crypto && tampilanData.crypto.enabled) {
             html += `
                 <div class="payment-icon">
                     <i class="fab fa-bitcoin"></i>
                     <span>Crypto</span>
                 </div>
             `;
+        }
+        
+        // Jika tidak ada metode pembayaran dari tampilan, coba dari settings
+        if (html === '' && websiteData?.settings?.payments) {
+            renderPaymentMethods(websiteData.settings.payments);
+            return;
         }
         
         if (html === '') {
@@ -457,6 +506,8 @@
     }
 
     function applyThemeColors(colors) {
+        if (!colors) return;
+        
         const root = document.documentElement;
         if (colors.primary) root.style.setProperty('--primary-color', colors.primary);
         if (colors.secondary) root.style.setProperty('--secondary-color', colors.secondary);
@@ -467,6 +518,8 @@
     }
 
     function applyFont(font) {
+        if (!font) return;
+        
         const root = document.documentElement;
         if (font.family) {
             root.style.setProperty('--font-family', font.family);
@@ -507,7 +560,8 @@
                 <div class="slider-slide ${index === 0 ? 'active' : ''}" data-index="${index}">
                     <div class="banner-image-container">
                         <img src="${bannerUrl}" alt="Banner ${index + 1}" 
-                             style="object-position: ${positionX}% ${positionY}%;">
+                             style="object-position: ${positionX}% ${positionY}%;"
+                             onerror="this.src='https://via.placeholder.com/800x400/40a7e3/ffffff?text=Banner+${index+1}';">
                     </div>
                 </div>
             `;
@@ -673,7 +727,8 @@
             html += `
                 <div class="product-card" data-id="${product.id}">
                     <div class="product-image">
-                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" alt="${escapeHtml(product.name)}">
+                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" alt="${escapeHtml(product.name)}"
+                             onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image';">
                         ${discount > 0 ? `<span class="product-discount">-${discount}%</span>` : ''}
                         ${product.stock <= 0 ? '<span class="product-soldout">Habis</span>' : ''}
                     </div>
@@ -716,7 +771,7 @@
 
     // ==================== FUNGSI RENDER PAYMENT METHODS ====================
     function renderPaymentMethods(payments) {
-        if (!elements.paymentIcons) return;
+        if (!elements.paymentIcons || !payments) return;
         
         let html = '';
         
@@ -724,7 +779,7 @@
             payments.bank.forEach(bank => {
                 html += `
                     <div class="payment-icon">
-                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}">
+                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank';">
                         <span>${bank.name}</span>
                     </div>
                 `;
@@ -735,7 +790,7 @@
             payments.ewallet.forEach(wallet => {
                 html += `
                     <div class="payment-icon">
-                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}">
+                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet';">
                         <span>${wallet.name}</span>
                     </div>
                 `;
@@ -761,14 +816,15 @@
     // ==================== FUNGSI CART ====================
     function loadCart() {
         if (!currentEndpoint) return;
-        const savedCart = localStorage.getItem(`cart_${currentEndpoint}`);
-        if (savedCart) {
-            try {
+        try {
+            const savedCart = localStorage.getItem(`cart_${currentEndpoint}`);
+            if (savedCart) {
                 cart = JSON.parse(savedCart);
-            } catch {
+            } else {
                 cart = [];
             }
-        } else {
+        } catch (e) {
+            console.error('Error loading cart:', e);
             cart = [];
         }
         
@@ -777,7 +833,11 @@
 
     function saveCart() {
         if (!currentEndpoint) return;
-        localStorage.setItem(`cart_${currentEndpoint}`, JSON.stringify(cart));
+        try {
+            localStorage.setItem(`cart_${currentEndpoint}`, JSON.stringify(cart));
+        } catch (e) {
+            console.error('Error saving cart:', e);
+        }
     }
 
     function addToCart(productId, variant = null, quantity = 1) {
@@ -871,7 +931,7 @@
                 
                 cartHtml += `
                     <div class="cart-item" data-index="${index}">
-                        <img src="${item.image || 'https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(item.name)}">
+                        <img src="${item.image || 'https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(item.name)}" onerror="this.src='https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product';">
                         <div class="cart-item-details">
                             <h4>${escapeHtml(item.name)}</h4>
                             ${item.variant ? `<p class="cart-item-variant">${escapeHtml(item.variant)}</p>` : ''}
@@ -933,11 +993,12 @@
         const productHtml = `
             <div class="product-detail-images">
                 <div class="main-image">
-                    <img src="${product.image || 'https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(product.name)}" id="mainProductImage">
+                    <img src="${product.image || 'https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(product.name)}" id="mainProductImage"
+                         onerror="this.src='https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product';">
                 </div>
                 <div class="thumbnail-images">
                     ${product.images ? product.images.map(img => 
-                        `<img src="${img}" alt="Thumb" onclick="document.getElementById('mainProductImage').src='${img}'">`
+                        `<img src="${img}" alt="Thumb" onclick="document.getElementById('mainProductImage').src='${img}'" onerror="this.style.display='none';">`
                     ).join('') : ''}
                 </div>
             </div>
@@ -1188,19 +1249,23 @@
             elements.loginBtn.innerHTML = '<i class="fas fa-user"></i> Profile';
         }
         
-        localStorage.setItem(`user_${currentEndpoint}`, JSON.stringify(user));
+        try {
+            localStorage.setItem(`user_${currentEndpoint}`, JSON.stringify(user));
+        } catch (e) {
+            console.error('Error saving user:', e);
+        }
     }
 
     function loadUser() {
         if (!currentEndpoint) return;
-        const savedUser = localStorage.getItem(`user_${currentEndpoint}`);
-        if (savedUser) {
-            try {
+        try {
+            const savedUser = localStorage.getItem(`user_${currentEndpoint}`);
+            if (savedUser) {
                 const user = JSON.parse(savedUser);
                 setUser(user);
-            } catch (e) {
-                console.error('Error loading user', e);
             }
+        } catch (e) {
+            console.error('Error loading user', e);
         }
     }
 
@@ -1340,14 +1405,14 @@
                                 ${websiteData?.settings?.payments?.bank?.map(bank => `
                                     <label class="payment-option">
                                         <input type="radio" name="payment" value="bank_${bank.name}">
-                                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}">
+                                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank';">
                                         <span>${bank.name}</span>
                                     </label>
                                 `).join('')}
                                 ${websiteData?.settings?.payments?.ewallet?.map(wallet => `
                                     <label class="payment-option">
                                         <input type="radio" name="payment" value="ewallet_${wallet.name}">
-                                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}">
+                                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet';">
                                         <span>${wallet.name}</span>
                                     </label>
                                 `).join('')}
