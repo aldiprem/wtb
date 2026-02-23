@@ -506,7 +506,7 @@
         }
     }
 
-    // ==================== FUNGSI RENDER BANNER LIST ====================
+    // ==================== FUNGSI RENDER BANNER LIST (SEDERHANA) ====================
     function renderBannerList() {
         if (!elements.bannerList) return;
         
@@ -522,10 +522,14 @@
         
         let html = '';
         banners.forEach((banner, index) => {
+            const previewStyle = banner.fileData ? 
+                `background-image: url(${banner.fileData}); background-size: cover; background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;` :
+                `background-image: url(${banner.url || 'https://via.placeholder.com/800x200/40a7e3/ffffff?text=Banner+' + (index+1)}); background-size: cover; background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
+            
             html += `
                 <div class="banner-item" data-index="${index}">
                     <div class="banner-item-header">
-                        <span class="banner-number">Banner ${index + 1}</span>
+                        <div class="banner-number">Banner ${index + 1}</div>
                         <div class="banner-item-actions">
                             <button class="btn-icon-small move-up" ${index === 0 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'up')">
                                 <i class="fas fa-arrow-up"></i>
@@ -539,34 +543,27 @@
                         </div>
                     </div>
                     <div class="banner-item-content">
-                        <div class="banner-preview-small">
-                            <img src="${banner.url || 'https://via.placeholder.com/150x80/40a7e3/ffffff?text=Banner'}" alt="Banner ${index + 1}" style="object-position: ${banner.position || 50}% ${banner.positionY || 50}%;">
+                        <div class="banner-preview-touch" 
+                             id="banner-preview-${index}"
+                             data-index="${index}"
+                             style="${previewStyle}">
+                            <div class="banner-preview-overlay">
+                                <i class="fas fa-hand-pointer"></i>
+                                <span>Geser untuk mengatur posisi</span>
+                            </div>
                         </div>
                         <div class="banner-item-form">
                             <div class="form-group">
-                                <label>URL Gambar</label>
+                                <label>URL Gambar (opsional jika upload)</label>
                                 <input type="url" class="banner-url-input" value="${escapeHtml(banner.url || '')}" placeholder="https://example.com/banner.jpg" data-index="${index}">
                             </div>
                             <div class="form-group">
-                                <label>Posisi Horizontal (object-position X)</label>
-                                <div class="position-slider-container">
-                                    <input type="range" class="position-slider" min="0" max="100" value="${banner.position || 50}" data-index="${index}" data-axis="x">
-                                    <span class="position-value">${banner.position || 50}%</span>
-                                </div>
+                                <button class="btn-upload-small banner-upload-btn" data-index="${index}">
+                                    <i class="fas fa-cloud-upload-alt"></i> Upload Gambar
+                                </button>
                             </div>
-                            <div class="form-group">
-                                <label>Posisi Vertikal (object-position Y)</label>
-                                <div class="position-slider-container">
-                                    <input type="range" class="position-slider" min="0" max="100" value="${banner.positionY || 50}" data-index="${index}" data-axis="y">
-                                    <span class="position-value">${banner.positionY || 50}%</span>
-                                </div>
-                            </div>
-                            <div class="position-presets">
-                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'center')">Tengah</button>
-                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'top')">Atas</button>
-                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'bottom')">Bawah</button>
-                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'left')">Kiri</button>
-                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'right')">Kanan</button>
+                            <div class="position-info">
+                                <small>Posisi: X: <span id="pos-x-${index}">${banner.positionX || 50}</span>% Y: <span id="pos-y-${index}">${banner.positionY || 50}</span>%</small>
                             </div>
                         </div>
                     </div>
@@ -576,55 +573,206 @@
         
         elements.bannerList.innerHTML = html;
         
-        // Add event listeners to inputs
+        // Setup touch events untuk setiap preview banner
+        banners.forEach((_, index) => {
+            setupBannerTouchEvents(index);
+        });
+        
+        // Setup event listeners untuk input URL
         document.querySelectorAll('.banner-url-input').forEach(input => {
             input.addEventListener('change', (e) => {
                 const index = parseInt(e.target.dataset.index);
                 banners[index].url = e.target.value;
-                // Update preview
-                const previewImg = e.target.closest('.banner-item').querySelector('.banner-preview-small img');
-                if (previewImg) previewImg.src = e.target.value || 'https://via.placeholder.com/150x80/40a7e3/ffffff?text=Banner';
+                // Update preview jika tidak ada fileData
+                if (!banners[index].fileData) {
+                    const preview = document.getElementById(`banner-preview-${index}`);
+                    if (preview) {
+                        preview.style.backgroundImage = `url(${e.target.value || 'https://via.placeholder.com/800x200/40a7e3/ffffff?text=Banner+' + (index+1)})`;
+                    }
+                }
             });
         });
         
-        document.querySelectorAll('.position-slider').forEach(slider => {
-            slider.addEventListener('input', (e) => {
-                const index = parseInt(e.target.dataset.index);
-                const axis = e.target.dataset.axis;
-                const value = parseInt(e.target.value);
-                
-                if (axis === 'x') {
-                    banners[index].position = value;
-                } else {
-                    banners[index].positionY = value;
-                }
-                
-                // Update display
-                const valueSpan = e.target.nextElementSibling;
-                if (valueSpan) {
-                    valueSpan.textContent = `${value}%`;
-                }
-                
-                // Update preview position (visual feedback)
-                const previewImg = e.target.closest('.banner-item').querySelector('.banner-preview-small img');
-                if (previewImg) {
-                    previewImg.style.objectPosition = `${banners[index].position || 50}% ${banners[index].positionY || 50}%`;
-                }
+        // Setup event listeners untuk upload button
+        document.querySelectorAll('.banner-upload-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const index = parseInt(e.target.closest('.banner-upload-btn').dataset.index);
+                openUploadModal((imageData) => {
+                    // imageData adalah base64 dari gambar yang diupload
+                    banners[index].fileData = imageData;
+                    banners[index].url = ''; // Kosongkan URL karena pakai file
+                    
+                    // Update preview
+                    const preview = document.getElementById(`banner-preview-${index}`);
+                    if (preview) {
+                        preview.style.backgroundImage = `url(${imageData})`;
+                    }
+                    
+                    showToast('✅ Gambar banner diupload!', 'success');
+                });
             });
         });
     }
-
+    
+    // ==================== FUNGSI SETUP TOUCH EVENTS ====================
+    function setupBannerTouchEvents(index) {
+        const preview = document.getElementById(`banner-preview-${index}`);
+        if (!preview) return;
+        
+        let isDragging = false;
+        let startX, startY;
+        let startPosX, startPosY;
+        
+        const onTouchStart = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = preview.getBoundingClientRect();
+            
+            startX = touch.clientX;
+            startY = touch.clientY;
+            
+            // Posisi awal dalam persen
+            startPosX = banners[index].positionX || 50;
+            startPosY = banners[index].positionY || 50;
+            
+            isDragging = true;
+            
+            preview.classList.add('dragging');
+            
+            // Feedback visual
+            showToast('Geser untuk mengatur posisi', 'info', 1000);
+        };
+        
+        const onTouchMove = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            const rect = preview.getBoundingClientRect();
+            
+            // Hitung delta pergerakan dalam pixel
+            const deltaX = touch.clientX - startX;
+            const deltaY = touch.clientY - startY;
+            
+            // Konversi ke persen (relative terhadap ukuran preview)
+            const percentPerPixelX = 100 / rect.width;
+            const percentPerPixelY = 100 / rect.height;
+            
+            // Hitung posisi baru (dibatasi antara 0-100)
+            let newPosX = startPosX + (deltaX * percentPerPixelX);
+            let newPosY = startPosY + (deltaY * percentPerPixelY);
+            
+            newPosX = Math.max(0, Math.min(100, newPosX));
+            newPosY = Math.max(0, Math.min(100, newPosY));
+            
+            // Update posisi di state
+            banners[index].positionX = Math.round(newPosX);
+            banners[index].positionY = Math.round(newPosY);
+            
+            // Update tampilan preview
+            preview.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+            
+            // Update info posisi
+            const posXSpan = document.getElementById(`pos-x-${index}`);
+            const posYSpan = document.getElementById(`pos-y-${index}`);
+            if (posXSpan) posXSpan.textContent = banners[index].positionX;
+            if (posYSpan) posYSpan.textContent = banners[index].positionY;
+        };
+        
+        const onTouchEnd = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            isDragging = false;
+            preview.classList.remove('dragging');
+            
+            showToast(`Posisi: X=${banners[index].positionX}%, Y=${banners[index].positionY}%`, 'success', 1500);
+        };
+        
+        // Hapus event listener lama (jika ada)
+        preview.removeEventListener('touchstart', onTouchStart);
+        preview.removeEventListener('touchmove', onTouchMove);
+        preview.removeEventListener('touchend', onTouchEnd);
+        preview.removeEventListener('touchcancel', onTouchEnd);
+        
+        // Tambah event listener baru
+        preview.addEventListener('touchstart', onTouchStart, { passive: false });
+        preview.addEventListener('touchmove', onTouchMove, { passive: false });
+        preview.addEventListener('touchend', onTouchEnd, { passive: false });
+        preview.addEventListener('touchcancel', onTouchEnd, { passive: false });
+        
+        // Juga support mouse untuk testing di desktop
+        let isMouseDown = false;
+        let mouseStartX, mouseStartY;
+        let mouseStartPosX, mouseStartPosY;
+        
+        const onMouseDown = (e) => {
+            e.preventDefault();
+            const rect = preview.getBoundingClientRect();
+            
+            mouseStartX = e.clientX;
+            mouseStartY = e.clientY;
+            
+            mouseStartPosX = banners[index].positionX || 50;
+            mouseStartPosY = banners[index].positionY || 50;
+            
+            isMouseDown = true;
+            preview.classList.add('dragging');
+        };
+        
+        const onMouseMove = (e) => {
+            if (!isMouseDown) return;
+            e.preventDefault();
+            
+            const rect = preview.getBoundingClientRect();
+            
+            const deltaX = e.clientX - mouseStartX;
+            const deltaY = e.clientY - mouseStartY;
+            
+            const percentPerPixelX = 100 / rect.width;
+            const percentPerPixelY = 100 / rect.height;
+            
+            let newPosX = mouseStartPosX + (deltaX * percentPerPixelX);
+            let newPosY = mouseStartPosY + (deltaY * percentPerPixelY);
+            
+            newPosX = Math.max(0, Math.min(100, newPosX));
+            newPosY = Math.max(0, Math.min(100, newPosY));
+            
+            banners[index].positionX = Math.round(newPosX);
+            banners[index].positionY = Math.round(newPosY);
+            
+            preview.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+            
+            const posXSpan = document.getElementById(`pos-x-${index}`);
+            const posYSpan = document.getElementById(`pos-y-${index}`);
+            if (posXSpan) posXSpan.textContent = banners[index].positionX;
+            if (posYSpan) posYSpan.textContent = banners[index].positionY;
+        };
+        
+        const onMouseUp = (e) => {
+            if (!isMouseDown) return;
+            isMouseDown = false;
+            preview.classList.remove('dragging');
+        };
+        
+        preview.addEventListener('mousedown', onMouseDown);
+        preview.addEventListener('mousemove', onMouseMove);
+        preview.addEventListener('mouseup', onMouseUp);
+        preview.addEventListener('mouseleave', onMouseUp);
+    }
+    
     // ==================== FUNGSI BANNER ====================
     function addBanner() {
         banners.push({
             url: '',
-            position: 50,
+            fileData: null,
+            positionX: 50,
             positionY: 50
         });
         renderBannerList();
         vibrate(10);
     }
-
+    
     function deleteBanner(index) {
         if (confirm('Hapus banner ini?')) {
             banners.splice(index, 1);
@@ -632,7 +780,7 @@
             vibrate(10);
         }
     }
-
+    
     function moveBanner(index, direction) {
         if (direction === 'up' && index > 0) {
             [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
@@ -644,34 +792,7 @@
         renderBannerList();
         vibrate(10);
     }
-
-    function setBannerPosition(index, preset) {
-        let posX = 50, posY = 50;
-        
-        switch(preset) {
-            case 'center':
-                posX = 50; posY = 50;
-                break;
-            case 'top':
-                posX = 50; posY = 0;
-                break;
-            case 'bottom':
-                posX = 50; posY = 100;
-                break;
-            case 'left':
-                posX = 0; posY = 50;
-                break;
-            case 'right':
-                posX = 100; posY = 50;
-                break;
-        }
-        
-        banners[index].position = posX;
-        banners[index].positionY = posY;
-        renderBannerList();
-        vibrate(10);
-    }
-
+    
     // ==================== FUNGSI SAVE BANNERS ====================
     async function saveBanners() {
         if (!currentWebsite) {
@@ -679,13 +800,22 @@
             return;
         }
         
-        // Filter out empty banners
-        const validBanners = banners.filter(b => b.url && b.url.trim() !== '');
+        // Filter banner yang memiliki konten (URL atau fileData)
+        const validBanners = banners.filter(b => 
+            (b.url && b.url.trim() !== '') || b.fileData
+        );
         
         if (validBanners.length === 0) {
-            showToast('Tambahkan minimal 1 banner dengan URL', 'warning');
+            showToast('Tambahkan minimal 1 banner dengan gambar', 'warning');
             return;
         }
+        
+        // Konversi ke format penyimpanan
+        const bannersToSave = validBanners.map(b => ({
+            url: b.url || b.fileData || '', // Simpan URL atau base64
+            positionX: b.positionX || 50,
+            positionY: b.positionY || 50
+        }));
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
@@ -696,8 +826,7 @@
                 },
                 mode: 'cors',
                 body: JSON.stringify({
-                    banners: validBanners,
-                    positions: validBanners.map(b => ({ x: b.position || 50, y: b.positionY || 50 }))
+                    banners: bannersToSave
                 })
             });
             
@@ -705,6 +834,15 @@
             
             if (result.success) {
                 showToast(`✅ ${validBanners.length} banner saved!`, 'success');
+                
+                // Clear fileData setelah save (karena sudah jadi URL/base64 di database)
+                banners.forEach(b => {
+                    if (b.fileData) {
+                        b.url = b.fileData;
+                        b.fileData = null;
+                    }
+                });
+                
                 // Refresh data
                 const updatedWebsite = await fetchWebsiteData(currentUser.id);
                 if (updatedWebsite) {
