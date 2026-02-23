@@ -440,39 +440,97 @@
 
     // ==================== FUNGSI RENDER BANNER ====================
     function renderBanners(banners) {
-        if (!elements.sliderContainer || !elements.sliderDots || !banners || banners.length === 0) {
-            if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
-            return;
-        }
-        
-        elements.bannerSlider.style.display = 'block';
-        
-        let slidesHtml = '';
-        let dotsHtml = '';
-        
-        banners.forEach((banner, index) => {
-            slidesHtml += `
+      if (!elements.sliderContainer || !elements.sliderDots || !banners || banners.length === 0) {
+        if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
+        return;
+      }
+    
+      elements.bannerSlider.style.display = 'block';
+    
+      let slidesHtml = '';
+      let dotsHtml = '';
+    
+      banners.forEach((banner, index) => {
+        // Banner bisa berupa string URL atau object dengan url dan position
+        let bannerUrl = typeof banner === 'string' ? banner : banner.url || '';
+        let positionX = typeof banner === 'object' ? (banner.position || 50) : 50;
+        let positionY = typeof banner === 'object' ? (banner.positionY || 50) : 50;
+    
+        slidesHtml += `
                 <div class="slider-slide ${index === 0 ? 'active' : ''}">
-                    <img src="${banner}" alt="Banner ${index + 1}">
+                    <div class="banner-image-container">
+                        <img src="${bannerUrl}" alt="Banner ${index + 1}" 
+                             style="object-position: ${positionX}% ${positionY}%;">
+                    </div>
                 </div>
             `;
-            
-            dotsHtml += `
+    
+        dotsHtml += `
                 <span class="slider-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
             `;
+      });
+    
+      elements.sliderContainer.innerHTML = slidesHtml;
+      elements.sliderDots.innerHTML = dotsHtml;
+    
+      document.querySelectorAll('.slider-dot').forEach(dot => {
+        dot.addEventListener('click', () => {
+          const index = parseInt(dot.dataset.index);
+          goToSlide(index);
         });
-        
-        elements.sliderContainer.innerHTML = slidesHtml;
-        elements.sliderDots.innerHTML = dotsHtml;
-        
-        document.querySelectorAll('.slider-dot').forEach(dot => {
-            dot.addEventListener('click', () => {
-                const index = parseInt(dot.dataset.index);
-                goToSlide(index);
-            });
+      });
+    
+      startBannerAutoSlide(banners.length);
+    }
+    
+    // Update juga fungsi loadTampilanData untuk handle format baru
+    async function loadTampilanData(websiteId) {
+      try {
+        console.log(`📡 Loading tampilan data for website ID: ${websiteId}`);
+    
+        const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors'
         });
-        
-        startBannerAutoSlide(banners.length);
+    
+        if (response.status === 404) {
+          console.log('ℹ️ No tampilan data found, using defaults');
+          tampilanData = null;
+          return;
+        }
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const result = await response.json();
+        console.log('📥 Tampilan data:', result);
+    
+        if (result.success && result.tampilan) {
+          tampilanData = result.tampilan;
+    
+          // Update logo di sidebar jika ada
+          if (tampilanData.logo && elements.sidebarAvatar) {
+            const logoImg = elements.sidebarAvatar.querySelector('img');
+            if (logoImg) {
+              logoImg.src = tampilanData.logo;
+            }
+          }
+    
+          // Update logo di header jika ada
+          if (tampilanData.logo && elements.headerLogo) {
+            // Anda bisa menambahkan elemen logo di header jika diinginkan
+          }
+        }
+    
+      } catch (error) {
+        console.error('❌ Error loading tampilan:', error);
+        tampilanData = null;
+      }
     }
 
     function startBannerAutoSlide(totalSlides) {
