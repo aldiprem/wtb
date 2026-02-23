@@ -49,7 +49,14 @@
         closeDeleteModalBtn: document.getElementById('closeDeleteModalBtn'),
         cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
         confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
-        deleteWebsiteInfo: document.getElementById('deleteWebsiteInfo')
+        deleteWebsiteInfo: document.getElementById('deleteWebsiteInfo'),
+        // Tambahkan referensi ke input fields untuk create form
+        endpointInput: document.getElementById('endpoint'),
+        botTokenInput: document.getElementById('botToken'),
+        ownerIdInput: document.getElementById('ownerId'),
+        usernameInput: document.getElementById('username'),
+        passwordInput: document.getElementById('password'),
+        emailInput: document.getElementById('email')
     };
 
     // ==================== STATE ====================
@@ -902,12 +909,22 @@
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
         
-        // Create Website form submit - PASTIKAN HANYA SATU EVENT LISTENER
+        // PERBAIKAN: Jangan clone node, langsung tambahkan event listener
         if (elements.createWebsiteForm) {
-            // Hapus event listener lama dengan clone node
+            // Hapus event listener lama jika ada dengan replace
             const newForm = elements.createWebsiteForm.cloneNode(true);
             elements.createWebsiteForm.parentNode.replaceChild(newForm, elements.createWebsiteForm);
+            
+            // Update referensi form dan input fields
             elements.createWebsiteForm = newForm;
+            
+            // Update referensi input fields setelah clone
+            elements.endpointInput = document.getElementById('endpoint');
+            elements.botTokenInput = document.getElementById('botToken');
+            elements.ownerIdInput = document.getElementById('ownerId');
+            elements.usernameInput = document.getElementById('username');
+            elements.passwordInput = document.getElementById('password');
+            elements.emailInput = document.getElementById('email');
             
             // Tambahkan event listener baru
             elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
@@ -989,13 +1006,13 @@
     async function handleCreateSubmit(e) {
         e.preventDefault();
         
-        // Ambil nilai dari form dengan trim()
-        const endpoint = document.getElementById('endpoint').value.trim();
-        const botToken = document.getElementById('botToken').value.trim();
-        const ownerId = document.getElementById('ownerId').value.trim();
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-        const email = document.getElementById('email').value.trim();
+        // Gunakan referensi yang sudah diperbarui
+        const endpoint = elements.endpointInput ? elements.endpointInput.value.trim() : '';
+        const botToken = elements.botTokenInput ? elements.botTokenInput.value.trim() : '';
+        const ownerId = elements.ownerIdInput ? elements.ownerIdInput.value.trim() : '';
+        const username = elements.usernameInput ? elements.usernameInput.value.trim() : '';
+        const password = elements.passwordInput ? elements.passwordInput.value : '';
+        const email = elements.emailInput ? elements.emailInput.value.trim() : '';
         
         // Debug: lihat nilai yang diambil
         console.log('📝 Form values:', {
