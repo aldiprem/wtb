@@ -98,6 +98,7 @@
     // ==================== STATE ====================
     let currentEndpoint = null;
     let websiteData = null;
+    let tampilanData = null;
     let products = [];
     let categories = [];
     let cart = [];
@@ -177,14 +178,17 @@
                 const data = result.website;
                 websiteData = data;
                 
-                // Update UI dengan data dari database
-                updateWebsiteUI(data);
+                // Load tampilan data untuk website ini
+                await loadTampilanData(data.id);
                 
                 // Set products dari database
                 products = data.products || [];
                 
                 // Set categories dari database (jika ada)
                 categories = data.categories || [];
+                
+                // Update UI dengan data dari database
+                updateWebsiteUI(data);
                 
                 // Render semua komponen
                 renderAllComponents();
@@ -214,6 +218,43 @@
         }
     }
 
+    // ==================== FUNGSI LOAD TAMPILAN DATA ====================
+    async function loadTampilanData(websiteId) {
+        try {
+            console.log(`📡 Loading tampilan data for website ID: ${websiteId}`);
+            
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            if (response.status === 404) {
+                console.log('ℹ️ No tampilan data found, using defaults');
+                tampilanData = null;
+                return;
+            }
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log('📥 Tampilan data:', result);
+            
+            if (result.success && result.tampilan) {
+                tampilanData = result.tampilan;
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading tampilan:', error);
+            tampilanData = null;
+        }
+    }
+
     function clearAllContent() {
         // Kosongkan semua container
         if (elements.sliderContainer) elements.sliderContainer.innerHTML = '';
@@ -225,8 +266,15 @@
     }
 
     function renderAllComponents() {
-        // Render banner
-        if (websiteData?.settings?.banner) {
+        // Render banner dari tampilanData
+        if (tampilanData?.banner) {
+            // Banner bisa berupa string URL atau array
+            const banners = Array.isArray(tampilanData.banner) 
+                ? tampilanData.banner 
+                : [tampilanData.banner];
+            renderBanners(banners);
+        } else if (websiteData?.settings?.banner) {
+            // Fallback ke settings lama
             const banners = Array.isArray(websiteData.settings.banner) 
                 ? websiteData.settings.banner 
                 : [websiteData.settings.banner];
@@ -236,39 +284,112 @@
         }
         
         // Render promo banner
-        if (websiteData?.settings?.promo_banner && elements.promoBanner) {
+        if (tampilanData?.promo_banner && elements.promoBanner) {
+            elements.promoBanner.innerHTML = `<img src="${tampilanData.promo_banner}" alt="Promo">`;
+        } else if (websiteData?.settings?.promo_banner && elements.promoBanner) {
             elements.promoBanner.innerHTML = `<img src="${websiteData.settings.promo_banner}" alt="Promo">`;
         }
         
-        // Render payment methods
-        if (websiteData?.settings?.payments) {
+        // Render payment methods dari tampilanData
+        if (tampilanData) {
+            renderPaymentMethodsFromTampilan();
+        } else if (websiteData?.settings?.payments) {
             renderPaymentMethods(websiteData.settings.payments);
         }
         
         // Render products
         renderProducts();
         
-        // Apply theme
-        if (websiteData?.settings?.colors) {
+        // Apply theme dari tampilanData
+        if (tampilanData?.colors) {
+            applyThemeColors(tampilanData.colors);
+        } else if (websiteData?.settings?.colors) {
             applyThemeColors(websiteData.settings.colors);
         }
         
-        if (websiteData?.settings?.font) {
+        // Apply font dari tampilanData
+        if (tampilanData) {
+            applyFont({
+                family: tampilanData.font_family || 'Inter',
+                size: tampilanData.font_size || 14
+            });
+        } else if (websiteData?.settings?.font) {
             applyFont(websiteData.settings.font);
+        }
+    }
+
+    // ==================== FUNGSI RENDER PAYMENT METHODS DARI TAMPILAN ====================
+    function renderPaymentMethodsFromTampilan() {
+        if (!elements.paymentIcons || !tampilanData) return;
+        
+        let html = '';
+        
+        // Render bank accounts
+        if (tampilanData.banks && tampilanData.banks.length > 0) {
+            tampilanData.banks.forEach(bank => {
+                if (bank.enabled) {
+                    html += `
+                        <div class="payment-icon">
+                            <i class="fas fa-university"></i>
+                            <span>${bank.bank_name || 'Bank'}</span>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        // Render e-wallet accounts
+        if (tampilanData.ewallets && tampilanData.ewallets.length > 0) {
+            tampilanData.ewallets.forEach(ewallet => {
+                if (ewallet.enabled) {
+                    html += `
+                        <div class="payment-icon">
+                            <i class="fas fa-wallet"></i>
+                            <span>${ewallet.provider || 'E-Wallet'}</span>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        // Render QRIS
+        if (tampilanData.qris && tampilanData.qris.enabled) {
+            html += `
+                <div class="payment-icon">
+                    <i class="fas fa-qrcode"></i>
+                    <span>QRIS</span>
+                </div>
+            `;
+        }
+        
+        // Render crypto
+        if (tampilanData.crypto && tampilanData.crypto.enabled) {
+            html += `
+                <div class="payment-icon">
+                    <i class="fab fa-bitcoin"></i>
+                    <span>Crypto</span>
+                </div>
+            `;
+        }
+        
+        if (html === '') {
+            elements.paymentIcons.innerHTML = '<div class="empty-message">Belum ada metode pembayaran</div>';
+        } else {
+            elements.paymentIcons.innerHTML = html;
         }
     }
 
     // ==================== FUNGSI UPDATE UI ====================
     function updateWebsiteUI(data) {
-        // Update meta tags
+        // Update meta tags dari tampilanData atau settings
         if (elements.dynamicTitle) {
-            elements.dynamicTitle.textContent = data.settings?.title || 'Toko Online';
+            elements.dynamicTitle.textContent = tampilanData?.seo_title || data.settings?.title || 'Toko Online';
         }
         if (elements.dynamicDescription) {
-            elements.dynamicDescription.content = data.settings?.description || 'Toko online terpercaya';
+            elements.dynamicDescription.content = tampilanData?.seo_description || data.settings?.description || 'Toko online terpercaya';
         }
         if (elements.dynamicKeywords) {
-            elements.dynamicKeywords.content = data.settings?.seo?.keywords || 'toko, online, topup';
+            elements.dynamicKeywords.content = tampilanData?.seo_keywords || data.settings?.seo?.keywords || 'toko, online, topup';
         }
         
         // Update store name
@@ -277,15 +398,17 @@
         if (elements.sidebarStoreName) elements.sidebarStoreName.textContent = storeName;
         if (elements.footerStoreName) elements.footerStoreName.textContent = storeName;
         
-        // Update footer
+        // Update footer description
         if (elements.footerDescription) {
-            elements.footerDescription.textContent = data.settings?.description || '';
+            elements.footerDescription.textContent = tampilanData?.description || data.settings?.description || 'Toko online terpercaya sejak 2024';
         }
-        if (elements.contactWhatsApp && data.settings?.contact?.whatsapp) {
-            elements.contactWhatsApp.textContent = data.settings.contact.whatsapp;
+        
+        // Update contact info
+        if (elements.contactWhatsApp) {
+            elements.contactWhatsApp.textContent = tampilanData?.contact_whatsapp || data.settings?.contact?.whatsapp || '-';
         }
-        if (elements.contactTelegram && data.settings?.contact?.telegram) {
-            elements.contactTelegram.textContent = data.settings.contact.telegram;
+        if (elements.contactTelegram) {
+            elements.contactTelegram.textContent = tampilanData?.contact_telegram || data.settings?.contact?.telegram || '-';
         }
         
         // Update year
