@@ -3,8 +3,8 @@
     console.log('🛠️ Website Panel - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://your-api-url.com'; // GANTI DENGAN URL API ANDA
-    const DEFAULT_WEBSITE_ID = 1; // Akan diganti dengan ID dari database berdasarkan user
+    const API_BASE_URL = 'https://discussions-prison-applications-former.trycloudflare.com';
+    const DEFAULT_WEBSITE_ID = 1;
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
