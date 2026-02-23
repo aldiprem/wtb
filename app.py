@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import hashlib
 import secrets
 import tampilan
+import traceback
 
 app = Flask(__name__, static_folder='.')
 
@@ -682,6 +683,28 @@ def save_maintenance(website_id):
         return jsonify({'success': True, 'message': 'Maintenance settings saved successfully'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== DEBUG ROUTE ====================
+@app.route('/api/debug/error', methods=['GET'])
+def debug_error():
+    """Menampilkan error terakhir"""
+    try:
+        # Coba akses database tampilan
+        db = tampilan.get_db()
+        cursor = db.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        return jsonify({
+            'success': True,
+            'tables': [dict(table) for table in tables],
+            'tampilan_db_exists': os.path.exists('tampilan.db'),
+            'website_db_exists': os.path.exists('website.db')
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
 # ==================== MAIN ====================
 
