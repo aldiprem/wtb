@@ -32,7 +32,8 @@
         saveLogoBtn: document.getElementById('saveLogoBtn'),
         
         // Banner elements
-        bannerList: document.getElementById('bannerList'),
+        bannerTrack: document.getElementById('bannerTrack'),
+        emptyBannerMessage: document.getElementById('emptyBannerMessage'),
         addBannerBtn: document.getElementById('addBannerBtn'),
         saveBannersBtn: document.getElementById('saveBannersBtn'),
         
@@ -94,6 +95,7 @@
         maintenanceMessageGroup: document.getElementById('maintenanceMessageGroup'),
         saveGeneralBtn: document.getElementById('saveGeneralBtn'),
         saveSeoBtn: document.getElementById('saveSeoBtn'),
+        saveMaintenanceBtn: document.getElementById('saveMaintenanceBtn'),
         
         // Action buttons
         previewWebsiteBtn: document.getElementById('previewWebsiteBtn'),
@@ -145,8 +147,9 @@
     let products = [];
     let currentProductId = null;
     let currentUploadCallback = null;
-    let banners = []; // Array untuk menyimpan multiple banner {url, position, positionY}
-    let logoUrl = '';
+    let banners = []; // Array untuk menyimpan multiple banner {url, positionX, positionY, fileData}
+    let longPressTimer = null;
+    let isLongPressing = false;
 
     // ==================== FUNGSI VIBRATE ====================
     function vibrate(duration = 20) {
@@ -204,6 +207,21 @@
             }, 300);
         }, duration);
     }
+
+    // ==================== FUNGSI TOGGLE CARD ====================
+    window.toggleCard = function(header) {
+        const card = header.closest('.settings-card');
+        const body = card.querySelector('.card-body');
+        const toggleBtn = header.querySelector('.toggle-btn i');
+        
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            toggleBtn.className = 'fas fa-chevron-up';
+        } else {
+            body.style.display = 'none';
+            toggleBtn.className = 'fas fa-chevron-down';
+        }
+    };
 
     // ==================== FUNGSI APPLY TELEGRAM THEME ====================
     function applyTelegramTheme(tg) {
@@ -408,19 +426,20 @@
         if (settings.banners && Array.isArray(settings.banners)) {
             banners = settings.banners.map(b => {
                 if (typeof b === 'string') {
-                    return { url: b, position: 50, positionY: 50 };
+                    return { url: b, positionX: 50, positionY: 50, fileData: null };
                 } else {
                     return {
                         url: b.url || '',
-                        position: b.position || 50,
-                        positionY: b.positionY || 50
+                        positionX: b.positionX || 50,
+                        positionY: b.positionY || 50,
+                        fileData: null
                     };
                 }
             });
         } else {
             banners = [];
         }
-        renderBannerList();
+        renderBannerTrack();
         
         // Update colors
         if (settings.colors) {
@@ -506,225 +525,213 @@
         }
     }
 
-    // ==================== FUNGSI RENDER BANNER LIST (SEDERHANA) ====================
-    function renderBannerList() {
-        if (!elements.bannerList) return;
+    // ==================== FUNGSI RENDER BANNER TRACK ====================
+    function renderBannerTrack() {
+        if (!elements.bannerTrack || !elements.emptyBannerMessage) return;
         
         if (banners.length === 0) {
-            elements.bannerList.innerHTML = `
-                <div class="empty-banner-message">
-                    <i class="fas fa-images"></i>
-                    <p>Belum ada banner. Klik "Tambah Banner" untuk menambahkan.</p>
-                </div>
-            `;
+            elements.bannerTrack.innerHTML = '';
+            elements.emptyBannerMessage.style.display = 'flex';
             return;
         }
         
+        elements.emptyBannerMessage.style.display = 'none';
+        
         let html = '';
         banners.forEach((banner, index) => {
-            const previewStyle = banner.fileData ? 
-                `background-image: url(${banner.fileData}); background-size: cover; background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;` :
-                `background-image: url(${banner.url || 'https://via.placeholder.com/800x200/40a7e3/ffffff?text=Banner+' + (index+1)}); background-size: cover; background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
+            const imageUrl = banner.fileData || banner.url || `https://via.placeholder.com/300x150/40a7e3/ffffff?text=Banner+${index+1}`;
             
             html += `
-                <div class="banner-item" data-index="${index}">
-                    <div class="banner-item-header">
-                        <div class="banner-number">Banner ${index + 1}</div>
-                        <div class="banner-item-actions">
-                            <button class="btn-icon-small move-up" ${index === 0 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'up')">
-                                <i class="fas fa-arrow-up"></i>
+                <div class="banner-slide" data-index="${index}">
+                    <div class="banner-slide-header">
+                        <span class="banner-number">#${index + 1}</span>
+                        <div class="banner-slide-actions">
+                            <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'left')">
+                                <i class="fas fa-chevron-left"></i>
                             </button>
-                            <button class="btn-icon-small move-down" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'down')">
-                                <i class="fas fa-arrow-down"></i>
+                            <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'right')">
+                                <i class="fas fa-chevron-right"></i>
                             </button>
                             <button class="btn-icon-small delete" onclick="window.panel.deleteBanner(${index})">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="banner-item-content">
-                        <div class="banner-preview-touch" 
-                             id="banner-preview-${index}"
-                             data-index="${index}"
-                             style="${previewStyle}">
-                            <div class="banner-preview-overlay">
-                                <i class="fas fa-hand-pointer"></i>
-                                <span>Geser untuk mengatur posisi</span>
+                    <div class="banner-preview-area" id="banner-preview-${index}">
+                        <div class="banner-image-wrapper" style="background-image: url('${imageUrl}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;">
+                            <div class="banner-upload-overlay" onclick="window.panel.uploadBannerImage(${index})">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <span>Tap untuk upload</span>
                             </div>
                         </div>
-                        <div class="banner-item-form">
-                            <div class="form-group">
-                                <label>URL Gambar (opsional jika upload)</label>
-                                <input type="url" class="banner-url-input" value="${escapeHtml(banner.url || '')}" placeholder="https://example.com/banner.jpg" data-index="${index}">
-                            </div>
-                            <div class="form-group">
-                                <button class="btn-upload-small banner-upload-btn" data-index="${index}">
-                                    <i class="fas fa-cloud-upload-alt"></i> Upload Gambar
-                                </button>
-                            </div>
-                            <div class="position-info">
-                                <small>Posisi: X: <span id="pos-x-${index}">${banner.positionX || 50}</span>% Y: <span id="pos-y-${index}">${banner.positionY || 50}</span>%</small>
-                            </div>
+                        <div class="banner-position-indicator" id="pos-indicator-${index}">
+                            X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
                         </div>
                     </div>
                 </div>
             `;
         });
         
-        elements.bannerList.innerHTML = html;
+        elements.bannerTrack.innerHTML = html;
         
-        // Setup touch events untuk setiap preview banner
+        // Setup long press events untuk setiap banner
         banners.forEach((_, index) => {
-            setupBannerTouchEvents(index);
-        });
-        
-        // Setup event listeners untuk input URL
-        document.querySelectorAll('.banner-url-input').forEach(input => {
-            input.addEventListener('change', (e) => {
-                const index = parseInt(e.target.dataset.index);
-                banners[index].url = e.target.value;
-                // Update preview jika tidak ada fileData
-                if (!banners[index].fileData) {
-                    const preview = document.getElementById(`banner-preview-${index}`);
-                    if (preview) {
-                        preview.style.backgroundImage = `url(${e.target.value || 'https://via.placeholder.com/800x200/40a7e3/ffffff?text=Banner+' + (index+1)})`;
-                    }
-                }
-            });
-        });
-        
-        // Setup event listeners untuk upload button
-        document.querySelectorAll('.banner-upload-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const index = parseInt(e.target.closest('.banner-upload-btn').dataset.index);
-                openUploadModal((imageData) => {
-                    // imageData adalah base64 dari gambar yang diupload
-                    banners[index].fileData = imageData;
-                    banners[index].url = ''; // Kosongkan URL karena pakai file
-                    
-                    // Update preview
-                    const preview = document.getElementById(`banner-preview-${index}`);
-                    if (preview) {
-                        preview.style.backgroundImage = `url(${imageData})`;
-                    }
-                    
-                    showToast('✅ Gambar banner diupload!', 'success');
-                });
-            });
+            setupBannerLongPress(index);
         });
     }
-    
-    // ==================== FUNGSI SETUP TOUCH EVENTS ====================
-    function setupBannerTouchEvents(index) {
-        const preview = document.getElementById(`banner-preview-${index}`);
-        if (!preview) return;
+
+    // ==================== FUNGSI SETUP LONG PRESS ====================
+    function setupBannerLongPress(index) {
+        const previewArea = document.getElementById(`banner-preview-${index}`);
+        if (!previewArea) return;
         
+        const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
+        if (!imageWrapper) return;
+        
+        let pressTimer;
+        let isPressed = false;
+        let startX, startY, startPosX, startPosY;
         let isDragging = false;
-        let startX, startY;
-        let startPosX, startPosY;
         
+        // Touch start - mulai hitung long press
         const onTouchStart = (e) => {
             e.preventDefault();
             const touch = e.touches[0];
-            const rect = preview.getBoundingClientRect();
             
             startX = touch.clientX;
             startY = touch.clientY;
             
-            // Posisi awal dalam persen
-            startPosX = banners[index].positionX || 50;
-            startPosY = banners[index].positionY || 50;
-            
-            isDragging = true;
-            
-            preview.classList.add('dragging');
-            
-            // Feedback visual
-            showToast('Geser untuk mengatur posisi', 'info', 1000);
+            pressTimer = setTimeout(() => {
+                // Long press terdeteksi (500ms)
+                isPressed = true;
+                isDragging = true;
+                
+                // Simpan posisi awal
+                startPosX = banners[index].positionX || 50;
+                startPosY = banners[index].positionY || 50;
+                
+                // Tampilkan visual feedback
+                imageWrapper.classList.add('dragging-active');
+                
+                // Hapus overlay upload selama drag
+                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+                if (overlay) overlay.style.opacity = '0';
+                
+                vibrate(30); // Feedback haptic
+            }, 500); // 500ms long press
         };
         
+        // Touch move - jika sedang drag, update posisi
         const onTouchMove = (e) => {
-            if (!isDragging) return;
+            if (!isDragging) {
+                // Jika belum drag, batalkan long press jika bergerak
+                clearTimeout(pressTimer);
+                return;
+            }
+            
             e.preventDefault();
-            
             const touch = e.touches[0];
-            const rect = preview.getBoundingClientRect();
+            const rect = imageWrapper.getBoundingClientRect();
             
-            // Hitung delta pergerakan dalam pixel
+            // Hitung delta pergerakan
             const deltaX = touch.clientX - startX;
             const deltaY = touch.clientY - startY;
             
-            // Konversi ke persen (relative terhadap ukuran preview)
+            // Konversi ke persen (relative terhadap ukuran wrapper)
             const percentPerPixelX = 100 / rect.width;
             const percentPerPixelY = 100 / rect.height;
             
-            // Hitung posisi baru (dibatasi antara 0-100)
-            let newPosX = startPosX + (deltaX * percentPerPixelX);
-            let newPosY = startPosY + (deltaY * percentPerPixelY);
+            // Hitung posisi baru (dibalik untuk arah yang benar)
+            let newPosX = startPosX - (deltaX * percentPerPixelX); // Dibalik agar geser ke kanan memindahkan gambar ke kiri
+            let newPosY = startPosY - (deltaY * percentPerPixelY); // Dibalik agar geser ke bawah memindahkan gambar ke atas
             
+            // Batasi antara 0-100
             newPosX = Math.max(0, Math.min(100, newPosX));
             newPosY = Math.max(0, Math.min(100, newPosY));
             
-            // Update posisi di state
+            // Update state
             banners[index].positionX = Math.round(newPosX);
             banners[index].positionY = Math.round(newPosY);
             
-            // Update tampilan preview
-            preview.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+            // Update tampilan
+            imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
             
-            // Update info posisi
-            const posXSpan = document.getElementById(`pos-x-${index}`);
-            const posYSpan = document.getElementById(`pos-y-${index}`);
-            if (posXSpan) posXSpan.textContent = banners[index].positionX;
-            if (posYSpan) posYSpan.textContent = banners[index].positionY;
+            // Update indicator
+            const indicator = document.getElementById(`pos-indicator-${index}`);
+            if (indicator) {
+                indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+            }
         };
         
+        // Touch end - reset semua state
         const onTouchEnd = (e) => {
-            if (!isDragging) return;
-            e.preventDefault();
+            clearTimeout(pressTimer);
             
-            isDragging = false;
-            preview.classList.remove('dragging');
+            if (isDragging) {
+                isDragging = false;
+                imageWrapper.classList.remove('dragging-active');
+                
+                // Kembalikan overlay
+                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+                if (overlay) overlay.style.opacity = '';
+            }
             
-            showToast(`Posisi: X=${banners[index].positionX}%, Y=${banners[index].positionY}%`, 'success', 1500);
+            isPressed = false;
         };
         
-        // Hapus event listener lama (jika ada)
-        preview.removeEventListener('touchstart', onTouchStart);
-        preview.removeEventListener('touchmove', onTouchMove);
-        preview.removeEventListener('touchend', onTouchEnd);
-        preview.removeEventListener('touchcancel', onTouchEnd);
+        // Touch cancel
+        const onTouchCancel = (e) => {
+            clearTimeout(pressTimer);
+            isDragging = false;
+            isPressed = false;
+            imageWrapper.classList.remove('dragging-active');
+        };
+        
+        // Hapus event listener lama
+        imageWrapper.removeEventListener('touchstart', onTouchStart);
+        imageWrapper.removeEventListener('touchmove', onTouchMove);
+        imageWrapper.removeEventListener('touchend', onTouchEnd);
+        imageWrapper.removeEventListener('touchcancel', onTouchCancel);
         
         // Tambah event listener baru
-        preview.addEventListener('touchstart', onTouchStart, { passive: false });
-        preview.addEventListener('touchmove', onTouchMove, { passive: false });
-        preview.addEventListener('touchend', onTouchEnd, { passive: false });
-        preview.addEventListener('touchcancel', onTouchEnd, { passive: false });
+        imageWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+        imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+        imageWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
+        imageWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
         
-        // Juga support mouse untuk testing di desktop
-        let isMouseDown = false;
-        let mouseStartX, mouseStartY;
-        let mouseStartPosX, mouseStartPosY;
+        // Juga support mouse untuk testing
+        let mousePressTimer;
+        let isMouseDragging = false;
+        let mouseStartX, mouseStartY, mouseStartPosX, mouseStartPosY;
         
         const onMouseDown = (e) => {
             e.preventDefault();
-            const rect = preview.getBoundingClientRect();
             
             mouseStartX = e.clientX;
             mouseStartY = e.clientY;
             
-            mouseStartPosX = banners[index].positionX || 50;
-            mouseStartPosY = banners[index].positionY || 50;
-            
-            isMouseDown = true;
-            preview.classList.add('dragging');
+            mousePressTimer = setTimeout(() => {
+                isMouseDragging = true;
+                mouseStartPosX = banners[index].positionX || 50;
+                mouseStartPosY = banners[index].positionY || 50;
+                
+                imageWrapper.classList.add('dragging-active');
+                
+                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+                if (overlay) overlay.style.opacity = '0';
+                
+                vibrate(30);
+            }, 500);
         };
         
         const onMouseMove = (e) => {
-            if (!isMouseDown) return;
-            e.preventDefault();
+            if (!isMouseDragging) {
+                clearTimeout(mousePressTimer);
+                return;
+            }
             
-            const rect = preview.getBoundingClientRect();
+            e.preventDefault();
+            const rect = imageWrapper.getBoundingClientRect();
             
             const deltaX = e.clientX - mouseStartX;
             const deltaY = e.clientY - mouseStartY;
@@ -732,8 +739,8 @@
             const percentPerPixelX = 100 / rect.width;
             const percentPerPixelY = 100 / rect.height;
             
-            let newPosX = mouseStartPosX + (deltaX * percentPerPixelX);
-            let newPosY = mouseStartPosY + (deltaY * percentPerPixelY);
+            let newPosX = mouseStartPosX - (deltaX * percentPerPixelX);
+            let newPosY = mouseStartPosY - (deltaY * percentPerPixelY);
             
             newPosX = Math.max(0, Math.min(100, newPosX));
             newPosY = Math.max(0, Math.min(100, newPosY));
@@ -741,27 +748,62 @@
             banners[index].positionX = Math.round(newPosX);
             banners[index].positionY = Math.round(newPosY);
             
-            preview.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+            imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
             
-            const posXSpan = document.getElementById(`pos-x-${index}`);
-            const posYSpan = document.getElementById(`pos-y-${index}`);
-            if (posXSpan) posXSpan.textContent = banners[index].positionX;
-            if (posYSpan) posYSpan.textContent = banners[index].positionY;
+            const indicator = document.getElementById(`pos-indicator-${index}`);
+            if (indicator) {
+                indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+            }
         };
         
         const onMouseUp = (e) => {
-            if (!isMouseDown) return;
-            isMouseDown = false;
-            preview.classList.remove('dragging');
+            clearTimeout(mousePressTimer);
+            
+            if (isMouseDragging) {
+                isMouseDragging = false;
+                imageWrapper.classList.remove('dragging-active');
+                
+                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+                if (overlay) overlay.style.opacity = '';
+            }
         };
         
-        preview.addEventListener('mousedown', onMouseDown);
-        preview.addEventListener('mousemove', onMouseMove);
-        preview.addEventListener('mouseup', onMouseUp);
-        preview.addEventListener('mouseleave', onMouseUp);
+        const onMouseLeave = (e) => {
+            clearTimeout(mousePressTimer);
+            
+            if (isMouseDragging) {
+                isMouseDragging = false;
+                imageWrapper.classList.remove('dragging-active');
+            }
+        };
+        
+        imageWrapper.addEventListener('mousedown', onMouseDown);
+        imageWrapper.addEventListener('mousemove', onMouseMove);
+        imageWrapper.addEventListener('mouseup', onMouseUp);
+        imageWrapper.addEventListener('mouseleave', onMouseLeave);
     }
-    
+
     // ==================== FUNGSI BANNER ====================
+    window.panel = window.panel || {};
+    
+    window.panel.uploadBannerImage = function(index) {
+        openUploadModal((imageData) => {
+            banners[index].fileData = imageData;
+            banners[index].url = ''; // Kosongkan URL karena pakai file
+            
+            // Update preview
+            const previewArea = document.getElementById(`banner-preview-${index}`);
+            if (previewArea) {
+                const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
+                if (imageWrapper) {
+                    imageWrapper.style.backgroundImage = `url(${imageData})`;
+                }
+            }
+            
+            showToast('✅ Gambar banner diupload!', 'success');
+        });
+    };
+    
     function addBanner() {
         banners.push({
             url: '',
@@ -769,29 +811,29 @@
             positionX: 50,
             positionY: 50
         });
-        renderBannerList();
+        renderBannerTrack();
         vibrate(10);
     }
     
-    function deleteBanner(index) {
+    window.panel.deleteBanner = function(index) {
         if (confirm('Hapus banner ini?')) {
             banners.splice(index, 1);
-            renderBannerList();
+            renderBannerTrack();
             vibrate(10);
         }
-    }
+    };
     
-    function moveBanner(index, direction) {
-        if (direction === 'up' && index > 0) {
+    window.panel.moveBanner = function(index, direction) {
+        if (direction === 'left' && index > 0) {
             [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
-        } else if (direction === 'down' && index < banners.length - 1) {
+        } else if (direction === 'right' && index < banners.length - 1) {
             [banners[index], banners[index + 1]] = [banners[index + 1], banners[index]];
         } else {
             return;
         }
-        renderBannerList();
+        renderBannerTrack();
         vibrate(10);
-    }
+    };
     
     // ==================== FUNGSI SAVE BANNERS ====================
     async function saveBanners() {
@@ -1048,9 +1090,6 @@
             let body = data;
       
             switch (section) {
-                case 'banner':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banner`;
-                    break;
                 case 'colors':
                     url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`;
                     break;
@@ -1484,6 +1523,16 @@
             });
         }
         
+        if (elements.saveMaintenanceBtn) {
+            elements.saveMaintenanceBtn.addEventListener('click', () => {
+                const maintenance = {
+                    enabled: elements.maintenanceMode?.checked || false,
+                    message: elements.maintenanceMessage?.value || 'Website sedang dalam perbaikan'
+                };
+                saveSettings('maintenance', maintenance);
+            });
+        }
+        
         if (elements.bankEnabled) {
             elements.bankEnabled.addEventListener('change', () => {
                 if (elements.bankDetails) {
@@ -1668,22 +1717,18 @@
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
-    window.panel = {
-        editProduct: (id) => {
-            const product = products.find(p => p.id === id);
-            if (product) {
-                openProductModal(product);
-            }
-        },
-        deleteProduct: (id) => {
-            const product = products.find(p => p.id === id);
-            if (product) {
-                openDeleteModal(product);
-            }
-        },
-        moveBanner: (index, direction) => moveBanner(index, direction),
-        deleteBanner: (index) => deleteBanner(index),
-        setBannerPosition: (index, preset) => setBannerPosition(index, preset)
+    window.panel.editProduct = (id) => {
+        const product = products.find(p => p.id === id);
+        if (product) {
+            openProductModal(product);
+        }
+    };
+    
+    window.panel.deleteProduct = (id) => {
+        const product = products.find(p => p.id === id);
+        if (product) {
+            openDeleteModal(product);
+        }
     };
 
     // ==================== START ====================
