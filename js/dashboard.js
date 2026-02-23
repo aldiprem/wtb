@@ -4,7 +4,7 @@
 
     // ==================== KONFIGURASI ====================
     const OWNER_IDS = [7998861975, 7349865750]; // Tambahkan ID owner Anda di sini
-    const API_BASE_URL = window.location.origin; // Gunakan URL yang sama dengan halaman
+    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
