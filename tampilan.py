@@ -1,282 +1,703 @@
-# tampilan.py - Database handler untuk tampilan website
+import sys
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir in sys.path:
+    sys.path.remove(current_dir)
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+import hashlib
+import secrets
+import tampilan
 
-DATABASE = 'tampilan.db'
+app = Flask(__name__, static_folder='.')
+
+# Konfigurasi CORS yang longgar untuk development dengan tunnel
+CORS(app, 
+     origins='*',  # Izinkan semua origin untuk testing
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+     allow_headers=['*'],
+     supports_credentials=True)
+
+# Middleware untuk menangani proxy headers dari Cloudflare
+@app.before_request
+def before_request():
+    # Jika ada header X-Forwarded-Proto, gunakan itu
+    if request.headers.get('X-Forwarded-Proto') == 'https':
+        request.environ['wsgi.url_scheme'] = 'https'
+    print(f"📥 {request.method} {request.path} - {request.remote_addr}")
+
+# Handler untuk preflight OPTIONS requests
+@app.route('/', methods=['OPTIONS'])
+@app.route('/<path:path>', methods=['OPTIONS'])
+def handle_options(path=None):
+    response = app.make_default_options_response()
+    return response
+
+# ==================== DATABASE SETUP ====================
+DATABASE = 'website.db'
 
 def get_db():
     db = sqlite3.connect(DATABASE)
     db.row_factory = sqlite3.Row
     return db
 
-def init_tampilan_db():
-    """Inisialisasi database tampilan"""
+def init_db():
     with get_db() as db:
-        # Create tampilan table
+        # Create websites table
         db.execute('''
-            CREATE TABLE IF NOT EXISTS tampilan (
+            CREATE TABLE IF NOT EXISTS websites (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                website_id INTEGER NOT NULL,
-                banner TEXT,
-                promo_banner TEXT,
-                colors TEXT DEFAULT '{}',
-                font_family TEXT DEFAULT 'Inter',
-                font_size INTEGER DEFAULT 14,
-                title TEXT,
-                description TEXT,
-                contact_whatsapp TEXT,
-                contact_telegram TEXT,
-                seo_title TEXT,
-                seo_description TEXT,
-                seo_keywords TEXT,
-                payments TEXT DEFAULT '{}',
-                maintenance_enabled INTEGER DEFAULT 0,
-                maintenance_message TEXT,
+                endpoint TEXT UNIQUE NOT NULL,
+                bot_token TEXT NOT NULL,
+                owner_id INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                password TEXT NOT NULL,
+                email TEXT NOT NULL,
+                tunnel_url TEXT,
+                status TEXT DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
-                UNIQUE(website_id)
+                start_date DATE,
+                end_date DATE,
+                settings TEXT DEFAULT '{}',
+                products TEXT DEFAULT '[]',
+                categories TEXT DEFAULT '[]'
             )
         ''')
-        
-        # Create bank_accounts table
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS bank_accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tampilan_id INTEGER NOT NULL,
-                bank_name TEXT,
-                account_number TEXT,
-                account_holder TEXT,
-                enabled INTEGER DEFAULT 1,
-                FOREIGN KEY (tampilan_id) REFERENCES tampilan(id) ON DELETE CASCADE
-            )
-        ''')
-        
-        # Create ewallet_accounts table
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS ewallet_accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tampilan_id INTEGER NOT NULL,
-                provider TEXT,
-                phone_number TEXT,
-                enabled INTEGER DEFAULT 1,
-                FOREIGN KEY (tampilan_id) REFERENCES tampilan(id) ON DELETE CASCADE
-            )
-        ''')
-        
-        # Create qris table
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS qris (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tampilan_id INTEGER NOT NULL,
-                image_url TEXT,
-                enabled INTEGER DEFAULT 1,
-                FOREIGN KEY (tampilan_id) REFERENCES tampilan(id) ON DELETE CASCADE
-            )
-        ''')
-        
-        # Create crypto table
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS crypto (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tampilan_id INTEGER NOT NULL,
-                wallet_address TEXT,
-                enabled INTEGER DEFAULT 0,
-                FOREIGN KEY (tampilan_id) REFERENCES tampilan(id) ON DELETE CASCADE
-            )
-        ''')
-        
-        print("✅ Database tampilan initialized successfully")
+        print("✅ Database initialized successfully")
 
-# Inisialisasi database saat module di-load
-init_tampilan_db()
+init_db()
 
-# ==================== FUNGSI CRUD UNTUK TAMPILAN ====================
+def hash_password(password):
+    salt = secrets.token_hex(16)
+    hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+    return f"{salt}${hash_obj.hex()}"
 
-def get_tampilan_by_website_id(website_id):
-    """Ambil data tampilan berdasarkan website_id"""
-    with get_db() as db:
-        tampilan = db.execute('SELECT * FROM tampilan WHERE website_id = ?', (website_id,)).fetchone()
-        
-        if not tampilan:
-            return None
+def verify_password(password, hashed):
+    salt, hash_str = hashed.split('$')
+    hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
+    return hash_obj.hex() == hash_str
+
+def calculate_end_date(start_date, days):
+    if isinstance(start_date, str):
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+    end_date = start_date + timedelta(days=int(days))
+    return end_date.strftime('%Y-%m-%d')
+
+# ==================== API ROUTES ====================
+
+@app.route('/')
+def serve_index():
+    return send_from_directory('.', 'dashboard.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('.', path)
+
+@app.route('/api/health', methods=['GET', 'OPTIONS'])
+def health_check():
+    try:
+        with get_db() as db:
+            db.execute('SELECT 1').fetchone()
+            return jsonify({
+                'status': 'healthy',
+                'database': 'connected',
+                'timestamp': datetime.now().isoformat(),
+                'scheme': request.scheme,
+                'host': request.host
+            })
+    except Exception as e:
+        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
+
+@app.route('/api/websites', methods=['GET', 'OPTIONS'])
+def get_websites():
+    try:
+        with get_db() as db:
+            websites = db.execute('SELECT * FROM websites ORDER BY created_at DESC').fetchall()
+            result = []
+            for w in websites:
+                website_dict = dict(w)
+                website_dict['settings'] = json.loads(website_dict['settings'] or '{}')
+                website_dict['products'] = json.loads(website_dict['products'] or '[]')
+                website_dict['categories'] = json.loads(website_dict['categories'] or '[]')
+                result.append(website_dict)
+            return jsonify({'success': True, 'websites': result})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/<int:website_id>', methods=['GET', 'OPTIONS'])
+def get_website(website_id):
+    try:
+        with get_db() as db:
+            website = db.execute('SELECT * FROM websites WHERE id = ?', (website_id,)).fetchone()
+            if not website:
+                return jsonify({'success': False, 'error': 'Website not found'}), 404
             
-        tampilan_dict = dict(tampilan)
-        
-        # Parse JSON fields
-        tampilan_dict['colors'] = json.loads(tampilan_dict['colors'] or '{}')
-        tampilan_dict['payments'] = json.loads(tampilan_dict['payments'] or '{}')
-        
-        # Get bank accounts
-        banks = db.execute('SELECT * FROM bank_accounts WHERE tampilan_id = ?', (tampilan_dict['id'],)).fetchall()
-        tampilan_dict['banks'] = [dict(bank) for bank in banks]
-        
-        # Get e-wallet accounts
-        ewallets = db.execute('SELECT * FROM ewallet_accounts WHERE tampilan_id = ?', (tampilan_dict['id'],)).fetchall()
-        tampilan_dict['ewallets'] = [dict(ewallet) for ewallet in ewallets]
-        
-        # Get QRIS
-        qris = db.execute('SELECT * FROM qris WHERE tampilan_id = ?', (tampilan_dict['id'],)).fetchone()
-        tampilan_dict['qris'] = dict(qris) if qris else None
-        
-        # Get crypto
-        crypto = db.execute('SELECT * FROM crypto WHERE tampilan_id = ?', (tampilan_dict['id'],)).fetchone()
-        tampilan_dict['crypto'] = dict(crypto) if crypto else None
-        
-        return tampilan_dict
+            website_dict = dict(website)
+            website_dict['settings'] = json.loads(website_dict['settings'] or '{}')
+            website_dict['products'] = json.loads(website_dict['products'] or '[]')
+            website_dict['categories'] = json.loads(website_dict['categories'] or '[]')
+            
+            return jsonify({'success': True, 'website': website_dict})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-def create_or_update_tampilan(website_id, data):
-    """Buat atau update data tampilan untuk website_id tertentu"""
-    with get_db() as db:
-        # Cek apakah sudah ada
-        existing = db.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,)).fetchone()
+@app.route('/api/websites/endpoint/<string:endpoint>', methods=['GET', 'OPTIONS'])
+def get_website_by_endpoint(endpoint):
+    try:
+        with get_db() as db:
+            website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
+            if not website:
+                return jsonify({'success': False, 'error': 'Website not found'}), 404
+            
+            website_dict = dict(website)
+            
+            safe_data = {
+                'id': website_dict['id'],
+                'endpoint': website_dict['endpoint'],
+                'name': website_dict['username'],
+                'email': website_dict['email'],
+                'tunnel_url': website_dict['tunnel_url'] or '',
+                'status': website_dict['status'],
+                'settings': json.loads(website_dict['settings'] or '{}'),
+                'products': json.loads(website_dict['products'] or '[]'),
+                'categories': json.loads(website_dict['categories'] or '[]'),
+                'created_at': website_dict['created_at']
+            }
+            
+            return jsonify({'success': True, 'website': safe_data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites', methods=['POST'])
+def create_website():
+    try:
+        data = request.json
+        print(f"📥 Received data: {data}")
+
+        required = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email']
+        missing = [f for f in required if f not in data or not data[f]]
+
+        if missing:
+            return jsonify({'success': False, 'error': f'Missing: {missing}'}), 400
+
+        endpoint = data['endpoint'].strip().lower()
+        if not endpoint.replace('-', '').isalnum():
+            return jsonify({'success': False, 'error': 'Invalid endpoint'}), 400
+
+        try:
+            owner_id = int(data['owner_id'])
+        except:
+            return jsonify({'success': False, 'error': 'Owner ID must be number'}), 400
+
+        # Validasi email
+        if '@' not in data['email'] or '.' not in data['email']:
+            return jsonify({'success': False, 'error': 'Invalid email'}), 400
+
+        # Validasi bot token
+        if ':' not in data['bot_token']:
+            return jsonify({'success': False, 'error': 'Invalid bot token'}), 400
+
+        hashed_password = hash_password(data['password'])
+        start_date = data.get('start_date', datetime.now().strftime('%Y-%m-%d'))
+        end_date = data.get('end_date', calculate_end_date(start_date, 30))
         
-        colors = json.dumps(data.get('colors', {}))
-        payments = json.dumps(data.get('payments', {}))
-        
-        if existing:
-            # Update
-            db.execute('''
-                UPDATE tampilan SET
-                    banner = ?,
-                    promo_banner = ?,
-                    colors = ?,
-                    font_family = ?,
-                    font_size = ?,
-                    title = ?,
-                    description = ?,
-                    contact_whatsapp = ?,
-                    contact_telegram = ?,
-                    seo_title = ?,
-                    seo_description = ?,
-                    seo_keywords = ?,
-                    payments = ?,
-                    maintenance_enabled = ?,
-                    maintenance_message = ?,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE website_id = ?
-            ''', (
-                data.get('banner'),
-                data.get('promo_banner'),
-                colors,
-                data.get('font_family', 'Inter'),
-                data.get('font_size', 14),
-                data.get('title'),
-                data.get('description'),
-                data.get('contact_whatsapp'),
-                data.get('contact_telegram'),
-                data.get('seo_title'),
-                data.get('seo_description'),
-                data.get('seo_keywords'),
-                payments,
-                1 if data.get('maintenance_enabled') else 0,
-                data.get('maintenance_message'),
-                website_id
-            ))
-            tampilan_id = existing['id']
-        else:
-            # Insert
+        # Gunakan host URL dari request
+        tunnel_url = request.host_url.rstrip('/')
+
+        with get_db() as db:
+            existing = db.execute('SELECT id FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
+            if existing:
+                return jsonify({'success': False, 'error': 'Endpoint already exists'}), 400
+
             cursor = db.execute('''
-                INSERT INTO tampilan (
-                    website_id, banner, promo_banner, colors, font_family, font_size,
-                    title, description, contact_whatsapp, contact_telegram,
-                    seo_title, seo_description, seo_keywords, payments,
-                    maintenance_enabled, maintenance_message
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO websites 
+                (endpoint, bot_token, owner_id, username, password, email, tunnel_url, status, start_date, end_date, settings)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
-                website_id,
-                data.get('banner'),
-                data.get('promo_banner'),
-                colors,
-                data.get('font_family', 'Inter'),
-                data.get('font_size', 14),
-                data.get('title'),
-                data.get('description'),
-                data.get('contact_whatsapp'),
-                data.get('contact_telegram'),
-                data.get('seo_title'),
-                data.get('seo_description'),
-                data.get('seo_keywords'),
-                payments,
-                1 if data.get('maintenance_enabled') else 0,
-                data.get('maintenance_message')
+                endpoint, data['bot_token'].strip(), owner_id,
+                data['username'].strip(), hashed_password,
+                data['email'].strip().lower(), tunnel_url,
+                'active', start_date, end_date,
+                json.dumps(data.get('settings', {}))
             ))
-            tampilan_id = cursor.lastrowid
-        
-        db.commit()
-        return tampilan_id
 
-def save_bank_accounts(tampilan_id, banks):
-    """Simpan data bank accounts"""
-    with get_db() as db:
-        # Hapus data lama
-        db.execute('DELETE FROM bank_accounts WHERE tampilan_id = ?', (tampilan_id,))
-        
-        # Insert data baru
-        for bank in banks:
-            if bank.get('enabled'):
-                db.execute('''
-                    INSERT INTO bank_accounts (tampilan_id, bank_name, account_number, account_holder, enabled)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (
-                    tampilan_id,
-                    bank.get('name'),
-                    bank.get('account'),
-                    bank.get('holder'),
-                    1 if bank.get('enabled') else 0
-                ))
-        
-        db.commit()
+            website_id = cursor.lastrowid
+            db.commit()
+            print(f"✅ Website created with ID: {website_id}")
 
-def save_ewallet_accounts(tampilan_id, ewallets):
-    """Simpan data e-wallet accounts"""
-    with get_db() as db:
-        db.execute('DELETE FROM ewallet_accounts WHERE tampilan_id = ?', (tampilan_id,))
-        
-        for ewallet in ewallets:
-            if ewallet.get('enabled'):
-                db.execute('''
-                    INSERT INTO ewallet_accounts (tampilan_id, provider, phone_number, enabled)
-                    VALUES (?, ?, ?, ?)
-                ''', (
-                    tampilan_id,
-                    ewallet.get('provider'),
-                    ewallet.get('number'),
-                    1 if ewallet.get('enabled') else 0
-                ))
-        
-        db.commit()
+            return jsonify({'success': True, 'website_id': website_id, 'message': 'Website created successfully'})
 
-def save_qris(tampilan_id, qris_data):
-    """Simpan data QRIS"""
-    with get_db() as db:
-        db.execute('DELETE FROM qris WHERE tampilan_id = ?', (tampilan_id,))
-        
-        if qris_data and qris_data.get('enabled'):
-            db.execute('''
-                INSERT INTO qris (tampilan_id, image_url, enabled)
-                VALUES (?, ?, ?)
-            ''', (
-                tampilan_id,
-                qris_data.get('url'),
-                1 if qris_data.get('enabled') else 0
-            ))
-        
-        db.commit()
+    except sqlite3.IntegrityError as e:
+        return jsonify({'success': False, 'error': 'Database error: ' + str(e)}), 400
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-def save_crypto(tampilan_id, crypto_data):
-    """Simpan data crypto"""
+@app.route('/api/websites/<int:website_id>', methods=['PUT'])
+def update_website(website_id):
+    try:
+        data = request.json
+        
+        with get_db() as db:
+            current = db.execute('SELECT * FROM websites WHERE id = ?', (website_id,)).fetchone()
+            if not current:
+                return jsonify({'success': False, 'error': 'Website not found'}), 404
+            
+            updates = []
+            values = []
+            
+            update_fields = ['bot_token', 'owner_id', 'username', 'email', 'tunnel_url', 'status']
+            for field in update_fields:
+                if field in data:
+                    updates.append(f"{field} = ?")
+                    values.append(data[field])
+            
+            if data.get('password'):
+                updates.append("password = ?")
+                values.append(hash_password(data['password']))
+            
+            if data.get('start_date'):
+                updates.append("start_date = ?")
+                values.append(data['start_date'])
+            
+            if data.get('end_date'):
+                updates.append("end_date = ?")
+                values.append(data['end_date'])
+            
+            if data.get('settings'):
+                updates.append("settings = ?")
+                values.append(json.dumps(data['settings']))
+            
+            updates.append("updated_at = CURRENT_TIMESTAMP")
+            
+            if updates:
+                query = f"UPDATE websites SET {', '.join(updates)} WHERE id = ?"
+                values.append(website_id)
+                db.execute(query, values)
+                db.commit()
+            
+            return jsonify({'success': True, 'message': 'Website updated successfully'})
+            
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/<int:website_id>', methods=['DELETE'])
+def delete_website(website_id):
+    try:
+        with get_db() as db:
+            db.execute('DELETE FROM websites WHERE id = ?', (website_id,))
+            db.commit()
+            return jsonify({'success': True, 'message': 'Website deleted successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/<int:website_id>/products', methods=['GET', 'OPTIONS'])
+def get_products(website_id):
+    try:
+        with get_db() as db:
+            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
+            if not website:
+                return jsonify({'success': False, 'error': 'Website not found'}), 404
+            
+            products = json.loads(website['products'] or '[]')
+            return jsonify({'success': True, 'products': products})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/<int:website_id>/products', methods=['POST'])
+def add_product(website_id):
+    try:
+        data = request.json
+        
+        with get_db() as db:
+            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
+            if not website:
+                return jsonify({'success': False, 'error': 'Website not found'}), 404
+            
+            products = json.loads(website['products'] or '[]')
+            
+            new_id = 1
+            if products:
+                new_id = max([p.get('id', 0) for p in products]) + 1
+            
+            new_product = {
+                'id': new_id,
+                'name': data.get('name'),
+                'description': data.get('description'),
+                'price': data.get('price'),
+                'stock': data.get('stock', 0),
+                'sold': 0,
+                'category': data.get('category'),
+                'image': data.get('image'),
+                'images': data.get('images', []),
+                'variants': data.get('variants', []),
+                'notes': data.get('notes', ''),
+                'active': data.get('active', True),
+                'featured': data.get('featured', False),
+                'created_at': datetime.now().isoformat()
+            }
+            
+            products.append(new_product)
+            
+            db.execute('UPDATE websites SET products = ? WHERE id = ?',
+                      (json.dumps(products), website_id))
+            db.commit()
+            
+            return jsonify({'success': True, 'product': new_product})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/<int:website_id>/products/<int:product_id>', methods=['PUT'])
+def update_product(website_id, product_id):
+    try:
+        data = request.json
+        
+        with get_db() as db:
+            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
+            if not website:
+                return jsonify({'success': False, 'error': 'Website not found'}), 404
+            
+            products = json.loads(website['products'] or '[]')
+            
+            updated = False
+            for i, product in enumerate(products):
+                if product.get('id') == product_id:
+                    products[i].update(data)
+                    updated = True
+                    break
+            
+            if not updated:
+                return jsonify({'success': False, 'error': 'Product not found'}), 404
+            
+            db.execute('UPDATE websites SET products = ? WHERE id = ?',
+                      (json.dumps(products), website_id))
+            db.commit()
+            
+            return jsonify({'success': True, 'message': 'Product updated successfully'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/<int:website_id>/products/<int:product_id>', methods=['DELETE'])
+def delete_product(website_id, product_id):
+    try:
+        with get_db() as db:
+            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
+            if not website:
+                return jsonify({'success': False, 'error': 'Website not found'}), 404
+            
+            products = json.loads(website['products'] or '[]')
+            
+            new_products = [p for p in products if p.get('id') != product_id]
+            
+            if len(new_products) == len(products):
+                return jsonify({'success': False, 'error': 'Product not found'}), 404
+            
+            db.execute('UPDATE websites SET products = ? WHERE id = ?',
+                      (json.dumps(new_products), website_id))
+            db.commit()
+            
+            return jsonify({'success': True, 'message': 'Product deleted successfully'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/user/<int:user_id>', methods=['GET', 'OPTIONS'])
+def get_website_by_user(user_id):
+    try:
+        with get_db() as db:
+            websites = db.execute('SELECT * FROM websites WHERE owner_id = ? ORDER BY created_at DESC', (user_id,)).fetchall()
+            result = []
+            for w in websites:
+                website_dict = dict(w)
+                website_dict['settings'] = json.loads(website_dict['settings'] or '{}')
+                website_dict['products'] = json.loads(website_dict['products'] or '[]')
+                website_dict['categories'] = json.loads(website_dict['categories'] or '[]')
+                result.append(website_dict)
+            return jsonify({'success': True, 'websites': result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/websites/<int:website_id>/test-bot', methods=['POST'])
+def test_bot(website_id):
+    try:
+        data = request.json
+        bot_token = data.get('bot_token')
+        tunnel_url = data.get('tunnel_url')
+        
+        if not bot_token or not tunnel_url:
+            return jsonify({'success': False, 'error': 'Bot token and tunnel URL required'}), 400
+        
+        # Validasi format bot token
+        if ':' not in bot_token:
+            return jsonify({'success': False, 'error': 'Invalid bot token format'}), 400
+        
+        return jsonify({'success': True, 'message': 'Bot test successful'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== DEBUG ROUTE ====================
+@app.route('/api/debug', methods=['GET'])
+def debug_info():
+    return jsonify({
+        'headers': dict(request.headers),
+        'scheme': request.scheme,
+        'host': request.host,
+        'host_url': request.host_url,
+        'path': request.path,
+        'full_path': request.full_path,
+        'url': request.url,
+        'base_url': request.base_url,
+        'remote_addr': request.remote_addr,
+        'method': request.method
+    })
+
+# ==================== ROUTES UNTUK WEBSITE PUBLIK DAN PANEL ====================
+
+@app.route('/website/<string:endpoint>')
+def serve_website(endpoint):
+    """Menampilkan halaman website publik berdasarkan endpoint"""
+    # Validasi apakah endpoint ada di database
     with get_db() as db:
-        db.execute('DELETE FROM crypto WHERE tampilan_id = ?', (tampilan_id,))
+        website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
+        if not website:
+            return "Website not found", 404
+    # Kirim file website.html
+    return send_from_directory('.', 'website.html')
+
+@app.route('/panel/<string:endpoint>')
+def serve_panel(endpoint):
+    """Menampilkan halaman panel admin berdasarkan endpoint"""
+    # Validasi apakah endpoint ada di database
+    with get_db() as db:
+        website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
+        if not website:
+            return "Website not found", 404
+    # Kirim file panel.html
+    return send_from_directory('.', 'panel.html')
+
+@app.route('/format')
+def serve_format():
+    return send_from_directory('.', 'format.html')
+
+@app.route('/dashboard')
+def serve_dashboard():
+    return send_from_directory('.', 'dashboard.html')
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory('css', filename)
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory('js', filename)
+
+# ==================== ROUTES UNTUK TAMPILAN ====================
+
+@app.route('/api/tampilan/<int:website_id>', methods=['GET'])
+def get_tampilan(website_id):
+    """Get tampilan data by website_id"""
+    try:
+        data = tampilan.get_tampilan_by_website_id(website_id)
+        if data:
+            return jsonify({'success': True, 'tampilan': data})
+        else:
+            return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/banner', methods=['POST'])
+def save_banner(website_id):
+    """Save banner settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        if crypto_data and crypto_data.get('enabled'):
-            db.execute('''
-                INSERT INTO crypto (tampilan_id, wallet_address, enabled)
-                VALUES (?, ?, ?)
-            ''', (
-                tampilan_id,
-                crypto_data.get('address'),
-                1 if crypto_data.get('enabled') else 0
-            ))
+        # Get or create tampilan
+        tampilan_data = {
+            'banner': data.get('url'),
+            'promo_banner': data.get('promo_url')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
         
-        db.commit()
+        return jsonify({'success': True, 'message': 'Banner saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/colors', methods=['POST'])
+def save_colors(website_id):
+    """Save color settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'colors': data
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Colors saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/font', methods=['POST'])
+def save_font(website_id):
+    """Save font settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'font_family': data.get('family'),
+            'font_size': data.get('size')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Font saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/general', methods=['POST'])
+def save_general(website_id):
+    """Save general settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'title': data.get('title'),
+            'description': data.get('description'),
+            'contact_whatsapp': data.get('contact', {}).get('whatsapp'),
+            'contact_telegram': data.get('contact', {}).get('telegram')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'General settings saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/seo', methods=['POST'])
+def save_seo(website_id):
+    """Save SEO settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'seo_title': data.get('title'),
+            'seo_description': data.get('description'),
+            'seo_keywords': data.get('keywords')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'SEO settings saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/payments', methods=['POST'])
+def save_payments(website_id):
+    """Save payment methods"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Get or create tampilan
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, {})
+        
+        # Save bank accounts
+        if data.get('bank'):
+            tampilan.save_bank_accounts(tampilan_id, [data['bank']])
+        
+        # Save e-wallet accounts
+        if data.get('ewallet'):
+            tampilan.save_ewallet_accounts(tampilan_id, [data['ewallet']])
+        
+        # Save QRIS
+        if data.get('qris'):
+            tampilan.save_qris(tampilan_id, data['qris'])
+        
+        # Save crypto
+        if data.get('crypto'):
+            tampilan.save_crypto(tampilan_id, data['crypto'])
+        
+        return jsonify({'success': True, 'message': 'Payment methods saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/payment-notes', methods=['POST'])
+def save_payment_notes(website_id):
+    """Save payment notes"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'payments': {
+                'notes': data
+            }
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Payment notes saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/maintenance', methods=['POST'])
+def save_maintenance(website_id):
+    """Save maintenance settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'maintenance_enabled': data.get('enabled'),
+            'maintenance_message': data.get('message')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Maintenance settings saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== MAIN ====================
+
+if __name__ == '__main__':
+    print("="*60)
+    print("🚀 Starting Website Management API Server...")
+    print(f"📅 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("🔗 API available at: http://localhost:5050")
+    print("📊 Database: website.db")
+    print("="*60)
+    print("💡 Gunakan tunnel Cloudflare untuk akses publik:")
+    print("   cloudflared tunnel --url http://localhost:5050")
+    print("="*60)
+    print("📡 Server is running... Press CTRL+C to stop")
+    print("="*60)
+    app.run(host='0.0.0.0', port=5050, debug=True)
