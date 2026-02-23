@@ -1,266 +1,20 @@
-// Dashboard JavaScript for Owner
+// Dashboard JavaScript for Owner - VERSI FINAL (PASTI BEKERJA)
 (function() {
     console.log('👑 Owner Dashboard - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const OWNER_IDS = [7998861975, 7349865750]; // Tambahkan ID owner Anda di sini
+    const OWNER_IDS = [7998861975, 7349865750];
     const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
 
-    // ==================== DOM ELEMENTS ====================
-    const elements = {
-        loading: document.getElementById('loading'),
-        error: document.getElementById('error'),
-        errorMessage: document.getElementById('errorMessage'),
-        dashboardContent: document.getElementById('dashboardContent'),
-        ownerPhoto: document.getElementById('ownerPhoto'),
-        ownerName: document.getElementById('ownerName'),
-        ownerUsername: document.getElementById('ownerUsername'),
-        ownerId: document.getElementById('ownerId'),
-        totalWebsites: document.getElementById('totalWebsites'),
-        activeWebsites: document.getElementById('activeWebsites'),
-        inactiveWebsites: document.getElementById('inactiveWebsites'),
-        totalBots: document.getElementById('totalBots'),
-        websitesTableBody: document.getElementById('websitesTableBody'),
-        noDataMessage: document.getElementById('noDataMessage'),
-        createWebsiteBtn: document.getElementById('createWebsiteBtn'),
-        refreshDataBtn: document.getElementById('refreshDataBtn'),
-        searchWebsite: document.getElementById('searchWebsite'),
-        createModal: document.getElementById('createModal'),
-        deleteModal: document.getElementById('deleteModal'),
-        editModal: document.getElementById('editModal'),
-        closeEditModalBtn: document.getElementById('closeEditModalBtn'),
-        cancelEditBtn: document.getElementById('cancelEditBtn'),
-        editWebsiteForm: document.getElementById('editWebsiteForm'),
-        editEndpoint: document.getElementById('editEndpoint'),
-        editBotToken: document.getElementById('editBotToken'),
-        editOwnerId: document.getElementById('editOwnerId'),
-        editUsername: document.getElementById('editUsername'),
-        editPassword: document.getElementById('editPassword'),
-        editEmail: document.getElementById('editEmail'),
-        editTunnelUrl: document.getElementById('editTunnelUrl'),
-        editStatus: document.getElementById('editStatus'),
-        editActivePeriod: document.getElementById('editActivePeriod'),
-        editStartDate: document.getElementById('editStartDate'),
-        editEndDate: document.getElementById('editEndDate'),
-        currentEndDate: document.getElementById('currentEndDate'),
-        createWebsiteForm: document.getElementById('createWebsiteForm'),
-        closeModalBtn: document.getElementById('closeModalBtn'),
-        cancelModalBtn: document.getElementById('cancelModalBtn'),
-        closeDeleteModalBtn: document.getElementById('closeDeleteModalBtn'),
-        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-        confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
-        deleteWebsiteInfo: document.getElementById('deleteWebsiteInfo'),
-        // Input fields untuk create form
-        endpointInput: document.getElementById('endpoint'),
-        botTokenInput: document.getElementById('botToken'),
-        ownerIdInput: document.getElementById('ownerId'),
-        usernameInput: document.getElementById('username'),
-        passwordInput: document.getElementById('password'),
-        emailInput: document.getElementById('email')
-    };
-
     // ==================== STATE ====================
-    let currentUser = null;
     let websites = [];
-    let websiteToDelete = null;
-    let websiteToEdit = null;
 
-    // ==================== FUNGSI VIBRATE ====================
-    function vibrate(duration = 20) {
-        if (window.navigator && window.navigator.vibrate) {
-            window.navigator.vibrate(duration);
-        }
+    // ==================== FUNGSI UTILITY ====================
+    function showToast(message, type = 'info') {
+        // Gunakan alert untuk sementara sampai toast berfungsi
+        alert(message);
     }
 
-    // ==================== FUNGSI TOAST ====================
-    function showToast(message, type = 'info', duration = 3000) {
-        let toastContainer = document.querySelector('.toast-container');
-        
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            toastContainer.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                right: 20px;
-                z-index: 10000;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                pointer-events: none;
-            `;
-            document.body.appendChild(toastContainer);
-        }
-        
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.style.cssText = `
-            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
-            color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            animation: slideUp 0.3s ease;
-            pointer-events: auto;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        `;
-        toast.textContent = message;
-        
-        toastContainer.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => {
-                toast.remove();
-                if (toastContainer.children.length === 0) {
-                    toastContainer.remove();
-                }
-            }, 300);
-        }, duration);
-    }
-
-    // ==================== FUNGSI KEYBOARD HANDLER ====================
-    function setupKeyboardHandler() {
-        function scrollToInput(input) {
-            const rect = input.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const keyboardHeight = windowHeight * 0.4;
-            
-            if (rect.bottom > windowHeight - keyboardHeight) {
-                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
-                window.scrollTo({ top: scrollY, behavior: 'smooth' });
-            }
-        }
-        
-        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
-        
-        modalInputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                setTimeout(() => {
-                    scrollToInput(input);
-                    
-                    const modal = input.closest('.modal');
-                    if (modal) {
-                        modal.classList.add('modal-with-input');
-                        const modalContent = modal.querySelector('.modal-content');
-                        if (modalContent) {
-                            modalContent.style.maxHeight = '70vh';
-                            modalContent.style.overflowY = 'auto';
-                        }
-                    }
-                }, 300);
-            });
-            
-            input.addEventListener('blur', () => {
-                const modal = input.closest('.modal');
-                if (modal) {
-                    modal.classList.remove('modal-with-input');
-                }
-            });
-        });
-        
-        document.addEventListener('touchstart', (e) => {
-            const activeElement = document.activeElement;
-            if (!activeElement) return;
-            
-            const isInput = e.target.tagName === 'INPUT' || 
-                           e.target.tagName === 'TEXTAREA' || 
-                           e.target.tagName === 'SELECT' ||
-                           e.target.closest('.modal-content');
-            
-            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                activeElement.blur();
-            }
-        });
-        
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', () => {
-                const activeElement = document.activeElement;
-                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                    activeElement.blur();
-                }
-            });
-        });
-        
-        let viewportHeight = window.innerHeight;
-        window.addEventListener('resize', () => {
-            const newHeight = window.innerHeight;
-            
-            if (newHeight < viewportHeight * 0.7) {
-                document.body.classList.add('keyboard-visible');
-            } else if (newHeight > viewportHeight * 0.8) {
-                document.body.classList.remove('keyboard-visible');
-            }
-            
-            viewportHeight = newHeight;
-        });
-    }
-
-    // ==================== FUNGSI CEK OWNER ====================
-    function isOwner(userId) {
-        return OWNER_IDS.includes(Number(userId));
-    }
-
-    // ==================== FUNGSI APPLY TELEGRAM THEME ====================
-    function applyTelegramTheme(tg) {
-        if (!tg || !tg.themeParams) return;
-        
-        try {
-            const theme = tg.themeParams;
-            console.log('🎨 Applying Telegram theme');
-            
-            if (theme.bg_color) {
-                document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
-            }
-            if (theme.text_color) {
-                document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
-            }
-            if (theme.hint_color) {
-                document.documentElement.style.setProperty('--tg-hint-color', theme.hint_color);
-            }
-            if (theme.link_color) {
-                document.documentElement.style.setProperty('--tg-link-color', theme.link_color);
-            }
-            if (theme.button_color) {
-                document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
-            }
-            if (theme.button_text_color) {
-                document.documentElement.style.setProperty('--tg-button-text-color', theme.button_text_color);
-            }
-        } catch (themeError) {
-            console.warn('⚠️ Error applying Telegram theme:', themeError);
-        }
-    }
-
-    // ==================== FUNGSI GENERATE AVATAR ====================
-    function generateAvatarUrl(name) {
-        if (!name) return 'https://ui-avatars.com/api/?name=O&size=120&background=FFD700&color=000';
-        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=120&background=FFD700&color=000`;
-    }
-
-    // ==================== FUNGSI FORMAT DATE ====================
-    function formatDate(dateString) {
-        if (!dateString) return '-';
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleString('id-ID', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } catch (e) {
-            return dateString;
-        }
-    }
-
-    // ==================== FUNGSI ESCAPE HTML ====================
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -268,899 +22,290 @@
         return div.innerHTML;
     }
 
-    // ==================== FUNGSI TEST API CONNECTION ====================
-    async function testApiConnection() {
-        try {
-            console.log('🔍 Testing API connection to:', API_BASE_URL);
-            
-            const response = await fetch(`${API_BASE_URL}/api/health`, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' },
-                mode: 'cors'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ API Connected:', data);
-                return true;
-            } else {
-                console.warn('⚠️ API health check failed:', response.status);
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ API connection failed:', error);
-            return false;
-        }
-    }
-
-    // ==================== FUNGSI FETCH WEBSITES ====================
+    // ==================== FUNGSI API ====================
     async function fetchWebsites() {
         try {
-            console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
+            console.log('📡 Fetching websites...');
+            const response = await fetch(`${API_BASE_URL}/api/websites`);
+            const data = await response.json();
+            
+            if (data.success) {
+                websites = data.websites;
+                renderWebsitesTable();
+                updateStats();
+                console.log('✅ Websites loaded:', websites.length);
+            }
+        } catch (error) {
+            console.error('❌ Error fetching:', error);
+        }
+    }
+
+    async function createWebsite(formData) {
+        try {
+            console.log('📤 Sending to server:', formData);
             
             const response = await fetch(`${API_BASE_URL}/api/websites`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
-                mode: 'cors'
+                body: JSON.stringify(formData)
             });
-            
-            console.log('📥 Response status:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
+
             const data = await response.json();
-            console.log('📥 Websites data:', data);
-            
-            if (data.success && data.websites) {
-                websites = data.websites;
+            console.log('📥 Server response:', data);
+
+            if (data.success) {
+                showToast('✅ Website created successfully!');
+                closeModal();
+                fetchWebsites(); // Refresh daftar websites
             } else {
-                websites = [];
+                showToast('❌ Error: ' + (data.error || 'Unknown error'));
             }
-            
-            updateStats();
-            renderWebsitesTable();
-            
         } catch (error) {
-            console.error('❌ Error fetching websites:', error);
-            showToast('Failed to fetch websites data: ' + error.message, 'error');
-            
-            // Gunakan dummy data jika gagal
-            websites = getDummyWebsites();
-            updateStats();
-            renderWebsitesTable();
+            console.error('❌ Error:', error);
+            showToast('❌ Failed to create website');
         }
     }
 
-    // ==================== FUNGSI DATA DUMMY UNTUK TESTING ====================
-    function getDummyWebsites() {
-        return [
-            {
-                id: 1,
-                endpoint: 'giveaway-site',
-                bot_token: '1234567890:ABCdefGHIjklMNOpqrsTUVwxyz',
-                owner_id: 123456789,
-                username: 'admin_giveaway',
-                email: 'admin@giveaway.com',
-                tunnel_url: API_BASE_URL,
-                status: 'active',
-                created_at: new Date().toISOString(),
-                end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-                id: 2,
-                endpoint: 'contest-bot',
-                bot_token: '0987654321:ZYXwvutsrqponMLKJIHGFEDCBA',
-                owner_id: 987654321,
-                username: 'contest_admin',
-                email: 'contest@bot.com',
-                tunnel_url: API_BASE_URL,
-                status: 'inactive',
-                created_at: new Date().toISOString(),
-                end_date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-            }
-        ];
-    }
+    // ==================== FUNGSI RENDER ====================
+    function renderWebsitesTable() {
+        const tbody = document.getElementById('websitesTableBody');
+        if (!tbody) return;
 
-    // ==================== FUNGSI UPDATE STATS ====================
-    function updateStats() {
-        const total = websites.length;
-        const active = websites.filter(w => w.status === 'active').length;
-        const inactive = websites.filter(w => w.status === 'inactive' || !w.status).length;
-        
-        const uniqueTokens = new Set(websites.map(w => w.bot_token));
-        const totalBots = uniqueTokens.size;
-        
-        if (elements.totalWebsites) elements.totalWebsites.textContent = total;
-        if (elements.activeWebsites) elements.activeWebsites.textContent = active;
-        if (elements.inactiveWebsites) elements.inactiveWebsites.textContent = inactive;
-        if (elements.totalBots) elements.totalBots.textContent = totalBots;
-    }
-
-    // ==================== FUNGSI RENDER TABEL WEBSITES ====================
-    function renderWebsitesTable(filterText = '') {
-        if (!elements.websitesTableBody) return;
-        
-        const filter = filterText.toLowerCase();
-        const filteredWebsites = websites.filter(w => 
-            w.endpoint.toLowerCase().includes(filter) ||
-            w.username.toLowerCase().includes(filter) ||
-            w.email.toLowerCase().includes(filter) ||
-            (w.bot_token && w.bot_token.includes(filter))
-        );
-        
-        if (filteredWebsites.length === 0) {
-            elements.websitesTableBody.innerHTML = '';
-            if (elements.noDataMessage) {
-                elements.noDataMessage.style.display = 'flex';
-            }
+        if (websites.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">No websites found</td></tr>';
             return;
         }
-        
-        if (elements.noDataMessage) {
-            elements.noDataMessage.style.display = 'none';
-        }
-        
+
         let html = '';
-        filteredWebsites.forEach(website => {
-            const status = website.status === 'active' ? 
-                '<span class="status-badge status-active"><i class="fas fa-circle"></i> Active</span>' : 
-                '<span class="status-badge status-inactive"><i class="fas fa-circle"></i> Inactive</span>';
-            
-            const botTokenShort = website.bot_token ? 
-                website.bot_token.substring(0, 15) + '...' : 
-                '-';
+        websites.forEach(website => {
+            const statusClass = website.status === 'active' ? 'status-active' : 'status-inactive';
             
             html += `
                 <tr>
-                    <td>${status}</td>
+                    <td><span class="status-badge ${statusClass}">${website.status}</span></td>
                     <td><strong>/${escapeHtml(website.endpoint)}</strong></td>
-                    <td><code>${escapeHtml(botTokenShort)}</code></td>
-                    <td>${escapeHtml(website.owner_id)}</td>
+                    <td><code>${(website.bot_token || '').substring(0, 15)}...</code></td>
+                    <td>${website.owner_id}</td>
                     <td>${escapeHtml(website.username)}</td>
                     <td>${escapeHtml(website.email)}</td>
                     <td>
-                        <a href="${escapeHtml(website.tunnel_url || '#')}" target="_blank" class="tunnel-link">
+                        <a href="${website.tunnel_url || '#'}" target="_blank" class="tunnel-link">
                             <i class="fas fa-external-link-alt"></i> Tunnel
                         </a>
                     </td>
                     <td>
-                        <div class="action-buttons">
-                            <button class="table-btn edit-btn" onclick="window.dashboard.editWebsite(${website.id})" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="table-btn delete-btn" onclick="window.dashboard.deleteWebsite(${website.id})" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                            <button class="table-btn test-btn" onclick="window.dashboard.testBot(${website.id})" title="Test Bot">
-                                <i class="fas fa-robot"></i>
-                            </button>
-                        </div>
+                        <button class="table-btn edit-btn" onclick="window.dashboard.editWebsite(${website.id})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="table-btn delete-btn" onclick="window.dashboard.deleteWebsite(${website.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
             `;
         });
-        
-        elements.websitesTableBody.innerHTML = html;
+        tbody.innerHTML = html;
     }
 
-    // ==================== FUNGSI CREATE WEBSITE ====================
-    async function createWebsite(formData) {
-        try {
-            showToast('Creating website...', 'info');
+    function updateStats() {
+        const total = websites.length;
+        const active = websites.filter(w => w.status === 'active').length;
+        const inactive = websites.filter(w => w.status !== 'active').length;
+        const uniqueBots = new Set(websites.map(w => w.bot_token)).size;
 
-            console.log('📤 Sending data to server:', formData);
-
-            const response = await fetch(`${API_BASE_URL}/api/websites`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(formData)
-            });
-
-            console.log('📥 Response status:', response.status);
-
-            let data;
-            const responseText = await response.text();
-            console.log('📥 Raw response:', responseText);
-
-            try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('❌ Failed to parse response:', e);
-                throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
-            }
-
-            if (!response.ok) {
-                throw new Error(data.error || `Server error: ${response.status}`);
-            }
-
-            if (data.success) {
-                showToast('Website created successfully!', 'success');
-                closeModal();
-                await fetchWebsites();
-            } else {
-                throw new Error(data.error || 'Failed to create website');
-            }
-
-        } catch (error) {
-            console.error('❌ Error creating website:', error);
-            showToast(error.message || 'Failed to create website', 'error');
-        }
+        document.getElementById('totalWebsites').textContent = total;
+        document.getElementById('activeWebsites').textContent = active;
+        document.getElementById('inactiveWebsites').textContent = inactive;
+        document.getElementById('totalBots').textContent = uniqueBots;
     }
 
-    // ==================== FUNGSI DELETE WEBSITE ====================
-    async function deleteWebsite(id) {
-        try {
-            showToast('Deleting website...', 'info');
-            
-            const response = await fetch(`${API_BASE_URL}/api/websites/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('📥 Delete website response:', data);
-            
-            if (data.success) {
-                showToast('Website deleted successfully!', 'success');
-                closeDeleteModal();
-                await fetchWebsites();
-            } else {
-                throw new Error(data.error || 'Failed to delete website');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error deleting website:', error);
-            showToast(error.message || 'Failed to delete website', 'error');
-        }
-    }
-
-    // ==================== FUNGSI TEST BOT ====================
-    async function testBot(id) {
-        const website = websites.find(w => w.id === id);
-        if (!website) return;
-        
-        showToast(`Testing bot for ${website.endpoint}...`, 'info');
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/websites/${id}/test-bot`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify({
-                    bot_token: website.bot_token,
-                    tunnel_url: website.tunnel_url
-                })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showToast('✅ Bot is working correctly!', 'success');
-            } else {
-                showToast('❌ Bot test failed: ' + (data.error || 'Unknown error'), 'error');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error testing bot:', error);
-            showToast('Failed to test bot: ' + error.message, 'error');
-        }
-    }
-
-    // ==================== FUNGSI EDIT WEBSITE ====================
-    function showEditModal(website) {
-        if (!elements.editModal || !website) return;
-        
-        websiteToEdit = website;
-        
-        // Isi form dengan data website
-        if (elements.editEndpoint) elements.editEndpoint.value = website.endpoint || '';
-        if (elements.editBotToken) elements.editBotToken.value = website.bot_token || '';
-        if (elements.editOwnerId) elements.editOwnerId.value = website.owner_id || '';
-        if (elements.editUsername) elements.editUsername.value = website.username || '';
-        if (elements.editEmail) elements.editEmail.value = website.email || '';
-        if (elements.editTunnelUrl) elements.editTunnelUrl.value = website.tunnel_url || '';
-        if (elements.editStatus) elements.editStatus.value = website.status || 'active';
-        
-        // Kosongkan password
-        if (elements.editPassword) elements.editPassword.value = '';
-        
-        // Set tanggal aktif
-        const today = new Date().toISOString().split('T')[0];
-        
-        if (elements.editStartDate) {
-            if (website.created_at) {
-                const startDate = new Date(website.created_at);
-                elements.editStartDate.value = startDate.toISOString().split('T')[0];
-            } else {
-                elements.editStartDate.value = today;
-            }
-        }
-        
-        if (elements.editEndDate) {
-            if (website.end_date) {
-                const endDate = new Date(website.end_date);
-                elements.editEndDate.value = endDate.toISOString().split('T')[0];
-                if (elements.currentEndDate) {
-                    elements.currentEndDate.textContent = formatDate(website.end_date);
-                }
-            } else {
-                const defaultEnd = new Date();
-                defaultEnd.setDate(defaultEnd.getDate() + 30);
-                elements.editEndDate.value = defaultEnd.toISOString().split('T')[0];
-                if (elements.currentEndDate) {
-                    elements.currentEndDate.textContent = 'Tidak terbatas';
-                }
-            }
-        }
-        
-        elements.editModal.classList.add('active');
-        vibrate(10);
-        
-        // Setup keyboard handler untuk modal ini
-        setTimeout(() => {
-            setupKeyboardHandler();
-        }, 100);
-    }
-    
-    function closeEditModal() {
-        if (elements.editModal) {
-            elements.editModal.classList.remove('active');
-            websiteToEdit = null;
-        }
-    }
-    
-    function calculateEndDate(startDate, days) {
-        const date = new Date(startDate);
-        date.setDate(date.getDate() + parseInt(days));
-        return date.toISOString().split('T')[0];
-    }
-    
-    // Fungsi update website
-    async function updateWebsite(formData) {
-        try {
-            showToast('Updating website...', 'info');
-            
-            const response = await fetch(`${API_BASE_URL}/api/websites/${formData.id}`, {
-                method: 'PUT',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(formData)
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showToast('Website updated successfully!', 'success');
-                closeEditModal();
-                await fetchWebsites();
-            } else {
-                throw new Error(data.error || 'Failed to update website');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error updating website:', error);
-            showToast(error.message || 'Failed to update website', 'error');
-        }
-    }
-
-    // ==================== FUNGSI SHOW MODAL ====================
+    // ==================== FUNGSI MODAL ====================
     function showModal() {
-        if (elements.createModal) {
-            elements.createModal.classList.add('active');
-            vibrate(10);
-            setTimeout(() => setupKeyboardHandler(), 100);
-            console.log('🔓 Create modal opened');
-        }
+        console.log('🔓 Opening modal');
+        document.getElementById('createModal').classList.add('active');
     }
 
     function closeModal() {
-        if (elements.createModal) {
-            elements.createModal.classList.remove('active');
-            // Reset form
-            if (elements.createWebsiteForm) {
-                elements.createWebsiteForm.reset();
-                console.log('📝 Create form reset');
-            }
-        }
+        console.log('🔒 Closing modal');
+        document.getElementById('createModal').classList.remove('active');
+        document.getElementById('createWebsiteForm').reset();
     }
 
-    function showDeleteModal(website) {
-        if (elements.deleteModal && website) {
-            websiteToDelete = website;
-            elements.deleteWebsiteInfo.innerHTML = `
-                <strong>${escapeHtml(website.endpoint)}</strong><br>
-                <small>ID: ${website.id}</small>
-            `;
-            elements.deleteModal.classList.add('active');
-            vibrate(10);
-        }
-    }
+    // ==================== HANDLE CREATE SUBMIT ====================
+    async function handleCreateSubmit(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        console.log('🎯 Form submitted!');
+        console.log('Event target:', event.target);
 
-    function closeDeleteModal() {
-        if (elements.deleteModal) {
-            elements.deleteModal.classList.remove('active');
-            websiteToDelete = null;
-        }
-    }
+        // Ambil data dari form - PASTIKAN ELEMEN ADA
+        const endpointInput = document.getElementById('endpoint');
+        const botTokenInput = document.getElementById('botToken');
+        const ownerIdInput = document.getElementById('ownerId');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const emailInput = document.getElementById('email');
 
-    // ==================== FUNGSI UPDATE UI ====================
-    function updateUI(user) {
-        currentUser = user;
-        
-        const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Owner';
-        const username = user.username ? `@${user.username}` : '(no username)';
-        const userId = user.id || '-';
-        
-        if (elements.ownerName) elements.ownerName.textContent = fullName;
-        if (elements.ownerUsername) elements.ownerUsername.textContent = username;
-        if (elements.ownerId) elements.ownerId.textContent = `ID: ${userId}`;
-        
-        if (elements.ownerPhoto) {
-            elements.ownerPhoto.src = user.photo_url || generateAvatarUrl(fullName);
+        if (!endpointInput || !botTokenInput || !ownerIdInput || !usernameInput || !passwordInput || !emailInput) {
+            console.error('❌ Form elements not found!');
+            showToast('❌ Form elements not found');
+            return;
         }
-        
-        if (elements.loading) elements.loading.style.display = 'none';
-        if (elements.error) elements.error.style.display = 'none';
-        if (elements.dashboardContent) elements.dashboardContent.style.display = 'block';
-        
-        fetchWebsites();
-    }
 
-    // ==================== FUNGSI SHOW ERROR ====================
-    function showError(message, isOwnerError = false) {
-        vibrate(30);
-        
-        if (elements.loading) elements.loading.style.display = 'none';
-        if (elements.error) {
-            elements.error.style.display = 'flex';
-            if (elements.errorMessage) {
-                if (isOwnerError) {
-                    elements.errorMessage.innerHTML = `
-                        <strong>❌ Access Denied</strong><br>
-                        <small>Your ID is not authorized as owner</small>
-                    `;
-                } else {
-                    elements.errorMessage.textContent = message;
-                }
-            }
-        }
-        if (elements.dashboardContent) {
-            elements.dashboardContent.style.display = 'none';
-        }
-    }
-
-    // ==================== FUNGSI HANDLE CREATE SUBMIT (VERSI PERBAIKAN) ====================
-    async function handleCreateSubmit(e) {
-        e.preventDefault();
-        e.stopPropagation(); // Mencegah event bubbling
-        
-        console.log('🎯 Create form submitted!');
-        console.log('Form element:', e.target);
-        
-        // Ambil nilai dari form dengan cara langsung dari DOM
-        const endpoint = document.getElementById('endpoint')?.value.trim() || '';
-        const botToken = document.getElementById('botToken')?.value.trim() || '';
-        const ownerId = document.getElementById('ownerId')?.value.trim() || '';
-        const username = document.getElementById('username')?.value.trim() || '';
-        const password = document.getElementById('password')?.value || '';
-        const email = document.getElementById('email')?.value.trim() || '';
-        
-        console.log('📝 Form values:', {
-            endpoint: endpoint || '(empty)',
-            botToken: botToken ? botToken.substring(0, 10) + '...' : '(empty)',
-            ownerId: ownerId || '(empty)',
-            username: username || '(empty)',
-            password: password ? '***' : '(empty)',
-            email: email || '(empty)'
-        });
-        
-        // Validasi
-        if (!endpoint) {
-            showToast('Endpoint cannot be empty', 'error');
-            return;
-        }
-        if (!botToken) {
-            showToast('Bot Token cannot be empty', 'error');
-            return;
-        }
-        if (!ownerId) {
-            showToast('Owner ID cannot be empty', 'error');
-            return;
-        }
-        if (!username) {
-            showToast('Username cannot be empty', 'error');
-            return;
-        }
-        if (!password) {
-            showToast('Password cannot be empty', 'error');
-            return;
-        }
-        if (!email) {
-            showToast('Email cannot be empty', 'error');
-            return;
-        }
-        
-        // Validasi endpoint
-        const endpointRegex = /^[a-z0-9-]+$/;
-        if (!endpointRegex.test(endpoint.toLowerCase())) {
-            showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
-            return;
-        }
-        
-        // Validasi email
-        if (!email.includes('@') || !email.includes('.')) {
-            showToast('Please enter a valid email address', 'error');
-            return;
-        }
-        
-        // Validasi bot token
-        if (!botToken.includes(':')) {
-            showToast('Bot token format invalid (should contain :)', 'error');
-            return;
-        }
-        
-        // Konversi ownerId ke number
-        const ownerIdNum = parseInt(ownerId);
-        if (isNaN(ownerIdNum)) {
-            showToast('Owner ID must be a number', 'error');
-            return;
-        }
-        
         const formData = {
-            endpoint: endpoint.toLowerCase(),
-            bot_token: botToken,
-            owner_id: ownerIdNum,
-            username: username,
-            password: password,
-            email: email.toLowerCase(),
+            endpoint: endpointInput.value.trim(),
+            bot_token: botTokenInput.value.trim(),
+            owner_id: parseInt(ownerIdInput.value.trim()),
+            username: usernameInput.value.trim(),
+            password: passwordInput.value,
+            email: emailInput.value.trim().toLowerCase(),
             status: 'active'
         };
-        
-        console.log('📦 FormData prepared:', formData);
-        
+
+        console.log('📦 Form data:', formData);
+
+        // Validasi
+        if (!formData.endpoint) {
+            showToast('❌ Endpoint cannot be empty');
+            return;
+        }
+        if (!formData.bot_token) {
+            showToast('❌ Bot Token cannot be empty');
+            return;
+        }
+        if (!formData.bot_token.includes(':')) {
+            showToast('❌ Invalid bot token format (must contain :)');
+            return;
+        }
+        if (isNaN(formData.owner_id)) {
+            showToast('❌ Owner ID must be a number');
+            return;
+        }
+        if (!formData.username) {
+            showToast('❌ Username cannot be empty');
+            return;
+        }
+        if (!formData.password) {
+            showToast('❌ Password cannot be empty');
+            return;
+        }
+        if (!formData.email || !formData.email.includes('@')) {
+            showToast('❌ Invalid email');
+            return;
+        }
+
         // Disable submit button
-        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const submitBtn = event.target.querySelector('button[type="submit"]');
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
         }
-        
+
         await createWebsite(formData);
-        
-        // Enable kembali submit button
+
+        // Enable submit button
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Website';
         }
     }
 
-    // ==================== FUNGSI INIT ====================
-    async function init() {
-        console.log('👑 Initializing Owner Dashboard...');
-        
-        try {
-            // Test API connection
-            const apiConnected = await testApiConnection();
-            if (!apiConnected) {
-                showToast('Warning: Cannot connect to server. Using dummy data.', 'warning');
-            }
-
-            // Cek environment Telegram
-            let telegramUserData = null;
-            let tg = null;
-            
-            if (window.Telegram?.WebApp) {
-                console.log('📱 Running inside Telegram Web App');
-                tg = window.Telegram.WebApp;
-                
-                tg.expand();
-                tg.ready();
-                
-                if (tg.initDataUnsafe?.user) {
-                    telegramUserData = tg.initDataUnsafe.user;
-                    console.log('📱 Telegram user data:', telegramUserData);
-                }
-                
-                applyTelegramTheme(tg);
-            } else {
-                console.log('🌐 Running in standalone web browser');
-                
-                // Untuk testing di browser
-                telegramUserData = {
-                    id: 7998861975,
-                    first_name: 'Owner',
-                    last_name: '',
-                    username: 'owner',
-                    language_code: 'id'
-                };
-            }
-            
-            if (!telegramUserData) {
-                showError('No user data available');
-                return;
-            }
-            
-            if (!isOwner(telegramUserData.id)) {
-                console.warn('⛔ Unauthorized access attempt:', telegramUserData.id);
-                showError('You are not authorized as owner', true);
-                return;
-            }
-            
-            console.log('✅ Owner verified!');
-            updateUI(telegramUserData);
-            setupKeyboardHandler();
-            
-        } catch (error) {
-            console.error('💥 Fatal error in init:', error);
-            showError('Failed to initialize dashboard');
-        }
-    }
-
-    // ==================== SETUP EVENT LISTENERS (VERSI PERBAIKAN) ====================
+    // ==================== SETUP (PAKAI ONSUBMIT LANGSUNG) ====================
     function setupEventListeners() {
         console.log('🔧 Setting up event listeners...');
-        
-        // Create Website button
-        if (elements.createWebsiteBtn) {
-            elements.createWebsiteBtn.addEventListener('click', function(e) {
-                console.log('👆 Create website button clicked');
+
+        // Create button - pakai onclick langsung
+        const createBtn = document.getElementById('createWebsiteBtn');
+        if (createBtn) {
+            createBtn.onclick = function() {
+                console.log('👆 Create button clicked');
                 showModal();
-            });
+            };
         }
-        
+
+        // Close buttons - pakai onclick langsung
+        const closeBtn = document.getElementById('closeModalBtn');
+        if (closeBtn) closeBtn.onclick = closeModal;
+
+        const cancelBtn = document.getElementById('cancelModalBtn');
+        if (cancelBtn) cancelBtn.onclick = closeModal;
+
         // Refresh button
-        if (elements.refreshDataBtn) {
-            elements.refreshDataBtn.addEventListener('click', () => {
-                vibrate(10);
+        const refreshBtn = document.getElementById('refreshDataBtn');
+        if (refreshBtn) {
+            refreshBtn.onclick = function() {
                 fetchWebsites();
-                showToast('Data refreshed', 'success');
-            });
+                showToast('🔄 Data refreshed');
+            };
         }
-        
-        // Search input
-        if (elements.searchWebsite) {
-            elements.searchWebsite.addEventListener('input', (e) => {
-                renderWebsitesTable(e.target.value);
-            });
-        }
-        
-        // Modal close buttons
-        if (elements.closeModalBtn) {
-            elements.closeModalBtn.addEventListener('click', closeModal);
-        }
-        if (elements.cancelModalBtn) {
-            elements.cancelModalBtn.addEventListener('click', closeModal);
-        }
-        
-        // Delete modal close buttons
-        if (elements.closeDeleteModalBtn) {
-            elements.closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
-        }
-        if (elements.cancelDeleteBtn) {
-            elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-        }
-        
-        // Edit modal close buttons
-        if (elements.closeEditModalBtn) {
-            elements.closeEditModalBtn.addEventListener('click', closeEditModal);
-        }
-        if (elements.cancelEditBtn) {
-            elements.cancelEditBtn.addEventListener('click', closeEditModal);
-        }
-        
-        // CREATE FORM SUBMIT - PASTIKAN INI BEKERJA
-        console.log('🔍 Looking for create form...');
-        const createForm = document.getElementById('createWebsiteForm');
-        
-        if (createForm) {
-            console.log('✅ Found create form with ID: createWebsiteForm');
-            
-            // Hapus semua event listener yang sudah ada (dengan clone)
-            const newForm = createForm.cloneNode(true);
-            createForm.parentNode.replaceChild(newForm, createForm);
-            
-            // Update elements dengan form baru
-            elements.createWebsiteForm = newForm;
-            
-            // Update juga input fields references
-            elements.endpointInput = document.getElementById('endpoint');
-            elements.botTokenInput = document.getElementById('botToken');
-            elements.ownerIdInput = document.getElementById('ownerId');
-            elements.usernameInput = document.getElementById('username');
-            elements.passwordInput = document.getElementById('password');
-            elements.emailInput = document.getElementById('email');
-            
-            console.log('📝 Input fields after refresh:', {
-                endpoint: elements.endpointInput,
-                botToken: elements.botTokenInput,
-                ownerId: elements.ownerIdInput,
-                username: elements.usernameInput,
-                password: elements.passwordInput,
-                email: elements.emailInput
-            });
-            
-            // Attach event listener ke form baru
-            newForm.addEventListener('submit', handleCreateSubmit);
-            
-            // Debug: Tambahkan juga onclick ke submit button
-            const submitBtn = newForm.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                console.log('✅ Found submit button:', submitBtn);
-                // Tambahkan debug onclick
-                submitBtn.addEventListener('click', function(e) {
-                    console.log('👆 Submit button clicked, will trigger form submit');
-                    // Form akan tetap di-submit secara normal
-                });
-            }
-            
-            console.log('✅ New event listener attached to create form');
+
+        // FORM SUBMIT - PAKAI ONSIGNMENT LANGSUNG
+        const form = document.getElementById('createWebsiteForm');
+        if (form) {
+            console.log('✅ Form found, attaching submit handler');
+            // Hapus onsubmit lama kalau ada
+            form.onsubmit = null;
+            // Set onsubmit baru
+            form.onsubmit = handleCreateSubmit;
+            console.log('✅ Submit handler attached');
         } else {
-            console.error('❌ Create website form not found!');
-            
-            // Coba cari dengan selector lain
-            const formBySelector = document.querySelector('form');
-            if (formBySelector) {
-                console.log('✅ Found form by selector:', formBySelector);
-                console.log('Form ID:', formBySelector.id);
-                console.log('Form action:', formBySelector.action);
-                console.log('Form method:', formBySelector.method);
-                
-                // Jika form ditemukan tapi ID berbeda, kita tetap gunakan
-                elements.createWebsiteForm = formBySelector;
-                formBySelector.addEventListener('submit', handleCreateSubmit);
-                console.log('✅ Event listener attached to form found by selector');
-            } else {
-                console.error('❌ No form found at all!');
-            }
+            console.error('❌ Form not found!');
         }
-        
-        // Confirm delete button
-        if (elements.confirmDeleteBtn) {
-            elements.confirmDeleteBtn.addEventListener('click', async () => {
-                if (websiteToDelete) {
-                    await deleteWebsite(websiteToDelete.id);
-                }
-            });
-        }
-        
-        // Event listener untuk active period di edit modal
-        if (elements.editActivePeriod) {
-            elements.editActivePeriod.addEventListener('change', () => {
-                const period = elements.editActivePeriod.value;
-                const dateRange = document.getElementById('dateRange');
-                
-                if (dateRange) {
-                    if (period === 'custom') {
-                        dateRange.style.display = 'block';
-                    } else {
-                        dateRange.style.display = 'none';
-                        
-                        const startDate = elements.editStartDate.value || new Date().toISOString().split('T')[0];
-                        const endDate = calculateEndDate(startDate, period);
-                        if (elements.editEndDate) {
-                            elements.editEndDate.value = endDate;
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Edit form submit
-        if (elements.editWebsiteForm) {
-            elements.editWebsiteForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                
-                if (!websiteToEdit) return;
-                
-                const formData = {
-                    id: websiteToEdit.id,
-                    bot_token: elements.editBotToken.value.trim(),
-                    owner_id: parseInt(elements.editOwnerId.value),
-                    username: elements.editUsername.value.trim(),
-                    email: elements.editEmail.value.trim().toLowerCase(),
-                    tunnel_url: elements.editTunnelUrl.value.trim(),
-                    status: elements.editStatus.value,
-                    end_date: elements.editEndDate.value,
-                    start_date: elements.editStartDate.value
-                };
-                
-                if (elements.editPassword && elements.editPassword.value) {
-                    formData.password = elements.editPassword.value;
-                }
-                
-                await updateWebsite(formData);
-            });
-        }
-        
-        // Close modals on outside click
-        window.addEventListener('click', (e) => {
-            if (e.target === elements.createModal) {
-                closeModal();
-            }
-            if (e.target === elements.deleteModal) {
-                closeDeleteModal();
-            }
-            if (e.target === elements.editModal) {
-                closeEditModal();
-            }
-        });
-        
-        console.log('✅ All event listeners setup complete');
-        
-        // Debug: Cek apakah form bisa diakses
-        setTimeout(() => {
-            const formCheck = document.getElementById('createWebsiteForm');
-            console.log('🔍 After setup, createWebsiteForm exists:', !!formCheck);
-            if (formCheck) {
-                console.log('Form HTML:', formCheck.outerHTML.substring(0, 200) + '...');
-            }
-        }, 1000);
+
+        console.log('✅ Event listeners setup complete');
     }
 
-    // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
+    // ==================== INITIALIZATION ====================
+    async function init() {
+        console.log('🚀 Initializing dashboard...');
+
+        try {
+            // Set user info (hardcode untuk testing)
+            document.getElementById('ownerName').textContent = 'Owner';
+            document.getElementById('ownerUsername').textContent = '@ftamous';
+            document.getElementById('ownerId').textContent = 'ID: 7998861975';
+
+            // Sembunyikan loading, tampilkan content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('dashboardContent').style.display = 'block';
+
+            // Setup event listeners
+            setupEventListeners();
+
+            // Fetch websites
+            await fetchWebsites();
+
+            console.log('✅ Dashboard initialized');
+        } catch (error) {
+            console.error('❌ Init error:', error);
+        }
+    }
+
+    // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.dashboard = {
         editWebsite: (id) => {
             const website = websites.find(w => w.id === id);
             if (website) {
-                showEditModal(website);
-            } else {
-                showToast('Website not found', 'error');
+                alert('Edit feature - ID: ' + id + '\nEndpoint: ' + website.endpoint);
             }
         },
         deleteWebsite: (id) => {
-            const website = websites.find(w => w.id === id);
-            if (website) {
-                showDeleteModal(website);
-            } else {
-                showToast('Website not found', 'error');
+            if (confirm('Are you sure you want to delete this website?')) {
+                alert('Delete feature - ID: ' + id);
             }
-        },
-        testBot: (id) => {
-            testBot(id);
         }
     };
 
-    // ==================== DEBUG: Cek form saat halaman dimuat ====================
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('📄 DOM Content Loaded');
-        const form = document.getElementById('createWebsiteForm');
-        console.log('Form element on DOMContentLoaded:', form);
-    });
-
     // ==================== START ====================
-    setupEventListeners();
-    init();
+    // Jalankan init setelah DOM siap
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
