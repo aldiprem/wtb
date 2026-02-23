@@ -50,7 +50,7 @@
         cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
         confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
         deleteWebsiteInfo: document.getElementById('deleteWebsiteInfo'),
-        // Tambahkan referensi ke input fields untuk create form
+        // Input fields untuk create form
         endpointInput: document.getElementById('endpoint'),
         botTokenInput: document.getElementById('botToken'),
         ownerIdInput: document.getElementById('ownerId'),
@@ -277,8 +277,7 @@
           method: 'GET',
           headers: { 'Accept': 'application/json' },
           mode: 'cors',
-          cache: 'no-cache',
-          credentials: 'include' // Tambahkan ini
+          cache: 'no-cache'
         });
     
         if (response.ok) {
@@ -291,7 +290,6 @@
         }
       } catch (error) {
         console.error('❌ API connection failed:', error);
-        console.error('URL tried:', `${API_BASE_URL}/api/health`);
         return false;
       }
     }
@@ -300,7 +298,6 @@
     async function fetchWebsites() {
       try {
         console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
-        console.log('📍 Full URL:', `${API_BASE_URL}/api/websites`);
     
         const response = await fetch(`${API_BASE_URL}/api/websites`, {
           method: 'GET',
@@ -308,12 +305,10 @@
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           },
-          mode: 'cors',
-          credentials: 'include'
+          mode: 'cors'
         });
     
         console.log('📥 Response status:', response.status);
-        console.log('📥 Response ok?', response.ok);
     
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -335,7 +330,6 @@
     
       } catch (error) {
         console.error('❌ Error fetching websites:', error);
-        console.error('❌ Error details:', error.message);
         showToast('Failed to fetch websites data: ' + error.message, 'error');
     
         // Gunakan dummy data jika gagal
@@ -345,100 +339,97 @@
       }
     }
 
-    // ==================== FUNGSI CREATE WEBSITE ====================
+    // ==================== FUNGSI CREATE WEBSITE (SATU FUNGSI SAJA) ====================
     async function createWebsite(formData) {
-      try {
-        showToast('Creating website...', 'info');
-
-        // Debug: lihat data yang dikirim
-        console.log('📤 Form data received:', formData);
-
-        // Validasi sederhana - cek apakah semua field ada (tanpa tunnel_url)
-        const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
-        const missingFields = [];
-
-        for (const field of requiredFields) {
-          if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
-            missingFields.push(field);
-            console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
-          }
-        }
-
-        if (missingFields.length > 0) {
-          console.error('❌ Missing fields:', missingFields);
-          showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
-          return;
-        }
-
-        // Validasi endpoint (hanya huruf kecil, angka, dan strip)
-        const endpointRegex = /^[a-z0-9-]+$/;
-        if (!endpointRegex.test(formData.endpoint)) {
-          showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
-          return;
-        }
-
-        // Validasi owner_id adalah angka
-        if (isNaN(formData.owner_id) || formData.owner_id <= 0) {
-          showToast('Owner ID must be a valid positive number', 'error');
-          return;
-        }
-
-        // Validasi email
-        if (!formData.email.includes('@') || !formData.email.includes('.')) {
-          showToast('Please enter a valid email address', 'error');
-          return;
-        }
-
-        // Validasi bot token format sederhana
-        if (!formData.bot_token.includes(':')) {
-          showToast('Bot token format invalid (should contain :)', 'error');
-          return;
-        }
-
-        console.log('📤 Sending data to server:', JSON.stringify(formData, null, 2));
-        console.log('📤 URL:', `${API_BASE_URL}/api/websites`);
-
-        const response = await fetch(`${API_BASE_URL}/api/websites`, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          mode: 'cors',
-          credentials: 'include', // Tambahkan ini
-          body: JSON.stringify(formData)
-        });
-
-        console.log('📥 Response status:', response.status);
-        console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
-
-        let data;
-        const responseText = await response.text();
-        console.log('📥 Raw response:', responseText);
-
         try {
-          data = JSON.parse(responseText);
-        } catch (e) {
-          console.error('❌ Failed to parse response:', e);
-          throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
-        }
+            showToast('Creating website...', 'info');
 
-        if (!response.ok) {
-          throw new Error(data.error || `Server error: ${response.status}`);
-        }
+            // Debug: lihat data yang dikirim
+            console.log('📤 Form data received:', formData);
 
-        if (data.success) {
-          showToast('Website created successfully!', 'success');
-          closeModal();
-          await fetchWebsites();
-        } else {
-          throw new Error(data.error || 'Failed to create website');
-        }
+            // Validasi sederhana - cek apakah semua field ada
+            const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
+            const missingFields = [];
 
-      } catch (error) {
-        console.error('❌ Error creating website:', error);
-        showToast(error.message || 'Failed to create website', 'error');
-      }
+            for (const field of requiredFields) {
+                if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
+                    missingFields.push(field);
+                    console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
+                }
+            }
+
+            if (missingFields.length > 0) {
+                console.error('❌ Missing fields:', missingFields);
+                showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
+                return;
+            }
+
+            // Validasi endpoint (hanya huruf kecil, angka, dan strip)
+            const endpointRegex = /^[a-z0-9-]+$/;
+            if (!endpointRegex.test(formData.endpoint)) {
+                showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
+                return;
+            }
+
+            // Validasi owner_id adalah angka
+            if (isNaN(formData.owner_id) || formData.owner_id <= 0) {
+                showToast('Owner ID must be a valid positive number', 'error');
+                return;
+            }
+
+            // Validasi email
+            if (!formData.email.includes('@') || !formData.email.includes('.')) {
+                showToast('Please enter a valid email address', 'error');
+                return;
+            }
+
+            // Validasi bot token format sederhana
+            if (!formData.bot_token.includes(':')) {
+                showToast('Bot token format invalid (should contain :)', 'error');
+                return;
+            }
+
+            console.log('📤 Sending data to server:', JSON.stringify(formData, null, 2));
+
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(formData)
+            });
+
+            console.log('📥 Response status:', response.status);
+
+            let data;
+            const responseText = await response.text();
+            console.log('📥 Raw response:', responseText);
+
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('❌ Failed to parse response:', e);
+                throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || `Server error: ${response.status}`);
+            }
+
+            if (data.success) {
+                showToast('Website created successfully!', 'success');
+                closeModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to create website');
+            }
+
+        } catch (error) {
+            console.error('❌ Error creating website:', error);
+            showToast(error.message || 'Failed to create website', 'error');
+        }
     }
 
     // ==================== FUNGSI DATA DUMMY UNTUK TESTING ====================
@@ -495,7 +486,7 @@
             w.endpoint.toLowerCase().includes(filter) ||
             w.username.toLowerCase().includes(filter) ||
             w.email.toLowerCase().includes(filter) ||
-            w.bot_token.includes(filter)
+            (w.bot_token && w.bot_token.includes(filter))
         );
         
         if (filteredWebsites.length === 0) {
@@ -529,7 +520,7 @@
                     <td>${escapeHtml(website.username)}</td>
                     <td>${escapeHtml(website.email)}</td>
                     <td>
-                        <a href="${escapeHtml(website.tunnel_url)}" target="_blank" class="tunnel-link">
+                        <a href="${escapeHtml(website.tunnel_url || '#')}" target="_blank" class="tunnel-link">
                             <i class="fas fa-external-link-alt"></i> Tunnel
                         </a>
                     </td>
@@ -553,101 +544,6 @@
         elements.websitesTableBody.innerHTML = html;
     }
 
-    // ==================== FUNGSI CREATE WEBSITE ====================
-    async function createWebsite(formData) {
-        try {
-            showToast('Creating website...', 'info');
-            
-            // Debug: lihat data yang dikirim
-            console.log('📤 Form data received:', formData);
-            
-            // Validasi sederhana - cek apakah semua field ada (tanpa tunnel_url)
-            const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
-            const missingFields = [];
-            
-            for (const field of requiredFields) {
-                if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
-                    missingFields.push(field);
-                    console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
-                }
-            }
-            
-            if (missingFields.length > 0) {
-                console.error('❌ Missing fields:', missingFields);
-                showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
-                return;
-            }
-            
-            // Validasi endpoint (hanya huruf kecil, angka, dan strip)
-            const endpointRegex = /^[a-z0-9-]+$/;
-            if (!endpointRegex.test(formData.endpoint)) {
-                showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
-                return;
-            }
-            
-            // Validasi owner_id adalah angka
-            if (isNaN(formData.owner_id) || formData.owner_id <= 0) {
-                showToast('Owner ID must be a valid positive number', 'error');
-                return;
-            }
-            
-            // Validasi email
-            if (!formData.email.includes('@') || !formData.email.includes('.')) {
-                showToast('Please enter a valid email address', 'error');
-                return;
-            }
-            
-            // Validasi bot token format sederhana
-            if (!formData.bot_token.includes(':')) {
-                showToast('Bot token format invalid (should contain :)', 'error');
-                return;
-            }
-            
-            console.log('📤 Sending data to server:', JSON.stringify(formData, null, 2));
-            console.log('📤 URL:', `${API_BASE_URL}/api/websites`);
-            
-            const response = await fetch(`${API_BASE_URL}/api/websites`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(formData)
-            });
-            
-            console.log('📥 Response status:', response.status);
-            console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
-            
-            let data;
-            const responseText = await response.text();
-            console.log('📥 Raw response:', responseText);
-            
-            try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('❌ Failed to parse response:', e);
-                throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
-            }
-            
-            if (!response.ok) {
-                throw new Error(data.error || `Server error: ${response.status}`);
-            }
-            
-            if (data.success) {
-                showToast('Website created successfully!', 'success');
-                closeModal();
-                await fetchWebsites();
-            } else {
-                throw new Error(data.error || 'Failed to create website');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error creating website:', error);
-            showToast(error.message || 'Failed to create website', 'error');
-        }
-    }
-    
     // ==================== FUNGSI DELETE WEBSITE ====================
     async function deleteWebsite(id) {
         try {
@@ -841,7 +737,7 @@
     function closeModal() {
         if (elements.createModal) {
             elements.createModal.classList.remove('active');
-            // Reset form menggunakan referensi yang sudah diperbarui
+            // Reset form
             if (elements.createWebsiteForm) {
                 elements.createWebsiteForm.reset();
                 console.log('📝 Create form reset');
@@ -912,6 +808,96 @@
         if (elements.dashboardContent) {
             elements.dashboardContent.style.display = 'none';
         }
+    }
+
+    // ==================== FUNGSI HANDLE CREATE SUBMIT ====================
+    async function handleCreateSubmit(e) {
+        e.preventDefault();
+        
+        console.log('🎯 Create form submitted!');
+        
+        // Validasi form fields
+        if (!elements.endpointInput || !elements.botTokenInput || !elements.ownerIdInput || 
+            !elements.usernameInput || !elements.passwordInput || !elements.emailInput) {
+            console.error('❌ Form input elements not found');
+            showToast('Form input elements not found', 'error');
+            return;
+        }
+        
+        const endpoint = elements.endpointInput.value.trim();
+        const botToken = elements.botTokenInput.value.trim();
+        const ownerId = elements.ownerIdInput.value.trim();
+        const username = elements.usernameInput.value.trim();
+        const password = elements.passwordInput.value;
+        const email = elements.emailInput.value.trim();
+        
+        // Debug: lihat nilai yang diambil
+        console.log('📝 Form values:', {
+            endpoint,
+            botToken: botToken ? `${botToken.substring(0, 10)}...` : '(empty)',
+            ownerId,
+            username,
+            password: password ? '***' : '(empty)',
+            email
+        });
+        
+        // Validasi sederhana sebelum membuat formData
+        if (!endpoint) {
+            showToast('Endpoint is required', 'error');
+            elements.endpointInput.focus();
+            return;
+        }
+        
+        if (!botToken) {
+            showToast('Bot Token is required', 'error');
+            elements.botTokenInput.focus();
+            return;
+        }
+        
+        if (!ownerId) {
+            showToast('Owner ID is required', 'error');
+            elements.ownerIdInput.focus();
+            return;
+        }
+        
+        if (!username) {
+            showToast('Username is required', 'error');
+            elements.usernameInput.focus();
+            return;
+        }
+        
+        if (!password) {
+            showToast('Password is required', 'error');
+            elements.passwordInput.focus();
+            return;
+        }
+        
+        if (!email) {
+            showToast('Email is required', 'error');
+            elements.emailInput.focus();
+            return;
+        }
+        
+        // Konversi ownerId ke number
+        const ownerIdNum = parseInt(ownerId);
+        if (isNaN(ownerIdNum)) {
+            showToast('Owner ID must be a number', 'error');
+            elements.ownerIdInput.focus();
+            return;
+        }
+        
+        const formData = {
+            endpoint: endpoint.toLowerCase(),
+            bot_token: botToken,
+            owner_id: ownerIdNum,
+            username: username,
+            password: password,
+            email: email.toLowerCase(),
+            status: 'active'
+        };
+        
+        console.log('📦 FormData prepared:', formData);
+        await createWebsite(formData);
     }
 
     // ==================== FUNGSI INIT ====================
@@ -1016,18 +1002,15 @@
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
         
-        // PERBAIKAN: Jangan clone node jika tidak perlu
-        // Tapi jika ingin memastikan tidak ada event listener ganda, gunakan pendekatan ini
+        // Create form submit - langsung attach event listener tanpa clone node
         if (elements.createWebsiteForm) {
-            // Hapus event listener lama dengan replace node
-            const oldForm = elements.createWebsiteForm;
-            const newForm = oldForm.cloneNode(true);
-            oldForm.parentNode.replaceChild(newForm, oldForm);
-            
-            // Update referensi form
+            // Hapus event listener lama jika ada dengan replace
+            const newForm = elements.createWebsiteForm.cloneNode(false);
+            const parent = elements.createWebsiteForm.parentNode;
+            parent.replaceChild(newForm, elements.createWebsiteForm);
             elements.createWebsiteForm = newForm;
             
-            // Update referensi input fields setelah clone
+            // Update referensi input fields setelah replace
             elements.endpointInput = document.getElementById('endpoint');
             elements.botTokenInput = document.getElementById('botToken');
             elements.ownerIdInput = document.getElementById('ownerId');
@@ -1036,12 +1019,12 @@
             elements.emailInput = document.getElementById('email');
             
             console.log('🔄 Create form re-initialized');
-            console.log('📍 Endpoint input:', elements.endpointInput);
-            console.log('📍 BotToken input:', elements.botTokenInput);
-            console.log('📍 OwnerId input:', elements.ownerIdInput);
-            console.log('📍 Username input:', elements.usernameInput);
-            console.log('📍 Password input:', elements.passwordInput);
-            console.log('📍 Email input:', elements.emailInput);
+            console.log('📍 Endpoint input found:', !!elements.endpointInput);
+            console.log('📍 BotToken input found:', !!elements.botTokenInput);
+            console.log('📍 OwnerId input found:', !!elements.ownerIdInput);
+            console.log('📍 Username input found:', !!elements.usernameInput);
+            console.log('📍 Password input found:', !!elements.passwordInput);
+            console.log('📍 Email input found:', !!elements.emailInput);
             
             // Tambahkan event listener baru
             elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
@@ -1120,59 +1103,6 @@
                 closeEditModal();
             }
         });
-    }
-    
-    // Handler untuk form submit
-    async function handleCreateSubmit(e) {
-        e.preventDefault();
-        
-        console.log('🎯 Create form submitted!');
-        
-        // Gunakan referensi yang sudah diperbarui
-        const endpoint = elements.endpointInput ? elements.endpointInput.value.trim() : '';
-        const botToken = elements.botTokenInput ? elements.botTokenInput.value.trim() : '';
-        const ownerId = elements.ownerIdInput ? elements.ownerIdInput.value.trim() : '';
-        const username = elements.usernameInput ? elements.usernameInput.value.trim() : '';
-        const password = elements.passwordInput ? elements.passwordInput.value : '';
-        const email = elements.emailInput ? elements.emailInput.value.trim() : '';
-        
-        // Debug: lihat nilai yang diambil
-        console.log('📝 Form values:', {
-            endpoint,
-            botToken,
-            ownerId,
-            username,
-            password: password ? '***' : '(empty)',
-            email
-        });
-        
-        // Validasi sederhana sebelum membuat formData
-        if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
-            console.error('❌ Missing fields detected');
-            showToast('Please fill all fields', 'error');
-            return;
-        }
-        
-        // Konversi ownerId ke number
-        const ownerIdNum = parseInt(ownerId);
-        if (isNaN(ownerIdNum)) {
-            console.error('❌ Owner ID is not a number');
-            showToast('Owner ID must be a number', 'error');
-            return;
-        }
-        
-        const formData = {
-            endpoint: endpoint.toLowerCase(),
-            bot_token: botToken,
-            owner_id: ownerIdNum,
-            username: username,
-            password: password,
-            email: email.toLowerCase(),
-            status: 'active'
-        };
-        
-        console.log('📦 FormData prepared:', formData);
-        await createWebsite(formData);
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
