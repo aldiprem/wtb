@@ -1,8 +1,17 @@
-// Website JavaScript for Public Store - Versi Database Only
+// Website JavaScript for Public Store - GitHub Pages Version
 (function() {
     console.log('🏪 Website Store - Initializing...');
 
-    const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.apiBaseUrl : 'https://supports-lease-honest-potter.trycloudflare.com';
+    // ==================== KONFIGURASI ====================
+    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com'; // URL backend Flask
+
+    // ==================== FUNGSI GET ENDPOINT DARI URL ====================
+    function getEndpointFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const endpoint = urlParams.get('store'); // ?store=premy
+        console.log('📍 Endpoint from URL:', endpoint);
+        return endpoint;
+    }
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -98,12 +107,6 @@
     let currentBannerIndex = 0;
 
     // ==================== FUNGSI UTILITY ====================
-    function getEndpointFromUrl() {
-        const path = window.location.pathname;
-        const matches = path.match(/\/website\/([^\/]+)/);
-        return matches ? matches[1] : null;
-    }
-
     function vibrate(duration = 20) {
         if (window.navigator && window.navigator.vibrate) {
             window.navigator.vibrate(duration);
@@ -941,7 +944,7 @@
         console.log('📍 Endpoint:', currentEndpoint);
         
         if (!currentEndpoint) {
-            showToast('Endpoint tidak valid', 'error');
+            showToast('Endpoint tidak valid. Gunakan ?store=nama-endpoint', 'error');
             return;
         }
         
