@@ -1,393 +1,919 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="HandheldFriendly" content="true">
-    <meta name="MobileOptimized" content="width">
-    <title>Owner Dashboard - MiniApp Manager</title>
+// Dashboard JavaScript for Owner
+(function() {
+    console.log('👑 Owner Dashboard - Initializing...');
+
+    // ==================== KONFIGURASI ====================
+    const OWNER_IDS = [7998861975];
+    const API_BASE_URL = 'https://discussions-prison-applications-former.trycloudflare.com';
+
+    // ==================== DOM ELEMENTS ====================
+    const elements = {
+        loading: document.getElementById('loading'),
+        error: document.getElementById('error'),
+        errorMessage: document.getElementById('errorMessage'),
+        dashboardContent: document.getElementById('dashboardContent'),
+        ownerPhoto: document.getElementById('ownerPhoto'),
+        ownerName: document.getElementById('ownerName'),
+        ownerUsername: document.getElementById('ownerUsername'),
+        ownerId: document.getElementById('ownerId'),
+        totalWebsites: document.getElementById('totalWebsites'),
+        activeWebsites: document.getElementById('activeWebsites'),
+        inactiveWebsites: document.getElementById('inactiveWebsites'),
+        totalBots: document.getElementById('totalBots'),
+        websitesTableBody: document.getElementById('websitesTableBody'),
+        noDataMessage: document.getElementById('noDataMessage'),
+        createWebsiteBtn: document.getElementById('createWebsiteBtn'),
+        refreshDataBtn: document.getElementById('refreshDataBtn'),
+        searchWebsite: document.getElementById('searchWebsite'),
+        createModal: document.getElementById('createModal'),
+        deleteModal: document.getElementById('deleteModal'),
+        editModal: document.getElementById('editModal'),
+        closeEditModalBtn: document.getElementById('closeEditModalBtn'),
+        cancelEditBtn: document.getElementById('cancelEditBtn'),
+        editWebsiteForm: document.getElementById('editWebsiteForm'),
+        editEndpoint: document.getElementById('editEndpoint'),
+        editBotToken: document.getElementById('editBotToken'),
+        editOwnerId: document.getElementById('editOwnerId'),
+        editUsername: document.getElementById('editUsername'),
+        editPassword: document.getElementById('editPassword'),
+        editEmail: document.getElementById('editEmail'),
+        editTunnelUrl: document.getElementById('editTunnelUrl'),
+        editStatus: document.getElementById('editStatus'),
+        editActivePeriod: document.getElementById('editActivePeriod'),
+        editStartDate: document.getElementById('editStartDate'),
+        editEndDate: document.getElementById('editEndDate'),
+        currentEndDate: document.getElementById('currentEndDate'),
+        createWebsiteForm: document.getElementById('createWebsiteForm'),
+        closeModalBtn: document.getElementById('closeModalBtn'),
+        cancelModalBtn: document.getElementById('cancelModalBtn'),
+        closeDeleteModalBtn: document.getElementById('closeDeleteModalBtn'),
+        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+        confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+        deleteWebsiteInfo: document.getElementById('deleteWebsiteInfo')
+    };
+
+    // ==================== STATE ====================
+    let currentUser = null;
+    let websites = [];
+    let websiteToDelete = null;
+
+    // ==================== FUNGSI VIBRATE ====================
+    function vibrate(duration = 20) {
+        if (window.navigator && window.navigator.vibrate) {
+            window.navigator.vibrate(duration);
+        }
+    }
+
+    // ==================== FUNGSI KEYBOARD HANDLER ====================
+    function setupKeyboardHandler() {
+      // Dapatkan semua input field
+      const inputs = document.querySelectorAll('input, textarea, select');
     
-    <!-- CSS -->
-    <link rel="stylesheet" href="css/dashboard.css">
+      inputs.forEach(input => {
+        // Saat input fokus
+        input.addEventListener('focus', () => {
+          // Scroll ke element dengan smooth
+          setTimeout(() => {
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        });
+      });
+
+    // ==================== FUNGSI EDIT WEBSITE ====================
+    function showEditModal(website) {
+      if (!elements.editModal || !website) return;
     
-    <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+      websiteToEdit = website;
     
-    <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-</head>
-<body>
-    <div class="dashboard-container">
-        <!-- Header dengan verifikasi owner -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <div class="logo-wrapper">
-                    <i class="fas fa-crown"></i>
-                </div>
-                <div class="header-title">
-                    <h1>Owner Dashboard</h1>
-                    <span class="badge-owner">OWNER ACCESS</span>
-                </div>
-            </div>
+      // Isi form dengan data website
+      elements.editEndpoint.value = website.endpoint || '';
+      elements.editBotToken.value = website.bot_token || '';
+      elements.editOwnerId.value = website.owner_id || '';
+      elements.editUsername.value = website.username || '';
+      elements.editEmail.value = website.email || '';
+      elements.editTunnelUrl.value = website.tunnel_url || '';
+      elements.editStatus.value = website.status || 'active';
+    
+      // Kosongkan password
+      elements.editPassword.value = '';
+    
+      // Set tanggal aktif
+      if (website.end_date) {
+        const endDate = new Date(website.end_date);
+        elements.currentEndDate.textContent = formatDate(website.end_date);
+    
+        // Set default end date
+        elements.editEndDate.value = endDate.toISOString().split('T')[0];
+      } else {
+        // Default +30 hari dari sekarang
+        const defaultEnd = new Date();
+        defaultEnd.setDate(defaultEnd.getDate() + 30);
+        elements.editEndDate.value = defaultEnd.toISOString().split('T')[0];
+        elements.currentEndDate.textContent = 'Tidak terbatas';
+      }
+    
+      // Set start date (created_at atau today)
+      if (website.created_at) {
+        const startDate = new Date(website.created_at);
+        elements.editStartDate.value = startDate.toISOString().split('T')[0];
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        elements.editStartDate.value = today;
+      }
+    
+      elements.editModal.classList.add('active');
+      vibrate(10);
+    }
+    
+    function closeEditModal() {
+      if (elements.editModal) {
+        elements.editModal.classList.remove('active');
+        websiteToEdit = null;
+      }
+    }
+    
+    function calculateEndDate(startDate, days) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + parseInt(days));
+      return date.toISOString().split('T')[0];
+    }
+    
+    // Update fungsi editWebsite di window.dashboard
+    window.dashboard = {
+      editWebsite: (id) => {
+        const website = websites.find(w => w.id === id);
+        if (website) {
+          showEditModal(website);
+        }
+      },
+      deleteWebsite: (id) => {
+        const website = websites.find(w => w.id === id);
+        if (website) {
+          showDeleteModal(website);
+        }
+      },
+      testBot: (id) => {
+        testBot(id);
+      }
+    };
+    
+    // Event listener untuk active period
+    if (elements.editActivePeriod) {
+      elements.editActivePeriod.addEventListener('change', () => {
+        const period = elements.editActivePeriod.value;
+        const dateRange = document.getElementById('dateRange');
+    
+        if (period === 'custom') {
+          dateRange.style.display = 'block';
+        } else {
+          dateRange.style.display = 'none';
+    
+          // Auto calculate end date
+          const startDate = elements.editStartDate.value || new Date().toISOString().split('T')[0];
+          const endDate = calculateEndDate(startDate, period);
+          elements.editEndDate.value = endDate;
+        }
+      });
+    }
+    
+    // Event listener untuk edit form submit
+    if (elements.editWebsiteForm) {
+      elements.editWebsiteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+    
+        if (!websiteToEdit) return;
+    
+        const formData = {
+          id: websiteToEdit.id,
+          bot_token: elements.editBotToken.value,
+          owner_id: parseInt(elements.editOwnerId.value),
+          username: elements.editUsername.value,
+          email: elements.editEmail.value,
+          tunnel_url: elements.editTunnelUrl.value,
+          status: elements.editStatus.value,
+          end_date: elements.editEndDate.value,
+          start_date: elements.editStartDate.value
+        };
+    
+        // Only include password if changed
+        if (elements.editPassword.value) {
+          formData.password = elements.editPassword.value;
+        }
+    
+        await updateWebsite(formData);
+      });
+    }
+    
+    // Fungsi update website
+    async function updateWebsite(formData) {
+      try {
+        showToast('Updating website...', 'info');
+    
+        const response = await fetch(`${API_BASE_URL}/api/websites/${formData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors',
+          body: JSON.stringify(formData)
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+    
+        if (data.success) {
+          showToast('Website updated successfully!', 'success');
+          closeEditModal();
+          await fetchWebsites();
+        } else {
+          throw new Error(data.error || 'Failed to update website');
+        }
+    
+      } catch (error) {
+        console.error('❌ Error updating website:', error);
+        showToast(error.message || 'Failed to update website', 'error');
+      }
+    }
+    
+    // Tambahkan event listeners untuk edit modal
+    if (elements.closeEditModalBtn) {
+      elements.closeEditModalBtn.addEventListener('click', closeEditModal);
+    }
+    if (elements.cancelEditBtn) {
+      elements.cancelEditBtn.addEventListener('click', closeEditModal);
+    }
+
+      // Klik di luar input untuk menutup keyboard
+      document.addEventListener('touchstart', (e) => {
+        const activeElement = document.activeElement;
+        if (!activeElement) return;
+    
+        // Cek apakah yang diklik adalah input atau bukan
+        const isInput = e.target.tagName === 'INPUT' ||
+          e.target.tagName === 'TEXTAREA' ||
+          e.target.tagName === 'SELECT';
+    
+        // Jika bukan input dan ada element yang focus, blur
+        if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+          activeElement.blur();
+    
+          // Force keyboard close dengan temporary readonly
+          activeElement.setAttribute('readonly', 'readonly');
+          setTimeout(() => {
+            activeElement.removeAttribute('readonly');
+          }, 100);
+        }
+      });
+    
+      // Handle form submit - blur input
+      document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', () => {
+          const activeElement = document.activeElement;
+          if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+            activeElement.blur();
+          }
+        });
+      });
+    
+      // Prevent scroll on input focus untuk beberapa kasus
+      let preventScroll = false;
+      document.addEventListener('focusin', (e) => {
+        if (e.target.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+          if (preventScroll) {
+            const scrollY = window.scrollY;
+            e.target.addEventListener('blur', () => {
+              window.scrollTo(0, scrollY);
+            }, { once: true });
+          }
+        }
+      });
+    }
+    
+    // Panggil fungsi ini di init()
+    setupKeyboardHandler();
+
+    // ==================== FUNGSI TOAST ====================
+    function showToast(message, type = 'info', duration = 3000) {
+        let toastContainer = document.querySelector('.toast-container');
+        
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container';
+            toastContainer.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 20px;
+                right: 20px;
+                z-index: 10000;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                pointer-events: none;
+            `;
+            document.body.appendChild(toastContainer);
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.style.cssText = `
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideUp 0.3s ease;
+            pointer-events: auto;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        `;
+        toast.textContent = message;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                toast.remove();
+                if (toastContainer.children.length === 0) {
+                    toastContainer.remove();
+                }
+            }, 300);
+        }, duration);
+    }
+
+    // ==================== FUNGSI CEK OWNER ====================
+    function isOwner(userId) {
+        return OWNER_IDS.includes(Number(userId));
+    }
+
+    // ==================== FUNGSI APPLY TELEGRAM THEME ====================
+    function applyTelegramTheme(tg) {
+        if (!tg || !tg.themeParams) return;
+        
+        try {
+            const theme = tg.themeParams;
+            console.log('🎨 Applying Telegram theme');
             
-            <!-- Loading State -->
-            <div id="loading" class="loading-state">
-                <div class="spinner"></div>
-                <span>Verifying access...</span>
-            </div>
+            if (theme.bg_color) {
+                document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
+            }
+            if (theme.text_color) {
+                document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
+            }
+            if (theme.hint_color) {
+                document.documentElement.style.setProperty('--tg-hint-color', theme.hint_color);
+            }
+            if (theme.link_color) {
+                document.documentElement.style.setProperty('--tg-link-color', theme.link_color);
+            }
+            if (theme.button_color) {
+                document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
+            }
+            if (theme.button_text_color) {
+                document.documentElement.style.setProperty('--tg-button-text-color', theme.button_text_color);
+            }
+        } catch (themeError) {
+            console.warn('⚠️ Error applying Telegram theme:', themeError);
+        }
+    }
+
+    // ==================== FUNGSI GENERATE AVATAR ====================
+    function generateAvatarUrl(name) {
+        if (!name) return 'https://ui-avatars.com/api/?name=O&size=120&background=FFD700&color=000';
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=120&background=FFD700&color=000`;
+    }
+
+    // ==================== FUNGSI FORMAT DATE ====================
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleString('id-ID', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    // ==================== FUNGSI ESCAPE HTML ====================
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ==================== FUNGSI FETCH WEBSITES ====================
+    async function fetchWebsites() {
+        try {
+            console.log('📡 Fetching websites data...');
             
-            <!-- Error State -->
-            <div id="error" class="error-state" style="display: none;">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span id="errorMessage">Access Denied</span>
-                <button onclick="location.reload()" class="retry-btn">Retry</button>
-            </div>
-        </div>
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
 
-        <!-- Main Content - Only visible if owner verified -->
-        <div id="dashboardContent" class="dashboard-content" style="display: none;">
-            <!-- Owner Info Card -->
-            <div class="owner-info-card">
-                <div class="owner-avatar">
-                    <img id="ownerPhoto" src="https://ui-avatars.com/api/?name=Owner&size=120&background=FFD700&color=000" alt="Owner">
-                    <div class="owner-verified">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                </div>
-                <div class="owner-details">
-                    <div class="owner-name-wrapper">
-                        <h2 id="ownerName">Loading...</h2>
-                        <span class="owner-badge">OWNER</span>
-                    </div>
-                    <div class="owner-meta">
-                        <span id="ownerUsername">@loading</span>
-                        <span id="ownerId">ID: -</span>
-                    </div>
-                </div>
-            </div>
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon websites">
-                        <i class="fas fa-globe"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Total Websites</span>
-                        <span class="stat-value" id="totalWebsites">0</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon active">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Active</span>
-                        <span class="stat-value" id="activeWebsites">0</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon inactive">
-                        <i class="fas fa-times-circle"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Inactive</span>
-                        <span class="stat-value" id="inactiveWebsites">0</span>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon bots">
-                        <i class="fas fa-robot"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Total Bots</span>
-                        <span class="stat-value" id="totalBots">0</span>
-                    </div>
-                </div>
-            </div>
+            const data = await response.json();
+            console.log('📥 Websites data:', data);
 
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="createWebsiteBtn">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>Create New Website</span>
-                </button>
-                <button class="btn btn-secondary" id="refreshDataBtn">
-                    <i class="fas fa-sync-alt"></i>
-                    <span>Refresh Data</span>
-                </button>
-            </div>
+            if (data.success && data.websites) {
+                websites = data.websites;
+            } else if (Array.isArray(data)) {
+                websites = data;
+            } else {
+                websites = [];
+            }
 
-            <!-- Websites Table -->
-            <div class="websites-section">
-                <div class="section-header">
-                    <h3><i class="fas fa-list"></i> Managed Websites</h3>
-                    <div class="search-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="searchWebsite" placeholder="Search websites...">
-                    </div>
-                </div>
-                
-                <div class="table-container">
-                    <table class="websites-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Endpoint</th>
-                                <th>Token Bot</th>
-                                <th>Owner ID</th>
-                                <th>Username</th>
-                                <th>Email</th>
-                                <th>Tunnel URL</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="websitesTableBody">
-                            <!-- Data will be populated here -->
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div id="noDataMessage" class="no-data-message" style="display: none;">
-                    <i class="fas fa-folder-open"></i>
-                    <p>No websites found. Create your first website!</p>
-                </div>
-            </div>
+            updateStats();
+            renderWebsitesTable();
+            
+        } catch (error) {
+            console.error('❌ Error fetching websites:', error);
+            showToast('Failed to fetch websites data', 'error');
+            
+            // Gunakan data dummy untuk testing
+            websites = getDummyWebsites();
+            updateStats();
+            renderWebsitesTable();
+        }
+    }
 
-            <!-- Create Website Modal -->
-            <div id="createModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2><i class="fas fa-plus-circle"></i> Create New Website</h2>
-                        <button class="modal-close" id="closeModalBtn">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="createWebsiteForm">
-                            <div class="form-group">
-                                <label for="endpoint">
-                                    <i class="fas fa-link"></i>
-                                    Endpoint Website
-                                </label>
-                                <input type="text" id="endpoint" placeholder="my-website" required>
-                                <small>Will be used as: /my-website</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="botToken">
-                                    <i class="fas fa-robot"></i>
-                                    Bot Token
-                                </label>
-                                <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="ownerId">
-                                    <i class="fas fa-id-card"></i>
-                                    Owner ID (Telegram)
-                                </label>
-                                <input type="number" id="ownerId" placeholder="123456789" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="username">
-                                    <i class="fas fa-user"></i>
-                                    Username
-                                </label>
-                                <input type="text" id="username" placeholder="admin" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="password">
-                                    <i class="fas fa-lock"></i>
-                                    Password
-                                </label>
-                                <input type="password" id="password" placeholder="••••••••" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="email">
-                                    <i class="fas fa-envelope"></i>
-                                    Email
-                                </label>
-                                <input type="email" id="email" placeholder="admin@example.com" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="tunnelUrl">
-                                    <i class="fas fa-tunnel"></i>
-                                    Tunnel URL (Flask)
-                                </label>
-                                <input type="url" id="tunnelUrl" placeholder="https://your-tunnel.trycloudflare.com" required>
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i>
-                                    Create Website
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+    // ==================== FUNGSI DATA DUMMY UNTUK TESTING ====================
+    function getDummyWebsites() {
+        return [
+            {
+                id: 1,
+                endpoint: 'giveaway-site',
+                bot_token: '1234567890:ABCdefGHIjklMNOpqrsTUVwxyz',
+                owner_id: 123456789,
+                username: 'admin_giveaway',
+                email: 'admin@giveaway.com',
+                tunnel_url: 'https://discussions-prison-applications-former.trycloudflare.com',
+                status: 'active',
+                created_at: new Date().toISOString()
+            },
+            {
+                id: 2,
+                endpoint: 'contest-bot',
+                bot_token: '0987654321:ZYXwvutsrqponMLKJIHGFEDCBA',
+                owner_id: 987654321,
+                username: 'contest_admin',
+                email: 'contest@bot.com',
+                tunnel_url: 'https://discussions-prison-applications-former.trycloudflare.com',
+                status: 'inactive',
+                created_at: new Date().toISOString()
+            }
+        ];
+    }
 
-            <!-- Delete Confirmation Modal -->
-            <div id="deleteModal" class="modal">
-                <div class="modal-content delete-modal">
-                    <div class="modal-header delete">
-                        <h2><i class="fas fa-exclamation-triangle"></i> Delete Website</h2>
-                        <button class="modal-close" id="closeDeleteModalBtn">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Are you sure you want to delete this website?</p>
-                        <p class="delete-warning">This action cannot be undone!</p>
-                        <div class="delete-info" id="deleteWebsiteInfo"></div>
-                        <div class="form-actions">
-                            <button class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
-                            <button class="btn btn-danger" id="confirmDeleteBtn">
+    // ==================== FUNGSI UPDATE STATS ====================
+    function updateStats() {
+        const total = websites.length;
+        const active = websites.filter(w => w.status === 'active').length;
+        const inactive = websites.filter(w => w.status === 'inactive' || !w.status).length;
+        
+        // Hitung total bot unik berdasarkan token
+        const uniqueTokens = new Set(websites.map(w => w.bot_token));
+        const totalBots = uniqueTokens.size;
+
+        if (elements.totalWebsites) elements.totalWebsites.textContent = total;
+        if (elements.activeWebsites) elements.activeWebsites.textContent = active;
+        if (elements.inactiveWebsites) elements.inactiveWebsites.textContent = inactive;
+        if (elements.totalBots) elements.totalBots.textContent = totalBots;
+    }
+
+    // ==================== FUNGSI RENDER TABEL WEBSITES ====================
+    function renderWebsitesTable(filterText = '') {
+        if (!elements.websitesTableBody) return;
+
+        const filter = filterText.toLowerCase();
+        const filteredWebsites = websites.filter(w => 
+            w.endpoint.toLowerCase().includes(filter) ||
+            w.username.toLowerCase().includes(filter) ||
+            w.email.toLowerCase().includes(filter) ||
+            w.bot_token.includes(filter)
+        );
+
+        if (filteredWebsites.length === 0) {
+            elements.websitesTableBody.innerHTML = '';
+            if (elements.noDataMessage) {
+                elements.noDataMessage.style.display = 'flex';
+            }
+            return;
+        }
+
+        if (elements.noDataMessage) {
+            elements.noDataMessage.style.display = 'none';
+        }
+
+        let html = '';
+        filteredWebsites.forEach(website => {
+            const status = website.status === 'active' ? 
+                '<span class="status-badge status-active"><i class="fas fa-circle"></i> Active</span>' : 
+                '<span class="status-badge status-inactive"><i class="fas fa-circle"></i> Inactive</span>';
+
+            const botTokenShort = website.bot_token ? 
+                website.bot_token.substring(0, 15) + '...' : 
+                '-';
+
+            html += `
+                <tr>
+                    <td>${status}</td>
+                    <td><strong>/${escapeHtml(website.endpoint)}</strong></td>
+                    <td><code>${escapeHtml(botTokenShort)}</code></td>
+                    <td>${escapeHtml(website.owner_id)}</td>
+                    <td>${escapeHtml(website.username)}</td>
+                    <td>${escapeHtml(website.email)}</td>
+                    <td>
+                        <a href="${escapeHtml(website.tunnel_url)}" target="_blank" class="tunnel-link">
+                            <i class="fas fa-external-link-alt"></i> Tunnel
+                        </a>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="table-btn edit-btn" onclick="window.dashboard.editWebsite(${website.id})" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="table-btn delete-btn" onclick="window.dashboard.deleteWebsite(${website.id})" title="Delete">
                                 <i class="fas fa-trash"></i>
-                                Delete Permanently
+                            </button>
+                            <button class="table-btn test-btn" onclick="window.dashboard.testBot(${website.id})" title="Test Bot">
+                                <i class="fas fa-robot"></i>
                             </button>
                         </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Edit Website Modal -->
-            <div id="editModal" class="modal">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2><i class="fas fa-edit"></i> Edit Website</h2>
-                  <button class="modal-close" id="closeEditModalBtn">&times;</button>
-                </div>
-                <div class="modal-body">
-                  <form id="editWebsiteForm">
-                    <div class="form-group">
-                      <label for="editEndpoint">
-                        <i class="fas fa-link"></i>
-                        Endpoint Website
-                      </label>
-                      <input type="text" id="editEndpoint" readonly>
-                      <small>Endpoint tidak dapat diubah</small>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editBotToken">
-                        <i class="fas fa-robot"></i>
-                        Bot Token
-                      </label>
-                      <input type="text" id="editBotToken" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editOwnerId">
-                        <i class="fas fa-id-card"></i>
-                        Owner ID (Telegram)
-                      </label>
-                      <input type="number" id="editOwnerId" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editUsername">
-                        <i class="fas fa-user"></i>
-                        Username
-                      </label>
-                      <input type="text" id="editUsername" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editPassword">
-                        <i class="fas fa-lock"></i>
-                        Password (Kosongkan jika tidak diubah)
-                      </label>
-                      <input type="password" id="editPassword" placeholder="••••••••">
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editEmail">
-                        <i class="fas fa-envelope"></i>
-                        Email
-                      </label>
-                      <input type="email" id="editEmail" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editTunnelUrl">
-                        <i class="fas fa-tunnel"></i>
-                        Tunnel URL (Flask)
-                      </label>
-                      <input type="url" id="editTunnelUrl" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editStatus">
-                        <i class="fas fa-circle"></i>
-                        Status
-                      </label>
-                      <select id="editStatus">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </div>
-            
-                    <!-- Masa Aktif Section -->
-                    <div class="form-group">
-                      <label>
-                        <i class="fas fa-calendar-alt"></i>
-                        Masa Aktif
-                      </label>
-                      <div class="active-period-selector">
-                        <select id="editActivePeriod">
-                          <option value="30">30 Hari</option>
-                          <option value="60">60 Hari</option>
-                          <option value="90">90 Hari</option>
-                          <option value="180">180 Hari</option>
-                          <option value="365">1 Tahun</option>
-                          <option value="custom">Custom</option>
-                        </select>
-                      </div>
-                    </div>
-            
-                    <div class="date-range" id="dateRange" style="display: none;">
-                      <div class="form-row">
-                        <div class="form-group">
-                          <label for="editStartDate">Tanggal Mulai</label>
-                          <input type="date" id="editStartDate">
-                        </div>
-                        <div class="form-group">
-                          <label for="editEndDate">Tanggal Berakhir</label>
-                          <input type="date" id="editEndDate">
-                        </div>
-                      </div>
-                    </div>
-            
-                    <div class="current-active-info">
-                      <p>
-                        <i class="fas fa-info-circle"></i>
-                        Masa aktif saat ini: <span id="currentEndDate">-</span>
-                      </p>
-                    </div>
-            
-                    <div class="form-actions">
-                      <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
-                      <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i>
-                        Update Website
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-        </div>
-    </div>
+                    </td>
+                </tr>
+            `;
+        });
 
-    <!-- JavaScript -->
-    <script src="js/dashboard.js"></script>
-</body>
-</html>
+        elements.websitesTableBody.innerHTML = html;
+    }
+
+    // ==================== FUNGSI CREATE WEBSITE ====================
+    async function createWebsite(formData) {
+        try {
+            showToast('Creating website...', 'info');
+
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(formData)
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('📥 Create website response:', data);
+
+            if (data.success) {
+                showToast('Website created successfully!', 'success');
+                closeModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to create website');
+            }
+
+        } catch (error) {
+            console.error('❌ Error creating website:', error);
+            showToast(error.message || 'Failed to create website', 'error');
+        }
+    }
+
+    // ==================== FUNGSI DELETE WEBSITE ====================
+    async function deleteWebsite(id) {
+        try {
+            showToast('Deleting website...', 'info');
+
+            const response = await fetch(`${API_BASE_URL}/api/websites/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('📥 Delete website response:', data);
+
+            if (data.success) {
+                showToast('Website deleted successfully!', 'success');
+                closeDeleteModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to delete website');
+            }
+
+        } catch (error) {
+            console.error('❌ Error deleting website:', error);
+            showToast(error.message || 'Failed to delete website', 'error');
+        }
+    }
+
+    // ==================== FUNGSI TEST BOT ====================
+    async function testBot(id) {
+        const website = websites.find(w => w.id === id);
+        if (!website) return;
+
+        showToast(`Testing bot for ${website.endpoint}...`, 'info');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/websites/${id}/test-bot`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify({
+                    bot_token: website.bot_token,
+                    tunnel_url: website.tunnel_url
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('✅ Bot is working correctly!', 'success');
+            } else {
+                showToast('❌ Bot test failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+
+        } catch (error) {
+            console.error('❌ Error testing bot:', error);
+            showToast('Failed to test bot: ' + error.message, 'error');
+        }
+    }
+
+    // ==================== FUNGSI SHOW MODAL ====================
+    function showModal() {
+        if (elements.createModal) {
+            elements.createModal.classList.add('active');
+            vibrate(10);
+        }
+    }
+
+    function closeModal() {
+        if (elements.createModal) {
+            elements.createModal.classList.remove('active');
+            elements.createWebsiteForm.reset();
+        }
+    }
+
+    function showDeleteModal(website) {
+        if (elements.deleteModal && website) {
+            websiteToDelete = website;
+            elements.deleteWebsiteInfo.innerHTML = `
+                <strong>${escapeHtml(website.endpoint)}</strong><br>
+                <small>ID: ${website.id}</small>
+            `;
+            elements.deleteModal.classList.add('active');
+            vibrate(10);
+        }
+    }
+
+    function closeDeleteModal() {
+        if (elements.deleteModal) {
+            elements.deleteModal.classList.remove('active');
+            websiteToDelete = null;
+        }
+    }
+
+    // ==================== FUNGSI UPDATE UI ====================
+    function updateUI(user) {
+        currentUser = user;
+
+        const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Owner';
+        const username = user.username ? `@${user.username}` : '(no username)';
+        const userId = user.id || '-';
+
+        if (elements.ownerName) elements.ownerName.textContent = fullName;
+        if (elements.ownerUsername) elements.ownerUsername.textContent = username;
+        if (elements.ownerId) elements.ownerId.textContent = `ID: ${userId}`;
+
+        if (elements.ownerPhoto) {
+            elements.ownerPhoto.src = user.photo_url || generateAvatarUrl(fullName);
+        }
+
+        // Sembunyikan loading, tampilkan content
+        if (elements.loading) elements.loading.style.display = 'none';
+        if (elements.error) elements.error.style.display = 'none';
+        if (elements.dashboardContent) elements.dashboardContent.style.display = 'block';
+
+        // Fetch data websites
+        fetchWebsites();
+    }
+
+    // ==================== FUNGSI SHOW ERROR ====================
+    function showError(message, isOwnerError = false) {
+        vibrate(30);
+        
+        if (elements.loading) elements.loading.style.display = 'none';
+        if (elements.error) {
+            elements.error.style.display = 'flex';
+            if (elements.errorMessage) {
+                if (isOwnerError) {
+                    elements.errorMessage.innerHTML = `
+                        <strong>❌ Access Denied</strong><br>
+                        <small>Your ID is not authorized as owner</small>
+                    `;
+                } else {
+                    elements.errorMessage.textContent = message;
+                }
+            }
+        }
+        if (elements.dashboardContent) {
+            elements.dashboardContent.style.display = 'none';
+        }
+    }
+
+    // ==================== FUNGSI INIT ====================
+    async function init() {
+        console.log('👑 Initializing Owner Dashboard...');
+
+        try {
+            // Cek environment Telegram
+            let telegramUserData = null;
+            let tg = null;
+
+            if (window.Telegram?.WebApp) {
+                console.log('📱 Running inside Telegram Web App');
+                tg = window.Telegram.WebApp;
+                
+                tg.expand();
+                tg.ready();
+                
+                if (tg.initDataUnsafe?.user) {
+                    telegramUserData = tg.initDataUnsafe.user;
+                    console.log('📱 Telegram user data:', telegramUserData);
+                }
+                
+                applyTelegramTheme(tg);
+            } else {
+                console.log('🌐 Running in standalone web browser');
+                
+                // Untuk testing di browser, gunakan data dummy
+                telegramUserData = {
+                    id: 123456789, // GANTI DENGAN ID ANDA UNTUK TESTING
+                    first_name: 'Test',
+                    last_name: 'Owner',
+                    username: 'test_owner',
+                    language_code: 'id'
+                };
+            }
+
+            // Verifikasi owner
+            if (!telegramUserData) {
+                showError('No user data available');
+                return;
+            }
+
+            if (!isOwner(telegramUserData.id)) {
+                console.warn('⛔ Unauthorized access attempt:', telegramUserData.id);
+                showError('You are not authorized as owner', true);
+                return;
+            }
+
+            console.log('✅ Owner verified!');
+            updateUI(telegramUserData);
+
+        } catch (error) {
+            console.error('💥 Fatal error in init:', error);
+            showError('Failed to initialize dashboard');
+        }
+    }
+
+    // ==================== SETUP EVENT LISTENERS ====================
+    function setupEventListeners() {
+        // Create Website button
+        if (elements.createWebsiteBtn) {
+            elements.createWebsiteBtn.addEventListener('click', showModal);
+        }
+
+        // Refresh Data button
+        if (elements.refreshDataBtn) {
+            elements.refreshDataBtn.addEventListener('click', () => {
+                vibrate(10);
+                fetchWebsites();
+                showToast('Data refreshed', 'success');
+            });
+        }
+
+        // Search input
+        if (elements.searchWebsite) {
+            elements.searchWebsite.addEventListener('input', (e) => {
+                renderWebsitesTable(e.target.value);
+            });
+        }
+
+        // Modal close buttons
+        if (elements.closeModalBtn) {
+            elements.closeModalBtn.addEventListener('click', closeModal);
+        }
+        if (elements.cancelModalBtn) {
+            elements.cancelModalBtn.addEventListener('click', closeModal);
+        }
+
+        // Delete modal close buttons
+        if (elements.closeDeleteModalBtn) {
+            elements.closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
+        }
+        if (elements.cancelDeleteBtn) {
+            elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+        }
+
+        // Create Website form submit
+        if (elements.createWebsiteForm) {
+            elements.createWebsiteForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = {
+                    endpoint: document.getElementById('endpoint').value,
+                    bot_token: document.getElementById('botToken').value,
+                    owner_id: parseInt(document.getElementById('ownerId').value),
+                    username: document.getElementById('username').value,
+                    password: document.getElementById('password').value,
+                    email: document.getElementById('email').value,
+                    tunnel_url: document.getElementById('tunnelUrl').value,
+                    status: 'active'
+                };
+
+                await createWebsite(formData);
+            });
+        }
+
+        // Confirm delete button
+        if (elements.confirmDeleteBtn) {
+            elements.confirmDeleteBtn.addEventListener('click', async () => {
+                if (websiteToDelete) {
+                    await deleteWebsite(websiteToDelete.id);
+                }
+            });
+        }
+
+        // Close modals on outside click
+        window.addEventListener('click', (e) => {
+            if (e.target === elements.createModal) {
+                closeModal();
+            }
+            if (e.target === elements.deleteModal) {
+                closeDeleteModal();
+            }
+        });
+    }
+
+    // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
+    window.dashboard = {
+        editWebsite: (id) => {
+            console.log('Edit website:', id);
+            showToast('Edit feature coming soon', 'info');
+        },
+        deleteWebsite: (id) => {
+            const website = websites.find(w => w.id === id);
+            if (website) {
+                showDeleteModal(website);
+            }
+        },
+        testBot: (id) => {
+            testBot(id);
+        }
+    };
+
+    // ==================== START ====================
+    setupEventListeners();
+    init();
+})();
