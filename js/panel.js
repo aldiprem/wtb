@@ -10,7 +10,7 @@
     
     // API Base URL - sesuaikan dengan VPS Anda
     const API_BASE_URL = isGitHubPages 
-        ? 'https://intimate-benefit-editions-girls.trycloudflare.com' // Ganti dengan domain tunnel Anda
+        ? 'https://supports-lease-honest-potter.trycloudflare.com' // Ganti dengan domain tunnel Anda
         : ''; // Relative URL jika di server yang sama
 
     console.log('🌐 Environment:', isGitHubPages ? 'GitHub Pages' : 'Local Server');
