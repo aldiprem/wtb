@@ -135,3 +135,64 @@ def save_colors(website_id, colors_data):
     conn.commit()
     conn.close()
     return True
+    
+def update_tampilan(website_id, data):
+    """Update existing tampilan data"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Build SET clause dynamically based on provided data
+    set_clauses = []
+    values = []
+    
+    if 'banner' in data:
+        set_clauses.append("banner = ?")
+        values.append(data['banner'])
+    
+    if 'colors' in data:
+        set_clauses.append("colors = ?")
+        values.append(json.dumps(data['colors']))
+    
+    if 'font_family' in data:
+        set_clauses.append("font_family = ?")
+        values.append(data['font_family'])
+    
+    if 'font_size' in data:
+        set_clauses.append("font_size = ?")
+        values.append(data['font_size'])
+    
+    if 'title' in data:
+        set_clauses.append("title = ?")
+        values.append(data['title'])
+    
+    if 'description' in data:
+        set_clauses.append("description = ?")
+        values.append(data['description'])
+    
+    if 'contact_whatsapp' in data:
+        set_clauses.append("contact_whatsapp = ?")
+        values.append(data['contact_whatsapp'])
+    
+    if 'contact_telegram' in data:
+        set_clauses.append("contact_telegram = ?")
+        values.append(data['contact_telegram'])
+    
+    # For custom fields, we need to handle differently since table schema is fixed
+    # We'll use JSON fields in the future, for now we skip
+    if 'banks' in data or 'ewallets' in data or 'qris' in data or 'crypto' in data or 'payment_notes' in data or 'maintenance_message' in data:
+        # These would ideally go into a JSON field, but for now we'll skip
+        print("⚠️ Custom fields not yet supported in schema, skipping")
+    
+    if not set_clauses:
+        return False
+    
+    set_clauses.append("updated_at = CURRENT_TIMESTAMP")
+    
+    query = f"UPDATE tampilan SET {', '.join(set_clauses)} WHERE website_id = ?"
+    values.append(website_id)
+    
+    cursor.execute(query, values)
+    conn.commit()
+    conn.close()
+    
+    return True
