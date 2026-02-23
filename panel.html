@@ -18,6 +18,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memproses...</div>
+    </div>
+
     <div class="panel-container">
         <!-- Header dengan verifikasi website owner -->
         <div class="panel-header">
@@ -57,10 +63,10 @@
 
         <!-- Main Content - Only visible if website owner verified -->
         <div id="panelContent" class="panel-content" style="display: none;">
-            <!-- Website Info Card -->
+            <!-- Website Info Card dengan Foto Profil User -->
             <div class="website-info-card">
-                <div class="website-avatar">
-                    <img id="websiteAvatar" src="https://ui-avatars.com/api/?name=Website&size=120&background=40a7e3&color=fff" alt="Website">
+                <div class="website-avatar" id="userAvatarContainer">
+                    <img id="websiteAvatar" src="https://ui-avatars.com/api/?name=User&size=120&background=40a7e3&color=fff" alt="User">
                     <div class="website-status" id="websiteStatus">
                         <i class="fas fa-check-circle"></i>
                     </div>
@@ -73,6 +79,9 @@
                     <div class="website-meta">
                         <span id="websiteOwner"><i class="fas fa-user"></i> Owner ID: -</span>
                         <span id="websiteCreated"><i class="fas fa-calendar"></i> Created: -</span>
+                    </div>
+                    <div class="website-user-info" id="userInfo" style="display: none;">
+                        <!-- User info akan diisi dari Telegram -->
                     </div>
                 </div>
                 <div class="website-actions">
@@ -146,9 +155,6 @@
                     <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-images"></i> Banner Slider</h3>
                         <div class="header-actions">
-                            <button class="btn-add" id="addBannerBtn" onclick="event.stopPropagation()">
-                                <i class="fas fa-plus-circle"></i> Tambah
-                            </button>
                             <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
                                 <i class="fas fa-chevron-down"></i>
                             </button>
@@ -162,9 +168,12 @@
                         </div>
                         <div class="empty-banner-message" id="emptyBannerMessage" style="display: flex;">
                             <i class="fas fa-images"></i>
-                            <p>Belum ada banner. Klik "Tambah" untuk menambahkan.</p>
+                            <p>Belum ada banner. Klik tombol Tambah di bawah untuk menambahkan.</p>
                         </div>
-                        <div class="banner-save-container">
+                        <div class="banner-footer-actions">
+                            <button class="btn-add" id="addBannerBtn">
+                                <i class="fas fa-plus-circle"></i> Tambah Banner Baru
+                            </button>
                             <button class="btn-primary" id="saveBannersBtn">
                                 <i class="fas fa-save"></i> Simpan Semua Banner
                             </button>
@@ -172,7 +181,7 @@
                     </div>
                 </div>
 
-                <!-- Color Settings - Collapsible -->
+                <!-- Color Settings - Collapsible (2 kolom per baris) -->
                 <div class="settings-card collapsible">
                     <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-palette"></i> Warna Website</h3>
@@ -183,7 +192,7 @@
                         </div>
                     </div>
                     <div class="card-body" style="display: none;">
-                        <div class="color-grid">
+                        <div class="color-grid-2col">
                             <div class="color-item">
                                 <label>Primary Color</label>
                                 <div class="color-picker-wrapper">
@@ -317,8 +326,7 @@
                 <!-- Add Product Button -->
                 <div class="action-bar">
                     <button class="btn-primary" id="addProductBtn">
-                        <i class="fas fa-plus-circle"></i>
-                        Tambah Produk Baru
+                        <i class="fas fa-plus-circle"></i> Tambah Produk Baru
                     </button>
                 </div>
 
