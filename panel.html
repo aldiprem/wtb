@@ -7,42 +7,24 @@
     <meta name="MobileOptimized" content="width">
     <title>Panel Admin - Website Manager</title>
     
-    <!-- Config JS - PAKAI ABSOLUTE PATH (dengan slash) -->
-    <script src="/js/config.js"></script>
-    
-    <!-- CSS - PAKAI ABSOLUTE PATH (dengan slash) -->
-    <link rel="stylesheet" href="/css/panel.css" id="mainCss">
+    <!-- CSS - Path untuk GitHub Pages -->
+    <link rel="stylesheet" href="/wtb/css/panel.css">
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <script>
-        // Update CSS path untuk GitHub Pages saja
-        (function() {
-            function updatePaths() {
-                if (window.APP_CONFIG && window.APP_CONFIG.isGitHubPages) {
-                    const cssLink = document.getElementById('mainCss');
-                    cssLink.href = '/wtb/css/panel.css';
-                    console.log('📁 GitHub Pages mode - CSS:', cssLink.href);
-                }
-                // Untuk tunnel URL, path tetap /css/panel.css (sudah benar)
-            }
-            
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', updatePaths);
-            } else {
-                updatePaths();
-            }
-        })();
+    <!-- Telegram Login Widget -->
+    <script async src="https://telegram.org/js/telegram-widget.js?22" 
+            data-telegram-login="YOUR_BOT_USERNAME" 
+            data-size="large" 
+            data-onauth="onTelegramAuth(user)" 
+            data-request-access="write">
     </script>
 </head>
 <body>
     <div class="panel-container">
-        <!-- Header dengan verifikasi website owner -->
+        <!-- Header -->
         <div class="panel-header">
             <div class="header-left">
                 <div class="logo-wrapper">
@@ -50,7 +32,78 @@
                 </div>
                 <div class="header-title">
                     <h1>Website Panel</h1>
-                    <span class="badge-admin" id="websiteBadge">LOADING...</span>
+                    <span class="badge-admin" id="websiteBadge">MANAGEMENT</span>
+                </div>
+            </div>
+            
+            <!-- Login Status / User Info -->
+            <div id="loginStatus" class="login-status">
+                <div id="loginButtonContainer"></div>
+                <div id="userInfo" style="display: none;">
+                    <span id="userName"></span>
+                    <button id="logoutBtn" class="logout-btn">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading-state" style="display: none;">
+            <div class="spinner"></div>
+            <span>Loading panel...</span>
+        </div>
+        
+        <!-- Error State -->
+        <div id="error" class="error-state" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="errorMessage">Access Denied</span>
+            <button onclick="location.reload()" class="retry-btn">Retry</button>
+        </div>
+
+        <!-- Login Required Message (ditampilkan sebelum login) -->
+        <div id="loginRequired" class="login-required">
+            <i class="fas fa-lock"></i>
+            <h3>Login Required</h3>
+            <p>Silakan login dengan Telegram untuk mengakses panel</p>
+            <div id="loginWidgetContainer"></div>
+        </div>
+
+        <!-- No Website Found Message -->
+        <div id="noWebsiteMessage" class="no-website-message" style="display: none;">
+            <i class="fas fa-store-alt"></i>
+            <h3>Anda belum memiliki website</h3>
+            <p>Silakan buat website terlebih dahulu di dashboard owner</p>
+            <a href="https://aldiprem.github.io/wtb/" class="btn-primary">
+                <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+            </a>
+        </div>
+
+        <!-- Main Content - Only visible if logged in and has website -->
+        <div id="panelContent" class="panel-content" style="display: none;">
+            <!-- Website Info Card -->
+            <div class="website-info-card">
+                <div class="website-avatar">
+                    <img id="websiteAvatar" src="https://ui-avatars.com/api/?name=Website&size=120&background=40a7e3&color=fff" alt="Website">
+                    <div class="website-status" id="websiteStatus">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+                <div class="website-details">
+                    <div class="website-name-wrapper">
+                        <h2 id="websiteName">Loading...</h2>
+                        <span class="website-badge" id="websiteEndpointBadge">/endpoint</span>
+                    </div>
+                    <div class="website-meta">
+                        <span id="websiteOwner"><i class="fas fa-user"></i> Owner ID: -</span>
+                        <span id="websiteCreated"><i class="fas fa-calendar"></i> Created: -</span>
+                    </div>
+                </div>
+                <div class="website-actions">
+                    <button class="btn-icon" id="previewWebsiteBtn" title="Preview Website">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn-icon" id="copyEndpointBtn" title="Copy Endpoint">
+                        <i class="fas fa-copy"></i>
+                    </button>
                 </div>
             </div>
             
@@ -665,27 +718,7 @@
         </div>
     </div>
 
-    <!-- JavaScript - PAKAI ABSOLUTE PATH (dengan slash) -->
-    <script src="/js/panel.js" id="mainJs"></script>
-    
-    <script>
-        // Update JS path untuk GitHub Pages saja
-        (function() {
-            function updateJsPath() {
-                if (window.APP_CONFIG && window.APP_CONFIG.isGitHubPages) {
-                    const jsLink = document.getElementById('mainJs');
-                    jsLink.src = '/wtb/js/panel.js';
-                    console.log('📁 GitHub Pages mode - JS:', jsLink.src);
-                }
-                // Untuk tunnel URL, path tetap /js/panel.js (sudah benar)
-            }
-            
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', updateJsPath);
-            } else {
-                updateJsPath();
-            }
-        })();
-    </script>
+    <!-- JavaScript -->
+    <script src="/wtb/js/panel.js"></script>
 </body>
 </html>
