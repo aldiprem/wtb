@@ -492,7 +492,7 @@ def serve_format():
 
 @app.route('/dashboard')
 def serve_dashboard():
-    return send_from_directory('.', 'format.html')
+    return send_from_directory('.', 'dashboard.html')
 
 @app.route('/css/<path:filename>')
 def serve_css(filename):
@@ -501,13 +501,6 @@ def serve_css(filename):
 @app.route('/js/<path:filename>')
 def serve_js(filename):
     return send_from_directory('js', filename)
-
-
-
-@app.route('/img/<path:filename>')
-def serve_img(filename):
-    """Melayani file gambar dari folder img/"""
-    return send_from_directory('img', filename)
 
 # ==================== MAIN ====================
 
