@@ -33,6 +33,8 @@
         
         // Header
         storeName: document.getElementById('storeName'),
+        headerLogo: document.getElementById('headerLogo'), // Ini perlu ditambahkan di HTML
+        headerLogoImg: document.getElementById('headerLogoImg'), // Ini perlu ditambahkan di HTML
         searchToggle: document.getElementById('searchToggle'),
         cartBtn: document.getElementById('cartBtn'),
         cartBadge: document.getElementById('cartBadge'),
@@ -106,6 +108,8 @@
     let currentProduct = null;
     let bannerInterval = null;
     let currentBannerIndex = 0;
+    let touchStartX = 0;
+    let touchEndX = 0;
 
     // ==================== FUNGSI UTILITY ====================
     function vibrate(duration = 20) {
@@ -206,9 +210,6 @@
                 elements.storeName.textContent = 'Website Tidak Ditemukan';
             }
             
-            // Sembunyikan loading dan tampilkan error
-            if (elements.loading) elements.loading.style.display = 'none';
-            
             showToast(error.message || 'Gagal memuat data website', 'error');
             
             // Kosongkan semua konten
@@ -266,18 +267,23 @@
     }
 
     function renderAllComponents() {
+        // Render logo di header
+        renderLogo();
+        
         // Render banner dari tampilanData
-        if (tampilanData?.banner) {
-            // Banner bisa berupa string URL atau array
+        if (tampilanData?.banners && tampilanData.banners.length > 0) {
+            renderBanners(tampilanData.banners);
+        } else if (tampilanData?.banner) {
+            // Fallback ke banner lama (string)
             const banners = Array.isArray(tampilanData.banner) 
                 ? tampilanData.banner 
-                : [tampilanData.banner];
+                : [{ url: tampilanData.banner, positionX: 50, positionY: 50 }];
             renderBanners(banners);
         } else if (websiteData?.settings?.banner) {
             // Fallback ke settings lama
             const banners = Array.isArray(websiteData.settings.banner) 
-                ? websiteData.settings.banner 
-                : [websiteData.settings.banner];
+                ? websiteData.settings.banner.map(b => ({ url: b, positionX: 50, positionY: 50 }))
+                : [{ url: websiteData.settings.banner, positionX: 50, positionY: 50 }];
             renderBanners(banners);
         } else {
             if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
@@ -315,6 +321,30 @@
             });
         } else if (websiteData?.settings?.font) {
             applyFont(websiteData.settings.font);
+        }
+    }
+
+    // ==================== FUNGSI RENDER LOGO ====================
+    function renderLogo() {
+        // Cek apakah elemen header logo ada, jika tidak buat secara dinamis
+        let headerLogoContainer = document.querySelector('.header-logo');
+        
+        if (tampilanData?.logo) {
+            // Jika ada logo, tampilkan gambar
+            if (headerLogoContainer) {
+                headerLogoContainer.innerHTML = `
+                    <img src="${tampilanData.logo}" alt="Logo" class="header-logo-img" style="height: 40px; width: auto; object-fit: contain;">
+                    <span id="storeName" style="display: none;">${websiteData?.username || 'Toko Online'}</span>
+                `;
+            }
+        } else {
+            // Jika tidak ada logo, tampilkan icon dan nama toko
+            if (headerLogoContainer) {
+                headerLogoContainer.innerHTML = `
+                    <i class="fas fa-store"></i>
+                    <span id="storeName">${websiteData?.username || 'Toko Online'}</span>
+                `;
+            }
         }
     }
 
@@ -392,7 +422,7 @@
             elements.dynamicKeywords.content = tampilanData?.seo_keywords || data.settings?.seo?.keywords || 'toko, online, topup';
         }
         
-        // Update store name
+        // Update store name (akan digunakan jika tidak ada logo)
         const storeName = data.username || 'Toko Online';
         if (elements.storeName) elements.storeName.textContent = storeName;
         if (elements.sidebarStoreName) elements.sidebarStoreName.textContent = storeName;
@@ -409,6 +439,15 @@
         }
         if (elements.contactTelegram) {
             elements.contactTelegram.textContent = tampilanData?.contact_telegram || data.settings?.contact?.telegram || '-';
+        }
+        
+        // Update sidebar avatar (tetap pakai avatar user, bukan logo)
+        if (elements.sidebarAvatar && currentUser) {
+            const fullName = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || 'User';
+            const img = elements.sidebarAvatar.querySelector('img');
+            if (img) {
+                img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=80&background=40a7e3&color=fff`;
+            }
         }
         
         // Update year
@@ -440,97 +479,137 @@
 
     // ==================== FUNGSI RENDER BANNER ====================
     function renderBanners(banners) {
-      if (!elements.sliderContainer || !elements.sliderDots || !banners || banners.length === 0) {
-        if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
-        return;
-      }
-    
-      elements.bannerSlider.style.display = 'block';
-    
-      let slidesHtml = '';
-      let dotsHtml = '';
-    
-      banners.forEach((banner, index) => {
-        // Banner bisa berupa string URL atau object dengan url dan position
-        let bannerUrl = typeof banner === 'string' ? banner : banner.url || '';
-        let positionX = typeof banner === 'object' ? (banner.position || 50) : 50;
-        let positionY = typeof banner === 'object' ? (banner.positionY || 50) : 50;
-    
-        slidesHtml += `
-                <div class="slider-slide ${index === 0 ? 'active' : ''}">
+        if (!elements.sliderContainer || !elements.sliderDots || !banners || banners.length === 0) {
+            if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
+            return;
+        }
+        
+        elements.bannerSlider.style.display = 'block';
+        
+        let slidesHtml = '';
+        let dotsHtml = '';
+        
+        banners.forEach((banner, index) => {
+            // Banner bisa berupa string URL atau object dengan url dan positionX/positionY
+            let bannerUrl = '';
+            let positionX = 50;
+            let positionY = 50;
+            
+            if (typeof banner === 'string') {
+                bannerUrl = banner;
+            } else {
+                bannerUrl = banner.url || '';
+                positionX = banner.positionX || banner.position || 50;
+                positionY = banner.positionY || 50;
+            }
+            
+            slidesHtml += `
+                <div class="slider-slide ${index === 0 ? 'active' : ''}" data-index="${index}">
                     <div class="banner-image-container">
                         <img src="${bannerUrl}" alt="Banner ${index + 1}" 
                              style="object-position: ${positionX}% ${positionY}%;">
                     </div>
                 </div>
             `;
-    
-        dotsHtml += `
+            
+            dotsHtml += `
                 <span class="slider-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
             `;
-      });
-    
-      elements.sliderContainer.innerHTML = slidesHtml;
-      elements.sliderDots.innerHTML = dotsHtml;
-    
-      document.querySelectorAll('.slider-dot').forEach(dot => {
-        dot.addEventListener('click', () => {
-          const index = parseInt(dot.dataset.index);
-          goToSlide(index);
         });
-      });
-    
-      startBannerAutoSlide(banners.length);
+        
+        elements.sliderContainer.innerHTML = slidesHtml;
+        elements.sliderDots.innerHTML = dotsHtml;
+        
+        // Setup touch events untuk slider
+        setupBannerTouchEvents();
+        
+        // Setup dot clicks
+        document.querySelectorAll('.slider-dot').forEach(dot => {
+            dot.addEventListener('click', () => {
+                const index = parseInt(dot.dataset.index);
+                goToSlide(index);
+                resetAutoSlide();
+            });
+        });
+        
+        startBannerAutoSlide(banners.length);
     }
-    
-    // Update juga fungsi loadTampilanData untuk handle format baru
-    async function loadTampilanData(websiteId) {
-      try {
-        console.log(`📡 Loading tampilan data for website ID: ${websiteId}`);
-    
-        const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          mode: 'cors'
+
+    // ==================== FUNGSI SETUP TOUCH EVENTS UNTUK BANNER ====================
+    function setupBannerTouchEvents() {
+        const slider = elements.sliderContainer;
+        if (!slider) return;
+        
+        slider.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        
+        slider.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+        
+        // Juga support mouse untuk testing di desktop
+        let mouseDown = false;
+        let mouseStartX = 0;
+        
+        slider.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            mouseStartX = e.screenX;
+            e.preventDefault();
         });
-    
-        if (response.status === 404) {
-          console.log('ℹ️ No tampilan data found, using defaults');
-          tampilanData = null;
-          return;
-        }
-    
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    
-        const result = await response.json();
-        console.log('📥 Tampilan data:', result);
-    
-        if (result.success && result.tampilan) {
-          tampilanData = result.tampilan;
-    
-          // Update logo di sidebar jika ada
-          if (tampilanData.logo && elements.sidebarAvatar) {
-            const logoImg = elements.sidebarAvatar.querySelector('img');
-            if (logoImg) {
-              logoImg.src = tampilanData.logo;
+        
+        slider.addEventListener('mousemove', (e) => {
+            if (!mouseDown) return;
+            e.preventDefault();
+        });
+        
+        slider.addEventListener('mouseup', (e) => {
+            if (!mouseDown) return;
+            const mouseEndX = e.screenX;
+            const diff = mouseEndX - mouseStartX;
+            
+            if (Math.abs(diff) > 50) {
+                const slides = document.querySelectorAll('.slider-slide');
+                const totalSlides = slides.length;
+                
+                if (diff > 0) {
+                    // Swipe kanan (previous)
+                    const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
+                    goToSlide(prevIndex);
+                } else {
+                    // Swipe kiri (next)
+                    const nextIndex = (currentBannerIndex + 1) % totalSlides;
+                    goToSlide(nextIndex);
+                }
+                resetAutoSlide();
             }
-          }
-    
-          // Update logo di header jika ada
-          if (tampilanData.logo && elements.headerLogo) {
-            // Anda bisa menambahkan elemen logo di header jika diinginkan
-          }
+            
+            mouseDown = false;
+        });
+        
+        slider.addEventListener('mouseleave', () => {
+            mouseDown = false;
+        });
+    }
+
+    function handleSwipe() {
+        const diff = touchEndX - touchStartX;
+        const slides = document.querySelectorAll('.slider-slide');
+        const totalSlides = slides.length;
+        
+        if (Math.abs(diff) > 50) {
+            if (diff > 0) {
+                // Swipe kanan (previous)
+                const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
+                goToSlide(prevIndex);
+            } else {
+                // Swipe kiri (next)
+                const nextIndex = (currentBannerIndex + 1) % totalSlides;
+                goToSlide(nextIndex);
+            }
+            resetAutoSlide();
         }
-    
-      } catch (error) {
-        console.error('❌ Error loading tampilan:', error);
-        tampilanData = null;
-      }
     }
 
     function startBannerAutoSlide(totalSlides) {
@@ -540,7 +619,15 @@
         bannerInterval = setInterval(() => {
             const nextIndex = (currentBannerIndex + 1) % totalSlides;
             goToSlide(nextIndex);
-        }, 5000);
+        }, 3000); // 3 detik
+    }
+
+    function resetAutoSlide() {
+        if (bannerInterval) {
+            clearInterval(bannerInterval);
+            const slides = document.querySelectorAll('.slider-slide');
+            startBannerAutoSlide(slides.length);
+        }
     }
 
     function goToSlide(index) {
