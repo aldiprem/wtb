@@ -3,7 +3,7 @@ import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir in sys.path:
     sys.path.remove(current_dir)
-
+import tampilan
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
@@ -501,6 +501,190 @@ def serve_css(filename):
 @app.route('/js/<path:filename>')
 def serve_js(filename):
     return send_from_directory('js', filename)
+
+# ==================== ROUTES UNTUK TAMPILAN ====================
+
+@app.route('/api/tampilan/<int:website_id>', methods=['GET'])
+def get_tampilan(website_id):
+    """Get tampilan data by website_id"""
+    try:
+        data = tampilan.get_tampilan_by_website_id(website_id)
+        if data:
+            return jsonify({'success': True, 'tampilan': data})
+        else:
+            return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/banner', methods=['POST'])
+def save_banner(website_id):
+    """Save banner settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Get or create tampilan
+        tampilan_data = {
+            'banner': data.get('url'),
+            'promo_banner': data.get('promo_url')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Banner saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/colors', methods=['POST'])
+def save_colors(website_id):
+    """Save color settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'colors': data
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Colors saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/font', methods=['POST'])
+def save_font(website_id):
+    """Save font settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'font_family': data.get('family'),
+            'font_size': data.get('size')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Font saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/general', methods=['POST'])
+def save_general(website_id):
+    """Save general settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'title': data.get('title'),
+            'description': data.get('description'),
+            'contact_whatsapp': data.get('contact', {}).get('whatsapp'),
+            'contact_telegram': data.get('contact', {}).get('telegram')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'General settings saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/seo', methods=['POST'])
+def save_seo(website_id):
+    """Save SEO settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'seo_title': data.get('title'),
+            'seo_description': data.get('description'),
+            'seo_keywords': data.get('keywords')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'SEO settings saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/payments', methods=['POST'])
+def save_payments(website_id):
+    """Save payment methods"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Get or create tampilan
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, {})
+        
+        # Save bank accounts
+        if data.get('bank'):
+            tampilan.save_bank_accounts(tampilan_id, [data['bank']])
+        
+        # Save e-wallet accounts
+        if data.get('ewallet'):
+            tampilan.save_ewallet_accounts(tampilan_id, [data['ewallet']])
+        
+        # Save QRIS
+        if data.get('qris'):
+            tampilan.save_qris(tampilan_id, data['qris'])
+        
+        # Save crypto
+        if data.get('crypto'):
+            tampilan.save_crypto(tampilan_id, data['crypto'])
+        
+        return jsonify({'success': True, 'message': 'Payment methods saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/payment-notes', methods=['POST'])
+def save_payment_notes(website_id):
+    """Save payment notes"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'payments': {
+                'notes': data
+            }
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Payment notes saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/maintenance', methods=['POST'])
+def save_maintenance(website_id):
+    """Save maintenance settings"""
+    try:
+        data = request.json
+        website = db.execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        tampilan_data = {
+            'maintenance_enabled': data.get('enabled'),
+            'maintenance_message': data.get('message')
+        }
+        tampilan_id = tampilan.create_or_update_tampilan(website_id, tampilan_data)
+        
+        return jsonify({'success': True, 'message': 'Maintenance settings saved successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== MAIN ====================
 
