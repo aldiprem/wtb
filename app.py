@@ -486,6 +486,12 @@ def serve_panel(endpoint):
     # Kirim file panel.html
     return send_from_directory('.', 'panel.html')
 
+# ==================== ROUTE UNTUK HALAMAN FORMAT ====================
+@app.route('/format')
+def serve_format():
+    """Menampilkan halaman create website"""
+    return send_from_directory('.', 'format.html')
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
