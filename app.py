@@ -552,7 +552,6 @@ def save_banners(website_id):
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
         banners = data.get('banners', [])
-        positions = data.get('positions', [])
         
         # Validasi banners
         for banner in banners:
@@ -560,7 +559,7 @@ def save_banners(website_id):
                 return jsonify({'success': False, 'error': 'Each banner must have a URL'}), 400
         
         # Save banners
-        tmp.save_banners(website_id, banners, positions)
+        tmp.save_banners(website_id, banners)
         
         return jsonify({'success': True, 'message': f'{len(banners)} banners saved successfully'})
     except Exception as e:
