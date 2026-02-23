@@ -762,31 +762,54 @@
         }
     }
 
-    // ==================== FUNGSI HANDLE CREATE SUBMIT ====================
+    // ==================== FUNGSI HANDLE CREATE SUBMIT (VERSI PERBAIKAN) ====================
     async function handleCreateSubmit(e) {
         e.preventDefault();
+        e.stopPropagation(); // Mencegah event bubbling
         
         console.log('🎯 Create form submitted!');
+        console.log('Form element:', e.target);
         
-        const endpoint = elements.endpointInput?.value.trim() || '';
-        const botToken = elements.botTokenInput?.value.trim() || '';
-        const ownerId = elements.ownerIdInput?.value.trim() || '';
-        const username = elements.usernameInput?.value.trim() || '';
-        const password = elements.passwordInput?.value || '';
-        const email = elements.emailInput?.value.trim() || '';
+        // Ambil nilai dari form dengan cara langsung dari DOM
+        const endpoint = document.getElementById('endpoint')?.value.trim() || '';
+        const botToken = document.getElementById('botToken')?.value.trim() || '';
+        const ownerId = document.getElementById('ownerId')?.value.trim() || '';
+        const username = document.getElementById('username')?.value.trim() || '';
+        const password = document.getElementById('password')?.value || '';
+        const email = document.getElementById('email')?.value.trim() || '';
         
         console.log('📝 Form values:', {
-            endpoint,
-            botToken: botToken ? `${botToken.substring(0, 10)}...` : '(empty)',
-            ownerId,
-            username,
+            endpoint: endpoint || '(empty)',
+            botToken: botToken ? botToken.substring(0, 10) + '...' : '(empty)',
+            ownerId: ownerId || '(empty)',
+            username: username || '(empty)',
             password: password ? '***' : '(empty)',
-            email
+            email: email || '(empty)'
         });
         
-        // Validasi sederhana
-        if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
-            showToast('Please fill all fields', 'error');
+        // Validasi
+        if (!endpoint) {
+            showToast('Endpoint cannot be empty', 'error');
+            return;
+        }
+        if (!botToken) {
+            showToast('Bot Token cannot be empty', 'error');
+            return;
+        }
+        if (!ownerId) {
+            showToast('Owner ID cannot be empty', 'error');
+            return;
+        }
+        if (!username) {
+            showToast('Username cannot be empty', 'error');
+            return;
+        }
+        if (!password) {
+            showToast('Password cannot be empty', 'error');
+            return;
+        }
+        if (!email) {
+            showToast('Email cannot be empty', 'error');
             return;
         }
         
@@ -827,7 +850,21 @@
         };
         
         console.log('📦 FormData prepared:', formData);
+        
+        // Disable submit button
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        }
+        
         await createWebsite(formData);
+        
+        // Enable kembali submit button
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Website';
+        }
     }
 
     // ==================== FUNGSI INIT ====================
@@ -892,12 +929,19 @@
         }
     }
 
-    // ==================== SETUP EVENT LISTENERS ====================
+    // ==================== SETUP EVENT LISTENERS (VERSI PERBAIKAN) ====================
     function setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+        
+        // Create Website button
         if (elements.createWebsiteBtn) {
-            elements.createWebsiteBtn.addEventListener('click', showModal);
+            elements.createWebsiteBtn.addEventListener('click', function(e) {
+                console.log('👆 Create website button clicked');
+                showModal();
+            });
         }
         
+        // Refresh button
         if (elements.refreshDataBtn) {
             elements.refreshDataBtn.addEventListener('click', () => {
                 vibrate(10);
@@ -906,12 +950,14 @@
             });
         }
         
+        // Search input
         if (elements.searchWebsite) {
             elements.searchWebsite.addEventListener('input', (e) => {
                 renderWebsitesTable(e.target.value);
             });
         }
         
+        // Modal close buttons
         if (elements.closeModalBtn) {
             elements.closeModalBtn.addEventListener('click', closeModal);
         }
@@ -919,6 +965,7 @@
             elements.cancelModalBtn.addEventListener('click', closeModal);
         }
         
+        // Delete modal close buttons
         if (elements.closeDeleteModalBtn) {
             elements.closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
         }
@@ -926,6 +973,7 @@
             elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
         }
         
+        // Edit modal close buttons
         if (elements.closeEditModalBtn) {
             elements.closeEditModalBtn.addEventListener('click', closeEditModal);
         }
@@ -933,12 +981,70 @@
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
         
-        // Create form submit
-        if (elements.createWebsiteForm) {
-            elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
-            console.log('✅ Event listener attached to create form');
+        // CREATE FORM SUBMIT - PASTIKAN INI BEKERJA
+        console.log('🔍 Looking for create form...');
+        const createForm = document.getElementById('createWebsiteForm');
+        
+        if (createForm) {
+            console.log('✅ Found create form with ID: createWebsiteForm');
+            
+            // Hapus semua event listener yang sudah ada (dengan clone)
+            const newForm = createForm.cloneNode(true);
+            createForm.parentNode.replaceChild(newForm, createForm);
+            
+            // Update elements dengan form baru
+            elements.createWebsiteForm = newForm;
+            
+            // Update juga input fields references
+            elements.endpointInput = document.getElementById('endpoint');
+            elements.botTokenInput = document.getElementById('botToken');
+            elements.ownerIdInput = document.getElementById('ownerId');
+            elements.usernameInput = document.getElementById('username');
+            elements.passwordInput = document.getElementById('password');
+            elements.emailInput = document.getElementById('email');
+            
+            console.log('📝 Input fields after refresh:', {
+                endpoint: elements.endpointInput,
+                botToken: elements.botTokenInput,
+                ownerId: elements.ownerIdInput,
+                username: elements.usernameInput,
+                password: elements.passwordInput,
+                email: elements.emailInput
+            });
+            
+            // Attach event listener ke form baru
+            newForm.addEventListener('submit', handleCreateSubmit);
+            
+            // Debug: Tambahkan juga onclick ke submit button
+            const submitBtn = newForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                console.log('✅ Found submit button:', submitBtn);
+                // Tambahkan debug onclick
+                submitBtn.addEventListener('click', function(e) {
+                    console.log('👆 Submit button clicked, will trigger form submit');
+                    // Form akan tetap di-submit secara normal
+                });
+            }
+            
+            console.log('✅ New event listener attached to create form');
         } else {
             console.error('❌ Create website form not found!');
+            
+            // Coba cari dengan selector lain
+            const formBySelector = document.querySelector('form');
+            if (formBySelector) {
+                console.log('✅ Found form by selector:', formBySelector);
+                console.log('Form ID:', formBySelector.id);
+                console.log('Form action:', formBySelector.action);
+                console.log('Form method:', formBySelector.method);
+                
+                // Jika form ditemukan tapi ID berbeda, kita tetap gunakan
+                elements.createWebsiteForm = formBySelector;
+                formBySelector.addEventListener('submit', handleCreateSubmit);
+                console.log('✅ Event listener attached to form found by selector');
+            } else {
+                console.error('❌ No form found at all!');
+            }
         }
         
         // Confirm delete button
@@ -1011,6 +1117,17 @@
                 closeEditModal();
             }
         });
+        
+        console.log('✅ All event listeners setup complete');
+        
+        // Debug: Cek apakah form bisa diakses
+        setTimeout(() => {
+            const formCheck = document.getElementById('createWebsiteForm');
+            console.log('🔍 After setup, createWebsiteForm exists:', !!formCheck);
+            if (formCheck) {
+                console.log('Form HTML:', formCheck.outerHTML.substring(0, 200) + '...');
+            }
+        }, 1000);
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
@@ -1035,6 +1152,13 @@
             testBot(id);
         }
     };
+
+    // ==================== DEBUG: Cek form saat halaman dimuat ====================
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('📄 DOM Content Loaded');
+        const form = document.getElementById('createWebsiteForm');
+        console.log('Form element on DOMContentLoaded:', form);
+    });
 
     // ==================== START ====================
     setupEventListeners();
