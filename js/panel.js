@@ -3,7 +3,7 @@
     console.log('🛠️ Website Panel - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://dispatched-essex-treasures-reflects.trycloudflare.com';
+    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
     const DEFAULT_WEBSITE_ID = 1;
 
     // ==================== DOM ELEMENTS ====================
