@@ -158,76 +158,74 @@
                 </div>
             </div>
 
-            <!-- Create Website Modal - HAPUS BAGIAN TUNNEL URL -->
+            <!-- Create Website Modal -->
             <div id="createModal" class="modal">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2><i class="fas fa-plus-circle"></i> Create New Website</h2>
-                  <button class="modal-close" id="closeModalBtn">&times;</button>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-plus-circle"></i> Create New Website</h2>
+                        <button class="modal-close" id="closeModalBtn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="createWebsiteForm">
+                            <div class="form-group">
+                                <label for="endpoint">
+                                    <i class="fas fa-link"></i>
+                                    Endpoint Website
+                                </label>
+                                <input type="text" id="endpoint" placeholder="my-website" required>
+                                <small>Will be used as: /my-website</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="botToken">
+                                    <i class="fas fa-robot"></i>
+                                    Bot Token
+                                </label>
+                                <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="ownerId">
+                                    <i class="fas fa-id-card"></i>
+                                    Owner ID (Telegram)
+                                </label>
+                                <input type="number" id="ownerId" placeholder="123456789" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="username">
+                                    <i class="fas fa-user"></i>
+                                    Username
+                                </label>
+                                <input type="text" id="username" placeholder="admin" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="password">
+                                    <i class="fas fa-lock"></i>
+                                    Password
+                                </label>
+                                <input type="password" id="password" placeholder="••••••••" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="email">
+                                    <i class="fas fa-envelope"></i>
+                                    Email
+                                </label>
+                                <input type="email" id="email" placeholder="admin@example.com" required>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    Create Website
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <div class="modal-body">
-                  <form id="createWebsiteForm">
-                    <div class="form-group">
-                      <label for="endpoint">
-                        <i class="fas fa-link"></i>
-                        Endpoint Website
-                      </label>
-                      <input type="text" id="endpoint" placeholder="my-website" required>
-                      <small>Will be used as: /my-website</small>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="botToken">
-                        <i class="fas fa-robot"></i>
-                        Bot Token
-                      </label>
-                      <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="ownerId">
-                        <i class="fas fa-id-card"></i>
-                        Owner ID (Telegram)
-                      </label>
-                      <input type="number" id="ownerId" placeholder="123456789" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="username">
-                        <i class="fas fa-user"></i>
-                        Username
-                      </label>
-                      <input type="text" id="username" placeholder="admin" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="password">
-                        <i class="fas fa-lock"></i>
-                        Password
-                      </label>
-                      <input type="password" id="password" placeholder="••••••••" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="email">
-                        <i class="fas fa-envelope"></i>
-                        Email
-                      </label>
-                      <input type="email" id="email" placeholder="admin@example.com" required>
-                    </div>
-            
-                    <!-- BAGIAN INI DIHAPUS - TIDAK PERLU TUNNEL URL LAGI -->
-            
-                    <div class="form-actions">
-                      <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
-                      <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i>
-                        Create Website
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
             </div>
 
             <!-- Delete Confirmation Modal -->
@@ -254,129 +252,129 @@
             
             <!-- Edit Website Modal -->
             <div id="editModal" class="modal">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h2><i class="fas fa-edit"></i> Edit Website</h2>
-                  <button class="modal-close" id="closeEditModalBtn">&times;</button>
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2><i class="fas fa-edit"></i> Edit Website</h2>
+                        <button class="modal-close" id="closeEditModalBtn">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editWebsiteForm">
+                            <div class="form-group">
+                                <label for="editEndpoint">
+                                    <i class="fas fa-link"></i>
+                                    Endpoint Website
+                                </label>
+                                <input type="text" id="editEndpoint" readonly>
+                                <small>Endpoint cannot be changed</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editBotToken">
+                                    <i class="fas fa-robot"></i>
+                                    Bot Token
+                                </label>
+                                <input type="text" id="editBotToken" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editOwnerId">
+                                    <i class="fas fa-id-card"></i>
+                                    Owner ID (Telegram)
+                                </label>
+                                <input type="number" id="editOwnerId" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editUsername">
+                                    <i class="fas fa-user"></i>
+                                    Username
+                                </label>
+                                <input type="text" id="editUsername" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editPassword">
+                                    <i class="fas fa-lock"></i>
+                                    Password (Leave blank if not changed)
+                                </label>
+                                <input type="password" id="editPassword" placeholder="••••••••">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editEmail">
+                                    <i class="fas fa-envelope"></i>
+                                    Email
+                                </label>
+                                <input type="email" id="editEmail" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editTunnelUrl">
+                                    <i class="fas fa-tunnel"></i>
+                                    Tunnel URL
+                                </label>
+                                <input type="url" id="editTunnelUrl" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editStatus">
+                                    <i class="fas fa-circle"></i>
+                                    Status
+                                </label>
+                                <select id="editStatus">
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Masa Aktif Section -->
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-calendar-alt"></i>
+                                    Active Period
+                                </label>
+                                <div class="active-period-selector">
+                                    <select id="editActivePeriod">
+                                        <option value="30">30 Days</option>
+                                        <option value="60">60 Days</option>
+                                        <option value="90">90 Days</option>
+                                        <option value="180">180 Days</option>
+                                        <option value="365">1 Year</option>
+                                        <option value="custom">Custom</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="date-range" id="dateRange" style="display: none;">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="editStartDate">Start Date</label>
+                                        <input type="date" id="editStartDate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="editEndDate">End Date</label>
+                                        <input type="date" id="editEndDate">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="current-active-info">
+                                <p>
+                                    <i class="fas fa-info-circle"></i>
+                                    Current active period: <span id="currentEndDate">-</span>
+                                </p>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    Update Website
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <div class="modal-body">
-                  <form id="editWebsiteForm">
-                    <div class="form-group">
-                      <label for="editEndpoint">
-                        <i class="fas fa-link"></i>
-                        Endpoint Website
-                      </label>
-                      <input type="text" id="editEndpoint" readonly>
-                      <small>Endpoint tidak dapat diubah</small>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editBotToken">
-                        <i class="fas fa-robot"></i>
-                        Bot Token
-                      </label>
-                      <input type="text" id="editBotToken" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editOwnerId">
-                        <i class="fas fa-id-card"></i>
-                        Owner ID (Telegram)
-                      </label>
-                      <input type="number" id="editOwnerId" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editUsername">
-                        <i class="fas fa-user"></i>
-                        Username
-                      </label>
-                      <input type="text" id="editUsername" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editPassword">
-                        <i class="fas fa-lock"></i>
-                        Password (Kosongkan jika tidak diubah)
-                      </label>
-                      <input type="password" id="editPassword" placeholder="••••••••">
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editEmail">
-                        <i class="fas fa-envelope"></i>
-                        Email
-                      </label>
-                      <input type="email" id="editEmail" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editTunnelUrl">
-                        <i class="fas fa-tunnel"></i>
-                        Tunnel URL (Flask)
-                      </label>
-                      <input type="url" id="editTunnelUrl" required>
-                    </div>
-            
-                    <div class="form-group">
-                      <label for="editStatus">
-                        <i class="fas fa-circle"></i>
-                        Status
-                      </label>
-                      <select id="editStatus">
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                      </select>
-                    </div>
-            
-                    <!-- Masa Aktif Section -->
-                    <div class="form-group">
-                      <label>
-                        <i class="fas fa-calendar-alt"></i>
-                        Masa Aktif
-                      </label>
-                      <div class="active-period-selector">
-                        <select id="editActivePeriod">
-                          <option value="30">30 Hari</option>
-                          <option value="60">60 Hari</option>
-                          <option value="90">90 Hari</option>
-                          <option value="180">180 Hari</option>
-                          <option value="365">1 Tahun</option>
-                          <option value="custom">Custom</option>
-                        </select>
-                      </div>
-                    </div>
-            
-                    <div class="date-range" id="dateRange" style="display: none;">
-                      <div class="form-row">
-                        <div class="form-group">
-                          <label for="editStartDate">Tanggal Mulai</label>
-                          <input type="date" id="editStartDate">
-                        </div>
-                        <div class="form-group">
-                          <label for="editEndDate">Tanggal Berakhir</label>
-                          <input type="date" id="editEndDate">
-                        </div>
-                      </div>
-                    </div>
-            
-                    <div class="current-active-info">
-                      <p>
-                        <i class="fas fa-info-circle"></i>
-                        Masa aktif saat ini: <span id="currentEndDate">-</span>
-                      </p>
-                    </div>
-            
-                    <div class="form-actions">
-                      <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
-                      <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i>
-                        Update Website
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
             </div>
         </div>
     </div>
