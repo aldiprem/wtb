@@ -11,11 +11,8 @@
     <meta name="description" id="dynamicDescription" content="Toko online terpercaya">
     <meta name="keywords" id="dynamicKeywords" content="toko, online, topup">
     
-    <!-- Config JS - PAKAI ABSOLUTE PATH (dengan slash) -->
-    <script src="/js/config.js"></script>
-    
-    <!-- CSS - PAKAI ABSOLUTE PATH (dengan slash) -->
-    <link rel="stylesheet" href="/css/website.css" id="mainCss">
+    <!-- CSS - Path untuk GitHub Pages -->
+    <link rel="stylesheet" href="/wtb/css/website.css">
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -23,26 +20,6 @@
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <script>
-        // Update CSS path untuk GitHub Pages saja
-        (function() {
-            function updatePaths() {
-                if (window.APP_CONFIG && window.APP_CONFIG.isGitHubPages) {
-                    const cssLink = document.getElementById('mainCss');
-                    cssLink.href = '/wtb/css/website.css';
-                    console.log('📁 GitHub Pages mode - CSS:', cssLink.href);
-                }
-                // Untuk tunnel URL, path tetap /css/website.css (sudah benar)
-            }
-            
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', updatePaths);
-            } else {
-                updatePaths();
-            }
-        })();
-    </script>
 </head>
 <body>
     <!-- Sidebar Navigation -->
@@ -319,27 +296,7 @@
     <!-- Toast Notifications -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- JavaScript - PAKAI ABSOLUTE PATH (dengan slash) -->
-    <script src="/js/website.js" id="mainJs"></script>
-    
-    <script>
-        // Update JS path untuk GitHub Pages saja
-        (function() {
-            function updateJsPath() {
-                if (window.APP_CONFIG && window.APP_CONFIG.isGitHubPages) {
-                    const jsLink = document.getElementById('mainJs');
-                    jsLink.src = '/wtb/js/website.js';
-                    console.log('📁 GitHub Pages mode - JS:', jsLink.src);
-                }
-                // Untuk tunnel URL, path tetap /js/website.js (sudah benar)
-            }
-            
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', updateJsPath);
-            } else {
-                updateJsPath();
-            }
-        })();
-    </script>
+    <!-- JavaScript - Path untuk GitHub Pages -->
+    <script src="/wtb/js/website.js"></script>
 </body>
 </html>
