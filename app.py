@@ -491,7 +491,7 @@ def serve_format():
     return send_from_directory('.', 'format.html')
 
 @app.route('/dashboard')
-def serve_format():
+def serve_dashboard():
     return send_from_directory('.', 'format.html')
 
 @app.route('/css/<path:filename>')
