@@ -290,46 +290,90 @@
         }
     }
 
+    // ==================== FUNGSI LOAD TAMPILAN ====================
+    async function loadTampilan(websiteId) {
+      try {
+        console.log('📡 Loading tampilan for website:', websiteId);
+    
+        const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors'
+        });
+    
+        if (!response.ok) {
+          if (response.status === 404) {
+            return null; // No tampilan yet
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const result = await response.json();
+    
+        if (result.success && result.tampilan) {
+          return result.tampilan;
+        } else {
+          return null;
+        }
+    
+      } catch (error) {
+        console.error('❌ Error loading tampilan:', error);
+        return null;
+      }
+    }
+
     // ==================== FUNGSI UPDATE WEBSITE UI ====================
-    function updateWebsiteUI(website) {
-        currentWebsite = website;
-        
-        if (elements.websiteBadge) {
-            elements.websiteBadge.textContent = `/${website.endpoint}`;
+    async function updateWebsiteUI(website) {
+      currentWebsite = website;
+    
+      if (elements.websiteBadge) {
+        elements.websiteBadge.textContent = `/${website.endpoint}`;
+      }
+    
+      if (elements.websiteName) {
+        elements.websiteName.textContent = website.username || 'Website';
+      }
+    
+      if (elements.websiteEndpointBadge) {
+        elements.websiteEndpointBadge.textContent = `/${website.endpoint}`;
+      }
+    
+      if (elements.websiteOwner) {
+        elements.websiteOwner.innerHTML = `<i class="fas fa-user"></i> Owner ID: ${website.owner_id}`;
+      }
+    
+      if (elements.websiteCreated && website.created_at) {
+        const date = new Date(website.created_at);
+        elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
+      }
+    
+      if (elements.websiteAvatar) {
+        elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(website.username || 'Website')}&size=120&background=40a7e3&color=fff`;
+      }
+    
+      if (elements.websiteStatus) {
+        if (website.status === 'active') {
+          elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
+        } else {
+          elements.websiteStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i>';
         }
-        
-        if (elements.websiteName) {
-            elements.websiteName.textContent = website.username || 'Website';
-        }
-        
-        if (elements.websiteEndpointBadge) {
-            elements.websiteEndpointBadge.textContent = `/${website.endpoint}`;
-        }
-        
-        if (elements.websiteOwner) {
-            elements.websiteOwner.innerHTML = `<i class="fas fa-user"></i> Owner ID: ${website.owner_id}`;
-        }
-        
-        if (elements.websiteCreated && website.created_at) {
-            const date = new Date(website.created_at);
-            elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
-        }
-        
-        if (elements.websiteAvatar) {
-            elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(website.username || 'Website')}&size=120&background=40a7e3&color=fff`;
-        }
-        
-        if (elements.websiteStatus) {
-            if (website.status === 'active') {
-                elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
-            } else {
-                elements.websiteStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i>';
-            }
-        }
-        
-        if (website.settings) {
-            updateSettingsUI(website.settings);
-        }
+      }
+    
+      // Load tampilan data
+      const tampilan = await loadTampilan(website.id);
+      if (tampilan) {
+        website.settings = {
+          ...website.settings,
+          ...tampilan
+        };
+      }
+    
+      if (website.settings) {
+        updateSettingsUI(website.settings);
+      }
     }
 
     // ==================== FUNGSI UPDATE SETTINGS UI ====================
@@ -547,15 +591,80 @@
     }
 
     // ==================== FUNGSI SAVE SETTINGS ====================
-    function saveSettings(section, data) {
-        console.log(`💾 Saving ${section} settings:`, data);
-        
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
+    async function saveSettings(section, data) {
+      console.log(`💾 Saving ${section} settings:`, data);
+    
+      if (!currentWebsite) {
+        showToast('Website not loaded', 'error');
+        return;
+      }
+    
+      try {
+        let url = '';
+        let method = 'POST';
+        let body = data;
+    
+        switch (section) {
+          case 'banner':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banner`;
+            break;
+          case 'colors':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`;
+            break;
+          case 'font':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font`;
+            break;
+          case 'general':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/general`;
+            break;
+          case 'seo':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/seo`;
+            break;
+          case 'payments':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payments`;
+            break;
+          case 'payment-notes':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payment-notes`;
+            break;
+          case 'maintenance':
+            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/maintenance`;
+            body = {
+              enabled: data.enabled,
+              message: data.message
+            };
+            break;
+          default:
+            showToast('Unknown section', 'error');
             return;
         }
-        
-        showToast(`✅ ${section} settings saved!`, 'success');
+    
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors',
+          body: JSON.stringify(body)
+        });
+    
+        const result = await response.json();
+    
+        if (result.success) {
+          showToast(`✅ ${section} settings saved!`, 'success');
+          // Refresh website data to get updated settings
+          const updatedWebsite = await fetchWebsiteData(currentUser.id);
+          if (updatedWebsite) {
+            updateWebsiteUI(updatedWebsite);
+          }
+        } else {
+          throw new Error(result.error || 'Failed to save settings');
+        }
+    
+      } catch (error) {
+        console.error('❌ Error saving settings:', error);
+        showToast(error.message || 'Failed to save settings', 'error');
+      }
     }
 
     // ==================== FUNGSI PRODUCT MODAL ====================
