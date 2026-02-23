@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <form id="testForm">
+        <input type="text" id="endpoint" placeholder="endpoint"><br>
+        <input type="text" id="botToken" placeholder="bot_token"><br>
+        <input type="text" id="ownerId" placeholder="owner_id"><br>
+        <input type="text" id="username" placeholder="username"><br>
+        <input type="password" id="password" placeholder="password"><br>
+        <input type="email" id="email" placeholder="email"><br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        document.getElementById('testForm').onsubmit = function(e) {
+            e.preventDefault();
+            console.log('Form submitted!');
+            alert('Form submitted! Check console for data');
+            
+            const data = {
+                endpoint: document.getElementById('endpoint').value,
+                bot_token: document.getElementById('botToken').value,
+                owner_id: document.getElementById('ownerId').value,
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                email: document.getElementById('email').value
+            };
+            console.log('Form data:', data);
+        };
+    </script>
+</body>
+</html>
