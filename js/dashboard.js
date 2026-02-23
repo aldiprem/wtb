@@ -4,7 +4,7 @@
 
     // ==================== KONFIGURASI ====================
     const OWNER_IDS = [7998861975];
-    const API_BASE_URL = 'https://discussions-prison-applications-former.trycloudflare.com';
+    const API_BASE_URL = 'https://dispatched-essex-treasures-reflects.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -446,7 +446,7 @@
                 owner_id: 123456789,
                 username: 'admin_giveaway',
                 email: 'admin@giveaway.com',
-                tunnel_url: 'https://discussions-prison-applications-former.trycloudflare.com',
+                tunnel_url: 'https://dispatched-essex-treasures-reflects.trycloudflare.com',
                 status: 'active',
                 created_at: new Date().toISOString(),
                 end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -458,7 +458,7 @@
                 owner_id: 987654321,
                 username: 'contest_admin',
                 email: 'contest@bot.com',
-                tunnel_url: 'https://discussions-prison-applications-former.trycloudflare.com',
+                tunnel_url: 'https://dispatched-essex-treasures-reflects.trycloudflare.com',
                 status: 'inactive',
                 created_at: new Date().toISOString(),
                 end_date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
