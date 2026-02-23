@@ -1,9 +1,5 @@
-import sys
 import os
-current_dir = os.path.dirname(os.path.abspath(__file__))
-if current_dir in sys.path:
-    sys.path.remove(current_dir)
-import tampilan
+import sys
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import sqlite3
@@ -11,6 +7,7 @@ import json
 from datetime import datetime, timedelta
 import hashlib
 import secrets
+import tampilan
 
 app = Flask(__name__, static_folder='.')
 
