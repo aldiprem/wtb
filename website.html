@@ -22,6 +22,12 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat website...</div>
+    </div>
+
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -94,25 +100,25 @@
     <div class="main-content">
         <!-- Top Header -->
         <header class="main-header">
-          <button class="menu-toggle" id="menuToggle">
-            <i class="fas fa-bars"></i>
-          </button>
-        
-          <div class="header-logo" id="headerLogo">
-            <!-- Logo akan diisi oleh JavaScript -->
-            <i class="fas fa-store"></i>
-            <span id="storeName">Toko Online</span>
-          </div>
-        
-          <div class="header-actions">
-            <button class="header-btn" id="searchToggle">
-              <i class="fas fa-search"></i>
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
             </button>
-            <button class="header-btn" id="cartBtn">
-              <i class="fas fa-shopping-cart"></i>
-              <span class="cart-badge" id="cartBadge">0</span>
-            </button>
-          </div>
+            
+            <div class="header-logo" id="headerLogo">
+                <!-- Logo akan diisi oleh JavaScript -->
+                <i class="fas fa-store"></i>
+                <span id="storeName">Toko Online</span>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" id="searchToggle">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button class="header-btn" id="cartBtn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-badge" id="cartBadge">0</span>
+                </button>
+            </div>
         </header>
 
         <!-- Search Bar (Hidden by default) -->
