@@ -156,13 +156,13 @@ def save_colors(website_id, colors_data):
     conn.close()
     return True
 
-def save_banners(website_id, banners_data, positions_data=None):
-    """Khusus menyimpan multiple banner dan posisinya"""
+def save_banners(website_id, banners_data):
+    """Khusus menyimpan multiple banner dengan posisi"""
     conn = get_db()
     cursor = conn.cursor()
     
-    banners = json.dumps(banners_data)
-    positions = json.dumps(positions_data) if positions_data else '[]'
+    # banners_data adalah array of objects dengan url, positionX, positionY
+    banners_json = json.dumps(banners_data)
     
     # Cek apakah sudah ada
     cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
@@ -172,15 +172,14 @@ def save_banners(website_id, banners_data, positions_data=None):
         cursor.execute('''
         UPDATE tampilan SET
             banners = ?,
-            banner_positions = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE website_id = ?
-        ''', (banners, positions, website_id))
+        ''', (banners_json, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, banners, banner_positions, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?, ?)
-        ''', (website_id, banners, positions, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, banners, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (website_id, banners_json, '{}', 'Inter', 14))
     
     conn.commit()
     conn.close()
