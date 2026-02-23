@@ -8,6 +8,7 @@
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
+        loadingOverlay: document.getElementById('loadingOverlay'),
         loading: document.getElementById('loading'),
         error: document.getElementById('error'),
         errorMessage: document.getElementById('errorMessage'),
@@ -15,6 +16,8 @@
         noWebsiteMessage: document.getElementById('noWebsiteMessage'),
         websiteBadge: document.getElementById('websiteBadge'),
         websiteAvatar: document.getElementById('websiteAvatar'),
+        userAvatarContainer: document.getElementById('userAvatarContainer'),
+        userInfo: document.getElementById('userInfo'),
         websiteName: document.getElementById('websiteName'),
         websiteEndpointBadge: document.getElementById('websiteEndpointBadge'),
         websiteOwner: document.getElementById('websiteOwner'),
@@ -148,13 +151,27 @@
     let currentProductId = null;
     let currentUploadCallback = null;
     let banners = []; // Array untuk menyimpan multiple banner {url, positionX, positionY, fileData}
-    let longPressTimer = null;
-    let isLongPressing = false;
+    let hasUnsavedBanners = false; // Flag untuk mengecek apakah ada banner yang belum disimpan
 
     // ==================== FUNGSI VIBRATE ====================
     function vibrate(duration = 20) {
         if (window.navigator && window.navigator.vibrate) {
             window.navigator.vibrate(duration);
+        }
+    }
+
+    // ==================== FUNGSI LOADING OVERLAY ====================
+    function showLoading(message = 'Memproses...') {
+        if (elements.loadingOverlay) {
+            const loadingText = elements.loadingOverlay.querySelector('.loading-text');
+            if (loadingText) loadingText.textContent = message;
+            elements.loadingOverlay.style.display = 'flex';
+        }
+    }
+
+    function hideLoading() {
+        if (elements.loadingOverlay) {
+            elements.loadingOverlay.style.display = 'none';
         }
     }
 
@@ -217,11 +234,55 @@
         if (body.style.display === 'none') {
             body.style.display = 'block';
             toggleBtn.className = 'fas fa-chevron-up';
+            
+            // Scroll ke card yang dibuka
+            setTimeout(() => {
+                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
         } else {
             body.style.display = 'none';
             toggleBtn.className = 'fas fa-chevron-down';
         }
     };
+
+    // ==================== FUNGSI CLOSE KEYBOARD ====================
+    function setupKeyboardDismiss() {
+        // Tutup keyboard ketika tap di luar input
+        document.addEventListener('touchstart', (e) => {
+            const activeElement = document.activeElement;
+            if (!activeElement) return;
+            
+            const isInput = e.target.tagName === 'INPUT' || 
+                           e.target.tagName === 'TEXTAREA' || 
+                           e.target.tagName === 'SELECT';
+            
+            const isModal = e.target.closest('.modal-content');
+            const isCard = e.target.closest('.settings-card');
+            
+            // Jika tap di luar area input dan bukan di modal/card, tutup keyboard
+            if (!isInput && !isModal && !isCard && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                activeElement.blur();
+            }
+        });
+        
+        // Handle form submit
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', () => {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                    activeElement.blur();
+                }
+            });
+        });
+        
+        // Handle keyboard hide on scroll
+        window.addEventListener('scroll', () => {
+            const activeElement = document.activeElement;
+            if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                activeElement.blur();
+            }
+        }, { passive: true });
+    }
 
     // ==================== FUNGSI APPLY TELEGRAM THEME ====================
     function applyTelegramTheme(tg) {
@@ -251,6 +312,32 @@
             }
         } catch (themeError) {
             console.warn('⚠️ Error applying Telegram theme:', themeError);
+        }
+    }
+
+    // ==================== FUNGSI SET USER AVATAR ====================
+    function setUserAvatar(user) {
+        if (!user) return;
+        
+        // Coba dapatkan foto profil dari Telegram jika ada
+        if (user.photo_url) {
+            elements.websiteAvatar.src = user.photo_url;
+        } else {
+            // Fallback ke UI Avatars
+            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
+            elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=120&background=40a7e3&color=fff`;
+        }
+        
+        // Tampilkan informasi user
+        if (elements.userInfo) {
+            const userHtml = `
+                <div class="user-info-details">
+                    <span class="user-name"><i class="fas fa-user-circle"></i> ${user.first_name || ''} ${user.last_name || ''}</span>
+                    ${user.username ? `<span class="user-username"><i class="fab fa-telegram"></i> @${user.username}</span>` : ''}
+                </div>
+            `;
+            elements.userInfo.innerHTML = userHtml;
+            elements.userInfo.style.display = 'block';
         }
     }
 
@@ -384,10 +471,6 @@
             elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
         }
       
-        if (elements.websiteAvatar) {
-            elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(website.username || 'Website')}&size=120&background=40a7e3&color=fff`;
-        }
-      
         if (elements.websiteStatus) {
             if (website.status === 'active') {
                 elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
@@ -436,27 +519,67 @@
                     };
                 }
             });
+            hasUnsavedBanners = false;
         } else {
             banners = [];
+            hasUnsavedBanners = false;
         }
         renderBannerTrack();
         
-        // Update colors
+        // Update colors - PASTIKAN NILAI DARI DATABASE DIGUNAKAN
         if (settings.colors) {
             const colors = settings.colors;
             
-            if (elements.primaryColor) elements.primaryColor.value = colors.primary || '#40a7e3';
-            if (elements.primaryColorHex) elements.primaryColorHex.value = colors.primary || '#40a7e3';
-            if (elements.secondaryColor) elements.secondaryColor.value = colors.secondary || '#FFD700';
-            if (elements.secondaryColorHex) elements.secondaryColorHex.value = colors.secondary || '#FFD700';
-            if (elements.bgColor) elements.bgColor.value = colors.background || '#0f0f0f';
-            if (elements.bgColorHex) elements.bgColorHex.value = colors.background || '#0f0f0f';
-            if (elements.textColor) elements.textColor.value = colors.text || '#ffffff';
-            if (elements.textColorHex) elements.textColorHex.value = colors.text || '#ffffff';
-            if (elements.cardColor) elements.cardColor.value = colors.card || '#1a1a1a';
-            if (elements.cardColorHex) elements.cardColorHex.value = colors.card || '#1a1a1a';
-            if (elements.accentColor) elements.accentColor.value = colors.accent || '#10b981';
-            if (elements.accentColorHex) elements.accentColorHex.value = colors.accent || '#10b981';
+            if (elements.primaryColor) {
+                elements.primaryColor.value = colors.primary || '#40a7e3';
+                elements.primaryColorHex.value = colors.primary || '#40a7e3';
+            }
+            if (elements.secondaryColor) {
+                elements.secondaryColor.value = colors.secondary || '#FFD700';
+                elements.secondaryColorHex.value = colors.secondary || '#FFD700';
+            }
+            if (elements.bgColor) {
+                elements.bgColor.value = colors.background || '#0f0f0f';
+                elements.bgColorHex.value = colors.background || '#0f0f0f';
+            }
+            if (elements.textColor) {
+                elements.textColor.value = colors.text || '#ffffff';
+                elements.textColorHex.value = colors.text || '#ffffff';
+            }
+            if (elements.cardColor) {
+                elements.cardColor.value = colors.card || '#1a1a1a';
+                elements.cardColorHex.value = colors.card || '#1a1a1a';
+            }
+            if (elements.accentColor) {
+                elements.accentColor.value = colors.accent || '#10b981';
+                elements.accentColorHex.value = colors.accent || '#10b981';
+            }
+        } else {
+            // Reset ke default jika tidak ada data
+            if (elements.primaryColor) {
+                elements.primaryColor.value = '#40a7e3';
+                elements.primaryColorHex.value = '#40a7e3';
+            }
+            if (elements.secondaryColor) {
+                elements.secondaryColor.value = '#FFD700';
+                elements.secondaryColorHex.value = '#FFD700';
+            }
+            if (elements.bgColor) {
+                elements.bgColor.value = '#0f0f0f';
+                elements.bgColorHex.value = '#0f0f0f';
+            }
+            if (elements.textColor) {
+                elements.textColor.value = '#ffffff';
+                elements.textColorHex.value = '#ffffff';
+            }
+            if (elements.cardColor) {
+                elements.cardColor.value = '#1a1a1a';
+                elements.cardColorHex.value = '#1a1a1a';
+            }
+            if (elements.accentColor) {
+                elements.accentColor.value = '#10b981';
+                elements.accentColorHex.value = '#10b981';
+            }
         }
         
         // Update font
@@ -642,8 +765,8 @@
             const percentPerPixelY = 100 / rect.height;
             
             // Hitung posisi baru (dibalik untuk arah yang benar)
-            let newPosX = startPosX - (deltaX * percentPerPixelX); // Dibalik agar geser ke kanan memindahkan gambar ke kiri
-            let newPosY = startPosY - (deltaY * percentPerPixelY); // Dibalik agar geser ke bawah memindahkan gambar ke atas
+            let newPosX = startPosX - (deltaX * percentPerPixelX);
+            let newPosY = startPosY - (deltaY * percentPerPixelY);
             
             // Batasi antara 0-100
             newPosX = Math.max(0, Math.min(100, newPosX));
@@ -661,6 +784,9 @@
             if (indicator) {
                 indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
             }
+            
+            // Tandai ada perubahan yang belum disimpan
+            hasUnsavedBanners = true;
         };
         
         // Touch end - reset semua state
@@ -698,89 +824,6 @@
         imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
         imageWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
         imageWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
-        
-        // Juga support mouse untuk testing
-        let mousePressTimer;
-        let isMouseDragging = false;
-        let mouseStartX, mouseStartY, mouseStartPosX, mouseStartPosY;
-        
-        const onMouseDown = (e) => {
-            e.preventDefault();
-            
-            mouseStartX = e.clientX;
-            mouseStartY = e.clientY;
-            
-            mousePressTimer = setTimeout(() => {
-                isMouseDragging = true;
-                mouseStartPosX = banners[index].positionX || 50;
-                mouseStartPosY = banners[index].positionY || 50;
-                
-                imageWrapper.classList.add('dragging-active');
-                
-                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
-                if (overlay) overlay.style.opacity = '0';
-                
-                vibrate(30);
-            }, 500);
-        };
-        
-        const onMouseMove = (e) => {
-            if (!isMouseDragging) {
-                clearTimeout(mousePressTimer);
-                return;
-            }
-            
-            e.preventDefault();
-            const rect = imageWrapper.getBoundingClientRect();
-            
-            const deltaX = e.clientX - mouseStartX;
-            const deltaY = e.clientY - mouseStartY;
-            
-            const percentPerPixelX = 100 / rect.width;
-            const percentPerPixelY = 100 / rect.height;
-            
-            let newPosX = mouseStartPosX - (deltaX * percentPerPixelX);
-            let newPosY = mouseStartPosY - (deltaY * percentPerPixelY);
-            
-            newPosX = Math.max(0, Math.min(100, newPosX));
-            newPosY = Math.max(0, Math.min(100, newPosY));
-            
-            banners[index].positionX = Math.round(newPosX);
-            banners[index].positionY = Math.round(newPosY);
-            
-            imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
-            
-            const indicator = document.getElementById(`pos-indicator-${index}`);
-            if (indicator) {
-                indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
-            }
-        };
-        
-        const onMouseUp = (e) => {
-            clearTimeout(mousePressTimer);
-            
-            if (isMouseDragging) {
-                isMouseDragging = false;
-                imageWrapper.classList.remove('dragging-active');
-                
-                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
-                if (overlay) overlay.style.opacity = '';
-            }
-        };
-        
-        const onMouseLeave = (e) => {
-            clearTimeout(mousePressTimer);
-            
-            if (isMouseDragging) {
-                isMouseDragging = false;
-                imageWrapper.classList.remove('dragging-active');
-            }
-        };
-        
-        imageWrapper.addEventListener('mousedown', onMouseDown);
-        imageWrapper.addEventListener('mousemove', onMouseMove);
-        imageWrapper.addEventListener('mouseup', onMouseUp);
-        imageWrapper.addEventListener('mouseleave', onMouseLeave);
     }
 
     // ==================== FUNGSI BANNER ====================
@@ -790,6 +833,7 @@
         openUploadModal((imageData) => {
             banners[index].fileData = imageData;
             banners[index].url = ''; // Kosongkan URL karena pakai file
+            hasUnsavedBanners = true; // Tandai ada perubahan
             
             // Update preview
             const previewArea = document.getElementById(`banner-preview-${index}`);
@@ -805,12 +849,21 @@
     };
     
     function addBanner() {
+        // Cek apakah ada banner yang belum diisi
+        const hasEmptyBanner = banners.some(b => !b.url && !b.fileData);
+        
+        if (hasEmptyBanner) {
+            showToast('⚠️ Ada banner yang belum diisi. Selesaikan atau hapus terlebih dahulu.', 'warning');
+            return;
+        }
+        
         banners.push({
             url: '',
             fileData: null,
             positionX: 50,
             positionY: 50
         });
+        hasUnsavedBanners = true; // Tandai ada perubahan
         renderBannerTrack();
         vibrate(10);
     }
@@ -818,6 +871,7 @@
     window.panel.deleteBanner = function(index) {
         if (confirm('Hapus banner ini?')) {
             banners.splice(index, 1);
+            hasUnsavedBanners = true; // Tandai ada perubahan
             renderBannerTrack();
             vibrate(10);
         }
@@ -826,8 +880,10 @@
     window.panel.moveBanner = function(index, direction) {
         if (direction === 'left' && index > 0) {
             [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
+            hasUnsavedBanners = true; // Tandai ada perubahan
         } else if (direction === 'right' && index < banners.length - 1) {
             [banners[index], banners[index + 1]] = [banners[index + 1], banners[index]];
+            hasUnsavedBanners = true; // Tandai ada perubahan
         } else {
             return;
         }
@@ -839,6 +895,14 @@
     async function saveBanners() {
         if (!currentWebsite) {
             showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        // Cek apakah ada banner yang belum diisi
+        const hasEmptyBanner = banners.some(b => !b.url && !b.fileData);
+        
+        if (hasEmptyBanner) {
+            showToast('⚠️ Ada banner yang belum diisi. Isi atau hapus terlebih dahulu.', 'warning');
             return;
         }
         
@@ -854,10 +918,12 @@
         
         // Konversi ke format penyimpanan
         const bannersToSave = validBanners.map(b => ({
-            url: b.url || b.fileData || '', // Simpan URL atau base64
+            url: b.url || b.fileData || '',
             positionX: b.positionX || 50,
             positionY: b.positionY || 50
         }));
+        
+        showLoading('Menyimpan banner...');
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
@@ -885,6 +951,8 @@
                     }
                 });
                 
+                hasUnsavedBanners = false; // Reset flag
+                
                 // Refresh data
                 const updatedWebsite = await fetchWebsiteData(currentUser.id);
                 if (updatedWebsite) {
@@ -896,6 +964,8 @@
         } catch (error) {
             console.error('❌ Error saving banners:', error);
             showToast(error.message || 'Failed to save banners', 'error');
+        } finally {
+            hideLoading();
         }
     }
 
@@ -913,6 +983,8 @@
             showToast('Logo harus berformat PNG', 'error');
             return;
         }
+        
+        showLoading('Menyimpan logo...');
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
@@ -940,6 +1012,57 @@
         } catch (error) {
             console.error('❌ Error saving logo:', error);
             showToast(error.message || 'Failed to save logo', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // ==================== FUNGSI SAVE COLORS ====================
+    async function saveColors() {
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        const colors = {
+            primary: elements.primaryColorHex?.value || '#40a7e3',
+            secondary: elements.secondaryColorHex?.value || '#FFD700',
+            background: elements.bgColorHex?.value || '#0f0f0f',
+            text: elements.textColorHex?.value || '#ffffff',
+            card: elements.cardColorHex?.value || '#1a1a1a',
+            accent: elements.accentColorHex?.value || '#10b981'
+        };
+        
+        showLoading('Menyimpan warna...');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(colors)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('✅ Warna tersimpan!', 'success');
+                // Refresh data untuk memastikan UI sesuai dengan database
+                const updatedWebsite = await fetchWebsiteData(currentUser.id);
+                if (updatedWebsite) {
+                    updateWebsiteUI(updatedWebsite);
+                }
+            } else {
+                throw new Error(result.error || 'Failed to save colors');
+            }
+        } catch (error) {
+            console.error('❌ Error saving colors:', error);
+            showToast(error.message || 'Gagal menyimpan warna', 'error');
+        } finally {
+            hideLoading();
         }
     }
 
@@ -1085,14 +1208,13 @@
             return;
         }
       
+        showLoading(`Menyimpan ${section}...`);
+      
         try {
             let url = '';
             let body = data;
       
             switch (section) {
-                case 'colors':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`;
-                    break;
                 case 'font':
                     url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font`;
                     break;
@@ -1117,6 +1239,7 @@
                     break;
                 default:
                     showToast('Unknown section', 'error');
+                    hideLoading();
                     return;
             }
       
@@ -1146,6 +1269,8 @@
         } catch (error) {
             console.error('❌ Error saving settings:', error);
             showToast(error.message || 'Failed to save settings', 'error');
+        } finally {
+            hideLoading();
         }
     }
 
@@ -1188,7 +1313,6 @@
             return;
         }
         
-        // Here you would normally send to API
         showToast('✅ Product saved!', 'success');
         closeProductModal();
     }
@@ -1216,7 +1340,6 @@
         
         console.log('🗑️ Deleting product:', currentProductId);
         
-        // Here you would normally send to API
         showToast('✅ Product deleted!', 'success');
         closeDeleteModal();
     }
@@ -1276,6 +1399,9 @@
     async function updateUI(user) {
         currentUser = user;
         
+        // Set user avatar
+        setUserAvatar(user);
+        
         if (elements.loading) elements.loading.style.display = 'none';
         
         const website = await fetchWebsiteData(user.id);
@@ -1332,6 +1458,12 @@
                 
                 if (tg.initDataUnsafe?.user) {
                     telegramUserData = tg.initDataUnsafe.user;
+                    
+                    // Coba dapatkan foto profil jika ada
+                    if (tg.initDataUnsafe?.user?.photo_url) {
+                        telegramUserData.photo_url = tg.initDataUnsafe.user.photo_url;
+                    }
+                    
                     console.log('📱 Telegram user data:', telegramUserData);
                 }
                 
@@ -1438,17 +1570,7 @@
         }
         
         if (elements.saveColorsBtn) {
-            elements.saveColorsBtn.addEventListener('click', () => {
-                const colors = {
-                    primary: elements.primaryColorHex?.value || '#40a7e3',
-                    secondary: elements.secondaryColorHex?.value || '#FFD700',
-                    background: elements.bgColorHex?.value || '#0f0f0f',
-                    text: elements.textColorHex?.value || '#ffffff',
-                    card: elements.cardColorHex?.value || '#1a1a1a',
-                    accent: elements.accentColorHex?.value || '#10b981'
-                };
-                saveSettings('colors', colors);
-            });
+            elements.saveColorsBtn.addEventListener('click', saveColors);
         }
         
         if (elements.saveFontBtn) {
@@ -1714,6 +1836,9 @@
                 closeUploadModal();
             }
         });
+        
+        // Setup keyboard dismiss
+        setupKeyboardDismiss();
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
