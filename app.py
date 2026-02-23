@@ -537,6 +537,288 @@ def save_colors(website_id):
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK TAMPILAN (VERSI BARU) - LANJUTAN ====================
+
+@app.route('/api/tampilan/<int:website_id>/banner', methods=['POST'])
+def save_banner(website_id):
+    """Save banner settings"""
+    try:
+        data = request.json
+        print(f"🖼️ Received banner data: {data}")
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Get existing tampilan or create new
+        existing = tmp.get_tampilan(website_id)
+        
+        if existing:
+            # Update existing
+            tmp.update_tampilan(website_id, {
+                'banner': data.get('url')
+            })
+        else:
+            # Create new
+            tmp.save_tampilan(website_id, {
+                'banner': data.get('url'),
+                'colors': {},
+                'font_family': 'Inter',
+                'font_size': 14
+            })
+        
+        return jsonify({'success': True, 'message': 'Banner saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/font', methods=['POST'])
+def save_font(website_id):
+    """Save font settings"""
+    try:
+        data = request.json
+        print(f"🔤 Received font data: {data}")
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Get existing tampilan or create new
+        existing = tmp.get_tampilan(website_id)
+        
+        if existing:
+            # Update existing
+            tmp.update_tampilan(website_id, {
+                'font_family': data.get('family', 'Inter'),
+                'font_size': data.get('size', 14)
+            })
+        else:
+            # Create new
+            tmp.save_tampilan(website_id, {
+                'banner': '',
+                'colors': {},
+                'font_family': data.get('family', 'Inter'),
+                'font_size': data.get('size', 14)
+            })
+        
+        return jsonify({'success': True, 'message': 'Font saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/general', methods=['POST'])
+def save_general(website_id):
+    """Save general settings"""
+    try:
+        data = request.json
+        print(f"⚙️ Received general data: {data}")
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        existing = tmp.get_tampilan(website_id)
+        
+        update_data = {
+            'title': data.get('title'),
+            'description': data.get('description'),
+            'contact_whatsapp': data.get('contact', {}).get('whatsapp'),
+            'contact_telegram': data.get('contact', {}).get('telegram')
+        }
+        
+        if existing:
+            tmp.update_tampilan(website_id, update_data)
+        else:
+            tmp.save_tampilan(website_id, {
+                **update_data,
+                'banner': '',
+                'colors': {},
+                'font_family': 'Inter',
+                'font_size': 14
+            })
+        
+        return jsonify({'success': True, 'message': 'General settings saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/seo', methods=['POST'])
+def save_seo(website_id):
+    """Save SEO settings"""
+    try:
+        data = request.json
+        print(f"🔍 Received SEO data: {data}")
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Store SEO data in website settings instead of tampilan
+        # Get current website
+        current = get_db().execute('SELECT settings FROM websites WHERE id = ?', (website_id,)).fetchone()
+        settings = json.loads(current['settings'] or '{}')
+        
+        # Update SEO settings
+        settings['seo'] = {
+            'title': data.get('title', ''),
+            'description': data.get('description', ''),
+            'keywords': data.get('keywords', '')
+        }
+        
+        # Save back to website
+        get_db().execute('UPDATE websites SET settings = ? WHERE id = ?',
+                        (json.dumps(settings), website_id))
+        get_db().commit()
+        
+        return jsonify({'success': True, 'message': 'SEO settings saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/payments', methods=['POST'])
+def save_payments(website_id):
+    """Save payment methods settings"""
+    try:
+        data = request.json
+        print(f"💳 Received payment data: {data}")
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        existing = tmp.get_tampilan(website_id)
+        
+        # Convert payment data to tampilan format
+        banks = []
+        if data.get('bank', {}).get('enabled'):
+            banks.append({
+                'enabled': True,
+                'bank_name': data.get('bank', {}).get('name', 'BCA'),
+                'account': data.get('bank', {}).get('account', ''),
+                'holder': data.get('bank', {}).get('holder', '')
+            })
+        
+        ewallets = []
+        if data.get('ewallet', {}).get('enabled'):
+            ewallets.append({
+                'enabled': True,
+                'provider': data.get('ewallet', {}).get('provider', 'DANA'),
+                'number': data.get('ewallet', {}).get('number', '')
+            })
+        
+        qris = {
+            'enabled': data.get('qris', {}).get('enabled', False),
+            'url': data.get('qris', {}).get('url', '')
+        }
+        
+        crypto = {
+            'enabled': data.get('crypto', {}).get('enabled', False),
+            'address': data.get('crypto', {}).get('address', '')
+        }
+        
+        update_data = {
+            'banks': banks,
+            'ewallets': ewallets,
+            'qris': qris,
+            'crypto': crypto
+        }
+        
+        if existing:
+            tmp.update_tampilan(website_id, update_data)
+        else:
+            tmp.save_tampilan(website_id, {
+                **update_data,
+                'banner': '',
+                'colors': {},
+                'font_family': 'Inter',
+                'font_size': 14
+            })
+        
+        return jsonify({'success': True, 'message': 'Payment settings saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/payment-notes', methods=['POST'])
+def save_payment_notes(website_id):
+    """Save payment notes"""
+    try:
+        data = request.json
+        print(f"📝 Received payment notes: {data}")
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        existing = tmp.get_tampilan(website_id)
+        
+        if existing:
+            tmp.update_tampilan(website_id, {
+                'payment_notes': {
+                    'payment': data.get('payment', ''),
+                    'confirmation': data.get('confirmation', '')
+                }
+            })
+        else:
+            tmp.save_tampilan(website_id, {
+                'payment_notes': {
+                    'payment': data.get('payment', ''),
+                    'confirmation': data.get('confirmation', '')
+                },
+                'banner': '',
+                'colors': {},
+                'font_family': 'Inter',
+                'font_size': 14
+            })
+        
+        return jsonify({'success': True, 'message': 'Payment notes saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/maintenance', methods=['POST'])
+def save_maintenance(website_id):
+    """Save maintenance mode settings"""
+    try:
+        data = request.json
+        print(f"🔧 Received maintenance data: {data}")
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Store maintenance settings in website's main record
+        get_db().execute('UPDATE websites SET status = ? WHERE id = ?',
+                        ('maintenance' if data.get('enabled') else 'active', website_id))
+        get_db().commit()
+        
+        # Also store message in tampilan
+        existing = tmp.get_tampilan(website_id)
+        
+        if existing:
+            tmp.update_tampilan(website_id, {
+                'maintenance_message': data.get('message', 'Website sedang dalam perbaikan')
+            })
+        else:
+            tmp.save_tampilan(website_id, {
+                'maintenance_message': data.get('message', 'Website sedang dalam perbaikan'),
+                'banner': '',
+                'colors': {},
+                'font_family': 'Inter',
+                'font_size': 14
+            })
+        
+        return jsonify({'success': True, 'message': 'Maintenance settings saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
