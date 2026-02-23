@@ -241,8 +241,9 @@ def create_website():
         missing_fields = []
         
         for field in required:
-            if field not in data or not data[field]:
+            if field not in data or data[field] is None or data[field] == '':
                 missing_fields.append(field)
+                print(f"❌ Missing field: {field}")
         
         if missing_fields:
             return jsonify({
@@ -250,7 +251,7 @@ def create_website():
                 'error': f'Missing fields: {", ".join(missing_fields)}'
             }), 400
         
-        # Validate endpoint format (hanya huruf kecil, angka, dan strip)
+        # Validate endpoint format
         endpoint = data['endpoint'].strip().lower()
         if not endpoint.replace('-', '').isalnum():
             return jsonify({
