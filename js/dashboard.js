@@ -4,7 +4,7 @@
 
     // ==================== KONFIGURASI ====================
     const OWNER_IDS = [7998861975];
-    const API_BASE_URL = 'https://climb-gzip-enquiry-other.trycloudflare.com';
+    const API_BASE_URL = 'https://discussions-prison-applications-former.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -468,7 +468,7 @@
                 owner_id: 123456789,
                 username: 'admin_giveaway',
                 email: 'admin@giveaway.com',
-                tunnel_url: 'https://giveaway.trycloudflare.com',
+                tunnel_url: 'https://discussions-prison-applications-former.trycloudflare.com',
                 status: 'active',
                 created_at: new Date().toISOString()
             },
@@ -479,7 +479,7 @@
                 owner_id: 987654321,
                 username: 'contest_admin',
                 email: 'contest@bot.com',
-                tunnel_url: 'https://contest.trycloudflare.com',
+                tunnel_url: 'https://discussions-prison-applications-former.trycloudflare.com',
                 status: 'inactive',
                 created_at: new Date().toISOString()
             }
