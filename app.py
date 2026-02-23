@@ -689,6 +689,6 @@ def internal_error(error):
 if __name__ == '__main__':
     print("🚀 Starting Website Management API Server...")
     print(f"📅 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("🔗 API available at: http://localhost:5000")
+    print("🔗 API available at: http://localhost:5050")
     print("📊 Database: websites.db")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5050, debug=True)
