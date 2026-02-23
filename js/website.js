@@ -1,10 +1,9 @@
-// Website JavaScript for Public Store
+// Website JavaScript for Public Store - Versi Database Only
 (function() {
     console.log('🏪 Website Store - Initializing...');
 
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
-    const DEFAULT_ENDPOINT = 'default-store';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -103,7 +102,7 @@
     function getEndpointFromUrl() {
         const path = window.location.pathname;
         const matches = path.match(/\/website\/([^\/]+)/);
-        return matches ? matches[1] : DEFAULT_ENDPOINT;
+        return matches ? matches[1] : null;
     }
 
     function vibrate(duration = 20) {
@@ -113,7 +112,7 @@
     }
 
     function formatNumber(num) {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return num ? num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '0';
     }
 
     function formatPrice(price) {
@@ -148,83 +147,6 @@
         }, duration);
     }
 
-    // ==================== FUNGSI KEYBOARD HANDLER ====================
-    function setupKeyboardHandler() {
-        function scrollToInput(input) {
-            const rect = input.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const keyboardHeight = windowHeight * 0.4;
-            
-            if (rect.bottom > windowHeight - keyboardHeight) {
-                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
-                window.scrollTo({ top: scrollY, behavior: 'smooth' });
-            }
-        }
-        
-        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
-        
-        modalInputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                setTimeout(() => {
-                    scrollToInput(input);
-                    
-                    const modal = input.closest('.modal');
-                    if (modal) {
-                        modal.classList.add('modal-with-input');
-                        const modalContent = modal.querySelector('.modal-content');
-                        if (modalContent) {
-                            modalContent.style.maxHeight = '70vh';
-                            modalContent.style.overflowY = 'auto';
-                        }
-                    }
-                }, 300);
-            });
-            
-            input.addEventListener('blur', () => {
-                const modal = input.closest('.modal');
-                if (modal) {
-                    modal.classList.remove('modal-with-input');
-                }
-            });
-        });
-        
-        document.addEventListener('touchstart', (e) => {
-            const activeElement = document.activeElement;
-            if (!activeElement) return;
-            
-            const isInput = e.target.tagName === 'INPUT' || 
-                           e.target.tagName === 'TEXTAREA' || 
-                           e.target.tagName === 'SELECT' ||
-                           e.target.closest('.modal-content');
-            
-            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                activeElement.blur();
-            }
-        });
-        
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', () => {
-                const activeElement = document.activeElement;
-                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                    activeElement.blur();
-                }
-            });
-        });
-        
-        let viewportHeight = window.innerHeight;
-        window.addEventListener('resize', () => {
-            const newHeight = window.innerHeight;
-            
-            if (newHeight < viewportHeight * 0.7) {
-                document.body.classList.add('keyboard-visible');
-            } else if (newHeight > viewportHeight * 0.8) {
-                document.body.classList.remove('keyboard-visible');
-            }
-            
-            viewportHeight = newHeight;
-        });
-    }
-
     // ==================== FUNGSI LOAD WEBSITE DATA ====================
     async function loadWebsiteData(endpoint) {
         try {
@@ -240,6 +162,9 @@
             });
             
             if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('Website tidak ditemukan');
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
@@ -250,23 +175,17 @@
                 const data = result.website;
                 websiteData = data;
                 
+                // Update UI dengan data dari database
                 updateWebsiteUI(data);
                 
-                if (data.products && data.products.length > 0) {
-                    products = data.products;
-                } else {
-                    products = [];
-                }
+                // Set products dari database
+                products = data.products || [];
                 
-                if (data.categories && data.categories.length > 0) {
-                    categories = data.categories;
-                } else {
-                    categories = getDefaultCategories();
-                }
+                // Set categories dari database (jika ada)
+                categories = data.categories || [];
                 
-                renderFeaturedProducts();
-                renderPopularProducts();
-                renderCategories();
+                // Render semua komponen
+                renderAllComponents();
                 
                 return data;
             } else {
@@ -275,292 +194,101 @@
             
         } catch (error) {
             console.error('❌ Error loading website:', error);
-            showToast('Gagal memuat data website', 'error');
             
-            const dummyData = getDummyWebsiteData(endpoint);
-            websiteData = dummyData;
-            updateWebsiteUI(dummyData);
+            // Tampilkan pesan error di halaman
+            if (elements.storeName) {
+                elements.storeName.textContent = 'Website Tidak Ditemukan';
+            }
             
-            products = getDummyProducts();
-            renderFeaturedProducts();
-            renderPopularProducts();
+            // Sembunyikan loading dan tampilkan error
+            if (elements.loading) elements.loading.style.display = 'none';
             
-            categories = getDefaultCategories();
-            renderCategories();
+            showToast(error.message || 'Gagal memuat data website', 'error');
+            
+            // Kosongkan semua konten
+            clearAllContent();
+            
+            return null;
         }
     }
 
-    function getDummyWebsiteData(endpoint) {
-        return {
-            id: 1,
-            endpoint: endpoint,
-            name: 'Toko TopUp Game',
-            title: 'Toko TopUp Game - Termurah dan Terpercaya',
-            description: 'Toko topup game termurah dan terpercaya. Support berbagai game populer.',
-            keywords: 'topup, game, voucher, diamond, ml, ff, pubg',
-            banner: [
-                'https://via.placeholder.com/800x300/40a7e3/ffffff?text=Promo+Spesial+50%25',
-                'https://via.placeholder.com/800x300/10b981/ffffff?text=TopUp+Instant',
-                'https://via.placeholder.com/800x300/f59e0b/ffffff?text=Bonus+Setiap+Pembelian'
-            ],
-            promo_banner: 'https://via.placeholder.com/800x100/FFD700/000000?text=Diskon+10%25+Untuk+Member+Baru',
-            colors: {
-                primary: '#40a7e3',
-                secondary: '#FFD700',
-                background: '#0f0f0f',
-                text: '#ffffff',
-                card: '#1a1a1a',
-                accent: '#10b981'
-            },
-            font: {
-                family: 'Inter',
-                size: 14
-            },
-            contact: {
-                whatsapp: '6281234567890',
-                telegram: '@tokotopup'
-            },
-            payments: {
-                bank: [
-                    { name: 'BCA', icon: 'https://via.placeholder.com/40x40/0066b3/ffffff?text=BCA' },
-                    { name: 'Mandiri', icon: 'https://via.placeholder.com/40x40/0033a0/ffffff?text=Mandiri' },
-                    { name: 'BNI', icon: 'https://via.placeholder.com/40x40/ff6600/ffffff?text=BNI' },
-                    { name: 'BRI', icon: 'https://via.placeholder.com/40x40/0066b3/ffffff?text=BRI' }
-                ],
-                ewallet: [
-                    { name: 'DANA', icon: 'https://via.placeholder.com/40x40/00a36c/ffffff?text=DANA' },
-                    { name: 'OVO', icon: 'https://via.placeholder.com/40x40/4b0082/ffffff?text=OVO' },
-                    { name: 'GoPay', icon: 'https://via.placeholder.com/40x40/00aef0/ffffff?text=GoPay' },
-                    { name: 'ShopeePay', icon: 'https://via.placeholder.com/40x40/ee4d2d/ffffff?text=ShopeePay' }
-                ],
-                qris: true
-            },
-            footer: {
-                description: 'Toko topup game terpercaya sejak 2024. Melayani berbagai kebutuhan gaming Anda.',
-                copyright: 'Toko TopUp Game'
-            },
-            social: {
-                instagram: '#',
-                facebook: '#',
-                tiktok: '#'
-            }
-        };
+    function clearAllContent() {
+        // Kosongkan semua container
+        if (elements.sliderContainer) elements.sliderContainer.innerHTML = '';
+        if (elements.categoriesGrid) elements.categoriesGrid.innerHTML = '';
+        if (elements.featuredProducts) elements.featuredProducts.innerHTML = '';
+        if (elements.popularProducts) elements.popularProducts.innerHTML = '';
+        if (elements.promoBanner) elements.promoBanner.innerHTML = '';
+        if (elements.paymentIcons) elements.paymentIcons.innerHTML = '';
     }
 
-    function getDummyProducts() {
-        return [
-            {
-                id: 1,
-                name: 'Diamond Mobile Legends',
-                description: 'Diamond untuk Mobile Legends',
-                price: 15000,
-                original_price: 20000,
-                stock: 999,
-                sold: 1523,
-                category: 'Mobile Legends',
-                image: 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=ML+120+Diamond',
-                images: [
-                    'https://via.placeholder.com/400x400/40a7e3/ffffff?text=ML+1',
-                    'https://via.placeholder.com/400x400/40a7e3/ffffff?text=ML+2'
-                ],
-                rating: 4.8,
-                reviews: 234,
-                featured: true,
-                popular: true,
-                variants: [
-                    { name: '86 Diamond', price: 15000 },
-                    { name: '172 Diamond', price: 29000 },
-                    { name: '257 Diamond', price: 43000 },
-                    { name: '344 Diamond', price: 57000 }
-                ],
-                notes: 'Proses otomatis 1-5 menit. Pastikan ID benar.'
-            },
-            {
-                id: 2,
-                name: 'UC PUBG Mobile',
-                description: 'Unknown Cash untuk PUBG Mobile',
-                price: 12000,
-                original_price: 15000,
-                stock: 500,
-                sold: 876,
-                category: 'PUBG Mobile',
-                image: 'https://via.placeholder.com/300x200/10b981/ffffff?text=UC+60',
-                images: [
-                    'https://via.placeholder.com/400x400/10b981/ffffff?text=UC+1',
-                    'https://via.placeholder.com/400x400/10b981/ffffff?text=UC+2'
-                ],
-                rating: 4.7,
-                reviews: 156,
-                featured: true,
-                popular: true,
-                variants: [
-                    { name: '60 UC', price: 12000 },
-                    { name: '180 UC', price: 35000 },
-                    { name: '325 UC', price: 62000 },
-                    { name: '660 UC', price: 125000 }
-                ],
-                notes: 'Proses cepat. Masukkan User ID dengan benar.'
-            },
-            {
-                id: 3,
-                name: 'Voucher Google Play',
-                description: 'Voucher Google Play Indonesia',
-                price: 50000,
-                stock: 200,
-                sold: 654,
-                category: 'Voucher',
-                image: 'https://via.placeholder.com/300x200/f59e0b/ffffff?text=Google+Play+50rb',
-                images: [
-                    'https://via.placeholder.com/400x400/f59e0b/ffffff?text=GP+1'
-                ],
-                rating: 4.9,
-                reviews: 189,
-                featured: true,
-                popular: false,
-                variants: [
-                    { name: 'Rp 50.000', price: 50000 },
-                    { name: 'Rp 100.000', price: 98000 },
-                    { name: 'Rp 200.000', price: 195000 },
-                    { name: 'Rp 500.000', price: 485000 }
-                ],
-                notes: 'Kode dikirim via email dan Telegram.'
-            },
-            {
-                id: 4,
-                name: 'Diamond Free Fire',
-                description: 'Diamond untuk Free Fire',
-                price: 10000,
-                stock: 800,
-                sold: 432,
-                category: 'Free Fire',
-                image: 'https://via.placeholder.com/300x200/ef4444/ffffff?text=FF+100+Diamond',
-                images: [
-                    'https://via.placeholder.com/400x400/ef4444/ffffff?text=FF+1'
-                ],
-                rating: 4.6,
-                reviews: 98,
-                featured: false,
-                popular: true,
-                variants: [
-                    { name: '100 Diamond', price: 10000 },
-                    { name: '210 Diamond', price: 20000 },
-                    { name: '355 Diamond', price: 33000 },
-                    { name: '530 Diamond', price: 49000 }
-                ],
-                notes: 'Topup otomatis via ID.'
-            },
-            {
-                id: 5,
-                name: 'Voucher Steam',
-                description: 'Voucher Wallet Steam',
-                price: 100000,
-                stock: 150,
-                sold: 321,
-                category: 'Voucher',
-                image: 'https://via.placeholder.com/300x200/1b2838/ffffff?text=Steam+$10',
-                images: [
-                    'https://via.placeholder.com/400x400/1b2838/ffffff?text=Steam+1'
-                ],
-                rating: 4.8,
-                reviews: 76,
-                featured: false,
-                popular: true,
-                variants: [
-                    { name: '$10', price: 100000 },
-                    { name: '$20', price: 200000 },
-                    { name: '$50', price: 500000 },
-                    { name: '$100', price: 1000000 }
-                ],
-                notes: 'Kode dikirim via email.'
-            },
-            {
-                id: 6,
-                name: 'Membership Spotify',
-                description: 'Premium Spotify 1 bulan',
-                price: 25000,
-                original_price: 35000,
-                stock: 300,
-                sold: 567,
-                category: 'Membership',
-                image: 'https://via.placeholder.com/300x200/1db954/ffffff?text=Spotify',
-                images: [
-                    'https://via.placeholder.com/400x400/1db954/ffffff?text=Spotify+1'
-                ],
-                rating: 4.7,
-                reviews: 145,
-                featured: true,
-                popular: false,
-                variants: [
-                    { name: '1 Bulan', price: 25000 },
-                    { name: '3 Bulan', price: 70000 },
-                    { name: '6 Bulan', price: 135000 },
-                    { name: '12 Bulan', price: 250000 }
-                ],
-                notes: 'Akun pribadi, bukan family.'
-            }
-        ];
-    }
-
-    function getDefaultCategories() {
-        return [
-            { id: 1, name: 'Mobile Legends', icon: 'fas fa-gamepad', count: 12, color: '#40a7e3' },
-            { id: 2, name: 'PUBG Mobile', icon: 'fas fa-crosshairs', count: 8, color: '#10b981' },
-            { id: 3, name: 'Free Fire', icon: 'fas fa-fire', count: 6, color: '#ef4444' },
-            { id: 4, name: 'Voucher', icon: 'fas fa-ticket-alt', count: 15, color: '#f59e0b' },
-            { id: 5, name: 'Membership', icon: 'fas fa-crown', count: 7, color: '#8b5cf6' },
-            { id: 6, name: 'Pulsa', icon: 'fas fa-phone-alt', count: 9, color: '#ec4899' }
-        ];
+    function renderAllComponents() {
+        // Render banner
+        if (websiteData?.settings?.banner) {
+            const banners = Array.isArray(websiteData.settings.banner) 
+                ? websiteData.settings.banner 
+                : [websiteData.settings.banner];
+            renderBanners(banners);
+        } else {
+            if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
+        }
+        
+        // Render promo banner
+        if (websiteData?.settings?.promo_banner && elements.promoBanner) {
+            elements.promoBanner.innerHTML = `<img src="${websiteData.settings.promo_banner}" alt="Promo">`;
+        }
+        
+        // Render payment methods
+        if (websiteData?.settings?.payments) {
+            renderPaymentMethods(websiteData.settings.payments);
+        }
+        
+        // Render products
+        renderProducts();
+        
+        // Apply theme
+        if (websiteData?.settings?.colors) {
+            applyThemeColors(websiteData.settings.colors);
+        }
+        
+        if (websiteData?.settings?.font) {
+            applyFont(websiteData.settings.font);
+        }
     }
 
     // ==================== FUNGSI UPDATE UI ====================
     function updateWebsiteUI(data) {
+        // Update meta tags
         if (elements.dynamicTitle) {
-            elements.dynamicTitle.textContent = data.title || 'Toko Online';
+            elements.dynamicTitle.textContent = data.settings?.title || 'Toko Online';
         }
         if (elements.dynamicDescription) {
-            elements.dynamicDescription.content = data.description || 'Toko online terpercaya';
+            elements.dynamicDescription.content = data.settings?.description || 'Toko online terpercaya';
         }
         if (elements.dynamicKeywords) {
-            elements.dynamicKeywords.content = data.keywords || 'toko, online, topup';
+            elements.dynamicKeywords.content = data.settings?.seo?.keywords || 'toko, online, topup';
         }
         
-        const storeName = data.name || 'Toko Online';
+        // Update store name
+        const storeName = data.username || 'Toko Online';
         if (elements.storeName) elements.storeName.textContent = storeName;
         if (elements.sidebarStoreName) elements.sidebarStoreName.textContent = storeName;
         if (elements.footerStoreName) elements.footerStoreName.textContent = storeName;
         
+        // Update footer
         if (elements.footerDescription) {
-            elements.footerDescription.textContent = data.footer?.description || '';
+            elements.footerDescription.textContent = data.settings?.description || '';
         }
-        if (elements.contactWhatsApp && data.contact?.whatsapp) {
-            elements.contactWhatsApp.textContent = data.contact.whatsapp;
+        if (elements.contactWhatsApp && data.settings?.contact?.whatsapp) {
+            elements.contactWhatsApp.textContent = data.settings.contact.whatsapp;
         }
-        if (elements.contactTelegram && data.contact?.telegram) {
-            elements.contactTelegram.textContent = data.contact.telegram;
+        if (elements.contactTelegram && data.settings?.contact?.telegram) {
+            elements.contactTelegram.textContent = data.settings.contact.telegram;
         }
         
+        // Update year
         if (elements.sidebarYear) {
             elements.sidebarYear.textContent = new Date().getFullYear();
-        }
-        
-        if (data.banner && data.banner.length > 0) {
-            renderBanners(data.banner);
-        }
-        
-        if (data.promo_banner && elements.promoBanner) {
-            elements.promoBanner.innerHTML = `<img src="${data.promo_banner}" alt="Promo">`;
-        }
-        
-        if (data.payments) {
-            renderPaymentMethods(data.payments);
-        }
-        
-        if (data.colors) {
-            applyThemeColors(data.colors);
-        }
-        
-        if (data.font) {
-            applyFont(data.font);
         }
     }
 
@@ -587,7 +315,12 @@
 
     // ==================== FUNGSI RENDER BANNER ====================
     function renderBanners(banners) {
-        if (!elements.sliderContainer || !elements.sliderDots) return;
+        if (!elements.sliderContainer || !elements.sliderDots || !banners || banners.length === 0) {
+            if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
+            return;
+        }
+        
+        elements.bannerSlider.style.display = 'block';
         
         let slidesHtml = '';
         let dotsHtml = '';
@@ -619,6 +352,7 @@
 
     function startBannerAutoSlide(totalSlides) {
         if (bannerInterval) clearInterval(bannerInterval);
+        if (totalSlides <= 1) return;
         
         bannerInterval = setInterval(() => {
             const nextIndex = (currentBannerIndex + 1) % totalSlides;
@@ -641,47 +375,15 @@
         currentBannerIndex = index;
     }
 
-    // ==================== FUNGSI RENDER CATEGORIES ====================
-    function renderCategories() {
-        if (!elements.categoriesGrid) return;
-        
-        let html = '';
-        categories.forEach(cat => {
-            html += `
-                <div class="category-card" data-category="${cat.id}">
-                    <div class="category-icon" style="background: ${cat.color}20; color: ${cat.color}">
-                        <i class="${cat.icon}"></i>
-                    </div>
-                    <div class="category-info">
-                        <h4>${escapeHtml(cat.name)}</h4>
-                        <span>${cat.count} produk</span>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.categoriesGrid.innerHTML = html;
-        
-        document.querySelectorAll('.category-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const categoryId = card.dataset.category;
-                filterByCategory(categoryId);
-            });
-        });
-    }
-
     // ==================== FUNGSI RENDER PRODUCTS ====================
-    function renderFeaturedProducts() {
-        if (!elements.featuredProducts) return;
+    function renderProducts() {
+        if (!elements.featuredProducts || !elements.popularProducts) return;
         
+        // Filter produk berdasarkan featured dan popular
         const featured = products.filter(p => p.featured).slice(0, 4);
-        renderProductGrid(elements.featuredProducts, featured);
-    }
-
-    function renderPopularProducts() {
-        if (!elements.popularProducts) return;
-        
         const popular = products.filter(p => p.popular).slice(0, 4);
+        
+        renderProductGrid(elements.featuredProducts, featured);
         renderProductGrid(elements.popularProducts, popular);
     }
 
@@ -701,13 +403,13 @@
             html += `
                 <div class="product-card" data-id="${product.id}">
                     <div class="product-image">
-                        <img src="${product.image}" alt="${escapeHtml(product.name)}">
+                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" alt="${escapeHtml(product.name)}">
                         ${discount > 0 ? `<span class="product-discount">-${discount}%</span>` : ''}
                         ${product.stock <= 0 ? '<span class="product-soldout">Habis</span>' : ''}
                     </div>
                     <div class="product-info">
                         <h3>${escapeHtml(product.name)}</h3>
-                        <p class="product-desc">${escapeHtml(product.description.substring(0, 30))}...</p>
+                        <p class="product-desc">${escapeHtml(product.description ? product.description.substring(0, 30) : '')}...</p>
                         <div class="product-price">
                             <span class="price">${formatPrice(product.price)}</span>
                             ${product.original_price ? 
@@ -715,10 +417,10 @@
                         </div>
                         <div class="product-meta">
                             <span class="rating">
-                                <i class="fas fa-star"></i> ${product.rating}
+                                <i class="fas fa-star"></i> ${product.rating || 0}
                             </span>
                             <span class="sold">
-                                <i class="fas fa-shopping-bag"></i> ${product.sold} terjual
+                                <i class="fas fa-shopping-bag"></i> ${product.sold || 0} terjual
                             </span>
                         </div>
                         <button class="btn-add-cart" onclick="event.stopPropagation(); window.website.addToCart(${product.id})">
@@ -752,7 +454,7 @@
             payments.bank.forEach(bank => {
                 html += `
                     <div class="payment-icon">
-                        <img src="${bank.icon}" alt="${bank.name}">
+                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}">
                         <span>${bank.name}</span>
                     </div>
                 `;
@@ -763,14 +465,14 @@
             payments.ewallet.forEach(wallet => {
                 html += `
                     <div class="payment-icon">
-                        <img src="${wallet.icon}" alt="${wallet.name}">
+                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}">
                         <span>${wallet.name}</span>
                     </div>
                 `;
             });
         }
         
-        if (payments.qris) {
+        if (payments.qris && payments.qris.enabled) {
             html += `
                 <div class="payment-icon">
                     <i class="fas fa-qrcode"></i>
@@ -779,11 +481,16 @@
             `;
         }
         
-        elements.paymentIcons.innerHTML = html;
+        if (html === '') {
+            elements.paymentIcons.innerHTML = '<div class="empty-message">Belum ada metode pembayaran</div>';
+        } else {
+            elements.paymentIcons.innerHTML = html;
+        }
     }
 
     // ==================== FUNGSI CART ====================
     function loadCart() {
+        if (!currentEndpoint) return;
         const savedCart = localStorage.getItem(`cart_${currentEndpoint}`);
         if (savedCart) {
             try {
@@ -799,6 +506,7 @@
     }
 
     function saveCart() {
+        if (!currentEndpoint) return;
         localStorage.setItem(`cart_${currentEndpoint}`, JSON.stringify(cart));
     }
 
@@ -893,7 +601,7 @@
                 
                 cartHtml += `
                     <div class="cart-item" data-index="${index}">
-                        <img src="${item.image}" alt="${escapeHtml(item.name)}">
+                        <img src="${item.image || 'https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(item.name)}">
                         <div class="cart-item-details">
                             <h4>${escapeHtml(item.name)}</h4>
                             ${item.variant ? `<p class="cart-item-variant">${escapeHtml(item.variant)}</p>` : ''}
@@ -955,7 +663,7 @@
         const productHtml = `
             <div class="product-detail-images">
                 <div class="main-image">
-                    <img src="${product.image}" alt="${escapeHtml(product.name)}" id="mainProductImage">
+                    <img src="${product.image || 'https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(product.name)}" id="mainProductImage">
                 </div>
                 <div class="thumbnail-images">
                     ${product.images ? product.images.map(img => 
@@ -968,10 +676,10 @@
                 <div class="product-rating">
                     <div class="stars">
                         ${Array(5).fill(0).map((_, i) => 
-                            `<i class="fas fa-star${i < Math.floor(product.rating) ? '' : i < product.rating ? '-half-alt' : '-o'}"></i>`
+                            `<i class="fas fa-star${i < Math.floor(product.rating || 0) ? '' : i < (product.rating || 0) ? '-half-alt' : '-o'}"></i>`
                         ).join('')}
                     </div>
-                    <span>${product.rating} (${product.reviews} ulasan)</span>
+                    <span>${product.rating || 0} (${product.reviews || 0} ulasan)</span>
                 </div>
                 <div class="product-price-detail">
                     <span class="current-price">${formatPrice(product.price)}</span>
@@ -982,24 +690,24 @@
                 </div>
                 <div class="product-stock">
                     <i class="fas fa-cubes"></i>
-                    <span>Stok: <strong>${product.stock}</strong></span>
-                    <span class="sold-count"><i class="fas fa-shopping-bag"></i> ${product.sold} terjual</span>
+                    <span>Stok: <strong>${product.stock || 0}</strong></span>
+                    <span class="sold-count"><i class="fas fa-shopping-bag"></i> ${product.sold || 0} terjual</span>
                 </div>
                 <div class="product-description">
                     <h4>Deskripsi</h4>
-                    <p>${escapeHtml(product.description)}</p>
+                    <p>${escapeHtml(product.description || 'Tidak ada deskripsi')}</p>
                 </div>
                 ${variantsHtml}
                 <div class="product-notes">
                     <h4>Catatan</h4>
-                    <p>${escapeHtml(product.notes)}</p>
+                    <p>${escapeHtml(product.notes || '')}</p>
                 </div>
                 <div class="product-actions-detail">
                     <div class="quantity-selector">
                         <button class="qty-btn" id="detailQtyMinus">
                             <i class="fas fa-minus"></i>
                         </button>
-                        <input type="number" id="detailQty" value="1" min="1" max="${product.stock}">
+                        <input type="number" id="detailQty" value="1" min="1" max="${product.stock || 999}">
                         <button class="qty-btn" id="detailQtyPlus">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -1022,6 +730,7 @@
         
         elements.productModal.classList.add('active');
         
+        // Setup event listeners untuk variant
         document.querySelectorAll('.variant-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
@@ -1029,6 +738,7 @@
             });
         });
         
+        // Setup quantity selector
         const qtyInput = document.getElementById('detailQty');
         const qtyMinus = document.getElementById('detailQtyMinus');
         const qtyPlus = document.getElementById('detailQtyPlus');
@@ -1045,12 +755,13 @@
         if (qtyPlus && qtyInput) {
             qtyPlus.addEventListener('click', () => {
                 let val = parseInt(qtyInput.value) || 1;
-                if (val < product.stock) {
+                if (val < (product.stock || 999)) {
                     qtyInput.value = val + 1;
                 }
             });
         }
         
+        // Add to cart button
         const addToCartBtn = document.getElementById('detailAddToCart');
         if (addToCartBtn) {
             addToCartBtn.addEventListener('click', () => {
@@ -1071,6 +782,7 @@
             });
         }
         
+        // Buy now button
         const buyNowBtn = document.getElementById('detailBuyNow');
         if (buyNowBtn) {
             buyNowBtn.addEventListener('click', () => {
@@ -1134,22 +846,6 @@
         }
     }
 
-    // ==================== FUNGSI SEARCH ====================
-    function toggleSearch() {
-        if (elements.searchBar) {
-            elements.searchBar.classList.toggle('active');
-            if (elements.searchBar.classList.contains('active')) {
-                elements.searchInput.focus();
-            }
-        }
-    }
-
-    // ==================== FUNGSI FILTER ====================
-    function filterByCategory(categoryId) {
-        console.log('Filter by category:', categoryId);
-        showToast('Fitur filter akan segera hadir', 'info');
-    }
-
     // ==================== FUNGSI LOGIN ====================
     function openLoginModal() {
         if (elements.loginModal) {
@@ -1177,7 +873,7 @@
             }
         } else {
             const guestUser = {
-                id: 999999,
+                id: Date.now(),
                 first_name: 'Guest',
                 username: 'guest_user',
                 is_premium: false
@@ -1226,6 +922,7 @@
     }
 
     function loadUser() {
+        if (!currentEndpoint) return;
         const savedUser = localStorage.getItem(`user_${currentEndpoint}`);
         if (savedUser) {
             try {
@@ -1244,12 +941,16 @@
         currentEndpoint = getEndpointFromUrl();
         console.log('📍 Endpoint:', currentEndpoint);
         
+        if (!currentEndpoint) {
+            showToast('Endpoint tidak valid', 'error');
+            return;
+        }
+        
         setupKeyboardHandler();
         
         await loadWebsiteData(currentEndpoint);
         
         loadCart();
-        
         loadUser();
         
         setupEventListeners();
@@ -1293,17 +994,10 @@
             elements.searchClose.addEventListener('click', toggleSearch);
         }
         
-        if (elements.searchInput) {
-            elements.searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                console.log('Search:', query);
-            });
-        }
-        
         if (elements.shopNowBtn) {
             elements.shopNowBtn.addEventListener('click', () => {
                 closeCart();
-                document.querySelector('.featured-products').scrollIntoView({ behavior: 'smooth' });
+                document.querySelector('.featured-products')?.scrollIntoView({ behavior: 'smooth' });
             });
         }
         
@@ -1373,21 +1067,21 @@
                         <div class="checkout-payment">
                             <h3>Metode Pembayaran</h3>
                             <div class="payment-options">
-                                ${websiteData?.payments?.bank?.map(bank => `
+                                ${websiteData?.settings?.payments?.bank?.map(bank => `
                                     <label class="payment-option">
                                         <input type="radio" name="payment" value="bank_${bank.name}">
-                                        <img src="${bank.icon}" alt="${bank.name}">
+                                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}">
                                         <span>${bank.name}</span>
                                     </label>
                                 `).join('')}
-                                ${websiteData?.payments?.ewallet?.map(wallet => `
+                                ${websiteData?.settings?.payments?.ewallet?.map(wallet => `
                                     <label class="payment-option">
                                         <input type="radio" name="payment" value="ewallet_${wallet.name}">
-                                        <img src="${wallet.icon}" alt="${wallet.name}">
+                                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}">
                                         <span>${wallet.name}</span>
                                     </label>
                                 `).join('')}
-                                ${websiteData?.payments?.qris ? `
+                                ${websiteData?.settings?.payments?.qris?.enabled ? `
                                     <label class="payment-option">
                                         <input type="radio" name="payment" value="qris">
                                         <i class="fas fa-qrcode"></i>
@@ -1437,6 +1131,93 @@
                 closeLoginModal();
             }
         });
+    }
+
+    // ==================== FUNGSI KEYBOARD HANDLER ====================
+    function setupKeyboardHandler() {
+        function scrollToInput(input) {
+            const rect = input.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const keyboardHeight = windowHeight * 0.4;
+            
+            if (rect.bottom > windowHeight - keyboardHeight) {
+                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
+                window.scrollTo({ top: scrollY, behavior: 'smooth' });
+            }
+        }
+        
+        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
+        
+        modalInputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    scrollToInput(input);
+                    
+                    const modal = input.closest('.modal');
+                    if (modal) {
+                        modal.classList.add('modal-with-input');
+                        const modalContent = modal.querySelector('.modal-content');
+                        if (modalContent) {
+                            modalContent.style.maxHeight = '70vh';
+                            modalContent.style.overflowY = 'auto';
+                        }
+                    }
+                }, 300);
+            });
+            
+            input.addEventListener('blur', () => {
+                const modal = input.closest('.modal');
+                if (modal) {
+                    modal.classList.remove('modal-with-input');
+                }
+            });
+        });
+        
+        document.addEventListener('touchstart', (e) => {
+            const activeElement = document.activeElement;
+            if (!activeElement) return;
+            
+            const isInput = e.target.tagName === 'INPUT' || 
+                           e.target.tagName === 'TEXTAREA' || 
+                           e.target.tagName === 'SELECT' ||
+                           e.target.closest('.modal-content');
+            
+            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                activeElement.blur();
+            }
+        });
+        
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', () => {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                    activeElement.blur();
+                }
+            });
+        });
+        
+        let viewportHeight = window.innerHeight;
+        window.addEventListener('resize', () => {
+            const newHeight = window.innerHeight;
+            
+            if (newHeight < viewportHeight * 0.7) {
+                document.body.classList.add('keyboard-visible');
+            } else if (newHeight > viewportHeight * 0.8) {
+                document.body.classList.remove('keyboard-visible');
+            }
+            
+            viewportHeight = newHeight;
+        });
+    }
+
+    // ==================== FUNGSI SEARCH ====================
+    function toggleSearch() {
+        if (elements.searchBar) {
+            elements.searchBar.classList.toggle('active');
+            if (elements.searchBar.classList.contains('active')) {
+                elements.searchInput.focus();
+            }
+        }
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
