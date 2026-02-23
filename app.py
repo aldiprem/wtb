@@ -13,9 +13,28 @@ import hashlib
 import secrets
 
 app = Flask(__name__, static_folder='.')
-CORS(app, origins='*', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-     allow_headers=['Content-Type', 'Accept', 'Authorization'],
+
+# Konfigurasi CORS yang longgar untuk development dengan tunnel
+CORS(app, 
+     origins='*',  # Izinkan semua origin untuk testing
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+     allow_headers=['*'],
      supports_credentials=True)
+
+# Middleware untuk menangani proxy headers dari Cloudflare
+@app.before_request
+def before_request():
+    # Jika ada header X-Forwarded-Proto, gunakan itu
+    if request.headers.get('X-Forwarded-Proto') == 'https':
+        request.environ['wsgi.url_scheme'] = 'https'
+    print(f"📥 {request.method} {request.path} - {request.remote_addr}")
+
+# Handler untuk preflight OPTIONS requests
+@app.route('/', methods=['OPTIONS'])
+@app.route('/<path:path>', methods=['OPTIONS'])
+def handle_options(path=None):
+    response = app.make_default_options_response()
+    return response
 
 # ==================== DATABASE SETUP ====================
 DATABASE = 'website.db'
@@ -78,7 +97,7 @@ def serve_index():
 def serve_static(path):
     return send_from_directory('.', path)
 
-@app.route('/api/health', methods=['GET'])
+@app.route('/api/health', methods=['GET', 'OPTIONS'])
 def health_check():
     try:
         with get_db() as db:
@@ -86,12 +105,14 @@ def health_check():
             return jsonify({
                 'status': 'healthy',
                 'database': 'connected',
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                'scheme': request.scheme,
+                'host': request.host
             })
     except Exception as e:
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
 
-@app.route('/api/websites', methods=['GET'])
+@app.route('/api/websites', methods=['GET', 'OPTIONS'])
 def get_websites():
     try:
         with get_db() as db:
@@ -108,7 +129,7 @@ def get_websites():
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/websites/<int:website_id>', methods=['GET'])
+@app.route('/api/websites/<int:website_id>', methods=['GET', 'OPTIONS'])
 def get_website(website_id):
     try:
         with get_db() as db:
@@ -125,7 +146,7 @@ def get_website(website_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/websites/endpoint/<string:endpoint>', methods=['GET'])
+@app.route('/api/websites/endpoint/<string:endpoint>', methods=['GET', 'OPTIONS'])
 def get_website_by_endpoint(endpoint):
     try:
         with get_db() as db:
@@ -278,7 +299,7 @@ def delete_website(website_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/websites/<int:website_id>/products', methods=['GET'])
+@app.route('/api/websites/<int:website_id>/products', methods=['GET', 'OPTIONS'])
 def get_products(website_id):
     try:
         with get_db() as db:
@@ -390,7 +411,7 @@ def delete_product(website_id, product_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/websites/user/<int:user_id>', methods=['GET'])
+@app.route('/api/websites/user/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_website_by_user(user_id):
     try:
         with get_db() as db:
@@ -425,12 +446,34 @@ def test_bot(website_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== DEBUG ROUTE ====================
+@app.route('/api/debug', methods=['GET'])
+def debug_info():
+    return jsonify({
+        'headers': dict(request.headers),
+        'scheme': request.scheme,
+        'host': request.host,
+        'host_url': request.host_url,
+        'path': request.path,
+        'full_path': request.full_path,
+        'url': request.url,
+        'base_url': request.base_url,
+        'remote_addr': request.remote_addr,
+        'method': request.method
+    })
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
+    print("="*60)
     print("🚀 Starting Website Management API Server...")
     print(f"📅 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("🔗 API available at: http://localhost:5050")
     print("📊 Database: website.db")
-    print("="*50)
+    print("="*60)
+    print("💡 Gunakan tunnel Cloudflare untuk akses publik:")
+    print("   cloudflared tunnel --url http://localhost:5050")
+    print("="*60)
+    print("📡 Server is running... Press CTRL+C to stop")
+    print("="*60)
     app.run(host='0.0.0.0', port=5050, debug=True)
