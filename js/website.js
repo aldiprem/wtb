@@ -3,7 +3,7 @@
     console.log('🏪 Website Store - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://discussions-prison-applications-former.trycloudflare.com';
+    const API_BASE_URL = 'https://dispatched-essex-treasures-reflects.trycloudflare.com';
     const DEFAULT_ENDPOINT = 'default-store';
 
     // ==================== DOM ELEMENTS ====================
