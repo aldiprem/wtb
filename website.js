@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    
+    <!-- Dynamic Meta Tags -->
+    <title id="dynamicTitle">Toko Online - Loading...</title>
+    <meta name="description" id="dynamicDescription" content="Toko online terpercaya">
+    <meta name="keywords" id="dynamicKeywords" content="toko, online, topup">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/website.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK (Optional - untuk integrasi dengan Telegram) -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-store"></i>
+                <span id="sidebarStoreName">Loading...</span>
+            </div>
+            <button class="sidebar-close" id="sidebarClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-profile">
+            <div class="profile-avatar" id="sidebarAvatar">
+                <img src="https://ui-avatars.com/api/?name=Guest&size=80&background=40a7e3&color=fff" alt="Profile">
+            </div>
+            <div class="profile-info">
+                <div class="profile-name" id="sidebarName">Guest User</div>
+                <div class="profile-username" id="sidebarUsername">@guest</div>
+            </div>
+            <button class="profile-login-btn" id="loginBtn">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </div>
+        
+        <div class="sidebar-menu">
+            <a href="#" class="menu-item active" data-page="home">
+                <i class="fas fa-home"></i>
+                <span>Beranda</span>
+            </a>
+            <a href="#" class="menu-item" data-page="products">
+                <i class="fas fa-box"></i>
+                <span>Produk</span>
+            </a>
+            <a href="#" class="menu-item" data-page="categories">
+                <i class="fas fa-tags"></i>
+                <span>Kategori</span>
+            </a>
+            <a href="#" class="menu-item" data-page="orders">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Pesanan Saya</span>
+                <span class="menu-badge" id="orderBadge">0</span>
+            </a>
+            <a href="#" class="menu-item" data-page="history">
+                <i class="fas fa-history"></i>
+                <span>Riwayat</span>
+            </a>
+            <a href="#" class="menu-item" data-page="voucher">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Voucher Saya</span>
+            </a>
+        </div>
+        
+        <div class="sidebar-footer">
+            <a href="#" class="menu-item" data-page="help">
+                <i class="fas fa-question-circle"></i>
+                <span>Bantuan</span>
+            </a>
+            <a href="#" class="menu-item" data-page="about">
+                <i class="fas fa-info-circle"></i>
+                <span>Tentang</span>
+            </a>
+            <div class="sidebar-copyright">
+                © 2024 <span id="sidebarYear"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="main-header">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <div class="header-logo">
+                <i class="fas fa-store"></i>
+                <span id="storeName">Toko Online</span>
+            </div>
+            
+            <div class="header-actions">
+                <button class="header-btn" id="searchToggle">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button class="header-btn" id="cartBtn">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="cart-badge" id="cartBadge">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Search Bar (Hidden by default) -->
+        <div class="search-bar" id="searchBar">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Cari produk...">
+            <button class="search-close" id="searchClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Banner Slider -->
+        <div class="banner-slider" id="bannerSlider">
+            <div class="slider-container" id="sliderContainer">
+                <!-- Banners will be loaded here -->
+            </div>
+            <div class="slider-dots" id="sliderDots"></div>
+        </div>
+
+        <!-- Quick Categories -->
+        <div class="quick-categories">
+            <div class="section-header">
+                <h2>Kategori <span>Populer</span></h2>
+                <a href="#" class="view-all" data-page="categories">Lihat Semua</a>
+            </div>
+            <div class="categories-grid" id="categoriesGrid">
+                <!-- Categories will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Featured Products -->
+        <div class="featured-products">
+            <div class="section-header">
+                <h2>Produk <span>Unggulan</span></h2>
+                <a href="#" class="view-all" data-page="products">Lihat Semua</a>
+            </div>
+            <div class="products-grid" id="featuredProducts">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Popular Products -->
+        <div class="popular-products">
+            <div class="section-header">
+                <h2>Produk <span>Terlaris</span></h2>
+                <a href="#" class="view-all" data-page="products?sort=popular">Lihat Semua</a>
+            </div>
+            <div class="products-grid" id="popularProducts">
+                <!-- Products will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Promo Banner -->
+        <div class="promo-banner" id="promoBanner">
+            <!-- Promo banner will be loaded here -->
+        </div>
+
+        <!-- Payment Methods -->
+        <div class="payment-methods">
+            <h3>Metode Pembayaran</h3>
+            <div class="payment-icons" id="paymentIcons">
+                <!-- Payment methods will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="main-footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>Tentang Kami</h4>
+                    <p id="footerDescription">Toko online terpercaya sejak 2024</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Kontak</h4>
+                    <p id="footerContact">
+                        <i class="fab fa-whatsapp"></i> <span id="contactWhatsApp">-</span><br>
+                        <i class="fab fa-telegram"></i> <span id="contactTelegram">-</span>
+                    </p>
+                </div>
+                <div class="footer-section">
+                    <h4>Ikuti Kami</h4>
+                    <div class="social-icons">
+                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-facebook"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-tiktok"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                © 2024 <span id="footerStoreName">Toko Online</span>. All rights reserved.
+            </div>
+        </footer>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-cart"></i> Keranjang</h3>
+            <button class="cart-close" id="cartClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="cart-items" id="cartItems">
+            <!-- Cart items will be loaded here -->
+        </div>
+        
+        <div class="cart-empty" id="cartEmpty" style="display: none;">
+            <i class="fas fa-shopping-cart"></i>
+            <p>Keranjang belanja kosong</p>
+            <button class="btn-primary" id="shopNowBtn">Belanja Sekarang</button>
+        </div>
+        
+        <div class="cart-footer" id="cartFooter">
+            <div class="cart-total">
+                <span>Total:</span>
+                <span class="total-price" id="cartTotal">Rp 0</span>
+            </div>
+            <button class="btn-primary checkout-btn" id="checkoutBtn">
+                <i class="fas fa-credit-card"></i> Checkout
+            </button>
+        </div>
+    </div>
+
+    <!-- Product Detail Modal -->
+    <div class="modal" id="productModal">
+        <div class="modal-content product-detail-modal">
+            <button class="modal-close-btn" id="closeProductModal">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="product-detail" id="productDetail">
+                <!-- Product detail will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Checkout Modal -->
+    <div class="modal" id="checkoutModal">
+        <div class="modal-content checkout-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-credit-card"></i> Checkout</h2>
+                <button class="modal-close-btn" id="closeCheckoutModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="checkout-body" id="checkoutBody">
+                <!-- Checkout form will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+        <div class="modal-content login-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
+                <button class="modal-close-btn" id="closeLoginModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="login-body">
+                <div class="login-options">
+                    <button class="btn-telegram" id="telegramLogin">
+                        <i class="fab fa-telegram"></i>
+                        Login dengan Telegram
+                    </button>
+                    <div class="divider">
+                        <span>atau</span>
+                    </div>
+                    <button class="btn-guest" id="guestLogin">
+                        <i class="fas fa-user"></i>
+        Lanjut sebagai Tamu
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- JavaScript -->
+    <script src="js/website.js"></script>
+</body>
+</html>
