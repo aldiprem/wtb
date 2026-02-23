@@ -263,73 +263,73 @@
 
     // ==================== FUNGSI TEST API CONNECTION ====================
     async function testApiConnection() {
-      try {
-        console.log('🔍 Testing API connection to:', API_BASE_URL);
-    
-        const response = await fetch(`${API_BASE_URL}/api/health`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-          mode: 'cors',
-          cache: 'no-cache'
-        });
-    
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ API Connected:', data);
-          return true;
-        } else {
-          console.warn('⚠️ API health check failed:', response.status);
-          return false;
+        try {
+            console.log('🔍 Testing API connection to:', API_BASE_URL);
+            
+            const response = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors',
+                cache: 'no-cache'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ API Connected:', data);
+                return true;
+            } else {
+                console.warn('⚠️ API health check failed:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ API connection failed:', error);
+            console.error('URL tried:', `${API_BASE_URL}/api/health`);
+            return false;
         }
-      } catch (error) {
-        console.error('❌ API connection failed:', error);
-        console.error('URL tried:', `${API_BASE_URL}/api/health`);
-        return false;
-      }
     }
 
     // ==================== FUNGSI FETCH WEBSITES ====================
     async function fetchWebsites() {
-      try {
-        console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
-    
-        const response = await fetch(`${API_BASE_URL}/api/websites`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          mode: 'cors'
-        });
-    
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        try {
+            console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
+            
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('📥 Websites data:', data);
+            
+            if (data.success && data.websites) {
+                websites = data.websites;
+            } else if (Array.isArray(data)) {
+                websites = data;
+            } else {
+                websites = [];
+            }
+            
+            updateStats();
+            renderWebsitesTable();
+            
+        } catch (error) {
+            console.error('❌ Error fetching websites:', error);
+            showToast('Failed to fetch websites data', 'error');
+            
+            if (!websites.length) {
+                websites = getDummyWebsites();
+                updateStats();
+                renderWebsitesTable();
+            }
         }
-    
-        const data = await response.json();
-        console.log('📥 Websites data:', data);
-    
-        if (data.success && data.websites) {
-          websites = data.websites;
-        } else if (Array.isArray(data)) {
-          websites = data;
-        } else {
-          websites = [];
-        }
-    
-        updateStats();
-        renderWebsitesTable();
-    
-      } catch (error) {
-        console.error('❌ Error fetching websites:', error);
-        showToast('Failed to fetch websites data', 'error');
-    
-        if (!websites.length) {
-          websites = getDummyWebsites();
-          updateStats();
-          renderWebsitesTable();
-        }
-      }
     }
 
     // ==================== FUNGSI DATA DUMMY UNTUK TESTING ====================
@@ -370,7 +370,7 @@
         
         const uniqueTokens = new Set(websites.map(w => w.bot_token));
         const totalBots = uniqueTokens.size;
-
+        
         if (elements.totalWebsites) elements.totalWebsites.textContent = total;
         if (elements.activeWebsites) elements.activeWebsites.textContent = active;
         if (elements.inactiveWebsites) elements.inactiveWebsites.textContent = inactive;
@@ -380,7 +380,7 @@
     // ==================== FUNGSI RENDER TABEL WEBSITES ====================
     function renderWebsitesTable(filterText = '') {
         if (!elements.websitesTableBody) return;
-
+        
         const filter = filterText.toLowerCase();
         const filteredWebsites = websites.filter(w => 
             w.endpoint.toLowerCase().includes(filter) ||
@@ -388,7 +388,7 @@
             w.email.toLowerCase().includes(filter) ||
             w.bot_token.includes(filter)
         );
-
+        
         if (filteredWebsites.length === 0) {
             elements.websitesTableBody.innerHTML = '';
             if (elements.noDataMessage) {
@@ -396,21 +396,21 @@
             }
             return;
         }
-
+        
         if (elements.noDataMessage) {
             elements.noDataMessage.style.display = 'none';
         }
-
+        
         let html = '';
         filteredWebsites.forEach(website => {
             const status = website.status === 'active' ? 
                 '<span class="status-badge status-active"><i class="fas fa-circle"></i> Active</span>' : 
                 '<span class="status-badge status-inactive"><i class="fas fa-circle"></i> Inactive</span>';
-
+            
             const botTokenShort = website.bot_token ? 
                 website.bot_token.substring(0, 15) + '...' : 
                 '-';
-
+            
             html += `
                 <tr>
                     <td>${status}</td>
@@ -440,108 +440,110 @@
                 </tr>
             `;
         });
-
+        
         elements.websitesTableBody.innerHTML = html;
     }
 
-    // ==================== FUNGSI CREATE WEBSITE (VERSI BARU - TANPA TUNNEL URL) ====================
+    // ==================== FUNGSI CREATE WEBSITE ====================
     async function createWebsite(formData) {
-      try {
-        showToast('Creating website...', 'info');
-    
-        // Debug: lihat data yang dikirim
-        console.log('📤 Form data received:', formData);
-    
-        // Validasi sederhana - cek apakah semua field ada (tanpa tunnel_url)
-        const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
-        const missingFields = [];
-    
-        for (const field of requiredFields) {
-          if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
-            missingFields.push(field);
-            console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
-          }
-        }
-    
-        if (missingFields.length > 0) {
-          console.error('❌ Missing fields:', missingFields);
-          showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
-          return;
-        }
-    
-        // Validasi endpoint (hanya huruf kecil, angka, dan strip)
-        const endpointRegex = /^[a-z0-9-]+$/;
-        if (!endpointRegex.test(formData.endpoint)) {
-          showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
-          return;
-        }
-    
-        // Validasi owner_id adalah angka
-        if (isNaN(formData.owner_id) || formData.owner_id <= 0) {
-          showToast('Owner ID must be a valid positive number', 'error');
-          return;
-        }
-    
-        // Validasi email
-        if (!formData.email.includes('@') || !formData.email.includes('.')) {
-          showToast('Please enter a valid email address', 'error');
-          return;
-        }
-    
-        // Validasi bot token format sederhana
-        if (!formData.bot_token.includes(':')) {
-          showToast('Bot token format invalid (should contain :)', 'error');
-          return;
-        }
-    
-        console.log('📤 Sending data to server:', JSON.stringify(formData, null, 2));
-    
-        const response = await fetch(`${API_BASE_URL}/api/websites`, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          mode: 'cors',
-          body: JSON.stringify(formData)
-        });
-    
-        console.log('📥 Response status:', response.status);
-    
-        let data;
-        const responseText = await response.text();
-        console.log('📥 Raw response:', responseText);
-    
         try {
-          data = JSON.parse(responseText);
-        } catch (e) {
-          console.error('❌ Failed to parse response:', e);
-          throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
+            showToast('Creating website...', 'info');
+            
+            // Debug: lihat data yang dikirim
+            console.log('📤 Form data received:', formData);
+            
+            // Validasi sederhana - cek apakah semua field ada (tanpa tunnel_url)
+            const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
+            const missingFields = [];
+            
+            for (const field of requiredFields) {
+                if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
+                    missingFields.push(field);
+                    console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
+                }
+            }
+            
+            if (missingFields.length > 0) {
+                console.error('❌ Missing fields:', missingFields);
+                showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
+                return;
+            }
+            
+            // Validasi endpoint (hanya huruf kecil, angka, dan strip)
+            const endpointRegex = /^[a-z0-9-]+$/;
+            if (!endpointRegex.test(formData.endpoint)) {
+                showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
+                return;
+            }
+            
+            // Validasi owner_id adalah angka
+            if (isNaN(formData.owner_id) || formData.owner_id <= 0) {
+                showToast('Owner ID must be a valid positive number', 'error');
+                return;
+            }
+            
+            // Validasi email
+            if (!formData.email.includes('@') || !formData.email.includes('.')) {
+                showToast('Please enter a valid email address', 'error');
+                return;
+            }
+            
+            // Validasi bot token format sederhana
+            if (!formData.bot_token.includes(':')) {
+                showToast('Bot token format invalid (should contain :)', 'error');
+                return;
+            }
+            
+            console.log('📤 Sending data to server:', JSON.stringify(formData, null, 2));
+            console.log('📤 URL:', `${API_BASE_URL}/api/websites`);
+            
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(formData)
+            });
+            
+            console.log('📥 Response status:', response.status);
+            console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            let data;
+            const responseText = await response.text();
+            console.log('📥 Raw response:', responseText);
+            
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('❌ Failed to parse response:', e);
+                throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
+            }
+            
+            if (!response.ok) {
+                throw new Error(data.error || `Server error: ${response.status}`);
+            }
+            
+            if (data.success) {
+                showToast('Website created successfully!', 'success');
+                closeModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to create website');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error creating website:', error);
+            showToast(error.message || 'Failed to create website', 'error');
         }
-    
-        if (!response.ok) {
-          throw new Error(data.error || `Server error: ${response.status}`);
-        }
-    
-        if (data.success) {
-          showToast('Website created successfully!', 'success');
-          closeModal();
-          await fetchWebsites();
-        } else {
-          throw new Error(data.error || 'Failed to create website');
-        }
-    
-      } catch (error) {
-        console.error('❌ Error creating website:', error);
-        showToast(error.message || 'Failed to create website', 'error');
-      }
     }
     
     // ==================== FUNGSI DELETE WEBSITE ====================
     async function deleteWebsite(id) {
         try {
             showToast('Deleting website...', 'info');
-
+            
             const response = await fetch(`${API_BASE_URL}/api/websites/${id}`, {
                 method: 'DELETE',
                 headers: {
@@ -550,15 +552,15 @@
                 },
                 mode: 'cors'
             });
-
+            
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
-
+            
             const data = await response.json();
             console.log('📥 Delete website response:', data);
-
+            
             if (data.success) {
                 showToast('Website deleted successfully!', 'success');
                 closeDeleteModal();
@@ -566,7 +568,7 @@
             } else {
                 throw new Error(data.error || 'Failed to delete website');
             }
-
+            
         } catch (error) {
             console.error('❌ Error deleting website:', error);
             showToast(error.message || 'Failed to delete website', 'error');
@@ -577,7 +579,7 @@
     async function testBot(id) {
         const website = websites.find(w => w.id === id);
         if (!website) return;
-
+        
         showToast(`Testing bot for ${website.endpoint}...`, 'info');
         
         try {
@@ -593,11 +595,11 @@
                     tunnel_url: website.tunnel_url
                 })
             });
-
+            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-
+            
             const data = await response.json();
             
             if (data.success) {
@@ -605,7 +607,7 @@
             } else {
                 showToast('❌ Bot test failed: ' + (data.error || 'Unknown error'), 'error');
             }
-
+            
         } catch (error) {
             console.error('❌ Error testing bot:', error);
             showToast('Failed to test bot: ' + error.message, 'error');
@@ -685,7 +687,7 @@
     async function updateWebsite(formData) {
         try {
             showToast('Updating website...', 'info');
-        
+            
             const response = await fetch(`${API_BASE_URL}/api/websites/${formData.id}`, {
                 method: 'PUT',
                 headers: {
@@ -695,14 +697,14 @@
                 mode: 'cors',
                 body: JSON.stringify(formData)
             });
-        
+            
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
-        
+            
             const data = await response.json();
-        
+            
             if (data.success) {
                 showToast('Website updated successfully!', 'success');
                 closeEditModal();
@@ -710,7 +712,7 @@
             } else {
                 throw new Error(data.error || 'Failed to update website');
             }
-        
+            
         } catch (error) {
             console.error('❌ Error updating website:', error);
             showToast(error.message || 'Failed to update website', 'error');
@@ -755,23 +757,23 @@
     // ==================== FUNGSI UPDATE UI ====================
     function updateUI(user) {
         currentUser = user;
-
+        
         const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Owner';
         const username = user.username ? `@${user.username}` : '(no username)';
         const userId = user.id || '-';
-
+        
         if (elements.ownerName) elements.ownerName.textContent = fullName;
         if (elements.ownerUsername) elements.ownerUsername.textContent = username;
         if (elements.ownerId) elements.ownerId.textContent = `ID: ${userId}`;
-
+        
         if (elements.ownerPhoto) {
             elements.ownerPhoto.src = user.photo_url || generateAvatarUrl(fullName);
         }
-
+        
         if (elements.loading) elements.loading.style.display = 'none';
         if (elements.error) elements.error.style.display = 'none';
         if (elements.dashboardContent) elements.dashboardContent.style.display = 'block';
-
+        
         fetchWebsites();
     }
 
@@ -801,18 +803,18 @@
     // ==================== FUNGSI INIT ====================
     async function init() {
         console.log('👑 Initializing Owner Dashboard...');
-
+        
         try {
             // Test API connection
             const apiConnected = await testApiConnection();
             if (!apiConnected) {
                 showToast('Warning: Cannot connect to server. Using dummy data.', 'warning');
             }
-
+            
             // Cek environment Telegram
             let telegramUserData = null;
             let tg = null;
-
+            
             if (window.Telegram?.WebApp) {
                 console.log('📱 Running inside Telegram Web App');
                 tg = window.Telegram.WebApp;
@@ -830,29 +832,29 @@
                 console.log('🌐 Running in standalone web browser');
                 
                 telegramUserData = {
-                    id: 7998861975, // Gunakan ID owner Anda
+                    id: 7998861975,
                     first_name: 'Owner',
                     last_name: '',
                     username: 'owner',
                     language_code: 'id'
                 };
             }
-
+            
             if (!telegramUserData) {
                 showError('No user data available');
                 return;
             }
-
+            
             if (!isOwner(telegramUserData.id)) {
                 console.warn('⛔ Unauthorized access attempt:', telegramUserData.id);
                 showError('You are not authorized as owner', true);
                 return;
             }
-
+            
             console.log('✅ Owner verified!');
             updateUI(telegramUserData);
             setupKeyboardHandler();
-
+            
         } catch (error) {
             console.error('💥 Fatal error in init:', error);
             showError('Failed to initialize dashboard');
@@ -864,7 +866,7 @@
         if (elements.createWebsiteBtn) {
             elements.createWebsiteBtn.addEventListener('click', showModal);
         }
-
+        
         if (elements.refreshDataBtn) {
             elements.refreshDataBtn.addEventListener('click', () => {
                 vibrate(10);
@@ -872,86 +874,39 @@
                 showToast('Data refreshed', 'success');
             });
         }
-
+        
         if (elements.searchWebsite) {
             elements.searchWebsite.addEventListener('input', (e) => {
                 renderWebsitesTable(e.target.value);
             });
         }
-
+        
         if (elements.closeModalBtn) {
             elements.closeModalBtn.addEventListener('click', closeModal);
         }
         if (elements.cancelModalBtn) {
             elements.cancelModalBtn.addEventListener('click', closeModal);
         }
-
+        
         if (elements.closeDeleteModalBtn) {
             elements.closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
         }
         if (elements.cancelDeleteBtn) {
             elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
         }
-
+        
         if (elements.closeEditModalBtn) {
             elements.closeEditModalBtn.addEventListener('click', closeEditModal);
         }
         if (elements.cancelEditBtn) {
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
-
-      // Update bagian form submit - HAPUS TUNNEL URL
-      if (elements.createWebsiteForm) {
-        elements.createWebsiteForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-  
-          // Ambil nilai dari form dengan trim()
-          const endpoint = document.getElementById('endpoint').value.trim();
-          const botToken = document.getElementById('botToken').value.trim();
-          const ownerId = document.getElementById('ownerId').value.trim();
-          const username = document.getElementById('username').value.trim();
-          const password = document.getElementById('password').value;
-          const email = document.getElementById('email').value.trim();
-  
-          // Debug: lihat nilai yang diambil
-          console.log('📝 Form values:', {
-            endpoint,
-            botToken,
-            ownerId,
-            username,
-            password: password ? '***' : '(empty)',
-            email
-          });
-  
-          // Validasi sederhana sebelum membuat formData
-          if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
-            showToast('Please fill all fields', 'error');
-            return;
-          }
-  
-          // Konversi ownerId ke number
-          const ownerIdNum = parseInt(ownerId);
-          if (isNaN(ownerIdNum)) {
-            showToast('Owner ID must be a number', 'error');
-            return;
-          }
-  
-          const formData = {
-            endpoint: endpoint.toLowerCase(),
-            bot_token: botToken,
-            owner_id: ownerIdNum,
-            username: username,
-            password: password,
-            email: email.toLowerCase(),
-            status: 'active'
-            // tunnel_url TIDAK PERLU dikirim
-          };
-  
-          console.log('📦 FormData prepared:', formData);
-          await createWebsite(formData);
-        });
-      }
-
+        
+        // Create Website form submit
+        if (elements.createWebsiteForm) {
+            elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
+        }
+        
         // Confirm delete button
         if (elements.confirmDeleteBtn) {
             elements.confirmDeleteBtn.addEventListener('click', async () => {
@@ -960,7 +915,7 @@
                 }
             });
         }
-
+        
         // Event listener untuk active period di edit modal
         if (elements.editActivePeriod) {
             elements.editActivePeriod.addEventListener('change', () => {
@@ -982,7 +937,7 @@
                 }
             });
         }
-
+        
         // Edit form submit
         if (elements.editWebsiteForm) {
             elements.editWebsiteForm.addEventListener('submit', async (e) => {
@@ -1009,7 +964,7 @@
                 await updateWebsite(formData);
             });
         }
-
+        
         // Close modals on outside click
         window.addEventListener('click', (e) => {
             if (e.target === elements.createModal) {
@@ -1022,6 +977,55 @@
                 closeEditModal();
             }
         });
+    }
+    
+    // Pisahkan handler submit ke fungsi terpisah
+    async function handleCreateSubmit(e) {
+        e.preventDefault();
+        
+        // Ambil nilai dari form dengan trim()
+        const endpoint = document.getElementById('endpoint').value.trim();
+        const botToken = document.getElementById('botToken').value.trim();
+        const ownerId = document.getElementById('ownerId').value.trim();
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const email = document.getElementById('email').value.trim();
+        
+        // Debug: lihat nilai yang diambil
+        console.log('📝 Form values:', {
+            endpoint,
+            botToken,
+            ownerId,
+            username,
+            password: password ? '***' : '(empty)',
+            email
+        });
+        
+        // Validasi sederhana sebelum membuat formData
+        if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
+            showToast('Please fill all fields', 'error');
+            return;
+        }
+        
+        // Konversi ownerId ke number
+        const ownerIdNum = parseInt(ownerId);
+        if (isNaN(ownerIdNum)) {
+            showToast('Owner ID must be a number', 'error');
+            return;
+        }
+        
+        const formData = {
+            endpoint: endpoint.toLowerCase(),
+            bot_token: botToken,
+            owner_id: ownerIdNum,
+            username: username,
+            password: password,
+            email: email.toLowerCase(),
+            status: 'active'
+        };
+        
+        console.log('📦 FormData prepared:', formData);
+        await createWebsite(formData);
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
