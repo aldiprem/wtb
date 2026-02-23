@@ -2,16 +2,7 @@
 (function() {
     console.log('🛠️ Website Panel - Initializing...');
 
-    // ==================== KONFIGURASI ====================
-    // Deteksi environment - jika di GitHub Pages, gunakan API dari VPS
-    const isGitHubPages = window.location.hostname.includes('github.io') || 
-                          window.location.hostname.includes('vercel.app') ||
-                          window.location.hostname.includes('netlify.app');
-    
-    // API Base URL - sesuaikan dengan VPS Anda
-    const API_BASE_URL = isGitHubPages 
-        ? 'https://supports-lease-honest-potter.trycloudflare.com' // Ganti dengan domain tunnel Anda
-        : ''; // Relative URL jika di server yang sama
+    const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.apiBaseUrl : 'https://supports-lease-honest-potter.trycloudflare.com';
 
     console.log('🌐 Environment:', isGitHubPages ? 'GitHub Pages' : 'Local Server');
     console.log('🔗 API URL:', API_BASE_URL || '(relative)');
