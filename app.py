@@ -8,8 +8,10 @@ import hashlib
 import secrets
 
 app = Flask(__name__, static_folder='.')
-# CORS lebih lengkap
-CORS(app, origins=['*'], methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allow_headers=['Content-Type', 'Accept'])
+# CORS lebih lengkap - tambahkan support untuk credentials
+CORS(app, origins='*', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], 
+     allow_headers=['Content-Type', 'Accept', 'Authorization'], 
+     supports_credentials=True)
 
 # ==================== DATABASE SETUP ====================
 DATABASE = 'websites.db'
@@ -141,7 +143,12 @@ def serve_static(path):
 @app.route('/api/websites', methods=['OPTIONS'])
 @app.route('/api/websites/<path:path>', methods=['OPTIONS'])
 def handle_options(path=None):
-    return '', 200
+    response = jsonify({'status': 'ok'})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Accept,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response, 200
 
 # ==================== HEALTH CHECK ====================
 @app.route('/api/health', methods=['GET'])
@@ -424,4 +431,5 @@ if __name__ == '__main__':
     print(f"🔗 Base URL: http://localhost:5050 (akan digunakan sebagai tunnel_url)")
     print("📊 Database: websites.db")
     print("⚠️  Tunnel URL tidak perlu diisi lagi - akan otomatis menggunakan base URL")
+    print("🌐 CORS enabled for all origins")
     app.run(host='0.0.0.0', port=5050, debug=True)
