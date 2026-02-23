@@ -1,10 +1,20 @@
-// Panel JavaScript for Website Management
+// Panel JavaScript for Website Management - GitHub Pages Version
 (function() {
     console.log('🛠️ Website Panel - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
-    const DEFAULT_WEBSITE_ID = 1;
+    // Deteksi environment - jika di GitHub Pages, gunakan API dari VPS
+    const isGitHubPages = window.location.hostname.includes('github.io') || 
+                          window.location.hostname.includes('vercel.app') ||
+                          window.location.hostname.includes('netlify.app');
+    
+    // API Base URL - sesuaikan dengan VPS Anda
+    const API_BASE_URL = isGitHubPages 
+        ? 'https://intimate-benefit-editions-girls.trycloudflare.com' // Ganti dengan domain tunnel Anda
+        : ''; // Relative URL jika di server yang sama
+
+    console.log('🌐 Environment:', isGitHubPages ? 'GitHub Pages' : 'Local Server');
+    console.log('🔗 API URL:', API_BASE_URL || '(relative)');
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -12,6 +22,7 @@
         error: document.getElementById('error'),
         errorMessage: document.getElementById('errorMessage'),
         panelContent: document.getElementById('panelContent'),
+        noWebsiteMessage: document.getElementById('noWebsiteMessage'),
         websiteBadge: document.getElementById('websiteBadge'),
         websiteAvatar: document.getElementById('websiteAvatar'),
         websiteName: document.getElementById('websiteName'),
@@ -224,7 +235,14 @@
         try {
             console.log('📡 Fetching website data for user:', userId);
             
-            const response = await fetch(`${API_BASE_URL}/api/websites/user/${userId}`, {
+            // Build URL dengan benar
+            const url = API_BASE_URL 
+                ? `${API_BASE_URL}/api/websites/user/${userId}`
+                : `/api/websites/user/${userId}`;
+            
+            console.log('🔗 Fetch URL:', url);
+            
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -241,83 +259,16 @@
             console.log('📥 Website data:', data);
 
             if (data.success && data.websites && data.websites.length > 0) {
-                return data.websites[0];
+                return data.websites[0]; // Ambil website pertama
             } else {
-                // Gunakan data dummy untuk testing
-                return getDummyWebsite(userId);
+                // User tidak memiliki website
+                return null;
             }
 
         } catch (error) {
             console.error('❌ Error fetching website:', error);
-            // Gunakan data dummy untuk testing
-            return getDummyWebsite(userId);
+            return null;
         }
-    }
-
-    // ==================== FUNGSI DATA DUMMY WEBSITE ====================
-    function getDummyWebsite(userId) {
-        return {
-            id: 1,
-            endpoint: 'toko-online-xyz',
-            name: 'Toko Online XYZ',
-            owner_id: userId,
-            created_at: new Date().toISOString(),
-            settings: {
-                banner: 'https://via.placeholder.com/800x200/40a7e3/ffffff?text=Your+Banner+Here',
-                colors: {
-                    primary: '#40a7e3',
-                    secondary: '#FFD700',
-                    background: '#0f0f0f',
-                    text: '#ffffff',
-                    card: '#1a1a1a',
-                    accent: '#10b981'
-                },
-                font: {
-                    family: 'Inter',
-                    size: 14
-                },
-                title: 'Toko Online XYZ',
-                description: 'Toko online terpercaya',
-                contact: {
-                    whatsapp: '6281234567890',
-                    telegram: '@owner'
-                },
-                seo: {
-                    title: 'Toko Online XYZ - Jual Produk Digital',
-                    description: 'Toko online terpercaya jual produk digital',
-                    keywords: 'toko, online, digital, produk'
-                },
-                payments: {
-                    bank: {
-                        enabled: true,
-                        name: 'BCA',
-                        account: '1234567890',
-                        holder: 'John Doe'
-                    },
-                    ewallet: {
-                        enabled: true,
-                        provider: 'DANA',
-                        number: '081234567890'
-                    },
-                    qris: {
-                        enabled: true,
-                        url: 'https://via.placeholder.com/200x200/40a7e3/ffffff?text=QRIS'
-                    },
-                    crypto: {
-                        enabled: false,
-                        address: ''
-                    },
-                    notes: {
-                        payment: 'Kirim bukti transfer ke WhatsApp',
-                        confirmation: 'Konfirmasi setelah transfer ke @admin'
-                    }
-                },
-                maintenance: {
-                    enabled: false,
-                    message: 'Website sedang dalam perbaikan'
-                }
-            }
-        };
     }
 
     // ==================== FUNGSI FETCH PRODUCTS ====================
@@ -325,7 +276,11 @@
         try {
             console.log('📡 Fetching products for website:', websiteId);
             
-            const response = await fetch(`${API_BASE_URL}/api/websites/${websiteId}/products`, {
+            const url = API_BASE_URL 
+                ? `${API_BASE_URL}/api/websites/${websiteId}/products`
+                : `/api/websites/${websiteId}/products`;
+            
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -343,58 +298,13 @@
             if (data.success && data.products) {
                 return data.products;
             } else {
-                return getDummyProducts();
+                return [];
             }
 
         } catch (error) {
             console.error('❌ Error fetching products:', error);
-            return getDummyProducts();
+            return [];
         }
-    }
-
-    // ==================== FUNGSI DATA DUMMY PRODUCTS ====================
-    function getDummyProducts() {
-        return [
-            {
-                id: 1,
-                name: 'Voucher Game 100k',
-                description: 'Voucher game untuk berbagai platform',
-                price: 100000,
-                stock: 50,
-                sold: 25,
-                category: 'voucher',
-                image: 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Voucher',
-                notes: 'Proses otomatis 1-5 menit',
-                active: true,
-                created_at: new Date().toISOString()
-            },
-            {
-                id: 2,
-                name: 'Paket Data 10GB',
-                description: 'Paket data all operator',
-                price: 50000,
-                stock: 10,
-                sold: 45,
-                category: 'data',
-                image: 'https://via.placeholder.com/300x200/10b981/ffffff?text=Paket+Data',
-                notes: 'Proses manual via WhatsApp',
-                active: true,
-                created_at: new Date().toISOString()
-            },
-            {
-                id: 3,
-                name: 'Token Listrik 50rb',
-                description: 'Token listrik PLN',
-                price: 50000,
-                stock: 3,
-                sold: 120,
-                category: 'listrik',
-                image: 'https://via.placeholder.com/300x200/f59e0b/ffffff?text=Token',
-                notes: 'Stok menipis!',
-                active: true,
-                created_at: new Date().toISOString()
-            }
-        ];
     }
 
     // ==================== FUNGSI UPDATE WEBSITE UI ====================
@@ -408,7 +318,7 @@
         
         // Update name
         if (elements.websiteName) {
-            elements.websiteName.textContent = website.name || 'Website';
+            elements.websiteName.textContent = website.username || 'Website';
         }
         
         // Update endpoint badge
@@ -429,11 +339,22 @@
         
         // Update avatar
         if (elements.websiteAvatar) {
-            elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(website.name || 'Website')}&size=120&background=40a7e3&color=fff`;
+            elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(website.username || 'Website')}&size=120&background=40a7e3&color=fff`;
         }
         
-        // Update settings fields
-        updateSettingsUI(website.settings);
+        // Update status
+        if (elements.websiteStatus) {
+            if (website.status === 'active') {
+                elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
+            } else {
+                elements.websiteStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i>';
+            }
+        }
+        
+        // Update settings fields if settings exist
+        if (website.settings) {
+            updateSettingsUI(website.settings);
+        }
     }
 
     // ==================== FUNGSI UPDATE SETTINGS UI ====================
@@ -574,14 +495,14 @@
             html += `
                 <div class="product-card ${statusClass}" data-id="${product.id}">
                     <div class="product-image">
-                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" alt="${product.name}">
+                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" alt="${escapeHtml(product.name)}">
                         <div class="product-status ${statusClass}">
                             ${product.active ? 'Aktif' : 'Nonaktif'}
                         </div>
                     </div>
                     <div class="product-details">
                         <h4>${escapeHtml(product.name)}</h4>
-                        <p class="product-description">${escapeHtml(product.description.substring(0, 60))}${product.description.length > 60 ? '...' : ''}</p>
+                        <p class="product-description">${escapeHtml(product.description ? product.description.substring(0, 60) : '')}${product.description && product.description.length > 60 ? '...' : ''}</p>
                         <div class="product-meta">
                             <span class="product-price">Rp ${formatNumber(product.price)}</span>
                             <span class="product-stock ${stockClass}">
@@ -660,7 +581,9 @@
     function previewWebsite() {
         if (!currentWebsite) return;
         
-        const url = `${API_BASE_URL}/website/${currentWebsite.endpoint}`;
+        // Build URL dengan benar
+        const baseUrl = isGitHubPages ? API_BASE_URL : window.location.origin;
+        const url = `${baseUrl}/website/${currentWebsite.endpoint}`;
         window.open(url, '_blank');
     }
 
@@ -673,10 +596,8 @@
             return;
         }
         
-        // Simulasi API call - akan diganti dengan implementasi real
-        setTimeout(() => {
-            showToast(`✅ ${section} settings saved!`, 'success');
-        }, 500);
+        // TODO: Implementasi real API call
+        showToast(`✅ ${section} settings saved!`, 'success');
     }
 
     // ==================== FUNGSI PRODUCT MODAL ====================
@@ -722,16 +643,9 @@
             return;
         }
         
-        // Simulasi save - akan diganti dengan implementasi real
-        setTimeout(() => {
-            showToast('✅ Product saved!', 'success');
-            closeProductModal();
-            
-            // Refresh products
-            fetchProducts(currentWebsite.id).then(products => {
-                updateProductsUI(products);
-            });
-        }, 500);
+        // TODO: Implementasi real API call
+        showToast('✅ Product saved!', 'success');
+        closeProductModal();
     }
     
     // ==================== FUNGSI DELETE PRODUCT ====================
@@ -758,16 +672,9 @@
         
         console.log('🗑️ Deleting product:', currentProductId);
         
-        // Simulasi delete - akan diganti dengan implementasi real
-        setTimeout(() => {
-            showToast('✅ Product deleted!', 'success');
-            closeDeleteModal();
-            
-            // Refresh products
-            fetchProducts(currentWebsite.id).then(products => {
-                updateProductsUI(products);
-            });
-        }, 500);
+        // TODO: Implementasi real API call
+        showToast('✅ Product deleted!', 'success');
+        closeDeleteModal();
     }
     
     // ==================== FUNGSI UPLOAD MODAL ====================
@@ -797,23 +704,32 @@
     }
 
     // ==================== FUNGSI UPDATE UI ====================
-    function updateUI(user) {
+    async function updateUI(user) {
         currentUser = user;
         
-        // Sembunyikan loading, tampilkan content
+        // Sembunyikan loading
         if (elements.loading) elements.loading.style.display = 'none';
-        if (elements.error) elements.error.style.display = 'none';
-        if (elements.panelContent) elements.panelContent.style.display = 'block';
         
         // Fetch website data
-        fetchWebsiteData(user.id).then(website => {
+        const website = await fetchWebsiteData(user.id);
+        
+        if (website) {
+            // User memiliki website
+            if (elements.error) elements.error.style.display = 'none';
+            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'none';
+            if (elements.panelContent) elements.panelContent.style.display = 'block';
+            
             updateWebsiteUI(website);
             
             // Fetch products
-            fetchProducts(website.id).then(products => {
-                updateProductsUI(products);
-            });
-        });
+            const productsData = await fetchProducts(website.id);
+            updateProductsUI(productsData);
+        } else {
+            // User tidak memiliki website
+            if (elements.error) elements.error.style.display = 'none';
+            if (elements.panelContent) elements.panelContent.style.display = 'none';
+            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'flex';
+        }
     }
 
     // ==================== FUNGSI SHOW ERROR ====================
@@ -830,6 +746,37 @@
         if (elements.panelContent) {
             elements.panelContent.style.display = 'none';
         }
+        if (elements.noWebsiteMessage) {
+            elements.noWebsiteMessage.style.display = 'none';
+        }
+    }
+
+    // ==================== FUNGSI HANDLE IMAGE UPLOAD ====================
+    function handleImageUpload(file) {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            const imageUrl = e.target.result;
+            
+            // Show preview
+            if (elements.uploadArea) {
+                elements.uploadArea.style.display = 'none';
+            }
+            
+            if (elements.uploadPreview) {
+                elements.uploadPreview.style.display = 'block';
+                const img = elements.uploadPreview.querySelector('img');
+                if (img) {
+                    img.src = imageUrl;
+                }
+            }
+            
+            if (elements.confirmUploadBtn) {
+                elements.confirmUploadBtn.disabled = false;
+            }
+        };
+        
+        reader.readAsDataURL(file);
     }
 
     // ==================== FUNGSI INIT ====================
@@ -859,7 +806,7 @@
                 
                 // Untuk testing di browser
                 telegramUserData = {
-                    id: 123456789,
+                    id: 7998861975, // Ganti dengan ID Anda untuk testing
                     first_name: 'Test',
                     last_name: 'User',
                     username: 'test_user'
@@ -871,7 +818,7 @@
                 return;
             }
 
-            updateUI(telegramUserData);
+            await updateUI(telegramUserData);
 
         } catch (error) {
             console.error('💥 Fatal error in init:', error);
@@ -1220,34 +1167,6 @@
                 closeUploadModal();
             }
         });
-    }
-
-    // ==================== FUNGSI HANDLE IMAGE UPLOAD ====================
-    function handleImageUpload(file) {
-        const reader = new FileReader();
-        
-        reader.onload = (e) => {
-            const imageUrl = e.target.result;
-            
-            // Show preview
-            if (elements.uploadArea) {
-                elements.uploadArea.style.display = 'none';
-            }
-            
-            if (elements.uploadPreview) {
-                elements.uploadPreview.style.display = 'block';
-                const img = elements.uploadPreview.querySelector('img');
-                if (img) {
-                    img.src = imageUrl;
-                }
-            }
-            
-            if (elements.confirmUploadBtn) {
-                elements.confirmUploadBtn.disabled = false;
-            }
-        };
-        
-        reader.readAsDataURL(file);
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
