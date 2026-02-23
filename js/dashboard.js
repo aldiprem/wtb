@@ -3,7 +3,7 @@
     console.log('👑 Owner Dashboard - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const OWNER_IDS = [7998861975];
+    const OWNER_IDS = [7998861975, 7349865750];
     const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
