@@ -1,10 +1,10 @@
-// Dashboard JavaScript for Owner - VERSI LENGKAP DENGAN KEYBOARD HANDLER
+// Dashboard JavaScript for Owner
 (function() {
     console.log('👑 Owner Dashboard - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const OWNER_IDS = [7998861975, 7349865750];
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
+    const OWNER_IDS = [7998861975, 7349865750]; // Tambahkan ID owner Anda di sini
+    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com'; // Gunakan URL yang sama dengan halaman
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -22,11 +22,30 @@
         totalBots: document.getElementById('totalBots'),
         websitesTableBody: document.getElementById('websitesTableBody'),
         noDataMessage: document.getElementById('noDataMessage'),
-        createWebsiteBtn: document.getElementById('createWebsiteBtn'),
+        createWebsiteBtn: document.getElementById('createWebsiteBtn'), // SEKARANG INI ADALAH LINK <a> BUKAN BUTTON
         refreshDataBtn: document.getElementById('refreshDataBtn'),
         searchWebsite: document.getElementById('searchWebsite'),
-        createModal: document.getElementById('createModal'),
+        // Create Modal - DIHAPUS (tidak digunakan lagi)
+        // createModal: document.getElementById('createModal'),
+        // createWebsiteForm: document.getElementById('createWebsiteForm'),
+        // closeModalBtn: document.getElementById('closeModalBtn'),
+        // cancelModalBtn: document.getElementById('cancelModalBtn'),
+        // Input fields untuk create form - DIHAPUS
+        // endpointInput: document.getElementById('endpoint'),
+        // botTokenInput: document.getElementById('botToken'),
+        // ownerIdInput: document.getElementById('ownerId'),
+        // usernameInput: document.getElementById('username'),
+        // passwordInput: document.getElementById('password'),
+        // emailInput: document.getElementById('email'),
+        
+        // Delete Modal - TETAP
         deleteModal: document.getElementById('deleteModal'),
+        closeDeleteModalBtn: document.getElementById('closeDeleteModalBtn'),
+        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+        confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+        deleteWebsiteInfo: document.getElementById('deleteWebsiteInfo'),
+        
+        // Edit Modal - TETAP
         editModal: document.getElementById('editModal'),
         closeEditModalBtn: document.getElementById('closeEditModalBtn'),
         cancelEditBtn: document.getElementById('cancelEditBtn'),
@@ -42,20 +61,7 @@
         editActivePeriod: document.getElementById('editActivePeriod'),
         editStartDate: document.getElementById('editStartDate'),
         editEndDate: document.getElementById('editEndDate'),
-        currentEndDate: document.getElementById('currentEndDate'),
-        createWebsiteForm: document.getElementById('createWebsiteForm'),
-        closeModalBtn: document.getElementById('closeModalBtn'),
-        cancelModalBtn: document.getElementById('cancelModalBtn'),
-        closeDeleteModalBtn: document.getElementById('closeDeleteModalBtn'),
-        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-        confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
-        deleteWebsiteInfo: document.getElementById('deleteWebsiteInfo'),
-        endpointInput: document.getElementById('endpoint'),
-        botTokenInput: document.getElementById('botToken'),
-        ownerIdInput: document.getElementById('ownerId'),
-        usernameInput: document.getElementById('username'),
-        passwordInput: document.getElementById('password'),
-        emailInput: document.getElementById('email')
+        currentEndDate: document.getElementById('currentEndDate')
     };
 
     // ==================== STATE ====================
@@ -125,8 +131,6 @@
 
     // ==================== FUNGSI KEYBOARD HANDLER ====================
     function setupKeyboardHandler() {
-        console.log('⌨️ Setting up keyboard handler...');
-        
         function scrollToInput(input) {
             const rect = input.getBoundingClientRect();
             const windowHeight = window.innerHeight;
@@ -269,130 +273,143 @@
         return div.innerHTML;
     }
 
-    // ==================== FUNGSI API ====================
+    // ==================== FUNGSI TEST API CONNECTION ====================
+    async function testApiConnection() {
+        try {
+            console.log('🔍 Testing API connection to:', API_BASE_URL);
+            
+            const response = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ API Connected:', data);
+                return true;
+            } else {
+                console.warn('⚠️ API health check failed:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ API connection failed:', error);
+            return false;
+        }
+    }
+
+    // ==================== FUNGSI FETCH WEBSITES ====================
     async function fetchWebsites() {
         try {
-            console.log('📡 Fetching websites...');
-            const response = await fetch(`${API_BASE_URL}/api/websites`);
-            const data = await response.json();
-            
-            if (data.success) {
-                websites = data.websites;
-                renderWebsitesTable();
-                updateStats();
-                console.log('✅ Websites loaded:', websites.length);
-            }
-        } catch (error) {
-            console.error('❌ Error fetching:', error);
-            showToast('Failed to fetch websites', 'error');
-        }
-    }
-
-    async function createWebsite(formData) {
-        try {
-            showToast('Creating website...', 'info');
-            console.log('📤 Sending to server:', formData);
+            console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
             
             const response = await fetch(`${API_BASE_URL}/api/websites`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const data = await response.json();
-            console.log('📥 Server response:', data);
-
-            if (data.success) {
-                showToast('✅ Website created successfully!', 'success');
-                closeModal();
-                fetchWebsites();
-            } else {
-                showToast('❌ Error: ' + (data.error || 'Unknown error'), 'error');
-            }
-        } catch (error) {
-            console.error('❌ Error:', error);
-            showToast('❌ Failed to create website', 'error');
-        }
-    }
-
-    async function deleteWebsite(id) {
-        try {
-            showToast('Deleting website...', 'info');
-            
-            const response = await fetch(`${API_BASE_URL}/api/websites/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showToast('✅ Website deleted successfully!', 'success');
-                closeDeleteModal();
-                fetchWebsites();
-            } else {
-                throw new Error(data.error || 'Failed to delete website');
-            }
-        } catch (error) {
-            console.error('❌ Error deleting website:', error);
-            showToast(error.message || 'Failed to delete website', 'error');
-        }
-    }
-
-    async function updateWebsite(formData) {
-        try {
-            showToast('Updating website...', 'info');
-            
-            const response = await fetch(`${API_BASE_URL}/api/websites/${formData.id}`, {
-                method: 'PUT',
+                method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                mode: 'cors'
             });
             
-            const data = await response.json();
+            console.log('📥 Response status:', response.status);
             
-            if (data.success) {
-                showToast('✅ Website updated successfully!', 'success');
-                closeEditModal();
-                fetchWebsites();
-            } else {
-                throw new Error(data.error || 'Failed to update website');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+            
+            const data = await response.json();
+            console.log('📥 Websites data:', data);
+            
+            if (data.success && data.websites) {
+                websites = data.websites;
+            } else {
+                websites = [];
+            }
+            
+            updateStats();
+            renderWebsitesTable();
+            
         } catch (error) {
-            console.error('❌ Error updating website:', error);
-            showToast(error.message || 'Failed to update website', 'error');
+            console.error('❌ Error fetching websites:', error);
+            showToast('Failed to fetch websites data: ' + error.message, 'error');
+            
+            // Gunakan dummy data jika gagal
+            websites = getDummyWebsites();
+            updateStats();
+            renderWebsitesTable();
         }
     }
 
-    // ==================== FUNGSI RENDER ====================
+    // ==================== FUNGSI DATA DUMMY UNTUK TESTING ====================
+    function getDummyWebsites() {
+        return [
+            {
+                id: 1,
+                endpoint: 'giveaway-site',
+                bot_token: '1234567890:ABCdefGHIjklMNOpqrsTUVwxyz',
+                owner_id: 123456789,
+                username: 'admin_giveaway',
+                email: 'admin@giveaway.com',
+                tunnel_url: API_BASE_URL,
+                status: 'active',
+                created_at: new Date().toISOString(),
+                end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            },
+            {
+                id: 2,
+                endpoint: 'contest-bot',
+                bot_token: '0987654321:ZYXwvutsrqponMLKJIHGFEDCBA',
+                owner_id: 987654321,
+                username: 'contest_admin',
+                email: 'contest@bot.com',
+                tunnel_url: API_BASE_URL,
+                status: 'inactive',
+                created_at: new Date().toISOString(),
+                end_date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+            }
+        ];
+    }
+
+    // ==================== FUNGSI UPDATE STATS ====================
+    function updateStats() {
+        const total = websites.length;
+        const active = websites.filter(w => w.status === 'active').length;
+        const inactive = websites.filter(w => w.status === 'inactive' || !w.status).length;
+        
+        const uniqueTokens = new Set(websites.map(w => w.bot_token));
+        const totalBots = uniqueTokens.size;
+        
+        if (elements.totalWebsites) elements.totalWebsites.textContent = total;
+        if (elements.activeWebsites) elements.activeWebsites.textContent = active;
+        if (elements.inactiveWebsites) elements.inactiveWebsites.textContent = inactive;
+        if (elements.totalBots) elements.totalBots.textContent = totalBots;
+    }
+
+    // ==================== FUNGSI RENDER TABEL WEBSITES ====================
     function renderWebsitesTable(filterText = '') {
-        const tbody = document.getElementById('websitesTableBody');
-        if (!tbody) return;
-
+        if (!elements.websitesTableBody) return;
+        
         const filter = filterText.toLowerCase();
         const filteredWebsites = websites.filter(w => 
             w.endpoint.toLowerCase().includes(filter) ||
             w.username.toLowerCase().includes(filter) ||
-            w.email.toLowerCase().includes(filter)
+            w.email.toLowerCase().includes(filter) ||
+            (w.bot_token && w.bot_token.includes(filter))
         );
-
+        
         if (filteredWebsites.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px;">No websites found</td></tr>';
-            document.getElementById('noDataMessage').style.display = 'flex';
+            elements.websitesTableBody.innerHTML = '';
+            if (elements.noDataMessage) {
+                elements.noDataMessage.style.display = 'flex';
+            }
             return;
         }
-
-        document.getElementById('noDataMessage').style.display = 'none';
-
+        
+        if (elements.noDataMessage) {
+            elements.noDataMessage.style.display = 'none';
+        }
+        
         let html = '';
         filteredWebsites.forEach(website => {
             const status = website.status === 'active' ? 
@@ -400,7 +417,8 @@
                 '<span class="status-badge status-inactive"><i class="fas fa-circle"></i> Inactive</span>';
             
             const botTokenShort = website.bot_token ? 
-                website.bot_token.substring(0, 15) + '...' : '-';
+                website.bot_token.substring(0, 15) + '...' : 
+                '-';
             
             html += `
                 <tr>
@@ -423,355 +441,250 @@
                             <button class="table-btn delete-btn" onclick="window.dashboard.deleteWebsite(${website.id})" title="Delete">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            <button class="table-btn test-btn" onclick="window.dashboard.testBot(${website.id})" title="Test Bot">
+                                <i class="fas fa-robot"></i>
+                            </button>
                         </div>
                     </td>
                 </tr>
             `;
         });
-        tbody.innerHTML = html;
+        
+        elements.websitesTableBody.innerHTML = html;
     }
 
-    function updateStats() {
-        const total = websites.length;
-        const active = websites.filter(w => w.status === 'active').length;
-        const inactive = websites.filter(w => w.status !== 'active').length;
-        const uniqueBots = new Set(websites.map(w => w.bot_token)).size;
-
-        document.getElementById('totalWebsites').textContent = total;
-        document.getElementById('activeWebsites').textContent = active;
-        document.getElementById('inactiveWebsites').textContent = inactive;
-        document.getElementById('totalBots').textContent = uniqueBots;
+    // ==================== FUNGSI DELETE WEBSITE ====================
+    async function deleteWebsite(id) {
+        try {
+            showToast('Deleting website...', 'info');
+            
+            const response = await fetch(`${API_BASE_URL}/api/websites/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('📥 Delete website response:', data);
+            
+            if (data.success) {
+                showToast('Website deleted successfully!', 'success');
+                closeDeleteModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to delete website');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error deleting website:', error);
+            showToast(error.message || 'Failed to delete website', 'error');
+        }
     }
 
-    // ==================== FUNGSI MODAL ====================
-    function showModal() {
-        console.log('🔓 Opening modal');
-        document.getElementById('createModal').classList.add('active');
-        vibrate(10);
-        setTimeout(() => setupKeyboardHandler(), 100);
+    // ==================== FUNGSI TEST BOT ====================
+    async function testBot(id) {
+        const website = websites.find(w => w.id === id);
+        if (!website) return;
+        
+        showToast(`Testing bot for ${website.endpoint}...`, 'info');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/websites/${id}/test-bot`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify({
+                    bot_token: website.bot_token,
+                    tunnel_url: website.tunnel_url
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('✅ Bot is working correctly!', 'success');
+            } else {
+                showToast('❌ Bot test failed: ' + (data.error || 'Unknown error'), 'error');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error testing bot:', error);
+            showToast('Failed to test bot: ' + error.message, 'error');
+        }
     }
 
-    function closeModal() {
-        console.log('🔒 Closing modal');
-        document.getElementById('createModal').classList.remove('active');
-        document.getElementById('createWebsiteForm').reset();
-    }
-
-    function showDeleteModal(website) {
-        websiteToDelete = website;
-        document.getElementById('deleteWebsiteInfo').innerHTML = `
-            <strong>${escapeHtml(website.endpoint)}</strong><br>
-            <small>ID: ${website.id}</small>
-        `;
-        document.getElementById('deleteModal').classList.add('active');
-        vibrate(10);
-    }
-
-    function closeDeleteModal() {
-        document.getElementById('deleteModal').classList.remove('active');
-        websiteToDelete = null;
-    }
-
+    // ==================== FUNGSI EDIT WEBSITE ====================
     function showEditModal(website) {
+        if (!elements.editModal || !website) return;
+        
         websiteToEdit = website;
         
-        document.getElementById('editEndpoint').value = website.endpoint || '';
-        document.getElementById('editBotToken').value = website.bot_token || '';
-        document.getElementById('editOwnerId').value = website.owner_id || '';
-        document.getElementById('editUsername').value = website.username || '';
-        document.getElementById('editEmail').value = website.email || '';
-        document.getElementById('editTunnelUrl').value = website.tunnel_url || '';
-        document.getElementById('editStatus').value = website.status || 'active';
-        document.getElementById('editPassword').value = '';
+        // Isi form dengan data website
+        if (elements.editEndpoint) elements.editEndpoint.value = website.endpoint || '';
+        if (elements.editBotToken) elements.editBotToken.value = website.bot_token || '';
+        if (elements.editOwnerId) elements.editOwnerId.value = website.owner_id || '';
+        if (elements.editUsername) elements.editUsername.value = website.username || '';
+        if (elements.editEmail) elements.editEmail.value = website.email || '';
+        if (elements.editTunnelUrl) elements.editTunnelUrl.value = website.tunnel_url || '';
+        if (elements.editStatus) elements.editStatus.value = website.status || 'active';
         
+        // Kosongkan password
+        if (elements.editPassword) elements.editPassword.value = '';
+        
+        // Set tanggal aktif
         const today = new Date().toISOString().split('T')[0];
         
-        if (website.created_at) {
-            const startDate = new Date(website.created_at);
-            document.getElementById('editStartDate').value = startDate.toISOString().split('T')[0];
-        } else {
-            document.getElementById('editStartDate').value = today;
+        if (elements.editStartDate) {
+            if (website.created_at) {
+                const startDate = new Date(website.created_at);
+                elements.editStartDate.value = startDate.toISOString().split('T')[0];
+            } else {
+                elements.editStartDate.value = today;
+            }
         }
         
-        if (website.end_date) {
-            const endDate = new Date(website.end_date);
-            document.getElementById('editEndDate').value = endDate.toISOString().split('T')[0];
-            document.getElementById('currentEndDate').textContent = formatDate(website.end_date);
-        } else {
-            const defaultEnd = new Date();
-            defaultEnd.setDate(defaultEnd.getDate() + 30);
-            document.getElementById('editEndDate').value = defaultEnd.toISOString().split('T')[0];
-            document.getElementById('currentEndDate').textContent = 'Tidak terbatas';
+        if (elements.editEndDate) {
+            if (website.end_date) {
+                const endDate = new Date(website.end_date);
+                elements.editEndDate.value = endDate.toISOString().split('T')[0];
+                if (elements.currentEndDate) {
+                    elements.currentEndDate.textContent = formatDate(website.end_date);
+                }
+            } else {
+                const defaultEnd = new Date();
+                defaultEnd.setDate(defaultEnd.getDate() + 30);
+                elements.editEndDate.value = defaultEnd.toISOString().split('T')[0];
+                if (elements.currentEndDate) {
+                    elements.currentEndDate.textContent = 'Tidak terbatas';
+                }
+            }
         }
         
-        document.getElementById('editModal').classList.add('active');
+        elements.editModal.classList.add('active');
         vibrate(10);
-        setTimeout(() => setupKeyboardHandler(), 100);
+        
+        // Setup keyboard handler untuk modal ini
+        setTimeout(() => {
+            setupKeyboardHandler();
+        }, 100);
     }
-
+    
     function closeEditModal() {
-        document.getElementById('editModal').classList.remove('active');
-        websiteToEdit = null;
+        if (elements.editModal) {
+            elements.editModal.classList.remove('active');
+            websiteToEdit = null;
+        }
     }
-
+    
     function calculateEndDate(startDate, days) {
         const date = new Date(startDate);
         date.setDate(date.getDate() + parseInt(days));
         return date.toISOString().split('T')[0];
     }
-
-    // ==================== HANDLE CREATE SUBMIT ====================
-    async function handleCreateSubmit(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        console.log('🎯 Create form submitted!');
-
-        const formData = {
-            endpoint: document.getElementById('endpoint').value.trim(),
-            bot_token: document.getElementById('botToken').value.trim(),
-            owner_id: parseInt(document.getElementById('ownerId').value.trim()),
-            username: document.getElementById('username').value.trim(),
-            password: document.getElementById('password').value,
-            email: document.getElementById('email').value.trim().toLowerCase(),
-            status: 'active'
-        };
-
-        console.log('📦 Form data:', formData);
-
-        // Validasi
-        if (!formData.endpoint) {
-            showToast('❌ Endpoint cannot be empty', 'error');
-            return;
-        }
-        if (!formData.bot_token) {
-            showToast('❌ Bot Token cannot be empty', 'error');
-            return;
-        }
-        if (!formData.bot_token.includes(':')) {
-            showToast('❌ Invalid bot token format (must contain :)', 'error');
-            return;
-        }
-        if (isNaN(formData.owner_id)) {
-            showToast('❌ Owner ID must be a number', 'error');
-            return;
-        }
-        if (!formData.username) {
-            showToast('❌ Username cannot be empty', 'error');
-            return;
-        }
-        if (!formData.password) {
-            showToast('❌ Password cannot be empty', 'error');
-            return;
-        }
-        if (!formData.email || !formData.email.includes('@')) {
-            showToast('❌ Invalid email', 'error');
-            return;
-        }
-
-        // Disable submit button
-        const submitBtn = event.target.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
-        }
-
-        await createWebsite(formData);
-
-        // Enable submit button
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Website';
-        }
-    }
-
-    // ==================== HANDLE EDIT SUBMIT ====================
-    async function handleEditSubmit(event) {
-        event.preventDefault();
-        
-        if (!websiteToEdit) return;
-        
-        const formData = {
-            id: websiteToEdit.id,
-            bot_token: document.getElementById('editBotToken').value.trim(),
-            owner_id: parseInt(document.getElementById('editOwnerId').value),
-            username: document.getElementById('editUsername').value.trim(),
-            email: document.getElementById('editEmail').value.trim().toLowerCase(),
-            tunnel_url: document.getElementById('editTunnelUrl').value.trim(),
-            status: document.getElementById('editStatus').value,
-            end_date: document.getElementById('editEndDate').value,
-            start_date: document.getElementById('editStartDate').value
-        };
-        
-        const password = document.getElementById('editPassword').value;
-        if (password) {
-            formData.password = password;
-        }
-        
-        await updateWebsite(formData);
-    }
-
-    // ==================== SETUP EVENT LISTENERS ====================
-    function setupEventListeners() {
-        console.log('🔧 Setting up event listeners...');
-
-        // Create button
-        if (elements.createWebsiteBtn) {
-            elements.createWebsiteBtn.onclick = function() {
-                console.log('👆 Create button clicked');
-                showModal();
-            };
-        }
-
-        // Close buttons
-        if (elements.closeModalBtn) elements.closeModalBtn.onclick = closeModal;
-        if (elements.cancelModalBtn) elements.cancelModalBtn.onclick = closeModal;
-
-        // Delete modal close buttons
-        if (elements.closeDeleteModalBtn) elements.closeDeleteModalBtn.onclick = closeDeleteModal;
-        if (elements.cancelDeleteBtn) elements.cancelDeleteBtn.onclick = closeDeleteModal;
-
-        // Edit modal close buttons
-        if (elements.closeEditModalBtn) elements.closeEditModalBtn.onclick = closeEditModal;
-        if (elements.cancelEditBtn) elements.cancelEditBtn.onclick = closeEditModal;
-
-        // Refresh button
-        if (elements.refreshDataBtn) {
-            elements.refreshDataBtn.onclick = function() {
-                vibrate(10);
-                fetchWebsites();
-                showToast('🔄 Data refreshed', 'success');
-            };
-        }
-
-        // Search input
-        if (elements.searchWebsite) {
-            elements.searchWebsite.oninput = function(e) {
-                renderWebsitesTable(e.target.value);
-            };
-        }
-
-        // Create form submit
-        if (elements.createWebsiteForm) {
-            elements.createWebsiteForm.onsubmit = handleCreateSubmit;
-            console.log('✅ Create form handler attached');
-        }
-
-        // Edit form submit
-        if (elements.editWebsiteForm) {
-            elements.editWebsiteForm.onsubmit = handleEditSubmit;
-        }
-
-        // Confirm delete button
-        if (elements.confirmDeleteBtn) {
-            elements.confirmDeleteBtn.onclick = async function() {
-                if (websiteToDelete) {
-                    await deleteWebsite(websiteToDelete.id);
-                }
-            };
-        }
-
-        // Active period change
-        if (elements.editActivePeriod) {
-            elements.editActivePeriod.onchange = function() {
-                const period = elements.editActivePeriod.value;
-                const dateRange = document.getElementById('dateRange');
-                
-                if (dateRange) {
-                    if (period === 'custom') {
-                        dateRange.style.display = 'block';
-                    } else {
-                        dateRange.style.display = 'none';
-                        
-                        const startDate = elements.editStartDate.value || new Date().toISOString().split('T')[0];
-                        const endDate = calculateEndDate(startDate, period);
-                        if (elements.editEndDate) {
-                            elements.editEndDate.value = endDate;
-                        }
-                    }
-                }
-            };
-        }
-
-        // Close modals on outside click
-        window.addEventListener('click', (e) => {
-            if (e.target === elements.createModal) closeModal();
-            if (e.target === elements.deleteModal) closeDeleteModal();
-            if (e.target === elements.editModal) closeEditModal();
-        });
-    }
-
-    // ==================== INITIALIZATION ====================
-    async function init() {
-        console.log('🚀 Initializing dashboard...');
-
+    
+    // Fungsi update website
+    async function updateWebsite(formData) {
         try {
-            // Cek environment Telegram
-            let telegramUserData = null;
-            let tg = null;
+            showToast('Updating website...', 'info');
             
-            if (window.Telegram?.WebApp) {
-                console.log('📱 Running inside Telegram Web App');
-                tg = window.Telegram.WebApp;
-                tg.expand();
-                tg.ready();
-                
-                if (tg.initDataUnsafe?.user) {
-                    telegramUserData = tg.initDataUnsafe.user;
-                }
-                
-                applyTelegramTheme(tg);
-            }
-
-            if (!telegramUserData) {
-                // Untuk testing di browser
-                telegramUserData = {
-                    id: 7998861975,
-                    first_name: 'Owner',
-                    last_name: '',
-                    username: 'ftamous'
-                };
-            }
-
-            if (!isOwner(telegramUserData.id)) {
-                showError('You are not authorized as owner', true);
-                return;
-            }
-
-            // Update UI dengan data user
-            const fullName = [telegramUserData.first_name, telegramUserData.last_name].filter(Boolean).join(' ') || 'Owner';
-            const username = telegramUserData.username ? `@${telegramUserData.username}` : '(no username)';
+            const response = await fetch(`${API_BASE_URL}/api/websites/${formData.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(formData)
+            });
             
-            if (elements.ownerName) elements.ownerName.textContent = fullName;
-            if (elements.ownerUsername) elements.ownerUsername.textContent = username;
-            if (elements.ownerId) elements.ownerId.textContent = `ID: ${telegramUserData.id}`;
-            
-            if (elements.ownerPhoto) {
-                elements.ownerPhoto.src = telegramUserData.photo_url || generateAvatarUrl(fullName);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
-
-            // Sembunyikan loading, tampilkan content
-            if (elements.loading) elements.loading.style.display = 'none';
-            if (elements.error) elements.error.style.display = 'none';
-            if (elements.dashboardContent) elements.dashboardContent.style.display = 'block';
-
-            // Setup keyboard handler
-            setupKeyboardHandler();
-
-            // Setup event listeners
-            setupEventListeners();
-
-            // Fetch websites
-            await fetchWebsites();
-
-            console.log('✅ Dashboard initialized');
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('Website updated successfully!', 'success');
+                closeEditModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to update website');
+            }
+            
         } catch (error) {
-            console.error('❌ Init error:', error);
-            showError('Failed to initialize dashboard');
+            console.error('❌ Error updating website:', error);
+            showToast(error.message || 'Failed to update website', 'error');
         }
     }
 
+    // FUNGSI SHOW MODAL UNTUK CREATE - DIHAPUS (tidak digunakan)
+    // function showModal() { ... }
+    
+    // FUNGSI CLOSE MODAL UNTUK CREATE - DIHAPUS (tidak digunakan)
+    // function closeModal() { ... }
+
+    function showDeleteModal(website) {
+        if (elements.deleteModal && website) {
+            websiteToDelete = website;
+            elements.deleteWebsiteInfo.innerHTML = `
+                <strong>${escapeHtml(website.endpoint)}</strong><br>
+                <small>ID: ${website.id}</small>
+            `;
+            elements.deleteModal.classList.add('active');
+            vibrate(10);
+        }
+    }
+
+    function closeDeleteModal() {
+        if (elements.deleteModal) {
+            elements.deleteModal.classList.remove('active');
+            websiteToDelete = null;
+        }
+    }
+
+    // ==================== FUNGSI UPDATE UI ====================
+    function updateUI(user) {
+        currentUser = user;
+        
+        const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Owner';
+        const username = user.username ? `@${user.username}` : '(no username)';
+        const userId = user.id || '-';
+        
+        if (elements.ownerName) elements.ownerName.textContent = fullName;
+        if (elements.ownerUsername) elements.ownerUsername.textContent = username;
+        if (elements.ownerId) elements.ownerId.textContent = `ID: ${userId}`;
+        
+        if (elements.ownerPhoto) {
+            elements.ownerPhoto.src = user.photo_url || generateAvatarUrl(fullName);
+        }
+        
+        if (elements.loading) elements.loading.style.display = 'none';
+        if (elements.error) elements.error.style.display = 'none';
+        if (elements.dashboardContent) elements.dashboardContent.style.display = 'block';
+        
+        fetchWebsites();
+    }
+
+    // ==================== FUNGSI SHOW ERROR ====================
     function showError(message, isOwnerError = false) {
+        vibrate(30);
+        
         if (elements.loading) elements.loading.style.display = 'none';
         if (elements.error) {
             elements.error.style.display = 'flex';
@@ -791,7 +704,193 @@
         }
     }
 
-    // ==================== EXPOSE GLOBAL FUNCTIONS ====================
+    // FUNGSI HANDLE CREATE SUBMIT - DIHAPUS
+    // async function handleCreateSubmit(e) { ... }
+
+    // ==================== FUNGSI INIT ====================
+    async function init() {
+        console.log('👑 Initializing Owner Dashboard...');
+        
+        try {
+            // Test API connection
+            const apiConnected = await testApiConnection();
+            if (!apiConnected) {
+                showToast('Warning: Cannot connect to server. Using dummy data.', 'warning');
+            }
+
+            // Cek environment Telegram
+            let telegramUserData = null;
+            let tg = null;
+            
+            if (window.Telegram?.WebApp) {
+                console.log('📱 Running inside Telegram Web App');
+                tg = window.Telegram.WebApp;
+                
+                tg.expand();
+                tg.ready();
+                
+                if (tg.initDataUnsafe?.user) {
+                    telegramUserData = tg.initDataUnsafe.user;
+                    console.log('📱 Telegram user data:', telegramUserData);
+                }
+                
+                applyTelegramTheme(tg);
+            } else {
+                console.log('🌐 Running in standalone web browser');
+                
+                // Untuk testing di browser
+                telegramUserData = {
+                    id: 7998861975,
+                    first_name: 'Owner',
+                    last_name: '',
+                    username: 'owner',
+                    language_code: 'id'
+                };
+            }
+            
+            if (!telegramUserData) {
+                showError('No user data available');
+                return;
+            }
+            
+            if (!isOwner(telegramUserData.id)) {
+                console.warn('⛔ Unauthorized access attempt:', telegramUserData.id);
+                showError('You are not authorized as owner', true);
+                return;
+            }
+            
+            console.log('✅ Owner verified!');
+            updateUI(telegramUserData);
+            setupKeyboardHandler();
+            
+        } catch (error) {
+            console.error('💥 Fatal error in init:', error);
+            showError('Failed to initialize dashboard');
+        }
+    }
+
+    // ==================== SETUP EVENT LISTENERS ====================
+    function setupEventListeners() {
+        // CREATE WEBSITE BUTTON - SEKARANG ADALAH LINK, TIDAK PERLU EVENT LISTENER
+        // if (elements.createWebsiteBtn) {
+        //     elements.createWebsiteBtn.addEventListener('click', showModal);
+        // }
+        
+        if (elements.refreshDataBtn) {
+            elements.refreshDataBtn.addEventListener('click', () => {
+                vibrate(10);
+                fetchWebsites();
+                showToast('Data refreshed', 'success');
+            });
+        }
+        
+        if (elements.searchWebsite) {
+            elements.searchWebsite.addEventListener('input', (e) => {
+                renderWebsitesTable(e.target.value);
+            });
+        }
+        
+        // CLOSE MODAL BUTTONS UNTUK CREATE - DIHAPUS
+        // if (elements.closeModalBtn) {
+        //     elements.closeModalBtn.addEventListener('click', closeModal);
+        // }
+        // if (elements.cancelModalBtn) {
+        //     elements.cancelModalBtn.addEventListener('click', closeModal);
+        // }
+        
+        if (elements.closeDeleteModalBtn) {
+            elements.closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
+        }
+        if (elements.cancelDeleteBtn) {
+            elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+        }
+        
+        if (elements.closeEditModalBtn) {
+            elements.closeEditModalBtn.addEventListener('click', closeEditModal);
+        }
+        if (elements.cancelEditBtn) {
+            elements.cancelEditBtn.addEventListener('click', closeEditModal);
+        }
+        
+        // CREATE FORM SUBMIT - DIHAPUS
+        // if (elements.createWebsiteForm) {
+        //     elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
+        //     console.log('✅ Event listener attached to create form');
+        // } else {
+        //     console.error('❌ Create website form not found!');
+        // }
+        
+        // Confirm delete button
+        if (elements.confirmDeleteBtn) {
+            elements.confirmDeleteBtn.addEventListener('click', async () => {
+                if (websiteToDelete) {
+                    await deleteWebsite(websiteToDelete.id);
+                }
+            });
+        }
+        
+        // Event listener untuk active period di edit modal
+        if (elements.editActivePeriod) {
+            elements.editActivePeriod.addEventListener('change', () => {
+                const period = elements.editActivePeriod.value;
+                const dateRange = document.getElementById('dateRange');
+                
+                if (dateRange) {
+                    if (period === 'custom') {
+                        dateRange.style.display = 'block';
+                    } else {
+                        dateRange.style.display = 'none';
+                        
+                        const startDate = elements.editStartDate.value || new Date().toISOString().split('T')[0];
+                        const endDate = calculateEndDate(startDate, period);
+                        if (elements.editEndDate) {
+                            elements.editEndDate.value = endDate;
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Edit form submit
+        if (elements.editWebsiteForm) {
+            elements.editWebsiteForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                if (!websiteToEdit) return;
+                
+                const formData = {
+                    id: websiteToEdit.id,
+                    bot_token: elements.editBotToken.value.trim(),
+                    owner_id: parseInt(elements.editOwnerId.value),
+                    username: elements.editUsername.value.trim(),
+                    email: elements.editEmail.value.trim().toLowerCase(),
+                    tunnel_url: elements.editTunnelUrl.value.trim(),
+                    status: elements.editStatus.value,
+                    end_date: elements.editEndDate.value,
+                    start_date: elements.editStartDate.value
+                };
+                
+                if (elements.editPassword && elements.editPassword.value) {
+                    formData.password = elements.editPassword.value;
+                }
+                
+                await updateWebsite(formData);
+            });
+        }
+        
+        // Close modals on outside click - HAPUS REFERENSI KE createModal
+        window.addEventListener('click', (e) => {
+            // Hapus baris ini: if (e.target === elements.createModal) { closeModal(); }
+            if (e.target === elements.deleteModal) {
+                closeDeleteModal();
+            }
+            if (e.target === elements.editModal) {
+                closeEditModal();
+            }
+        });
+    }
+
+    // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
     window.dashboard = {
         editWebsite: (id) => {
             const website = websites.find(w => w.id === id);
@@ -808,13 +907,13 @@
             } else {
                 showToast('Website not found', 'error');
             }
+        },
+        testBot: (id) => {
+            testBot(id);
         }
     };
 
     // ==================== START ====================
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    setupEventListeners();
+    init();
 })();
