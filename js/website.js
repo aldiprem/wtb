@@ -2,8 +2,7 @@
 (function() {
     console.log('🏪 Website Store - Initializing...');
 
-    // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
+    const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.apiBaseUrl : 'https://supports-lease-honest-potter.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
