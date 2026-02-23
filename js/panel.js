@@ -1730,51 +1730,45 @@
       console.log('🛠️ Initializing Panel...');
     
       try {
-        // PAKSA TAMPILKAN PANEL UNTUK TESTING
-        // HILANGKAN LOADING
-        if (elements.loading) elements.loading.style.display = 'none';
+        let telegramUserData = null;
+        let tg = null;
     
-        // TAMPILKAN PANEL
-        if (elements.panelContent) elements.panelContent.style.display = 'block';
+        if (window.Telegram?.WebApp) {
+          console.log('📱 Running inside Telegram Web App');
+          tg = window.Telegram.WebApp;
     
-        // SET DATA DUMMY
-        currentUser = {
-          id: 1,
-          first_name: 'Admin',
-          last_name: 'User',
-          username: 'admin'
-        };
+          tg.expand();
+          tg.ready();
     
-        // SET AVATAR
-        setUserAvatar(currentUser);
+          if (tg.initDataUnsafe?.user) {
+            telegramUserData = tg.initDataUnsafe.user;
     
-        // SET DATA WEBSITE DUMMY
-        currentWebsite = {
-          id: 1,
-          endpoint: 'demo',
-          username: 'Demo Website',
-          owner_id: 1,
-          created_at: new Date().toISOString(),
-          status: 'active',
-          settings: {},
-          products: []
-        };
+            // Coba dapatkan foto profil jika ada
+            if (tg.initDataUnsafe?.user?.photo_url) {
+              telegramUserData.photo_url = tg.initDataUnsafe.user.photo_url;
+            }
     
-        // UPDATE UI
-        if (elements.websiteBadge) elements.websiteBadge.textContent = '/demo';
-        if (elements.websiteName) elements.websiteName.textContent = 'Demo Website';
-        if (elements.websiteEndpointBadge) elements.websiteEndpointBadge.textContent = '/demo';
-        if (elements.websiteOwner) elements.websiteOwner.innerHTML = '<i class="fas fa-user"></i> Owner ID: 1';
-        if (elements.websiteCreated) {
-          const date = new Date();
-          elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
+            console.log('📱 Telegram user data:', telegramUserData);
+          }
+    
+          applyTelegramTheme(tg);
+        } else {
+          console.log('🌐 Running in standalone web browser');
+    
+          telegramUserData = {
+            id: 7998861975,
+            first_name: 'Test',
+            last_name: 'User',
+            username: 'test_user'
+          };
         }
     
-        // RENDER BANNER DEFAULT
-        banners = [];
-        renderBannerTrack();
+        if (!telegramUserData) {
+          showError('No user data available');
+          return;
+        }
     
-        console.log('✅ Panel forced to display');
+        await updateUI(telegramUserData);
     
       } catch (error) {
         console.error('💥 Fatal error in init:', error);
