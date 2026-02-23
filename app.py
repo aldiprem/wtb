@@ -539,40 +539,68 @@ def save_colors(website_id):
 
 # ==================== ROUTES UNTUK TAMPILAN (VERSI BARU) - LANJUTAN ====================
 
-@app.route('/api/tampilan/<int:website_id>/banner', methods=['POST'])
-def save_banner(website_id):
-    """Save banner settings"""
+@app.route('/api/tampilan/<int:website_id>/banners', methods=['POST'])
+def save_banners(website_id):
+    """Save multiple banners with positions"""
     try:
         data = request.json
-        print(f"🖼️ Received banner data: {data}")
+        print(f"🖼️ Received banners data: {data}")
         
         # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Get existing tampilan or create new
-        existing = tmp.get_tampilan(website_id)
+        banners = data.get('banners', [])
+        positions = data.get('positions', [])
         
-        if existing:
-            # Update existing
-            tmp.update_tampilan(website_id, {
-                'banner': data.get('url')
-            })
-        else:
-            # Create new
-            tmp.save_tampilan(website_id, {
-                'banner': data.get('url'),
-                'colors': {},
-                'font_family': 'Inter',
-                'font_size': 14
-            })
+        # Validasi banners
+        for banner in banners:
+            if 'url' not in banner:
+                return jsonify({'success': False, 'error': 'Each banner must have a URL'}), 400
         
-        return jsonify({'success': True, 'message': 'Banner saved successfully'})
+        # Save banners
+        tmp.save_banners(website_id, banners, positions)
+        
+        return jsonify({'success': True, 'message': f'{len(banners)} banners saved successfully'})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         import traceback
         traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/banners/<int:banner_index>', methods=['DELETE'])
+def delete_banner(website_id, banner_index):
+    """Delete a specific banner"""
+    try:
+        print(f"🗑️ Deleting banner at index {banner_index}")
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Get existing tampilan
+        existing = tmp.get_tampilan(website_id)
+        if not existing:
+            return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
+        
+        banners = existing.get('banners', [])
+        positions = existing.get('banner_positions', [])
+        
+        if banner_index < 0 or banner_index >= len(banners):
+            return jsonify({'success': False, 'error': 'Banner not found'}), 404
+        
+        # Remove banner and its position
+        banners.pop(banner_index)
+        if banner_index < len(positions):
+            positions.pop(banner_index)
+        
+        # Save updated banners
+        tmp.save_banners(website_id, banners, positions)
+        
+        return jsonify({'success': True, 'message': 'Banner deleted successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/font', methods=['POST'])
@@ -837,6 +865,67 @@ def save_maintenance(website_id):
             })
         
         return jsonify({'success': True, 'message': 'Maintenance settings saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== ROUTES UNTUK MULTIPLE BANNER DAN LOGO ====================
+
+@app.route('/api/tampilan/<int:website_id>/logo', methods=['POST'])
+def save_logo(website_id):
+    """Save logo"""
+    try:
+        data = request.json
+        print(f"🖼️ Received logo data: {data}")
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Validasi format PNG (cek dari URL atau data URL)
+        logo_url = data.get('url', '')
+        if logo_url and not (logo_url.lower().endswith('.png') or logo_url.startswith('data:image/png')):
+            return jsonify({'success': False, 'error': 'Logo must be PNG format'}), 400
+        
+        # Save logo
+        tmp.save_logo(website_id, logo_url)
+        
+        return jsonify({'success': True, 'message': 'Logo saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/banners/reorder', methods=['POST'])
+def reorder_banners(website_id):
+    """Reorder banners"""
+    try:
+        data = request.json
+        new_order = data.get('order', [])
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        existing = tmp.get_tampilan(website_id)
+        if not existing:
+            return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
+        
+        banners = existing.get('banners', [])
+        positions = existing.get('banner_positions', [])
+        
+        # Reorder based on new_order
+        if len(new_order) == len(banners):
+            new_banners = [banners[i] for i in new_order]
+            new_positions = [positions[i] for i in new_order if i < len(positions)]
+            
+            tmp.save_banners(website_id, new_banners, new_positions)
+            
+            return jsonify({'success': True, 'message': 'Banners reordered successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid order'}), 400
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
