@@ -813,3 +813,47 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
 }
+
+/* Active Period Selector */
+.active-period-selector {
+  margin-bottom: 10px;
+}
+
+.active-period-selector select {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--tg-text-color);
+  font-size: 14px;
+  outline: none;
+}
+
+.date-range {
+  margin-top: 10px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.current-active-info {
+  margin: 15px 0;
+  padding: 10px;
+  background: rgba(64, 167, 227, 0.1);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary-color);
+}
+
+.current-active-info p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-color);
+  font-size: 13px;
+}
+
+.current-active-info i {
+  font-size: 16px;
+}
