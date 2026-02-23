@@ -27,6 +27,22 @@
         searchWebsite: document.getElementById('searchWebsite'),
         createModal: document.getElementById('createModal'),
         deleteModal: document.getElementById('deleteModal'),
+        editModal: document.getElementById('editModal'),
+        closeEditModalBtn: document.getElementById('closeEditModalBtn'),
+        cancelEditBtn: document.getElementById('cancelEditBtn'),
+        editWebsiteForm: document.getElementById('editWebsiteForm'),
+        editEndpoint: document.getElementById('editEndpoint'),
+        editBotToken: document.getElementById('editBotToken'),
+        editOwnerId: document.getElementById('editOwnerId'),
+        editUsername: document.getElementById('editUsername'),
+        editPassword: document.getElementById('editPassword'),
+        editEmail: document.getElementById('editEmail'),
+        editTunnelUrl: document.getElementById('editTunnelUrl'),
+        editStatus: document.getElementById('editStatus'),
+        editActivePeriod: document.getElementById('editActivePeriod'),
+        editStartDate: document.getElementById('editStartDate'),
+        editEndDate: document.getElementById('editEndDate'),
+        currentEndDate: document.getElementById('currentEndDate'),
         createWebsiteForm: document.getElementById('createWebsiteForm'),
         closeModalBtn: document.getElementById('closeModalBtn'),
         cancelModalBtn: document.getElementById('cancelModalBtn'),
@@ -47,6 +63,238 @@
             window.navigator.vibrate(duration);
         }
     }
+
+    // ==================== FUNGSI KEYBOARD HANDLER ====================
+    function setupKeyboardHandler() {
+      // Dapatkan semua input field
+      const inputs = document.querySelectorAll('input, textarea, select');
+    
+      inputs.forEach(input => {
+        // Saat input fokus
+        input.addEventListener('focus', () => {
+          // Scroll ke element dengan smooth
+          setTimeout(() => {
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        });
+      });
+
+    // ==================== FUNGSI EDIT WEBSITE ====================
+    function showEditModal(website) {
+      if (!elements.editModal || !website) return;
+    
+      websiteToEdit = website;
+    
+      // Isi form dengan data website
+      elements.editEndpoint.value = website.endpoint || '';
+      elements.editBotToken.value = website.bot_token || '';
+      elements.editOwnerId.value = website.owner_id || '';
+      elements.editUsername.value = website.username || '';
+      elements.editEmail.value = website.email || '';
+      elements.editTunnelUrl.value = website.tunnel_url || '';
+      elements.editStatus.value = website.status || 'active';
+    
+      // Kosongkan password
+      elements.editPassword.value = '';
+    
+      // Set tanggal aktif
+      if (website.end_date) {
+        const endDate = new Date(website.end_date);
+        elements.currentEndDate.textContent = formatDate(website.end_date);
+    
+        // Set default end date
+        elements.editEndDate.value = endDate.toISOString().split('T')[0];
+      } else {
+        // Default +30 hari dari sekarang
+        const defaultEnd = new Date();
+        defaultEnd.setDate(defaultEnd.getDate() + 30);
+        elements.editEndDate.value = defaultEnd.toISOString().split('T')[0];
+        elements.currentEndDate.textContent = 'Tidak terbatas';
+      }
+    
+      // Set start date (created_at atau today)
+      if (website.created_at) {
+        const startDate = new Date(website.created_at);
+        elements.editStartDate.value = startDate.toISOString().split('T')[0];
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        elements.editStartDate.value = today;
+      }
+    
+      elements.editModal.classList.add('active');
+      vibrate(10);
+    }
+    
+    function closeEditModal() {
+      if (elements.editModal) {
+        elements.editModal.classList.remove('active');
+        websiteToEdit = null;
+      }
+    }
+    
+    function calculateEndDate(startDate, days) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + parseInt(days));
+      return date.toISOString().split('T')[0];
+    }
+    
+    // Update fungsi editWebsite di window.dashboard
+    window.dashboard = {
+      editWebsite: (id) => {
+        const website = websites.find(w => w.id === id);
+        if (website) {
+          showEditModal(website);
+        }
+      },
+      deleteWebsite: (id) => {
+        const website = websites.find(w => w.id === id);
+        if (website) {
+          showDeleteModal(website);
+        }
+      },
+      testBot: (id) => {
+        testBot(id);
+      }
+    };
+    
+    // Event listener untuk active period
+    if (elements.editActivePeriod) {
+      elements.editActivePeriod.addEventListener('change', () => {
+        const period = elements.editActivePeriod.value;
+        const dateRange = document.getElementById('dateRange');
+    
+        if (period === 'custom') {
+          dateRange.style.display = 'block';
+        } else {
+          dateRange.style.display = 'none';
+    
+          // Auto calculate end date
+          const startDate = elements.editStartDate.value || new Date().toISOString().split('T')[0];
+          const endDate = calculateEndDate(startDate, period);
+          elements.editEndDate.value = endDate;
+        }
+      });
+    }
+    
+    // Event listener untuk edit form submit
+    if (elements.editWebsiteForm) {
+      elements.editWebsiteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+    
+        if (!websiteToEdit) return;
+    
+        const formData = {
+          id: websiteToEdit.id,
+          bot_token: elements.editBotToken.value,
+          owner_id: parseInt(elements.editOwnerId.value),
+          username: elements.editUsername.value,
+          email: elements.editEmail.value,
+          tunnel_url: elements.editTunnelUrl.value,
+          status: elements.editStatus.value,
+          end_date: elements.editEndDate.value,
+          start_date: elements.editStartDate.value
+        };
+    
+        // Only include password if changed
+        if (elements.editPassword.value) {
+          formData.password = elements.editPassword.value;
+        }
+    
+        await updateWebsite(formData);
+      });
+    }
+    
+    // Fungsi update website
+    async function updateWebsite(formData) {
+      try {
+        showToast('Updating website...', 'info');
+    
+        const response = await fetch(`${API_BASE_URL}/api/websites/${formData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors',
+          body: JSON.stringify(formData)
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+    
+        if (data.success) {
+          showToast('Website updated successfully!', 'success');
+          closeEditModal();
+          await fetchWebsites();
+        } else {
+          throw new Error(data.error || 'Failed to update website');
+        }
+    
+      } catch (error) {
+        console.error('❌ Error updating website:', error);
+        showToast(error.message || 'Failed to update website', 'error');
+      }
+    }
+    
+    // Tambahkan event listeners untuk edit modal
+    if (elements.closeEditModalBtn) {
+      elements.closeEditModalBtn.addEventListener('click', closeEditModal);
+    }
+    if (elements.cancelEditBtn) {
+      elements.cancelEditBtn.addEventListener('click', closeEditModal);
+    }
+
+      // Klik di luar input untuk menutup keyboard
+      document.addEventListener('touchstart', (e) => {
+        const activeElement = document.activeElement;
+        if (!activeElement) return;
+    
+        // Cek apakah yang diklik adalah input atau bukan
+        const isInput = e.target.tagName === 'INPUT' ||
+          e.target.tagName === 'TEXTAREA' ||
+          e.target.tagName === 'SELECT';
+    
+        // Jika bukan input dan ada element yang focus, blur
+        if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+          activeElement.blur();
+    
+          // Force keyboard close dengan temporary readonly
+          activeElement.setAttribute('readonly', 'readonly');
+          setTimeout(() => {
+            activeElement.removeAttribute('readonly');
+          }, 100);
+        }
+      });
+    
+      // Handle form submit - blur input
+      document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', () => {
+          const activeElement = document.activeElement;
+          if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+            activeElement.blur();
+          }
+        });
+      });
+    
+      // Prevent scroll on input focus untuk beberapa kasus
+      let preventScroll = false;
+      document.addEventListener('focusin', (e) => {
+        if (e.target.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+          if (preventScroll) {
+            const scrollY = window.scrollY;
+            e.target.addEventListener('blur', () => {
+              window.scrollTo(0, scrollY);
+            }, { once: true });
+          }
+        }
+      });
+    }
+    
+    // Panggil fungsi ini di init()
+    setupKeyboardHandler();
 
     // ==================== FUNGSI TOAST ====================
     function showToast(message, type = 'info', duration = 3000) {
