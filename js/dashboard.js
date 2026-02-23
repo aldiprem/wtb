@@ -4,7 +4,7 @@
 
     // ==================== KONFIGURASI ====================
     const OWNER_IDS = [7998861975];
-    const API_BASE_URL = 'https://dispatched-essex-treasures-reflects.trycloudflare.com';
+    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -300,7 +300,8 @@
     async function fetchWebsites() {
       try {
         console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
-
+        console.log('📍 Full URL:', `${API_BASE_URL}/api/websites`);
+    
         const response = await fetch(`${API_BASE_URL}/api/websites`, {
           method: 'GET',
           headers: {
@@ -308,16 +309,19 @@
             'Content-Type': 'application/json'
           },
           mode: 'cors',
-          credentials: 'include' // Tambahkan ini
+          credentials: 'include'
         });
-
+    
+        console.log('📥 Response status:', response.status);
+        console.log('📥 Response ok?', response.ok);
+    
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-
+    
         const data = await response.json();
         console.log('📥 Websites data:', data);
-
+    
         if (data.success && data.websites) {
           websites = data.websites;
         } else if (Array.isArray(data)) {
@@ -325,14 +329,15 @@
         } else {
           websites = [];
         }
-
+    
         updateStats();
         renderWebsitesTable();
-
+    
       } catch (error) {
         console.error('❌ Error fetching websites:', error);
-        showToast('Failed to fetch websites data', 'error');
-
+        console.error('❌ Error details:', error.message);
+        showToast('Failed to fetch websites data: ' + error.message, 'error');
+    
         // Gunakan dummy data jika gagal
         websites = getDummyWebsites();
         updateStats();
@@ -446,7 +451,7 @@
                 owner_id: 123456789,
                 username: 'admin_giveaway',
                 email: 'admin@giveaway.com',
-                tunnel_url: 'https://dispatched-essex-treasures-reflects.trycloudflare.com',
+                tunnel_url: 'https://intimate-benefit-editions-girls.trycloudflare.com',
                 status: 'active',
                 created_at: new Date().toISOString(),
                 end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -458,7 +463,7 @@
                 owner_id: 987654321,
                 username: 'contest_admin',
                 email: 'contest@bot.com',
-                tunnel_url: 'https://dispatched-essex-treasures-reflects.trycloudflare.com',
+                tunnel_url: 'https://intimate-benefit-editions-girls.trycloudflare.com',
                 status: 'inactive',
                 created_at: new Date().toISOString(),
                 end_date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
