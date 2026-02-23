@@ -107,29 +107,55 @@
 
             <!-- Tab Content: Appearance -->
             <div id="tab-appearance" class="tab-content active">
-                <!-- Banner Settings -->
+                <!-- Logo Settings (PNG Only) -->
                 <div class="settings-card">
                     <div class="card-header">
-                        <h3><i class="fas fa-images"></i> Banner Website</h3>
-                        <button class="btn-save" id="saveBannerBtn">
-                            <i class="fas fa-save"></i> Simpan
+                        <h3><i class="fas fa-image"></i> Logo Website (PNG Only)</h3>
+                        <button class="btn-save" id="saveLogoBtn">
+                            <i class="fas fa-save"></i> Simpan Logo
                         </button>
                     </div>
                     <div class="card-body">
-                        <div class="banner-preview" id="bannerPreview">
-                            <img src="https://via.placeholder.com/800x200/40a7e3/ffffff?text=Your+Banner+Here" alt="Banner Preview" id="bannerImage">
-                            <div class="banner-overlay">
-                                <button class="btn-upload" id="uploadBannerBtn">
-                                    <i class="fas fa-cloud-upload-alt"></i> Ganti Banner
+                        <div class="logo-preview" id="logoPreview">
+                            <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
+                            <div class="logo-overlay">
+                                <button class="btn-upload" id="uploadLogoBtn">
+                                    <i class="fas fa-cloud-upload-alt"></i> Ganti Logo (PNG)
                                 </button>
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="bannerUrl">
-                                <i class="fas fa-link"></i> URL Banner (Opsional)
+                            <label for="logoUrl">
+                                <i class="fas fa-link"></i> URL Logo (PNG)
                             </label>
-                            <input type="url" id="bannerUrl" placeholder="https://example.com/banner.jpg">
-                            <small>Masukkan URL gambar banner atau upload langsung</small>
+                            <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
+                            <small>Format PNG hanya, upload atau masukkan URL</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multiple Banner Settings -->
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-images"></i> Banner Slider</h3>
+                        <div class="header-actions">
+                            <button class="btn-add" id="addBannerBtn">
+                                <i class="fas fa-plus-circle"></i> Tambah Banner
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="banner-list" id="bannerList">
+                            <!-- Banner items will be added here dynamically -->
+                            <div class="empty-banner-message">
+                                <i class="fas fa-images"></i>
+                                <p>Belum ada banner. Klik "Tambah Banner" untuk menambahkan.</p>
+                            </div>
+                        </div>
+                        <div class="banner-save-container">
+                            <button class="btn-save" id="saveBannersBtn">
+                                <i class="fas fa-save"></i> Simpan Semua Banner
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -326,7 +352,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Atas Nama</label>
-                                    <input type="text" id="bankName" placeholder="John Doe">
+                                    <input type="text" id="bankHolder" placeholder="John Doe">
                                 </div>
                             </div>
                         </div>
