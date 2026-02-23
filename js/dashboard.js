@@ -4,7 +4,7 @@
 
     // ==================== KONFIGURASI ====================
     const OWNER_IDS = [7998861975, 7349865750]; // Tambahkan ID owner Anda di sini
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
+    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -25,18 +25,17 @@
         createWebsiteBtn: document.getElementById('createWebsiteBtn'), // SEKARANG INI ADALAH LINK
         refreshDataBtn: document.getElementById('refreshDataBtn'),
         searchWebsite: document.getElementById('searchWebsite'),
-        // Create Modal - DIHAPUS (tidak digunakan lagi)
-        // createModal: document.getElementById('createModal'),
-        // createWebsiteForm: document.getElementById('createWebsiteForm'),
-        // closeModalBtn: document.getElementById('closeModalBtn'),
-        // cancelModalBtn: document.getElementById('cancelModalBtn'),
-        // Input fields untuk create form - DIHAPUS
-        // endpointInput: document.getElementById('endpoint'),
-        // botTokenInput: document.getElementById('botToken'),
-        // ownerIdInput: document.getElementById('ownerId'),
-        // usernameInput: document.getElementById('username'),
-        // passwordInput: document.getElementById('password'),
-        // emailInput: document.getElementById('email'),
+        // Create Modal - TETAP ADA TAPI TIDAK DIGUNAKAN (untuk menjaga struktur HTML)
+        createModal: document.getElementById('createModal'),
+        createWebsiteForm: document.getElementById('createWebsiteForm'),
+        closeModalBtn: document.getElementById('closeModalBtn'),
+        cancelModalBtn: document.getElementById('cancelModalBtn'),
+        endpointInput: document.getElementById('endpoint'),
+        botTokenInput: document.getElementById('botToken'),
+        ownerIdInput: document.getElementById('ownerId'),
+        usernameInput: document.getElementById('username'),
+        passwordInput: document.getElementById('password'),
+        emailInput: document.getElementById('email'),
         
         // Delete Modal - TETAP
         deleteModal: document.getElementById('deleteModal'),
@@ -453,6 +452,48 @@
         elements.websitesTableBody.innerHTML = html;
     }
 
+    // ==================== FUNGSI CREATE WEBSITE (DIKOMENTARI AGAR TIDAK DIGUNAKAN) ====================
+    /*
+    async function createWebsite(formData) {
+        try {
+            showToast('Creating website...', 'info');
+            console.log('📤 Sending data to server:', formData);
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(formData)
+            });
+            console.log('📥 Response status:', response.status);
+            let data;
+            const responseText = await response.text();
+            console.log('📥 Raw response:', responseText);
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('❌ Failed to parse response:', e);
+                throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
+            }
+            if (!response.ok) {
+                throw new Error(data.error || `Server error: ${response.status}`);
+            }
+            if (data.success) {
+                showToast('Website created successfully!', 'success');
+                closeModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to create website');
+            }
+        } catch (error) {
+            console.error('❌ Error creating website:', error);
+            showToast(error.message || 'Failed to create website', 'error');
+        }
+    }
+    */
+
     // ==================== FUNGSI DELETE WEBSITE ====================
     async function deleteWebsite(id) {
         try {
@@ -633,6 +674,32 @@
         }
     }
 
+    // FUNGSI SHOW MODAL UNTUK CREATE - DIKOMENTARI
+    /*
+    function showModal() {
+        if (elements.createModal) {
+            elements.createModal.classList.add('active');
+            vibrate(10);
+            setTimeout(() => setupKeyboardHandler(), 100);
+            console.log('🔓 Create modal opened');
+        }
+    }
+    */
+    
+    // FUNGSI CLOSE MODAL UNTUK CREATE - DIKOMENTARI
+    /*
+    function closeModal() {
+        if (elements.createModal) {
+            elements.createModal.classList.remove('active');
+            // Reset form
+            if (elements.createWebsiteForm) {
+                elements.createWebsiteForm.reset();
+                console.log('📝 Create form reset');
+            }
+        }
+    }
+    */
+
     function showDeleteModal(website) {
         if (elements.deleteModal && website) {
             websiteToDelete = website;
@@ -698,6 +765,74 @@
         }
     }
 
+    // FUNGSI HANDLE CREATE SUBMIT - DIKOMENTARI
+    /*
+    async function handleCreateSubmit(e) {
+        e.preventDefault();
+        console.log('🎯 Create form submitted!');
+        const endpoint = elements.endpointInput?.value.trim() || '';
+        const botToken = elements.botTokenInput?.value.trim() || '';
+        const ownerId = elements.ownerIdInput?.value.trim() || '';
+        const username = elements.usernameInput?.value.trim() || '';
+        const password = elements.passwordInput?.value || '';
+        const email = elements.emailInput?.value.trim() || '';
+        
+        console.log('📝 Form values:', {
+            endpoint,
+            botToken: botToken ? `${botToken.substring(0, 10)}...` : '(empty)',
+            ownerId,
+            username,
+            password: password ? '***' : '(empty)',
+            email
+        });
+        
+        // Validasi sederhana
+        if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
+            showToast('Please fill all fields', 'error');
+            return;
+        }
+        
+        // Validasi endpoint
+        const endpointRegex = /^[a-z0-9-]+$/;
+        if (!endpointRegex.test(endpoint.toLowerCase())) {
+            showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
+            return;
+        }
+        
+        // Validasi email
+        if (!email.includes('@') || !email.includes('.')) {
+            showToast('Please enter a valid email address', 'error');
+            return;
+        }
+        
+        // Validasi bot token
+        if (!botToken.includes(':')) {
+            showToast('Bot token format invalid (should contain :)', 'error');
+            return;
+        }
+        
+        // Konversi ownerId ke number
+        const ownerIdNum = parseInt(ownerId);
+        if (isNaN(ownerIdNum)) {
+            showToast('Owner ID must be a number', 'error');
+            return;
+        }
+        
+        const formData = {
+            endpoint: endpoint.toLowerCase(),
+            bot_token: botToken,
+            owner_id: ownerIdNum,
+            username: username,
+            password: password,
+            email: email.toLowerCase(),
+            status: 'active'
+        };
+        
+        console.log('📦 FormData prepared:', formData);
+        await createWebsite(formData);
+    }
+    */
+
     // ==================== FUNGSI INIT ====================
     async function init() {
         console.log('👑 Initializing Owner Dashboard...');
@@ -762,8 +897,10 @@
 
     // ==================== SETUP EVENT LISTENERS ====================
     function setupEventListeners() {
-        // CREATE WEBSITE BUTTON - SEKARANG ADALAH LINK, TIDAK PERLU EVENT LISTENER
-        // Tidak perlu event listener karena sudah berupa <a href="/format">
+        // CREATE WEBSITE BUTTON - TIDAK PERLU EVENT LISTENER KARENA SUDAH MENGGUNAKAN LINK
+        // if (elements.createWebsiteBtn) {
+        //     elements.createWebsiteBtn.addEventListener('click', showModal);
+        // }
         
         if (elements.refreshDataBtn) {
             elements.refreshDataBtn.addEventListener('click', () => {
@@ -779,7 +916,7 @@
             });
         }
         
-        // CLOSE MODAL BUTTONS UNTUK CREATE - DIHAPUS
+        // CLOSE MODAL BUTTONS UNTUK CREATE - DIKOMENTARI
         // if (elements.closeModalBtn) {
         //     elements.closeModalBtn.addEventListener('click', closeModal);
         // }
@@ -800,6 +937,14 @@
         if (elements.cancelEditBtn) {
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
+        
+        // CREATE FORM SUBMIT - DIKOMENTARI
+        // if (elements.createWebsiteForm) {
+        //     elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
+        //     console.log('✅ Event listener attached to create form');
+        // } else {
+        //     console.error('❌ Create website form not found!');
+        // }
         
         // Confirm delete button
         if (elements.confirmDeleteBtn) {
@@ -859,7 +1004,7 @@
             });
         }
         
-        // Close modals on outside click - HAPUS REFERENSI KE createModal
+        // Close modals on outside click - TIDAK ADA REFERENSI KE createModal
         window.addEventListener('click', (e) => {
             if (e.target === elements.deleteModal) {
                 closeDeleteModal();
