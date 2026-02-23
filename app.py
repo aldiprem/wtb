@@ -462,6 +462,30 @@ def debug_info():
         'method': request.method
     })
 
+# ==================== ROUTES UNTUK WEBSITE PUBLIK DAN PANEL ====================
+
+@app.route('/website/<string:endpoint>')
+def serve_website(endpoint):
+    """Menampilkan halaman website publik berdasarkan endpoint"""
+    # Validasi apakah endpoint ada di database
+    with get_db() as db:
+        website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
+        if not website:
+            return "Website not found", 404
+    # Kirim file website.html
+    return send_from_directory('.', 'website.html')
+
+@app.route('/panel/<string:endpoint>')
+def serve_panel(endpoint):
+    """Menampilkan halaman panel admin berdasarkan endpoint"""
+    # Validasi apakah endpoint ada di database
+    with get_db() as db:
+        website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
+        if not website:
+            return "Website not found", 404
+    # Kirim file panel.html
+    return send_from_directory('.', 'panel.html')
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
