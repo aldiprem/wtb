@@ -681,8 +681,8 @@
                         </div>
                     </div>
                     <div class="banner-preview-area" id="banner-preview-${index}">
-                        <div class="banner-image-wrapper" style="background-image: url('${imageUrl}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;">
-                            <div class="banner-upload-overlay">
+                        <div class="banner-image-wrapper" id="banner-wrapper-${index}" style="background-image: url('${imageUrl}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;">
+                            <div class="banner-upload-overlay" id="banner-overlay-${index}">
                                 <i class="fas fa-cloud-upload-alt"></i>
                                 <span>Tap untuk upload</span>
                             </div>
@@ -697,11 +697,176 @@
     
       elements.bannerTrack.innerHTML = html;
     
-      // Setup upload dan drag events untuk setiap banner
+      // Setup event listeners untuk setiap banner
       banners.forEach((_, index) => {
-        setupBannerUploadEvents(index);
-        setupBannerDragEvents(index);
+        setupBannerEvents(index);
       });
+    }
+
+    // ==================== FUNGSI SETUP BANNER EVENTS ====================
+    function setupBannerEvents(index) {
+      const overlay = document.getElementById(`banner-overlay-${index}`);
+      const wrapper = document.getElementById(`banner-wrapper-${index}`);
+    
+      if (!overlay || !wrapper) return;
+    
+      // EVENT 1: UPLOAD (seperti logo) - klik pada overlay
+      overlay.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        window.panel.uploadBannerImage(index);
+      });
+    
+      // EVENT 2: DRAG untuk posisi - langsung tanpa long press
+      let isDragging = false;
+      let startX, startY, startPosX, startPosY;
+    
+      const onTouchStart = (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+    
+        startX = touch.clientX;
+        startY = touch.clientY;
+    
+        startPosX = banners[index].positionX || 50;
+        startPosY = banners[index].positionY || 50;
+    
+        isDragging = true;
+        wrapper.classList.add('dragging-active');
+    
+        // Sembunyikan overlay selama drag
+        overlay.style.opacity = '0';
+    
+        vibrate(10);
+      };
+    
+      const onTouchMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+    
+        const touch = e.touches[0];
+        const rect = wrapper.getBoundingClientRect();
+    
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+    
+        const percentPerPixelX = 100 / rect.width;
+        const percentPerPixelY = 100 / rect.height;
+    
+        let newPosX = startPosX - (deltaX * percentPerPixelX);
+        let newPosY = startPosY - (deltaY * percentPerPixelY);
+    
+        newPosX = Math.max(0, Math.min(100, newPosX));
+        newPosY = Math.max(0, Math.min(100, newPosY));
+    
+        banners[index].positionX = Math.round(newPosX);
+        banners[index].positionY = Math.round(newPosY);
+    
+        wrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+    
+        const indicator = document.getElementById(`pos-indicator-${index}`);
+        if (indicator) {
+          indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+        }
+    
+        hasUnsavedBanners = true;
+      };
+    
+      const onTouchEnd = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+    
+        isDragging = false;
+        wrapper.classList.remove('dragging-active');
+        overlay.style.opacity = '';
+      };
+    
+      const onTouchCancel = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        wrapper.classList.remove('dragging-active');
+        overlay.style.opacity = '';
+      };
+    
+      // Hapus event listener lama
+      wrapper.removeEventListener('touchstart', onTouchStart);
+      wrapper.removeEventListener('touchmove', onTouchMove);
+      wrapper.removeEventListener('touchend', onTouchEnd);
+      wrapper.removeEventListener('touchcancel', onTouchCancel);
+    
+      // Tambah event listener baru
+      wrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+      wrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+      wrapper.addEventListener('touchend', onTouchEnd, { passive: false });
+      wrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
+    
+      // Mouse events untuk testing di desktop
+      let isMouseDown = false;
+      let mouseStartX, mouseStartY, mouseStartPosX, mouseStartPosY;
+    
+      const onMouseDown = (e) => {
+        e.preventDefault();
+    
+        mouseStartX = e.clientX;
+        mouseStartY = e.clientY;
+    
+        mouseStartPosX = banners[index].positionX || 50;
+        mouseStartPosY = banners[index].positionY || 50;
+    
+        isMouseDown = true;
+        wrapper.classList.add('dragging-active');
+        overlay.style.opacity = '0';
+      };
+    
+      const onMouseMove = (e) => {
+        if (!isMouseDown) return;
+        e.preventDefault();
+    
+        const rect = wrapper.getBoundingClientRect();
+    
+        const deltaX = e.clientX - mouseStartX;
+        const deltaY = e.clientY - mouseStartY;
+    
+        const percentPerPixelX = 100 / rect.width;
+        const percentPerPixelY = 100 / rect.height;
+    
+        let newPosX = mouseStartPosX - (deltaX * percentPerPixelX);
+        let newPosY = mouseStartPosY - (deltaY * percentPerPixelY);
+    
+        newPosX = Math.max(0, Math.min(100, newPosX));
+        newPosY = Math.max(0, Math.min(100, newPosY));
+    
+        banners[index].positionX = Math.round(newPosX);
+        banners[index].positionY = Math.round(newPosY);
+    
+        wrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+    
+        const indicator = document.getElementById(`pos-indicator-${index}`);
+        if (indicator) {
+          indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+        }
+    
+        hasUnsavedBanners = true;
+      };
+    
+      const onMouseUp = (e) => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        wrapper.classList.remove('dragging-active');
+        overlay.style.opacity = '';
+      };
+    
+      const onMouseLeave = (e) => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        wrapper.classList.remove('dragging-active');
+        overlay.style.opacity = '';
+      };
+    
+      wrapper.addEventListener('mousedown', onMouseDown);
+      wrapper.addEventListener('mousemove', onMouseMove);
+      wrapper.addEventListener('mouseup', onMouseUp);
+      wrapper.addEventListener('mouseleave', onMouseLeave);
     }
 
     // ==================== FUNGSI SETUP UPLOAD EVENTS (SEPERTI LOGO) ====================
@@ -1116,23 +1281,19 @@
     }
 
     window.panel.uploadBannerImage = function(index) {
-      // Sama seperti upload logo, langsung buka modal upload
       openUploadModal((imageData) => {
         banners[index].fileData = imageData;
         banners[index].url = ''; // Kosongkan URL karena pakai file
         hasUnsavedBanners = true; // Tandai ada perubahan
     
         // Update preview
-        const previewArea = document.getElementById(`banner-preview-${index}`);
-        if (previewArea) {
-          const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
-          if (imageWrapper) {
-            imageWrapper.style.backgroundImage = `url(${imageData})`;
-          }
+        const wrapper = document.getElementById(`banner-wrapper-${index}`);
+        if (wrapper) {
+          wrapper.style.backgroundImage = `url(${imageData})`;
         }
     
         showToast('✅ Gambar banner diupload!', 'success');
-      }, 'image/*'); // Terima semua format gambar (sama seperti logo)
+      }, 'image/*'); // Terima semua format gambar
     };
     
   function addBanner() {
@@ -1768,49 +1929,55 @@
       console.log('🛠️ Initializing Panel...');
     
       try {
-        let telegramUserData = null;
-        let tg = null;
+        // PAKSA TAMPILKAN PANEL UNTUK TESTING
+        // HILANGKAN LOADING
+        if (elements.loading) elements.loading.style.display = 'none';
     
-        if (window.Telegram?.WebApp) {
-          console.log('📱 Running inside Telegram Web App');
-          tg = window.Telegram.WebApp;
+        // TAMPILKAN PANEL
+        if (elements.panelContent) elements.panelContent.style.display = 'block';
     
-          tg.expand();
-          tg.ready();
+        // SET DATA DUMMY
+        currentUser = {
+          id: 1,
+          first_name: 'Admin',
+          last_name: 'User',
+          username: 'admin'
+        };
     
-          if (tg.initDataUnsafe?.user) {
-            telegramUserData = tg.initDataUnsafe.user;
+        // SET AVATAR
+        setUserAvatar(currentUser);
     
-            // Coba dapatkan foto profil jika ada
-            if (tg.initDataUnsafe?.user?.photo_url) {
-              telegramUserData.photo_url = tg.initDataUnsafe.user.photo_url;
-            }
+        // SET DATA WEBSITE DUMMY
+        currentWebsite = {
+          id: 1,
+          endpoint: 'demo',
+          username: 'Demo Website',
+          owner_id: 1,
+          created_at: new Date().toISOString(),
+          status: 'active',
+          settings: {},
+          products: []
+        };
     
-            console.log('📱 Telegram user data:', telegramUserData);
-          } else {
-            console.warn('⚠️ Telegram WebApp tersedia, tetapi data user tidak ada.');
-          }
-    
-          applyTelegramTheme(tg);
+        // UPDATE UI
+        if (elements.websiteBadge) elements.websiteBadge.textContent = '/demo';
+        if (elements.websiteName) elements.websiteName.textContent = 'Demo Website';
+        if (elements.websiteEndpointBadge) elements.websiteEndpointBadge.textContent = '/demo';
+        if (elements.websiteOwner) elements.websiteOwner.innerHTML = '<i class="fas fa-user"></i> Owner ID: 1';
+        if (elements.websiteCreated) {
+          const date = new Date();
+          elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
         }
     
-        // Jika di browser biasa ATAU di Telegram tapi tidak dapat data user, gunakan data testing
-        if (!telegramUserData) {
-          console.log('🌐 Menggunakan data testing (standalone mode)');
-          telegramUserData = {
-            id: 7998861975,
-            first_name: 'Test',
-            last_name: 'User',
-            username: 'test_user'
-          };
-        }
+        // RENDER BANNER DEFAULT
+        banners = [];
+        renderBannerTrack();
     
-        // Update UI dengan data yang ada (testing atau dari Telegram)
-        await updateUI(telegramUserData);
+        console.log('✅ Panel forced to display');
     
       } catch (error) {
         console.error('💥 Fatal error in init:', error);
-        showError('Failed to initialize panel: ' + error.message);
+        showError('Failed to initialize panel');
       }
     }
 
