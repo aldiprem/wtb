@@ -1,17 +1,30 @@
-// Panel JavaScript for Website Management - GitHub Pages Version
+// Panel JavaScript for GitHub Pages
 (function() {
     console.log('🛠️ Website Panel - Initializing...');
 
-    const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.apiBaseUrl : 'https://supports-lease-honest-potter.trycloudflare.com';
+    // ==================== KONFIGURASI ====================
+    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com'; // URL backend Flask
+    const BOT_USERNAME = 'YOUR_BOT_USERNAME'; // Ganti dengan username bot Anda
 
-    console.log('🌐 Environment:', window.APP_CONFIG?.isGitHubPages ? 'GitHub Pages' : 'Local Server');
-    console.log('🔗 API URL:', API_BASE_URL);
+    // ==================== STATE ====================
+    let currentUser = null;
+    let currentWebsite = null;
+    let products = [];
+    let currentProductId = null;
+    let currentUploadCallback = null;
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
         loading: document.getElementById('loading'),
         error: document.getElementById('error'),
         errorMessage: document.getElementById('errorMessage'),
+        loginRequired: document.getElementById('loginRequired'),
+        loginWidgetContainer: document.getElementById('loginWidgetContainer'),
+        loginStatus: document.getElementById('loginStatus'),
+        loginButtonContainer: document.getElementById('loginButtonContainer'),
+        userInfo: document.getElementById('userInfo'),
+        userName: document.getElementById('userName'),
+        logoutBtn: document.getElementById('logoutBtn'),
         panelContent: document.getElementById('panelContent'),
         noWebsiteMessage: document.getElementById('noWebsiteMessage'),
         websiteBadge: document.getElementById('websiteBadge'),
@@ -126,21 +139,13 @@
         productActive: document.getElementById('productActive')
     };
 
-    // ==================== STATE ====================
-    let currentUser = null;
-    let currentWebsite = null;
-    let products = [];
-    let currentProductId = null;
-    let currentUploadCallback = null;
-
-    // ==================== FUNGSI VIBRATE ====================
+    // ==================== FUNGSI UTILITY ====================
     function vibrate(duration = 20) {
         if (window.navigator && window.navigator.vibrate) {
             window.navigator.vibrate(duration);
         }
     }
 
-    // ==================== FUNGSI TOAST ====================
     function showToast(message, type = 'info', duration = 3000) {
         let toastContainer = document.querySelector('.toast-container');
         
@@ -190,50 +195,73 @@
         }, duration);
     }
 
-    // ==================== FUNGSI APPLY TELEGRAM THEME ====================
-    function applyTelegramTheme(tg) {
-        if (!tg || !tg.themeParams) return;
-        
-        try {
-            const theme = tg.themeParams;
-            console.log('🎨 Applying Telegram theme');
-            
-            if (theme.bg_color) {
-                document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
-            }
-            if (theme.text_color) {
-                document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
-            }
-            if (theme.hint_color) {
-                document.documentElement.style.setProperty('--tg-hint-color', theme.hint_color);
-            }
-            if (theme.link_color) {
-                document.documentElement.style.setProperty('--tg-link-color', theme.link_color);
-            }
-            if (theme.button_color) {
-                document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
-            }
-            if (theme.button_text_color) {
-                document.documentElement.style.setProperty('--tg-button-text-color', theme.button_text_color);
-            }
-        } catch (themeError) {
-            console.warn('⚠️ Error applying Telegram theme:', themeError);
-        }
+    function formatNumber(num) {
+        return num ? num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '0';
     }
 
-    // ==================== FUNGSI FETCH WEBSITE DATA ====================
-    async function fetchWebsiteData(userId) {
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ==================== FUNGSI LOGIN TELEGRAM ====================
+    window.onTelegramAuth = function(user) {
+        console.log('✅ Telegram login success:', user);
+        currentUser = user;
+        
+        // Update UI login status
+        document.getElementById('loginButtonContainer').style.display = 'none';
+        document.getElementById('userInfo').style.display = 'flex';
+        document.getElementById('userName').textContent = user.first_name + ' ' + (user.last_name || '');
+        
+        // Sembunyikan login required
+        if (elements.loginRequired) {
+            elements.loginRequired.style.display = 'none';
+        }
+        
+        // Tampilkan loading
+        if (elements.loading) elements.loading.style.display = 'flex';
+        
+        // Fetch website data
+        checkUserWebsite(user.id);
+    };
+
+    // ==================== FUNGSI LOGOUT ====================
+    function logout() {
+        currentUser = null;
+        currentWebsite = null;
+        
+        // Update UI
+        document.getElementById('loginButtonContainer').style.display = 'block';
+        document.getElementById('userInfo').style.display = 'none';
+        document.getElementById('loginRequired').style.display = 'block';
+        document.getElementById('panelContent').style.display = 'none';
+        document.getElementById('noWebsiteMessage').style.display = 'none';
+        
+        // Reload Telegram Login Widget
+        const script = document.querySelector('script[data-telegram-login]');
+        if (script) {
+            const newScript = document.createElement('script');
+            newScript.async = true;
+            newScript.src = 'https://telegram.org/js/telegram-widget.js?22';
+            newScript.setAttribute('data-telegram-login', BOT_USERNAME);
+            newScript.setAttribute('data-size', 'large');
+            newScript.setAttribute('data-onauth', 'onTelegramAuth(user)');
+            newScript.setAttribute('data-request-access', 'write');
+            script.parentNode.replaceChild(newScript, script);
+        }
+        
+        showToast('Logged out', 'info');
+    }
+
+    // ==================== FUNGSI CEK WEBSITE USER ====================
+    async function checkUserWebsite(userId) {
         try {
-            console.log('📡 Fetching website data for user:', userId);
+            console.log('📡 Checking website for user:', userId);
             
-            // Build URL dengan benar
-            const url = API_BASE_URL 
-                ? `${API_BASE_URL}/api/websites/user/${userId}`
-                : `/api/websites/user/${userId}`;
-            
-            console.log('🔗 Fetch URL:', url);
-            
-            const response = await fetch(url, {
+            const response = await fetch(`${API_BASE_URL}/api/websites/user/${userId}`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -249,16 +277,34 @@
             const data = await response.json();
             console.log('📥 Website data:', data);
 
+            // Sembunyikan loading
+            if (elements.loading) elements.loading.style.display = 'none';
+
             if (data.success && data.websites && data.websites.length > 0) {
-                return data.websites[0]; // Ambil website pertama
+                // User memiliki website
+                const website = data.websites[0];
+                currentWebsite = website;
+                
+                elements.loginRequired.style.display = 'none';
+                elements.noWebsiteMessage.style.display = 'none';
+                elements.panelContent.style.display = 'block';
+                
+                updateWebsiteUI(website);
+                
+                // Fetch products
+                const productsData = await fetchProducts(website.id);
+                updateProductsUI(productsData);
             } else {
                 // User tidak memiliki website
-                return null;
+                elements.loginRequired.style.display = 'none';
+                elements.panelContent.style.display = 'none';
+                elements.noWebsiteMessage.style.display = 'flex';
             }
 
         } catch (error) {
-            console.error('❌ Error fetching website:', error);
-            return null;
+            console.error('❌ Error checking website:', error);
+            if (elements.loading) elements.loading.style.display = 'none';
+            showError('Failed to load website data');
         }
     }
 
@@ -267,11 +313,7 @@
         try {
             console.log('📡 Fetching products for website:', websiteId);
             
-            const url = API_BASE_URL 
-                ? `${API_BASE_URL}/api/websites/${websiteId}/products`
-                : `/api/websites/${websiteId}/products`;
-            
-            const response = await fetch(url, {
+            const response = await fetch(`${API_BASE_URL}/api/websites/${websiteId}/products`, {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
@@ -520,19 +562,6 @@
         elements.productsGrid.innerHTML = html;
     }
 
-    // ==================== FUNGSI FORMAT NUMBER ====================
-    function formatNumber(num) {
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    }
-
-    // ==================== FUNGSI ESCAPE HTML ====================
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     // ==================== FUNGSI COPY ENDPOINT ====================
     function copyEndpoint() {
         if (!currentWebsite) return;
@@ -572,9 +601,7 @@
     function previewWebsite() {
         if (!currentWebsite) return;
         
-        // Build URL dengan benar
-        const baseUrl = window.APP_CONFIG?.isGitHubPages ? API_BASE_URL : window.location.origin;
-        const url = `${baseUrl}/website/${currentWebsite.endpoint}`;
+        const url = `https://aldiprem.github.io/wtb/website?store=${currentWebsite.endpoint}`;
         window.open(url, '_blank');
     }
 
@@ -587,7 +614,7 @@
             return;
         }
         
-        // TODO: Implementasi real API call
+        // TODO: Implementasi API call ke backend
         showToast(`✅ ${section} settings saved!`, 'success');
     }
 
@@ -634,7 +661,7 @@
             return;
         }
         
-        // TODO: Implementasi real API call
+        // TODO: Implementasi API call
         showToast('✅ Product saved!', 'success');
         closeProductModal();
     }
@@ -663,7 +690,7 @@
         
         console.log('🗑️ Deleting product:', currentProductId);
         
-        // TODO: Implementasi real API call
+        // TODO: Implementasi API call
         showToast('✅ Product deleted!', 'success');
         closeDeleteModal();
     }
@@ -694,54 +721,6 @@
         currentUploadCallback = null;
     }
 
-    // ==================== FUNGSI UPDATE UI ====================
-    async function updateUI(user) {
-        currentUser = user;
-        
-        // Sembunyikan loading
-        if (elements.loading) elements.loading.style.display = 'none';
-        
-        // Fetch website data
-        const website = await fetchWebsiteData(user.id);
-        
-        if (website) {
-            // User memiliki website
-            if (elements.error) elements.error.style.display = 'none';
-            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'none';
-            if (elements.panelContent) elements.panelContent.style.display = 'block';
-            
-            updateWebsiteUI(website);
-            
-            // Fetch products
-            const productsData = await fetchProducts(website.id);
-            updateProductsUI(productsData);
-        } else {
-            // User tidak memiliki website
-            if (elements.error) elements.error.style.display = 'none';
-            if (elements.panelContent) elements.panelContent.style.display = 'none';
-            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'flex';
-        }
-    }
-
-    // ==================== FUNGSI SHOW ERROR ====================
-    function showError(message) {
-        vibrate(30);
-        
-        if (elements.loading) elements.loading.style.display = 'none';
-        if (elements.error) {
-            elements.error.style.display = 'flex';
-            if (elements.errorMessage) {
-                elements.errorMessage.textContent = message;
-            }
-        }
-        if (elements.panelContent) {
-            elements.panelContent.style.display = 'none';
-        }
-        if (elements.noWebsiteMessage) {
-            elements.noWebsiteMessage.style.display = 'none';
-        }
-    }
-
     // ==================== FUNGSI HANDLE IMAGE UPLOAD ====================
     function handleImageUpload(file) {
         const reader = new FileReader();
@@ -770,50 +749,46 @@
         reader.readAsDataURL(file);
     }
 
+    // ==================== FUNGSI SHOW ERROR ====================
+    function showError(message) {
+        vibrate(30);
+        
+        if (elements.loading) elements.loading.style.display = 'none';
+        if (elements.error) {
+            elements.error.style.display = 'flex';
+            if (elements.errorMessage) {
+                elements.errorMessage.textContent = message;
+            }
+        }
+        if (elements.panelContent) {
+            elements.panelContent.style.display = 'none';
+        }
+        if (elements.noWebsiteMessage) {
+            elements.noWebsiteMessage.style.display = 'none';
+        }
+    }
+
     // ==================== FUNGSI INIT ====================
-    async function init() {
+    function init() {
         console.log('🛠️ Initializing Panel...');
 
-        try {
-            // Cek environment Telegram
-            let telegramUserData = null;
-            let tg = null;
+        // Setup logout button
+        if (elements.logoutBtn) {
+            elements.logoutBtn.addEventListener('click', logout);
+        }
 
-            if (window.Telegram?.WebApp) {
-                console.log('📱 Running inside Telegram Web App');
-                tg = window.Telegram.WebApp;
-                
-                tg.expand();
-                tg.ready();
-                
-                if (tg.initDataUnsafe?.user) {
-                    telegramUserData = tg.initDataUnsafe.user;
-                    console.log('📱 Telegram user data:', telegramUserData);
-                }
-                
-                applyTelegramTheme(tg);
-            } else {
-                console.log('🌐 Running in standalone web browser');
-                
-                // Untuk testing di browser
-                telegramUserData = {
-                    id: 7998861975, // Ganti dengan ID Anda untuk testing
-                    first_name: 'Test',
-                    last_name: 'User',
-                    username: 'test_user'
-                };
+        // Setup event listeners (sisa fungsi lainnya)
+        setupEventListeners();
+
+        // Cek apakah user sudah login (dari localStorage)
+        const savedUser = localStorage.getItem('tg_user');
+        if (savedUser) {
+            try {
+                const user = JSON.parse(savedUser);
+                window.onTelegramAuth(user);
+            } catch (e) {
+                console.error('Error loading saved user', e);
             }
-
-            if (!telegramUserData) {
-                showError('No user data available');
-                return;
-            }
-
-            await updateUI(telegramUserData);
-
-        } catch (error) {
-            console.error('💥 Fatal error in init:', error);
-            showError('Failed to initialize panel');
         }
     }
 
@@ -1177,6 +1152,5 @@
     };
 
     // ==================== START ====================
-    setupEventListeners();
     init();
 })();
