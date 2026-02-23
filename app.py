@@ -143,6 +143,25 @@ def serve_static(path):
 def handle_options(path=None):
     return '', 200
 
+# ==================== HEALTH CHECK ====================
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    try:
+        with get_db() as db:
+            db.execute('SELECT 1').fetchone()
+            return jsonify({
+                'status': 'healthy',
+                'database': 'connected',
+                'timestamp': datetime.now().isoformat()
+            })
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'database': 'disconnected',
+            'error': str(e)
+        }), 500
+
 # ==================== WEBSITE API ====================
 
 @app.route('/api/websites', methods=['GET'])
