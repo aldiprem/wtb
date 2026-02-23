@@ -3,8 +3,8 @@
     console.log('👑 Owner Dashboard - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const OWNER_IDS = [7998861975, 7349865750];
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
+    const OWNER_IDS = [7998861975, 7349865750]; // Tambahkan ID owner Anda di sini
+    const API_BASE_URL = window.location.origin; // Gunakan URL yang sama dengan halaman
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -270,165 +270,69 @@
 
     // ==================== FUNGSI TEST API CONNECTION ====================
     async function testApiConnection() {
-      try {
-        console.log('🔍 Testing API connection to:', API_BASE_URL);
-    
-        const response = await fetch(`${API_BASE_URL}/api/health`, {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' },
-          mode: 'cors',
-          cache: 'no-cache'
-        });
-    
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ API Connected:', data);
-          return true;
-        } else {
-          console.warn('⚠️ API health check failed:', response.status);
-          return false;
+        try {
+            console.log('🔍 Testing API connection to:', API_BASE_URL);
+            
+            const response = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ API Connected:', data);
+                return true;
+            } else {
+                console.warn('⚠️ API health check failed:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ API connection failed:', error);
+            return false;
         }
-      } catch (error) {
-        console.error('❌ API connection failed:', error);
-        return false;
-      }
     }
 
     // ==================== FUNGSI FETCH WEBSITES ====================
     async function fetchWebsites() {
-      try {
-        console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
-    
-        const response = await fetch(`${API_BASE_URL}/api/websites`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          mode: 'cors'
-        });
-    
-        console.log('📥 Response status:', response.status);
-    
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    
-        const data = await response.json();
-        console.log('📥 Websites data:', data);
-    
-        if (data.success && data.websites) {
-          websites = data.websites;
-        } else if (Array.isArray(data)) {
-          websites = data;
-        } else {
-          websites = [];
-        }
-    
-        updateStats();
-        renderWebsitesTable();
-    
-      } catch (error) {
-        console.error('❌ Error fetching websites:', error);
-        showToast('Failed to fetch websites data: ' + error.message, 'error');
-    
-        // Gunakan dummy data jika gagal
-        websites = getDummyWebsites();
-        updateStats();
-        renderWebsitesTable();
-      }
-    }
-
-    // ==================== FUNGSI CREATE WEBSITE (SATU FUNGSI SAJA) ====================
-    async function createWebsite(formData) {
         try {
-            showToast('Creating website...', 'info');
-
-            // Debug: lihat data yang dikirim
-            console.log('📤 Form data received:', formData);
-
-            // Validasi sederhana - cek apakah semua field ada
-            const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
-            const missingFields = [];
-
-            for (const field of requiredFields) {
-                if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
-                    missingFields.push(field);
-                    console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
-                }
-            }
-
-            if (missingFields.length > 0) {
-                console.error('❌ Missing fields:', missingFields);
-                showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
-                return;
-            }
-
-            // Validasi endpoint (hanya huruf kecil, angka, dan strip)
-            const endpointRegex = /^[a-z0-9-]+$/;
-            if (!endpointRegex.test(formData.endpoint)) {
-                showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
-                return;
-            }
-
-            // Validasi owner_id adalah angka
-            if (isNaN(formData.owner_id) || formData.owner_id <= 0) {
-                showToast('Owner ID must be a valid positive number', 'error');
-                return;
-            }
-
-            // Validasi email
-            if (!formData.email.includes('@') || !formData.email.includes('.')) {
-                showToast('Please enter a valid email address', 'error');
-                return;
-            }
-
-            // Validasi bot token format sederhana
-            if (!formData.bot_token.includes(':')) {
-                showToast('Bot token format invalid (should contain :)', 'error');
-                return;
-            }
-
-            console.log('📤 Sending data to server:', JSON.stringify(formData, null, 2));
-
+            console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
+            
             const response = await fetch(`${API_BASE_URL}/api/websites`, {
-                method: 'POST',
+                method: 'GET',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                mode: 'cors',
-                body: JSON.stringify(formData)
+                mode: 'cors'
             });
-
+            
             console.log('📥 Response status:', response.status);
-
-            let data;
-            const responseText = await response.text();
-            console.log('📥 Raw response:', responseText);
-
-            try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('❌ Failed to parse response:', e);
-                throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
-            }
-
+            
             if (!response.ok) {
-                throw new Error(data.error || `Server error: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
-            if (data.success) {
-                showToast('Website created successfully!', 'success');
-                closeModal();
-                await fetchWebsites();
+            
+            const data = await response.json();
+            console.log('📥 Websites data:', data);
+            
+            if (data.success && data.websites) {
+                websites = data.websites;
             } else {
-                throw new Error(data.error || 'Failed to create website');
+                websites = [];
             }
-
+            
+            updateStats();
+            renderWebsitesTable();
+            
         } catch (error) {
-            console.error('❌ Error creating website:', error);
-            showToast(error.message || 'Failed to create website', 'error');
+            console.error('❌ Error fetching websites:', error);
+            showToast('Failed to fetch websites data: ' + error.message, 'error');
+            
+            // Gunakan dummy data jika gagal
+            websites = getDummyWebsites();
+            updateStats();
+            renderWebsitesTable();
         }
     }
 
@@ -442,7 +346,7 @@
                 owner_id: 123456789,
                 username: 'admin_giveaway',
                 email: 'admin@giveaway.com',
-                tunnel_url: 'https://intimate-benefit-editions-girls.trycloudflare.com',
+                tunnel_url: API_BASE_URL,
                 status: 'active',
                 created_at: new Date().toISOString(),
                 end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -454,7 +358,7 @@
                 owner_id: 987654321,
                 username: 'contest_admin',
                 email: 'contest@bot.com',
-                tunnel_url: 'https://intimate-benefit-editions-girls.trycloudflare.com',
+                tunnel_url: API_BASE_URL,
                 status: 'inactive',
                 created_at: new Date().toISOString(),
                 end_date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
@@ -542,6 +446,54 @@
         });
         
         elements.websitesTableBody.innerHTML = html;
+    }
+
+    // ==================== FUNGSI CREATE WEBSITE ====================
+    async function createWebsite(formData) {
+        try {
+            showToast('Creating website...', 'info');
+
+            console.log('📤 Sending data to server:', formData);
+
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(formData)
+            });
+
+            console.log('📥 Response status:', response.status);
+
+            let data;
+            const responseText = await response.text();
+            console.log('📥 Raw response:', responseText);
+
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('❌ Failed to parse response:', e);
+                throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || `Server error: ${response.status}`);
+            }
+
+            if (data.success) {
+                showToast('Website created successfully!', 'success');
+                closeModal();
+                await fetchWebsites();
+            } else {
+                throw new Error(data.error || 'Failed to create website');
+            }
+
+        } catch (error) {
+            console.error('❌ Error creating website:', error);
+            showToast(error.message || 'Failed to create website', 'error');
+        }
     }
 
     // ==================== FUNGSI DELETE WEBSITE ====================
@@ -816,22 +768,13 @@
         
         console.log('🎯 Create form submitted!');
         
-        // Validasi form fields
-        if (!elements.endpointInput || !elements.botTokenInput || !elements.ownerIdInput || 
-            !elements.usernameInput || !elements.passwordInput || !elements.emailInput) {
-            console.error('❌ Form input elements not found');
-            showToast('Form input elements not found', 'error');
-            return;
-        }
+        const endpoint = elements.endpointInput?.value.trim() || '';
+        const botToken = elements.botTokenInput?.value.trim() || '';
+        const ownerId = elements.ownerIdInput?.value.trim() || '';
+        const username = elements.usernameInput?.value.trim() || '';
+        const password = elements.passwordInput?.value || '';
+        const email = elements.emailInput?.value.trim() || '';
         
-        const endpoint = elements.endpointInput.value.trim();
-        const botToken = elements.botTokenInput.value.trim();
-        const ownerId = elements.ownerIdInput.value.trim();
-        const username = elements.usernameInput.value.trim();
-        const password = elements.passwordInput.value;
-        const email = elements.emailInput.value.trim();
-        
-        // Debug: lihat nilai yang diambil
         console.log('📝 Form values:', {
             endpoint,
             botToken: botToken ? `${botToken.substring(0, 10)}...` : '(empty)',
@@ -841,40 +784,28 @@
             email
         });
         
-        // Validasi sederhana sebelum membuat formData
-        if (!endpoint) {
-            showToast('Endpoint is required', 'error');
-            elements.endpointInput.focus();
+        // Validasi sederhana
+        if (!endpoint || !botToken || !ownerId || !username || !password || !email) {
+            showToast('Please fill all fields', 'error');
             return;
         }
         
-        if (!botToken) {
-            showToast('Bot Token is required', 'error');
-            elements.botTokenInput.focus();
+        // Validasi endpoint
+        const endpointRegex = /^[a-z0-9-]+$/;
+        if (!endpointRegex.test(endpoint.toLowerCase())) {
+            showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
             return;
         }
         
-        if (!ownerId) {
-            showToast('Owner ID is required', 'error');
-            elements.ownerIdInput.focus();
+        // Validasi email
+        if (!email.includes('@') || !email.includes('.')) {
+            showToast('Please enter a valid email address', 'error');
             return;
         }
         
-        if (!username) {
-            showToast('Username is required', 'error');
-            elements.usernameInput.focus();
-            return;
-        }
-        
-        if (!password) {
-            showToast('Password is required', 'error');
-            elements.passwordInput.focus();
-            return;
-        }
-        
-        if (!email) {
-            showToast('Email is required', 'error');
-            elements.emailInput.focus();
+        // Validasi bot token
+        if (!botToken.includes(':')) {
+            showToast('Bot token format invalid (should contain :)', 'error');
             return;
         }
         
@@ -882,7 +813,6 @@
         const ownerIdNum = parseInt(ownerId);
         if (isNaN(ownerIdNum)) {
             showToast('Owner ID must be a number', 'error');
-            elements.ownerIdInput.focus();
             return;
         }
         
@@ -931,6 +861,7 @@
             } else {
                 console.log('🌐 Running in standalone web browser');
                 
+                // Untuk testing di browser
                 telegramUserData = {
                     id: 7998861975,
                     first_name: 'Owner',
@@ -1002,31 +933,8 @@
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
         
-        // Create form submit - langsung attach event listener tanpa clone node
+        // Create form submit
         if (elements.createWebsiteForm) {
-            // Hapus event listener lama jika ada dengan replace
-            const newForm = elements.createWebsiteForm.cloneNode(false);
-            const parent = elements.createWebsiteForm.parentNode;
-            parent.replaceChild(newForm, elements.createWebsiteForm);
-            elements.createWebsiteForm = newForm;
-            
-            // Update referensi input fields setelah replace
-            elements.endpointInput = document.getElementById('endpoint');
-            elements.botTokenInput = document.getElementById('botToken');
-            elements.ownerIdInput = document.getElementById('ownerId');
-            elements.usernameInput = document.getElementById('username');
-            elements.passwordInput = document.getElementById('password');
-            elements.emailInput = document.getElementById('email');
-            
-            console.log('🔄 Create form re-initialized');
-            console.log('📍 Endpoint input found:', !!elements.endpointInput);
-            console.log('📍 BotToken input found:', !!elements.botTokenInput);
-            console.log('📍 OwnerId input found:', !!elements.ownerIdInput);
-            console.log('📍 Username input found:', !!elements.usernameInput);
-            console.log('📍 Password input found:', !!elements.passwordInput);
-            console.log('📍 Email input found:', !!elements.emailInput);
-            
-            // Tambahkan event listener baru
             elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
             console.log('✅ Event listener attached to create form');
         } else {
