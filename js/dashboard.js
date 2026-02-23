@@ -810,7 +810,7 @@
             if (!apiConnected) {
                 showToast('Warning: Cannot connect to server. Using dummy data.', 'warning');
             }
-            
+
             // Cek environment Telegram
             let telegramUserData = null;
             let tg = null;
@@ -902,8 +902,14 @@
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
         
-        // Create Website form submit
+        // Create Website form submit - PASTIKAN HANYA SATU EVENT LISTENER
         if (elements.createWebsiteForm) {
+            // Hapus event listener lama dengan clone node
+            const newForm = elements.createWebsiteForm.cloneNode(true);
+            elements.createWebsiteForm.parentNode.replaceChild(newForm, elements.createWebsiteForm);
+            elements.createWebsiteForm = newForm;
+            
+            // Tambahkan event listener baru
             elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
         }
         
@@ -979,7 +985,7 @@
         });
     }
     
-    // Pisahkan handler submit ke fungsi terpisah
+    // Handler untuk form submit
     async function handleCreateSubmit(e) {
         e.preventDefault();
         
