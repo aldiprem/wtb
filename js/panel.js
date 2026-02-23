@@ -3,7 +3,7 @@
     console.log('🛠️ Website Panel - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
+    const API_BASE_URL = window.location.origin; // Gunakan URL yang sama dengan halaman
     const DEFAULT_WEBSITE_ID = 1;
 
     // ==================== DOM ELEMENTS ====================
@@ -224,7 +224,6 @@
         try {
             console.log('📡 Fetching website data for user:', userId);
             
-            // Simulasi API call - ganti dengan endpoint real
             const response = await fetch(`${API_BASE_URL}/api/websites/user/${userId}`, {
                 method: 'GET',
                 headers: {
@@ -241,8 +240,8 @@
             const data = await response.json();
             console.log('📥 Website data:', data);
 
-            if (data.success && data.website) {
-                return data.website;
+            if (data.success && data.websites && data.websites.length > 0) {
+                return data.websites[0];
             } else {
                 // Gunakan data dummy untuk testing
                 return getDummyWebsite(userId);
@@ -326,7 +325,6 @@
         try {
             console.log('📡 Fetching products for website:', websiteId);
             
-            // Simulasi API call
             const response = await fetch(`${API_BASE_URL}/api/websites/${websiteId}/products`, {
                 method: 'GET',
                 headers: {
@@ -345,7 +343,6 @@
             if (data.success && data.products) {
                 return data.products;
             } else {
-                // Data dummy untuk testing
                 return getDummyProducts();
             }
 
@@ -496,8 +493,8 @@
                 if (bankSelect) bankSelect.value = pm.bank.name || 'BCA';
                 const bankAccount = document.getElementById('bankAccount');
                 if (bankAccount) bankAccount.value = pm.bank.account || '';
-                const bankHolder = document.getElementById('bankName'); // Note: duplicate ID
-                // Better to use different ID
+                const bankHolder = document.getElementById('bankName');
+                if (bankHolder) bankHolder.value = pm.bank.holder || '';
             }
             
             // E-Wallet
@@ -663,7 +660,7 @@
     function previewWebsite() {
         if (!currentWebsite) return;
         
-        const url = `https://t.me/yourbot/start?startapp=${currentWebsite.endpoint}`;
+        const url = `${API_BASE_URL}/website/${currentWebsite.endpoint}`;
         window.open(url, '_blank');
     }
 
@@ -671,33 +668,15 @@
     function saveSettings(section, data) {
         console.log(`💾 Saving ${section} settings:`, data);
         
-        // Simulasi API call
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        // Simulasi API call - akan diganti dengan implementasi real
         setTimeout(() => {
             showToast(`✅ ${section} settings saved!`, 'success');
         }, 500);
-        
-        // Implementasi real:
-        /*
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/websites/${currentWebsite.id}/settings/${section}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(data)
-            });
-            
-            if (response.ok) {
-                showToast(`✅ ${section} settings saved!`, 'success');
-            } else {
-                throw new Error('Failed to save');
-            }
-        } catch (error) {
-            showToast(`❌ Failed to save ${section} settings`, 'error');
-        }
-        */
     }
 
     // ==================== FUNGSI PRODUCT MODAL ====================
@@ -737,7 +716,13 @@
     function saveProduct(formData) {
         console.log('💾 Saving product:', formData);
         
-        // Simulasi save
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            closeProductModal();
+            return;
+        }
+        
+        // Simulasi save - akan diganti dengan implementasi real
         setTimeout(() => {
             showToast('✅ Product saved!', 'success');
             closeProductModal();
@@ -769,11 +754,11 @@
     }
     
     function confirmDelete() {
-        if (!currentProductId) return;
+        if (!currentProductId || !currentWebsite) return;
         
         console.log('🗑️ Deleting product:', currentProductId);
         
-        // Simulasi delete
+        // Simulasi delete - akan diganti dengan implementasi real
         setTimeout(() => {
             showToast('✅ Product deleted!', 'success');
             closeDeleteModal();
