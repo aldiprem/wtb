@@ -3,7 +3,7 @@
     console.log('🏪 Website Store - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
+    const API_BASE_URL = window.location.origin; // Gunakan URL yang sama dengan halaman
     const DEFAULT_ENDPOINT = 'default-store';
 
     // ==================== DOM ELEMENTS ====================
@@ -148,12 +148,88 @@
         }, duration);
     }
 
+    // ==================== FUNGSI KEYBOARD HANDLER ====================
+    function setupKeyboardHandler() {
+        function scrollToInput(input) {
+            const rect = input.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const keyboardHeight = windowHeight * 0.4;
+            
+            if (rect.bottom > windowHeight - keyboardHeight) {
+                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
+                window.scrollTo({ top: scrollY, behavior: 'smooth' });
+            }
+        }
+        
+        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
+        
+        modalInputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    scrollToInput(input);
+                    
+                    const modal = input.closest('.modal');
+                    if (modal) {
+                        modal.classList.add('modal-with-input');
+                        const modalContent = modal.querySelector('.modal-content');
+                        if (modalContent) {
+                            modalContent.style.maxHeight = '70vh';
+                            modalContent.style.overflowY = 'auto';
+                        }
+                    }
+                }, 300);
+            });
+            
+            input.addEventListener('blur', () => {
+                const modal = input.closest('.modal');
+                if (modal) {
+                    modal.classList.remove('modal-with-input');
+                }
+            });
+        });
+        
+        document.addEventListener('touchstart', (e) => {
+            const activeElement = document.activeElement;
+            if (!activeElement) return;
+            
+            const isInput = e.target.tagName === 'INPUT' || 
+                           e.target.tagName === 'TEXTAREA' || 
+                           e.target.tagName === 'SELECT' ||
+                           e.target.closest('.modal-content');
+            
+            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                activeElement.blur();
+            }
+        });
+        
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', () => {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                    activeElement.blur();
+                }
+            });
+        });
+        
+        let viewportHeight = window.innerHeight;
+        window.addEventListener('resize', () => {
+            const newHeight = window.innerHeight;
+            
+            if (newHeight < viewportHeight * 0.7) {
+                document.body.classList.add('keyboard-visible');
+            } else if (newHeight > viewportHeight * 0.8) {
+                document.body.classList.remove('keyboard-visible');
+            }
+            
+            viewportHeight = newHeight;
+        });
+    }
+
     // ==================== FUNGSI LOAD WEBSITE DATA ====================
     async function loadWebsiteData(endpoint) {
         try {
             console.log(`📡 Loading website data for endpoint: ${endpoint}`);
             
-            // Panggil API untuk mendapatkan data website berdasarkan endpoint
             const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
                 method: 'GET',
                 headers: {
@@ -174,21 +250,17 @@
                 const data = result.website;
                 websiteData = data;
                 
-                // Update UI dengan data dari server
                 updateWebsiteUI(data);
                 
-                // Load products dari data website
                 if (data.products && data.products.length > 0) {
                     products = data.products;
                 } else {
                     products = [];
                 }
                 
-                // Load categories dari data website
                 if (data.categories && data.categories.length > 0) {
                     categories = data.categories;
                 } else {
-                    // Categories default jika tidak ada
                     categories = getDefaultCategories();
                 }
                 
@@ -205,17 +277,14 @@
             console.error('❌ Error loading website:', error);
             showToast('Gagal memuat data website', 'error');
             
-            // Data dummy fallback jika API gagal
             const dummyData = getDummyWebsiteData(endpoint);
             websiteData = dummyData;
             updateWebsiteUI(dummyData);
             
-            // Load dummy products
             products = getDummyProducts();
             renderFeaturedProducts();
             renderPopularProducts();
             
-            // Load dummy categories
             categories = getDefaultCategories();
             renderCategories();
         }
@@ -443,81 +512,8 @@
         ];
     }
 
-    // ==================== FUNGSI LOAD PRODUCTS ====================
-    async function loadProducts(endpoint) {
-        try {
-            console.log(`📡 Loading products for endpoint: ${endpoint}`);
-            
-            // Coba ambil products dari API
-            const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}/products`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.products) {
-                    products = data.products;
-                } else {
-                    products = getDummyProducts();
-                }
-            } else {
-                products = getDummyProducts();
-            }
-            
-            renderFeaturedProducts();
-            renderPopularProducts();
-            
-        } catch (error) {
-            console.error('❌ Error loading products:', error);
-            products = getDummyProducts();
-            renderFeaturedProducts();
-            renderPopularProducts();
-        }
-    }
-
-    // ==================== FUNGSI LOAD CATEGORIES ====================
-    async function loadCategories(endpoint) {
-        try {
-            console.log(`📡 Loading categories for endpoint: ${endpoint}`);
-            
-            // Coba ambil categories dari API
-            const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}/categories`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success && data.categories) {
-                    categories = data.categories;
-                } else {
-                    categories = getDefaultCategories();
-                }
-            } else {
-                categories = getDefaultCategories();
-            }
-            
-            renderCategories();
-            
-        } catch (error) {
-            console.error('❌ Error loading categories:', error);
-            categories = getDefaultCategories();
-            renderCategories();
-        }
-    }
-
     // ==================== FUNGSI UPDATE UI ====================
     function updateWebsiteUI(data) {
-        // Update meta tags
         if (elements.dynamicTitle) {
             elements.dynamicTitle.textContent = data.title || 'Toko Online';
         }
@@ -528,13 +524,11 @@
             elements.dynamicKeywords.content = data.keywords || 'toko, online, topup';
         }
         
-        // Update store names
         const storeName = data.name || 'Toko Online';
         if (elements.storeName) elements.storeName.textContent = storeName;
         if (elements.sidebarStoreName) elements.sidebarStoreName.textContent = storeName;
         if (elements.footerStoreName) elements.footerStoreName.textContent = storeName;
         
-        // Update footer
         if (elements.footerDescription) {
             elements.footerDescription.textContent = data.footer?.description || '';
         }
@@ -545,32 +539,26 @@
             elements.contactTelegram.textContent = data.contact.telegram;
         }
         
-        // Update year
         if (elements.sidebarYear) {
             elements.sidebarYear.textContent = new Date().getFullYear();
         }
         
-        // Update banner
         if (data.banner && data.banner.length > 0) {
             renderBanners(data.banner);
         }
         
-        // Update promo banner
         if (data.promo_banner && elements.promoBanner) {
             elements.promoBanner.innerHTML = `<img src="${data.promo_banner}" alt="Promo">`;
         }
         
-        // Update payment methods
         if (data.payments) {
             renderPaymentMethods(data.payments);
         }
         
-        // Apply theme colors
         if (data.colors) {
             applyThemeColors(data.colors);
         }
         
-        // Apply font
         if (data.font) {
             applyFont(data.font);
         }
@@ -601,7 +589,6 @@
     function renderBanners(banners) {
         if (!elements.sliderContainer || !elements.sliderDots) return;
         
-        // Render images
         let slidesHtml = '';
         let dotsHtml = '';
         
@@ -620,7 +607,6 @@
         elements.sliderContainer.innerHTML = slidesHtml;
         elements.sliderDots.innerHTML = dotsHtml;
         
-        // Add click events to dots
         document.querySelectorAll('.slider-dot').forEach(dot => {
             dot.addEventListener('click', () => {
                 const index = parseInt(dot.dataset.index);
@@ -628,7 +614,6 @@
             });
         });
         
-        // Start auto slide
         startBannerAutoSlide(banners.length);
     }
 
@@ -677,7 +662,6 @@
         
         elements.categoriesGrid.innerHTML = html;
         
-        // Add click events
         document.querySelectorAll('.category-card').forEach(card => {
             card.addEventListener('click', () => {
                 const categoryId = card.dataset.category;
@@ -748,7 +732,6 @@
         
         container.innerHTML = html;
         
-        // Add click events to product cards
         document.querySelectorAll('.product-card').forEach(card => {
             card.addEventListener('click', () => {
                 const productId = card.dataset.id;
@@ -765,7 +748,6 @@
         
         let html = '';
         
-        // Bank
         if (payments.bank && payments.bank.length > 0) {
             payments.bank.forEach(bank => {
                 html += `
@@ -777,7 +759,6 @@
             });
         }
         
-        // E-Wallet
         if (payments.ewallet && payments.ewallet.length > 0) {
             payments.ewallet.forEach(wallet => {
                 html += `
@@ -789,7 +770,6 @@
             });
         }
         
-        // QRIS
         if (payments.qris) {
             html += `
                 <div class="payment-icon">
@@ -841,7 +821,6 @@
             maxStock: product.stock
         };
         
-        // Check if item already in cart
         const existingIndex = cart.findIndex(item => 
             item.id === productId && item.variant === cartItem.variant
         );
@@ -888,14 +867,12 @@
     }
 
     function updateCartUI() {
-        // Update cart badge
         const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
         if (elements.cartBadge) {
             elements.cartBadge.textContent = totalItems;
             elements.cartBadge.style.display = totalItems > 0 ? 'flex' : 'none';
         }
         
-        // Update cart sidebar
         if (!elements.cartItems || !elements.cartEmpty || !elements.cartFooter) return;
         
         if (cart.length === 0) {
@@ -1045,7 +1022,6 @@
         
         elements.productModal.classList.add('active');
         
-        // Add event listeners for variant buttons
         document.querySelectorAll('.variant-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
@@ -1053,7 +1029,6 @@
             });
         });
         
-        // Quantity buttons
         const qtyInput = document.getElementById('detailQty');
         const qtyMinus = document.getElementById('detailQtyMinus');
         const qtyPlus = document.getElementById('detailQtyPlus');
@@ -1076,7 +1051,6 @@
             });
         }
         
-        // Add to cart button
         const addToCartBtn = document.getElementById('detailAddToCart');
         if (addToCartBtn) {
             addToCartBtn.addEventListener('click', () => {
@@ -1097,7 +1071,6 @@
             });
         }
         
-        // Buy now button
         const buyNowBtn = document.getElementById('detailBuyNow');
         if (buyNowBtn) {
             buyNowBtn.addEventListener('click', () => {
@@ -1203,7 +1176,6 @@
                 showToast('Silakan buka melalui Telegram', 'warning');
             }
         } else {
-            // Simulasi login untuk testing
             const guestUser = {
                 id: 999999,
                 first_name: 'Guest',
@@ -1250,7 +1222,6 @@
             elements.loginBtn.innerHTML = '<i class="fas fa-user"></i> Profile';
         }
         
-        // Save to localStorage
         localStorage.setItem(`user_${currentEndpoint}`, JSON.stringify(user));
     }
 
@@ -1266,113 +1237,28 @@
         }
     }
 
-    // ==================== FUNGSI KEYBOARD HANDLER ====================
-    function setupKeyboardHandler() {
-        function scrollToInput(input) {
-            const rect = input.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const keyboardHeight = windowHeight * 0.4;
-            
-            if (rect.bottom > windowHeight - keyboardHeight) {
-                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
-                window.scrollTo({ top: scrollY, behavior: 'smooth' });
-            }
-        }
-        
-        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
-        
-        modalInputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                setTimeout(() => {
-                    scrollToInput(input);
-                    
-                    const modal = input.closest('.modal');
-                    if (modal) {
-                        modal.classList.add('modal-with-input');
-                        const modalContent = modal.querySelector('.modal-content');
-                        if (modalContent) {
-                            modalContent.style.maxHeight = '70vh';
-                            modalContent.style.overflowY = 'auto';
-                        }
-                    }
-                }, 300);
-            });
-            
-            input.addEventListener('blur', () => {
-                const modal = input.closest('.modal');
-                if (modal) {
-                    modal.classList.remove('modal-with-input');
-                }
-            });
-        });
-        
-        document.addEventListener('touchstart', (e) => {
-            const activeElement = document.activeElement;
-            if (!activeElement) return;
-            
-            const isInput = e.target.tagName === 'INPUT' || 
-                           e.target.tagName === 'TEXTAREA' || 
-                           e.target.tagName === 'SELECT' ||
-                           e.target.closest('.modal-content');
-            
-            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                activeElement.blur();
-            }
-        });
-        
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', () => {
-                const activeElement = document.activeElement;
-                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                    activeElement.blur();
-                }
-            });
-        });
-        
-        let viewportHeight = window.innerHeight;
-        window.addEventListener('resize', () => {
-            const newHeight = window.innerHeight;
-            
-            if (newHeight < viewportHeight * 0.7) {
-                document.body.classList.add('keyboard-visible');
-            } else if (newHeight > viewportHeight * 0.8) {
-                document.body.classList.remove('keyboard-visible');
-            }
-            
-            viewportHeight = newHeight;
-        });
-    }
-
     // ==================== FUNGSI INIT ====================
     async function init() {
         console.log('🏪 Initializing Website Store...');
         
-        // Get endpoint from URL
         currentEndpoint = getEndpointFromUrl();
         console.log('📍 Endpoint:', currentEndpoint);
         
-        // Setup keyboard handler
         setupKeyboardHandler();
         
-        // Load website data
         await loadWebsiteData(currentEndpoint);
         
-        // Load cart
         loadCart();
         
-        // Load user
         loadUser();
         
-        // Setup event listeners
         setupEventListeners();
         
-        // Check Telegram Web App
         if (window.Telegram?.WebApp) {
             const tg = window.Telegram.WebApp;
             tg.expand();
             tg.ready();
             
-            // Auto login if Telegram user available
             if (tg.initDataUnsafe?.user && !currentUser) {
                 setUser(tg.initDataUnsafe.user);
             }
@@ -1383,17 +1269,14 @@
 
     // ==================== SETUP EVENT LISTENERS ====================
     function setupEventListeners() {
-        // Menu toggle
         if (elements.menuToggle) {
             elements.menuToggle.addEventListener('click', toggleSidebar);
         }
         
-        // Sidebar close
         if (elements.sidebarClose) {
             elements.sidebarClose.addEventListener('click', closeSidebar);
         }
         
-        // Cart toggle
         if (elements.cartBtn) {
             elements.cartBtn.addEventListener('click', openCart);
         }
@@ -1402,7 +1285,6 @@
             elements.cartClose.addEventListener('click', closeCart);
         }
         
-        // Search toggle
         if (elements.searchToggle) {
             elements.searchToggle.addEventListener('click', toggleSearch);
         }
@@ -1411,25 +1293,20 @@
             elements.searchClose.addEventListener('click', toggleSearch);
         }
         
-        // Search input
         if (elements.searchInput) {
             elements.searchInput.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
-                // Implement search functionality
                 console.log('Search:', query);
             });
         }
         
-        // Shop now button
         if (elements.shopNowBtn) {
             elements.shopNowBtn.addEventListener('click', () => {
                 closeCart();
-                // Scroll to products
                 document.querySelector('.featured-products').scrollIntoView({ behavior: 'smooth' });
             });
         }
         
-        // Modal close buttons
         if (elements.closeProductModal) {
             elements.closeProductModal.addEventListener('click', closeProductModal);
         }
@@ -1444,7 +1321,6 @@
             elements.closeLoginModal.addEventListener('click', closeLoginModal);
         }
         
-        // Login buttons
         if (elements.loginBtn) {
             elements.loginBtn.addEventListener('click', openLoginModal);
         }
@@ -1457,7 +1333,6 @@
             elements.guestLogin.addEventListener('click', loginAsGuest);
         }
         
-        // Checkout button
         if (elements.checkoutBtn) {
             elements.checkoutBtn.addEventListener('click', () => {
                 if (cart.length === 0) {
@@ -1470,9 +1345,7 @@
                     return;
                 }
                 
-                // Open checkout modal
                 if (elements.checkoutModal) {
-                    // Render checkout form
                     let checkoutHtml = `
                         <div class="checkout-items">
                             <h3>Ringkasan Belanja</h3>
@@ -1537,7 +1410,6 @@
             });
         }
         
-        // Close modals on outside click
         window.addEventListener('click', (e) => {
             if (e.target === elements.productModal) {
                 closeProductModal();
@@ -1556,7 +1428,6 @@
             }
         });
         
-        // Close sidebar with ESC key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeSidebar();
