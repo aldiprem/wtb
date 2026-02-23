@@ -3,7 +3,7 @@
     console.log('🏪 Website Store - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://your-api-url.com'; // GANTI DENGAN URL API ANDA
+    const API_BASE_URL = 'https://discussions-prison-applications-former.trycloudflare.com'; // Gunakan URL yang sama dengan dashboard
     const DEFAULT_ENDPOINT = 'default-store';
 
     // ==================== DOM ELEMENTS ====================
@@ -153,32 +153,71 @@
         try {
             console.log(`📡 Loading website data for endpoint: ${endpoint}`);
             
-            // Simulasi API call - ganti dengan endpoint real
-            // const response = await fetch(`${API_BASE_URL}/api/website/${endpoint}`);
-            // const data = await response.json();
+            // Panggil API untuk mendapatkan data website berdasarkan endpoint
+            const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
             
-            // Data dummy untuk testing
-            const data = getDummyWebsiteData(endpoint);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             
-            websiteData = data;
-            updateWebsiteUI(data);
+            const result = await response.json();
+            console.log('📥 Website data:', result);
             
-            // Load products
-            await loadProducts(endpoint);
-            
-            // Load categories
-            await loadCategories(endpoint);
-            
-            return data;
+            if (result.success && result.website) {
+                const data = result.website;
+                websiteData = data;
+                
+                // Update UI dengan data dari server
+                updateWebsiteUI(data);
+                
+                // Load products dari data website
+                if (data.products && data.products.length > 0) {
+                    products = data.products;
+                } else {
+                    products = [];
+                }
+                
+                // Load categories dari data website
+                if (data.categories && data.categories.length > 0) {
+                    categories = data.categories;
+                } else {
+                    // Categories default jika tidak ada
+                    categories = getDefaultCategories();
+                }
+                
+                renderFeaturedProducts();
+                renderPopularProducts();
+                renderCategories();
+                
+                return data;
+            } else {
+                throw new Error('Invalid response from server');
+            }
             
         } catch (error) {
             console.error('❌ Error loading website:', error);
             showToast('Gagal memuat data website', 'error');
             
-            // Data dummy fallback
+            // Data dummy fallback jika API gagal
             const dummyData = getDummyWebsiteData(endpoint);
             websiteData = dummyData;
             updateWebsiteUI(dummyData);
+            
+            // Load dummy products
+            products = getDummyProducts();
+            renderFeaturedProducts();
+            renderPopularProducts();
+            
+            // Load dummy categories
+            categories = getDefaultCategories();
+            renderCategories();
         }
     }
 
@@ -237,29 +276,6 @@
                 tiktok: '#'
             }
         };
-    }
-
-    // ==================== FUNGSI LOAD PRODUCTS ====================
-    async function loadProducts(endpoint) {
-        try {
-            console.log(`📡 Loading products for endpoint: ${endpoint}`);
-            
-            // Simulasi API call
-            // const response = await fetch(`${API_BASE_URL}/api/website/${endpoint}/products`);
-            // const data = await response.json();
-            
-            // Data dummy
-            products = getDummyProducts();
-            
-            renderFeaturedProducts();
-            renderPopularProducts();
-            
-        } catch (error) {
-            console.error('❌ Error loading products:', error);
-            products = getDummyProducts();
-            renderFeaturedProducts();
-            renderPopularProducts();
-        }
     }
 
     function getDummyProducts() {
@@ -416,23 +432,86 @@
         ];
     }
 
+    function getDefaultCategories() {
+        return [
+            { id: 1, name: 'Mobile Legends', icon: 'fas fa-gamepad', count: 12, color: '#40a7e3' },
+            { id: 2, name: 'PUBG Mobile', icon: 'fas fa-crosshairs', count: 8, color: '#10b981' },
+            { id: 3, name: 'Free Fire', icon: 'fas fa-fire', count: 6, color: '#ef4444' },
+            { id: 4, name: 'Voucher', icon: 'fas fa-ticket-alt', count: 15, color: '#f59e0b' },
+            { id: 5, name: 'Membership', icon: 'fas fa-crown', count: 7, color: '#8b5cf6' },
+            { id: 6, name: 'Pulsa', icon: 'fas fa-phone-alt', count: 9, color: '#ec4899' }
+        ];
+    }
+
+    // ==================== FUNGSI LOAD PRODUCTS ====================
+    async function loadProducts(endpoint) {
+        try {
+            console.log(`📡 Loading products for endpoint: ${endpoint}`);
+            
+            // Coba ambil products dari API
+            const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}/products`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.products) {
+                    products = data.products;
+                } else {
+                    products = getDummyProducts();
+                }
+            } else {
+                products = getDummyProducts();
+            }
+            
+            renderFeaturedProducts();
+            renderPopularProducts();
+            
+        } catch (error) {
+            console.error('❌ Error loading products:', error);
+            products = getDummyProducts();
+            renderFeaturedProducts();
+            renderPopularProducts();
+        }
+    }
+
     // ==================== FUNGSI LOAD CATEGORIES ====================
     async function loadCategories(endpoint) {
         try {
-            // Simulasi categories
-            categories = [
-                { id: 1, name: 'Mobile Legends', icon: 'fas fa-gamepad', count: 12, color: '#40a7e3' },
-                { id: 2, name: 'PUBG Mobile', icon: 'fas fa-crosshairs', count: 8, color: '#10b981' },
-                { id: 3, name: 'Free Fire', icon: 'fas fa-fire', count: 6, color: '#ef4444' },
-                { id: 4, name: 'Voucher', icon: 'fas fa-ticket-alt', count: 15, color: '#f59e0b' },
-                { id: 5, name: 'Membership', icon: 'fas fa-crown', count: 7, color: '#8b5cf6' },
-                { id: 6, name: 'Pulsa', icon: 'fas fa-phone-alt', count: 9, color: '#ec4899' }
-            ];
+            console.log(`📡 Loading categories for endpoint: ${endpoint}`);
+            
+            // Coba ambil categories dari API
+            const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}/categories`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.categories) {
+                    categories = data.categories;
+                } else {
+                    categories = getDefaultCategories();
+                }
+            } else {
+                categories = getDefaultCategories();
+            }
             
             renderCategories();
             
         } catch (error) {
-            console.error('Error loading categories:', error);
+            console.error('❌ Error loading categories:', error);
+            categories = getDefaultCategories();
+            renderCategories();
         }
     }
 
@@ -1187,6 +1266,83 @@
         }
     }
 
+    // ==================== FUNGSI KEYBOARD HANDLER ====================
+    function setupKeyboardHandler() {
+        function scrollToInput(input) {
+            const rect = input.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const keyboardHeight = windowHeight * 0.4;
+            
+            if (rect.bottom > windowHeight - keyboardHeight) {
+                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
+                window.scrollTo({ top: scrollY, behavior: 'smooth' });
+            }
+        }
+        
+        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
+        
+        modalInputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    scrollToInput(input);
+                    
+                    const modal = input.closest('.modal');
+                    if (modal) {
+                        modal.classList.add('modal-with-input');
+                        const modalContent = modal.querySelector('.modal-content');
+                        if (modalContent) {
+                            modalContent.style.maxHeight = '70vh';
+                            modalContent.style.overflowY = 'auto';
+                        }
+                    }
+                }, 300);
+            });
+            
+            input.addEventListener('blur', () => {
+                const modal = input.closest('.modal');
+                if (modal) {
+                    modal.classList.remove('modal-with-input');
+                }
+            });
+        });
+        
+        document.addEventListener('touchstart', (e) => {
+            const activeElement = document.activeElement;
+            if (!activeElement) return;
+            
+            const isInput = e.target.tagName === 'INPUT' || 
+                           e.target.tagName === 'TEXTAREA' || 
+                           e.target.tagName === 'SELECT' ||
+                           e.target.closest('.modal-content');
+            
+            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                activeElement.blur();
+            }
+        });
+        
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', () => {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                    activeElement.blur();
+                }
+            });
+        });
+        
+        let viewportHeight = window.innerHeight;
+        window.addEventListener('resize', () => {
+            const newHeight = window.innerHeight;
+            
+            if (newHeight < viewportHeight * 0.7) {
+                document.body.classList.add('keyboard-visible');
+            } else if (newHeight > viewportHeight * 0.8) {
+                document.body.classList.remove('keyboard-visible');
+            }
+            
+            viewportHeight = newHeight;
+        });
+    }
+
     // ==================== FUNGSI INIT ====================
     async function init() {
         console.log('🏪 Initializing Website Store...');
@@ -1194,6 +1350,9 @@
         // Get endpoint from URL
         currentEndpoint = getEndpointFromUrl();
         console.log('📍 Endpoint:', currentEndpoint);
+        
+        // Setup keyboard handler
+        setupKeyboardHandler();
         
         // Load website data
         await loadWebsiteData(currentEndpoint);
