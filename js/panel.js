@@ -25,11 +25,16 @@
         tabButtons: document.querySelectorAll('.tab-btn'),
         tabContents: document.querySelectorAll('.tab-content'),
         
+        // Logo elements
+        logoImage: document.getElementById('logoImage'),
+        logoUrl: document.getElementById('logoUrl'),
+        uploadLogoBtn: document.getElementById('uploadLogoBtn'),
+        saveLogoBtn: document.getElementById('saveLogoBtn'),
+        
         // Banner elements
-        bannerImage: document.getElementById('bannerImage'),
-        bannerUrl: document.getElementById('bannerUrl'),
-        uploadBannerBtn: document.getElementById('uploadBannerBtn'),
-        saveBannerBtn: document.getElementById('saveBannerBtn'),
+        bannerList: document.getElementById('bannerList'),
+        addBannerBtn: document.getElementById('addBannerBtn'),
+        saveBannersBtn: document.getElementById('saveBannersBtn'),
         
         // Color elements
         primaryColor: document.getElementById('primaryColor'),
@@ -122,7 +127,16 @@
         productCategory: document.getElementById('productCategory'),
         productImage: document.getElementById('productImage'),
         productNotes: document.getElementById('productNotes'),
-        productActive: document.getElementById('productActive')
+        productActive: document.getElementById('productActive'),
+        
+        // Bank form fields
+        bankName: document.getElementById('bankName'),
+        bankAccount: document.getElementById('bankAccount'),
+        bankHolder: document.getElementById('bankHolder'),
+        ewalletProvider: document.getElementById('ewalletProvider'),
+        ewalletNumber: document.getElementById('ewalletNumber'),
+        qrisUrl: document.getElementById('qrisUrl'),
+        cryptoAddress: document.getElementById('cryptoAddress')
     };
 
     // ==================== STATE ====================
@@ -131,6 +145,8 @@
     let products = [];
     let currentProductId = null;
     let currentUploadCallback = null;
+    let banners = []; // Array untuk menyimpan multiple banner {url, position, positionY}
+    let logoUrl = '';
 
     // ==================== FUNGSI VIBRATE ====================
     function vibrate(duration = 20) {
@@ -292,98 +308,121 @@
 
     // ==================== FUNGSI LOAD TAMPILAN ====================
     async function loadTampilan(websiteId) {
-      try {
-        console.log('📡 Loading tampilan for website:', websiteId);
-    
-        const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          mode: 'cors'
-        });
-    
-        if (!response.ok) {
-          if (response.status === 404) {
-            return null; // No tampilan yet
-          }
-          throw new Error(`HTTP error! status: ${response.status}`);
+        try {
+            console.log('📡 Loading tampilan for website:', websiteId);
+        
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+        
+            if (!response.ok) {
+                if (response.status === 404) {
+                    return null; // No tampilan yet
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        
+            const result = await response.json();
+        
+            if (result.success && result.tampilan) {
+                return result.tampilan;
+            } else {
+                return null;
+            }
+        
+        } catch (error) {
+            console.error('❌ Error loading tampilan:', error);
+            return null;
         }
-    
-        const result = await response.json();
-    
-        if (result.success && result.tampilan) {
-          return result.tampilan;
-        } else {
-          return null;
-        }
-    
-      } catch (error) {
-        console.error('❌ Error loading tampilan:', error);
-        return null;
-      }
     }
 
     // ==================== FUNGSI UPDATE WEBSITE UI ====================
     async function updateWebsiteUI(website) {
-      currentWebsite = website;
-    
-      if (elements.websiteBadge) {
-        elements.websiteBadge.textContent = `/${website.endpoint}`;
-      }
-    
-      if (elements.websiteName) {
-        elements.websiteName.textContent = website.username || 'Website';
-      }
-    
-      if (elements.websiteEndpointBadge) {
-        elements.websiteEndpointBadge.textContent = `/${website.endpoint}`;
-      }
-    
-      if (elements.websiteOwner) {
-        elements.websiteOwner.innerHTML = `<i class="fas fa-user"></i> Owner ID: ${website.owner_id}`;
-      }
-    
-      if (elements.websiteCreated && website.created_at) {
-        const date = new Date(website.created_at);
-        elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
-      }
-    
-      if (elements.websiteAvatar) {
-        elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(website.username || 'Website')}&size=120&background=40a7e3&color=fff`;
-      }
-    
-      if (elements.websiteStatus) {
-        if (website.status === 'active') {
-          elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
-        } else {
-          elements.websiteStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i>';
+        currentWebsite = website;
+      
+        if (elements.websiteBadge) {
+            elements.websiteBadge.textContent = `/${website.endpoint}`;
         }
-      }
-    
-      // Load tampilan data
-      const tampilan = await loadTampilan(website.id);
-      if (tampilan) {
-        website.settings = {
-          ...website.settings,
-          ...tampilan
-        };
-      }
-    
-      if (website.settings) {
-        updateSettingsUI(website.settings);
-      }
+      
+        if (elements.websiteName) {
+            elements.websiteName.textContent = website.username || 'Website';
+        }
+      
+        if (elements.websiteEndpointBadge) {
+            elements.websiteEndpointBadge.textContent = `/${website.endpoint}`;
+        }
+      
+        if (elements.websiteOwner) {
+            elements.websiteOwner.innerHTML = `<i class="fas fa-user"></i> Owner ID: ${website.owner_id}`;
+        }
+      
+        if (elements.websiteCreated && website.created_at) {
+            const date = new Date(website.created_at);
+            elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
+        }
+      
+        if (elements.websiteAvatar) {
+            elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(website.username || 'Website')}&size=120&background=40a7e3&color=fff`;
+        }
+      
+        if (elements.websiteStatus) {
+            if (website.status === 'active') {
+                elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
+            } else {
+                elements.websiteStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i>';
+            }
+        }
+      
+        // Load tampilan data
+        const tampilan = await loadTampilan(website.id);
+        if (tampilan) {
+            website.settings = {
+                ...website.settings,
+                ...tampilan
+            };
+        }
+      
+        if (website.settings) {
+            updateSettingsUI(website.settings);
+        }
     }
 
     // ==================== FUNGSI UPDATE SETTINGS UI ====================
     function updateSettingsUI(settings) {
         if (!settings) return;
         
-        if (settings.banner && elements.bannerImage) {
-            elements.bannerImage.src = settings.banner;
+        // Update logo
+        if (settings.logo && elements.logoImage) {
+            elements.logoImage.src = settings.logo;
+        }
+        if (settings.logo && elements.logoUrl) {
+            elements.logoUrl.value = settings.logo;
         }
         
+        // Update banners
+        if (settings.banners && Array.isArray(settings.banners)) {
+            banners = settings.banners.map(b => {
+                if (typeof b === 'string') {
+                    return { url: b, position: 50, positionY: 50 };
+                } else {
+                    return {
+                        url: b.url || '',
+                        position: b.position || 50,
+                        positionY: b.positionY || 50
+                    };
+                }
+            });
+        } else {
+            banners = [];
+        }
+        renderBannerList();
+        
+        // Update colors
         if (settings.colors) {
             const colors = settings.colors;
             
@@ -401,60 +440,326 @@
             if (elements.accentColorHex) elements.accentColorHex.value = colors.accent || '#10b981';
         }
         
+        // Update font
         if (settings.font) {
             if (elements.fontFamily) elements.fontFamily.value = settings.font.family || 'Inter';
             if (elements.fontSize) elements.fontSize.value = settings.font.size || 14;
+        } else if (settings.font_family || settings.font_size) {
+            if (elements.fontFamily) elements.fontFamily.value = settings.font_family || 'Inter';
+            if (elements.fontSize) elements.fontSize.value = settings.font_size || 14;
         }
         
+        // Update general settings
         if (elements.websiteTitle) elements.websiteTitle.value = settings.title || '';
         if (elements.websiteDescription) elements.websiteDescription.value = settings.description || '';
-        if (elements.contactWhatsApp) elements.contactWhatsApp.value = settings.contact?.whatsapp || '';
-        if (elements.contactTelegram) elements.contactTelegram.value = settings.contact?.telegram || '';
+        if (elements.contactWhatsApp) elements.contactWhatsApp.value = settings.contact_whatsapp || settings.contact?.whatsapp || '';
+        if (elements.contactTelegram) elements.contactTelegram.value = settings.contact_telegram || settings.contact?.telegram || '';
         
+        // Update SEO
         if (settings.seo) {
             if (elements.metaTitle) elements.metaTitle.value = settings.seo.title || '';
             if (elements.metaDescription) elements.metaDescription.value = settings.seo.description || '';
             if (elements.metaKeywords) elements.metaKeywords.value = settings.seo.keywords || '';
         }
         
+        // Update payments
         if (settings.payments) {
             const pm = settings.payments;
             
             if (elements.bankEnabled) elements.bankEnabled.checked = pm.bank?.enabled || false;
             if (pm.bank) {
-                const bankSelect = document.getElementById('bankName');
-                if (bankSelect) bankSelect.value = pm.bank.name || 'BCA';
-                const bankAccount = document.getElementById('bankAccount');
-                if (bankAccount) bankAccount.value = pm.bank.account || '';
-                const bankHolder = document.getElementById('bankName');
-                if (bankHolder) bankHolder.value = pm.bank.holder || '';
+                if (elements.bankName) elements.bankName.value = pm.bank.name || 'BCA';
+                if (elements.bankAccount) elements.bankAccount.value = pm.bank.account || '';
+                if (elements.bankHolder) elements.bankHolder.value = pm.bank.holder || '';
             }
             
             if (elements.ewalletEnabled) elements.ewalletEnabled.checked = pm.ewallet?.enabled || false;
             if (pm.ewallet) {
-                const ewalletProvider = document.getElementById('ewalletProvider');
-                if (ewalletProvider) ewalletProvider.value = pm.ewallet.provider || 'DANA';
-                const ewalletNumber = document.getElementById('ewalletNumber');
-                if (ewalletNumber) ewalletNumber.value = pm.ewallet.number || '';
+                if (elements.ewalletProvider) elements.ewalletProvider.value = pm.ewallet.provider || 'DANA';
+                if (elements.ewalletNumber) elements.ewalletNumber.value = pm.ewallet.number || '';
             }
             
             if (elements.qrisEnabled) elements.qrisEnabled.checked = pm.qris?.enabled || false;
             if (pm.qris?.url && elements.qrisPreview) {
                 elements.qrisPreview.src = pm.qris.url;
             }
+            if (pm.qris?.url && elements.qrisUrl) {
+                elements.qrisUrl.value = pm.qris.url;
+            }
             
             if (elements.cryptoEnabled) elements.cryptoEnabled.checked = pm.crypto?.enabled || false;
+            if (pm.crypto?.address && elements.cryptoAddress) {
+                elements.cryptoAddress.value = pm.crypto.address;
+            }
             
             if (elements.paymentNotes) elements.paymentNotes.value = pm.notes?.payment || '';
             if (elements.confirmationNotes) elements.confirmationNotes.value = pm.notes?.confirmation || '';
         }
         
+        // Update maintenance
         if (settings.maintenance) {
             if (elements.maintenanceMode) elements.maintenanceMode.checked = settings.maintenance.enabled || false;
             if (elements.maintenanceMessage) elements.maintenanceMessage.value = settings.maintenance.message || '';
             if (elements.maintenanceMessageGroup) {
                 elements.maintenanceMessageGroup.style.display = settings.maintenance.enabled ? 'block' : 'none';
             }
+        }
+    }
+
+    // ==================== FUNGSI RENDER BANNER LIST ====================
+    function renderBannerList() {
+        if (!elements.bannerList) return;
+        
+        if (banners.length === 0) {
+            elements.bannerList.innerHTML = `
+                <div class="empty-banner-message">
+                    <i class="fas fa-images"></i>
+                    <p>Belum ada banner. Klik "Tambah Banner" untuk menambahkan.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        banners.forEach((banner, index) => {
+            html += `
+                <div class="banner-item" data-index="${index}">
+                    <div class="banner-item-header">
+                        <span class="banner-number">Banner ${index + 1}</span>
+                        <div class="banner-item-actions">
+                            <button class="btn-icon-small move-up" ${index === 0 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'up')">
+                                <i class="fas fa-arrow-up"></i>
+                            </button>
+                            <button class="btn-icon-small move-down" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'down')">
+                                <i class="fas fa-arrow-down"></i>
+                            </button>
+                            <button class="btn-icon-small delete" onclick="window.panel.deleteBanner(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="banner-item-content">
+                        <div class="banner-preview-small">
+                            <img src="${banner.url || 'https://via.placeholder.com/150x80/40a7e3/ffffff?text=Banner'}" alt="Banner ${index + 1}" style="object-position: ${banner.position || 50}% ${banner.positionY || 50}%;">
+                        </div>
+                        <div class="banner-item-form">
+                            <div class="form-group">
+                                <label>URL Gambar</label>
+                                <input type="url" class="banner-url-input" value="${escapeHtml(banner.url || '')}" placeholder="https://example.com/banner.jpg" data-index="${index}">
+                            </div>
+                            <div class="form-group">
+                                <label>Posisi Horizontal (object-position X)</label>
+                                <div class="position-slider-container">
+                                    <input type="range" class="position-slider" min="0" max="100" value="${banner.position || 50}" data-index="${index}" data-axis="x">
+                                    <span class="position-value">${banner.position || 50}%</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Posisi Vertikal (object-position Y)</label>
+                                <div class="position-slider-container">
+                                    <input type="range" class="position-slider" min="0" max="100" value="${banner.positionY || 50}" data-index="${index}" data-axis="y">
+                                    <span class="position-value">${banner.positionY || 50}%</span>
+                                </div>
+                            </div>
+                            <div class="position-presets">
+                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'center')">Tengah</button>
+                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'top')">Atas</button>
+                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'bottom')">Bawah</button>
+                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'left')">Kiri</button>
+                                <button class="preset-btn" onclick="window.panel.setBannerPosition(${index}, 'right')">Kanan</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.bannerList.innerHTML = html;
+        
+        // Add event listeners to inputs
+        document.querySelectorAll('.banner-url-input').forEach(input => {
+            input.addEventListener('change', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                banners[index].url = e.target.value;
+                // Update preview
+                const previewImg = e.target.closest('.banner-item').querySelector('.banner-preview-small img');
+                if (previewImg) previewImg.src = e.target.value || 'https://via.placeholder.com/150x80/40a7e3/ffffff?text=Banner';
+            });
+        });
+        
+        document.querySelectorAll('.position-slider').forEach(slider => {
+            slider.addEventListener('input', (e) => {
+                const index = parseInt(e.target.dataset.index);
+                const axis = e.target.dataset.axis;
+                const value = parseInt(e.target.value);
+                
+                if (axis === 'x') {
+                    banners[index].position = value;
+                } else {
+                    banners[index].positionY = value;
+                }
+                
+                // Update display
+                const valueSpan = e.target.nextElementSibling;
+                if (valueSpan) {
+                    valueSpan.textContent = `${value}%`;
+                }
+                
+                // Update preview position (visual feedback)
+                const previewImg = e.target.closest('.banner-item').querySelector('.banner-preview-small img');
+                if (previewImg) {
+                    previewImg.style.objectPosition = `${banners[index].position || 50}% ${banners[index].positionY || 50}%`;
+                }
+            });
+        });
+    }
+
+    // ==================== FUNGSI BANNER ====================
+    function addBanner() {
+        banners.push({
+            url: '',
+            position: 50,
+            positionY: 50
+        });
+        renderBannerList();
+        vibrate(10);
+    }
+
+    function deleteBanner(index) {
+        if (confirm('Hapus banner ini?')) {
+            banners.splice(index, 1);
+            renderBannerList();
+            vibrate(10);
+        }
+    }
+
+    function moveBanner(index, direction) {
+        if (direction === 'up' && index > 0) {
+            [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
+        } else if (direction === 'down' && index < banners.length - 1) {
+            [banners[index], banners[index + 1]] = [banners[index + 1], banners[index]];
+        } else {
+            return;
+        }
+        renderBannerList();
+        vibrate(10);
+    }
+
+    function setBannerPosition(index, preset) {
+        let posX = 50, posY = 50;
+        
+        switch(preset) {
+            case 'center':
+                posX = 50; posY = 50;
+                break;
+            case 'top':
+                posX = 50; posY = 0;
+                break;
+            case 'bottom':
+                posX = 50; posY = 100;
+                break;
+            case 'left':
+                posX = 0; posY = 50;
+                break;
+            case 'right':
+                posX = 100; posY = 50;
+                break;
+        }
+        
+        banners[index].position = posX;
+        banners[index].positionY = posY;
+        renderBannerList();
+        vibrate(10);
+    }
+
+    // ==================== FUNGSI SAVE BANNERS ====================
+    async function saveBanners() {
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        // Filter out empty banners
+        const validBanners = banners.filter(b => b.url && b.url.trim() !== '');
+        
+        if (validBanners.length === 0) {
+            showToast('Tambahkan minimal 1 banner dengan URL', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify({
+                    banners: validBanners,
+                    positions: validBanners.map(b => ({ x: b.position || 50, y: b.positionY || 50 }))
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(`✅ ${validBanners.length} banner saved!`, 'success');
+                // Refresh data
+                const updatedWebsite = await fetchWebsiteData(currentUser.id);
+                if (updatedWebsite) {
+                    updateWebsiteUI(updatedWebsite);
+                }
+            } else {
+                throw new Error(result.error || 'Failed to save banners');
+            }
+        } catch (error) {
+            console.error('❌ Error saving banners:', error);
+            showToast(error.message || 'Failed to save banners', 'error');
+        }
+    }
+
+    // ==================== FUNGSI SAVE LOGO ====================
+    async function saveLogo() {
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        const logoUrl = elements.logoUrl?.value || elements.logoImage?.src || '';
+        
+        // Validasi PNG (cek dari URL atau data URL)
+        if (logoUrl && !logoUrl.toLowerCase().endsWith('.png') && !logoUrl.startsWith('data:image/png')) {
+            showToast('Logo harus berformat PNG', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify({ url: logoUrl })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('✅ Logo saved!', 'success');
+                // Refresh data
+                const updatedWebsite = await fetchWebsiteData(currentUser.id);
+                if (updatedWebsite) {
+                    updateWebsiteUI(updatedWebsite);
+                }
+            } else {
+                throw new Error(result.error || 'Failed to save logo');
+            }
+        } catch (error) {
+            console.error('❌ Error saving logo:', error);
+            showToast(error.message || 'Failed to save logo', 'error');
         }
     }
 
@@ -536,6 +841,7 @@
 
     // ==================== FUNGSI FORMAT NUMBER ====================
     function formatNumber(num) {
+        if (num === undefined || num === null) return '0';
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
@@ -592,79 +898,78 @@
 
     // ==================== FUNGSI SAVE SETTINGS ====================
     async function saveSettings(section, data) {
-      console.log(`💾 Saving ${section} settings:`, data);
-    
-      if (!currentWebsite) {
-        showToast('Website not loaded', 'error');
-        return;
-      }
-    
-      try {
-        let url = '';
-        let method = 'POST';
-        let body = data;
-    
-        switch (section) {
-          case 'banner':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banner`;
-            break;
-          case 'colors':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`;
-            break;
-          case 'font':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font`;
-            break;
-          case 'general':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/general`;
-            break;
-          case 'seo':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/seo`;
-            break;
-          case 'payments':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payments`;
-            break;
-          case 'payment-notes':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payment-notes`;
-            break;
-          case 'maintenance':
-            url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/maintenance`;
-            body = {
-              enabled: data.enabled,
-              message: data.message
-            };
-            break;
-          default:
-            showToast('Unknown section', 'error');
+        console.log(`💾 Saving ${section} settings:`, data);
+      
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
             return;
         }
-    
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
-          mode: 'cors',
-          body: JSON.stringify(body)
-        });
-    
-        const result = await response.json();
-    
-        if (result.success) {
-          showToast(`✅ ${section} settings saved!`, 'success');
-          // Refresh website data to get updated settings
-          const updatedWebsite = await fetchWebsiteData(currentUser.id);
-          if (updatedWebsite) {
-            updateWebsiteUI(updatedWebsite);
-          }
-        } else {
-          throw new Error(result.error || 'Failed to save settings');
+      
+        try {
+            let url = '';
+            let body = data;
+      
+            switch (section) {
+                case 'banner':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banner`;
+                    break;
+                case 'colors':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`;
+                    break;
+                case 'font':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font`;
+                    break;
+                case 'general':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/general`;
+                    break;
+                case 'seo':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/seo`;
+                    break;
+                case 'payments':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payments`;
+                    break;
+                case 'payment-notes':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payment-notes`;
+                    break;
+                case 'maintenance':
+                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/maintenance`;
+                    body = {
+                        enabled: data.enabled,
+                        message: data.message
+                    };
+                    break;
+                default:
+                    showToast('Unknown section', 'error');
+                    return;
+            }
+      
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(body)
+            });
+      
+            const result = await response.json();
+      
+            if (result.success) {
+                showToast(`✅ ${section} settings saved!`, 'success');
+                // Refresh website data to get updated settings
+                const updatedWebsite = await fetchWebsiteData(currentUser.id);
+                if (updatedWebsite) {
+                    updateWebsiteUI(updatedWebsite);
+                }
+            } else {
+                throw new Error(result.error || 'Failed to save settings');
+            }
+      
+        } catch (error) {
+            console.error('❌ Error saving settings:', error);
+            showToast(error.message || 'Failed to save settings', 'error');
         }
-    
-      } catch (error) {
-        console.error('❌ Error saving settings:', error);
-        showToast(error.message || 'Failed to save settings', 'error');
-      }
     }
 
     // ==================== FUNGSI PRODUCT MODAL ====================
@@ -706,6 +1011,7 @@
             return;
         }
         
+        // Here you would normally send to API
         showToast('✅ Product saved!', 'success');
         closeProductModal();
     }
@@ -733,11 +1039,12 @@
         
         console.log('🗑️ Deleting product:', currentProductId);
         
+        // Here you would normally send to API
         showToast('✅ Product deleted!', 'success');
         closeDeleteModal();
     }
     
-    function openUploadModal(callback) {
+    function openUploadModal(callback, acceptType = 'image/*') {
         currentUploadCallback = callback;
         
         if (elements.uploadPreview) {
@@ -748,6 +1055,7 @@
         }
         if (elements.fileInput) {
             elements.fileInput.value = '';
+            elements.fileInput.accept = acceptType;
         }
         if (elements.confirmUploadBtn) {
             elements.confirmUploadBtn.disabled = true;
@@ -919,22 +1227,37 @@
             }
         });
         
-        if (elements.uploadBannerBtn) {
-            elements.uploadBannerBtn.addEventListener('click', () => {
+        // Logo events
+        if (elements.uploadLogoBtn) {
+            elements.uploadLogoBtn.addEventListener('click', () => {
                 openUploadModal((imageUrl) => {
-                    if (elements.bannerImage) {
-                        elements.bannerImage.src = imageUrl;
+                    // Validasi PNG
+                    if (!imageUrl.startsWith('data:image/png') && !imageUrl.toLowerCase().endsWith('.png')) {
+                        showToast('Hanya file PNG yang diperbolehkan untuk logo', 'error');
+                        return;
                     }
-                    showToast('✅ Banner updated!', 'success');
-                });
+                    if (elements.logoImage) {
+                        elements.logoImage.src = imageUrl;
+                    }
+                    if (elements.logoUrl) {
+                        elements.logoUrl.value = imageUrl;
+                    }
+                    showToast('✅ Logo updated! (PNG)', 'success');
+                }, 'image/png'); // Hanya terima PNG
             });
         }
         
-        if (elements.saveBannerBtn) {
-            elements.saveBannerBtn.addEventListener('click', () => {
-                const bannerUrl = elements.bannerUrl?.value || elements.bannerImage?.src || '';
-                saveSettings('banner', { url: bannerUrl });
-            });
+        if (elements.saveLogoBtn) {
+            elements.saveLogoBtn.addEventListener('click', saveLogo);
+        }
+        
+        // Banner events
+        if (elements.addBannerBtn) {
+            elements.addBannerBtn.addEventListener('click', addBanner);
+        }
+        
+        if (elements.saveBannersBtn) {
+            elements.saveBannersBtn.addEventListener('click', saveBanners);
         }
         
         if (elements.saveColorsBtn) {
@@ -991,22 +1314,22 @@
                 const payments = {
                     bank: {
                         enabled: elements.bankEnabled?.checked || false,
-                        name: document.getElementById('bankName')?.value || 'BCA',
-                        account: document.getElementById('bankAccount')?.value || '',
-                        holder: document.getElementById('bankName')?.value || ''
+                        name: elements.bankName?.value || 'BCA',
+                        account: elements.bankAccount?.value || '',
+                        holder: elements.bankHolder?.value || ''
                     },
                     ewallet: {
                         enabled: elements.ewalletEnabled?.checked || false,
-                        provider: document.getElementById('ewalletProvider')?.value || 'DANA',
-                        number: document.getElementById('ewalletNumber')?.value || ''
+                        provider: elements.ewalletProvider?.value || 'DANA',
+                        number: elements.ewalletNumber?.value || ''
                     },
                     qris: {
                         enabled: elements.qrisEnabled?.checked || false,
-                        url: elements.qrisPreview?.src || ''
+                        url: elements.qrisPreview?.src || elements.qrisUrl?.value || ''
                     },
                     crypto: {
                         enabled: elements.cryptoEnabled?.checked || false,
-                        address: document.getElementById('cryptoAddress')?.value || ''
+                        address: elements.cryptoAddress?.value || ''
                     }
                 };
                 saveSettings('payments', payments);
@@ -1061,6 +1384,9 @@
                     if (elements.qrisPreview) {
                         elements.qrisPreview.src = imageUrl;
                     }
+                    if (elements.qrisUrl) {
+                        elements.qrisUrl.value = imageUrl;
+                    }
                     showToast('✅ QRIS updated!', 'success');
                 });
             });
@@ -1104,8 +1430,8 @@
                     id: currentProductId,
                     name: elements.productName.value,
                     description: elements.productDescription.value,
-                    price: parseInt(elements.productPrice.value),
-                    stock: parseInt(elements.productStock.value),
+                    price: parseInt(elements.productPrice.value) || 0,
+                    stock: parseInt(elements.productStock.value) || 0,
                     category: elements.productCategory.value,
                     image: elements.productImage.value,
                     notes: elements.productNotes.value,
@@ -1216,7 +1542,10 @@
             if (product) {
                 openDeleteModal(product);
             }
-        }
+        },
+        moveBanner: (index, direction) => moveBanner(index, direction),
+        deleteBanner: (index) => deleteBanner(index),
+        setBannerPosition: (index, preset) => setBannerPosition(index, preset)
     };
 
     // ==================== START ====================
