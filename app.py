@@ -577,7 +577,7 @@ def save_banner(website_id):
 
 @app.route('/api/tampilan/<int:website_id>/font', methods=['POST'])
 def save_font(website_id):
-    """Save font settings"""
+    """Save font settings - preserve banner"""
     try:
         data = request.json
         print(f"🔤 Received font data: {data}")
@@ -587,11 +587,11 @@ def save_font(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Get existing tampilan or create new
+        # Get existing tampilan to preserve banner
         existing = tmp.get_tampilan(website_id)
         
         if existing:
-            # Update existing
+            # Update existing - preserve banner automatically
             tmp.update_tampilan(website_id, {
                 'font_family': data.get('family', 'Inter'),
                 'font_size': data.get('size', 14)
@@ -614,7 +614,7 @@ def save_font(website_id):
 
 @app.route('/api/tampilan/<int:website_id>/general', methods=['POST'])
 def save_general(website_id):
-    """Save general settings"""
+    """Save general settings - preserve banner"""
     try:
         data = request.json
         print(f"⚙️ Received general data: {data}")
@@ -637,7 +637,7 @@ def save_general(website_id):
         else:
             tmp.save_tampilan(website_id, {
                 **update_data,
-                'banner': '',
+                'banner': '',  # Empty banner for new record
                 'colors': {},
                 'font_family': 'Inter',
                 'font_size': 14
@@ -683,7 +683,7 @@ def save_seo(website_id):
 
 @app.route('/api/tampilan/<int:website_id>/payments', methods=['POST'])
 def save_payments(website_id):
-    """Save payment methods settings"""
+    """Save payment methods settings - preserve banner"""
     try:
         data = request.json
         print(f"💳 Received payment data: {data}")
@@ -692,6 +692,7 @@ def save_payments(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
+        # Get existing tampilan to preserve banner
         existing = tmp.get_tampilan(website_id)
         
         # Convert payment data to tampilan format
@@ -722,19 +723,40 @@ def save_payments(website_id):
             'address': data.get('crypto', {}).get('address', '')
         }
         
-        update_data = {
-            'banks': banks,
-            'ewallets': ewallets,
+        # Store payment data in website settings (JSON field)
+        # Get current website
+        current = get_db().execute('SELECT settings FROM websites WHERE id = ?', (website_id,)).fetchone()
+        settings = json.loads(current['settings'] or '{}')
+        
+        # Update payment settings
+        settings['payments'] = {
+            'bank': data.get('bank', {}),
+            'ewallet': data.get('ewallet', {}),
             'qris': qris,
             'crypto': crypto
         }
         
+        # Save back to website
+        get_db().execute('UPDATE websites SET settings = ? WHERE id = ?',
+                        (json.dumps(settings), website_id))
+        get_db().commit()
+        
+        # Also save to tampilan for backward compatibility, but preserve banner
         if existing:
-            tmp.update_tampilan(website_id, update_data)
+            tmp.update_tampilan(website_id, {
+                'banks': banks,
+                'ewallets': ewallets,
+                'qris': qris,
+                'crypto': crypto
+                # banner will be preserved automatically by update_tampilan
+            })
         else:
             tmp.save_tampilan(website_id, {
-                **update_data,
-                'banner': '',
+                'banks': banks,
+                'ewallets': ewallets,
+                'qris': qris,
+                'crypto': crypto,
+                'banner': '',  # Empty banner for new record
                 'colors': {},
                 'font_family': 'Inter',
                 'font_size': 14
