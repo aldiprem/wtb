@@ -4,8 +4,8 @@
 
     const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.apiBaseUrl : 'https://supports-lease-honest-potter.trycloudflare.com';
 
-    console.log('🌐 Environment:', isGitHubPages ? 'GitHub Pages' : 'Local Server');
-    console.log('🔗 API URL:', API_BASE_URL || '(relative)');
+    console.log('🌐 Environment:', window.APP_CONFIG?.isGitHubPages ? 'GitHub Pages' : 'Local Server');
+    console.log('🔗 API URL:', API_BASE_URL);
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -573,7 +573,7 @@
         if (!currentWebsite) return;
         
         // Build URL dengan benar
-        const baseUrl = isGitHubPages ? API_BASE_URL : window.location.origin;
+        const baseUrl = window.APP_CONFIG?.isGitHubPages ? API_BASE_URL : window.location.origin;
         const url = `${baseUrl}/website/${currentWebsite.endpoint}`;
         window.open(url, '_blank');
     }
