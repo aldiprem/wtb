@@ -270,73 +270,170 @@
 
     // ==================== FUNGSI TEST API CONNECTION ====================
     async function testApiConnection() {
-        try {
-            console.log('🔍 Testing API connection to:', API_BASE_URL);
-            
-            const response = await fetch(`${API_BASE_URL}/api/health`, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' },
-                mode: 'cors',
-                cache: 'no-cache'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ API Connected:', data);
-                return true;
-            } else {
-                console.warn('⚠️ API health check failed:', response.status);
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ API connection failed:', error);
-            console.error('URL tried:', `${API_BASE_URL}/api/health`);
-            return false;
+      try {
+        console.log('🔍 Testing API connection to:', API_BASE_URL);
+    
+        const response = await fetch(`${API_BASE_URL}/api/health`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          mode: 'cors',
+          cache: 'no-cache',
+          credentials: 'include' // Tambahkan ini
+        });
+    
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ API Connected:', data);
+          return true;
+        } else {
+          console.warn('⚠️ API health check failed:', response.status);
+          return false;
         }
+      } catch (error) {
+        console.error('❌ API connection failed:', error);
+        console.error('URL tried:', `${API_BASE_URL}/api/health`);
+        return false;
+      }
     }
 
     // ==================== FUNGSI FETCH WEBSITES ====================
     async function fetchWebsites() {
-        try {
-            console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
-            
-            const response = await fetch(`${API_BASE_URL}/api/websites`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('📥 Websites data:', data);
-            
-            if (data.success && data.websites) {
-                websites = data.websites;
-            } else if (Array.isArray(data)) {
-                websites = data;
-            } else {
-                websites = [];
-            }
-            
-            updateStats();
-            renderWebsitesTable();
-            
-        } catch (error) {
-            console.error('❌ Error fetching websites:', error);
-            showToast('Failed to fetch websites data', 'error');
-            
-            if (!websites.length) {
-                websites = getDummyWebsites();
-                updateStats();
-                renderWebsitesTable();
-            }
+      try {
+        console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
+
+        const response = await fetch(`${API_BASE_URL}/api/websites`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors',
+          credentials: 'include' // Tambahkan ini
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const data = await response.json();
+        console.log('📥 Websites data:', data);
+
+        if (data.success && data.websites) {
+          websites = data.websites;
+        } else if (Array.isArray(data)) {
+          websites = data;
+        } else {
+          websites = [];
+        }
+
+        updateStats();
+        renderWebsitesTable();
+
+      } catch (error) {
+        console.error('❌ Error fetching websites:', error);
+        showToast('Failed to fetch websites data', 'error');
+
+        // Gunakan dummy data jika gagal
+        websites = getDummyWebsites();
+        updateStats();
+        renderWebsitesTable();
+      }
+    }
+
+    // ==================== FUNGSI CREATE WEBSITE ====================
+    async function createWebsite(formData) {
+      try {
+        showToast('Creating website...', 'info');
+
+        // Debug: lihat data yang dikirim
+        console.log('📤 Form data received:', formData);
+
+        // Validasi sederhana - cek apakah semua field ada (tanpa tunnel_url)
+        const requiredFields = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email'];
+        const missingFields = [];
+
+        for (const field of requiredFields) {
+          if (formData[field] === undefined || formData[field] === null || formData[field] === '') {
+            missingFields.push(field);
+            console.log(`❌ Field ${field} is missing or empty:`, formData[field]);
+          }
+        }
+
+        if (missingFields.length > 0) {
+          console.error('❌ Missing fields:', missingFields);
+          showToast(`Missing fields: ${missingFields.join(', ')}`, 'error');
+          return;
+        }
+
+        // Validasi endpoint (hanya huruf kecil, angka, dan strip)
+        const endpointRegex = /^[a-z0-9-]+$/;
+        if (!endpointRegex.test(formData.endpoint)) {
+          showToast('Endpoint can only contain lowercase letters, numbers, and hyphens', 'error');
+          return;
+        }
+
+        // Validasi owner_id adalah angka
+        if (isNaN(formData.owner_id) || formData.owner_id <= 0) {
+          showToast('Owner ID must be a valid positive number', 'error');
+          return;
+        }
+
+        // Validasi email
+        if (!formData.email.includes('@') || !formData.email.includes('.')) {
+          showToast('Please enter a valid email address', 'error');
+          return;
+        }
+
+        // Validasi bot token format sederhana
+        if (!formData.bot_token.includes(':')) {
+          showToast('Bot token format invalid (should contain :)', 'error');
+          return;
+        }
+
+        console.log('📤 Sending data to server:', JSON.stringify(formData, null, 2));
+        console.log('📤 URL:', `${API_BASE_URL}/api/websites`);
+
+        const response = await fetch(`${API_BASE_URL}/api/websites`, {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors',
+          credentials: 'include', // Tambahkan ini
+          body: JSON.stringify(formData)
+        });
+
+        console.log('📥 Response status:', response.status);
+        console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+        let data;
+        const responseText = await response.text();
+        console.log('📥 Raw response:', responseText);
+
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error('❌ Failed to parse response:', e);
+          throw new Error(`Invalid response from server: ${responseText.substring(0, 100)}`);
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || `Server error: ${response.status}`);
+        }
+
+        if (data.success) {
+          showToast('Website created successfully!', 'success');
+          closeModal();
+          await fetchWebsites();
+        } else {
+          throw new Error(data.error || 'Failed to create website');
+        }
+
+      } catch (error) {
+        console.error('❌ Error creating website:', error);
+        showToast(error.message || 'Failed to create website', 'error');
+      }
     }
 
     // ==================== FUNGSI DATA DUMMY UNTUK TESTING ====================
