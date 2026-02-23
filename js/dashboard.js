@@ -263,68 +263,73 @@
 
     // ==================== FUNGSI TEST API CONNECTION ====================
     async function testApiConnection() {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/health`, {
-                method: 'GET',
-                headers: { 'Accept': 'application/json' },
-                mode: 'cors'
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ API Connected:', data);
-                return true;
-            } else {
-                console.warn('⚠️ API health check failed:', response.status);
-                return false;
-            }
-        } catch (error) {
-            console.error('❌ API connection failed:', error);
-            return false;
+      try {
+        console.log('🔍 Testing API connection to:', API_BASE_URL);
+    
+        const response = await fetch(`${API_BASE_URL}/api/health`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          mode: 'cors',
+          cache: 'no-cache'
+        });
+    
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ API Connected:', data);
+          return true;
+        } else {
+          console.warn('⚠️ API health check failed:', response.status);
+          return false;
         }
+      } catch (error) {
+        console.error('❌ API connection failed:', error);
+        console.error('URL tried:', `${API_BASE_URL}/api/health`);
+        return false;
+      }
     }
 
     // ==================== FUNGSI FETCH WEBSITES ====================
     async function fetchWebsites() {
-        try {
-            console.log('📡 Fetching websites data...');
-            
-            const response = await fetch(`${API_BASE_URL}/api/websites`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('📥 Websites data:', data);
-
-            if (data.success && data.websites) {
-                websites = data.websites;
-            } else if (Array.isArray(data)) {
-                websites = data;
-            } else {
-                websites = [];
-            }
-
-            updateStats();
-            renderWebsitesTable();
-            
-        } catch (error) {
-            console.error('❌ Error fetching websites:', error);
-            showToast('Failed to fetch websites data', 'error');
-            
-            // Gunakan data dummy untuk testing
-            websites = getDummyWebsites();
-            updateStats();
-            renderWebsitesTable();
+      try {
+        console.log('📡 Fetching websites data from:', `${API_BASE_URL}/api/websites`);
+    
+        const response = await fetch(`${API_BASE_URL}/api/websites`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          mode: 'cors'
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+    
+        const data = await response.json();
+        console.log('📥 Websites data:', data);
+    
+        if (data.success && data.websites) {
+          websites = data.websites;
+        } else if (Array.isArray(data)) {
+          websites = data;
+        } else {
+          websites = [];
+        }
+    
+        updateStats();
+        renderWebsitesTable();
+    
+      } catch (error) {
+        console.error('❌ Error fetching websites:', error);
+        showToast('Failed to fetch websites data', 'error');
+    
+        if (!websites.length) {
+          websites = getDummyWebsites();
+          updateStats();
+          renderWebsitesTable();
+        }
+      }
     }
 
     // ==================== FUNGSI DATA DUMMY UNTUK TESTING ====================
