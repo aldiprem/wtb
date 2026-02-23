@@ -4,7 +4,7 @@
 
     // ==================== KONFIGURASI ====================
     const OWNER_IDS = [7998861975, 7349865750]; // Tambahkan ID owner Anda di sini
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com'; // Gunakan URL yang sama dengan halaman
+    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -22,7 +22,7 @@
         totalBots: document.getElementById('totalBots'),
         websitesTableBody: document.getElementById('websitesTableBody'),
         noDataMessage: document.getElementById('noDataMessage'),
-        createWebsiteBtn: document.getElementById('createWebsiteBtn'), // SEKARANG INI ADALAH LINK <a> BUKAN BUTTON
+        createWebsiteBtn: document.getElementById('createWebsiteBtn'), // SEKARANG INI ADALAH LINK
         refreshDataBtn: document.getElementById('refreshDataBtn'),
         searchWebsite: document.getElementById('searchWebsite'),
         // Create Modal - DIHAPUS (tidak digunakan lagi)
@@ -633,12 +633,6 @@
         }
     }
 
-    // FUNGSI SHOW MODAL UNTUK CREATE - DIHAPUS (tidak digunakan)
-    // function showModal() { ... }
-    
-    // FUNGSI CLOSE MODAL UNTUK CREATE - DIHAPUS (tidak digunakan)
-    // function closeModal() { ... }
-
     function showDeleteModal(website) {
         if (elements.deleteModal && website) {
             websiteToDelete = website;
@@ -703,9 +697,6 @@
             elements.dashboardContent.style.display = 'none';
         }
     }
-
-    // FUNGSI HANDLE CREATE SUBMIT - DIHAPUS
-    // async function handleCreateSubmit(e) { ... }
 
     // ==================== FUNGSI INIT ====================
     async function init() {
@@ -772,9 +763,7 @@
     // ==================== SETUP EVENT LISTENERS ====================
     function setupEventListeners() {
         // CREATE WEBSITE BUTTON - SEKARANG ADALAH LINK, TIDAK PERLU EVENT LISTENER
-        // if (elements.createWebsiteBtn) {
-        //     elements.createWebsiteBtn.addEventListener('click', showModal);
-        // }
+        // Tidak perlu event listener karena sudah berupa <a href="/format">
         
         if (elements.refreshDataBtn) {
             elements.refreshDataBtn.addEventListener('click', () => {
@@ -811,14 +800,6 @@
         if (elements.cancelEditBtn) {
             elements.cancelEditBtn.addEventListener('click', closeEditModal);
         }
-        
-        // CREATE FORM SUBMIT - DIHAPUS
-        // if (elements.createWebsiteForm) {
-        //     elements.createWebsiteForm.addEventListener('submit', handleCreateSubmit);
-        //     console.log('✅ Event listener attached to create form');
-        // } else {
-        //     console.error('❌ Create website form not found!');
-        // }
         
         // Confirm delete button
         if (elements.confirmDeleteBtn) {
@@ -880,7 +861,6 @@
         
         // Close modals on outside click - HAPUS REFERENSI KE createModal
         window.addEventListener('click', (e) => {
-            // Hapus baris ini: if (e.target === elements.createModal) { closeModal(); }
             if (e.target === elements.deleteModal) {
                 closeDeleteModal();
             }
