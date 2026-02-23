@@ -857,3 +857,91 @@ body {
 .current-active-info i {
   font-size: 16px;
 }
+
+/* ===== KEYBOARD HANDLER STYLES ===== */
+.modal-with-input .modal-content {
+    transition: max-height 0.3s ease;
+    padding-bottom: 20px;
+}
+
+.modal-with-input .form-group:last-child {
+    margin-bottom: 30px;
+}
+
+body.keyboard-visible {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color) !important;
+    background: rgba(255, 215, 0, 0.15) !important;
+}
+
+.modal-content {
+    transform: translateY(0);
+    transition: transform 0.3s ease, max-height 0.3s ease;
+}
+
+.modal-with-input .modal-content {
+    transform: translateY(-10px);
+}
+
+.modal-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+/* Active Period Selector */
+.active-period-selector {
+    margin-bottom: 10px;
+}
+
+.active-period-selector select {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--tg-text-color);
+    font-size: 14px;
+    outline: none;
+}
+
+.date-range {
+    margin-top: 10px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.current-active-info {
+    margin: 15px 0;
+    padding: 10px;
+    background: rgba(64, 167, 227, 0.1);
+    border-radius: 8px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.current-active-info p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary-color);
+    font-size: 13px;
+}
+
+.current-active-info i {
+    font-size: 16px;
+}
