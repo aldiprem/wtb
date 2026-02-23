@@ -107,15 +107,17 @@
 
             <!-- Tab Content: Appearance -->
             <div id="tab-appearance" class="tab-content active">
-                <!-- Logo Settings (PNG Only) -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <!-- Logo Settings (PNG Only) - Collapsible -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-image"></i> Logo Website (PNG Only)</h3>
-                        <button class="btn-save" id="saveLogoBtn">
-                            <i class="fas fa-save"></i> Simpan Logo
-                        </button>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <div class="logo-preview" id="logoPreview">
                             <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
                             <div class="logo-overlay">
@@ -131,44 +133,56 @@
                             <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
                             <small>Format PNG hanya, upload atau masukkan URL</small>
                         </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveLogoBtn">
+                                <i class="fas fa-save"></i> Simpan Logo
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Multiple Banner Settings -->
-                <div class="settings-card">
-                  <div class="card-header">
-                    <h3><i class="fas fa-images"></i> Banner Slider</h3>
-                    <div class="header-actions">
-                      <button class="btn-add" id="addBannerBtn">
-                        <i class="fas fa-plus-circle"></i> Tambah Banner
-                      </button>
+                <!-- Multiple Banner Settings - Collapsible -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-images"></i> Banner Slider</h3>
+                        <div class="header-actions">
+                            <button class="btn-add" id="addBannerBtn" onclick="event.stopPropagation()">
+                                <i class="fas fa-plus-circle"></i> Tambah
+                            </button>
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="banner-list" id="bannerList">
-                      <!-- Banner items will be added here dynamically -->
-                      <div class="empty-banner-message">
-                        <i class="fas fa-images"></i>
-                        <p>Belum ada banner. Klik "Tambah Banner" untuk menambahkan.</p>
-                      </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="banner-slider-container" id="bannerSliderContainer">
+                            <div class="banner-track" id="bannerTrack">
+                                <!-- Banner items will be added here dynamically -->
+                            </div>
+                        </div>
+                        <div class="empty-banner-message" id="emptyBannerMessage" style="display: flex;">
+                            <i class="fas fa-images"></i>
+                            <p>Belum ada banner. Klik "Tambah" untuk menambahkan.</p>
+                        </div>
+                        <div class="banner-save-container">
+                            <button class="btn-primary" id="saveBannersBtn">
+                                <i class="fas fa-save"></i> Simpan Semua Banner
+                            </button>
+                        </div>
                     </div>
-                    <div class="banner-save-container">
-                      <button class="btn-save" id="saveBannersBtn">
-                        <i class="fas fa-save"></i> Simpan Semua Banner
-                      </button>
-                    </div>
-                  </div>
                 </div>
 
-                <!-- Color Settings -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <!-- Color Settings - Collapsible -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-palette"></i> Warna Website</h3>
-                        <button class="btn-save" id="saveColorsBtn">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <div class="color-grid">
                             <div class="color-item">
                                 <label>Primary Color</label>
@@ -201,7 +215,7 @@
                             <div class="color-item">
                                 <label>Card Background</label>
                                 <div class="color-picker-wrapper">
-                                    <input type="color" id="cardColor" value="rgba(255,255,255,0.05)">
+                                    <input type="color" id="cardColor" value="#1a1a1a">
                                     <input type="text" id="cardColorHex" value="#1a1a1a" maxlength="7">
                                 </div>
                             </div>
@@ -213,18 +227,25 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveColorsBtn">
+                                <i class="fas fa-save"></i> Simpan Warna
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Font Settings -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <!-- Font Settings - Collapsible -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-font"></i> Font & Tipografi</h3>
-                        <button class="btn-save" id="saveFontBtn">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="fontFamily">Font Family</label>
@@ -241,6 +262,11 @@
                                 <label for="fontSize">Font Size (px)</label>
                                 <input type="number" id="fontSize" min="12" max="24" value="14">
                             </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveFontBtn">
+                                <i class="fas fa-save"></i> Simpan Font
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -314,14 +340,16 @@
             <!-- Tab Content: Payments -->
             <div id="tab-payments" class="tab-content">
                 <!-- Payment Methods -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-credit-card"></i> Metode Pembayaran</h3>
-                        <button class="btn-save" id="savePaymentsBtn">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <!-- Bank Transfer -->
                         <div class="payment-method">
                             <div class="method-header">
@@ -432,18 +460,26 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <div class="form-actions">
+                            <button class="btn-primary" id="savePaymentsBtn">
+                                <i class="fas fa-save"></i> Simpan Metode Pembayaran
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Payment Notes -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-sticky-note"></i> Catatan Pembayaran</h3>
-                        <button class="btn-save" id="savePaymentNotesBtn">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <div class="form-group">
                             <label for="paymentNotes">Instruksi Pembayaran</label>
                             <textarea id="paymentNotes" rows="4" placeholder="Contoh: Kirim bukti transfer ke WhatsApp ..."></textarea>
@@ -452,6 +488,11 @@
                             <label for="confirmationNotes">Catatan Konfirmasi</label>
                             <textarea id="confirmationNotes" rows="3" placeholder="Contoh: Konfirmasi setelah transfer ke @admin"></textarea>
                         </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="savePaymentNotesBtn">
+                                <i class="fas fa-save"></i> Simpan Catatan
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -459,14 +500,16 @@
             <!-- Tab Content: Settings -->
             <div id="tab-settings" class="tab-content">
                 <!-- General Settings -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-sliders-h"></i> Pengaturan Umum</h3>
-                        <button class="btn-save" id="saveGeneralBtn">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <div class="form-group">
                             <label for="websiteTitle">Judul Website</label>
                             <input type="text" id="websiteTitle" placeholder="Toko Online">
@@ -484,18 +527,25 @@
                             <label for="contactTelegram">Telegram Contact</label>
                             <input type="text" id="contactTelegram" placeholder="@username">
                         </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveGeneralBtn">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Umum
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- SEO Settings -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-search"></i> SEO Settings</h3>
-                        <button class="btn-save" id="saveSeoBtn">
-                            <i class="fas fa-save"></i> Simpan
-                        </button>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <div class="form-group">
                             <label for="metaTitle">Meta Title</label>
                             <input type="text" id="metaTitle" placeholder="Toko Online Terpercaya">
@@ -508,15 +558,25 @@
                             <label for="metaKeywords">Meta Keywords</label>
                             <input type="text" id="metaKeywords" placeholder="toko, online, jual, beli">
                         </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveSeoBtn">
+                                <i class="fas fa-save"></i> Simpan SEO
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Maintenance Mode -->
-                <div class="settings-card">
-                    <div class="card-header">
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
                         <h3><i class="fas fa-tools"></i> Maintenance Mode</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body" style="display: none;">
                         <div class="maintenance-toggle">
                             <div class="toggle-info">
                                 <strong>Aktifkan Mode Maintenance</strong>
@@ -530,6 +590,11 @@
                         <div class="form-group" id="maintenanceMessageGroup" style="display: none;">
                             <label for="maintenanceMessage">Pesan Maintenance</label>
                             <textarea id="maintenanceMessage" rows="2" placeholder="Website sedang dalam perbaikan"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveMaintenanceBtn">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Maintenance
+                            </button>
                         </div>
                     </div>
                 </div>
