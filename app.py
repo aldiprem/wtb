@@ -22,7 +22,6 @@ def get_db():
 
 def init_db():
     with get_db() as db:
-        # Create websites table
         db.execute('''
             CREATE TABLE IF NOT EXISTS websites (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,12 +42,10 @@ def init_db():
                 categories TEXT DEFAULT '[]'
             )
         ''')
-        
         print("✅ Database initialized successfully")
 
 init_db()
 
-# ==================== HELPER FUNCTIONS ====================
 def hash_password(password):
     salt = secrets.token_hex(16)
     hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
@@ -78,7 +75,8 @@ def health_check():
             return jsonify({
                 'status': 'healthy',
                 'database': 'connected',
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                'ip': '207.180.194.191'
             })
     except Exception as e:
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
@@ -124,7 +122,7 @@ def create_website():
         hashed_password = hash_password(data['password'])
         start_date = data.get('start_date', datetime.now().strftime('%Y-%m-%d'))
         end_date = data.get('end_date', calculate_end_date(start_date, 30))
-        tunnel_url = request.host_url.rstrip('/')
+        tunnel_url = f"http://207.180.194.191:5050"  # Gunakan IP publik
         
         with get_db() as db:
             existing = db.execute('SELECT id FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
@@ -155,12 +153,23 @@ def create_website():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/websites/<int:website_id>', methods=['DELETE'])
+def delete_website(website_id):
+    try:
+        with get_db() as db:
+            db.execute('DELETE FROM websites WHERE id = ?', (website_id,))
+            db.commit()
+            return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
     print("🚀 Starting Website Management API Server...")
     print(f"📅 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("🔗 API available at: http://localhost:5050")
+    print("🔗 Local API: http://localhost:5050")
+    print("🔗 Public API: http://207.180.194.191:5050")
     print("📊 Database: websites.db")
     print("="*50)
     app.run(host='0.0.0.0', port=5050, debug=True)
