@@ -7,11 +7,11 @@
     <meta name="MobileOptimized" content="width">
     <title>Panel Admin - Website Manager</title>
     
-    <!-- Config JS - HARUS PALING ATAS -->
-    <script src="js/config.js"></script>
+    <!-- Config JS - PAKAI ABSOLUTE PATH (dengan slash) -->
+    <script src="/js/config.js"></script>
     
-    <!-- CSS - Dynamic path (akan di-update oleh JavaScript) -->
-    <link rel="stylesheet" href="css/panel.css" id="mainCss">
+    <!-- CSS - PAKAI ABSOLUTE PATH (dengan slash) -->
+    <link rel="stylesheet" href="/css/panel.css" id="mainCss">
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -21,27 +21,17 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
     <script>
-        // Update CSS path berdasarkan environment
+        // Update CSS path untuk GitHub Pages saja
         (function() {
             function updatePaths() {
-                if (window.APP_CONFIG) {
+                if (window.APP_CONFIG && window.APP_CONFIG.isGitHubPages) {
                     const cssLink = document.getElementById('mainCss');
-                    if (window.APP_CONFIG.isGitHubPages) {
-                        // Di GitHub Pages, tambah /wtb di depan
-                        cssLink.href = '/wtb/css/panel.css';
-                        console.log('📁 GitHub Pages mode - CSS:', cssLink.href);
-                    } else {
-                        // Di local/tunnel, pakai absolute path
-                        cssLink.href = '/css/panel.css';
-                        console.log('📁 Tunnel mode - CSS:', cssLink.href);
-                    }
-                } else {
-                    // Coba lagi setelah 100ms
-                    setTimeout(updatePaths, 100);
+                    cssLink.href = '/wtb/css/panel.css';
+                    console.log('📁 GitHub Pages mode - CSS:', cssLink.href);
                 }
+                // Untuk tunnel URL, path tetap /css/panel.css (sudah benar)
             }
             
-            // Jalankan setelah config.js di-load
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', updatePaths);
             } else {
@@ -675,25 +665,19 @@
         </div>
     </div>
 
-    <!-- JavaScript - Dynamic path (akan di-update) -->
-    <script src="js/panel.js" id="mainJs"></script>
+    <!-- JavaScript - PAKAI ABSOLUTE PATH (dengan slash) -->
+    <script src="/js/panel.js" id="mainJs"></script>
     
     <script>
-        // Update JS path berdasarkan environment
+        // Update JS path untuk GitHub Pages saja
         (function() {
             function updateJsPath() {
-                if (window.APP_CONFIG) {
+                if (window.APP_CONFIG && window.APP_CONFIG.isGitHubPages) {
                     const jsLink = document.getElementById('mainJs');
-                    if (window.APP_CONFIG.isGitHubPages) {
-                        jsLink.src = '/wtb/js/panel.js';
-                        console.log('📁 GitHub Pages mode - JS:', jsLink.src);
-                    } else {
-                        jsLink.src = '/js/panel.js';
-                        console.log('📁 Tunnel mode - JS:', jsLink.src);
-                    }
-                } else {
-                    setTimeout(updateJsPath, 100);
+                    jsLink.src = '/wtb/js/panel.js';
+                    console.log('📁 GitHub Pages mode - JS:', jsLink.src);
                 }
+                // Untuk tunnel URL, path tetap /js/panel.js (sudah benar)
             }
             
             if (document.readyState === 'loading') {
