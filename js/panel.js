@@ -3,7 +3,7 @@
     console.log('🛠️ Website Panel - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = window.location.origin; // Gunakan URL yang sama dengan halaman
+    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
     const DEFAULT_WEBSITE_ID = 1;
 
     // ==================== DOM ELEMENTS ====================
