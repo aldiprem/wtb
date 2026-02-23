@@ -158,82 +158,76 @@
                 </div>
             </div>
 
-            <!-- Create Website Modal -->
+            <!-- Create Website Modal - HAPUS BAGIAN TUNNEL URL -->
             <div id="createModal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2><i class="fas fa-plus-circle"></i> Create New Website</h2>
-                        <button class="modal-close" id="closeModalBtn">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="createWebsiteForm">
-                            <div class="form-group">
-                                <label for="endpoint">
-                                    <i class="fas fa-link"></i>
-                                    Endpoint Website
-                                </label>
-                                <input type="text" id="endpoint" placeholder="my-website" required>
-                                <small>Will be used as: /my-website</small>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="botToken">
-                                    <i class="fas fa-robot"></i>
-                                    Bot Token
-                                </label>
-                                <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="ownerId">
-                                    <i class="fas fa-id-card"></i>
-                                    Owner ID (Telegram)
-                                </label>
-                                <input type="number" id="ownerId" placeholder="123456789" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="username">
-                                    <i class="fas fa-user"></i>
-                                    Username
-                                </label>
-                                <input type="text" id="username" placeholder="admin" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="password">
-                                    <i class="fas fa-lock"></i>
-                                    Password
-                                </label>
-                                <input type="password" id="password" placeholder="••••••••" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="email">
-                                    <i class="fas fa-envelope"></i>
-                                    Email
-                                </label>
-                                <input type="email" id="email" placeholder="admin@example.com" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="tunnelUrl">
-                                    <i class="fas fa-tunnel"></i>
-                                    Tunnel URL (Flask)
-                                </label>
-                                <input type="url" id="tunnelUrl" placeholder="https://your-tunnel.trycloudflare.com" required>
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i>
-                                    Create Website
-                                </button>
-                            </div>
-                        </form>
-                    </div>
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h2><i class="fas fa-plus-circle"></i> Create New Website</h2>
+                  <button class="modal-close" id="closeModalBtn">&times;</button>
                 </div>
+                <div class="modal-body">
+                  <form id="createWebsiteForm">
+                    <div class="form-group">
+                      <label for="endpoint">
+                        <i class="fas fa-link"></i>
+                        Endpoint Website
+                      </label>
+                      <input type="text" id="endpoint" placeholder="my-website" required>
+                      <small>Will be used as: /my-website</small>
+                    </div>
+            
+                    <div class="form-group">
+                      <label for="botToken">
+                        <i class="fas fa-robot"></i>
+                        Bot Token
+                      </label>
+                      <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                    </div>
+            
+                    <div class="form-group">
+                      <label for="ownerId">
+                        <i class="fas fa-id-card"></i>
+                        Owner ID (Telegram)
+                      </label>
+                      <input type="number" id="ownerId" placeholder="123456789" required>
+                    </div>
+            
+                    <div class="form-group">
+                      <label for="username">
+                        <i class="fas fa-user"></i>
+                        Username
+                      </label>
+                      <input type="text" id="username" placeholder="admin" required>
+                    </div>
+            
+                    <div class="form-group">
+                      <label for="password">
+                        <i class="fas fa-lock"></i>
+                        Password
+                      </label>
+                      <input type="password" id="password" placeholder="••••••••" required>
+                    </div>
+            
+                    <div class="form-group">
+                      <label for="email">
+                        <i class="fas fa-envelope"></i>
+                        Email
+                      </label>
+                      <input type="email" id="email" placeholder="admin@example.com" required>
+                    </div>
+            
+                    <!-- BAGIAN INI DIHAPUS - TIDAK PERLU TUNNEL URL LAGI -->
+            
+                    <div class="form-actions">
+                      <button type="button" class="btn btn-secondary" id="cancelModalBtn">Cancel</button>
+                      <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Create Website
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
 
             <!-- Delete Confirmation Modal -->
