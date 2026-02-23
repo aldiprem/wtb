@@ -650,21 +650,22 @@
 
     // ==================== FUNGSI RENDER BANNER TRACK ====================
     function renderBannerTrack() {
-        if (!elements.bannerTrack || !elements.emptyBannerMessage) return;
-        
-        if (banners.length === 0) {
-            elements.bannerTrack.innerHTML = '';
-            elements.emptyBannerMessage.style.display = 'flex';
-            return;
-        }
-        
-        elements.emptyBannerMessage.style.display = 'none';
-        
-        let html = '';
-        banners.forEach((banner, index) => {
-            const imageUrl = banner.fileData || banner.url || `https://via.placeholder.com/300x150/40a7e3/ffffff?text=Banner+${index+1}`;
-            
-            html += `
+      if (!elements.bannerTrack || !elements.emptyBannerMessage) return;
+    
+      if (banners.length === 0) {
+        elements.bannerTrack.innerHTML = '';
+        elements.emptyBannerMessage.style.display = 'flex';
+        return;
+      }
+    
+      elements.emptyBannerMessage.style.display = 'none';
+    
+      let html = '';
+      banners.forEach((banner, index) => {
+        // Gunakan fileData jika ada, jika tidak gunakan url, jika tidak ada gunakan placeholder
+        const imageUrl = banner.fileData || banner.url || `https://via.placeholder.com/300x150/40a7e3/ffffff?text=Banner+${index+1}`;
+    
+        html += `
                 <div class="banner-slide" data-index="${index}">
                     <div class="banner-slide-header">
                         <span class="banner-number">#${index + 1}</span>
@@ -693,202 +694,286 @@
                     </div>
                 </div>
             `;
-        });
-        
-        elements.bannerTrack.innerHTML = html;
-        
-        // Setup long press events untuk setiap banner
-        banners.forEach((_, index) => {
-            setupBannerLongPress(index);
-        });
+      });
+    
+      elements.bannerTrack.innerHTML = html;
+    
+      // Setup upload events untuk setiap banner (Langsung, bukan long press)
+      banners.forEach((_, index) => {
+        setupBannerUploadEvents(index);
+      });
     }
 
-    // ==================== FUNGSI SETUP LONG PRESS ====================
-    function setupBannerLongPress(index) {
-        const previewArea = document.getElementById(`banner-preview-${index}`);
-        if (!previewArea) return;
-        
-        const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
-        if (!imageWrapper) return;
-        
-        let pressTimer;
-        let isPressed = false;
-        let startX, startY, startPosX, startPosY;
-        let isDragging = false;
-        
-        // Touch start - mulai hitung long press
-        const onTouchStart = (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            
-            startX = touch.clientX;
-            startY = touch.clientY;
-            
-            pressTimer = setTimeout(() => {
-                // Long press terdeteksi (500ms)
-                isPressed = true;
-                isDragging = true;
-                
-                // Simpan posisi awal
-                startPosX = banners[index].positionX || 50;
-                startPosY = banners[index].positionY || 50;
-                
-                // Tampilkan visual feedback
-                imageWrapper.classList.add('dragging-active');
-                
-                // Hapus overlay upload selama drag
-                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
-                if (overlay) overlay.style.opacity = '0';
-                
-                vibrate(30); // Feedback haptic
-            }, 500); // 500ms long press
-        };
-        
-        // Touch move - jika sedang drag, update posisi
-        const onTouchMove = (e) => {
-            if (!isDragging) {
-                // Jika belum drag, batalkan long press jika bergerak
-                clearTimeout(pressTimer);
-                return;
-            }
-            
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = imageWrapper.getBoundingClientRect();
-            
-            // Hitung delta pergerakan
-            const deltaX = touch.clientX - startX;
-            const deltaY = touch.clientY - startY;
-            
-            // Konversi ke persen (relative terhadap ukuran wrapper)
-            const percentPerPixelX = 100 / rect.width;
-            const percentPerPixelY = 100 / rect.height;
-            
-            // Hitung posisi baru (dibalik untuk arah yang benar)
-            let newPosX = startPosX - (deltaX * percentPerPixelX);
-            let newPosY = startPosY - (deltaY * percentPerPixelY);
-            
-            // Batasi antara 0-100
-            newPosX = Math.max(0, Math.min(100, newPosX));
-            newPosY = Math.max(0, Math.min(100, newPosY));
-            
-            // Update state
-            banners[index].positionX = Math.round(newPosX);
-            banners[index].positionY = Math.round(newPosY);
-            
-            // Update tampilan
-            imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
-            
-            // Update indicator
-            const indicator = document.getElementById(`pos-indicator-${index}`);
-            if (indicator) {
-                indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
-            }
-            
-            // Tandai ada perubahan yang belum disimpan
-            hasUnsavedBanners = true;
-        };
-        
-        // Touch end - reset semua state
-        const onTouchEnd = (e) => {
-            clearTimeout(pressTimer);
-            
-            if (isDragging) {
-                isDragging = false;
-                imageWrapper.classList.remove('dragging-active');
-                
-                // Kembalikan overlay
-                const overlay = imageWrapper.querySelector('.banner-upload-overlay');
-                if (overlay) overlay.style.opacity = '';
-            }
-            
-            isPressed = false;
-        };
-        
-        // Touch cancel
-        const onTouchCancel = (e) => {
-            clearTimeout(pressTimer);
-            isDragging = false;
-            isPressed = false;
-            imageWrapper.classList.remove('dragging-active');
-        };
-        
-        // Hapus event listener lama
-        imageWrapper.removeEventListener('touchstart', onTouchStart);
-        imageWrapper.removeEventListener('touchmove', onTouchMove);
-        imageWrapper.removeEventListener('touchend', onTouchEnd);
-        imageWrapper.removeEventListener('touchcancel', onTouchCancel);
-        
+    // ==================== FUNGSI SETUP UPLOAD EVENTS (SEPERTI LOGO) ====================
+    function setupBannerUploadEvents(index) {
+      const previewArea = document.getElementById(`banner-preview-${index}`);
+      if (!previewArea) return;
+    
+      const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
+      if (!imageWrapper) return;
+    
+      // Hapus semua event listener lama
+      const oldOverlay = imageWrapper.querySelector('.banner-upload-overlay');
+      if (oldOverlay) {
+        // Clone untuk menghapus event listener
+        const newOverlay = oldOverlay.cloneNode(true);
+        oldOverlay.parentNode.replaceChild(newOverlay, oldOverlay);
+    
         // Tambah event listener baru
-        imageWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
-        imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
-        imageWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
-        imageWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
+        newOverlay.addEventListener('click', (e) => {
+          e.stopPropagation();
+          window.panel.uploadBannerImage(index);
+        });
+      }
+    }
+    
+    // ==================== FUNGSI SETUP DRAG UNTUK POSISI ====================
+    function setupBannerDragEvents(index) {
+      const previewArea = document.getElementById(`banner-preview-${index}`);
+      if (!previewArea) return;
+    
+      const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
+      if (!imageWrapper) return;
+    
+      let startX, startY, startPosX, startPosY;
+      let isDragging = false;
+    
+      // Touch start - mulai drag langsung (tanpa long press)
+      const onTouchStart = (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+    
+        startX = touch.clientX;
+        startY = touch.clientY;
+    
+        // Simpan posisi awal
+        startPosX = banners[index].positionX || 50;
+        startPosY = banners[index].positionY || 50;
+    
+        isDragging = true;
+    
+        // Tampilkan visual feedback
+        imageWrapper.classList.add('dragging-active');
+    
+        // Sembunyikan overlay upload selama drag
+        const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+        if (overlay) overlay.style.opacity = '0';
+    
+        vibrate(10); // Feedback haptic
+      };
+    
+      // Touch move - update posisi
+      const onTouchMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+    
+        const touch = e.touches[0];
+        const rect = imageWrapper.getBoundingClientRect();
+    
+        // Hitung delta pergerakan
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+    
+        // Konversi ke persen
+        const percentPerPixelX = 100 / rect.width;
+        const percentPerPixelY = 100 / rect.height;
+    
+        // Hitung posisi baru (langsung, tanpa delay)
+        let newPosX = startPosX - (deltaX * percentPerPixelX);
+        let newPosY = startPosY - (deltaY * percentPerPixelY);
+    
+        // Batasi antara 0-100
+        newPosX = Math.max(0, Math.min(100, newPosX));
+        newPosY = Math.max(0, Math.min(100, newPosY));
+    
+        // Update state
+        banners[index].positionX = Math.round(newPosX);
+        banners[index].positionY = Math.round(newPosY);
+    
+        // Update tampilan
+        imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+    
+        // Update indicator
+        const indicator = document.getElementById(`pos-indicator-${index}`);
+        if (indicator) {
+          indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+        }
+    
+        // Tandai ada perubahan
+        hasUnsavedBanners = true;
+      };
+    
+      // Touch end
+      const onTouchEnd = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+    
+        isDragging = false;
+        imageWrapper.classList.remove('dragging-active');
+    
+        // Tampilkan kembali overlay
+        const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+        if (overlay) overlay.style.opacity = '';
+      };
+    
+      // Touch cancel
+      const onTouchCancel = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        imageWrapper.classList.remove('dragging-active');
+    
+        const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+        if (overlay) overlay.style.opacity = '';
+      };
+    
+      // Hapus event listener lama
+      imageWrapper.removeEventListener('touchstart', onTouchStart);
+      imageWrapper.removeEventListener('touchmove', onTouchMove);
+      imageWrapper.removeEventListener('touchend', onTouchEnd);
+      imageWrapper.removeEventListener('touchcancel', onTouchCancel);
+    
+      // Tambah event listener baru (langsung drag, tanpa long press)
+      imageWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+      imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+      imageWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
+      imageWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
+    
+      // Mouse events untuk testing di desktop
+      let isMouseDown = false;
+      let mouseStartX, mouseStartY, mouseStartPosX, mouseStartPosY;
+    
+      const onMouseDown = (e) => {
+        e.preventDefault();
+    
+        mouseStartX = e.clientX;
+        mouseStartY = e.clientY;
+    
+        mouseStartPosX = banners[index].positionX || 50;
+        mouseStartPosY = banners[index].positionY || 50;
+    
+        isMouseDown = true;
+        imageWrapper.classList.add('dragging-active');
+    
+        const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+        if (overlay) overlay.style.opacity = '0';
+      };
+    
+      const onMouseMove = (e) => {
+        if (!isMouseDown) return;
+        e.preventDefault();
+    
+        const rect = imageWrapper.getBoundingClientRect();
+    
+        const deltaX = e.clientX - mouseStartX;
+        const deltaY = e.clientY - mouseStartY;
+    
+        const percentPerPixelX = 100 / rect.width;
+        const percentPerPixelY = 100 / rect.height;
+    
+        let newPosX = mouseStartPosX - (deltaX * percentPerPixelX);
+        let newPosY = mouseStartPosY - (deltaY * percentPerPixelY);
+    
+        newPosX = Math.max(0, Math.min(100, newPosX));
+        newPosY = Math.max(0, Math.min(100, newPosY));
+    
+        banners[index].positionX = Math.round(newPosX);
+        banners[index].positionY = Math.round(newPosY);
+    
+        imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+    
+        const indicator = document.getElementById(`pos-indicator-${index}`);
+        if (indicator) {
+          indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+        }
+    
+        hasUnsavedBanners = true;
+      };
+    
+      const onMouseUp = (e) => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        imageWrapper.classList.remove('dragging-active');
+    
+        const overlay = imageWrapper.querySelector('.banner-upload-overlay');
+        if (overlay) overlay.style.opacity = '';
+      };
+    
+      const onMouseLeave = (e) => {
+        if (!isMouseDown) return;
+        isMouseDown = false;
+        imageWrapper.classList.remove('dragging-active');
+      };
+    
+      imageWrapper.addEventListener('mousedown', onMouseDown);
+      imageWrapper.addEventListener('mousemove', onMouseMove);
+      imageWrapper.addEventListener('mouseup', onMouseUp);
+      imageWrapper.addEventListener('mouseleave', onMouseLeave);
     }
 
     // ==================== FUNGSI BANNER ====================
     window.panel = window.panel || {};
     
     window.panel.uploadBannerImage = function(index) {
-        openUploadModal((imageData) => {
-            banners[index].fileData = imageData;
-            banners[index].url = ''; // Kosongkan URL karena pakai file
-            hasUnsavedBanners = true; // Tandai ada perubahan
-            
-            // Update preview
-            const previewArea = document.getElementById(`banner-preview-${index}`);
-            if (previewArea) {
-                const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
-                if (imageWrapper) {
-                    imageWrapper.style.backgroundImage = `url(${imageData})`;
-                }
-            }
-            
-            showToast('✅ Gambar banner diupload!', 'success');
-        });
+      // Sama seperti upload logo, langsung buka modal upload
+      openUploadModal((imageData) => {
+        banners[index].fileData = imageData;
+        banners[index].url = ''; // Kosongkan URL karena pakai file
+        hasUnsavedBanners = true; // Tandai ada perubahan
+    
+        // Update preview
+        const previewArea = document.getElementById(`banner-preview-${index}`);
+        if (previewArea) {
+          const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
+          if (imageWrapper) {
+            imageWrapper.style.backgroundImage = `url(${imageData})`;
+          }
+        }
+    
+        showToast('✅ Gambar banner diupload!', 'success');
+      }, 'image/*');
     };
     
     function addBanner() {
-        // Cek apakah ada banner yang belum diisi
-        const hasEmptyBanner = banners.some(b => !b.url && !b.fileData);
-        
-        if (hasEmptyBanner) {
-            showToast('⚠️ Ada banner yang belum diisi. Selesaikan atau hapus terlebih dahulu.', 'warning');
-            return;
-        }
-        
-        banners.push({
-            url: '',
-            fileData: null,
-            positionX: 50,
-            positionY: 50
-        });
-        hasUnsavedBanners = true; // Tandai ada perubahan
-        renderBannerTrack();
-        vibrate(10);
+      // Cek apakah ada banner yang belum diisi
+      const hasEmptyBanner = banners.some(b => !b.url && !b.fileData);
+    
+      if (hasEmptyBanner) {
+        showToast('⚠️ Ada banner yang belum diisi. Selesaikan atau hapus terlebih dahulu.', 'warning');
+        return;
+      }
+    
+      banners.push({
+        url: '',
+        fileData: null,
+        positionX: 50,
+        positionY: 50
+      });
+      hasUnsavedBanners = true; // Tandai ada perubahan
+      renderBannerTrack();
+      vibrate(10);
     }
     
     window.panel.deleteBanner = function(index) {
-        if (confirm('Hapus banner ini?')) {
-            banners.splice(index, 1);
-            hasUnsavedBanners = true; // Tandai ada perubahan
-            renderBannerTrack();
-            vibrate(10);
-        }
+      if (confirm('Hapus banner ini?')) {
+        banners.splice(index, 1);
+        hasUnsavedBanners = true; // Tandai ada perubahan
+        renderBannerTrack();
+        vibrate(10);
+      }
     };
     
     window.panel.moveBanner = function(index, direction) {
-        if (direction === 'left' && index > 0) {
+      if (direction === 'left' && index > 0) {
             [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
-            hasUnsavedBanners = true; // Tandai ada perubahan
-        } else if (direction === 'right' && index < banners.length - 1) {
+        hasUnsavedBanners = true; // Tandai ada perubahan
+      } else if (direction === 'right' && index < banners.length - 1) {
             [banners[index], banners[index + 1]] = [banners[index + 1], banners[index]];
-            hasUnsavedBanners = true; // Tandai ada perubahan
-        } else {
-            return;
-        }
-        renderBannerTrack();
-        vibrate(10);
+        hasUnsavedBanners = true; // Tandai ada perubahan
+      } else {
+        return;
+      }
+      renderBannerTrack();
+      vibrate(10);
     };
     
     // ==================== FUNGSI SAVE BANNERS ====================
