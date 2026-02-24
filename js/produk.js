@@ -1,4 +1,4 @@
-// produk.js - Manajemen Produk dengan Tampilan Tree (VERSI LENGKAP DENGAN MANAGE LAYANAN & APLIKASI)
+// produk.js - Manajemen Produk dengan Tampilan Tree (DENGAN TOMBOL MANAGE)
 (function() {
     'use strict';
     
@@ -13,12 +13,6 @@
     let products = [];
     let filteredProducts = [];
     let editingProductId = null;
-    
-    // Mode Manage
-    let manageMode = null; // 'layanan' atau 'aplikasi'
-    let manageLayanan = null;
-    let manageAplikasi = null;
-    let manageItems = []; // Untuk multiple items
     
     // Form State (camelCase untuk internal)
     let formData = {
@@ -262,41 +256,7 @@
         
         try {
             let response;
-            
-            if (manageMode === 'layanan' || manageMode === 'aplikasi') {
-                // Mode manage - bisa multiple items
-                if (manageItems.length === 0) {
-                    showToast('Tambahkan minimal 1 item', 'warning');
-                    showLoading(false);
-                    return;
-                }
-                
-                // Simpan satu per satu
-                let successCount = 0;
-                for (const item of manageItems) {
-                    const itemData = {
-                        ...productData,
-                        item_nama: item.itemNama,
-                        item_durasi: item.itemDurasi,
-                        harga: parseInt(item.harga) || 0,
-                        fitur: item.fitur || 'biasa',
-                        method: item.method || 'directly',
-                        stok: item.method === 'directly' ? (item.stok || []) : [],
-                        fields: item.method === 'request' ? (item.fields || []) : []
-                    };
-                    
-                    const res = await fetchWithRetry(`${API_BASE_URL}/api/products/${currentWebsite.id}`, {
-                        method: 'POST',
-                        body: JSON.stringify(itemData)
-                    });
-                    
-                    if (res.success) successCount++;
-                }
-                
-                if (successCount > 0) {
-                    showToast(`✅ ${successCount} item berhasil ditambahkan`, 'success');
-                }
-            } else if (editingProductId) {
+            if (editingProductId) {
                 response = await fetchWithRetry(`${API_BASE_URL}/api/products/${editingProductId}`, {
                     method: 'PUT',
                     body: JSON.stringify(productData)
@@ -308,14 +268,14 @@
                 });
             }
             
-            if (response && response.success) {
+            if (response.success) {
                 showToast(
                     editingProductId ? '✅ Produk diperbarui' : '✅ Produk ditambahkan',
                     'success'
                 );
                 closeModal();
                 await loadProducts(currentWebsite.id);
-            } else if (!manageMode && response && !response.success) {
+            } else {
                 throw new Error(response.error || 'Gagal menyimpan');
             }
         } catch (error) {
@@ -382,6 +342,7 @@
     }
 
     // ==================== RENDER FUNCTIONS ====================
+    // 🔥 DITAMBAH: Tombol manage di setiap layanan dan aplikasi
     function renderProducts() {
         if (!elements.productsTree) return;
         
@@ -432,6 +393,7 @@
                             ${layananData.desc ? `<div class="layanan-desc">${escapeHtml(layananData.desc)}</div>` : ''}
                         </div>
                         <div class="layanan-actions">
+                            <!-- 🔥 TOMBOL MANAGE LAYANAN (BARU) -->
                             <button class="btn-manage manage-layanan" data-tooltip="Kelola Layanan" onclick="event.stopPropagation(); window.produk.manageLayanan('${escapeHtml(layanan)}')">
                                 <i class="fas fa-cog"></i>
                             </button>
@@ -459,6 +421,7 @@
                             </div>
                             <span class="aplikasi-count">${appData.items.length} item</span>
                             <div class="aplikasi-actions">
+                                <!-- 🔥 TOMBOL MANAGE APLIKASI (BARU) -->
                                 <button class="btn-manage manage-aplikasi" data-tooltip="Kelola Aplikasi" onclick="event.stopPropagation(); window.produk.manageAplikasi('${escapeHtml(layanan)}', '${escapeHtml(aplikasi)}')">
                                     <i class="fas fa-cog"></i>
                                 </button>
@@ -522,223 +485,6 @@
         elements.productsTree.innerHTML = html;
     }
 
-    // ==================== MANAGE FUNCTIONS ====================
-    function manageLayanan(layanan) {
-        manageMode = 'layanan';
-        manageLayanan = layanan;
-        manageAplikasi = null;
-        manageItems = [];
-        
-        resetForm();
-        
-        // Set layanan
-        formData.layanan = layanan;
-        elements.layananInput.value = layanan;
-        elements.layananInput.disabled = true;
-        elements.layananInput.classList.add('disabled');
-        
-        // Ubah tampilan modal untuk multiple items
-        elements.modalTitle.textContent = `Kelola Layanan: ${layanan}`;
-        
-        // Tambahkan section untuk multiple items
-        addMultipleItemsSection();
-        
-        elements.productModal.classList.add('active');
-        vibrate(10);
-    }
-
-    function manageAplikasi(layanan, aplikasi) {
-        manageMode = 'aplikasi';
-        manageLayanan = layanan;
-        manageAplikasi = aplikasi;
-        manageItems = [];
-        
-        resetForm();
-        
-        // Set layanan dan aplikasi
-        formData.layanan = layanan;
-        formData.aplikasi = aplikasi;
-        
-        elements.layananInput.value = layanan;
-        elements.layananInput.disabled = true;
-        elements.layananInput.classList.add('disabled');
-        
-        elements.aplikasiInput.value = aplikasi;
-        elements.aplikasiInput.disabled = true;
-        elements.aplikasiInput.classList.add('disabled');
-        
-        // Ubah tampilan modal
-        elements.modalTitle.textContent = `Kelola Aplikasi: ${aplikasi}`;
-        
-        // Tambahkan section untuk multiple items
-        addMultipleItemsSection();
-        
-        elements.productModal.classList.add('active');
-        vibrate(10);
-    }
-
-    function addMultipleItemsSection() {
-        // Hapus section yang sudah ada jika perlu
-        const existingSection = document.querySelector('.multiple-items-container');
-        if (existingSection) existingSection.remove();
-        
-        // Sembunyikan section item biasa
-        const itemSection = document.querySelector('.form-section:has(#itemNamaInput)');
-        if (itemSection) itemSection.style.display = 'none';
-        
-        // Buat container untuk multiple items
-        const container = document.createElement('div');
-        container.className = 'multiple-items-container';
-        container.innerHTML = `
-            <div class="manage-info">
-                <i class="fas fa-info-circle"></i>
-                <span>Anda dapat menambahkan <strong>beberapa item sekaligus</strong> untuk layanan/aplikasi ini.</span>
-            </div>
-            <div id="itemsGroupContainer"></div>
-            <button type="button" class="btn-add-small" id="addItemGroupBtn" style="width: 100%; justify-content: center; margin-top: 16px;">
-                <i class="fas fa-plus"></i> Tambah Item Baru
-            </button>
-        `;
-        
-        // Sisipkan setelah method section
-        const methodSection = document.querySelector('.form-section:has(.method-options)');
-        methodSection.parentNode.insertBefore(container, methodSection.nextSibling);
-        
-        // Tambah item group pertama
-        addItemGroup();
-        
-        // Event listener untuk tombol tambah
-        document.getElementById('addItemGroupBtn').addEventListener('click', addItemGroup);
-    }
-
-    function addItemGroup() {
-        const container = document.getElementById('itemsGroupContainer');
-        if (!container) return;
-        
-        const groupId = 'group_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        const groupIndex = manageItems.length;
-        
-        // Default item data
-        const itemData = {
-            id: groupId,
-            itemNama: '',
-            itemDurasi: '',
-            harga: 0,
-            fitur: 'biasa',
-            method: 'directly',
-            stok: [],
-            fields: []
-        };
-        
-        manageItems.push(itemData);
-        
-        const groupHtml = `
-            <div class="item-group" data-group-id="${groupId}" data-index="${groupIndex}">
-                <div class="item-group-header">
-                    <h4>Item #${manageItems.length}</h4>
-                    <button type="button" class="remove-item-group" onclick="window.produk.removeItemGroup('${groupId}')">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="item-group-fields">
-                    <div class="form-group full-width">
-                        <label>Nama Item</label>
-                        <input type="text" class="item-nama-input" placeholder="Contoh: Anggota Invite 1 Bulan" value="${escapeHtml(itemData.itemNama)}">
-                    </div>
-                    <div class="form-group">
-                        <label>Durasi</label>
-                        <input type="text" class="item-durasi-input" placeholder="1 Bulan" value="${escapeHtml(itemData.itemDurasi)}">
-                    </div>
-                    <div class="form-group">
-                        <label>Harga (Rp)</label>
-                        <input type="number" class="item-harga-input" min="0" placeholder="50000" value="${itemData.harga}">
-                    </div>
-                    <div class="form-group">
-                        <label>Fitur</label>
-                        <select class="item-fitur-select">
-                            <option value="biasa" ${itemData.fitur === 'biasa' ? 'selected' : ''}>Biasa</option>
-                            <option value="unggulan" ${itemData.fitur === 'unggulan' ? 'selected' : ''}>Unggulan</option>
-                            <option value="populer" ${itemData.fitur === 'populer' ? 'selected' : ''}>Populer</option>
-                        </select>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Metode</label>
-                        <div style="display: flex; gap: 16px;">
-                            <label style="display: flex; align-items: center; gap: 8px;">
-                                <input type="radio" name="method_${groupId}" value="directly" class="method-radio" ${itemData.method === 'directly' ? 'checked' : ''}>
-                                <span>Directly</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px;">
-                                <input type="radio" name="method_${groupId}" value="request" class="method-radio" ${itemData.method === 'request' ? 'checked' : ''}>
-                                <span>Request</span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Stok (pisahkan dengan baris baru)</label>
-                        <textarea class="item-stok-textarea" rows="3" placeholder="email@example.com:password123&#10;user2@domain.com:pass456">${(itemData.stok || []).join('\n')}</textarea>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        container.insertAdjacentHTML('beforeend', groupHtml);
-        
-        // Setup event listeners untuk group ini
-        setupItemGroupListeners(groupId, groupIndex);
-    }
-
-    function setupItemGroupListeners(groupId, index) {
-        const group = document.querySelector(`[data-group-id="${groupId}"]`);
-        if (!group) return;
-        
-        // Update data saat input berubah
-        group.querySelector('.item-nama-input').addEventListener('input', (e) => {
-            manageItems[index].itemNama = e.target.value;
-        });
-        
-        group.querySelector('.item-durasi-input').addEventListener('input', (e) => {
-            manageItems[index].itemDurasi = e.target.value;
-        });
-        
-        group.querySelector('.item-harga-input').addEventListener('input', (e) => {
-            manageItems[index].harga = parseInt(e.target.value) || 0;
-        });
-        
-        group.querySelector('.item-fitur-select').addEventListener('change', (e) => {
-            manageItems[index].fitur = e.target.value;
-        });
-        
-        group.querySelectorAll('.method-radio').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                if (e.target.checked) {
-                    manageItems[index].method = e.target.value;
-                }
-            });
-        });
-        
-        group.querySelector('.item-stok-textarea').addEventListener('input', (e) => {
-            const lines = e.target.value.split('\n').map(l => l.trim()).filter(l => l);
-            manageItems[index].stok = lines;
-        });
-    }
-
-    function removeItemGroup(groupId) {
-        const index = manageItems.findIndex(item => item.id === groupId);
-        if (index !== -1) {
-            manageItems.splice(index, 1);
-        }
-        
-        const group = document.querySelector(`[data-group-id="${groupId}"]`);
-        if (group) group.remove();
-        
-        // Update nomor item
-        document.querySelectorAll('.item-group').forEach((el, i) => {
-            const header = el.querySelector('.item-group-header h4');
-            if (header) header.textContent = `Item #${i + 1}`;
-        });
-    }
-
     // ==================== FORM FUNCTIONS ====================
     function resetForm() {
         formData = {
@@ -759,10 +505,6 @@
         };
         
         editingProductId = null;
-        manageMode = null;
-        manageLayanan = null;
-        manageAplikasi = null;
-        manageItems = [];
         
         // Reset inputs
         if (elements.layananInput) {
@@ -786,14 +528,6 @@
         if (elements.itemHargaInput) elements.itemHargaInput.value = '';
         if (elements.itemFiturInput) elements.itemFiturInput.value = 'biasa';
         
-        // Tampilkan kembali section item biasa
-        const itemSection = document.querySelector('.form-section:has(#itemNamaInput)');
-        if (itemSection) itemSection.style.display = 'block';
-        
-        // Hapus multiple items container
-        const multiContainer = document.querySelector('.multiple-items-container');
-        if (multiContainer) multiContainer.remove();
-        
         // Reset method
         elements.methodRadios.forEach(radio => {
             if (radio.value === 'directly') radio.checked = true;
@@ -807,6 +541,70 @@
         renderFieldsList();
         
         if (elements.produkAktif) elements.produkAktif.checked = true;
+    }
+
+    // 🔥 FUNGSI BARU: Manage Layanan
+    function manageLayanan(layanan) {
+        resetForm();
+        
+        // Set layanan dan disable input
+        formData.layanan = layanan;
+        elements.layananInput.value = layanan;
+        elements.layananInput.disabled = true;
+        elements.layananInput.classList.add('disabled');
+        
+        // Tambah info manage
+        const infoHtml = `
+            <div class="manage-info">
+                <i class="fas fa-layer-group"></i>
+                <span>Menambah produk untuk layanan: <strong>${escapeHtml(layanan)}</strong></span>
+            </div>
+        `;
+        
+        // Sisipkan info di awal form
+        const form = elements.productForm;
+        const existingInfo = form.querySelector('.manage-info');
+        if (existingInfo) existingInfo.remove();
+        form.insertAdjacentHTML('afterbegin', infoHtml);
+        
+        elements.modalTitle.textContent = `Tambah Produk untuk Layanan: ${layanan}`;
+        elements.productModal.classList.add('active');
+        vibrate(10);
+    }
+
+    // 🔥 FUNGSI BARU: Manage Aplikasi
+    function manageAplikasi(layanan, aplikasi) {
+        resetForm();
+        
+        // Set layanan dan aplikasi, disable input
+        formData.layanan = layanan;
+        formData.aplikasi = aplikasi;
+        
+        elements.layananInput.value = layanan;
+        elements.layananInput.disabled = true;
+        elements.layananInput.classList.add('disabled');
+        
+        elements.aplikasiInput.value = aplikasi;
+        elements.aplikasiInput.disabled = true;
+        elements.aplikasiInput.classList.add('disabled');
+        
+        // Tambah info manage
+        const infoHtml = `
+            <div class="manage-info aplikasi">
+                <i class="fas fa-mobile-alt"></i>
+                <span>Menambah produk untuk aplikasi: <strong>${escapeHtml(aplikasi)}</strong> (Layanan: ${escapeHtml(layanan)})</span>
+            </div>
+        `;
+        
+        // Sisipkan info di awal form
+        const form = elements.productForm;
+        const existingInfo = form.querySelector('.manage-info');
+        if (existingInfo) existingInfo.remove();
+        form.insertAdjacentHTML('afterbegin', infoHtml);
+        
+        elements.modalTitle.textContent = `Tambah Produk untuk Aplikasi: ${aplikasi}`;
+        elements.productModal.classList.add('active');
+        vibrate(10);
     }
 
     function loadProductForEdit(product) {
@@ -939,6 +737,11 @@
     // ==================== MODAL FUNCTIONS ====================
     function openModal() {
         resetForm();
+        
+        // Hapus info manage jika ada
+        const existingInfo = elements.productForm.querySelector('.manage-info');
+        if (existingInfo) existingInfo.remove();
+        
         elements.modalTitle.textContent = 'Tambah Produk';
         elements.productModal.classList.add('active');
         vibrate(10);
@@ -964,29 +767,6 @@
 
     // ==================== VALIDATION ====================
     function validateForm() {
-        if (manageMode) {
-            // Untuk manage mode, validasi minimal ada items
-            if (manageItems.length === 0) {
-                showToast('Tambahkan minimal 1 item', 'warning');
-                return false;
-            }
-            
-            // Validasi setiap item
-            for (let i = 0; i < manageItems.length; i++) {
-                const item = manageItems[i];
-                if (!item.itemNama) {
-                    showToast(`Nama item #${i + 1} wajib diisi`, 'warning');
-                    return false;
-                }
-                if (!item.harga || item.harga <= 0) {
-                    showToast(`Harga item #${i + 1} wajib diisi dan lebih dari 0`, 'warning');
-                    return false;
-                }
-            }
-            return true;
-        }
-        
-        // Validasi normal
         if (!formData.layanan) {
             showToast('Nama layanan wajib diisi', 'warning');
             elements.layananInput.focus();
@@ -1074,26 +854,21 @@
             elements.productForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 
-                if (manageMode) {
-                    // Untuk manage mode, data sudah ada di manageItems
+                // Update formData from inputs
+                formData.layanan = elements.layananInput.value;
+                formData.layananGambar = elements.layananGambarInput.value;
+                formData.layananDesc = elements.layananDescInput.value;
+                formData.aplikasi = elements.aplikasiInput.value;
+                formData.aplikasiGambar = elements.aplikasiGambarInput.value;
+                formData.aplikasiDesc = elements.aplikasiDescInput.value;
+                formData.itemNama = elements.itemNamaInput.value;
+                formData.itemDurasi = elements.itemDurasiInput.value;
+                formData.harga = parseInt(elements.itemHargaInput.value) || 0;
+                formData.fitur = elements.itemFiturInput.value;
+                formData.aktif = elements.produkAktif.checked;
+                
+                if (validateForm()) {
                     saveProduct();
-                } else {
-                    // Update formData from inputs
-                    formData.layanan = elements.layananInput.value;
-                    formData.layananGambar = elements.layananGambarInput.value;
-                    formData.layananDesc = elements.layananDescInput.value;
-                    formData.aplikasi = elements.aplikasiInput.value;
-                    formData.aplikasiGambar = elements.aplikasiGambarInput.value;
-                    formData.aplikasiDesc = elements.aplikasiDescInput.value;
-                    formData.itemNama = elements.itemNamaInput.value;
-                    formData.itemDurasi = elements.itemDurasiInput.value;
-                    formData.harga = parseInt(elements.itemHargaInput.value) || 0;
-                    formData.fitur = elements.itemFiturInput.value;
-                    formData.aktif = elements.produkAktif.checked;
-                    
-                    if (validateForm()) {
-                        saveProduct();
-                    }
                 }
             });
         }
@@ -1293,10 +1068,9 @@
                 renderFieldsList();
             }
         },
-        // New functions
+        // 🔥 FUNGSI BARU: Manage Layanan dan Aplikasi
         manageLayanan: (layanan) => manageLayanan(layanan),
-        manageAplikasi: (layanan, aplikasi) => manageAplikasi(layanan, aplikasi),
-        removeItemGroup: (groupId) => removeItemGroup(groupId)
+        manageAplikasi: (layanan, aplikasi) => manageAplikasi(layanan, aplikasi)
     };
 
     // ==================== START ====================
