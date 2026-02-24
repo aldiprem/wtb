@@ -1,4 +1,4 @@
-// tampilan.js - Pengaturan Tampilan Website
+// tampilan.js - Pengaturan Tampilan Website (VERSI DENGAN MULTIPLE PROMO)
 (function() {
     'use strict';
     
@@ -17,9 +17,15 @@
     let hasUnsavedBanners = false;
     let urlChangeTimeout = null;
     
+    // Promo state (NEW)
+    let promos = [];
+    let hasUnsavedPromos = false;
+    let currentPromoId = null;
+    let promoToDelete = null;
+    
     // Current upload callback
     let currentUploadCallback = null;
-    let currentUploadType = null; // 'logo', 'promo'
+    let currentUploadType = null;
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -44,17 +50,11 @@
         addBannerBtn: document.getElementById('addBannerBtn'),
         saveBannersBtn: document.getElementById('saveBannersBtn'),
         
-        // Promo
-        promoBannerImage: document.getElementById('promoBannerImage'),
-        promoBannerUrl: document.getElementById('promoBannerUrl'),
-        uploadPromoBtn: document.getElementById('uploadPromoBtn'),
-        promoDescription: document.getElementById('promoDescription'),
-        promoEndDate: document.getElementById('promoEndDate'),
-        promoEndTime: document.getElementById('promoEndTime'),
-        promoNeverEnd: document.getElementById('promoNeverEnd'),
-        promoNotes: document.getElementById('promoNotes'),
-        promoActive: document.getElementById('promoActive'),
-        savePromoBtn: document.getElementById('savePromoBtn'),
+        // Promo (NEW)
+        promoContainer: document.getElementById('promoContainer'),
+        emptyPromoMessage: document.getElementById('emptyPromoMessage'),
+        addPromoBtn: document.getElementById('addPromoBtn'),
+        saveAllPromoBtn: document.getElementById('saveAllPromoBtn'),
         
         // Colors
         primaryColor: document.getElementById('primaryColor'),
@@ -86,7 +86,33 @@
         uploadPreview: document.getElementById('uploadPreview'),
         changeImageBtn: document.getElementById('changeImageBtn'),
         confirmUploadBtn: document.getElementById('confirmUploadBtn'),
-        closeUploadModal: document.getElementById('closeUploadModal')
+        closeUploadModal: document.getElementById('closeUploadModal'),
+        
+        // Promo Modal (NEW)
+        promoModal: document.getElementById('promoModal'),
+        promoModalTitle: document.getElementById('promoModalTitle'),
+        promoForm: document.getElementById('promoForm'),
+        promoId: document.getElementById('promoId'),
+        promoTitle: document.getElementById('promoTitle'),
+        promoBannerImageSmall: document.getElementById('promoBannerImageSmall'),
+        promoBannerUrl: document.getElementById('promoBannerUrl'),
+        promoBannerValidation: document.getElementById('promoBannerValidation'),
+        promoDescription: document.getElementById('promoDescription'),
+        promoEndDate: document.getElementById('promoEndDate'),
+        promoEndTime: document.getElementById('promoEndTime'),
+        promoNeverEnd: document.getElementById('promoNeverEnd'),
+        promoNotes: document.getElementById('promoNotes'),
+        promoActive: document.getElementById('promoActive'),
+        closePromoModal: document.getElementById('closePromoModal'),
+        cancelPromoBtn: document.getElementById('cancelPromoBtn'),
+        
+        // Delete Modal (NEW)
+        deleteModal: document.getElementById('deleteModal'),
+        deleteMessage: document.getElementById('deleteMessage'),
+        deleteInfo: document.getElementById('deleteInfo'),
+        closeDeleteModal: document.getElementById('closeDeleteModal'),
+        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+        confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
     };
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -126,6 +152,99 @@
         return div.innerHTML;
     }
 
+    function formatDate(dateString, timeString) {
+        if (!dateString) return 'Tanpa batas waktu';
+        try {
+            const date = new Date(dateString + 'T' + (timeString || '00:00'));
+            return date.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    // ==================== KEYBOARD HANDLER (NEW) ====================
+    function setupKeyboardHandler() {
+        function scrollToInput(input) {
+            const rect = input.getBoundingClientRect();
+            const windowHeight = window.innerHeight;
+            const keyboardHeight = windowHeight * 0.4;
+            
+            if (rect.bottom > windowHeight - keyboardHeight) {
+                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
+                window.scrollTo({ top: scrollY, behavior: 'smooth' });
+            }
+        }
+        
+        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
+        
+        modalInputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    scrollToInput(input);
+                    
+                    const modal = input.closest('.modal');
+                    if (modal) {
+                        modal.classList.add('modal-with-input');
+                        const modalContent = modal.querySelector('.modal-content');
+                        if (modalContent) {
+                            modalContent.style.maxHeight = '70vh';
+                            modalContent.style.overflowY = 'auto';
+                        }
+                    }
+                }, 300);
+            });
+            
+            input.addEventListener('blur', () => {
+                const modal = input.closest('.modal');
+                if (modal) {
+                    modal.classList.remove('modal-with-input');
+                }
+            });
+        });
+        
+        document.addEventListener('touchstart', (e) => {
+            const activeElement = document.activeElement;
+            if (!activeElement) return;
+            
+            const isInput = e.target.tagName === 'INPUT' || 
+                           e.target.tagName === 'TEXTAREA' || 
+                           e.target.tagName === 'SELECT' ||
+                           e.target.closest('.modal-content');
+            
+            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                activeElement.blur();
+            }
+        });
+        
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', () => {
+                const activeElement = document.activeElement;
+                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
+                    activeElement.blur();
+                }
+            });
+        });
+        
+        let viewportHeight = window.innerHeight;
+        window.addEventListener('resize', () => {
+            const newHeight = window.innerHeight;
+            
+            if (newHeight < viewportHeight * 0.7) {
+                document.body.classList.add('keyboard-visible');
+            } else if (newHeight > viewportHeight * 0.8) {
+                document.body.classList.remove('keyboard-visible');
+            }
+            
+            viewportHeight = newHeight;
+        });
+    }
+
     // ==================== API FUNCTIONS ====================
     async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
         try {
@@ -161,7 +280,7 @@
         if (!endpoint) {
             showToast('Website tidak ditemukan', 'error');
             setTimeout(() => {
-                window.location.href = '/wtb/panel.html';
+                window.location.href = '/wtb/html/panel.html';
             }, 2000);
             return null;
         }
@@ -202,6 +321,11 @@
             } else {
                 console.log('ℹ️ No tampilan data found, using defaults');
                 tampilanData = {};
+                // Set default values
+                banners = [];
+                promos = [];
+                renderBannerTrack();
+                renderPromos();
             }
         } catch (error) {
             console.error('❌ Error loading tampilan:', error);
@@ -239,26 +363,40 @@
         }
         renderBannerTrack();
         
-        // Update promo
-        if (tampilanData.promo) {
-            const promo = tampilanData.promo;
-            
-            if (promo.banner) {
-                if (elements.promoBannerImage) elements.promoBannerImage.src = promo.banner;
-                if (elements.promoBannerUrl) elements.promoBannerUrl.value = promo.banner;
-            }
-            
-            if (elements.promoDescription) elements.promoDescription.value = promo.description || '';
-            
-            if (promo.end_date) {
-                if (elements.promoEndDate) elements.promoEndDate.value = promo.end_date.split('T')[0] || '';
-                if (promo.end_time && elements.promoEndTime) elements.promoEndTime.value = promo.end_time;
-            }
-            
-            if (elements.promoNeverEnd) elements.promoNeverEnd.checked = promo.never_end || false;
-            if (elements.promoNotes) elements.promoNotes.value = promo.notes || '';
-            if (elements.promoActive) elements.promoActive.checked = promo.active !== false;
+        // Update promos (NEW)
+        if (tampilanData.promos && Array.isArray(tampilanData.promos)) {
+            promos = tampilanData.promos.map(promo => ({
+                id: promo.id || Date.now() + Math.random(),
+                title: promo.title || '',
+                banner: promo.banner || '',
+                description: promo.description || '',
+                end_date: promo.end_date || '',
+                end_time: promo.end_time || '',
+                never_end: promo.never_end || false,
+                notes: promo.notes || '',
+                active: promo.active !== false
+            }));
+            hasUnsavedPromos = false;
+        } else if (tampilanData.promo) {
+            // Migrate old single promo to new format
+            const oldPromo = tampilanData.promo;
+            promos = [{
+                id: Date.now(),
+                title: oldPromo.title || 'Promo',
+                banner: oldPromo.banner || '',
+                description: oldPromo.description || '',
+                end_date: oldPromo.end_date || '',
+                end_time: oldPromo.end_time || '',
+                never_end: oldPromo.never_end || false,
+                notes: oldPromo.notes || '',
+                active: oldPromo.active !== false
+            }];
+            hasUnsavedPromos = true;
+        } else {
+            promos = [];
+            hasUnsavedPromos = false;
         }
+        renderPromos();
         
         // Update colors
         if (tampilanData.colors) {
@@ -299,7 +437,7 @@
         }
     }
 
-    // ==================== BANNER FUNCTIONS ====================
+    // ==================== BANNER FUNCTIONS (existing) ====================
     async function validateImageSize(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -658,6 +796,318 @@
         });
     }
 
+    // ==================== PROMO FUNCTIONS (NEW) ====================
+    async function validatePromoBanner(url) {
+        if (!url || url.trim() === '') {
+            if (elements.promoBannerValidation) {
+                elements.promoBannerValidation.innerHTML = '<i class="fas fa-exclamation-triangle"></i> URL banner wajib diisi';
+                elements.promoBannerValidation.className = 'banner-validation-message error';
+            }
+            return false;
+        }
+        
+        if (elements.promoBannerValidation) {
+            elements.promoBannerValidation.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memvalidasi gambar...';
+            elements.promoBannerValidation.className = 'banner-validation-message info';
+        }
+        
+        try {
+            const result = await validateImageSize(url);
+            
+            if (elements.promoBannerValidation) {
+                elements.promoBannerValidation.innerHTML = '<i class="fas fa-check-circle"></i> Ukuran valid: 1280x760 ✓';
+                elements.promoBannerValidation.className = 'banner-validation-message success';
+            }
+            
+            // Update preview
+            if (elements.promoBannerImageSmall) {
+                elements.promoBannerImageSmall.src = url;
+            }
+            
+            return true;
+        } catch (error) {
+            if (elements.promoBannerValidation) {
+                elements.promoBannerValidation.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error.message || 'Gambar tidak valid'}`;
+                elements.promoBannerValidation.className = 'banner-validation-message error';
+            }
+            return false;
+        }
+    }
+
+    function openPromoModal(promo = null) {
+        if (promo) {
+            // Edit mode
+            elements.promoModalTitle.textContent = 'Edit Promosi';
+            elements.promoId.value = promo.id || '';
+            elements.promoTitle.value = promo.title || '';
+            elements.promoBannerUrl.value = promo.banner || '';
+            elements.promoDescription.value = promo.description || '';
+            elements.promoEndDate.value = promo.end_date || '';
+            elements.promoEndTime.value = promo.end_time || '';
+            elements.promoNeverEnd.checked = promo.never_end || false;
+            elements.promoNotes.value = promo.notes || '';
+            elements.promoActive.checked = promo.active !== false;
+            
+            // Update preview
+            if (promo.banner) {
+                elements.promoBannerImageSmall.src = promo.banner;
+                validatePromoBanner(promo.banner);
+            } else {
+                elements.promoBannerImageSmall.src = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner';
+            }
+            
+            currentPromoId = promo.id;
+        } else {
+            // Add mode
+            elements.promoModalTitle.textContent = 'Tambah Promosi';
+            elements.promoForm.reset();
+            elements.promoId.value = '';
+            elements.promoNeverEnd.checked = false;
+            elements.promoActive.checked = true;
+            elements.promoEndDate.disabled = false;
+            elements.promoEndTime.disabled = false;
+            elements.promoBannerImageSmall.src = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner';
+            
+            if (elements.promoBannerValidation) {
+                elements.promoBannerValidation.innerHTML = '<i class="fas fa-info-circle"></i> Masukkan URL banner (wajib 1280x760)';
+                elements.promoBannerValidation.className = 'banner-validation-message info';
+            }
+            
+            currentPromoId = null;
+        }
+        
+        // Setup never end toggle
+        updatePromoDateFields();
+        
+        elements.promoModal.classList.add('active');
+        vibrate(10);
+        
+        // Focus on title
+        setTimeout(() => {
+            elements.promoTitle.focus();
+        }, 300);
+    }
+
+    function closePromoModal() {
+        elements.promoModal.classList.remove('active');
+        currentPromoId = null;
+    }
+
+    function updatePromoDateFields() {
+        const neverEnd = elements.promoNeverEnd.checked;
+        elements.promoEndDate.disabled = neverEnd;
+        elements.promoEndTime.disabled = neverEnd;
+        
+        if (neverEnd) {
+            elements.promoEndDate.value = '';
+            elements.promoEndTime.value = '';
+        }
+    }
+
+    async function savePromo(e) {
+        e.preventDefault();
+        
+        const title = elements.promoTitle.value.trim();
+        const banner = elements.promoBannerUrl.value.trim();
+        const description = elements.promoDescription.value.trim();
+        const endDate = elements.promoNeverEnd.checked ? null : elements.promoEndDate.value;
+        const endTime = elements.promoNeverEnd.checked ? null : elements.promoEndTime.value;
+        const neverEnd = elements.promoNeverEnd.checked;
+        const notes = elements.promoNotes.value.trim();
+        const active = elements.promoActive.checked;
+        
+        // Validasi
+        if (!title) {
+            showToast('Judul promosi wajib diisi', 'warning');
+            elements.promoTitle.focus();
+            return;
+        }
+        
+        if (!banner) {
+            showToast('URL banner promosi wajib diisi', 'warning');
+            elements.promoBannerUrl.focus();
+            return;
+        }
+        
+        // Validasi ukuran banner
+        const isValid = await validatePromoBanner(banner);
+        if (!isValid) {
+            showToast('Banner tidak valid. Periksa URL dan ukuran gambar (harus 1280x760)', 'error');
+            return;
+        }
+        
+        if (!neverEnd && !endDate) {
+            showToast('Tanggal berakhir wajib diisi jika tidak memilih "Tidak ada batas waktu"', 'warning');
+            elements.promoEndDate.focus();
+            return;
+        }
+        
+        const promoData = {
+            id: currentPromoId || Date.now() + Math.random(),
+            title: title,
+            banner: banner,
+            description: description,
+            end_date: endDate,
+            end_time: endTime,
+            never_end: neverEnd,
+            notes: notes,
+            active: active
+        };
+        
+        if (currentPromoId) {
+            // Update existing
+            const index = promos.findIndex(p => p.id == currentPromoId);
+            if (index !== -1) {
+                promos[index] = promoData;
+            }
+        } else {
+            // Add new
+            promos.push(promoData);
+        }
+        
+        hasUnsavedPromos = true;
+        renderPromos();
+        closePromoModal();
+        showToast(`✅ Promosi ${currentPromoId ? 'diperbarui' : 'ditambahkan'}`, 'success');
+        vibrate(10);
+    }
+
+    function deletePromo(id) {
+        const promo = promos.find(p => p.id == id);
+        if (!promo) return;
+        
+        promoToDelete = { id, title: promo.title };
+        
+        if (elements.deleteMessage) {
+            elements.deleteMessage.textContent = `Hapus promosi "${promo.title}"?`;
+        }
+        if (elements.deleteInfo) {
+            elements.deleteInfo.innerHTML = `<strong>${escapeHtml(promo.title)}</strong>`;
+        }
+        
+        elements.deleteModal.classList.add('active');
+        vibrate(10);
+    }
+
+    function confirmDeletePromo() {
+        if (!promoToDelete) return;
+        
+        const index = promos.findIndex(p => p.id == promoToDelete.id);
+        if (index !== -1) {
+            promos.splice(index, 1);
+            hasUnsavedPromos = true;
+            renderPromos();
+            showToast('✅ Promosi dihapus', 'success');
+        }
+        
+        closeDeleteModal();
+        vibrate(10);
+    }
+
+    function closeDeleteModal() {
+        elements.deleteModal.classList.remove('active');
+        promoToDelete = null;
+    }
+
+    function renderPromos() {
+        if (!elements.promoContainer || !elements.emptyPromoMessage) return;
+        
+        if (promos.length === 0) {
+            elements.promoContainer.innerHTML = '';
+            elements.emptyPromoMessage.style.display = 'flex';
+            return;
+        }
+        
+        elements.emptyPromoMessage.style.display = 'none';
+        
+        let html = '';
+        promos.forEach(promo => {
+            const expiryText = promo.never_end 
+                ? '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tidak ada batas waktu</span>'
+                : `<span class="promo-expiry"><i class="fas fa-clock"></i> Berakhir: ${formatDate(promo.end_date, promo.end_time)}</span>`;
+            
+            const statusClass = promo.active ? 'active' : 'inactive';
+            const statusText = promo.active ? 'Aktif' : 'Tidak Aktif';
+            
+            html += `
+                <div class="promo-card" data-id="${promo.id}">
+                    <div class="promo-banner-wrapper">
+                        <img src="${promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image'}" 
+                             alt="${escapeHtml(promo.title)}"
+                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image';">
+                    </div>
+                    
+                    <div class="promo-content">
+                        <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
+                        
+                        ${promo.description ? `<p class="promo-description">${escapeHtml(promo.description)}</p>` : ''}
+                        
+                        <div class="promo-meta">
+                            ${expiryText}
+                            <span class="promo-status ${statusClass}">
+                                <i class="fas fa-${promo.active ? 'check-circle' : 'times-circle'}"></i>
+                                ${statusText}
+                            </span>
+                        </div>
+                        
+                        ${promo.notes ? `
+                            <div class="promo-notes">
+                                <i class="fas fa-sticky-note"></i>
+                                ${escapeHtml(promo.notes)}
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="promo-actions">
+                        <button class="promo-action-btn edit" onclick="window.tampilan.editPromo('${promo.id}')" title="Edit Promosi">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="promo-action-btn delete" onclick="window.tampilan.deletePromo('${promo.id}')" title="Hapus Promosi">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.promoContainer.innerHTML = html;
+    }
+
+    async function saveAllPromos() {
+        if (!currentWebsite) {
+            showToast('Website tidak ditemukan', 'error');
+            return;
+        }
+        
+        if (promos.length === 0) {
+            showToast('Belum ada promosi untuk disimpan', 'warning');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            // Save all promos to server
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
+                method: 'POST',
+                body: JSON.stringify({ promos: promos })
+            });
+            
+            if (response.success) {
+                showToast(`✅ ${promos.length} promosi disimpan!`, 'success');
+                hasUnsavedPromos = false;
+                await loadTampilanData();
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan promosi');
+            }
+        } catch (error) {
+            console.error('❌ Error saving promos:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     // ==================== SAVE FUNCTIONS ====================
     async function saveLogo() {
         if (!currentWebsite) {
@@ -730,44 +1180,6 @@
             }
         } catch (error) {
             console.error('❌ Error saving banners:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    async function savePromo() {
-        if (!currentWebsite) {
-            showToast('Website tidak ditemukan', 'error');
-            return;
-        }
-        
-        const promoData = {
-            banner: elements.promoBannerUrl?.value || elements.promoBannerImage?.src || '',
-            description: elements.promoDescription?.value || '',
-            end_date: elements.promoNeverEnd?.checked ? null : (elements.promoEndDate?.value || ''),
-            end_time: elements.promoNeverEnd?.checked ? null : (elements.promoEndTime?.value || ''),
-            never_end: elements.promoNeverEnd?.checked || false,
-            notes: elements.promoNotes?.value || '',
-            active: elements.promoActive?.checked || false
-        };
-        
-        showLoading(true);
-        
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promo`, {
-                method: 'POST',
-                body: JSON.stringify(promoData)
-            });
-            
-            if (response.success) {
-                showToast('✅ Pengaturan promosi disimpan!', 'success');
-                await loadTampilanData();
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan promosi');
-            }
-        } catch (error) {
-            console.error('❌ Error saving promo:', error);
             showToast(error.message, 'error');
         } finally {
             showLoading(false);
@@ -848,7 +1260,7 @@
         await Promise.all([
             saveLogo(),
             saveBanners(),
-            savePromo(),
+            saveAllPromos(),
             saveColors(),
             saveFont()
         ]);
@@ -933,7 +1345,7 @@
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.location.href = '/wtb/panel.html';
+                window.location.href = '/wtb/html/panel.html';
             });
         }
         
@@ -1013,33 +1425,55 @@
             elements.saveBannersBtn.addEventListener('click', saveBanners);
         }
         
-        // Promo upload
-        if (elements.uploadPromoBtn) {
-            elements.uploadPromoBtn.addEventListener('click', () => {
-                openUploadModal((imageUrl) => {
-                    if (elements.promoBannerImage) {
-                        elements.promoBannerImage.src = imageUrl;
-                    }
-                    if (elements.promoBannerUrl) {
-                        elements.promoBannerUrl.value = imageUrl;
-                    }
-                    showToast('✅ Banner promosi diperbarui!', 'success');
-                }, 'promo');
+        // Promo (NEW)
+        if (elements.addPromoBtn) {
+            elements.addPromoBtn.addEventListener('click', () => openPromoModal());
+        }
+        
+        if (elements.saveAllPromoBtn) {
+            elements.saveAllPromoBtn.addEventListener('click', saveAllPromos);
+        }
+        
+        // Promo modal
+        if (elements.promoForm) {
+            elements.promoForm.addEventListener('submit', savePromo);
+        }
+        
+        if (elements.closePromoModal) {
+            elements.closePromoModal.addEventListener('click', closePromoModal);
+        }
+        
+        if (elements.cancelPromoBtn) {
+            elements.cancelPromoBtn.addEventListener('click', closePromoModal);
+        }
+        
+        // Promo banner URL validation on input
+        if (elements.promoBannerUrl) {
+            let bannerTimeout;
+            elements.promoBannerUrl.addEventListener('input', () => {
+                clearTimeout(bannerTimeout);
+                bannerTimeout = setTimeout(() => {
+                    validatePromoBanner(elements.promoBannerUrl.value.trim());
+                }, 800);
             });
         }
         
         // Promo never end toggle
         if (elements.promoNeverEnd) {
-            elements.promoNeverEnd.addEventListener('change', () => {
-                if (elements.promoEndDate && elements.promoEndTime) {
-                    elements.promoEndDate.disabled = elements.promoNeverEnd.checked;
-                    elements.promoEndTime.disabled = elements.promoNeverEnd.checked;
-                }
-            });
+            elements.promoNeverEnd.addEventListener('change', updatePromoDateFields);
         }
         
-        if (elements.savePromoBtn) {
-            elements.savePromoBtn.addEventListener('click', savePromo);
+        // Delete modal
+        if (elements.closeDeleteModal) {
+            elements.closeDeleteModal.addEventListener('click', closeDeleteModal);
+        }
+        
+        if (elements.cancelDeleteBtn) {
+            elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+        }
+        
+        if (elements.confirmDeleteBtn) {
+            elements.confirmDeleteBtn.addEventListener('click', confirmDeletePromo);
         }
         
         // Colors
@@ -1125,17 +1559,32 @@
             if (e.target === elements.uploadModal) {
                 closeUploadModal();
             }
+            if (e.target === elements.promoModal) {
+                closePromoModal();
+            }
+            if (e.target === elements.deleteModal) {
+                closeDeleteModal();
+            }
         });
     }
 
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.tampilan = {
+        // Banner functions
         handleUrlChange: (index, url) => handleUrlChange(index, url),
         deleteBanner: (index) => deleteBanner(index),
-        moveBanner: (index, direction) => moveBanner(index, direction)
+        moveBanner: (index, direction) => moveBanner(index, direction),
+        
+        // Promo functions (NEW)
+        editPromo: (id) => {
+            const promo = promos.find(p => p.id == id);
+            if (promo) openPromoModal(promo);
+        },
+        deletePromo: (id) => deletePromo(id)
     };
 
     // ==================== START ====================
+    setupKeyboardHandler();
     setupEventListeners();
     init();
 })();
