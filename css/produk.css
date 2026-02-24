@@ -1,4 +1,4 @@
-/* produk.css - Manajemen Produk dengan Tampilan Desktop */
+/* produk.css - Manajemen Produk dengan Struktur Hierarki (VERSI BARU) */
 
 :root {
     --tg-bg-color: #0f0f0f;
@@ -19,6 +19,12 @@
     --bg-card-hover: rgba(255, 255, 255, 0.08);
     --border-color: rgba(255, 255, 255, 0.1);
     --border-color-light: rgba(255, 255, 255, 0.05);
+    
+    /* Status colors */
+    --seller-color: #10b981;
+    --buyer-color: #f59e0b;
+    --ready-color: #10b981;
+    --sold-color: #ef4444;
 }
 
 * {
@@ -37,7 +43,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* Loading Overlay */
+/* ===== LOADING OVERLAY ===== */
 .loading-overlay {
     position: fixed;
     top: 0;
@@ -73,7 +79,7 @@ body {
     to { transform: rotate(360deg); }
 }
 
-/* Toast Container */
+/* ===== TOAST NOTIFICATIONS ===== */
 .toast-container {
     position: fixed;
     bottom: 20px;
@@ -134,27 +140,35 @@ body {
     }
 }
 
-/* Main Container */
+/* ===== MAIN CONTAINER ===== */
 .produk-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Header */
+/* ===== HEADER ===== */
 .produk-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    margin-bottom: 20px;
-    backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(10px);
+}
+
+/* ===== PRODUCTS CONTAINER ===== */
+.products-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 0;
+  width: 100%;
 }
 
 .header-left {
@@ -214,82 +228,19 @@ body {
     letter-spacing: 0.5px;
 }
 
-/* Search & Filter Bar */
-.search-filter-bar {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.search-wrapper {
-    flex: 2;
-    min-width: 300px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-}
-
-.search-wrapper i {
-    color: var(--tg-hint-color);
-    font-size: 16px;
-}
-
-.search-wrapper input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: var(--tg-text-color);
-    font-size: 14px;
-    outline: none;
-}
-
-.search-wrapper input::placeholder {
-    color: var(--tg-hint-color);
-}
-
-.filter-wrapper {
-    flex: 1;
-    display: flex;
-    gap: 12px;
-    min-width: 300px;
-}
-
-.filter-select {
-    flex: 1;
-    padding: 12px 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    color: var(--tg-text-color);
-    font-size: 14px;
-    outline: none;
-    cursor: pointer;
-}
-
-.filter-select:hover {
-    border-color: var(--primary-color);
-}
-
-/* Products Tree Container */
-.products-tree-container {
+/* ===== PRODUCTS CONTAINER ===== */
+.products-container {
     flex: 1;
     overflow-y: auto;
     padding-right: 4px;
     min-height: 0;
-}
-
-.products-tree {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    margin-top: 0;
 }
 
-/* Layanan Card */
+/* ===== LAYANAN CARD ===== */
 .layanan-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -309,7 +260,6 @@ body {
     padding: 16px 20px;
     background: linear-gradient(135deg, rgba(64, 167, 227, 0.1), transparent);
     border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
 }
 
 .layanan-icon {
@@ -321,6 +271,7 @@ body {
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .layanan-icon img {
@@ -352,39 +303,48 @@ body {
 .layanan-actions {
     display: flex;
     gap: 8px;
+    flex-shrink: 0;
 }
 
-.layanan-toggle {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    color: var(--tg-text-color);
-    cursor: pointer;
-    transition: all 0.2s;
+.layanan-banner {
+    width: 100%;
+    max-height: 200px;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.2);
 }
 
-.layanan-toggle:hover {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
+.layanan-banner img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
 }
 
-.layanan-content {
-    display: none;
+.layanan-catatan {
+    padding: 8px 20px;
+    background: rgba(64, 167, 227, 0.05);
+    font-size: 12px;
+    color: var(--tg-hint-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.layanan-catatan i {
+    color: var(--primary-color);
+    margin-right: 6px;
+}
+
+/* ===== APLIKASI CONTAINER ===== */
+.aplikasi-container {
     padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.layanan-content.open {
-    display: block;
-}
-
-/* Aplikasi Card */
+/* ===== APLIKASI CARD ===== */
 .aplikasi-card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    margin-bottom: 16px;
     overflow: hidden;
 }
 
@@ -395,7 +355,6 @@ body {
     padding: 14px 16px;
     background: rgba(0, 0, 0, 0.2);
     border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
 }
 
 .aplikasi-logo {
@@ -407,6 +366,7 @@ body {
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .aplikasi-logo img {
@@ -435,43 +395,35 @@ body {
     color: var(--tg-hint-color);
 }
 
-.aplikasi-count {
-    font-size: 12px;
-    color: var(--primary-color);
-    font-weight: 500;
-    margin-right: 12px;
-}
-
 .aplikasi-actions {
     display: flex;
     gap: 6px;
+    flex-shrink: 0;
 }
 
-.aplikasi-toggle {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    color: var(--tg-text-color);
-    cursor: pointer;
+.aplikasi-catatan {
+    padding: 8px 16px;
+    background: rgba(245, 158, 11, 0.05);
+    font-size: 11px;
+    color: var(--tg-hint-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
-.aplikasi-toggle:hover {
-    background: var(--primary-color);
+.aplikasi-catatan i {
+    color: var(--warning-color);
+    margin-right: 6px;
 }
 
-.aplikasi-items {
-    display: none;
+/* ===== ITEMS CONTAINER ===== */
+.items-container {
     padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.aplikasi-items.open {
-    display: block;
-}
-
-/* Item Row */
-.item-row {
+/* ===== ITEM CARD ===== */
+.item-card {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -479,13 +431,17 @@ body {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color-light);
     border-radius: 10px;
-    margin-bottom: 8px;
     transition: all 0.2s;
 }
 
-.item-row:hover {
+.item-card:hover {
     background: rgba(255, 255, 255, 0.04);
     border-color: var(--border-color);
+}
+
+.item-card.sold {
+    opacity: 0.7;
+    background: rgba(239, 68, 68, 0.05);
 }
 
 .item-info {
@@ -496,6 +452,27 @@ body {
     font-size: 15px;
     font-weight: 600;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.item-tipe {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+}
+
+.item-tipe.seller {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--seller-color);
+}
+
+.item-tipe.buyer {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--buyer-color);
 }
 
 .item-durasi {
@@ -508,6 +485,7 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
+    flex-wrap: wrap;
 }
 
 .item-harga {
@@ -516,24 +494,7 @@ body {
     color: var(--success-color);
 }
 
-.item-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 8px;
-    border-radius: 20px;
-}
-
-.item-badge.unggulan {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-}
-
-.item-badge.populer {
-    background: linear-gradient(135deg, #8b5cf6, #6d28d9);
-    color: white;
-}
-
-.item-method {
+.item-metode {
     display: flex;
     align-items: center;
     gap: 4px;
@@ -542,12 +503,12 @@ body {
     border-radius: 20px;
 }
 
-.item-method.directly {
+.item-metode.directly {
     background: rgba(16, 185, 129, 0.15);
     color: var(--success-color);
 }
 
-.item-method.request {
+.item-metode.request {
     background: rgba(245, 158, 11, 0.15);
     color: var(--warning-color);
 }
@@ -564,16 +525,36 @@ body {
     color: var(--primary-color);
 }
 
-.item-stok.low {
-    color: var(--warning-color);
+.item-stok.habis {
+    color: var(--danger-color);
+}
+
+.item-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 20px;
+}
+
+.item-status.ready {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--ready-color);
+}
+
+.item-status.sold {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--sold-color);
 }
 
 .item-actions {
     display: flex;
     gap: 6px;
+    flex-shrink: 0;
 }
 
-/* Buttons */
+/* ===== BUTTONS ===== */
 .btn-icon {
     width: 34px;
     height: 34px;
@@ -583,6 +564,9 @@ body {
     color: var(--tg-text-color);
     cursor: pointer;
     transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-icon:hover {
@@ -592,11 +576,6 @@ body {
 .btn-icon.edit:hover {
     background: var(--primary-color);
     border-color: var(--primary-color);
-}
-
-.btn-icon.stok:hover {
-    background: var(--success-color);
-    border-color: var(--success-color);
 }
 
 .btn-icon.delete:hover {
@@ -676,34 +655,66 @@ body {
     background: rgba(64, 167, 227, 0.2);
 }
 
-/* Empty State */
+.btn-add-aplikasi,
+.btn-add-item {
+    width: 100%;
+    padding: 12px;
+    background: rgba(64, 167, 227, 0.05);
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    color: var(--tg-hint-color);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-add-aplikasi:hover,
+.btn-add-item:hover {
+    background: rgba(64, 167, 227, 0.1);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* ===== EMPTY STATE ===== */
 .empty-state {
     text-align: center;
-    padding: 80px 20px;
+    padding: 30px 20px;
     background: var(--bg-card);
     border-radius: 16px;
     border: 1px solid var(--border-color);
+    margin: 8px 0 20px 0;
+    width: 100%;
 }
 
 .empty-state i {
-    font-size: 64px;
+    font-size: 42px;
     color: var(--tg-hint-color);
-    margin-bottom: 20px;
+    margin-bottom: 8px;
     opacity: 0.5;
 }
 
 .empty-state h3 {
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
 .empty-state p {
     color: var(--tg-hint-color);
-    margin-bottom: 24px;
+    margin-bottom: 12px;
+    font-size: 12px;
 }
 
-/* MODAL */
+.empty-state .btn-primary {
+    padding: 3px 6px;
+    font-size: 13px;
+}
+
+/* ===== MODAL ===== */
 .modal {
     display: none;
     position: fixed;
@@ -727,7 +738,7 @@ body {
     background: var(--tg-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 20px;
-    max-width: 800px;
+    max-width: 600px;
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
@@ -735,7 +746,7 @@ body {
 }
 
 .modal-content.modal-lg {
-    max-width: 900px;
+    max-width: 800px;
 }
 
 .modal-content.modal-sm {
@@ -802,57 +813,23 @@ body {
     padding: 24px;
 }
 
-/* Form */
-.product-form {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.form-section {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 20px;
-}
-
-.section-title {
-    font-size: 16px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-    color: var(--primary-color);
-}
-
-.section-title i {
-    font-size: 18px;
-}
-
-.section-header.with-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-}
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-}
-
-.form-group.full-width {
-    grid-column: 1 / -1;
+/* ===== FORM ===== */
+.form-group {
+    margin-bottom: 20px;
 }
 
 .form-group label {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 13px;
     font-weight: 500;
     margin-bottom: 6px;
     color: var(--tg-hint-color);
+}
+
+.form-group label i {
+    color: var(--primary-color);
 }
 
 .form-group input,
@@ -876,69 +853,54 @@ body {
     background: rgba(64, 167, 227, 0.1);
 }
 
-/* Method Options */
-.method-options {
+.form-row {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
 }
 
-.method-option {
+.hint {
+    display: block;
+    font-size: 11px;
+    color: var(--tg-hint-color);
+    margin-top: 4px;
+}
+
+/* ===== TOGGLE GROUP ===== */
+.toggle-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.toggle-option {
     position: relative;
     cursor: pointer;
 }
 
-.method-option input[type="radio"] {
+.toggle-option input[type="radio"] {
     position: absolute;
     opacity: 0;
 }
 
-.method-content {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
+.toggle-label {
+    display: inline-block;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
     transition: all 0.2s;
 }
 
-.method-option input[type="radio"]:checked + .method-indicator + .method-content {
-    border-color: var(--primary-color);
-    background: rgba(64, 167, 227, 0.1);
-}
-
-.method-indicator {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--border-color);
-    border-radius: 50%;
-}
-
-input[type="radio"]:checked + .method-indicator {
-    border-color: var(--primary-color);
+input[type="radio"]:checked + .toggle-label {
     background: var(--primary-color);
-    box-shadow: inset 0 0 0 4px var(--tg-bg-color);
+    border-color: var(--primary-color);
+    color: white;
 }
 
-.method-name {
-    display: block;
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-
-.method-desc {
-    display: block;
-    font-size: 11px;
-    color: var(--tg-hint-color);
-}
-
-/* Stok List */
+/* ===== STOK LIST ===== */
 .stok-container {
     margin: 16px 0;
 }
@@ -981,6 +943,9 @@ input[type="radio"]:checked + .method-indicator {
     border: none;
     color: var(--tg-hint-color);
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .stok-item-btn.edit:hover {
@@ -1009,7 +974,7 @@ input[type="radio"]:checked + .method-indicator {
     opacity: 0.3;
 }
 
-/* Fields List */
+/* ===== FIELDS LIST ===== */
 .fields-list {
     display: flex;
     flex-direction: column;
@@ -1052,63 +1017,29 @@ input[type="radio"]:checked + .method-indicator {
     margin-left: 6px;
 }
 
-/* Status Toggle */
-.status-toggle {
+/* ===== SECTION HEADER ===== */
+.section-header.with-actions {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
 }
 
-.toggle {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-}
-
-.toggle input {
-    display: none;
-}
-
-.toggle-slider {
-    width: 50px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    position: relative;
-    transition: all 0.3s;
-}
-
-.toggle-slider:before {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    background: white;
-    border-radius: 50%;
-    top: 2px;
-    left: 2px;
-    transition: all 0.3s;
-}
-
-input:checked + .toggle-slider {
-    background: var(--success-color);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(26px);
-}
-
-.toggle-label {
+.section-header h4 {
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary-color);
 }
 
-/* Form Actions */
+/* ===== FORM ACTIONS ===== */
 .form-actions {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    margin-top: 16px;
+    margin-top: 24px;
 }
 
 .form-actions .btn-secondary,
@@ -1118,7 +1049,7 @@ input:checked + .toggle-slider:before {
     justify-content: center;
 }
 
-/* Delete Modal */
+/* ===== DELETE MODAL ===== */
 .delete-text {
     font-size: 16px;
     margin-bottom: 8px;
@@ -1140,7 +1071,7 @@ input:checked + .toggle-slider:before {
     text-align: center;
 }
 
-/* Scrollbar */
+/* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -1160,34 +1091,31 @@ input:checked + .toggle-slider:before {
     background: rgba(255, 255, 255, 0.25);
 }
 
-/* Responsive */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .produk-container {
         padding: 12px;
     }
     
-    .search-filter-bar {
-        flex-direction: column;
+    .layanan-header {
+        flex-wrap: wrap;
     }
     
-    .search-wrapper,
-    .filter-wrapper {
+    .layanan-actions {
         width: 100%;
+        justify-content: flex-end;
     }
     
-    .filter-wrapper {
-        flex-direction: column;
+    .aplikasi-header {
+        flex-wrap: wrap;
     }
     
-    .form-grid {
-        grid-template-columns: 1fr;
+    .aplikasi-actions {
+        width: 100%;
+        justify-content: flex-end;
     }
     
-    .method-options {
-        grid-template-columns: 1fr;
-    }
-    
-    .item-row {
+    .item-card {
         flex-wrap: wrap;
     }
     
@@ -1196,331 +1124,11 @@ input:checked + .toggle-slider:before {
         justify-content: flex-end;
     }
     
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
     .modal-content {
         margin: 10px;
     }
-}
-
-/* Tambahkan di bagian yang sesuai (setelah .layanan-actions atau di bagian buttons) */
-
-/* Tombol untuk mengelola layanan dan aplikasi */
-.btn-manage {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--tg-text-color);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-manage:hover {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  transform: translateY(-2px);
-}
-
-.btn-manage i {
-  font-size: 16px;
-}
-
-.btn-manage.manage-layanan:hover {
-  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
-  border-color: #8b5cf6;
-}
-
-.btn-manage.manage-aplikasi:hover {
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  border-color: #f59e0b;
-}
-
-/* Tombol manage di header layanan */
-.layanan-manage-btn {
-  background: rgba(139, 92, 246, 0.2);
-  border-color: rgba(139, 92, 246, 0.3);
-  color: #8b5cf6;
-}
-
-.layanan-manage-btn:hover {
-  background: #8b5cf6 !important;
-  color: white !important;
-}
-
-/* Tombol manage di header aplikasi */
-.aplikasi-manage-btn {
-  background: rgba(245, 158, 11, 0.2);
-  border-color: rgba(245, 158, 11, 0.3);
-  color: #f59e0b;
-}
-
-.aplikasi-manage-btn:hover {
-  background: #f59e0b !important;
-  color: white !important;
-}
-
-/* Tooltip */
-[data-tooltip] {
-  position: relative;
-  cursor: pointer;
-}
-
-[data-tooltip]:before {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  border-radius: 6px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 100;
-  margin-bottom: 8px;
-  backdrop-filter: blur(5px);
-  border: 1px solid var(--border-color);
-}
-
-[data-tooltip]:hover:before {
-  opacity: 1;
-}
-
-/* Form Sections untuk Manage */
-.form-section.manage-layanan {
-  border-left: 3px solid #8b5cf6;
-}
-
-.form-section.manage-aplikasi {
-  border-left: 3px solid #f59e0b;
-}
-
-.form-section.manage-item {
-  border-left: 3px solid var(--primary-color);
-}
-
-/* Info Badge untuk manage mode */
-.manage-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  background: rgba(64, 167, 227, 0.1);
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  border-left: 3px solid var(--primary-color);
-}
-
-.manage-info i {
-  color: var(--primary-color);
-  font-size: 16px;
-}
-
-.manage-info strong {
-  color: var(--primary-color);
-}
-
-/* Multiple Items Container */
-.multiple-items-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-height: 400px;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-.item-group {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 16px;
-}
-
-.item-group-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.item-group-header h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--primary-color);
-}
-
-.item-group-header .badge {
-  font-size: 11px;
-  padding: 4px 8px;
-  background: rgba(64, 167, 227, 0.15);
-  color: var(--primary-color);
-  border-radius: 20px;
-}
-
-.remove-item-group {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: rgba(239, 68, 68, 0.1);
-  border: none;
-  color: var(--danger-color);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.remove-item-group:hover {
-  background: var(--danger-color);
-  color: white;
-}
-
-.item-group-fields {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.item-group-fields .form-group.full-width {
-  grid-column: 1 / -1;
-}
-
-@media (max-width: 768px) {
-  .item-group-fields {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Tambahkan di produk.css - Style untuk tombol manage */
-
-/* Tombol manage di header layanan */
-.btn-manage {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  color: var(--tg-text-color);
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.btn-manage:hover {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  transform: translateY(-2px);
-}
-
-.btn-manage i {
-  font-size: 16px;
-}
-
-.btn-manage.manage-layanan {
-  background: rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.3);
-  color: #8b5cf6;
-}
-
-.btn-manage.manage-layanan:hover {
-  background: #8b5cf6;
-  border-color: #8b5cf6;
-  color: white;
-}
-
-.btn-manage.manage-aplikasi {
-  background: rgba(245, 158, 11, 0.15);
-  border-color: rgba(245, 158, 11, 0.3);
-  color: #f59e0b;
-}
-
-.btn-manage.manage-aplikasi:hover {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: white;
-}
-
-/* Tooltip */
-[data-tooltip] {
-  position: relative;
-}
-
-[data-tooltip]:before {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 6px 12px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
-  border-radius: 6px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 100;
-  margin-bottom: 8px;
-  backdrop-filter: blur(5px);
-  border: 1px solid var(--border-color);
-}
-
-[data-tooltip]:hover:before {
-  opacity: 1;
-}
-
-/* Info manage di modal */
-.manage-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: rgba(139, 92, 246, 0.1);
-  border-radius: 8px;
-  margin-bottom: 16px;
-  border-left: 3px solid #8b5cf6;
-}
-
-.manage-info i {
-  color: #8b5cf6;
-  font-size: 18px;
-}
-
-.manage-info strong {
-  color: #8b5cf6;
-}
-
-.manage-info.aplikasi {
-  background: rgba(245, 158, 11, 0.1);
-  border-left-color: #f59e0b;
-}
-
-.manage-info.aplikasi i,
-.manage-info.aplikasi strong {
-  color: #f59e0b;
-}
-
-/* Input disabled */
-input.disabled,
-input:disabled {
-  opacity: 0.7;
-  background: rgba(255, 255, 255, 0.02) !important;
-  cursor: not-allowed;
 }
