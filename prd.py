@@ -71,8 +71,83 @@ def init_db():
     conn.close()
     print("✅ Products database initialized successfully")
 
-# Inisialisasi database
-init_db()
+# ==================== FUNGSI MIGRASI DATABASE ====================
+
+def migrate_database():
+    """Migrasi database ke struktur terbaru - menambahkan kolom yang belum ada"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Cek apakah tabel products ada
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='products'")
+        if not cursor.fetchone():
+            print("⚠️ Tabel products belum ada, inisialisasi dulu...")
+            conn.close()
+            return False
+        
+        # Cek struktur tabel saat ini
+        cursor.execute("PRAGMA table_info(products)")
+        existing_columns = [col[1] for col in cursor.fetchall()]
+        
+        print("📊 Existing columns:", existing_columns)
+        
+        # Daftar kolom yang harus ada (lengkap dari struktur terbaru)
+        required_columns = {
+            'layanan_nama': 'TEXT NOT NULL DEFAULT ""',
+            'layanan_gambar': 'TEXT',
+            'layanan_banner': 'TEXT',
+            'layanan_desc': 'TEXT',
+            'layanan_catatan': 'TEXT',
+            'aplikasi_nama': 'TEXT',
+            'aplikasi_gambar': 'TEXT',
+            'aplikasi_desc': 'TEXT',
+            'aplikasi_catatan': 'TEXT',
+            'item_nama': 'TEXT',
+            'item_durasi_jumlah': 'INTEGER DEFAULT 0',
+            'item_durasi_satuan': 'TEXT DEFAULT "hari"',
+            'item_harga': 'INTEGER DEFAULT 0',
+            'item_tipe': 'TEXT DEFAULT "seller"',
+            'item_metode': 'TEXT DEFAULT "directly"',
+            'item_stok': 'TEXT DEFAULT "[]"',
+            'item_fields': 'TEXT DEFAULT "[]"',
+            'item_ready': 'BOOLEAN DEFAULT 1'
+        }
+        
+        columns_added = []
+        
+        # Tambahkan kolom yang belum ada
+        for col_name, col_type in required_columns.items():
+            if col_name not in existing_columns:
+                try:
+                    alter_sql = f"ALTER TABLE products ADD COLUMN {col_name} {col_type}"
+                    cursor.execute(alter_sql)
+                    columns_added.append(col_name)
+                    print(f"✅ Column '{col_name}' added successfully")
+                except Exception as e:
+                    print(f"❌ Failed to add column '{col_name}': {e}")
+        
+        # Buat ulang indexes jika perlu
+        try:
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_website ON products(website_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_layanan ON products(layanan_nama)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_aplikasi ON products(aplikasi_nama)')
+            print("✅ Indexes created/verified")
+        except Exception as e:
+            print(f"⚠️ Failed to create indexes: {e}")
+        
+        conn.commit()
+        conn.close()
+        
+        if columns_added:
+            print(f"✅ Migration complete. Added columns: {', '.join(columns_added)}")
+        else:
+            print("✅ Database already up to date. No columns added.")
+        
+        return True
+    except Exception as e:
+        print(f"⚠️ Migration error: {e}")
+        return False
 
 # ==================== FUNGSI UNTUK LAYANAN ====================
 
@@ -403,3 +478,14 @@ def get_all_data(website_id):
         result.append(layanan_data)
     
     return result
+
+# ==================== JALANKAN MIGRASI ====================
+
+# Inisialisasi database
+init_db()
+
+# Jalankan migrasi untuk memastikan semua kolom ada
+try:
+    migrate_database()
+except Exception as e:
+    print(f"⚠️ Migration warning: {e}")
