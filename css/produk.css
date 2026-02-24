@@ -1403,3 +1403,124 @@ input:checked + .toggle-slider:before {
     grid-template-columns: 1fr;
   }
 }
+
+/* Tambahkan di produk.css - Style untuk tombol manage */
+
+/* Tombol manage di header layanan */
+.btn-manage {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--tg-text-color);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-manage:hover {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.btn-manage i {
+  font-size: 16px;
+}
+
+.btn-manage.manage-layanan {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #8b5cf6;
+}
+
+.btn-manage.manage-layanan:hover {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  color: white;
+}
+
+.btn-manage.manage-aplikasi {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+}
+
+.btn-manage.manage-aplikasi:hover {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: white;
+}
+
+/* Tooltip */
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+  margin-bottom: 8px;
+  backdrop-filter: blur(5px);
+  border: 1px solid var(--border-color);
+}
+
+[data-tooltip]:hover:before {
+  opacity: 1;
+}
+
+/* Info manage di modal */
+.manage-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border-left: 3px solid #8b5cf6;
+}
+
+.manage-info i {
+  color: #8b5cf6;
+  font-size: 18px;
+}
+
+.manage-info strong {
+  color: #8b5cf6;
+}
+
+.manage-info.aplikasi {
+  background: rgba(245, 158, 11, 0.1);
+  border-left-color: #f59e0b;
+}
+
+.manage-info.aplikasi i,
+.manage-info.aplikasi strong {
+  color: #f59e0b;
+}
+
+/* Input disabled */
+input.disabled,
+input:disabled {
+  opacity: 0.7;
+  background: rgba(255, 255, 255, 0.02) !important;
+  cursor: not-allowed;
+}
