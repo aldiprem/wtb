@@ -87,11 +87,18 @@ def get_tampilan(website_id):
                 data['banners'] = json.loads(data['banners'])
             except:
                 data['banners'] = []
+        else:
+            data['banners'] = []
         
-        # Parse promos (NEW)
+        # Parse promos - PERBAIKAN DI SINI
         if data['promos']:
             try:
-                data['promos'] = json.loads(data['promos'])
+                promos_data = json.loads(data['promos'])
+                # Pastikan selalu berupa array
+                if isinstance(promos_data, list):
+                    data['promos'] = promos_data
+                else:
+                    data['promos'] = []
             except:
                 data['promos'] = []
         else:
@@ -102,36 +109,57 @@ def get_tampilan(website_id):
                 data['colors'] = json.loads(data['colors'])
             except:
                 data['colors'] = {}
+        else:
+            data['colors'] = {}
+            
         if data['banner_positions']:
             try:
                 data['banner_positions'] = json.loads(data['banner_positions'])
             except:
                 data['banner_positions'] = []
+        else:
+            data['banner_positions'] = []
+            
         if data['payment_notes']:
             try:
                 data['payment_notes'] = json.loads(data['payment_notes'])
             except:
                 data['payment_notes'] = {}
+        else:
+            data['payment_notes'] = {}
+            
         if data['banks']:
             try:
                 data['banks'] = json.loads(data['banks'])
             except:
                 data['banks'] = []
+        else:
+            data['banks'] = []
+            
         if data['ewallets']:
             try:
                 data['ewallets'] = json.loads(data['ewallets'])
             except:
                 data['ewallets'] = []
+        else:
+            data['ewallets'] = []
+            
         if data['qris']:
             try:
                 data['qris'] = json.loads(data['qris'])
             except:
                 data['qris'] = {}
+        else:
+            data['qris'] = {}
+            
         if data['crypto']:
             try:
                 data['crypto'] = json.loads(data['crypto'])
             except:
                 data['crypto'] = {}
+        else:
+            data['crypto'] = {}
+            
         return data
     return None
 
