@@ -711,171 +711,168 @@
       });
     }
 
-    // ==================== FUNGSI SETUP DRAG EVENTS ====================
-    function setupBannerDragEvents(index) {
-      const previewArea = document.getElementById(`banner-preview-${index}`);
-      if (!previewArea) return;
-    
-      const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
-      if (!imageWrapper) return;
-    
-      let startX, startY, startPosX, startPosY;
-      let isDragging = false;
-    
-      // Touch start - mulai drag langsung
-      const onTouchStart = (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-    
-        startX = touch.clientX;
-        startY = touch.clientY;
-    
-        startPosX = banners[index].positionX || 50;
-        startPosY = banners[index].positionY || 50;
-    
-        isDragging = true;
-        imageWrapper.classList.add('dragging-active');
-        vibrate(10);
-      };
-    
-      const onTouchMove = (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-    
-        const touch = e.touches[0];
-        const rect = imageWrapper.getBoundingClientRect();
-    
-        const deltaX = touch.clientX - startX;
-        const deltaY = touch.clientY - startY;
-    
-        const percentPerPixelX = 100 / rect.width;
-        const percentPerPixelY = 100 / rect.height;
-    
-        let newPosX = startPosX - (deltaX * percentPerPixelX);
-        let newPosY = startPosY - (deltaY * percentPerPixelY);
-    
-        newPosX = Math.max(0, Math.min(100, newPosX));
-        newPosY = Math.max(0, Math.min(100, newPosY));
-    
-        banners[index].positionX = Math.round(newPosX);
-        banners[index].positionY = Math.round(newPosY);
-    
-        imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
-    
-        const indicator = document.getElementById(`pos-indicator-${index}`);
-        if (indicator) {
-          indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+        // ==================== FUNGSI SETUP DRAG EVENTS ====================
+        function setupBannerDragEvents(index) {
+          const previewArea = document.getElementById(`banner-preview-${index}`);
+          if (!previewArea) return;
+        
+          const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
+          if (!imageWrapper) return;
+        
+          let startX, startY, startPosX, startPosY;
+          let isDragging = false;
+        
+          // Touch start - mulai drag langsung
+          const onTouchStart = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+        
+            startX = touch.clientX;
+            startY = touch.clientY;
+        
+            startPosX = banners[index].positionX || 50;
+            startPosY = banners[index].positionY || 50;
+        
+            isDragging = true;
+            imageWrapper.classList.add('dragging-active');
+            vibrate(10);
+          };
+        
+          const onTouchMove = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+        
+            const touch = e.touches[0];
+            const rect = imageWrapper.getBoundingClientRect();
+        
+            const deltaX = touch.clientX - startX;
+            const deltaY = touch.clientY - startY;
+        
+            const percentPerPixelX = 100 / rect.width;
+            const percentPerPixelY = 100 / rect.height;
+        
+            let newPosX = startPosX - (deltaX * percentPerPixelX);
+            let newPosY = startPosY - (deltaY * percentPerPixelY);
+        
+            newPosX = Math.max(0, Math.min(100, newPosX));
+            newPosY = Math.max(0, Math.min(100, newPosY));
+        
+            banners[index].positionX = Math.round(newPosX);
+            banners[index].positionY = Math.round(newPosY);
+        
+            imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+        
+            const indicator = document.getElementById(`pos-indicator-${index}`);
+            if (indicator) {
+              indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+            }
+        
+            hasUnsavedBanners = true;
+          };
+        
+          const onTouchEnd = (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            isDragging = false;
+            imageWrapper.classList.remove('dragging-active');
+          };
+        
+          const onTouchCancel = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            imageWrapper.classList.remove('dragging-active');
+          };
+        
+          // Hapus event listener lama
+          imageWrapper.removeEventListener('touchstart', onTouchStart);
+          imageWrapper.removeEventListener('touchmove', onTouchMove);
+          imageWrapper.removeEventListener('touchend', onTouchEnd);
+          imageWrapper.removeEventListener('touchcancel', onTouchCancel);
+        
+          // Tambah event listener baru
+          imageWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+          imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+          imageWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
+          imageWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
+        
+          // Mouse events untuk testing
+          let isMouseDown = false;
+          let mouseStartX, mouseStartY, mouseStartPosX, mouseStartPosY;
+        
+          const onMouseDown = (e) => {
+            e.preventDefault();
+            mouseStartX = e.clientX;
+            mouseStartY = e.clientY;
+            mouseStartPosX = banners[index].positionX || 50;
+            mouseStartPosY = banners[index].positionY || 50;
+            isMouseDown = true;
+            imageWrapper.classList.add('dragging-active');
+          };
+        
+          const onMouseMove = (e) => {
+            if (!isMouseDown) return;
+            e.preventDefault();
+        
+            const rect = imageWrapper.getBoundingClientRect();
+            const deltaX = e.clientX - mouseStartX;
+            const deltaY = e.clientY - mouseStartY;
+            const percentPerPixelX = 100 / rect.width;
+            const percentPerPixelY = 100 / rect.height;
+        
+            let newPosX = mouseStartPosX - (deltaX * percentPerPixelX);
+            let newPosY = mouseStartPosY - (deltaY * percentPerPixelY);
+        
+            newPosX = Math.max(0, Math.min(100, newPosX));
+            newPosY = Math.max(0, Math.min(100, newPosY));
+        
+            banners[index].positionX = Math.round(newPosX);
+            banners[index].positionY = Math.round(newPosY);
+        
+            imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+        
+            const indicator = document.getElementById(`pos-indicator-${index}`);
+            if (indicator) {
+              indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+            }
+        
+            hasUnsavedBanners = true;
+          };
+        
+          const onMouseUp = (e) => {
+            if (!isMouseDown) return;
+            isMouseDown = false;
+            imageWrapper.classList.remove('dragging-active');
+          };
+        
+          const onMouseLeave = (e) => {
+            if (!isMouseDown) return;
+            isMouseDown = false;
+            imageWrapper.classList.remove('dragging-active');
+          };
+        
+          imageWrapper.addEventListener('mousedown', onMouseDown);
+          imageWrapper.addEventListener('mousemove', onMouseMove);
+          imageWrapper.addEventListener('mouseup', onMouseUp);
+          imageWrapper.addEventListener('mouseleave', onMouseLeave);
         }
-    
-        hasUnsavedBanners = true;
-      };
-    
-      const onTouchEnd = (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-        isDragging = false;
-        imageWrapper.classList.remove('dragging-active');
-      };
-    
-      const onTouchCancel = (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        imageWrapper.classList.remove('dragging-active');
-      };
-    
-      // Hapus event listener lama
-      imageWrapper.removeEventListener('touchstart', onTouchStart);
-      imageWrapper.removeEventListener('touchmove', onTouchMove);
-      imageWrapper.removeEventListener('touchend', onTouchEnd);
-      imageWrapper.removeEventListener('touchcancel', onTouchCancel);
-    
-      // Tambah event listener baru
-      imageWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
-      imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
-      imageWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
-      imageWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
-    
-      // Mouse events untuk testing
-      let isMouseDown = false;
-      let mouseStartX, mouseStartY, mouseStartPosX, mouseStartPosY;
-    
-      const onMouseDown = (e) => {
-        e.preventDefault();
-        mouseStartX = e.clientX;
-        mouseStartY = e.clientY;
-        mouseStartPosX = banners[index].positionX || 50;
-        mouseStartPosY = banners[index].positionY || 50;
-        isMouseDown = true;
-        imageWrapper.classList.add('dragging-active');
-      };
-    
-      const onMouseMove = (e) => {
-        if (!isMouseDown) return;
-        e.preventDefault();
-    
-        const rect = imageWrapper.getBoundingClientRect();
-        const deltaX = e.clientX - mouseStartX;
-        const deltaY = e.clientY - mouseStartY;
-        const percentPerPixelX = 100 / rect.width;
-        const percentPerPixelY = 100 / rect.height;
-    
-        let newPosX = mouseStartPosX - (deltaX * percentPerPixelX);
-        let newPosY = mouseStartPosY - (deltaY * percentPerPixelY);
-    
-        newPosX = Math.max(0, Math.min(100, newPosX));
-        newPosY = Math.max(0, Math.min(100, newPosY));
-    
-        banners[index].positionX = Math.round(newPosX);
-        banners[index].positionY = Math.round(newPosY);
-    
-        imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
-    
-        const indicator = document.getElementById(`pos-indicator-${index}`);
-        if (indicator) {
-          indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
-        }
-    
-        hasUnsavedBanners = true;
-      };
-    
-      const onMouseUp = (e) => {
-        if (!isMouseDown) return;
-        isMouseDown = false;
-        imageWrapper.classList.remove('dragging-active');
-      };
-    
-      const onMouseLeave = (e) => {
-        if (!isMouseDown) return;
-        isMouseDown = false;
-        imageWrapper.classList.remove('dragging-active');
-      };
-    
-      imageWrapper.addEventListener('mousedown', onMouseDown);
-      imageWrapper.addEventListener('mousemove', onMouseMove);
-      imageWrapper.addEventListener('mouseup', onMouseUp);
-      imageWrapper.addEventListener('mouseleave', onMouseLeave);
-    }
-
-    // ==================== FUNGSI BANNER ====================
-    window.panel = window.panel || {};
     
     window.panel.uploadBannerImage = function(index) {
-        openUploadModal((imageData) => {
-            banners[index].fileData = imageData;
-            banners[index].url = ''; // Kosongkan URL karena pakai file
-            hasUnsavedBanners = true; // Tandai ada perubahan
-            
-            // Update preview
-            const previewArea = document.getElementById(`banner-preview-${index}`);
-            if (previewArea) {
-                const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
-                if (imageWrapper) {
-                    imageWrapper.style.backgroundImage = `url(${imageData})`;
-                }
-            }
-            
-            showToast('✅ Gambar banner diupload!', 'success');
-        });
+      openUploadModal((imageData) => {
+        banners[index].fileData = imageData;
+        banners[index].url = ''; // Kosongkan URL karena pakai file
+        hasUnsavedBanners = true; // Tandai ada perubahan
+    
+        // Update preview
+        const previewArea = document.getElementById(`banner-preview-${index}`);
+        if (previewArea) {
+          const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
+          if (imageWrapper) {
+            imageWrapper.style.backgroundImage = `url(${imageData})`;
+          }
+        }
+    
+        showToast('✅ Gambar banner diupload!', 'success');
+      }, 'image/*');
     };
     
     function addBanner() {
