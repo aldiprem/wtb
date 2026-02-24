@@ -90,7 +90,7 @@ def calculate_end_date(start_date, days):
 
 @app.route('/')
 def serve_index():
-    return send_from_directory('.', 'dashboard.html')
+    return send_from_directory('.', 'html/dashboard.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
@@ -486,15 +486,15 @@ def serve_panel(endpoint):
         if not website:
             return "Website not found", 404
     # Kirim file panel.html
-    return send_from_directory('.', 'panel.html')
+    return send_from_directory('.', 'html/panel.html')
 
 @app.route('/format')
 def serve_format():
-    return send_from_directory('.', 'format.html')
+    return send_from_directory('.', 'html/format.html')
 
 @app.route('/dashboard')
 def serve_dashboard():
-    return send_from_directory('.', 'dashboard.html')
+    return send_from_directory('.', 'html/dashboard.html')
 
 @app.route('/css/<path:filename>')
 def serve_css(filename):
