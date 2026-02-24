@@ -1309,418 +1309,150 @@ input:checked + .slider:before {
 
 /* ===== BANNER COMPONENTS ===== */
 .banner-slider-container {
-  width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
 }
 
 .banner-slider-container::-webkit-scrollbar {
-  height: 6px;
+    height: 6px;
 }
 
 .banner-slider-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
 }
 
 .banner-slider-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
 }
 
 .banner-slider-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .banner-track {
-  display: flex;
-  gap: 20px;
-  padding: 4px;
-  min-width: min-content;
+    display: flex;
+    gap: 20px;
+    padding: 4px;
+    min-width: min-content;
 }
 
-/* Banner Slide */
 .banner-slide {
-  width: 340px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  padding: 18px;
-  border: 1px solid var(--border-color);
-  flex-shrink: 0;
+    width: 280px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+    transition: all 0.2s;
 }
 
-/* Header banner dengan tombol upload di kanan */
-.banner-slide-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 0 4px;
+.banner-slide:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(64, 167, 227, 0.2);
 }
 
-.banner-header-left {
-  display: flex;
-  align-items: center;
-}
-
-.banner-number {
-  font-weight: 600;
-  color: var(--primary-color);
-  background: rgba(64, 167, 227, 0.1);
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 13px;
-}
-
-.banner-header-right {
-  display: flex;
-  align-items: center;
-}
-
-/* Tombol upload di header */
-.upload-btn {
-  background: rgba(64, 167, 227, 0.2);
-  color: var(--primary-color);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  transition: all 0.2s;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.upload-btn:hover {
-  background: var(--primary-color);
-  color: white;
-  transform: scale(1.1);
-}
-
-/* Preview area */
-.banner-preview-area {
-  position: relative;
-}
-
-.banner-image-wrapper {
-  width: 100%;
-  height: 170px;
-  border-radius: 14px;
-  background-color: #1a1a1a;
-  background-size: cover;
-  background-repeat: no-repeat;
-  position: relative;
-  overflow: hidden;
-  cursor: grab;
-  transition: all 0.2s;
-  border: 2px solid transparent;
-}
-
-.banner-image-wrapper.dragging-active {
-  cursor: grabbing;
-  border-color: var(--primary-color);
-  transform: scale(1.02);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-}
-
-/* Position indicator diperkecil dan rata kiri */
-.banner-position-indicator {
-  font-size: 10px;
-  padding: 3px 8px;
-  width: fit-content;
-  margin-top: 6px;
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--tg-hint-color);
-  text-align: center;
-}
-
-/* Footer untuk tombol navigasi dan hapus */
-.banner-footer-actions-slide {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-color);
-}
-
-.banner-footer-left {
-  display: flex;
-  gap: 8px;
-}
-
-.banner-footer-right {
-  display: flex;
-}
-
-/* Tombol footer actions */
-.btn-icon-small {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  border: none;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-color);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  font-size: 14px;
-}
-
-.btn-icon-small:hover:not(:disabled) {
-  background: var(--primary-color);
-  color: white;
-}
-
-.btn-icon-small:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.banner-footer-actions-slide .btn-icon-small.move-left,
-.banner-footer-actions-slide .btn-icon-small.move-right {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.banner-footer-actions-slide .btn-icon-small.delete {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
-
-.banner-footer-actions-slide .btn-icon-small.delete:hover {
-  background: #ef4444;
-  color: white;
-}
-
-/* Empty banner message */
-.empty-banner-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
-  color: var(--tg-hint-color);
-  margin: 20px 0;
-}
-
-.empty-banner-message i {
-  font-size: 48px;
-  margin-bottom: 10px;
-  opacity: 0.5;
-}
-
-.btn-add-left {
-  padding: 12px 24px;
-  border-radius: 30px;
-  border: 1px solid rgba(64, 167, 227, 0.3);
-  background: rgba(64, 167, 227, 0.1);
-  color: var(--primary-color);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-}
-
-.btn-add-left:hover {
-  background: var(--primary-color);
-  color: white;
-  transform: translateY(-2px);
-}
-
-.btn-primary-right {
-  padding: 12px 24px;
-  border-radius: 30px;
-  border: none;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  color: white;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-}
-
-.btn-primary-right:hover {
-  background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
-}
-
-/* ===== PERBAIKAN BANNER SLIDER ===== */
-
-/* Header banner dengan tombol upload di kanan */
 .banner-slide-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
-    padding: 0 4px;
 }
 
-.banner-header-left {
-    display: flex;
-    align-items: center;
-}
-
-.banner-header-right {
-    display: flex;
-    align-items: center;
-}
-
-/* Tombol upload di header */
-.banner-header-right .upload-btn {
-    background: rgba(64, 167, 227, 0.2);
+.banner-number {
+    font-weight: 600;
     color: var(--primary-color);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    background: rgba(64, 167, 227, 0.1);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+}
+
+.banner-upload-header-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(64, 167, 227, 0.1);
+    border: 1px solid rgba(64, 167, 227, 0.3);
+    border-radius: 20px;
+    color: var(--primary-color);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
     transition: all 0.2s;
 }
 
-.banner-header-right .upload-btn:hover {
-    background: var(--primary-color);
-    color: white;
-    transform: scale(1.1);
+.banner-upload-header-btn i {
+    font-size: 14px;
 }
 
-/* Footer untuk tombol navigasi dan hapus */
-.banner-footer-actions-slide {
+.banner-upload-header-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.banner-slide-actions-bottom {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 12px;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
     padding-top: 8px;
     border-top: 1px solid var(--border-color);
 }
 
-.banner-footer-left {
-    display: flex;
-    gap: 8px;
-}
-
-.banner-footer-right {
-    display: flex;
-}
-
-/* Ukuran banner slide diperbesar */
-.banner-slide {
-    width: 340px; /* Diperbesar dari 320px */
-    padding: 18px; /* Diperbesar dari 16px */
-}
-
-/* Image wrapper sedikit lebih besar */
-.banner-image-wrapper {
-    height: 170px; /* Diperbesar dari 150px */
-    border-radius: 14px;
-}
-
-/* Position indicator diperkecil dan rata kiri */
-.banner-position-indicator {
-    font-size: 10px; /* Diperkecil dari 11px */
-    padding: 3px 8px; /* Diperkecil */
-    width: fit-content;
-    margin-top: 6px;
-    border-radius: 30px;
-    background: rgba(255, 255, 255, 0.03);
-}
-
-/* Tombol footer actions */
-.banner-footer-actions-slide .btn-icon-small {
-    width: 34px;
-    height: 34px;
+.btn-icon-small {
+    width: 32px;
+    height: 32px;
     border-radius: 8px;
-    font-size: 14px;
-}
-
-.banner-footer-actions-slide .btn-icon-small.move-left,
-.banner-footer-actions-slide .btn-icon-small.move-right {
-    background: rgba(255, 255, 255, 0.08);
-}
-
-.banner-footer-actions-slide .btn-icon-small.delete {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-}
-
-.banner-footer-actions-slide .btn-icon-small.delete:hover {
-    background: #ef4444;
-    color: white;
-}
-
-.btn-add-left {
-    padding: 12px 24px;
-    border-radius: 30px;
     border: none;
-    background: rgba(64, 167, 227, 0.1);
-    color: var(--primary-color);
-    font-size: 14px;
-    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-color);
     cursor: pointer;
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
     transition: all 0.2s;
-    border: 1px solid rgba(64, 167, 227, 0.3);
 }
 
-.btn-add-left:hover {
+.btn-icon-small:hover:not(:disabled) {
     background: var(--primary-color);
     color: white;
     transform: translateY(-2px);
 }
 
-.btn-primary-right {
-    padding: 12px 24px;
-    border-radius: 30px;
-    border: none;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
+.btn-icon-small:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
-.btn-primary-right:hover {
-    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-    .banner-slide {
-        width: 280px;
-        padding: 14px;
-    }
-    
-    .btn-add-left,
-    .btn-primary-right {
-        width: 100%;
-        justify-content: center;
-    }
+.btn-icon-small.delete:hover:not(:disabled) {
+    background: var(--danger-color);
 }
 
 .banner-preview-area {
     position: relative;
+}
+
+.banner-image-wrapper {
+    width: 100%;
+    height: 180px;
+    border-radius: 12px;
+    background-color: #1a1a1a;
+    background-size: cover;
+    background-repeat: no-repeat;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    transition: all 0.2s;
+    border: 2px solid transparent;
 }
 
 .banner-image-wrapper.dragging-active {
@@ -1730,38 +1462,17 @@ input:checked + .slider:before {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 }
 
-.banner-upload-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    opacity: 0;
-    transition: opacity 0.3s;
-    cursor: pointer;
-    backdrop-filter: blur(2px);
-}
-
-.banner-image-wrapper:hover .banner-upload-overlay {
-    opacity: 1;
-}
-
-.banner-upload-overlay i {
-    font-size: 32px;
-    margin-bottom: 8px;
-}
-
-.banner-upload-overlay span {
-    font-size: 12px;
-    background: rgba(0, 0, 0, 0.5);
-    padding: 4px 12px;
+.banner-position-indicator {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--tg-hint-color);
+    text-align: center;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 8px;
     border-radius: 20px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .empty-banner-message {
@@ -1780,6 +1491,28 @@ input:checked + .slider:before {
     font-size: 48px;
     margin-bottom: 10px;
     opacity: 0.5;
+}
+
+.banner-footer-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    gap: 12px;
+}
+
+.banner-footer-actions .btn-add.left {
+    margin-right: auto;
+    justify-content: flex-start;
+    min-width: 180px;
+}
+
+.banner-footer-actions .btn-primary.right {
+    margin-left: auto;
+    justify-content: flex-end;
+    min-width: 180px;
 }
 
 /* ===== BANNER PREVIEW (untuk website) ===== */
@@ -2032,7 +1765,13 @@ input:checked + .slider:before {
         grid-template-columns: 1fr;
     }
     
-    .banner-slide {
-        width: 280px;
+    .banner-footer-actions {
+        flex-direction: column;
+    }
+    
+    .banner-footer-actions .btn-add.left,
+    .banner-footer-actions .btn-primary.right {
+        min-width: 100%;
+        margin: 0;
     }
 }
