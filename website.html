@@ -5,14 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
+    <title>Panel Admin - Website Manager</title>
     
-    <!-- Dynamic Meta Tags -->
-    <title id="dynamicTitle">Toko Online - Loading...</title>
-    <meta name="description" id="dynamicDescription" content="Toko online terpercaya">
-    <meta name="keywords" id="dynamicKeywords" content="toko, online, topup">
-    
-    <!-- CSS - Path untuk GitHub Pages -->
-    <link rel="stylesheet" href="/wtb/css/website.css">
+    <!-- CSS - Langsung pakai path GitHub Pages -->
+    <link rel="stylesheet" href="/wtb/css/panel.css">
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -25,285 +21,727 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Memuat website...</div>
+        <div class="loading-text">Memproses...</div>
     </div>
 
-    <!-- Sidebar Navigation -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-logo">
-                <i class="fas fa-store"></i>
-                <span id="sidebarStoreName">Loading...</span>
-            </div>
-            <button class="sidebar-close" id="sidebarClose">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="sidebar-profile">
-            <div class="profile-avatar" id="sidebarAvatar">
-                <img src="https://ui-avatars.com/api/?name=Guest&size=80&background=40a7e3&color=fff" alt="Profile">
-            </div>
-            <div class="profile-info">
-                <div class="profile-name" id="sidebarName">Guest User</div>
-                <div class="profile-username" id="sidebarUsername">@guest</div>
-            </div>
-            <button class="profile-login-btn" id="loginBtn">
-                <i class="fas fa-sign-in-alt"></i> Login
-            </button>
-        </div>
-        
-        <div class="sidebar-menu">
-            <a href="#" class="menu-item active" data-page="home">
-                <i class="fas fa-home"></i>
-                <span>Beranda</span>
-            </a>
-            <a href="#" class="menu-item" data-page="products">
-                <i class="fas fa-box"></i>
-                <span>Produk</span>
-            </a>
-            <a href="#" class="menu-item" data-page="categories">
-                <i class="fas fa-tags"></i>
-                <span>Kategori</span>
-            </a>
-            <a href="#" class="menu-item" data-page="orders">
-                <i class="fas fa-shopping-cart"></i>
-                <span>Pesanan Saya</span>
-                <span class="menu-badge" id="orderBadge">0</span>
-            </a>
-            <a href="#" class="menu-item" data-page="history">
-                <i class="fas fa-history"></i>
-                <span>Riwayat</span>
-            </a>
-            <a href="#" class="menu-item" data-page="voucher">
-                <i class="fas fa-ticket-alt"></i>
-                <span>Voucher Saya</span>
-            </a>
-        </div>
-        
-        <div class="sidebar-footer">
-            <a href="#" class="menu-item" data-page="help">
-                <i class="fas fa-question-circle"></i>
-                <span>Bantuan</span>
-            </a>
-            <a href="#" class="menu-item" data-page="about">
-                <i class="fas fa-info-circle"></i>
-                <span>Tentang</span>
-            </a>
-            <div class="sidebar-copyright">
-                © 2024 <span id="sidebarYear"></span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Header -->
-        <header class="main-header">
-            <button class="menu-toggle" id="menuToggle">
-                <i class="fas fa-bars"></i>
-            </button>
-            
-            <div class="header-logo" id="headerLogo">
-                <!-- Logo akan diisi oleh JavaScript -->
-                <i class="fas fa-store"></i>
-                <span id="storeName">Toko Online</span>
+    <div class="panel-container">
+        <!-- Header dengan verifikasi website owner -->
+        <div class="panel-header">
+            <div class="header-left">
+                <div class="logo-wrapper">
+                    <i class="fas fa-store"></i>
+                </div>
+                <div class="header-title">
+                    <h1>Website Panel</h1>
+                    <span class="badge-admin" id="websiteBadge">LOADING...</span>
+                </div>
             </div>
             
-            <div class="header-actions">
-                <button class="header-btn" id="searchToggle">
-                    <i class="fas fa-search"></i>
-                </button>
-                <button class="header-btn" id="cartBtn">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span class="cart-badge" id="cartBadge">0</span>
-                </button>
+            <!-- Loading State -->
+            <div id="loading" class="loading-state">
+                <div class="spinner"></div>
+                <span>Loading panel...</span>
             </div>
-        </header>
-
-        <!-- Search Bar (Hidden by default) -->
-        <div class="search-bar" id="searchBar">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Cari produk...">
-            <button class="search-close" id="searchClose">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-
-        <!-- Banner Slider -->
-        <div class="banner-slider" id="bannerSlider">
-            <div class="slider-container" id="sliderContainer">
-                <!-- Banners will be loaded here -->
-            </div>
-            <div class="slider-dots" id="sliderDots"></div>
-        </div>
-
-        <!-- Quick Categories -->
-        <div class="quick-categories">
-            <div class="section-header">
-                <h2>Kategori <span>Populer</span></h2>
-                <a href="#" class="view-all" data-page="categories">Lihat Semua</a>
-            </div>
-            <div class="categories-grid" id="categoriesGrid">
-                <!-- Categories will be loaded here -->
+            
+            <!-- Error State -->
+            <div id="error" class="error-state" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span id="errorMessage">Access Denied</span>
+                <button onclick="location.reload()" class="retry-btn">Retry</button>
             </div>
         </div>
 
-        <!-- Featured Products -->
-        <div class="featured-products">
-            <div class="section-header">
-                <h2>Produk <span>Unggulan</span></h2>
-                <a href="#" class="view-all" data-page="products">Lihat Semua</a>
-            </div>
-            <div class="products-grid" id="featuredProducts">
-                <!-- Products will be loaded here -->
-            </div>
+        <!-- No Website Found Message -->
+        <div id="noWebsiteMessage" class="no-website-message" style="display: none;">
+            <i class="fas fa-store-alt"></i>
+            <h3>Anda belum memiliki website</h3>
+            <p>Silakan buat website terlebih dahulu di dashboard owner</p>
+            <a href="/" class="btn-primary">
+                <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
+            </a>
         </div>
 
-        <!-- Popular Products -->
-        <div class="popular-products">
-            <div class="section-header">
-                <h2>Produk <span>Terlaris</span></h2>
-                <a href="#" class="view-all" data-page="products?sort=popular">Lihat Semua</a>
-            </div>
-            <div class="products-grid" id="popularProducts">
-                <!-- Products will be loaded here -->
-            </div>
-        </div>
-
-        <!-- Promo Banner -->
-        <div class="promo-banner" id="promoBanner">
-            <!-- Promo banner will be loaded here -->
-        </div>
-
-        <!-- Payment Methods -->
-        <div class="payment-methods">
-            <h3>Metode Pembayaran</h3>
-            <div class="payment-icons" id="paymentIcons">
-                <!-- Payment methods will be loaded here -->
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <footer class="main-footer">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h4>Tentang Kami</h4>
-                    <p id="footerDescription">Toko online terpercaya sejak 2024</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Kontak</h4>
-                    <p id="footerContact">
-                        <i class="fab fa-whatsapp"></i> <span id="contactWhatsApp">-</span><br>
-                        <i class="fab fa-telegram"></i> <span id="contactTelegram">-</span>
-                    </p>
-                </div>
-                <div class="footer-section">
-                    <h4>Ikuti Kami</h4>
-                    <div class="social-icons">
-                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-facebook"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-tiktok"></i></a>
+        <!-- Main Content - Only visible if website owner verified -->
+        <div id="panelContent" class="panel-content" style="display: none;">
+            <!-- Website Info Card dengan Foto Profil User -->
+            <div class="website-info-card">
+                <div class="website-avatar" id="userAvatarContainer">
+                    <img id="websiteAvatar" src="https://ui-avatars.com/api/?name=User&size=120&background=40a7e3&color=fff" alt="User">
+                    <div class="website-status" id="websiteStatus">
+                        <i class="fas fa-check-circle"></i>
                     </div>
                 </div>
-            </div>
-            <div class="footer-bottom">
-                © 2024 <span id="footerStoreName">Toko Online</span>. All rights reserved.
-            </div>
-        </footer>
-    </div>
-
-    <!-- Cart Sidebar -->
-    <div class="cart-sidebar" id="cartSidebar">
-        <div class="cart-header">
-            <h3><i class="fas fa-shopping-cart"></i> Keranjang</h3>
-            <button class="cart-close" id="cartClose">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="cart-items" id="cartItems">
-            <!-- Cart items will be loaded here -->
-        </div>
-        
-        <div class="cart-empty" id="cartEmpty" style="display: none;">
-            <i class="fas fa-shopping-cart"></i>
-            <p>Keranjang belanja kosong</p>
-            <button class="btn-primary" id="shopNowBtn">Belanja Sekarang</button>
-        </div>
-        
-        <div class="cart-footer" id="cartFooter">
-            <div class="cart-total">
-                <span>Total:</span>
-                <span class="total-price" id="cartTotal">Rp 0</span>
-            </div>
-            <button class="btn-primary checkout-btn" id="checkoutBtn">
-                <i class="fas fa-credit-card"></i> Checkout
-            </button>
-        </div>
-    </div>
-
-    <!-- Product Detail Modal -->
-    <div class="modal" id="productModal">
-        <div class="modal-content product-detail-modal">
-            <button class="modal-close-btn" id="closeProductModal">
-                <i class="fas fa-times"></i>
-            </button>
-            
-            <div class="product-detail" id="productDetail">
-                <!-- Product detail will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Checkout Modal -->
-    <div class="modal" id="checkoutModal">
-        <div class="modal-content checkout-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-credit-card"></i> Checkout</h2>
-                <button class="modal-close-btn" id="closeCheckoutModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="checkout-body" id="checkoutBody">
-                <!-- Checkout form will be loaded here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Login Modal -->
-    <div class="modal" id="loginModal">
-        <div class="modal-content login-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
-                <button class="modal-close-btn" id="closeLoginModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="login-body">
-                <div class="login-options">
-                    <button class="btn-telegram" id="telegramLogin">
-                        <i class="fab fa-telegram"></i>
-                        Login dengan Telegram
+                <div class="website-details">
+                    <div class="website-name-wrapper">
+                        <h2 id="websiteName">Loading...</h2>
+                        <span class="website-badge" id="websiteEndpointBadge">/endpoint</span>
+                    </div>
+                    <div class="website-meta">
+                        <span id="websiteOwner"><i class="fas fa-user"></i> Owner ID: -</span>
+                        <span id="websiteCreated"><i class="fas fa-calendar"></i> Created: -</span>
+                    </div>
+                    <div class="website-user-info" id="userInfo" style="display: none;">
+                        <!-- User info akan diisi dari Telegram -->
+                    </div>
+                </div>
+                <div class="website-actions">
+                    <button class="btn-icon" id="previewWebsiteBtn" title="Preview Website">
+                        <i class="fas fa-eye"></i>
                     </button>
-                    <div class="divider">
-                        <span>atau</span>
-                    </div>
-                    <button class="btn-guest" id="guestLogin">
-                        <i class="fas fa-user"></i>
-                        Lanjut sebagai Tamu
+                    <button class="btn-icon" id="copyEndpointBtn" title="Copy Endpoint">
+                        <i class="fas fa-copy"></i>
                     </button>
                 </div>
             </div>
+
+            <!-- Tab Navigation -->
+            <div class="panel-tabs">
+                <button class="tab-btn active" data-tab="appearance">
+                    <i class="fas fa-paint-brush"></i>
+                    <span>Tampilan</span>
+                </button>
+                <button class="tab-btn" data-tab="products">
+                    <i class="fas fa-box"></i>
+                    <span>Produk</span>
+                </button>
+                <button class="tab-btn" data-tab="payments">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Pembayaran</span>
+                </button>
+                <button class="tab-btn" data-tab="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Pengaturan</span>
+                </button>
+            </div>
+
+            <!-- Tab Content: Appearance -->
+            <div id="tab-appearance" class="tab-content active">
+                <!-- Logo Settings (PNG Only) - Collapsible -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-image"></i> Logo Website (PNG Only)</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="logo-preview" id="logoPreview">
+                            <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
+                            <div class="logo-overlay">
+                                <button class="btn-upload" id="uploadLogoBtn">
+                                    <i class="fas fa-cloud-upload-alt"></i> Ganti Logo (PNG)
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="logoUrl">
+                                <i class="fas fa-link"></i> URL Logo (PNG)
+                            </label>
+                            <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
+                            <small>Format PNG hanya, upload atau masukkan URL</small>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveLogoBtn">
+                                <i class="fas fa-save"></i> Simpan Logo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multiple Banner Settings - Collapsible (DIPERBAIKI) -->
+                <div class="settings-card collapsible">
+                  <div class="card-header" onclick="toggleCard(this)">
+                    <h3><i class="fas fa-images"></i> Banner Slider</h3>
+                    <div class="header-actions">
+                      <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                        <i class="fas fa-chevron-down"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="card-body" style="display: none;">
+                    <div class="banner-slider-container" id="bannerSliderContainer">
+                      <div class="banner-track" id="bannerTrack">
+                        <!-- Banner items will be added here dynamically -->
+                      </div>
+                    </div>
+                    <div class="empty-banner-message" id="emptyBannerMessage" style="display: flex;">
+                      <i class="fas fa-images"></i>
+                      <p>Belum ada banner. Klik tombol Tambah di bawah untuk menambahkan.</p>
+                    </div>
+                    <div class="banner-footer-actions">
+                      <button class="btn-add-left" id="addBannerBtn">
+                        <i class="fas fa-plus-circle"></i> Tambah Banner Baru
+                      </button>
+                      <button class="btn-primary-right" id="saveBannersBtn">
+                        <i class="fas fa-save"></i> Simpan Semua Banner
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Color Settings - Collapsible (2 kolom per baris) -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-palette"></i> Warna Website</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="color-grid-2col">
+                            <div class="color-item">
+                                <label>Primary Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="primaryColor" value="#40a7e3">
+                                    <input type="text" id="primaryColorHex" value="#40a7e3" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Secondary Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="secondaryColor" value="#FFD700">
+                                    <input type="text" id="secondaryColorHex" value="#FFD700" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Background Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="bgColor" value="#0f0f0f">
+                                    <input type="text" id="bgColorHex" value="#0f0f0f" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Text Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="textColor" value="#ffffff">
+                                    <input type="text" id="textColorHex" value="#ffffff" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Card Background</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="cardColor" value="#1a1a1a">
+                                    <input type="text" id="cardColorHex" value="#1a1a1a" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Accent Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="accentColor" value="#10b981">
+                                    <input type="text" id="accentColorHex" value="#10b981" maxlength="7">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveColorsBtn">
+                                <i class="fas fa-save"></i> Simpan Warna
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Font Settings - Collapsible -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-font"></i> Font & Tipografi</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fontFamily">Font Family</label>
+                                <select id="fontFamily">
+                                    <option value="Inter">Inter (Modern)</option>
+                                    <option value="Poppins">Poppins (Bulat)</option>
+                                    <option value="Roboto">Roboto (Standar)</option>
+                                    <option value="Open Sans">Open Sans</option>
+                                    <option value="Montserrat">Montserrat</option>
+                                    <option value="Lato">Lato</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="fontSize">Font Size (px)</label>
+                                <input type="number" id="fontSize" min="12" max="24" value="14">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveFontBtn">
+                                <i class="fas fa-save"></i> Simpan Font
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Products -->
+            <div id="tab-products" class="tab-content">
+                <!-- Product Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon total">
+                            <i class="fas fa-boxes"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Produk</span>
+                            <span class="stat-value" id="totalProducts">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon active">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Tersedia</span>
+                            <span class="stat-value" id="availableProducts">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon low-stock">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Stok Menipis</span>
+                            <span class="stat-value" id="lowStockProducts">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon sold">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Terjual</span>
+                            <span class="stat-value" id="soldProducts">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Product Button -->
+                <div class="action-bar">
+                    <button class="btn-primary" id="addProductBtn">
+                        <i class="fas fa-plus-circle"></i> Tambah Produk Baru
+                    </button>
+                </div>
+
+                <!-- Products Grid -->
+                <div class="products-grid" id="productsGrid">
+                    <!-- Products will be loaded here -->
+                </div>
+
+                <!-- No Products Message -->
+                <div id="noProductsMessage" class="no-data-message" style="display: none;">
+                    <i class="fas fa-box-open"></i>
+                    <p>Belum ada produk</p>
+                    <button class="btn-primary" onclick="document.getElementById('addProductBtn').click()">
+                        <i class="fas fa-plus"></i> Tambah Produk Pertama
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab Content: Payments -->
+            <div id="tab-payments" class="tab-content">
+                <!-- Payment Methods -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-credit-card"></i> Metode Pembayaran</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <!-- Bank Transfer -->
+                        <div class="payment-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <i class="fas fa-university"></i>
+                                    <span>Transfer Bank</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="bankEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="method-details" id="bankDetails">
+                                <div class="form-group">
+                                    <label>Nama Bank</label>
+                                    <select id="bankName">
+                                        <option value="BCA">BCA</option>
+                                        <option value="BNI">BNI</option>
+                                        <option value="BRI">BRI</option>
+                                        <option value="Mandiri">Mandiri</option>
+                                        <option value="CIMB Niaga">CIMB Niaga</option>
+                                        <option value="Danamon">Danamon</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nomor Rekening</label>
+                                    <input type="text" id="bankAccount" placeholder="1234567890">
+                                </div>
+                                <div class="form-group">
+                                    <label>Atas Nama</label>
+                                    <input type="text" id="bankHolder" placeholder="John Doe">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- E-Wallet -->
+                        <div class="payment-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <i class="fas fa-wallet"></i>
+                                    <span>E-Wallet</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="ewalletEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="method-details" id="ewalletDetails">
+                                <div class="form-group">
+                                    <label>Provider</label>
+                                    <select id="ewalletProvider">
+                                        <option value="DANA">DANA</option>
+                                        <option value="OVO">OVO</option>
+                                        <option value="GoPay">GoPay</option>
+                                        <option value="LinkAja">LinkAja</option>
+                                        <option value="ShopeePay">ShopeePay</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nomor HP</label>
+                                    <input type="text" id="ewalletNumber" placeholder="081234567890">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- QRIS -->
+                        <div class="payment-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <i class="fas fa-qrcode"></i>
+                                    <span>QRIS</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="qrisEnabled" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="method-details" id="qrisDetails">
+                                <div class="form-group">
+                                    <label>QRIS Image URL</label>
+                                    <input type="url" id="qrisUrl" placeholder="https://example.com/qris.jpg">
+                                </div>
+                                <div class="qris-preview">
+                                    <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=QRIS" alt="QRIS Preview" id="qrisPreview">
+                                    <button class="btn-upload-small" id="uploadQrisBtn">
+                                        <i class="fas fa-upload"></i> Upload
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Crypto -->
+                        <div class="payment-method">
+                            <div class="method-header">
+                                <div class="method-info">
+                                    <i class="fab fa-bitcoin"></i>
+                                    <span>Crypto</span>
+                                </div>
+                                <label class="switch">
+                                    <input type="checkbox" id="cryptoEnabled">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="method-details" id="cryptoDetails" style="display: none;">
+                                <div class="form-group">
+                                    <label>Wallet Address</label>
+                                    <input type="text" id="cryptoAddress" placeholder="0x...">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button class="btn-primary" id="savePaymentsBtn">
+                                <i class="fas fa-save"></i> Simpan Metode Pembayaran
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Notes -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-sticky-note"></i> Catatan Pembayaran</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="form-group">
+                            <label for="paymentNotes">Instruksi Pembayaran</label>
+                            <textarea id="paymentNotes" rows="4" placeholder="Contoh: Kirim bukti transfer ke WhatsApp ..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="confirmationNotes">Catatan Konfirmasi</label>
+                            <textarea id="confirmationNotes" rows="3" placeholder="Contoh: Konfirmasi setelah transfer ke @admin"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="savePaymentNotesBtn">
+                                <i class="fas fa-save"></i> Simpan Catatan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Settings -->
+            <div id="tab-settings" class="tab-content">
+                <!-- General Settings -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-sliders-h"></i> Pengaturan Umum</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="form-group">
+                            <label for="websiteTitle">Judul Website</label>
+                            <input type="text" id="websiteTitle" placeholder="Toko Online">
+                        </div>
+                        <div class="form-group">
+                            <label for="websiteDescription">Deskripsi Website</label>
+                            <textarea id="websiteDescription" rows="3" placeholder="Deskripsi singkat tentang website Anda"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="contactWhatsApp">WhatsApp Contact</label>
+                            <input type="text" id="contactWhatsApp" placeholder="6281234567890">
+                            <small>Format: 628xxx (tanpa + atau spasi)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="contactTelegram">Telegram Contact</label>
+                            <input type="text" id="contactTelegram" placeholder="@username">
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveGeneralBtn">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Umum
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SEO Settings -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-search"></i> SEO Settings</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="form-group">
+                            <label for="metaTitle">Meta Title</label>
+                            <input type="text" id="metaTitle" placeholder="Toko Online Terpercaya">
+                        </div>
+                        <div class="form-group">
+                            <label for="metaDescription">Meta Description</label>
+                            <textarea id="metaDescription" rows="2" placeholder="Deskripsi untuk SEO"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="metaKeywords">Meta Keywords</label>
+                            <input type="text" id="metaKeywords" placeholder="toko, online, jual, beli">
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveSeoBtn">
+                                <i class="fas fa-save"></i> Simpan SEO
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Maintenance Mode -->
+                <div class="settings-card collapsible">
+                    <div class="card-header" onclick="toggleCard(this)">
+                        <h3><i class="fas fa-tools"></i> Maintenance Mode</h3>
+                        <div class="header-actions">
+                            <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="display: none;">
+                        <div class="maintenance-toggle">
+                            <div class="toggle-info">
+                                <strong>Aktifkan Mode Maintenance</strong>
+                                <p>Website hanya bisa diakses oleh admin</p>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="maintenanceMode">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="maintenanceMessageGroup" style="display: none;">
+                            <label for="maintenanceMessage">Pesan Maintenance</label>
+                            <textarea id="maintenanceMessage" rows="2" placeholder="Website sedang dalam perbaikan"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveMaintenanceBtn">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Maintenance
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Toast Notifications -->
-    <div class="toast-container" id="toastContainer"></div>
+    <!-- Product Modal -->
+    <div id="productModal" class="modal">
+        <div class="modal-content product-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-box"></i> <span id="modalTitle">Tambah Produk</span></h2>
+                <button class="modal-close" id="closeProductModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <div class="form-group">
+                        <label for="productName">
+                            <i class="fas fa-tag"></i> Nama Produk
+                        </label>
+                        <input type="text" id="productName" placeholder="Contoh: Voucher Game" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productDescription">
+                            <i class="fas fa-align-left"></i> Deskripsi
+                        </label>
+                        <textarea id="productDescription" rows="3" placeholder="Deskripsi lengkap produk" required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="productPrice">
+                                <i class="fas fa-money-bill"></i> Harga (Rp)
+                            </label>
+                            <input type="number" id="productPrice" placeholder="100000" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="productStock">
+                                <i class="fas fa-cubes"></i> Stok
+                            </label>
+                            <input type="number" id="productStock" placeholder="10" min="0" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productCategory">
+                            <i class="fas fa-folder"></i> Kategori
+                        </label>
+                        <select id="productCategory">
+                            <option value="voucher">Voucher Game</option>
+                            <option value="pulsa">Pulsa</option>
+                            <option value="data">Paket Data</option>
+                            <option value="listrik">Token Listrik</option>
+                            <option value="other">Lainnya</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productImage">
+                            <i class="fas fa-image"></i> URL Gambar Produk
+                        </label>
+                        <input type="url" id="productImage" placeholder="https://example.com/product.jpg">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="productNotes">
+                            <i class="fas fa-sticky-note"></i> Catatan Khusus
+                        </label>
+                        <textarea id="productNotes" rows="2" placeholder="Contoh: Proses otomatis 1-5 menit"></textarea>
+                    </div>
+                    
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="productActive" checked>
+                        <label for="productActive">Aktifkan Produk</label>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelProductBtn">Batal</button>
+                        <button type="submit" class="btn-primary" id="saveProductBtn">
+                            <i class="fas fa-save"></i> Simpan Produk
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-    <!-- JavaScript - Path untuk GitHub Pages -->
-    <script src="/wtb/js/website.js"></script>
+    <!-- Delete Product Modal -->
+    <div id="deleteProductModal" class="modal">
+        <div class="modal-content delete-modal">
+            <div class="modal-header delete">
+                <h2><i class="fas fa-exclamation-triangle"></i> Hapus Produk</h2>
+                <button class="modal-close" id="closeDeleteModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda yakin ingin menghapus produk ini?</p>
+                <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
+                <div class="delete-info" id="deleteProductInfo"></div>
+                <div class="form-actions">
+                    <button class="btn-secondary" id="cancelDeleteBtn">Batal</button>
+                    <button class="btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Hapus Permanen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Image Modal -->
+    <div id="uploadModal" class="modal">
+        <div class="modal-content upload-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-cloud-upload-alt"></i> Upload Gambar</h2>
+                <button class="modal-close" id="closeUploadModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop atau klik untuk upload</p>
+                    <small>Format: JPG, PNG, GIF (Max 5MB)</small>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+                <div class="upload-preview" id="uploadPreview" style="display: none;">
+                    <img src="" alt="Preview">
+                    <button class="btn-change" id="changeImageBtn">
+                        <i class="fas fa-sync-alt"></i> Ganti
+                    </button>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" id="confirmUploadBtn" disabled>
+                        <i class="fas fa-check"></i> Gunakan Gambar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/wtb/js/panel.js"></script>
 </body>
 </html>
