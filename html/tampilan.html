@@ -142,97 +142,31 @@
                 </div>
             </div>
 
-            <!-- Tab: Promosi -->
+            <!-- Tab: Promosi (REVISED) -->
             <div id="tab-promo" class="tab-content">
                 <div class="settings-card">
-                    <div class="card-header">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <h3><i class="fas fa-bullhorn"></i> Pengaturan Promosi</h3>
+                        <button class="btn-add-promo" id="addPromoBtn">
+                            <i class="fas fa-plus-circle"></i> Tambah Promosi
+                        </button>
                     </div>
-                    <div class="card-body">
-                        <!-- Banner Promosi -->
-                        <div class="form-section">
-                            <h4 class="section-title">
-                                <i class="fas fa-image"></i> Banner Promosi (1280x760)
-                            </h4>
-                            <div class="promo-banner-preview" id="promoBannerPreview">
-                                <img src="https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner" alt="Promo Banner Preview" id="promoBannerImage">
-                                <div class="promo-overlay">
-                                    <button class="btn-upload-small" id="uploadPromoBtn">
-                                        <i class="fas fa-cloud-upload-alt"></i> Ganti Banner
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="promoBannerUrl">
-                                    <i class="fas fa-link"></i> URL Banner Promosi
-                                </label>
-                                <input type="url" id="promoBannerUrl" placeholder="https://example.com/promo-banner.jpg">
-                                <small>Ukuran gambar harus 1280x760 pixel</small>
-                            </div>
+                    <div class="card-body" style="padding-top: 12px;">
+                        <!-- Promo Container -->
+                        <div class="promo-container" id="promoContainer">
+                            <!-- Promo items will be added here dynamically -->
+                        </div>
+                        
+                        <!-- Empty State -->
+                        <div class="empty-promo-message" id="emptyPromoMessage">
+                            <i class="fas fa-bullhorn"></i>
+                            <p>Belum ada promosi. Klik tombol "Tambah Promosi" untuk membuat promosi baru.</p>
                         </div>
 
-                        <!-- Deskripsi Promosi -->
-                        <div class="form-section">
-                            <h4 class="section-title">
-                                <i class="fas fa-align-left"></i> Deskripsi Promosi
-                            </h4>
-                            <div class="form-group">
-                                <label for="promoDescription">Deskripsi</label>
-                                <textarea id="promoDescription" rows="3" placeholder="Contoh: Promo spesial akhir bulan! Diskon hingga 50% untuk semua produk."></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Waktu Berakhir -->
-                        <div class="form-section">
-                            <h4 class="section-title">
-                                <i class="fas fa-clock"></i> Waktu Berakhir
-                            </h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="promoEndDate">Tanggal Berakhir</label>
-                                    <input type="date" id="promoEndDate">
-                                </div>
-                                <div class="form-group">
-                                    <label for="promoEndTime">Jam Berakhir</label>
-                                    <input type="time" id="promoEndTime">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="promoNeverEnd">
-                                    <span class="checkbox-text">Tidak ada batas waktu</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <!-- Catatan Penting -->
-                        <div class="form-section">
-                            <h4 class="section-title">
-                                <i class="fas fa-sticky-note"></i> Catatan Penting
-                            </h4>
-                            <div class="form-group">
-                                <label for="promoNotes">Catatan</label>
-                                <textarea id="promoNotes" rows="3" placeholder="Contoh: Promo tidak berlaku kelipatan, minimal pembelian Rp 50.000"></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Status Promo -->
-                        <div class="form-section">
-                            <h4 class="section-title">
-                                <i class="fas fa-toggle-on"></i> Status Promo
-                            </h4>
-                            <div class="status-toggle">
-                                <label class="toggle">
-                                    <input type="checkbox" id="promoActive" checked>
-                                    <span class="toggle-slider"></span>
-                                    <span class="toggle-label">Aktifkan Promo</span>
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="form-actions">
-                            <button class="btn-primary" id="savePromoBtn">
-                                <i class="fas fa-save"></i> Simpan Pengaturan Promosi
+                        <!-- Save All Promo Button -->
+                        <div class="promo-save-container">
+                            <button class="btn-primary" id="saveAllPromoBtn">
+                                <i class="fas fa-save"></i> Simpan Semua Promosi
                             </button>
                         </div>
                     </div>
@@ -359,6 +293,116 @@
                 <div class="form-actions">
                     <button class="btn-primary" id="confirmUploadBtn" disabled>
                         <i class="fas fa-check"></i> Gunakan Gambar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Promo (NEW) -->
+    <div class="modal" id="promoModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-bullhorn"></i> <span id="promoModalTitle">Tambah Promosi</span></h2>
+                <button class="modal-close" id="closePromoModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="promoForm">
+                    <input type="hidden" id="promoId">
+                    
+                    <!-- Judul Promo -->
+                    <div class="form-group">
+                        <label><i class="fas fa-heading"></i> Judul Promosi</label>
+                        <input type="text" id="promoTitle" placeholder="Contoh: Promo Akhir Bulan, Diskon Spesial" required>
+                    </div>
+                    
+                    <!-- Banner Promosi -->
+                    <div class="form-group">
+                        <label><i class="fas fa-image"></i> Banner Promosi (Wajib 1280x760)</label>
+                        <div class="promo-banner-preview-small" id="promoBannerPreviewSmall">
+                            <img src="https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner" alt="Promo Banner Preview" id="promoBannerImageSmall">
+                        </div>
+                        <div class="banner-url-input-wrapper" style="margin-top: 8px;">
+                            <i class="fas fa-link input-icon"></i>
+                            <input type="url" id="promoBannerUrl" class="banner-url-input" placeholder="https://i.imgur.com/xxxxxxx.jpg" required>
+                        </div>
+                        <small class="hint">Gunakan link gambar (Imgur, Postimages, dll). Ukuran harus 1280x760 pixel.</small>
+                        <div id="promoBannerValidation" class="banner-validation-message info" style="margin-top: 4px;">
+                            <i class="fas fa-info-circle"></i> Masukkan URL banner
+                        </div>
+                    </div>
+                    
+                    <!-- Deskripsi Promosi -->
+                    <div class="form-group">
+                        <label><i class="fas fa-align-left"></i> Deskripsi Promosi</label>
+                        <textarea id="promoDescription" rows="2" placeholder="Contoh: Promo spesial akhir bulan! Diskon hingga 50% untuk semua produk."></textarea>
+                    </div>
+                    
+                    <!-- Waktu Berakhir -->
+                    <div class="form-group">
+                        <label><i class="fas fa-clock"></i> Waktu Berakhir</label>
+                        <div class="form-row" style="margin-bottom: 8px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <input type="date" id="promoEndDate">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <input type="time" id="promoEndTime">
+                            </div>
+                        </div>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="promoNeverEnd">
+                            <span class="checkbox-text">Tidak ada batas waktu</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Catatan Penting -->
+                    <div class="form-group">
+                        <label><i class="fas fa-sticky-note"></i> Catatan Penting</label>
+                        <textarea id="promoNotes" rows="2" placeholder="Contoh: Promo tidak berlaku kelipatan, minimal pembelian Rp 50.000"></textarea>
+                    </div>
+                    
+                    <!-- Status Promo -->
+                    <div class="form-group">
+                        <label><i class="fas fa-toggle-on"></i> Status Promo</label>
+                        <div class="status-toggle" style="margin-top: 4px;">
+                            <label class="toggle">
+                                <input type="checkbox" id="promoActive" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Aktifkan Promo</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelPromoBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Simpan Promosi
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Konfirmasi Hapus -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header danger">
+                <h2><i class="fas fa-exclamation-triangle"></i> Hapus Promosi</h2>
+                <button class="modal-close" id="closeDeleteModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-text" id="deleteMessage">Apakah Anda yakin ingin menghapus promosi ini?</p>
+                <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
+                <div class="delete-info" id="deleteInfo"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelDeleteBtn">Batal</button>
+                    <button type="button" class="btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Hapus
                     </button>
                 </div>
             </div>
