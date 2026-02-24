@@ -9,6 +9,7 @@ import hashlib
 import secrets
 import tmp
 import traceback
+import prd
 
 app = Flask(__name__, static_folder='.')
 
@@ -853,6 +854,141 @@ def reorder_banners(website_id):
             return jsonify({'success': True, 'message': 'Banners reordered successfully'})
         else:
             return jsonify({'success': False, 'error': 'Invalid order'}), 400
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/<int:website_id>', methods=['GET'])
+def api_get_products(website_id):
+    """Get all products for a website"""
+    try:
+        products = products_db.get_products(website_id)
+        stats = products_db.get_products_stats(website_id)
+        return jsonify({
+            'success': True,
+            'products': products,
+            'stats': stats
+        })
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/grouped/<int:website_id>', methods=['GET'])
+def api_get_products_grouped(website_id):
+    """Get products grouped by layanan and aplikasi"""
+    try:
+        grouped = products_db.get_products_by_layanan(website_id)
+        return jsonify({
+            'success': True,
+            'grouped': grouped
+        })
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/<int:website_id>', methods=['POST'])
+def api_add_product(website_id):
+    """Add new product"""
+    try:
+        data = request.json
+        print(f"📦 Adding product for website {website_id}:", data)
+        
+        # Validate required fields
+        required = ['layanan', 'aplikasi', 'item_nama', 'harga', 'method']
+        missing = [f for f in required if f not in data]
+        if missing:
+            return jsonify({'success': False, 'error': f'Missing: {missing}'}), 400
+        
+        product_id = products_db.add_product(website_id, data)
+        
+        return jsonify({
+            'success': True,
+            'product_id': product_id,
+            'message': 'Product added successfully'
+        })
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/<int:product_id>', methods=['PUT'])
+def api_update_product(product_id):
+    """Update existing product"""
+    try:
+        data = request.json
+        print(f"📦 Updating product {product_id}:", data)
+        
+        success = products_db.update_product(product_id, data)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Product updated successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Product not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/<int:product_id>', methods=['DELETE'])
+def api_delete_product(product_id):
+    """Delete product"""
+    try:
+        success = products_db.delete_product(product_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Product deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Product not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/<int:product_id>/stok', methods=['POST'])
+def api_add_stok(product_id):
+    """Add stock to product"""
+    try:
+        data = request.json
+        stok_data = data.get('stok', [])
+        
+        if not stok_data:
+            return jsonify({'success': False, 'error': 'No stock data provided'}), 400
+        
+        success = products_db.add_stok(product_id, stok_data)
+        
+        if success:
+            return jsonify({'success': True, 'message': f'{len(stok_data)} stock items added'})
+        else:
+            return jsonify({'success': False, 'error': 'Product not found or not direct method'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/<int:product_id>/stok/<int:index>', methods=['DELETE'])
+def api_remove_stok(product_id, index):
+    """Remove specific stock item"""
+    try:
+        success = products_db.remove_stok(product_id, index)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Stock removed successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Product not found or invalid index'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/<int:product_id>/consume-stok', methods=['POST'])
+def api_consume_stok(product_id):
+    """Consume one stock item (for checkout)"""
+    try:
+        stok_item = products_db.consume_stok(product_id)
+        
+        if stok_item:
+            return jsonify({
+                'success': True,
+                'stok_item': stok_item,
+                'message': 'Stock consumed successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'No stock available'}), 404
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
