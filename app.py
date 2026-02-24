@@ -531,7 +531,8 @@ def save_colors(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        result = tmp.save_colors(website_id, data)
+        # Simpan warna - ini akan preserve banner karena menggunakan fungsi khusus
+        tmp.save_colors(website_id, data)
         
         return jsonify({'success': True, 'message': 'Colors saved successfully'})
     except Exception as e:
@@ -539,8 +540,6 @@ def save_colors(website_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== ROUTES UNTUK TAMPILAN (VERSI BARU) - LANJUTAN ====================
 
 @app.route('/api/tampilan/<int:website_id>/banners', methods=['POST'])
 def save_banners(website_id):
@@ -561,7 +560,7 @@ def save_banners(website_id):
             if 'url' not in banner:
                 return jsonify({'success': False, 'error': 'Each banner must have a URL'}), 400
         
-        # Save banners
+        # Save banners - ini hanya akan update banners, field lain tetap
         tmp.save_banners(website_id, banners)
         
         return jsonify({'success': True, 'message': f'{len(banners)} banners saved successfully'})
@@ -587,18 +586,15 @@ def delete_banner(website_id, banner_index):
             return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
         
         banners = existing.get('banners', [])
-        positions = existing.get('banner_positions', [])
         
         if banner_index < 0 or banner_index >= len(banners):
             return jsonify({'success': False, 'error': 'Banner not found'}), 404
         
-        # Remove banner and its position
+        # Remove banner
         banners.pop(banner_index)
-        if banner_index < len(positions):
-            positions.pop(banner_index)
         
         # Save updated banners
-        tmp.save_banners(website_id, banners, positions)
+        tmp.save_banners(website_id, banners)
         
         return jsonify({'success': True, 'message': 'Banner deleted successfully'})
     except Exception as e:
@@ -617,23 +613,12 @@ def save_font(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Get existing tampilan to preserve banner
-        existing = tmp.get_tampilan(website_id)
-        
-        if existing:
-            # Update existing - preserve banner automatically
-            tmp.update_tampilan(website_id, {
-                'font_family': data.get('family', 'Inter'),
-                'font_size': data.get('size', 14)
-            })
-        else:
-            # Create new
-            tmp.save_tampilan(website_id, {
-                'banner': '',
-                'colors': {},
-                'font_family': data.get('family', 'Inter'),
-                'font_size': data.get('size', 14)
-            })
+        # Gunakan fungsi khusus untuk font
+        tmp.save_font(
+            website_id, 
+            data.get('family', 'Inter'), 
+            data.get('size', 14)
+        )
         
         return jsonify({'success': True, 'message': 'Font saved successfully'})
     except Exception as e:
@@ -653,25 +638,14 @@ def save_general(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        existing = tmp.get_tampilan(website_id)
-        
-        update_data = {
-            'title': data.get('title'),
-            'description': data.get('description'),
-            'contact_whatsapp': data.get('contact', {}).get('whatsapp'),
-            'contact_telegram': data.get('contact', {}).get('telegram')
-        }
-        
-        if existing:
-            tmp.update_tampilan(website_id, update_data)
-        else:
-            tmp.save_tampilan(website_id, {
-                **update_data,
-                'banner': '',  # Empty banner for new record
-                'colors': {},
-                'font_family': 'Inter',
-                'font_size': 14
-            })
+        # Gunakan fungsi khusus untuk general settings
+        tmp.save_general(
+            website_id,
+            data.get('title'),
+            data.get('description'),
+            data.get('contact', {}).get('whatsapp'),
+            data.get('contact', {}).get('telegram')
+        )
         
         return jsonify({'success': True, 'message': 'General settings saved successfully'})
     except Exception as e:
@@ -690,7 +664,6 @@ def save_seo(website_id):
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
         # Store SEO data in website settings instead of tampilan
-        # Get current website
         current = get_db().execute('SELECT settings FROM websites WHERE id = ?', (website_id,)).fetchone()
         settings = json.loads(current['settings'] or '{}')
         
@@ -722,9 +695,6 @@ def save_payments(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Get existing tampilan to preserve banner
-        existing = tmp.get_tampilan(website_id)
-        
         # Convert payment data to tampilan format
         banks = []
         if data.get('bank', {}).get('enabled'):
@@ -754,7 +724,6 @@ def save_payments(website_id):
         }
         
         # Store payment data in website settings (JSON field)
-        # Get current website
         current = get_db().execute('SELECT settings FROM websites WHERE id = ?', (website_id,)).fetchone()
         settings = json.loads(current['settings'] or '{}')
         
@@ -771,26 +740,8 @@ def save_payments(website_id):
                         (json.dumps(settings), website_id))
         get_db().commit()
         
-        # Also save to tampilan for backward compatibility, but preserve banner
-        if existing:
-            tmp.update_tampilan(website_id, {
-                'banks': banks,
-                'ewallets': ewallets,
-                'qris': qris,
-                'crypto': crypto
-                # banner will be preserved automatically by update_tampilan
-            })
-        else:
-            tmp.save_tampilan(website_id, {
-                'banks': banks,
-                'ewallets': ewallets,
-                'qris': qris,
-                'crypto': crypto,
-                'banner': '',  # Empty banner for new record
-                'colors': {},
-                'font_family': 'Inter',
-                'font_size': 14
-            })
+        # Save to tampilan using specialized function - ini akan preserve banner
+        tmp.save_payment_methods(website_id, banks, ewallets, qris, crypto)
         
         return jsonify({'success': True, 'message': 'Payment settings saved successfully'})
     except Exception as e:
@@ -808,26 +759,11 @@ def save_payment_notes(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        existing = tmp.get_tampilan(website_id)
-        
-        if existing:
-            tmp.update_tampilan(website_id, {
-                'payment_notes': {
-                    'payment': data.get('payment', ''),
-                    'confirmation': data.get('confirmation', '')
-                }
-            })
-        else:
-            tmp.save_tampilan(website_id, {
-                'payment_notes': {
-                    'payment': data.get('payment', ''),
-                    'confirmation': data.get('confirmation', '')
-                },
-                'banner': '',
-                'colors': {},
-                'font_family': 'Inter',
-                'font_size': 14
-            })
+        # Gunakan fungsi khusus untuk payment notes
+        tmp.save_payment_notes(website_id, {
+            'payment': data.get('payment', ''),
+            'confirmation': data.get('confirmation', '')
+        })
         
         return jsonify({'success': True, 'message': 'Payment notes saved successfully'})
     except Exception as e:
@@ -850,21 +786,12 @@ def save_maintenance(website_id):
                         ('maintenance' if data.get('enabled') else 'active', website_id))
         get_db().commit()
         
-        # Also store message in tampilan
-        existing = tmp.get_tampilan(website_id)
-        
-        if existing:
-            tmp.update_tampilan(website_id, {
-                'maintenance_message': data.get('message', 'Website sedang dalam perbaikan')
-            })
-        else:
-            tmp.save_tampilan(website_id, {
-                'maintenance_message': data.get('message', 'Website sedang dalam perbaikan'),
-                'banner': '',
-                'colors': {},
-                'font_family': 'Inter',
-                'font_size': 14
-            })
+        # Store message in tampilan using specialized function
+        tmp.save_maintenance(
+            website_id,
+            data.get('enabled', False),
+            data.get('message', 'Website sedang dalam perbaikan')
+        )
         
         return jsonify({'success': True, 'message': 'Maintenance settings saved successfully'})
     except Exception as e:
@@ -890,7 +817,7 @@ def save_logo(website_id):
         if logo_url and not (logo_url.lower().endswith('.png') or logo_url.startswith('data:image/png')):
             return jsonify({'success': False, 'error': 'Logo must be PNG format'}), 400
         
-        # Save logo
+        # Save logo - ini hanya update logo, field lain tetap
         tmp.save_logo(website_id, logo_url)
         
         return jsonify({'success': True, 'message': 'Logo saved successfully'})
@@ -916,14 +843,12 @@ def reorder_banners(website_id):
             return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
         
         banners = existing.get('banners', [])
-        positions = existing.get('banner_positions', [])
         
         # Reorder based on new_order
         if len(new_order) == len(banners):
             new_banners = [banners[i] for i in new_order]
-            new_positions = [positions[i] for i in new_order if i < len(positions)]
             
-            tmp.save_banners(website_id, new_banners, new_positions)
+            tmp.save_banners(website_id, new_banners)
             
             return jsonify({'success': True, 'message': 'Banners reordered successfully'})
         else:
