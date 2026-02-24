@@ -2077,3 +2077,112 @@ input:checked + .slider:before {
     font-size: 12px;
   }
 }
+
+/* ===== BANNER BUTTON CONTAINER - SEJAJAR KIRI KANAN ===== */
+.banner-button-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+}
+
+.banner-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 40px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    border: none;
+    white-space: nowrap;
+    min-width: 0; /* Mencegah flex item meluap */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.banner-add-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--tg-text-color);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(5px);
+}
+
+.banner-add-btn i {
+    color: var(--primary-color);
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.banner-add-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(64, 167, 227, 0.4);
+}
+
+.banner-add-btn:hover i {
+    color: white;
+}
+
+.banner-save-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: 1px solid var(--primary-color);
+}
+
+.banner-save-btn i {
+    font-size: 18px;
+}
+
+.banner-save-btn:hover {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(64, 167, 227, 0.5);
+}
+
+/* ===== RESPONSIVE UNTUK MOBILE ===== */
+@media (max-width: 480px) {
+    .banner-button-container {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .banner-action-btn {
+        width: 100%;
+        padding: 16px 20px;
+        font-size: 16px;
+        justify-content: center;
+    }
+    
+    .banner-add-btn, 
+    .banner-save-btn {
+        width: 100%;
+    }
+}
+
+/* ===== PERBAIKAN UNTUK BANNER SLIDE AGAR TIDAK TERKENA TOMBOL ===== */
+.banner-slide {
+    margin-bottom: 10px;
+}
+
+.banner-slider-container {
+    max-height: none;
+    overflow-x: auto;
+    padding-bottom: 15px;
+    margin-bottom: 5px;
+}
+
+/* Hapus style lama yang tidak dipakai */
+.banner-footer-actions {
+    display: none; /* Sembunyikan style lama */
+}
