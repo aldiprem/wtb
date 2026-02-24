@@ -6,32 +6,30 @@
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
     <title>Manajemen Produk - Panel Admin</title>
-
+    
     <!-- CSS -->
     <link rel="stylesheet" href="/wtb/css/produk.css">
-
+    
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
+    
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
         <div class="loading-spinner"></div>
         <div class="loading-text" id="loadingText">Memuat...</div>
     </div>
 
-    <!-- Toast -->
+    <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <div class="page-container">
-
-        <!-- HEADER -->
-        <div class="page-header">
+    <div class="produk-container">
+        <!-- Header -->
+        <div class="produk-header">
             <div class="header-left">
                 <a href="/wtb/panel.html" class="back-btn">
                     <i class="fas fa-arrow-left"></i>
@@ -41,7 +39,7 @@
                 </div>
                 <div class="header-title">
                     <h1>Manajemen Produk</h1>
-                    <span class="badge-page" id="websiteBadge">LOADING...</span>
+                    <span class="badge-website" id="websiteBadge">LOADING...</span>
                 </div>
             </div>
             <div class="header-right">
@@ -52,238 +50,441 @@
             </div>
         </div>
 
-        <!-- STATS -->
+        <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-icon total"><i class="fas fa-boxes"></i></div>
+                <div class="stat-icon total">
+                    <i class="fas fa-boxes"></i>
+                </div>
                 <div class="stat-info">
                     <span class="stat-label">Total Layanan</span>
-                    <span class="stat-value" id="statTotal">0</span>
+                    <span class="stat-value" id="totalLayanan">0</span>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon active"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-icon active">
+                    <i class="fas fa-check-circle"></i>
+                </div>
                 <div class="stat-info">
-                    <span class="stat-label">Item Aktif</span>
-                    <span class="stat-value" id="statActive">0</span>
+                    <span class="stat-label">Produk Aktif</span>
+                    <span class="stat-value" id="totalAktif">0</span>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon low"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-icon low-stock">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
                 <div class="stat-info">
                     <span class="stat-label">Stok Menipis</span>
-                    <span class="stat-value" id="statLow">0</span>
+                    <span class="stat-value" id="totalLowStock">0</span>
                 </div>
             </div>
             <div class="stat-card">
-                <div class="stat-icon sold"><i class="fas fa-shopping-cart"></i></div>
+                <div class="stat-icon sold">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
                 <div class="stat-info">
                     <span class="stat-label">Terjual</span>
-                    <span class="stat-value" id="statSold">0</span>
+                    <span class="stat-value" id="totalTerjual">0</span>
                 </div>
             </div>
         </div>
 
-        <!-- FILTER BAR -->
-        <div class="filter-bar">
+        <!-- Filter & Search -->
+        <div class="filter-section">
             <div class="search-wrapper">
                 <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Cari layanan, aplikasi, item...">
+                <input type="text" id="searchInput" placeholder="Cari layanan, aplikasi, atau item...">
             </div>
-            <select id="filterMethod" class="filter-select">
-                <option value="">Semua Method</option>
-                <option value="directly">Directly</option>
-                <option value="request">Request</option>
-            </select>
+            <div class="method-filter">
+                <button class="filter-btn active" data-filter="all">Semua</button>
+                <button class="filter-btn" data-filter="directly">Directly</button>
+                <button class="filter-btn" data-filter="request">Request</button>
+            </div>
         </div>
 
-        <!-- PRODUCTS TREE -->
-        <div class="products-tree" id="productsTree"></div>
+        <!-- Products Tree -->
+        <div class="products-tree" id="productsTree">
+            <!-- Products akan dirender di sini -->
+        </div>
 
-        <!-- No Products -->
-        <div id="noProductsMsg" class="no-data" style="display:none;">
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
             <i class="fas fa-box-open"></i>
-            <p>Belum ada produk. Mulai tambahkan layanan Anda!</p>
-            <button class="btn-primary" id="addFirstProductBtn">
-                <i class="fas fa-plus"></i> Tambah Produk Pertama
+            <h3>Belum Ada Produk</h3>
+            <p>Mulai dengan menambahkan produk pertama Anda</p>
+            <button class="btn-primary" id="emptyAddBtn">
+                <i class="fas fa-plus"></i> Tambah Produk
             </button>
         </div>
-
     </div>
 
-    <!-- ==================== MODAL: TAMBAH/EDIT PRODUK ==================== -->
-    <div id="modalProduk" class="modal">
-        <div class="modal-content modal-produk">
+    <!-- MODAL: Tambah/Edit Produk -->
+    <div id="productModal" class="modal">
+        <div class="modal-content modal-lg">
             <div class="modal-header">
-                <h2><i class="fas fa-box"></i> <span id="modalProdukTitle">Tambah Produk</span></h2>
-                <button class="modal-close" id="closeProdukModal"><i class="fas fa-times"></i></button>
+                <h2><i class="fas fa-box"></i> <span id="modalTitle">Tambah Produk</span></h2>
+                <button class="modal-close" id="closeModalBtn">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
 
-            <!-- Step Indicator -->
-            <div class="step-indicator">
+            <!-- Stepper -->
+            <div class="stepper">
                 <div class="step active" data-step="1">
-                    <div class="step-num">1</div>
-                    <span>Layanan</span>
+                    <div class="step-number">1</div>
+                    <span class="step-label">Layanan</span>
                 </div>
                 <div class="step-line"></div>
                 <div class="step" data-step="2">
-                    <div class="step-num">2</div>
-                    <span>Aplikasi</span>
+                    <div class="step-number">2</div>
+                    <span class="step-label">Aplikasi</span>
                 </div>
                 <div class="step-line"></div>
                 <div class="step" data-step="3">
-                    <div class="step-num">3</div>
-                    <span>Item & Stok</span>
+                    <div class="step-number">3</div>
+                    <span class="step-label">Item & Stok</span>
                 </div>
             </div>
 
             <div class="modal-body">
-
-                <!-- STEP 1: LAYANAN -->
+                <!-- STEP 1: Layanan -->
                 <div class="step-content active" id="step1">
                     <div class="form-group">
-                        <label><i class="fas fa-layer-group"></i> Nama Layanan</label>
-                        <input type="text" id="inputLayanan" placeholder="Contoh: Aplikasi Premium, Top Up Game">
-                        <small class="hint">Kelompok besar dari produk Anda</small>
+                        <label>
+                            <i class="fas fa-layer-group"></i>
+                            Nama Layanan
+                        </label>
+                        <input type="text" id="layananInput" placeholder="Contoh: Aplikasi Premium, Top Up Game, Voucher" required>
+                        <small class="hint">Kelompok utama produk Anda</small>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-image"></i> Ikon Layanan (URL Gambar)</label>
-                        <input type="url" id="inputLayananGambar" placeholder="https://example.com/icon.png">
+                        <label>
+                            <i class="fas fa-image"></i>
+                            Ikon Layanan (URL Gambar)
+                        </label>
+                        <input type="url" id="layananGambarInput" placeholder="https://example.com/icon.png">
+                        <div class="image-preview" id="layananPreview" style="display: none;">
+                            <img src="" alt="Preview">
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-align-left"></i> Deskripsi Layanan</label>
-                        <textarea id="inputLayananDesc" rows="2" placeholder="Deskripsi singkat layanan ini"></textarea>
+                        <label>
+                            <i class="fas fa-align-left"></i>
+                            Deskripsi Layanan
+                        </label>
+                        <textarea id="layananDescInput" rows="2" placeholder="Deskripsi singkat tentang layanan ini"></textarea>
                     </div>
                     <div class="step-actions">
-                        <button class="btn-secondary" id="cancelProdukBtn">Batal</button>
-                        <button class="btn-primary" id="step1NextBtn">Lanjut <i class="fas fa-arrow-right"></i></button>
+                        <button class="btn-secondary" id="cancelStep1Btn">Batal</button>
+                        <button class="btn-primary" id="nextToStep2">
+                            Lanjut <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- STEP 2: APLIKASI -->
+                <!-- STEP 2: Aplikasi -->
                 <div class="step-content" id="step2">
                     <div class="form-group">
-                        <label><i class="fas fa-mobile-alt"></i> Nama Aplikasi</label>
-                        <input type="text" id="inputAplikasi" placeholder="Contoh: Canva, Netflix, Mobile Legends">
+                        <label>
+                            <i class="fas fa-mobile-alt"></i>
+                            Nama Aplikasi
+                        </label>
+                        <input type="text" id="aplikasiInput" placeholder="Contoh: Canva, Netflix, Mobile Legends" required>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-image"></i> Logo Aplikasi (URL)</label>
-                        <input type="url" id="inputAplikasiGambar" placeholder="https://example.com/canva.png">
-                        <div class="img-preview-wrapper" id="appImgPreview" style="display:none;">
-                            <img id="appImgPreviewEl" src="" alt="Preview Logo">
+                        <label>
+                            <i class="fas fa-image"></i>
+                            Logo Aplikasi (URL)
+                        </label>
+                        <input type="url" id="aplikasiGambarInput" placeholder="https://example.com/logo.png">
+                        <div class="image-preview" id="aplikasiPreview" style="display: none;">
+                            <img src="" alt="Preview">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label><i class="fas fa-align-left"></i> Deskripsi Aplikasi</label>
-                        <textarea id="inputAplikasiDesc" rows="2" placeholder="Deskripsi singkat aplikasi ini"></textarea>
+                        <label>
+                            <i class="fas fa-align-left"></i>
+                            Deskripsi Aplikasi
+                        </label>
+                        <textarea id="aplikasiDescInput" rows="2" placeholder="Deskripsi singkat tentang aplikasi ini"></textarea>
                     </div>
                     <div class="step-actions">
-                        <button class="btn-secondary" id="step2PrevBtn"><i class="fas fa-arrow-left"></i> Kembali</button>
-                        <button class="btn-primary" id="step2NextBtn">Lanjut <i class="fas fa-arrow-right"></i></button>
+                        <button class="btn-secondary" id="prevToStep1">
+                            <i class="fas fa-arrow-left"></i> Kembali
+                        </button>
+                        <button class="btn-primary" id="nextToStep3">
+                            Lanjut <i class="fas fa-arrow-right"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- STEP 3: ITEM + METHOD + HARGA + STOK -->
+                <!-- STEP 3: Item & Stok -->
                 <div class="step-content" id="step3">
-                    <div class="items-section">
-                        <div class="section-title-row">
-                            <h4><i class="fas fa-list"></i> Daftar Item</h4>
-                            <button class="btn-add-item" id="addItemRowBtn" type="button">
-                                <i class="fas fa-plus"></i> Tambah Item
-                            </button>
+                    <!-- Item Form -->
+                    <div class="item-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-tag"></i> Detail Item</h3>
                         </div>
-                        <div id="itemsContainer">
-                            <!-- Item rows diisi JS -->
+                        
+                        <div class="form-group">
+                            <label>
+                                <i class="fas fa-box"></i>
+                                Nama Item
+                            </label>
+                            <input type="text" id="itemNamaInput" placeholder="Contoh: Anggota Invite 1 Bulan, 86 Diamonds" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <i class="fas fa-clock"></i>
+                                Durasi / Keterangan
+                            </label>
+                            <input type="text" id="itemDurasiInput" placeholder="Contoh: 1 Bulan, 30 Hari, Lifetime">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-money-bill"></i>
+                                    Harga (Rp)
+                                </label>
+                                <input type="number" id="itemHargaInput" min="0" placeholder="100000" required>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-star"></i>
+                                    Fitur
+                                </label>
+                                <select id="itemFiturInput">
+                                    <option value="biasa">Biasa</option>
+                                    <option value="unggulan">Unggulan</option>
+                                    <option value="populer">Populer</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Method Selection -->
+                    <div class="method-section">
+                        <div class="section-header">
+                            <h3><i class="fas fa-cog"></i> Metode Penjualan</h3>
+                        </div>
+                        
+                        <div class="method-options">
+                            <label class="method-card" data-method="directly">
+                                <input type="radio" name="method" value="directly" checked hidden>
+                                <i class="fas fa-bolt"></i>
+                                <div class="method-info">
+                                    <span class="method-name">Directly</span>
+                                    <span class="method-desc">Kirim data otomatis dari stok</span>
+                                </div>
+                                <div class="method-check">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </label>
+                            
+                            <label class="method-card" data-method="request">
+                                <input type="radio" name="method" value="request" hidden>
+                                <i class="fas fa-clipboard-list"></i>
+                                <div class="method-info">
+                                    <span class="method-name">Request</span>
+                                    <span class="method-desc">Customer isi format permintaan</span>
+                                </div>
+                                <div class="method-check">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Panel untuk Directly (Stok) -->
+                    <div id="directlyPanel" class="method-panel">
+                        <div class="section-header">
+                            <h3><i class="fas fa-database"></i> Kelola Stok</h3>
+                            <button class="btn-add-small" id="addStokBtn" type="button">
+                                <i class="fas fa-plus"></i> Tambah Stok
+                            </button>
+                        </div>
+                        
+                        <div class="stok-container" id="stokContainer">
+                            <div class="empty-stok" id="emptyStok">
+                                <i class="fas fa-inbox"></i>
+                                <p>Belum ada stok. Tambahkan data stok untuk produk ini.</p>
+                            </div>
+                            <div class="stok-list" id="stokList"></div>
+                        </div>
+                        
+                        <small class="hint">
+                            <i class="fas fa-info-circle"></i>
+                            Data stok akan otomatis terkirim ke customer saat pembelian sukses
+                        </small>
+                    </div>
+
+                    <!-- Panel untuk Request (Format) -->
+                    <div id="requestPanel" class="method-panel" style="display: none;">
+                        <div class="section-header">
+                            <h3><i class="fas fa-file-alt"></i> Format Permintaan</h3>
+                            <button class="btn-add-small" id="addFieldBtn" type="button">
+                                <i class="fas fa-plus"></i> Tambah Field
+                            </button>
+                        </div>
+                        
+                        <div class="format-container" id="formatContainer">
+                            <div class="empty-format" id="emptyFormat">
+                                <i class="fas fa-file-alt"></i>
+                                <p>Belum ada field. Tambahkan field yang harus diisi customer.</p>
+                            </div>
+                            <div class="format-list" id="formatList"></div>
+                        </div>
+                        
+                        <small class="hint">
+                            <i class="fas fa-info-circle"></i>
+                            Field ini akan muncul saat customer checkout
+                        </small>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="status-section">
+                        <label class="status-toggle">
+                            <input type="checkbox" id="produkAktif" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Produk Aktif</span>
+                        </label>
+                    </div>
+
                     <div class="step-actions">
-                        <button class="btn-secondary" id="step3PrevBtn"><i class="fas fa-arrow-left"></i> Kembali</button>
-                        <button class="btn-primary" id="saveProdukBtn">
+                        <button class="btn-secondary" id="prevToStep2">
+                            <i class="fas fa-arrow-left"></i> Kembali
+                        </button>
+                        <button class="btn-primary" id="saveProductBtn">
                             <i class="fas fa-save"></i> Simpan Produk
                         </button>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
 
-    <!-- ==================== MODAL: KELOLA STOK ==================== -->
-    <div id="modalStok" class="modal">
-        <div class="modal-content modal-stok">
+    <!-- MODAL: Tambah Stok -->
+    <div id="stokModal" class="modal">
+        <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-cubes"></i> Kelola Stok — Directly</h2>
-                <button class="modal-close" id="closeStokModal"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="stok-item-info" id="stokItemInfo"></div>
-
-                <div class="stok-add-section">
-                    <h4><i class="fas fa-plus-circle"></i> Tambah Data Stok</h4>
-                    <p class="hint-text">Masukkan satu data per baris. Contoh: <code>email@example.com:password123</code></p>
-                    <textarea id="stokInputArea" rows="5" placeholder="email@example.com:password123&#10;user2@example.com:pass456&#10;token_akun_xxx"></textarea>
-                    <button class="btn-primary" id="addStokBtn">
-                        <i class="fas fa-plus"></i> Tambahkan ke Stok
-                    </button>
-                </div>
-
-                <div class="stok-list-section">
-                    <div class="stok-header-row">
-                        <h4><i class="fas fa-database"></i> Stok Tersimpan (<span id="stokCount">0</span> data)</h4>
-                        <button class="btn-danger-sm" id="clearAllStokBtn">
-                            <i class="fas fa-trash"></i> Hapus Semua
-                        </button>
-                    </div>
-                    <div id="stokList" class="stok-list"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: FORMAT REQUEST ==================== -->
-    <div id="modalFormat" class="modal">
-        <div class="modal-content modal-format">
-            <div class="modal-header">
-                <h2><i class="fas fa-file-alt"></i> Format Permintaan — Request</h2>
-                <button class="modal-close" id="closeFormatModal"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="modal-body">
-                <p class="hint-text">Tambahkan field yang harus diisi customer sebelum checkout. Contoh: ID Game, Email, Username, Server.</p>
-                <div id="formatFieldsList"></div>
-                <button class="btn-add-item" id="addFormatFieldBtn" type="button">
-                    <i class="fas fa-plus"></i> Tambah Field
+                <h2><i class="fas fa-plus-circle"></i> Tambah Data Stok</h2>
+                <button class="modal-close" id="closeStokModal">
+                    <i class="fas fa-times"></i>
                 </button>
-                <div class="form-actions" style="margin-top:24px;">
-                    <button class="btn-secondary" id="cancelFormatBtn">Batal</button>
-                    <button class="btn-primary" id="saveFormatBtn">
-                        <i class="fas fa-save"></i> Simpan Format
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ==================== MODAL: KONFIRMASI HAPUS ==================== -->
-    <div id="modalHapus" class="modal">
-        <div class="modal-content modal-hapus">
-            <div class="modal-header danger">
-                <h2><i class="fas fa-exclamation-triangle"></i> Konfirmasi Hapus</h2>
-                <button class="modal-close" id="closeHapusModal"><i class="fas fa-times"></i></button>
             </div>
             <div class="modal-body">
-                <p class="hapus-text">Apakah Anda yakin ingin menghapus ini?</p>
-                <p class="hapus-warning"><i class="fas fa-exclamation-circle"></i> Tindakan ini tidak dapat dibatalkan!</p>
-                <div class="hapus-info" id="hapusInfo"></div>
+                <div class="form-group">
+                    <label>Data Stok (Satu data per baris)</label>
+                    <textarea id="stokDataInput" rows="8" placeholder="email@example.com:password123&#10;user2@domain.com:pass456&#10;token_akun_xxx&#10;email3@gmail.com:secret789"></textarea>
+                    <small class="hint">
+                        <i class="fas fa-info-circle"></i>
+                        Format: email:password atau bisa juga langsung token/nomor
+                    </small>
+                </div>
                 <div class="form-actions">
-                    <button class="btn-secondary" id="cancelHapusBtn">Batal</button>
-                    <button class="btn-danger" id="confirmHapusBtn">
-                        <i class="fas fa-trash"></i> Hapus Permanen
+                    <button class="btn-secondary" id="cancelStokBtn">Batal</button>
+                    <button class="btn-primary" id="confirmStokBtn">
+                        <i class="fas fa-check"></i> Tambahkan
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- MODAL: Tambah Field Request -->
+    <div id="fieldModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-plus-circle"></i> Tambah Field</h2>
+                <button class="modal-close" id="closeFieldModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nama Field</label>
+                    <input type="text" id="fieldNamaInput" placeholder="Contoh: ID Game, Email, Username">
+                </div>
+                <div class="form-group">
+                    <label>Tipe Input</label>
+                    <select id="fieldTipeInput">
+                        <option value="text">Text</option>
+                        <option value="number">Number</option>
+                        <option value="email">Email</option>
+                        <option value="textarea">Textarea</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Placeholder (Opsional)</label>
+                    <input type="text" id="fieldPlaceholderInput" placeholder="Contoh: Masukkan ID game Anda">
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="fieldRequiredInput" checked>
+                        <span>Wajib diisi</span>
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-secondary" id="cancelFieldBtn">Batal</button>
+                    <button class="btn-primary" id="confirmFieldBtn">
+                        <i class="fas fa-check"></i> Tambah Field
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Edit Stok -->
+    <div id="editStokModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> Edit Data Stok</h2>
+                <button class="modal-close" id="closeEditStokModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Data Stok</label>
+                    <textarea id="editStokInput" rows="4"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-secondary" id="cancelEditStokBtn">Batal</button>
+                    <button class="btn-primary" id="confirmEditStokBtn">
+                        <i class="fas fa-save"></i> Simpan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Konfirmasi Hapus -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header danger">
+                <h2><i class="fas fa-exclamation-triangle"></i> Hapus Produk</h2>
+                <button class="modal-close" id="closeDeleteModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-text">Apakah Anda yakin ingin menghapus produk ini?</p>
+                <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
+                <div class="delete-info" id="deleteInfo"></div>
+                <div class="form-actions">
+                    <button class="btn-secondary" id="cancelDeleteBtn">Batal</button>
+                    <button class="btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
     <script src="/wtb/js/produk.js"></script>
 </body>
 </html>
