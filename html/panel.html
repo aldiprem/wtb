@@ -46,6 +46,19 @@
             </div>
         </div>
 
+        <!-- Loading State -->
+        <div id="loading" class="loading-state">
+            <div class="spinner"></div>
+            <span>Loading panel...</span>
+        </div>
+
+        <!-- Error State -->
+        <div id="error" class="error-state" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span id="errorMessage">Access Denied</span>
+            <button class="retry-btn" onclick="location.reload()">Retry</button>
+        </div>
+
         <!-- No Website Found Message -->
         <div id="noWebsiteMessage" class="no-website-message" style="display: none;">
             <i class="fas fa-store-alt"></i>
@@ -58,7 +71,7 @@
 
         <!-- Main Content -->
         <div id="panelContent" class="panel-content" style="display: none;">
-            <!-- Profile Card -->
+            <!-- Profile Card (Tetap seperti kode asli) -->
             <div class="profile-card">
                 <div class="profile-avatar" id="userAvatarContainer">
                     <img id="profileAvatar" src="https://ui-avatars.com/api/?name=User&size=120&background=40a7e3&color=fff" alt="User">
@@ -89,143 +102,139 @@
                 </div>
             </div>
 
-            <!-- Stats Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon products">
-                        <i class="fas fa-box"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Total Produk</span>
-                        <span class="stat-value" id="statTotalProducts">0</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon revenue">
-                        <i class="fas fa-money-bill-wave"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Pendapatan</span>
-                        <span class="stat-value" id="statRevenue">Rp 0</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon orders">
-                        <i class="fas fa-shopping-cart"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Pesanan</span>
-                        <span class="stat-value" id="statOrders">0</span>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon customers">
-                        <i class="fas fa-users"></i>
-                    </div>
-                    <div class="stat-info">
-                        <span class="stat-label">Pelanggan</span>
-                        <span class="stat-value" id="statCustomers">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="quick-actions">
-                <h3><i class="fas fa-bolt"></i> Aksi Cepat</h3>
-                <div class="action-grid">
-                    <a href="/wtb/html/produk.html?website={{endpoint}}" class="action-card" id="productsAction">
-                        <div class="action-icon">
+            <!-- Dashboard Navigation Grid -->
+            <div class="dashboard-grid">
+                <!-- Statistik Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon products">
                             <i class="fas fa-box"></i>
                         </div>
-                        <div class="action-info">
-                            <span class="action-title">Kelola Produk</span>
-                            <span class="action-desc">Tambah, edit, hapus produk</span>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Produk</span>
+                            <span class="stat-value" id="statTotalProducts">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon revenue">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Pendapatan</span>
+                            <span class="stat-value" id="statRevenue">Rp 0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orders">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Pesanan</span>
+                            <span class="stat-value" id="statOrders">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon customers">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Pelanggan</span>
+                            <span class="stat-value" id="statCustomers">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Cards -->
+                <div class="nav-grid">
+                    <a href="#" class="nav-card" id="productsNav">
+                        <div class="nav-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="nav-info">
+                            <span class="nav-title">Kelola Produk</span>
+                            <span class="nav-desc">Tambah, edit, hapus produk</span>
                         </div>
                         <i class="fas fa-chevron-right"></i>
                     </a>
-                    <a href="/wtb/html/tampilan.html?website={{endpoint}}" class="action-card" id="appearanceAction">
-                        <div class="action-icon">
+                    <a href="#" class="nav-card" id="appearanceNav">
+                        <div class="nav-icon">
                             <i class="fas fa-paint-brush"></i>
                         </div>
-                        <div class="action-info">
-                            <span class="action-title">Tampilan</span>
-                            <span class="action-desc">Logo, banner, warna, font</span>
+                        <div class="nav-info">
+                            <span class="nav-title">Tampilan</span>
+                            <span class="nav-desc">Logo, banner, warna, font</span>
                         </div>
                         <i class="fas fa-chevron-right"></i>
                     </a>
-                    <a href="/wtb/html/pembayaran.html?website={{endpoint}}" class="action-card" id="paymentsAction">
-                        <div class="action-icon">
+                    <a href="#" class="nav-card" id="paymentsNav">
+                        <div class="nav-icon">
                             <i class="fas fa-credit-card"></i>
                         </div>
-                        <div class="action-info">
-                            <span class="action-title">Pembayaran</span>
-                            <span class="action-desc">Bank, e-wallet, QRIS, crypto</span>
+                        <div class="nav-info">
+                            <span class="nav-title">Pembayaran</span>
+                            <span class="nav-desc">Bank, e-wallet, QRIS, crypto</span>
                         </div>
                         <i class="fas fa-chevron-right"></i>
                     </a>
-                    <a href="/wtb/html/pengaturan.html?website={{endpoint}}" class="action-card" id="settingsAction">
-                        <div class="action-icon">
+                    <a href="#" class="nav-card" id="settingsNav">
+                        <div class="nav-icon">
                             <i class="fas fa-cog"></i>
                         </div>
-                        <div class="action-info">
-                            <span class="action-title">Pengaturan</span>
-                            <span class="action-desc">Umum, SEO, maintenance</span>
+                        <div class="nav-info">
+                            <span class="nav-title">Pengaturan</span>
+                            <span class="nav-desc">Umum, SEO, maintenance</span>
                         </div>
                         <i class="fas fa-chevron-right"></i>
                     </a>
                 </div>
-            </div>
 
-            <!-- Recent Orders -->
-            <div class="recent-orders">
-                <div class="section-header">
-                    <h3><i class="fas fa-clock"></i> Pesanan Terbaru</h3>
-                    <a href="/wtb/html/orders.html?website={{endpoint}}" class="view-all">Lihat Semua</a>
-                </div>
-                <div class="orders-list" id="recentOrdersList">
-                    <!-- Orders akan diisi via JS -->
-                </div>
-                <div class="empty-orders" id="emptyOrders" style="display: none;">
-                    <i class="fas fa-shopping-cart"></i>
-                    <p>Belum ada pesanan</p>
-                </div>
-            </div>
-
-            <!-- Popular Products -->
-            <div class="popular-products">
-                <div class="section-header">
-                    <h3><i class="fas fa-fire"></i> Produk Terlaris</h3>
-                    <a href="/wtb/html/produk.html?website={{endpoint}}" class="view-all">Lihat Semua</a>
-                </div>
-                <div class="products-mini-grid" id="popularProductsList">
-                    <!-- Products akan diisi via JS -->
-                </div>
-                <div class="empty-products" id="emptyPopularProducts" style="display: none;">
-                    <i class="fas fa-box-open"></i>
-                    <p>Belum ada produk</p>
-                </div>
-            </div>
-
-            <!-- Quick Stats -->
-            <div class="quick-stats">
-                <div class="stat-row">
-                    <div class="stat-item">
-                        <span class="stat-key">Website Dibuat</span>
-                        <span class="stat-value" id="websiteCreatedDate">-</span>
+                <!-- Recent Orders Section -->
+                <div class="recent-orders">
+                    <div class="section-header">
+                        <h3><i class="fas fa-clock"></i> Pesanan Terbaru</h3>
+                        <a href="#" class="view-all" id="ordersViewAll">Lihat Semua</a>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-key">Masa Aktif</span>
-                        <span class="stat-value" id="websiteEndDate">-</span>
+                    <div class="orders-list" id="recentOrdersList">
+                        <!-- Orders will be loaded here -->
+                    </div>
+                    <div class="empty-orders" id="emptyOrders" style="display: none;">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Belum ada pesanan</p>
                     </div>
                 </div>
-                <div class="stat-row">
-                    <div class="stat-item">
-                        <span class="stat-key">Total Stok</span>
-                        <span class="stat-value" id="totalStock">0</span>
+
+                <!-- Popular Products Section -->
+                <div class="popular-products">
+                    <div class="section-header">
+                        <h3><i class="fas fa-fire"></i> Produk Terlaris</h3>
+                        <a href="#" class="view-all" id="productsViewAll">Lihat Semua</a>
                     </div>
-                    <div class="stat-item">
-                        <span class="stat-key">Stok Menipis</span>
-                        <span class="stat-value" id="lowStockCount">0</span>
+                    <div class="products-mini-grid" id="popularProductsList">
+                        <!-- Products will be loaded here -->
+                    </div>
+                    <div class="empty-products" id="emptyPopularProducts" style="display: none;">
+                        <i class="fas fa-box-open"></i>
+                        <p>Belum ada produk</p>
+                    </div>
+                </div>
+
+                <!-- Website Info -->
+                <div class="website-info">
+                    <div class="info-row">
+                        <span class="info-label">Dibuat pada:</span>
+                        <span class="info-value" id="websiteCreatedDate">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Masa aktif:</span>
+                        <span class="info-value" id="websiteEndDate">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Total stok:</span>
+                        <span class="info-value" id="totalStock">0</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Stok menipis:</span>
+                        <span class="info-value warning" id="lowStockCount">0</span>
                     </div>
                 </div>
             </div>
