@@ -1775,3 +1775,73 @@ input:checked + .slider:before {
         margin: 0;
     }
 }
+
+/* ===== BUBBLE BUTTONS ===== */
+.banner-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  gap: 12px;
+}
+
+.btn-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--tg-text-color);
+  min-width: 140px;
+  white-space: nowrap;
+}
+
+.btn-bubble i {
+  font-size: 16px;
+}
+
+.btn-bubble:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.btn-bubble.primary {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.btn-bubble.primary:hover {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+  box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+  .btn-bubble {
+    min-width: 120px;
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+
+  .btn-bubble i {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .btn-bubble {
+    min-width: 100px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+}
