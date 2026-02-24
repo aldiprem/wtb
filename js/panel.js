@@ -409,38 +409,37 @@
         }
     }
 
-    // ==================== RENDER FUNCTIONS ====================
     function renderQuickActions() {
-        if (!elements.quickActions) return;
-        
-        let html = '';
-        
-        if (userWebsites.length > 0) {
-            // Tampilkan actions untuk setiap website
-            userWebsites.slice(0, 4).forEach(website => {
-                html += `
-                    <a href="/html/produk?website=${website.endpoint}" class="quick-action-card">
+      if (!elements.quickActions) return;
+    
+      let html = '';
+    
+      if (userWebsites.length > 0) {
+        // Tampilkan actions untuk setiap website
+        userWebsites.slice(0, 4).forEach(website => {
+          html += `
+                    <a href="/wtb/html/produk.html?website=${website.endpoint}" class="quick-action-card">
                         <i class="fas fa-box"></i>
                         <span>Kelola Produk</span>
                         <small>/${website.endpoint}</small>
                     </a>
-                    <a href="/html/tampilan?website=${website.endpoint}" class="quick-action-card">
+                    <a href="/wtb/html/tampilan.html?website=${website.endpoint}" class="quick-action-card">
                         <i class="fas fa-paint-brush"></i>
                         <span>Atur Tampilan</span>
                         <small>/${website.endpoint}</small>
                     </a>
                 `;
-            });
-        } else {
-            html = `
-                <a href="/format" class="quick-action-card">
+        });
+      } else {
+        html = `
+                <a href="/wtb/html/format.html" class="quick-action-card">
                     <i class="fas fa-plus-circle"></i>
                     <span>Buat Website Baru</span>
                 </a>
             `;
-        }
-        
-        elements.quickActions.innerHTML = html;
+      }
+    
+      elements.quickActions.innerHTML = html;
     }
 
     function renderRecentOrders() {
@@ -527,24 +526,24 @@
     }
 
     function renderWebsitesGrid() {
-        if (!elements.websitesGrid || !elements.websitesEmptyState) return;
-        
-        if (userWebsites.length === 0) {
-            elements.websitesGrid.innerHTML = '';
-            elements.websitesEmptyState.style.display = 'block';
-            return;
-        }
-        
-        elements.websitesEmptyState.style.display = 'none';
-        
-        let html = '';
-        
-        userWebsites.forEach(website => {
-            const status = website.status === 'active' ? 
-                '<span class="status-badge status-active">Active</span>' : 
-                '<span class="status-badge status-inactive">Inactive</span>';
-            
-            html += `
+      if (!elements.websitesGrid || !elements.websitesEmptyState) return;
+    
+      if (userWebsites.length === 0) {
+        elements.websitesGrid.innerHTML = '';
+        elements.websitesEmptyState.style.display = 'block';
+        return;
+      }
+    
+      elements.websitesEmptyState.style.display = 'none';
+    
+      let html = '';
+    
+      userWebsites.forEach(website => {
+        const status = website.status === 'active' ?
+          '<span class="status-badge status-active">Active</span>' :
+          '<span class="status-badge status-inactive">Inactive</span>';
+    
+        html += `
                 <div class="website-card">
                     <div class="website-header">
                         <div class="website-icon">
@@ -572,19 +571,19 @@
                         </div>
                         
                         <div class="website-actions">
-                            <a href="/html/produk?website=${website.endpoint}" class="website-btn primary">
+                            <a href="/wtb/html/produk.html?website=${website.endpoint}" class="website-btn primary">
                                 <i class="fas fa-box"></i> Produk
                             </a>
-                            <a href="/html/tampilan?website=${website.endpoint}" class="website-btn secondary">
+                            <a href="/wtb/html/tampilan.html?website=${website.endpoint}" class="website-btn secondary">
                                 <i class="fas fa-paint-brush"></i> Tampilan
                             </a>
                         </div>
                     </div>
                 </div>
             `;
-        });
-        
-        elements.websitesGrid.innerHTML = html;
+      });
+    
+      elements.websitesGrid.innerHTML = html;
     }
 
     function renderProductSelector() {
