@@ -1,4 +1,4 @@
-// panel.js - Panel Admin dengan Dashboard Lengkap
+// panel.js - Panel Admin dengan Dashboard Lengkap dan Verifikasi Kepemilikan
 (function() {
     'use strict';
     
@@ -58,7 +58,11 @@
         websiteCreatedDate: document.getElementById('websiteCreatedDate'),
         websiteEndDate: document.getElementById('websiteEndDate'),
         totalStock: document.getElementById('totalStock'),
-        lowStockCount: document.getElementById('lowStockCount')
+        lowStockCount: document.getElementById('lowStockCount'),
+        
+        // Error State
+        error: document.getElementById('error'),
+        errorMessage: document.getElementById('errorMessage')
     };
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -120,6 +124,33 @@
         } catch (e) {
             return dateString;
         }
+    }
+
+    // ==================== ERROR HANDLING ====================
+    function showError(message, isOwnerError = false) {
+        vibrate(30);
+        
+        if (elements.loading) elements.loading.style.display = 'none';
+        if (elements.error) {
+            elements.error.style.display = 'flex';
+            if (elements.errorMessage) {
+                if (isOwnerError) {
+                    elements.errorMessage.innerHTML = `
+                        <strong>❌ Access Denied</strong><br>
+                        <small>Anda tidak memiliki akses ke website ini</small>
+                    `;
+                } else {
+                    elements.errorMessage.textContent = message;
+                }
+            }
+        }
+        if (elements.panelContent) {
+            elements.panelContent.style.display = 'none';
+        }
+        if (elements.noWebsiteMessage) {
+            elements.noWebsiteMessage.style.display = 'none';
+        }
+        showLoading(false);
     }
 
     // ==================== API FUNCTIONS ====================
@@ -198,13 +229,47 @@
         }
     }
 
+    // ==================== VERIFIKASI KEPEMILIKAN ====================
+    async function verifyWebsiteOwnership(website, userId) {
+        console.log('🔍 Verifying ownership:', { websiteOwnerId: website.owner_id, userId: userId });
+        
+        // Konversi ke number untuk perbandingan yang aman
+        const websiteOwnerId = Number(website.owner_id);
+        const telegramUserId = Number(userId);
+        
+        if (websiteOwnerId !== telegramUserId) {
+            console.warn('⛔ Unauthorized access attempt:', {
+                websiteOwner: websiteOwnerId,
+                user: telegramUserId
+            });
+            return false;
+        }
+        
+        console.log('✅ Ownership verified');
+        return true;
+    }
+
     // ==================== LOAD DATA ====================
     async function loadWebsite() {
         const urlParams = new URLSearchParams(window.location.search);
         const endpoint = urlParams.get('website');
         
+        console.log('🔍 Endpoint dari URL:', endpoint);
+        
         if (!endpoint) {
-            showToast('Website tidak ditemukan', 'error');
+            console.log('❌ Tidak ada endpoint di URL');
+            showToast('Website tidak ditemukan - parameter website tidak ada', 'error');
+            
+            // Coba ambil dari localStorage sebagai fallback
+            const savedEndpoint = localStorage.getItem('last_website_endpoint');
+            if (savedEndpoint) {
+                console.log('🔄 Mencoba endpoint dari localStorage:', savedEndpoint);
+                setTimeout(() => {
+                    window.location.href = `/wtb/panel.html?website=${savedEndpoint}`;
+                }, 1500);
+                return null;
+            }
+            
             setTimeout(() => {
                 window.location.href = '/wtb/dashboard.html';
             }, 2000);
@@ -212,16 +277,44 @@
         }
         
         try {
-            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+            console.log(`📡 Fetching website data for endpoint: ${endpoint}`);
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${encodeURIComponent(endpoint)}`, {
                 method: 'GET'
             });
             
+            console.log('📥 Response:', data);
+            
             if (data.success && data.website) {
+                // Verifikasi kepemilikan dengan user saat ini
+                if (!currentUser) {
+                    console.error('❌ No current user data');
+                    showError('Tidak dapat memverifikasi user', true);
+                    return null;
+                }
+                
+                const isOwner = await verifyWebsiteOwnership(data.website, currentUser.id);
+                
+                if (!isOwner) {
+                    console.error('❌ User is not the owner of this website');
+                    showError('Anda tidak memiliki akses ke website ini', true);
+                    return null;
+                }
+                
+                // Simpan endpoint ke localStorage untuk digunakan nanti
+                localStorage.setItem('last_website_endpoint', endpoint);
+                
+                if (elements.websiteBadge) {
+                    elements.websiteBadge.textContent = '/' + data.website.endpoint;
+                }
                 return data.website;
+            } else {
+                console.error('❌ Website not found in response:', data);
+                showToast('Website tidak ditemukan di database', 'error');
+                return null;
             }
-            return null;
         } catch (error) {
             console.error('❌ Error loading website:', error);
+            showToast('Gagal memuat data website: ' + error.message, 'error');
             return null;
         }
     }
@@ -343,15 +436,19 @@
         
         // Update website info
         if (currentWebsite) {
-            if (elements.websiteBadge) elements.websiteBadge.textContent = `/${currentWebsite.endpoint}`;
-            if (elements.websiteEndpoint) elements.websiteEndpoint.textContent = `/${currentWebsite.endpoint}`;
+            console.log('🏠 Current website:', currentWebsite);
+            
+            const endpoint = currentWebsite.endpoint;
+            
+            if (elements.websiteBadge) elements.websiteBadge.textContent = `/${endpoint}`;
+            if (elements.websiteEndpoint) elements.websiteEndpoint.textContent = `/${endpoint}`;
             if (elements.websiteCreatedDate) elements.websiteCreatedDate.textContent = formatDate(currentWebsite.created_at);
             if (elements.websiteEndDate) elements.websiteEndDate.textContent = formatDate(currentWebsite.end_date) || 'Tidak terbatas';
             
             // Update quick action links
-            const endpoint = currentWebsite.endpoint;
             if (elements.productsAction) {
                 elements.productsAction.href = `/wtb/html/produk.html?website=${endpoint}`;
+                console.log('🔗 Products link:', elements.productsAction.href);
             }
             if (elements.appearanceAction) {
                 elements.appearanceAction.href = `/wtb/html/tampilan.html?website=${endpoint}`;
@@ -566,9 +663,11 @@
         try {
             // Get Telegram user data
             let telegramUser = null;
+            let tg = null;
             
             if (window.Telegram && window.Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
+                console.log('📱 Running inside Telegram Web App');
+                tg = window.Telegram.WebApp;
                 tg.expand();
                 tg.ready();
                 
@@ -577,13 +676,14 @@
                     if (tg.initDataUnsafe.user.photo_url) {
                         telegramUser.photo_url = tg.initDataUnsafe.user.photo_url;
                     }
+                    console.log('📱 Telegram user data:', telegramUser);
                 }
                 
                 applyTelegramTheme(tg);
-            }
-            
-            // Fallback for testing
-            if (!telegramUser) {
+            } else {
+                console.log('🌐 Running in standalone web browser');
+                
+                // Untuk testing di browser
                 telegramUser = {
                     id: 7998861975,
                     first_name: 'Test',
@@ -591,28 +691,38 @@
                     username: 'test_user'
                 };
             }
+
+            if (!telegramUser) {
+                showError('No user data available');
+                return;
+            }
             
             setUser(telegramUser);
             
-            // Load website data
+            // Load website data dengan verifikasi otomatis
+            console.log('🔍 Mencoba memuat website...');
             currentWebsite = await loadWebsite();
             
             if (!currentWebsite) {
+                console.error('❌ Website tidak ditemukan atau akses ditolak');
                 if (elements.panelContent) elements.panelContent.style.display = 'none';
                 if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'flex';
                 showLoading(false);
                 return;
             }
             
+            console.log('✅ Website ditemukan dan diverifikasi:', currentWebsite);
+            
             if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'none';
             if (elements.panelContent) elements.panelContent.style.display = 'block';
+            if (elements.error) elements.error.style.display = 'none';
             
             // Load all data
             await loadAllData();
             
         } catch (error) {
-            console.error('❌ Init error:', error);
-            showToast('Gagal memuat data', 'error');
+            console.error('💥 Fatal error in init:', error);
+            showError('Failed to initialize panel: ' + error.message);
         } finally {
             showLoading(false);
         }
@@ -639,7 +749,13 @@
             elements.previewWebsiteBtn.addEventListener('click', previewWebsite);
         }
         
-        // Quick action clicks (already handled by href)
+        // Retry button
+        const retryBtn = document.querySelector('.retry-btn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => {
+                window.location.reload();
+            });
+        }
     }
 
     // ==================== START ====================
