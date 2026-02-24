@@ -34,6 +34,12 @@ def init_db():
         contact_whatsapp TEXT,
         contact_telegram TEXT,
         banner_positions TEXT DEFAULT '[]',  -- JSON array untuk posisi banner
+        payment_notes TEXT DEFAULT '{}',
+        banks TEXT DEFAULT '[]',
+        ewallets TEXT DEFAULT '[]',
+        qris TEXT DEFAULT '{}',
+        crypto TEXT DEFAULT '{}',
+        maintenance_message TEXT,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
@@ -60,11 +66,45 @@ def get_tampilan(website_id):
         data = dict(row)
         # Parse JSON fields
         if data['banners']:
-            data['banners'] = json.loads(data['banners'])
+            try:
+                data['banners'] = json.loads(data['banners'])
+            except:
+                data['banners'] = []
         if data['colors']:
-            data['colors'] = json.loads(data['colors'])
+            try:
+                data['colors'] = json.loads(data['colors'])
+            except:
+                data['colors'] = {}
         if data['banner_positions']:
-            data['banner_positions'] = json.loads(data['banner_positions'])
+            try:
+                data['banner_positions'] = json.loads(data['banner_positions'])
+            except:
+                data['banner_positions'] = []
+        if data['payment_notes']:
+            try:
+                data['payment_notes'] = json.loads(data['payment_notes'])
+            except:
+                data['payment_notes'] = {}
+        if data['banks']:
+            try:
+                data['banks'] = json.loads(data['banks'])
+            except:
+                data['banks'] = []
+        if data['ewallets']:
+            try:
+                data['ewallets'] = json.loads(data['ewallets'])
+            except:
+                data['ewallets'] = []
+        if data['qris']:
+            try:
+                data['qris'] = json.loads(data['qris'])
+            except:
+                data['qris'] = {}
+        if data['crypto']:
+            try:
+                data['crypto'] = json.loads(data['crypto'])
+            except:
+                data['crypto'] = {}
         return data
     return None
 
@@ -81,8 +121,20 @@ def save_tampilan(website_id, data):
     colors = json.dumps(data.get('colors', {}))
     banners = json.dumps(data.get('banners', []))
     banner_positions = json.dumps(data.get('banner_positions', []))
+    payment_notes = json.dumps(data.get('payment_notes', {}))
+    banks = json.dumps(data.get('banks', []))
+    ewallets = json.dumps(data.get('ewallets', []))
+    qris = json.dumps(data.get('qris', {}))
+    crypto = json.dumps(data.get('crypto', {}))
     
     logo = data.get('logo', '')
+    font_family = data.get('font_family', 'Inter')
+    font_size = data.get('font_size', 14)
+    title = data.get('title')
+    description = data.get('description')
+    contact_whatsapp = data.get('contact_whatsapp')
+    contact_telegram = data.get('contact_telegram')
+    maintenance_message = data.get('maintenance_message')
 
     if existing:
         # Update
@@ -98,19 +150,31 @@ def save_tampilan(website_id, data):
             contact_whatsapp = COALESCE(?, contact_whatsapp),
             contact_telegram = COALESCE(?, contact_telegram),
             banner_positions = COALESCE(?, banner_positions),
+            payment_notes = COALESCE(?, payment_notes),
+            banks = COALESCE(?, banks),
+            ewallets = COALESCE(?, ewallets),
+            qris = COALESCE(?, qris),
+            crypto = COALESCE(?, crypto),
+            maintenance_message = COALESCE(?, maintenance_message),
             updated_at = CURRENT_TIMESTAMP
         WHERE website_id = ?
         ''', (
             logo,
             banners,
             colors,
-            data.get('font_family'),
-            data.get('font_size'),
-            data.get('title'),
-            data.get('description'),
-            data.get('contact_whatsapp'),
-            data.get('contact_telegram'),
+            font_family,
+            font_size,
+            title,
+            description,
+            contact_whatsapp,
+            contact_telegram,
             banner_positions,
+            payment_notes,
+            banks,
+            ewallets,
+            qris,
+            crypto,
+            maintenance_message,
             website_id
         ))
         result_id = existing['id']
@@ -119,20 +183,28 @@ def save_tampilan(website_id, data):
         cursor.execute('''
         INSERT INTO tampilan (
             website_id, logo, banners, colors, font_family, font_size,
-            title, description, contact_whatsapp, contact_telegram, banner_positions
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            title, description, contact_whatsapp, contact_telegram, 
+            banner_positions, payment_notes, banks, ewallets, qris, crypto,
+            maintenance_message
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             website_id,
             logo,
             banners,
             colors,
-            data.get('font_family', 'Inter'),
-            data.get('font_size', 14),
-            data.get('title'),
-            data.get('description'),
-            data.get('contact_whatsapp'),
-            data.get('contact_telegram'),
-            banner_positions
+            font_family,
+            font_size,
+            title,
+            description,
+            contact_whatsapp,
+            contact_telegram,
+            banner_positions,
+            payment_notes,
+            banks,
+            ewallets,
+            qris,
+            crypto,
+            maintenance_message
         ))
         result_id = cursor.lastrowid
 
@@ -145,12 +217,24 @@ def save_colors(website_id, colors_data):
     conn = get_db()
     cursor = conn.cursor()
     
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
     colors = json.dumps(colors_data)
     
-    cursor.execute('''
-    INSERT OR REPLACE INTO tampilan (website_id, colors)
-    VALUES (?, ?)
-    ''', (website_id, colors))
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            colors = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (colors, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?)
+        ''', (website_id, colors, 'Inter', 14))
     
     conn.commit()
     conn.close()
@@ -190,10 +274,22 @@ def save_logo(website_id, logo_url):
     conn = get_db()
     cursor = conn.cursor()
     
-    cursor.execute('''
-    INSERT OR REPLACE INTO tampilan (website_id, logo)
-    VALUES (?, ?)
-    ''', (website_id, logo_url))
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            logo = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (logo_url, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, logo, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (website_id, logo_url, '{}', 'Inter', 14))
     
     conn.commit()
     conn.close()
@@ -209,110 +305,261 @@ def update_tampilan(website_id, data):
     current = cursor.fetchone()
 
     if not current:
+        # Jika tidak ada data, buat baru
         conn.close()
-        return False
+        return save_tampilan(website_id, data)
 
     current_dict = dict(current)
 
-    # Parse JSON fields
-    for field in ['banners', 'colors', 'banner_positions']:
-        if current_dict[field]:
-            try:
-                current_dict[field] = json.loads(current_dict[field])
-            except:
-                current_dict[field] = {} if field == 'colors' else []
+    # Parse JSON fields untuk mendapatkan nilai saat ini
+    try:
+        current_banners = json.loads(current_dict['banners']) if current_dict['banners'] else []
+    except:
+        current_banners = []
+        
+    try:
+        current_colors = json.loads(current_dict['colors']) if current_dict['colors'] else {}
+    except:
+        current_colors = {}
+        
+    try:
+        current_banner_positions = json.loads(current_dict['banner_positions']) if current_dict['banner_positions'] else []
+    except:
+        current_banner_positions = []
+        
+    try:
+        current_payment_notes = json.loads(current_dict['payment_notes']) if current_dict['payment_notes'] else {}
+    except:
+        current_payment_notes = {}
+        
+    try:
+        current_banks = json.loads(current_dict['banks']) if current_dict['banks'] else []
+    except:
+        current_banks = []
+        
+    try:
+        current_ewallets = json.loads(current_dict['ewallets']) if current_dict['ewallets'] else []
+    except:
+        current_ewallets = []
+        
+    try:
+        current_qris = json.loads(current_dict['qris']) if current_dict['qris'] else {}
+    except:
+        current_qris = {}
+        
+    try:
+        current_crypto = json.loads(current_dict['crypto']) if current_dict['crypto'] else {}
+    except:
+        current_crypto = {}
 
-    # Build SET clause
-    set_clauses = []
-    values = []
+    # Siapkan nilai baru (gunakan data baru jika ada,否则 pakai yang lama)
+    new_logo = data.get('logo', current_dict['logo'])
+    new_banners = json.dumps(data.get('banners', current_banners))
+    new_colors = json.dumps(data.get('colors', current_colors))
+    new_banner_positions = json.dumps(data.get('banner_positions', current_banner_positions))
+    new_font_family = data.get('font_family', current_dict['font_family'])
+    new_font_size = data.get('font_size', current_dict['font_size'])
+    new_title = data.get('title', current_dict['title'])
+    new_description = data.get('description', current_dict['description'])
+    new_contact_whatsapp = data.get('contact_whatsapp', current_dict['contact_whatsapp'])
+    new_contact_telegram = data.get('contact_telegram', current_dict['contact_telegram'])
+    new_payment_notes = json.dumps(data.get('payment_notes', current_payment_notes))
+    new_banks = json.dumps(data.get('banks', current_banks))
+    new_ewallets = json.dumps(data.get('ewallets', current_ewallets))
+    new_qris = json.dumps(data.get('qris', current_qris))
+    new_crypto = json.dumps(data.get('crypto', current_crypto))
+    new_maintenance_message = data.get('maintenance_message', current_dict['maintenance_message'])
 
-    # Logo
-    if 'logo' in data:
-        set_clauses.append("logo = ?")
-        values.append(data['logo'])
-    else:
-        set_clauses.append("logo = ?")
-        values.append(current_dict['logo'])
+    # Update database
+    cursor.execute('''
+    UPDATE tampilan SET
+        logo = ?,
+        banners = ?,
+        colors = ?,
+        font_family = ?,
+        font_size = ?,
+        title = ?,
+        description = ?,
+        contact_whatsapp = ?,
+        contact_telegram = ?,
+        banner_positions = ?,
+        payment_notes = ?,
+        banks = ?,
+        ewallets = ?,
+        qris = ?,
+        crypto = ?,
+        maintenance_message = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE website_id = ?
+    ''', (
+        new_logo,
+        new_banners,
+        new_colors,
+        new_font_family,
+        new_font_size,
+        new_title,
+        new_description,
+        new_contact_whatsapp,
+        new_contact_telegram,
+        new_banner_positions,
+        new_payment_notes,
+        new_banks,
+        new_ewallets,
+        new_qris,
+        new_crypto,
+        new_maintenance_message,
+        website_id
+    ))
 
-    # Banners
-    if 'banners' in data:
-        set_clauses.append("banners = ?")
-        values.append(json.dumps(data['banners']))
-    else:
-        set_clauses.append("banners = ?")
-        values.append(json.dumps(current_dict['banners']))
-
-    # Colors
-    if 'colors' in data:
-        set_clauses.append("colors = ?")
-        values.append(json.dumps(data['colors']))
-    else:
-        set_clauses.append("colors = ?")
-        values.append(json.dumps(current_dict['colors']))
-
-    # Banner positions
-    if 'banner_positions' in data:
-        set_clauses.append("banner_positions = ?")
-        values.append(json.dumps(data['banner_positions']))
-    else:
-        set_clauses.append("banner_positions = ?")
-        values.append(json.dumps(current_dict['banner_positions']))
-
-    # Font family
-    if 'font_family' in data:
-        set_clauses.append("font_family = ?")
-        values.append(data['font_family'])
-    else:
-        set_clauses.append("font_family = ?")
-        values.append(current_dict['font_family'])
-
-    # Font size
-    if 'font_size' in data:
-        set_clauses.append("font_size = ?")
-        values.append(data['font_size'])
-    else:
-        set_clauses.append("font_size = ?")
-        values.append(current_dict['font_size'])
-
-    # Title
-    if 'title' in data:
-        set_clauses.append("title = ?")
-        values.append(data['title'])
-    else:
-        set_clauses.append("title = ?")
-        values.append(current_dict['title'])
-
-    # Description
-    if 'description' in data:
-        set_clauses.append("description = ?")
-        values.append(data['description'])
-    else:
-        set_clauses.append("description = ?")
-        values.append(current_dict['description'])
-
-    # Contact WhatsApp
-    if 'contact_whatsapp' in data:
-        set_clauses.append("contact_whatsapp = ?")
-        values.append(data['contact_whatsapp'])
-    else:
-        set_clauses.append("contact_whatsapp = ?")
-        values.append(current_dict['contact_whatsapp'])
-
-    # Contact Telegram
-    if 'contact_telegram' in data:
-        set_clauses.append("contact_telegram = ?")
-        values.append(data['contact_telegram'])
-    else:
-        set_clauses.append("contact_telegram = ?")
-        values.append(current_dict['contact_telegram'])
-
-    set_clauses.append("updated_at = CURRENT_TIMESTAMP")
-
-    query = f"UPDATE tampilan SET {', '.join(set_clauses)} WHERE website_id = ?"
-    values.append(website_id)
-
-    cursor.execute(query, values)
     conn.commit()
     conn.close()
+    return True
 
+# Fungsi khusus untuk menyimpan payment notes
+def save_payment_notes(website_id, notes_data):
+    """Khusus menyimpan payment notes"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    notes_json = json.dumps(notes_data)
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            payment_notes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (notes_json, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, payment_notes, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (website_id, notes_json, '{}', 'Inter', 14))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan payment methods
+def save_payment_methods(website_id, banks_data, ewallets_data, qris_data, crypto_data):
+    """Khusus menyimpan payment methods"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    banks_json = json.dumps(banks_data)
+    ewallets_json = json.dumps(ewallets_data)
+    qris_json = json.dumps(qris_data)
+    crypto_json = json.dumps(crypto_data)
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            banks = ?,
+            ewallets = ?,
+            qris = ?,
+            crypto = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (banks_json, ewallets_json, qris_json, crypto_json, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, banks, ewallets, qris, crypto, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, banks_json, ewallets_json, qris_json, crypto_json, '{}', 'Inter', 14))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan maintenance message
+def save_maintenance(website_id, enabled, message):
+    """Khusus menyimpan maintenance settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            maintenance_message = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (message if enabled else None, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, maintenance_message, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (website_id, message if enabled else None, '{}', 'Inter', 14))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan font
+def save_font(website_id, font_family, font_size):
+    """Khusus menyimpan font settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            font_family = ?,
+            font_size = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (font_family, font_size, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, font_family, font_size, colors)
+        VALUES (?, ?, ?, ?)
+        ''', (website_id, font_family, font_size, '{}'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan general settings
+def save_general(website_id, title, description, contact_whatsapp, contact_telegram):
+    """Khusus menyimpan general settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            title = ?,
+            description = ?,
+            contact_whatsapp = ?,
+            contact_telegram = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (title, description, contact_whatsapp, contact_telegram, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, title, description, contact_whatsapp, contact_telegram, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, title, description, contact_whatsapp, contact_telegram, '{}', 'Inter', 14))
+    
+    conn.commit()
+    conn.close()
     return True
