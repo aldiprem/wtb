@@ -1,4 +1,4 @@
-// produk.js - Manajemen Produk dengan Tampilan Tree (VERSI FINAL - SUDAH DIPERBAIKI)
+// produk.js - Manajemen Produk dengan Tampilan Tree (VERSI LENGKAP DENGAN MANAGE LAYANAN & APLIKASI)
 (function() {
     'use strict';
     
@@ -13,6 +13,12 @@
     let products = [];
     let filteredProducts = [];
     let editingProductId = null;
+    
+    // Mode Manage
+    let manageMode = null; // 'layanan' atau 'aplikasi'
+    let manageLayanan = null;
+    let manageAplikasi = null;
+    let manageItems = []; // Untuk multiple items
     
     // Form State (camelCase untuk internal)
     let formData = {
@@ -229,20 +235,19 @@
         }
     }
 
-    // 🔥 PERBAIKAN UTAMA: Fungsi saveProduct dengan key yang sesuai database (underscore)
     async function saveProduct() {
         if (!currentWebsite) return;
         
         // Mapping dari camelCase (formData) ke underscore (database)
         const productData = {
             layanan: formData.layanan,
-            layanan_gambar: formData.layananGambar,      // 🔥 konversi ke underscore
-            layanan_desc: formData.layananDesc,          // 🔥 konversi ke underscore
+            layanan_gambar: formData.layananGambar,
+            layanan_desc: formData.layananDesc,
             aplikasi: formData.aplikasi,
-            aplikasi_gambar: formData.aplikasiGambar,    // 🔥 konversi ke underscore
-            aplikasi_desc: formData.aplikasiDesc,        // 🔥 konversi ke underscore
-            item_nama: formData.itemNama,                 // 🔥 konversi ke underscore (PENTING!)
-            item_durasi: formData.itemDurasi,             // 🔥 konversi ke underscore
+            aplikasi_gambar: formData.aplikasiGambar,
+            aplikasi_desc: formData.aplikasiDesc,
+            item_nama: formData.itemNama,
+            item_durasi: formData.itemDurasi,
             harga: parseInt(formData.harga) || 0,
             fitur: formData.fitur,
             method: formData.method,
@@ -251,13 +256,47 @@
             aktif: formData.aktif
         };
         
-        console.log('📤 Sending product data:', productData); // Untuk debugging
+        console.log('📤 Sending product data:', productData);
         
         showLoading(true);
         
         try {
             let response;
-            if (editingProductId) {
+            
+            if (manageMode === 'layanan' || manageMode === 'aplikasi') {
+                // Mode manage - bisa multiple items
+                if (manageItems.length === 0) {
+                    showToast('Tambahkan minimal 1 item', 'warning');
+                    showLoading(false);
+                    return;
+                }
+                
+                // Simpan satu per satu
+                let successCount = 0;
+                for (const item of manageItems) {
+                    const itemData = {
+                        ...productData,
+                        item_nama: item.itemNama,
+                        item_durasi: item.itemDurasi,
+                        harga: parseInt(item.harga) || 0,
+                        fitur: item.fitur || 'biasa',
+                        method: item.method || 'directly',
+                        stok: item.method === 'directly' ? (item.stok || []) : [],
+                        fields: item.method === 'request' ? (item.fields || []) : []
+                    };
+                    
+                    const res = await fetchWithRetry(`${API_BASE_URL}/api/products/${currentWebsite.id}`, {
+                        method: 'POST',
+                        body: JSON.stringify(itemData)
+                    });
+                    
+                    if (res.success) successCount++;
+                }
+                
+                if (successCount > 0) {
+                    showToast(`✅ ${successCount} item berhasil ditambahkan`, 'success');
+                }
+            } else if (editingProductId) {
                 response = await fetchWithRetry(`${API_BASE_URL}/api/products/${editingProductId}`, {
                     method: 'PUT',
                     body: JSON.stringify(productData)
@@ -269,14 +308,14 @@
                 });
             }
             
-            if (response.success) {
+            if (response && response.success) {
                 showToast(
                     editingProductId ? '✅ Produk diperbarui' : '✅ Produk ditambahkan',
                     'success'
                 );
                 closeModal();
                 await loadProducts(currentWebsite.id);
-            } else {
+            } else if (!manageMode && response && !response.success) {
                 throw new Error(response.error || 'Gagal menyimpan');
             }
         } catch (error) {
@@ -321,7 +360,7 @@
                 const match = 
                     (p.layanan || '').toLowerCase().includes(query) ||
                     (p.aplikasi || '').toLowerCase().includes(query) ||
-                    (p.item_nama || '').toLowerCase().includes(query);  // 🔥 pake item_nama
+                    (p.item_nama || '').toLowerCase().includes(query);
                 if (!match) return false;
             }
             
@@ -343,7 +382,6 @@
     }
 
     // ==================== RENDER FUNCTIONS ====================
-    // 🔥 PERBAIKAN: Render dengan key dari database (underscore)
     function renderProducts() {
         if (!elements.productsTree) return;
         
@@ -355,21 +393,21 @@
         
         elements.emptyState.style.display = 'none';
         
-        // Group by layanan (menggunakan key dari database)
+        // Group by layanan
         const grouped = {};
         filteredProducts.forEach(p => {
             if (!grouped[p.layanan]) {
                 grouped[p.layanan] = {
-                    gambar: p.layanan_gambar || '',      // 🔥 dari database
-                    desc: p.layanan_desc || '',          // 🔥 dari database
+                    gambar: p.layanan_gambar || '',
+                    desc: p.layanan_desc || '',
                     aplikasi: {}
                 };
             }
             
             if (!grouped[p.layanan].aplikasi[p.aplikasi]) {
                 grouped[p.layanan].aplikasi[p.aplikasi] = {
-                    gambar: p.aplikasi_gambar || '',    // 🔥 dari database
-                    desc: p.aplikasi_desc || '',        // 🔥 dari database
+                    gambar: p.aplikasi_gambar || '',
+                    desc: p.aplikasi_desc || '',
                     items: []
                 };
             }
@@ -394,6 +432,9 @@
                             ${layananData.desc ? `<div class="layanan-desc">${escapeHtml(layananData.desc)}</div>` : ''}
                         </div>
                         <div class="layanan-actions">
+                            <button class="btn-manage manage-layanan" data-tooltip="Kelola Layanan" onclick="event.stopPropagation(); window.produk.manageLayanan('${escapeHtml(layanan)}')">
+                                <i class="fas fa-cog"></i>
+                            </button>
                             <button class="layanan-toggle" onclick="event.stopPropagation(); toggleLayanan(this)">
                                 <i class="fas fa-chevron-down"></i>
                             </button>
@@ -418,6 +459,9 @@
                             </div>
                             <span class="aplikasi-count">${appData.items.length} item</span>
                             <div class="aplikasi-actions">
+                                <button class="btn-manage manage-aplikasi" data-tooltip="Kelola Aplikasi" onclick="event.stopPropagation(); window.produk.manageAplikasi('${escapeHtml(layanan)}', '${escapeHtml(aplikasi)}')">
+                                    <i class="fas fa-cog"></i>
+                                </button>
                                 <button class="aplikasi-toggle" onclick="event.stopPropagation(); toggleAplikasi(this)">
                                     <i class="fas fa-chevron-down"></i>
                                 </button>
@@ -433,8 +477,8 @@
                     html += `
                         <div class="item-row" data-id="${item.id}">
                             <div class="item-info">
-                                <div class="item-nama">${escapeHtml(item.item_nama)}</div>  <!-- 🔥 item_nama dari database -->
-                                ${item.item_durasi ? `<div class="item-durasi">${escapeHtml(item.item_durasi)}</div>` : ''}  <!-- 🔥 item_durasi dari database -->
+                                <div class="item-nama">${escapeHtml(item.item_nama)}</div>
+                                ${item.item_durasi ? `<div class="item-durasi">${escapeHtml(item.item_durasi)}</div>` : ''}
                                 <div class="item-meta">
                                     <span class="item-harga">${formatRupiah(item.harga)}</span>
                                     ${item.fitur !== 'biasa' ? 
@@ -478,6 +522,223 @@
         elements.productsTree.innerHTML = html;
     }
 
+    // ==================== MANAGE FUNCTIONS ====================
+    function manageLayanan(layanan) {
+        manageMode = 'layanan';
+        manageLayanan = layanan;
+        manageAplikasi = null;
+        manageItems = [];
+        
+        resetForm();
+        
+        // Set layanan
+        formData.layanan = layanan;
+        elements.layananInput.value = layanan;
+        elements.layananInput.disabled = true;
+        elements.layananInput.classList.add('disabled');
+        
+        // Ubah tampilan modal untuk multiple items
+        elements.modalTitle.textContent = `Kelola Layanan: ${layanan}`;
+        
+        // Tambahkan section untuk multiple items
+        addMultipleItemsSection();
+        
+        elements.productModal.classList.add('active');
+        vibrate(10);
+    }
+
+    function manageAplikasi(layanan, aplikasi) {
+        manageMode = 'aplikasi';
+        manageLayanan = layanan;
+        manageAplikasi = aplikasi;
+        manageItems = [];
+        
+        resetForm();
+        
+        // Set layanan dan aplikasi
+        formData.layanan = layanan;
+        formData.aplikasi = aplikasi;
+        
+        elements.layananInput.value = layanan;
+        elements.layananInput.disabled = true;
+        elements.layananInput.classList.add('disabled');
+        
+        elements.aplikasiInput.value = aplikasi;
+        elements.aplikasiInput.disabled = true;
+        elements.aplikasiInput.classList.add('disabled');
+        
+        // Ubah tampilan modal
+        elements.modalTitle.textContent = `Kelola Aplikasi: ${aplikasi}`;
+        
+        // Tambahkan section untuk multiple items
+        addMultipleItemsSection();
+        
+        elements.productModal.classList.add('active');
+        vibrate(10);
+    }
+
+    function addMultipleItemsSection() {
+        // Hapus section yang sudah ada jika perlu
+        const existingSection = document.querySelector('.multiple-items-container');
+        if (existingSection) existingSection.remove();
+        
+        // Sembunyikan section item biasa
+        const itemSection = document.querySelector('.form-section:has(#itemNamaInput)');
+        if (itemSection) itemSection.style.display = 'none';
+        
+        // Buat container untuk multiple items
+        const container = document.createElement('div');
+        container.className = 'multiple-items-container';
+        container.innerHTML = `
+            <div class="manage-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Anda dapat menambahkan <strong>beberapa item sekaligus</strong> untuk layanan/aplikasi ini.</span>
+            </div>
+            <div id="itemsGroupContainer"></div>
+            <button type="button" class="btn-add-small" id="addItemGroupBtn" style="width: 100%; justify-content: center; margin-top: 16px;">
+                <i class="fas fa-plus"></i> Tambah Item Baru
+            </button>
+        `;
+        
+        // Sisipkan setelah method section
+        const methodSection = document.querySelector('.form-section:has(.method-options)');
+        methodSection.parentNode.insertBefore(container, methodSection.nextSibling);
+        
+        // Tambah item group pertama
+        addItemGroup();
+        
+        // Event listener untuk tombol tambah
+        document.getElementById('addItemGroupBtn').addEventListener('click', addItemGroup);
+    }
+
+    function addItemGroup() {
+        const container = document.getElementById('itemsGroupContainer');
+        if (!container) return;
+        
+        const groupId = 'group_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const groupIndex = manageItems.length;
+        
+        // Default item data
+        const itemData = {
+            id: groupId,
+            itemNama: '',
+            itemDurasi: '',
+            harga: 0,
+            fitur: 'biasa',
+            method: 'directly',
+            stok: [],
+            fields: []
+        };
+        
+        manageItems.push(itemData);
+        
+        const groupHtml = `
+            <div class="item-group" data-group-id="${groupId}" data-index="${groupIndex}">
+                <div class="item-group-header">
+                    <h4>Item #${manageItems.length}</h4>
+                    <button type="button" class="remove-item-group" onclick="window.produk.removeItemGroup('${groupId}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="item-group-fields">
+                    <div class="form-group full-width">
+                        <label>Nama Item</label>
+                        <input type="text" class="item-nama-input" placeholder="Contoh: Anggota Invite 1 Bulan" value="${escapeHtml(itemData.itemNama)}">
+                    </div>
+                    <div class="form-group">
+                        <label>Durasi</label>
+                        <input type="text" class="item-durasi-input" placeholder="1 Bulan" value="${escapeHtml(itemData.itemDurasi)}">
+                    </div>
+                    <div class="form-group">
+                        <label>Harga (Rp)</label>
+                        <input type="number" class="item-harga-input" min="0" placeholder="50000" value="${itemData.harga}">
+                    </div>
+                    <div class="form-group">
+                        <label>Fitur</label>
+                        <select class="item-fitur-select">
+                            <option value="biasa" ${itemData.fitur === 'biasa' ? 'selected' : ''}>Biasa</option>
+                            <option value="unggulan" ${itemData.fitur === 'unggulan' ? 'selected' : ''}>Unggulan</option>
+                            <option value="populer" ${itemData.fitur === 'populer' ? 'selected' : ''}>Populer</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Metode</label>
+                        <div style="display: flex; gap: 16px;">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="method_${groupId}" value="directly" class="method-radio" ${itemData.method === 'directly' ? 'checked' : ''}>
+                                <span>Directly</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="radio" name="method_${groupId}" value="request" class="method-radio" ${itemData.method === 'request' ? 'checked' : ''}>
+                                <span>Request</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Stok (pisahkan dengan baris baru)</label>
+                        <textarea class="item-stok-textarea" rows="3" placeholder="email@example.com:password123&#10;user2@domain.com:pass456">${(itemData.stok || []).join('\n')}</textarea>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.insertAdjacentHTML('beforeend', groupHtml);
+        
+        // Setup event listeners untuk group ini
+        setupItemGroupListeners(groupId, groupIndex);
+    }
+
+    function setupItemGroupListeners(groupId, index) {
+        const group = document.querySelector(`[data-group-id="${groupId}"]`);
+        if (!group) return;
+        
+        // Update data saat input berubah
+        group.querySelector('.item-nama-input').addEventListener('input', (e) => {
+            manageItems[index].itemNama = e.target.value;
+        });
+        
+        group.querySelector('.item-durasi-input').addEventListener('input', (e) => {
+            manageItems[index].itemDurasi = e.target.value;
+        });
+        
+        group.querySelector('.item-harga-input').addEventListener('input', (e) => {
+            manageItems[index].harga = parseInt(e.target.value) || 0;
+        });
+        
+        group.querySelector('.item-fitur-select').addEventListener('change', (e) => {
+            manageItems[index].fitur = e.target.value;
+        });
+        
+        group.querySelectorAll('.method-radio').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    manageItems[index].method = e.target.value;
+                }
+            });
+        });
+        
+        group.querySelector('.item-stok-textarea').addEventListener('input', (e) => {
+            const lines = e.target.value.split('\n').map(l => l.trim()).filter(l => l);
+            manageItems[index].stok = lines;
+        });
+    }
+
+    function removeItemGroup(groupId) {
+        const index = manageItems.findIndex(item => item.id === groupId);
+        if (index !== -1) {
+            manageItems.splice(index, 1);
+        }
+        
+        const group = document.querySelector(`[data-group-id="${groupId}"]`);
+        if (group) group.remove();
+        
+        // Update nomor item
+        document.querySelectorAll('.item-group').forEach((el, i) => {
+            const header = el.querySelector('.item-group-header h4');
+            if (header) header.textContent = `Item #${i + 1}`;
+        });
+    }
+
     // ==================== FORM FUNCTIONS ====================
     function resetForm() {
         formData = {
@@ -498,18 +759,40 @@
         };
         
         editingProductId = null;
+        manageMode = null;
+        manageLayanan = null;
+        manageAplikasi = null;
+        manageItems = [];
         
         // Reset inputs
-        if (elements.layananInput) elements.layananInput.value = '';
+        if (elements.layananInput) {
+            elements.layananInput.value = '';
+            elements.layananInput.disabled = false;
+            elements.layananInput.classList.remove('disabled');
+        }
         if (elements.layananGambarInput) elements.layananGambarInput.value = '';
         if (elements.layananDescInput) elements.layananDescInput.value = '';
-        if (elements.aplikasiInput) elements.aplikasiInput.value = '';
+        
+        if (elements.aplikasiInput) {
+            elements.aplikasiInput.value = '';
+            elements.aplikasiInput.disabled = false;
+            elements.aplikasiInput.classList.remove('disabled');
+        }
         if (elements.aplikasiGambarInput) elements.aplikasiGambarInput.value = '';
         if (elements.aplikasiDescInput) elements.aplikasiDescInput.value = '';
+        
         if (elements.itemNamaInput) elements.itemNamaInput.value = '';
         if (elements.itemDurasiInput) elements.itemDurasiInput.value = '';
         if (elements.itemHargaInput) elements.itemHargaInput.value = '';
         if (elements.itemFiturInput) elements.itemFiturInput.value = 'biasa';
+        
+        // Tampilkan kembali section item biasa
+        const itemSection = document.querySelector('.form-section:has(#itemNamaInput)');
+        if (itemSection) itemSection.style.display = 'block';
+        
+        // Hapus multiple items container
+        const multiContainer = document.querySelector('.multiple-items-container');
+        if (multiContainer) multiContainer.remove();
         
         // Reset method
         elements.methodRadios.forEach(radio => {
@@ -526,20 +809,19 @@
         if (elements.produkAktif) elements.produkAktif.checked = true;
     }
 
-    // 🔥 PERBAIKAN: Load product untuk edit (mapping dari underscore ke camelCase)
     function loadProductForEdit(product) {
         editingProductId = product.id;
         
         // Mapping dari database (underscore) ke form (camelCase)
         formData = {
             layanan: product.layanan || '',
-            layananGambar: product.layanan_gambar || '',      // 🔥 dari layanan_gambar
-            layananDesc: product.layanan_desc || '',          // 🔥 dari layanan_desc
+            layananGambar: product.layanan_gambar || '',
+            layananDesc: product.layanan_desc || '',
             aplikasi: product.aplikasi || '',
-            aplikasiGambar: product.aplikasi_gambar || '',    // 🔥 dari aplikasi_gambar
-            aplikasiDesc: product.aplikasi_desc || '',        // 🔥 dari aplikasi_desc
-            itemNama: product.item_nama || '',                 // 🔥 dari item_nama
-            itemDurasi: product.item_durasi || '',             // 🔥 dari item_durasi
+            aplikasiGambar: product.aplikasi_gambar || '',
+            aplikasiDesc: product.aplikasi_desc || '',
+            itemNama: product.item_nama || '',
+            itemDurasi: product.item_durasi || '',
             harga: product.harga || 0,
             fitur: product.fitur || 'biasa',
             method: product.method || 'directly',
@@ -672,7 +954,7 @@
         if (!product) return;
         
         elements.deleteInfo.innerHTML = `
-            <strong>${escapeHtml(product.item_nama)}</strong><br>  <!-- 🔥 pake item_nama -->
+            <strong>${escapeHtml(product.item_nama)}</strong><br>
             <small>${escapeHtml(product.aplikasi)} • ${escapeHtml(product.layanan)}</small>
         `;
         
@@ -682,6 +964,29 @@
 
     // ==================== VALIDATION ====================
     function validateForm() {
+        if (manageMode) {
+            // Untuk manage mode, validasi minimal ada items
+            if (manageItems.length === 0) {
+                showToast('Tambahkan minimal 1 item', 'warning');
+                return false;
+            }
+            
+            // Validasi setiap item
+            for (let i = 0; i < manageItems.length; i++) {
+                const item = manageItems[i];
+                if (!item.itemNama) {
+                    showToast(`Nama item #${i + 1} wajib diisi`, 'warning');
+                    return false;
+                }
+                if (!item.harga || item.harga <= 0) {
+                    showToast(`Harga item #${i + 1} wajib diisi dan lebih dari 0`, 'warning');
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Validasi normal
         if (!formData.layanan) {
             showToast('Nama layanan wajib diisi', 'warning');
             elements.layananInput.focus();
@@ -769,21 +1074,26 @@
             elements.productForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 
-                // Update formData from inputs
-                formData.layanan = elements.layananInput.value;
-                formData.layananGambar = elements.layananGambarInput.value;
-                formData.layananDesc = elements.layananDescInput.value;
-                formData.aplikasi = elements.aplikasiInput.value;
-                formData.aplikasiGambar = elements.aplikasiGambarInput.value;
-                formData.aplikasiDesc = elements.aplikasiDescInput.value;
-                formData.itemNama = elements.itemNamaInput.value;
-                formData.itemDurasi = elements.itemDurasiInput.value;
-                formData.harga = parseInt(elements.itemHargaInput.value) || 0;
-                formData.fitur = elements.itemFiturInput.value;
-                formData.aktif = elements.produkAktif.checked;
-                
-                if (validateForm()) {
+                if (manageMode) {
+                    // Untuk manage mode, data sudah ada di manageItems
                     saveProduct();
+                } else {
+                    // Update formData from inputs
+                    formData.layanan = elements.layananInput.value;
+                    formData.layananGambar = elements.layananGambarInput.value;
+                    formData.layananDesc = elements.layananDescInput.value;
+                    formData.aplikasi = elements.aplikasiInput.value;
+                    formData.aplikasiGambar = elements.aplikasiGambarInput.value;
+                    formData.aplikasiDesc = elements.aplikasiDescInput.value;
+                    formData.itemNama = elements.itemNamaInput.value;
+                    formData.itemDurasi = elements.itemDurasiInput.value;
+                    formData.harga = parseInt(elements.itemHargaInput.value) || 0;
+                    formData.fitur = elements.itemFiturInput.value;
+                    formData.aktif = elements.produkAktif.checked;
+                    
+                    if (validateForm()) {
+                        saveProduct();
+                    }
                 }
             });
         }
@@ -982,7 +1292,11 @@
                 formData.fields.splice(index, 1);
                 renderFieldsList();
             }
-        }
+        },
+        // New functions
+        manageLayanan: (layanan) => manageLayanan(layanan),
+        manageAplikasi: (layanan, aplikasi) => manageAplikasi(layanan, aplikasi),
+        removeItemGroup: (groupId) => removeItemGroup(groupId)
     };
 
     // ==================== START ====================
