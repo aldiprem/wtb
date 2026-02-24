@@ -16,6 +16,22 @@
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        /* Toast animations */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(100%); }
+        }
+        
+        .toast.fade-out {
+            animation: fadeOut 0.3s ease forwards;
+        }
+    </style>
 </head>
 <body>
     <div class="format-container">
@@ -113,14 +129,14 @@
 
                         <!-- Form Actions -->
                         <div class="form-actions">
-                          <a href="/dashboard" class="btn btn-secondary">
-                            <i class="fas fa-times"></i>
-                            Cancel
-                          </a>
-                          <button type="submit" class="btn btn-primary" id="submitBtn">
-                            <i class="fas fa-save"></i>
-                            Create Website
-                          </button>
+                            <a href="/dashboard" class="btn btn-secondary">
+                                <i class="fas fa-times"></i>
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-save"></i>
+                                Create Website
+                            </button>
                         </div>
                     </form>
                 </div>
