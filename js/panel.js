@@ -1,1209 +1,106 @@
-// Panel JavaScript for Website Management - GitHub Pages Version
+// panel.js - Panel Admin dengan Dashboard Lengkap
 (function() {
-    console.log('🛠️ Website Panel - Initializing...');
+    'use strict';
+    
+    console.log('🛠️ Panel Admin - Initializing...');
 
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
-    console.log('🔗 API URL:', API_BASE_URL);
-
-    // ==================== DOM ELEMENTS ====================
-    const elements = {
-        loadingOverlay: document.getElementById('loadingOverlay'),
-        loading: document.getElementById('loading'),
-        error: document.getElementById('error'),
-        errorMessage: document.getElementById('errorMessage'),
-        panelContent: document.getElementById('panelContent'),
-        noWebsiteMessage: document.getElementById('noWebsiteMessage'),
-        websiteBadge: document.getElementById('websiteBadge'),
-        websiteAvatar: document.getElementById('websiteAvatar'),
-        userAvatarContainer: document.getElementById('userAvatarContainer'),
-        userInfo: document.getElementById('userInfo'),
-        websiteName: document.getElementById('websiteName'),
-        websiteEndpointBadge: document.getElementById('websiteEndpointBadge'),
-        websiteOwner: document.getElementById('websiteOwner'),
-        websiteCreated: document.getElementById('websiteCreated'),
-        websiteStatus: document.getElementById('websiteStatus'),
-        
-        // Tab elements
-        tabButtons: document.querySelectorAll('.tab-btn'),
-        tabContents: document.querySelectorAll('.tab-content'),
-        
-        // Logo elements
-        logoImage: document.getElementById('logoImage'),
-        logoUrl: document.getElementById('logoUrl'),
-        uploadLogoBtn: document.getElementById('uploadLogoBtn'),
-        saveLogoBtn: document.getElementById('saveLogoBtn'),
-        
-        // Banner elements
-        bannerTrack: document.getElementById('bannerTrack'),
-        emptyBannerMessage: document.getElementById('emptyBannerMessage'),
-        addBannerBtn: document.getElementById('addBannerBtn'),
-        saveBannersBtn: document.getElementById('saveBannersBtn'),
-        
-        // Color elements
-        primaryColor: document.getElementById('primaryColor'),
-        primaryColorHex: document.getElementById('primaryColorHex'),
-        secondaryColor: document.getElementById('secondaryColor'),
-        secondaryColorHex: document.getElementById('secondaryColorHex'),
-        bgColor: document.getElementById('bgColor'),
-        bgColorHex: document.getElementById('bgColorHex'),
-        textColor: document.getElementById('textColor'),
-        textColorHex: document.getElementById('textColorHex'),
-        cardColor: document.getElementById('cardColor'),
-        cardColorHex: document.getElementById('cardColorHex'),
-        accentColor: document.getElementById('accentColor'),
-        accentColorHex: document.getElementById('accentColorHex'),
-        saveColorsBtn: document.getElementById('saveColorsBtn'),
-        
-        // Font elements
-        fontFamily: document.getElementById('fontFamily'),
-        fontSize: document.getElementById('fontSize'),
-        saveFontBtn: document.getElementById('saveFontBtn'),
-        
-        // Product elements
-        totalProducts: document.getElementById('totalProducts'),
-        availableProducts: document.getElementById('availableProducts'),
-        lowStockProducts: document.getElementById('lowStockProducts'),
-        soldProducts: document.getElementById('soldProducts'),
-        productsGrid: document.getElementById('productsGrid'),
-        noProductsMessage: document.getElementById('noProductsMessage'),
-        addProductBtn: document.getElementById('addProductBtn'),
-        
-        // Payment elements
-        bankEnabled: document.getElementById('bankEnabled'),
-        ewalletEnabled: document.getElementById('ewalletEnabled'),
-        qrisEnabled: document.getElementById('qrisEnabled'),
-        cryptoEnabled: document.getElementById('cryptoEnabled'),
-        bankDetails: document.getElementById('bankDetails'),
-        ewalletDetails: document.getElementById('ewalletDetails'),
-        qrisDetails: document.getElementById('qrisDetails'),
-        cryptoDetails: document.getElementById('cryptoDetails'),
-        qrisPreview: document.getElementById('qrisPreview'),
-        uploadQrisBtn: document.getElementById('uploadQrisBtn'),
-        paymentNotes: document.getElementById('paymentNotes'),
-        confirmationNotes: document.getElementById('confirmationNotes'),
-        savePaymentsBtn: document.getElementById('savePaymentsBtn'),
-        savePaymentNotesBtn: document.getElementById('savePaymentNotesBtn'),
-        
-        // Settings elements
-        websiteTitle: document.getElementById('websiteTitle'),
-        websiteDescription: document.getElementById('websiteDescription'),
-        contactWhatsApp: document.getElementById('contactWhatsApp'),
-        contactTelegram: document.getElementById('contactTelegram'),
-        metaTitle: document.getElementById('metaTitle'),
-        metaDescription: document.getElementById('metaDescription'),
-        metaKeywords: document.getElementById('metaKeywords'),
-        maintenanceMode: document.getElementById('maintenanceMode'),
-        maintenanceMessage: document.getElementById('maintenanceMessage'),
-        maintenanceMessageGroup: document.getElementById('maintenanceMessageGroup'),
-        saveGeneralBtn: document.getElementById('saveGeneralBtn'),
-        saveSeoBtn: document.getElementById('saveSeoBtn'),
-        saveMaintenanceBtn: document.getElementById('saveMaintenanceBtn'),
-        
-        // Action buttons
-        previewWebsiteBtn: document.getElementById('previewWebsiteBtn'),
-        copyEndpointBtn: document.getElementById('copyEndpointBtn'),
-        
-        // Modals
-        productModal: document.getElementById('productModal'),
-        deleteProductModal: document.getElementById('deleteProductModal'),
-        uploadModal: document.getElementById('uploadModal'),
-        modalTitle: document.getElementById('modalTitle'),
-        productForm: document.getElementById('productForm'),
-        closeProductModal: document.getElementById('closeProductModal'),
-        cancelProductBtn: document.getElementById('cancelProductBtn'),
-        saveProductBtn: document.getElementById('saveProductBtn'),
-        closeDeleteModal: document.getElementById('closeDeleteModal'),
-        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-        confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
-        deleteProductInfo: document.getElementById('deleteProductInfo'),
-        closeUploadModal: document.getElementById('closeUploadModal'),
-        uploadArea: document.getElementById('uploadArea'),
-        fileInput: document.getElementById('fileInput'),
-        uploadPreview: document.getElementById('uploadPreview'),
-        changeImageBtn: document.getElementById('changeImageBtn'),
-        confirmUploadBtn: document.getElementById('confirmUploadBtn'),
-        
-        // Product form fields
-        productName: document.getElementById('productName'),
-        productDescription: document.getElementById('productDescription'),
-        productPrice: document.getElementById('productPrice'),
-        productStock: document.getElementById('productStock'),
-        productCategory: document.getElementById('productCategory'),
-        productImage: document.getElementById('productImage'),
-        productNotes: document.getElementById('productNotes'),
-        productActive: document.getElementById('productActive'),
-        
-        // Bank form fields
-        bankName: document.getElementById('bankName'),
-        bankAccount: document.getElementById('bankAccount'),
-        bankHolder: document.getElementById('bankHolder'),
-        ewalletProvider: document.getElementById('ewalletProvider'),
-        ewalletNumber: document.getElementById('ewalletNumber'),
-        qrisUrl: document.getElementById('qrisUrl'),
-        cryptoAddress: document.getElementById('cryptoAddress')
-    };
+    const MAX_RETRIES = 3;
 
     // ==================== STATE ====================
     let currentUser = null;
     let currentWebsite = null;
     let products = [];
-    let currentProductId = null;
-    let currentUploadCallback = null;
-    let banners = []; // Array untuk menyimpan multiple banner {url, positionX, positionY}
-    let hasUnsavedBanners = false;
-    let urlChangeTimeout = null;
+    let orders = [];
+    let customers = [];
 
-    // ==================== FUNGSI VIBRATE ====================
+    // ==================== DOM ELEMENTS ====================
+    const elements = {
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        toastContainer: document.getElementById('toastContainer'),
+        websiteBadge: document.getElementById('websiteBadge'),
+        panelContent: document.getElementById('panelContent'),
+        noWebsiteMessage: document.getElementById('noWebsiteMessage'),
+        refreshBtn: document.getElementById('refreshBtn'),
+        
+        // Profile
+        profileAvatar: document.getElementById('profileAvatar'),
+        profileName: document.getElementById('profileName'),
+        profileBadge: document.getElementById('profileBadge'),
+        profileUsername: document.getElementById('profileUsername'),
+        profileId: document.getElementById('profileId'),
+        websiteEndpoint: document.getElementById('websiteEndpoint'),
+        copyEndpointBtn: document.getElementById('copyEndpointBtn'),
+        previewWebsiteBtn: document.getElementById('previewWebsiteBtn'),
+        
+        // Stats
+        statTotalProducts: document.getElementById('statTotalProducts'),
+        statRevenue: document.getElementById('statRevenue'),
+        statOrders: document.getElementById('statOrders'),
+        statCustomers: document.getElementById('statCustomers'),
+        
+        // Quick Actions
+        productsAction: document.getElementById('productsAction'),
+        appearanceAction: document.getElementById('appearanceAction'),
+        paymentsAction: document.getElementById('paymentsAction'),
+        settingsAction: document.getElementById('settingsAction'),
+        
+        // Recent Orders
+        recentOrdersList: document.getElementById('recentOrdersList'),
+        emptyOrders: document.getElementById('emptyOrders'),
+        
+        // Popular Products
+        popularProductsList: document.getElementById('popularProductsList'),
+        emptyPopularProducts: document.getElementById('emptyPopularProducts'),
+        
+        // Quick Stats
+        websiteCreatedDate: document.getElementById('websiteCreatedDate'),
+        websiteEndDate: document.getElementById('websiteEndDate'),
+        totalStock: document.getElementById('totalStock'),
+        lowStockCount: document.getElementById('lowStockCount')
+    };
+
+    // ==================== UTILITY FUNCTIONS ====================
+    function showToast(message, type = 'info', duration = 3000) {
+        if (!elements.toastContainer) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        
+        elements.toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideUp 0.3s ease reverse';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, duration);
+    }
+
+    function showLoading(show = true) {
+        if (elements.loadingOverlay) {
+            elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
+    }
+
     function vibrate(duration = 20) {
         if (window.navigator && window.navigator.vibrate) {
             window.navigator.vibrate(duration);
         }
     }
 
-    // ==================== FUNGSI LOADING OVERLAY ====================
-    function showLoading(message = 'Memproses...') {
-        if (elements.loadingOverlay) {
-            const loadingText = elements.loadingOverlay.querySelector('.loading-text');
-            if (loadingText) loadingText.textContent = message;
-            elements.loadingOverlay.style.display = 'flex';
-        }
+    function formatRupiah(angka) {
+        if (!angka) return 'Rp 0';
+        return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    function hideLoading() {
-        if (elements.loadingOverlay) {
-            elements.loadingOverlay.style.display = 'none';
-        }
-    }
-
-    // ==================== FUNGSI TOAST ====================
-    function showToast(message, type = 'info', duration = 3000) {
-        let toastContainer = document.querySelector('.toast-container');
-        
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container';
-            toastContainer.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 20px;
-                right: 20px;
-                z-index: 10000;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                pointer-events: none;
-            `;
-            document.body.appendChild(toastContainer);
-        }
-        
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.style.cssText = `
-            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
-            color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: 500;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            animation: slideUp 0.3s ease;
-            pointer-events: auto;
-            text-align: center;
-        `;
-        toast.textContent = message;
-        
-        toastContainer.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.style.animation = 'fadeOut 0.3s ease';
-            setTimeout(() => {
-                toast.remove();
-                if (toastContainer.children.length === 0) {
-                    toastContainer.remove();
-                }
-            }, 300);
-        }, duration);
-    }
-
-    // ==================== FUNGSI TOGGLE CARD ====================
-    window.toggleCard = function(header) {
-        const card = header.closest('.settings-card');
-        const body = card.querySelector('.card-body');
-        const toggleBtn = header.querySelector('.toggle-btn i');
-        
-        if (body.style.display === 'none') {
-            body.style.display = 'block';
-            toggleBtn.className = 'fas fa-chevron-up';
-            
-            setTimeout(() => {
-                card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 100);
-        } else {
-            body.style.display = 'none';
-            toggleBtn.className = 'fas fa-chevron-down';
-        }
-    };
-
-    // ==================== FUNGSI CLOSE KEYBOARD ====================
-    function setupKeyboardDismiss() {
-        document.addEventListener('touchstart', (e) => {
-            const activeElement = document.activeElement;
-            if (!activeElement) return;
-            
-            const isInput = e.target.tagName === 'INPUT' || 
-                           e.target.tagName === 'TEXTAREA' || 
-                           e.target.tagName === 'SELECT';
-            
-            const isModal = e.target.closest('.modal-content');
-            const isCard = e.target.closest('.settings-card');
-            
-            if (!isInput && !isModal && !isCard && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                activeElement.blur();
-            }
-        });
-        
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', () => {
-                const activeElement = document.activeElement;
-                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                    activeElement.blur();
-                }
-            });
-        });
-        
-        window.addEventListener('scroll', () => {
-            const activeElement = document.activeElement;
-            if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                activeElement.blur();
-            }
-        }, { passive: true });
-    }
-
-    // ==================== FUNGSI APPLY TELEGRAM THEME ====================
-    function applyTelegramTheme(tg) {
-        if (!tg || !tg.themeParams) return;
-        
-        try {
-            const theme = tg.themeParams;
-            console.log('🎨 Applying Telegram theme');
-            
-            if (theme.bg_color) {
-                document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
-            }
-            if (theme.text_color) {
-                document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
-            }
-            if (theme.hint_color) {
-                document.documentElement.style.setProperty('--tg-hint-color', theme.hint_color);
-            }
-            if (theme.link_color) {
-                document.documentElement.style.setProperty('--tg-link-color', theme.link_color);
-            }
-            if (theme.button_color) {
-                document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
-            }
-            if (theme.button_text_color) {
-                document.documentElement.style.setProperty('--tg-button-text-color', theme.button_text_color);
-            }
-        } catch (themeError) {
-            console.warn('⚠️ Error applying Telegram theme:', themeError);
-        }
-    }
-
-    // ==================== FUNGSI SET USER AVATAR ====================
-    function setUserAvatar(user) {
-        if (!user) return;
-        
-        if (user.photo_url) {
-            elements.websiteAvatar.src = user.photo_url;
-        } else {
-            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
-            elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=120&background=40a7e3&color=fff`;
-        }
-        
-        if (elements.userInfo) {
-            const userHtml = `
-                <div class="user-info-details">
-                    <span class="user-name"><i class="fas fa-user-circle"></i> ${user.first_name || ''} ${user.last_name || ''}</span>
-                    ${user.username ? `<span class="user-username"><i class="fab fa-telegram"></i> @${user.username}</span>` : ''}
-                </div>
-            `;
-            elements.userInfo.innerHTML = userHtml;
-            elements.userInfo.style.display = 'block';
-        }
-    }
-
-    // ==================== FUNGSI FETCH WEBSITE DATA ====================
-    async function fetchWebsiteData(userId) {
-        try {
-            console.log('📡 Fetching website data for user:', userId);
-            
-            const url = `${API_BASE_URL}/api/websites/user/${userId}`;
-            console.log('🔗 Fetch URL:', url);
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('📥 Website data:', data);
-
-            if (data.success && data.websites && data.websites.length > 0) {
-                return data.websites[0];
-            } else {
-                return null;
-            }
-
-        } catch (error) {
-            console.error('❌ Error fetching website:', error);
-            return null;
-        }
-    }
-
-    // ==================== FUNGSI FETCH PRODUCTS ====================
-    async function fetchProducts(websiteId) {
-        try {
-            console.log('📡 Fetching products for website:', websiteId);
-            
-            const url = `${API_BASE_URL}/api/websites/${websiteId}/products`;
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
-            if (data.success && data.products) {
-                return data.products;
-            } else {
-                return [];
-            }
-
-        } catch (error) {
-            console.error('❌ Error fetching products:', error);
-            return [];
-        }
-    }
-
-    // ==================== FUNGSI LOAD TAMPILAN ====================
-    async function loadTampilan(websiteId) {
-        try {
-            console.log('📡 Loading tampilan for website:', websiteId);
-        
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-        
-            if (!response.ok) {
-                if (response.status === 404) {
-                    return null;
-                }
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-        
-            const result = await response.json();
-        
-            if (result.success && result.tampilan) {
-                return result.tampilan;
-            } else {
-                return null;
-            }
-        
-        } catch (error) {
-            console.error('❌ Error loading tampilan:', error);
-            return null;
-        }
-    }
-
-    // ==================== FUNGSI UPDATE WEBSITE UI ====================
-    async function updateWebsiteUI(website) {
-        currentWebsite = website;
-      
-        if (elements.websiteBadge) {
-            elements.websiteBadge.textContent = `/${website.endpoint}`;
-        }
-      
-        if (elements.websiteName) {
-            elements.websiteName.textContent = website.username || 'Website';
-        }
-      
-        if (elements.websiteEndpointBadge) {
-            elements.websiteEndpointBadge.textContent = `/${website.endpoint}`;
-        }
-      
-        if (elements.websiteOwner) {
-            elements.websiteOwner.innerHTML = `<i class="fas fa-user"></i> Owner ID: ${website.owner_id}`;
-        }
-      
-        if (elements.websiteCreated && website.created_at) {
-            const date = new Date(website.created_at);
-            elements.websiteCreated.innerHTML = `<i class="fas fa-calendar"></i> Created: ${date.toLocaleDateString('id-ID')}`;
-        }
-      
-        if (elements.websiteStatus) {
-            if (website.status === 'active') {
-                elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
-            } else {
-                elements.websiteStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i>';
-            }
-        }
-      
-        const tampilan = await loadTampilan(website.id);
-        if (tampilan) {
-            website.settings = {
-                ...website.settings,
-                ...tampilan
-            };
-        }
-      
-        if (website.settings) {
-            updateSettingsUI(website.settings);
-        }
-    }
-
-    // ==================== FUNGSI VALIDASI UKURAN GAMBAR ====================
-    function validateImageSize(url) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            
-            img.onload = () => {
-                const width = img.naturalWidth;
-                const height = img.naturalHeight;
-                
-                console.log(`📏 Image dimensions: ${width}x${height}`);
-                
-                if (width === 1280 && height === 760) {
-                    resolve({ valid: true, width, height });
-                } else {
-                    reject({ 
-                        valid: false, 
-                        width, 
-                        height,
-                        message: `Ukuran gambar harus 1280x760 pixel (saat ini ${width}x${height})`
-                    });
-                }
-            };
-            
-            img.onerror = () => {
-                reject({ 
-                    valid: false, 
-                    message: 'Gagal memuat gambar. Periksa URL dan pastikan gambar dapat diakses.'
-                });
-            };
-            
-            img.src = url;
-        });
-    }
-
-    // ==================== FUNGSI BANNER DENGAN LINK ====================
-    async function processBannerUrl(index, url) {
-        const banner = banners[index];
-        const urlInput = document.getElementById(`banner-url-${index}`);
-        const previewWrapper = document.getElementById(`banner-preview-${index}`);
-        const validationMsg = document.getElementById(`banner-validation-${index}`);
-        const indicator = document.getElementById(`pos-indicator-${index}`);
-        
-        if (!url || url.trim() === '') {
-            banner.url = '';
-            if (previewWrapper) {
-                previewWrapper.style.backgroundImage = 'none';
-                previewWrapper.style.backgroundColor = '#1a1a1a';
-                previewWrapper.classList.remove('has-image');
-                previewWrapper.classList.add('no-image');
-            }
-            if (validationMsg) {
-                validationMsg.innerHTML = '<i class="fas fa-info-circle"></i> Masukkan URL gambar (wajib 1280x760)';
-                validationMsg.className = 'banner-validation-message info';
-            }
-            hasUnsavedBanners = true;
-            return;
-        }
-        
-        if (validationMsg) {
-            validationMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memvalidasi gambar...';
-            validationMsg.className = 'banner-validation-message info';
-        }
-        
-        try {
-            const result = await validateImageSize(url);
-            
-            banner.url = url;
-            
-            if (previewWrapper) {
-                previewWrapper.style.backgroundImage = `url('${url}')`;
-                previewWrapper.style.backgroundColor = 'transparent';
-                previewWrapper.classList.add('has-image');
-                previewWrapper.classList.remove('no-image');
-                
-                // Hapus placeholder jika ada
-                const placeholder = previewWrapper.querySelector('.no-image-placeholder');
-                if (placeholder) placeholder.remove();
-            }
-            
-            if (validationMsg) {
-                validationMsg.innerHTML = '<i class="fas fa-check-circle"></i> Ukuran valid: 1280x760 ✓';
-                validationMsg.className = 'banner-validation-message success';
-            }
-            
-            if (indicator) {
-                indicator.textContent = `X: ${banner.positionX}% Y: ${banner.positionY}%`;
-            }
-            
-            hasUnsavedBanners = true;
-            
-            // Setup long press untuk banner yang baru valid
-            setupBannerLongPress(index);
-            
-        } catch (error) {
-            console.error('❌ Banner validation error:', error);
-            
-            if (validationMsg) {
-                validationMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error.message || 'Gambar tidak valid'}`;
-                validationMsg.className = 'banner-validation-message error';
-            }
-            
-            banner.url = '';
-            
-            if (previewWrapper) {
-                previewWrapper.style.backgroundImage = 'none';
-                previewWrapper.style.backgroundColor = '#1a1a1a';
-                previewWrapper.classList.remove('has-image');
-                previewWrapper.classList.add('no-image');
-                
-                // Tambah placeholder jika belum ada
-                if (!previewWrapper.querySelector('.no-image-placeholder')) {
-                    const placeholder = document.createElement('div');
-                    placeholder.className = 'no-image-placeholder';
-                    placeholder.innerHTML = '<i class="fas fa-image"></i><span>Preview akan tampil di sini</span>';
-                    previewWrapper.appendChild(placeholder);
-                }
-            }
-        }
-    }
-
-    function addBannerWithLink() {
-        const hasEmptyBanner = banners.some(b => !b.url);
-        
-        if (hasEmptyBanner) {
-            showToast('⚠️ Ada banner yang belum diisi URL. Selesaikan atau hapus terlebih dahulu.', 'warning');
-            return;
-        }
-        
-        banners.push({
-            url: '',
-            positionX: 50,
-            positionY: 50
-        });
-        
-        hasUnsavedBanners = true;
-        renderBannerTrackWithLinks();
-        vibrate(10);
-        
-        setTimeout(() => {
-            const lastBannerIndex = banners.length - 1;
-            const urlInput = document.getElementById(`banner-url-${lastBannerIndex}`);
-            if (urlInput) {
-                urlInput.focus();
-            }
-        }, 100);
-    }
-
-    window.panel = window.panel || {};
-    
-    window.panel.deleteBanner = function(index) {
-        if (confirm('Hapus banner ini?')) {
-            banners.splice(index, 1);
-            hasUnsavedBanners = true;
-            renderBannerTrackWithLinks();
-            vibrate(10);
-        }
-    };
-
-    window.panel.moveBanner = function(index, direction) {
-        if (direction === 'left' && index > 0) {
-            [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
-            hasUnsavedBanners = true;
-        } else if (direction === 'right' && index < banners.length - 1) {
-            [banners[index], banners[index + 1]] = [banners[index + 1], banners[index]];
-            hasUnsavedBanners = true;
-        } else {
-            return;
-        }
-        renderBannerTrackWithLinks();
-        vibrate(10);
-    };
-
-    window.panel.handleUrlChange = function(index, url) {
-        if (urlChangeTimeout) {
-            clearTimeout(urlChangeTimeout);
-        }
-        
-        urlChangeTimeout = setTimeout(() => {
-            processBannerUrl(index, url.trim());
-        }, 800);
-    };
-
-    function renderBannerTrackWithLinks() {
-        if (!elements.bannerTrack || !elements.emptyBannerMessage) return;
-        
-        if (banners.length === 0) {
-            elements.bannerTrack.innerHTML = '';
-            elements.emptyBannerMessage.style.display = 'flex';
-            return;
-        }
-        
-        elements.emptyBannerMessage.style.display = 'none';
-        
-        let html = '';
-        banners.forEach((banner, index) => {
-            const hasValidUrl = banner.url && banner.url.trim() !== '';
-            const previewStyle = hasValidUrl 
-                ? `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;` 
-                : 'background-color: #1a1a1a; background-image: none;';
-            
-            let validationClass = 'banner-validation-message info';
-            let validationIcon = '<i class="fas fa-info-circle"></i>';
-            let validationText = 'Masukkan URL gambar (wajib 1280x760)';
-            
-            html += `
-                <div class="banner-slide" data-index="${index}">
-                    <div class="banner-slide-header">
-                        <span class="banner-number">#${index + 1}</span>
-                    </div>
-                    
-                    <div class="banner-url-input-group">
-                        <div class="banner-url-input-wrapper">
-                            <i class="fas fa-link input-icon"></i>
-                            <input 
-                                type="url" 
-                                id="banner-url-${index}" 
-                                class="banner-url-input" 
-                                placeholder="https://i.imgur.com/xxxxxxx.jpg"
-                                value="${banner.url || ''}"
-                                onchange="window.panel.handleUrlChange(${index}, this.value)"
-                                onblur="window.panel.handleUrlChange(${index}, this.value)"
-                                onkeyup="window.panel.handleUrlChange(${index}, this.value)"
-                            >
-                        </div>
-                        <div id="banner-validation-${index}" class="${validationClass}">
-                            ${validationIcon} ${validationText}
-                        </div>
-                    </div>
-                    
-                    <div class="banner-preview-area" id="banner-preview-container-${index}">
-                        <div 
-                            class="banner-image-wrapper ${hasValidUrl ? 'has-image' : 'no-image'}" 
-                            id="banner-preview-${index}"
-                            style="${previewStyle}"
-                            data-index="${index}"
-                        >
-                            ${!hasValidUrl ? '<div class="no-image-placeholder"><i class="fas fa-image"></i><span>Preview akan tampil di sini</span></div>' : ''}
-                        </div>
-                        
-                        ${hasValidUrl ? `
-                            <div class="banner-position-controls">
-                                <div class="banner-position-indicator" id="pos-indicator-${index}">
-                                    X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
-                                </div>
-                                <div class="banner-position-hint">
-                                    <i class="fas fa-hand-pointer"></i> Tekan & tahan gambar untuk menggeser posisi
-                                </div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="banner-slide-actions-bottom">
-                        <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'left')">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'right')">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button class="btn-icon-small delete" onclick="window.panel.deleteBanner(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.bannerTrack.innerHTML = html;
-        
-        banners.forEach((banner, index) => {
-            if (banner.url && banner.url.trim() !== '') {
-                setupBannerLongPress(index);
-            }
-        });
-    }
-
-    // ==================== FUNGSI SETUP LONG PRESS ====================
-    function setupBannerLongPress(index) {
-        const previewWrapper = document.getElementById(`banner-preview-${index}`);
-        if (!previewWrapper) return;
-        
-        let pressTimer;
-        let isDragging = false;
-        let startX, startY, startPosX, startPosY;
-        
-        const onTouchStart = (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            
-            startX = touch.clientX;
-            startY = touch.clientY;
-            
-            pressTimer = setTimeout(() => {
-                isDragging = true;
-                startPosX = banners[index].positionX || 50;
-                startPosY = banners[index].positionY || 50;
-                previewWrapper.classList.add('dragging-active');
-                vibrate(30);
-            }, 500);
-        };
-        
-        const onTouchMove = (e) => {
-            if (!isDragging) {
-                clearTimeout(pressTimer);
-                return;
-            }
-            
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = previewWrapper.getBoundingClientRect();
-            
-            const deltaX = touch.clientX - startX;
-            const deltaY = touch.clientY - startY;
-            
-            const percentPerPixelX = 100 / rect.width;
-            const percentPerPixelY = 100 / rect.height;
-            
-            let newPosX = startPosX - (deltaX * percentPerPixelX);
-            let newPosY = startPosY - (deltaY * percentPerPixelY);
-            
-            newPosX = Math.max(0, Math.min(100, newPosX));
-            newPosY = Math.max(0, Math.min(100, newPosY));
-            
-            banners[index].positionX = Math.round(newPosX);
-            banners[index].positionY = Math.round(newPosY);
-            
-            previewWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
-            
-            const indicator = document.getElementById(`pos-indicator-${index}`);
-            if (indicator) {
-                indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
-            }
-            
-            hasUnsavedBanners = true;
-        };
-        
-        const onTouchEnd = () => {
-            clearTimeout(pressTimer);
-            if (isDragging) {
-                isDragging = false;
-                previewWrapper.classList.remove('dragging-active');
-            }
-        };
-        
-        const onTouchCancel = () => {
-            clearTimeout(pressTimer);
-            isDragging = false;
-            previewWrapper.classList.remove('dragging-active');
-        };
-        
-        previewWrapper.removeEventListener('touchstart', onTouchStart);
-        previewWrapper.removeEventListener('touchmove', onTouchMove);
-        previewWrapper.removeEventListener('touchend', onTouchEnd);
-        previewWrapper.removeEventListener('touchcancel', onTouchCancel);
-        
-        previewWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
-        previewWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
-        previewWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
-        previewWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
-    }
-
-    // ==================== FUNGSI SAVE BANNERS ====================
-    async function saveBanners() {
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            return;
-        }
-        
-        const validBanners = banners.filter(b => b.url && b.url.trim() !== '');
-        
-        if (validBanners.length === 0) {
-            showToast('Minimal 1 banner dengan URL gambar yang valid diperlukan', 'warning');
-            return;
-        }
-        
-        showLoading('Menyimpan banner...');
-        
-        try {
-            const bannersToSave = validBanners.map(b => ({
-                url: b.url,
-                positionX: b.positionX || 50,
-                positionY: b.positionY || 50
-            }));
-            
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify({
-                    banners: bannersToSave
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast(`✅ ${validBanners.length} banner saved!`, 'success');
-                hasUnsavedBanners = false;
-                
-                const updatedWebsite = await fetchWebsiteData(currentUser.id);
-                if (updatedWebsite) {
-                    updateWebsiteUI(updatedWebsite);
-                }
-            } else {
-                throw new Error(result.error || 'Failed to save banners');
-            }
-        } catch (error) {
-            console.error('❌ Error saving banners:', error);
-            showToast(error.message || 'Failed to save banners', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ==================== FUNGSI SAVE LOGO ====================
-    async function saveLogo() {
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            return;
-        }
-        
-        const logoUrl = elements.logoUrl?.value || elements.logoImage?.src || '';
-        
-        if (logoUrl && !logoUrl.toLowerCase().endsWith('.png') && !logoUrl.startsWith('data:image/png')) {
-            showToast('Logo harus berformat PNG', 'error');
-            return;
-        }
-        
-        showLoading('Menyimpan logo...');
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify({ url: logoUrl })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast('✅ Logo saved!', 'success');
-                const updatedWebsite = await fetchWebsiteData(currentUser.id);
-                if (updatedWebsite) {
-                    updateWebsiteUI(updatedWebsite);
-                }
-            } else {
-                throw new Error(result.error || 'Failed to save logo');
-            }
-        } catch (error) {
-            console.error('❌ Error saving logo:', error);
-            showToast(error.message || 'Failed to save logo', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ==================== FUNGSI SAVE COLORS ====================
-    async function saveColors() {
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            return;
-        }
-        
-        const colors = {
-            primary: elements.primaryColorHex?.value || '#40a7e3',
-            secondary: elements.secondaryColorHex?.value || '#FFD700',
-            background: elements.bgColorHex?.value || '#0f0f0f',
-            text: elements.textColorHex?.value || '#ffffff',
-            card: elements.cardColorHex?.value || '#1a1a1a',
-            accent: elements.accentColorHex?.value || '#10b981'
-        };
-        
-        showLoading('Menyimpan warna...');
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(colors)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast('✅ Warna tersimpan!', 'success');
-                const updatedWebsite = await fetchWebsiteData(currentUser.id);
-                if (updatedWebsite) {
-                    updateWebsiteUI(updatedWebsite);
-                }
-            } else {
-                throw new Error(result.error || 'Failed to save colors');
-            }
-        } catch (error) {
-            console.error('❌ Error saving colors:', error);
-            showToast(error.message || 'Gagal menyimpan warna', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ==================== FUNGSI UPDATE SETTINGS UI ====================
-    function updateSettingsUI(settings) {
-        if (!settings) return;
-        
-        // Update logo
-        if (settings.logo && elements.logoImage) {
-            elements.logoImage.src = settings.logo;
-        }
-        if (settings.logo && elements.logoUrl) {
-            elements.logoUrl.value = settings.logo;
-        }
-        
-        // Update banners - FORMAT BARU: hanya URL
-        if (settings.banners && Array.isArray(settings.banners)) {
-            banners = settings.banners.map(b => {
-                if (typeof b === 'string') {
-                    return { url: b, positionX: 50, positionY: 50 };
-                } else {
-                    return {
-                        url: b.url || '',
-                        positionX: b.positionX || 50,
-                        positionY: b.positionY || 50
-                    };
-                }
-            });
-            hasUnsavedBanners = false;
-        } else {
-            banners = [];
-            hasUnsavedBanners = false;
-        }
-        renderBannerTrackWithLinks();
-        
-        // Update colors
-        if (settings.colors) {
-            const colors = settings.colors;
-            
-            if (elements.primaryColor) {
-                elements.primaryColor.value = colors.primary || '#40a7e3';
-                elements.primaryColorHex.value = colors.primary || '#40a7e3';
-            }
-            if (elements.secondaryColor) {
-                elements.secondaryColor.value = colors.secondary || '#FFD700';
-                elements.secondaryColorHex.value = colors.secondary || '#FFD700';
-            }
-            if (elements.bgColor) {
-                elements.bgColor.value = colors.background || '#0f0f0f';
-                elements.bgColorHex.value = colors.background || '#0f0f0f';
-            }
-            if (elements.textColor) {
-                elements.textColor.value = colors.text || '#ffffff';
-                elements.textColorHex.value = colors.text || '#ffffff';
-            }
-            if (elements.cardColor) {
-                elements.cardColor.value = colors.card || '#1a1a1a';
-                elements.cardColorHex.value = colors.card || '#1a1a1a';
-            }
-            if (elements.accentColor) {
-                elements.accentColor.value = colors.accent || '#10b981';
-                elements.accentColorHex.value = colors.accent || '#10b981';
-            }
-        }
-        
-        // Update font
-        if (settings.font_family || settings.font_size) {
-            if (elements.fontFamily) elements.fontFamily.value = settings.font_family || 'Inter';
-            if (elements.fontSize) elements.fontSize.value = settings.font_size || 14;
-        }
-        
-        // Update general settings
-        if (elements.websiteTitle) elements.websiteTitle.value = settings.title || '';
-        if (elements.websiteDescription) elements.websiteDescription.value = settings.description || '';
-        if (elements.contactWhatsApp) elements.contactWhatsApp.value = settings.contact_whatsapp || '';
-        if (elements.contactTelegram) elements.contactTelegram.value = settings.contact_telegram || '';
-        
-        // Update SEO
-        if (settings.seo) {
-            if (elements.metaTitle) elements.metaTitle.value = settings.seo.title || '';
-            if (elements.metaDescription) elements.metaDescription.value = settings.seo.description || '';
-            if (elements.metaKeywords) elements.metaKeywords.value = settings.seo.keywords || '';
-        }
-        
-        // Update payments
-        if (settings.payments) {
-            const pm = settings.payments;
-            
-            if (elements.bankEnabled) elements.bankEnabled.checked = pm.bank?.enabled || false;
-            if (pm.bank) {
-                if (elements.bankName) elements.bankName.value = pm.bank.name || 'BCA';
-                if (elements.bankAccount) elements.bankAccount.value = pm.bank.account || '';
-                if (elements.bankHolder) elements.bankHolder.value = pm.bank.holder || '';
-            }
-            
-            if (elements.ewalletEnabled) elements.ewalletEnabled.checked = pm.ewallet?.enabled || false;
-            if (pm.ewallet) {
-                if (elements.ewalletProvider) elements.ewalletProvider.value = pm.ewallet.provider || 'DANA';
-                if (elements.ewalletNumber) elements.ewalletNumber.value = pm.ewallet.number || '';
-            }
-            
-            if (elements.qrisEnabled) elements.qrisEnabled.checked = pm.qris?.enabled || false;
-            if (pm.qris?.url && elements.qrisPreview) {
-                elements.qrisPreview.src = pm.qris.url;
-            }
-            if (pm.qris?.url && elements.qrisUrl) {
-                elements.qrisUrl.value = pm.qris.url;
-            }
-            
-            if (elements.cryptoEnabled) elements.cryptoEnabled.checked = pm.crypto?.enabled || false;
-            if (pm.crypto?.address && elements.cryptoAddress) {
-                elements.cryptoAddress.value = pm.crypto.address;
-            }
-            
-            if (elements.paymentNotes) elements.paymentNotes.value = pm.notes?.payment || '';
-            if (elements.confirmationNotes) elements.confirmationNotes.value = pm.notes?.confirmation || '';
-        }
-        
-        // Update maintenance
-        if (settings.maintenance) {
-            if (elements.maintenanceMode) elements.maintenanceMode.checked = settings.maintenance.enabled || false;
-            if (elements.maintenanceMessage) elements.maintenanceMessage.value = settings.maintenance.message || '';
-            if (elements.maintenanceMessageGroup) {
-                elements.maintenanceMessageGroup.style.display = settings.maintenance.enabled ? 'block' : 'none';
-            }
-        }
-    }
-
-    // ==================== FUNGSI UPDATE PRODUCTS UI ====================
-    function updateProductsUI(productsData) {
-        products = productsData;
-        
-        const total = products.length;
-        const available = products.filter(p => p.active && p.stock > 0).length;
-        const lowStock = products.filter(p => p.active && p.stock > 0 && p.stock <= 5).length;
-        const sold = products.reduce((sum, p) => sum + (p.sold || 0), 0);
-        
-        if (elements.totalProducts) elements.totalProducts.textContent = total;
-        if (elements.availableProducts) elements.availableProducts.textContent = available;
-        if (elements.lowStockProducts) elements.lowStockProducts.textContent = lowStock;
-        if (elements.soldProducts) elements.soldProducts.textContent = sold;
-        
-        renderProductsGrid(products);
-    }
-
-    // ==================== FUNGSI RENDER PRODUCTS GRID ====================
-    function renderProductsGrid(products) {
-        if (!elements.productsGrid) return;
-        
-        if (products.length === 0) {
-            elements.productsGrid.innerHTML = '';
-            if (elements.noProductsMessage) {
-                elements.noProductsMessage.style.display = 'flex';
-            }
-            return;
-        }
-        
-        if (elements.noProductsMessage) {
-            elements.noProductsMessage.style.display = 'none';
-        }
-        
-        let html = '';
-        products.forEach(product => {
-            const statusClass = product.active ? 'active' : 'inactive';
-            const stockClass = product.stock <= 5 ? 'low-stock' : '';
-            const stockText = product.stock <= 0 ? 'Habis' : `${product.stock} tersisa`;
-            
-            html += `
-                <div class="product-card ${statusClass}" data-id="${product.id}">
-                    <div class="product-image">
-                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" alt="${escapeHtml(product.name)}">
-                        <div class="product-status ${statusClass}">
-                            ${product.active ? 'Aktif' : 'Nonaktif'}
-                        </div>
-                    </div>
-                    <div class="product-details">
-                        <h4>${escapeHtml(product.name)}</h4>
-                        <p class="product-description">${escapeHtml(product.description ? product.description.substring(0, 60) : '')}${product.description && product.description.length > 60 ? '...' : ''}</p>
-                        <div class="product-meta">
-                            <span class="product-price">Rp ${formatNumber(product.price)}</span>
-                            <span class="product-stock ${stockClass}">
-                                <i class="fas fa-cubes"></i> ${stockText}
-                            </span>
-                        </div>
-                        ${product.notes ? `<div class="product-notes">📝 ${escapeHtml(product.notes)}</div>` : ''}
-                        <div class="product-footer">
-                            <span class="product-sold">Terjual: ${product.sold || 0}</span>
-                            <div class="product-actions">
-                                <button class="product-btn edit" onclick="window.panel.editProduct(${product.id})">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="product-btn delete" onclick="window.panel.deleteProduct(${product.id})">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.productsGrid.innerHTML = html;
-    }
-
-    // ==================== FUNGSI FORMAT NUMBER ====================
     function formatNumber(num) {
         if (num === undefined || num === null) return '0';
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    // ==================== FUNGSI ESCAPE HTML ====================
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -1211,7 +108,385 @@
         return div.innerHTML;
     }
 
-    // ==================== FUNGSI COPY ENDPOINT ====================
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    // ==================== API FUNCTIONS ====================
+    async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+        try {
+            const response = await fetch(url, {
+                ...options,
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP error ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return fetchWithRetry(url, options, retries - 1);
+            }
+            throw error;
+        }
+    }
+
+    async function fetchWebsiteData(userId) {
+        try {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/user/${userId}`, {
+                method: 'GET'
+            });
+            
+            if (data.success && data.websites && data.websites.length > 0) {
+                return data.websites[0];
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ Error fetching website:', error);
+            return null;
+        }
+    }
+
+    async function fetchProducts(websiteId) {
+        try {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${websiteId}`, {
+                method: 'GET'
+            });
+            
+            if (data.success) {
+                return data.data || [];
+            }
+            return [];
+        } catch (error) {
+            console.error('❌ Error fetching products:', error);
+            return [];
+        }
+    }
+
+    async function fetchTampilan(websiteId) {
+        try {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
+                method: 'GET'
+            });
+            
+            if (data.success) {
+                return data.tampilan;
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ Error fetching tampilan:', error);
+            return null;
+        }
+    }
+
+    // ==================== LOAD DATA ====================
+    async function loadWebsite() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const endpoint = urlParams.get('website');
+        
+        if (!endpoint) {
+            showToast('Website tidak ditemukan', 'error');
+            setTimeout(() => {
+                window.location.href = '/wtb/dashboard.html';
+            }, 2000);
+            return null;
+        }
+        
+        try {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+                method: 'GET'
+            });
+            
+            if (data.success && data.website) {
+                return data.website;
+            }
+            return null;
+        } catch (error) {
+            console.error('❌ Error loading website:', error);
+            return null;
+        }
+    }
+
+    async function loadAllData() {
+        if (!currentWebsite) return;
+        
+        showLoading(true);
+        
+        try {
+            // Load products
+            products = await fetchProducts(currentWebsite.id);
+            
+            // Load orders (dummy untuk demo - nanti bisa dari API orders)
+            orders = generateDummyOrders();
+            
+            // Load customers (dummy untuk demo)
+            customers = generateDummyCustomers();
+            
+            // Update UI
+            updateUI();
+            
+        } catch (error) {
+            console.error('❌ Error loading data:', error);
+            showToast('Gagal memuat data', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // Dummy data generators (sementara untuk demo)
+    function generateDummyOrders() {
+        const orders = [];
+        const statuses = ['pending', 'processing', 'completed', 'cancelled'];
+        const statusText = {
+            'pending': 'Menunggu',
+            'processing': 'Diproses',
+            'completed': 'Selesai',
+            'cancelled': 'Dibatalkan'
+        };
+        
+        for (let i = 1; i <= 5; i++) {
+            const status = statuses[Math.floor(Math.random() * statuses.length)];
+            orders.push({
+                id: i,
+                order_number: `ORD-${Date.now().toString().slice(-6)}${i}`,
+                customer_name: `Customer ${i}`,
+                total: Math.floor(Math.random() * 500000) + 50000,
+                status: status,
+                status_text: statusText[status],
+                date: new Date(Date.now() - i * 86400000).toISOString()
+            });
+        }
+        return orders;
+    }
+
+    function generateDummyCustomers() {
+        return Array(10).fill().map((_, i) => ({
+            id: i + 1,
+            name: `Customer ${i + 1}`,
+            orders: Math.floor(Math.random() * 10) + 1,
+            total_spent: Math.floor(Math.random() * 2000000) + 100000
+        }));
+    }
+
+    function calculateStats() {
+        let totalProducts = 0;
+        let totalStock = 0;
+        let lowStock = 0;
+        let totalRevenue = 0;
+        
+        // Hitung dari produk
+        products.forEach(layanan => {
+            layanan.aplikasi?.forEach(aplikasi => {
+                aplikasi.items?.forEach(item => {
+                    totalProducts++;
+                    if (item.item_metode === 'directly') {
+                        const stokCount = item.item_stok?.length || 0;
+                        totalStock += stokCount;
+                        if (stokCount > 0 && stokCount <= 5) lowStock++;
+                    }
+                    // Hitung pendapatan dari orders yang completed
+                    orders.forEach(order => {
+                        if (order.status === 'completed') {
+                            totalRevenue += order.total || 0;
+                        }
+                    });
+                });
+            });
+        });
+        
+        return {
+            totalProducts,
+            totalStock,
+            lowStock,
+            totalRevenue,
+            totalOrders: orders.length,
+            totalCustomers: customers.length
+        };
+    }
+
+    // ==================== UPDATE UI ====================
+    function updateUI() {
+        // Update profile
+        if (currentUser) {
+            const fullName = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || 'User';
+            const username = currentUser.username ? `@${currentUser.username}` : '(no username)';
+            
+            if (elements.profileName) elements.profileName.textContent = fullName;
+            if (elements.profileUsername) elements.profileUsername.innerHTML = `<i class="fab fa-telegram"></i> ${username}`;
+            if (elements.profileId) elements.profileId.innerHTML = `<i class="fas fa-id-card"></i> ID: ${currentUser.id}`;
+            
+            if (currentUser.photo_url) {
+                elements.profileAvatar.src = currentUser.photo_url;
+            } else {
+                elements.profileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=120&background=40a7e3&color=fff`;
+            }
+        }
+        
+        // Update website info
+        if (currentWebsite) {
+            if (elements.websiteBadge) elements.websiteBadge.textContent = `/${currentWebsite.endpoint}`;
+            if (elements.websiteEndpoint) elements.websiteEndpoint.textContent = `/${currentWebsite.endpoint}`;
+            if (elements.websiteCreatedDate) elements.websiteCreatedDate.textContent = formatDate(currentWebsite.created_at);
+            if (elements.websiteEndDate) elements.websiteEndDate.textContent = formatDate(currentWebsite.end_date) || 'Tidak terbatas';
+            
+            // Update quick action links
+            const endpoint = currentWebsite.endpoint;
+            if (elements.productsAction) {
+                elements.productsAction.href = `/wtb/html/produk.html?website=${endpoint}`;
+            }
+            if (elements.appearanceAction) {
+                elements.appearanceAction.href = `/wtb/html/tampilan.html?website=${endpoint}`;
+            }
+            if (elements.paymentsAction) {
+                elements.paymentsAction.href = `/wtb/html/pembayaran.html?website=${endpoint}`;
+            }
+            if (elements.settingsAction) {
+                elements.settingsAction.href = `/wtb/html/pengaturan.html?website=${endpoint}`;
+            }
+        }
+        
+        // Calculate and update stats
+        const stats = calculateStats();
+        
+        if (elements.statTotalProducts) elements.statTotalProducts.textContent = stats.totalProducts;
+        if (elements.statRevenue) elements.statRevenue.textContent = formatRupiah(stats.totalRevenue);
+        if (elements.statOrders) elements.statOrders.textContent = stats.totalOrders;
+        if (elements.statCustomers) elements.statCustomers.textContent = stats.totalCustomers;
+        
+        if (elements.totalStock) elements.totalStock.textContent = stats.totalStock;
+        if (elements.lowStockCount) elements.lowStockCount.textContent = stats.lowStock;
+        
+        // Render recent orders
+        renderRecentOrders();
+        
+        // Render popular products
+        renderPopularProducts();
+    }
+
+    function renderRecentOrders() {
+        if (!elements.recentOrdersList) return;
+        
+        if (orders.length === 0) {
+            elements.recentOrdersList.innerHTML = '';
+            if (elements.emptyOrders) elements.emptyOrders.style.display = 'block';
+            return;
+        }
+        
+        if (elements.emptyOrders) elements.emptyOrders.style.display = 'none';
+        
+        let html = '';
+        orders.slice(0, 5).forEach(order => {
+            const statusClass = order.status;
+            html += `
+                <div class="order-item" data-id="${order.id}">
+                    <div class="order-info">
+                        <div class="order-number">${escapeHtml(order.order_number)}</div>
+                        <div class="order-customer">${escapeHtml(order.customer_name)}</div>
+                    </div>
+                    <div class="order-meta">
+                        <span class="order-status ${statusClass}">${escapeHtml(order.status_text)}</span>
+                        <span class="order-total">${formatRupiah(order.total)}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.recentOrdersList.innerHTML = html;
+    }
+
+    function renderPopularProducts() {
+        if (!elements.popularProductsList) return;
+        
+        // Collect all items
+        const allItems = [];
+        products.forEach(layanan => {
+            layanan.aplikasi?.forEach(aplikasi => {
+                aplikasi.items?.forEach(item => {
+                    allItems.push({
+                        ...item,
+                        layanan_nama: layanan.layanan_nama,
+                        aplikasi_nama: aplikasi.aplikasi_nama
+                    });
+                });
+            });
+        });
+        
+        // Sort by terjual (dummy sorting)
+        const popular = allItems.sort((a, b) => (b.terjual || 0) - (a.terjual || 0)).slice(0, 3);
+        
+        if (popular.length === 0) {
+            elements.popularProductsList.innerHTML = '';
+            if (elements.emptyPopularProducts) elements.emptyPopularProducts.style.display = 'block';
+            return;
+        }
+        
+        if (elements.emptyPopularProducts) elements.emptyPopularProducts.style.display = 'none';
+        
+        let html = '';
+        popular.forEach(item => {
+            html += `
+                <div class="product-mini-card" data-id="${item.id}">
+                    <div class="product-mini-info">
+                        <div class="product-mini-name">${escapeHtml(item.item_nama)}</div>
+                        <div class="product-mini-category">${escapeHtml(item.aplikasi_nama)}</div>
+                    </div>
+                    <div class="product-mini-stats">
+                        <span class="product-mini-price">${formatRupiah(item.item_harga)}</span>
+                        <span class="product-mini-sold"><i class="fas fa-shopping-cart"></i> ${item.terjual || 0}</span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.popularProductsList.innerHTML = html;
+    }
+
+    // ==================== USER FUNCTIONS ====================
+    function setUser(user) {
+        currentUser = user;
+        
+        if (user.photo_url) {
+            elements.profileAvatar.src = user.photo_url;
+        } else {
+            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
+            elements.profileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=120&background=40a7e3&color=fff`;
+        }
+        
+        if (elements.profileName) {
+            elements.profileName.textContent = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
+        }
+        
+        if (elements.profileUsername) {
+            elements.profileUsername.innerHTML = user.username ? 
+                `<i class="fab fa-telegram"></i> @${user.username}` : 
+                '<i class="fab fa-telegram"></i> (no username)';
+        }
+        
+        if (elements.profileId) {
+            elements.profileId.innerHTML = `<i class="fas fa-id-card"></i> ID: ${user.id}`;
+        }
+    }
+
+    // ==================== ACTION FUNCTIONS ====================
     function copyEndpoint() {
         if (!currentWebsite) return;
         
@@ -1246,7 +521,6 @@
         document.body.removeChild(textarea);
     }
 
-    // ==================== FUNGSI PREVIEW WEBSITE ====================
     function previewWebsite() {
         if (!currentWebsite) return;
         
@@ -1254,787 +528,119 @@
         window.open(url, '_blank');
     }
 
-    // ==================== FUNGSI SAVE SETTINGS ====================
-    async function saveSettings(section, data) {
-        console.log(`💾 Saving ${section} settings:`, data);
-      
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            return;
-        }
-      
-        showLoading(`Menyimpan ${section}...`);
-      
+    // ==================== TELEGRAM THEME ====================
+    function applyTelegramTheme(tg) {
+        if (!tg || !tg.themeParams) return;
+        
         try {
-            let url = '';
-            let body = data;
-      
-            switch (section) {
-                case 'font':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font`;
-                    break;
-                case 'general':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/general`;
-                    break;
-                case 'seo':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/seo`;
-                    break;
-                case 'payments':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payments`;
-                    break;
-                case 'payment-notes':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/payment-notes`;
-                    break;
-                case 'maintenance':
-                    url = `${API_BASE_URL}/api/tampilan/${currentWebsite.id}/maintenance`;
-                    body = {
-                        enabled: data.enabled,
-                        message: data.message
-                    };
-                    break;
-                default:
-                    showToast('Unknown section', 'error');
-                    hideLoading();
-                    return;
-            }
-      
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(body)
-            });
-      
-            const result = await response.json();
-      
-            if (result.success) {
-                showToast(`✅ ${section} settings saved!`, 'success');
-                const updatedWebsite = await fetchWebsiteData(currentUser.id);
-                if (updatedWebsite) {
-                    updateWebsiteUI(updatedWebsite);
-                }
-            } else {
-                throw new Error(result.error || 'Failed to save settings');
-            }
-      
-        } catch (error) {
-            console.error('❌ Error saving settings:', error);
-            showToast(error.message || 'Failed to save settings', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ==================== FUNGSI UNTUK REDIRECT KE HALAMAN PRODUK ====================
-    function openProductsPage() {
-      if (!currentWebsite) {
-        showToast('Website tidak ditemukan', 'error');
-        return;
-      }
-    
-      // Redirect ke halaman produk dengan parameter website
-      const url = `/wtb/html/produk.html?website=${currentWebsite.endpoint}`;
-      window.location.href = url;
-    }
-    
-    // Di dalam setupEventListeners(), ubah handler untuk addProductBtn:
-    if (elements.addProductBtn) {
-      elements.addProductBtn.addEventListener('click', openProductsPage);
-    }
-    
-    // Update fungsi updateProductsUI untuk menampilkan link ke halaman produk
-    function updateProductsUI(productsData) {
-      products = productsData;
-    
-      const total = products.length;
-      const available = products.filter(p => p.aktif && (
-        (p.method === 'directly' && p.stok && p.stok.length > 0) ||
-        p.method === 'request'
-      )).length;
-      const lowStock = products.filter(p => p.method === 'directly' && p.stok && p.stok.length > 0 && p.stok.length <= 5).length;
-      const sold = products.reduce((sum, p) => sum + (p.terjual || 0), 0);
-    
-      if (elements.totalProducts) elements.totalProducts.textContent = total;
-      if (elements.availableProducts) elements.availableProducts.textContent = available;
-      if (elements.lowStockProducts) elements.lowStockProducts.textContent = lowStock;
-      if (elements.soldProducts) elements.soldProducts.textContent = sold;
-    
-      renderProductsGrid(products);
-    }
-    
-    // Update fungsi renderProductsGrid untuk menampilkan produk dalam grid
-    function renderProductsGrid(products) {
-      if (!elements.productsGrid) return;
-    
-      if (products.length === 0) {
-        elements.productsGrid.innerHTML = '';
-        if (elements.noProductsMessage) {
-          elements.noProductsMessage.style.display = 'flex';
-        }
-        return;
-      }
-    
-      if (elements.noProductsMessage) {
-        elements.noProductsMessage.style.display = 'none';
-      }
-    
-      let html = '';
-      products.forEach(product => {
-        const statusClass = product.aktif ? 'active' : 'inactive';
-        const stockCount = product.method === 'directly' ? (product.stok?.length || 0) : '-';
-        const stockText = product.method === 'directly' ?
-          (stockCount === 0 ? 'Habis' : `${stockCount} stok`) :
-          'Request';
-        const stockClass = product.method === 'directly' && stockCount <= 5 ? 'low-stock' : '';
-    
-        html += `
-                <div class="product-card ${statusClass}" data-id="${product.id}">
-                    <div class="product-image">
-                        <img src="${product.aplikasi_gambar || product.layanan_gambar || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Produk'}" 
-                             alt="${escapeHtml(product.item_nama)}"
-                             onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=Produk';">
-                        <div class="product-status ${statusClass}">
-                            ${product.aktif ? 'Aktif' : 'Nonaktif'}
-                        </div>
-                    </div>
-                    <div class="product-details">
-                        <div class="product-breadcrumb">
-                            <span>${escapeHtml(product.layanan)}</span> <i class="fas fa-chevron-right"></i>
-                            <span>${escapeHtml(product.aplikasi)}</span>
-                        </div>
-                        <h4>${escapeHtml(product.item_nama)}</h4>
-                        ${product.item_durasi ? `<p class="product-duration">${escapeHtml(product.item_durasi)}</p>` : ''}
-                        <div class="product-meta">
-                            <span class="product-price">Rp ${formatNumber(product.harga)}</span>
-                            <span class="product-method ${product.method}">
-                                <i class="fas fa-${product.method === 'directly' ? 'bolt' : 'clipboard-list'}"></i>
-                                ${product.method === 'directly' ? 'Direct' : 'Request'}
-                            </span>
-                        </div>
-                        <div class="product-footer">
-                            <span class="product-stock ${stockClass}">
-                                <i class="fas fa-cubes"></i> ${stockText}
-                            </span>
-                            <span class="product-sold">
-                                <i class="fas fa-shopping-cart"></i> ${product.terjual || 0} terjual
-                            </span>
-                        </div>
-                        <div class="product-actions">
-                            <button class="product-btn edit" onclick="window.panel.editProduct(${product.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="product-btn delete" onclick="window.panel.deleteProduct(${product.id})">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-      });
-    
-      elements.productsGrid.innerHTML = html;
-    }
-    
-    // Update fungsi openProductModal untuk redirect ke halaman produk
-    function openProductModal(product = null) {
-      // Redirect ke halaman produk dengan parameter
-      if (!currentWebsite) return;
-    
-      let url = `/wtb/html/produk.html?website=${currentWebsite.endpoint}`;
-      if (product) {
-        url += `&edit=${product.id}`;
-      }
-      window.location.href = url;
-    }
-    
-    // Update fungsi editProduct
-    window.panel.editProduct = (id) => {
-      const product = products.find(p => p.id === id);
-      if (product) {
-        openProductModal(product);
-      }
-    };
-
-    // ==================== FUNGSI PRODUCT MODAL ====================
-    function openProductModal(product = null) {
-        currentProductId = product ? product.id : null;
-        
-        elements.productForm.reset();
-        
-        if (product) {
-            elements.modalTitle.textContent = 'Edit Produk';
-            elements.productName.value = product.name || '';
-            elements.productDescription.value = product.description || '';
-            elements.productPrice.value = product.price || '';
-            elements.productStock.value = product.stock || '';
-            elements.productCategory.value = product.category || 'voucher';
-            elements.productImage.value = product.image || '';
-            elements.productNotes.value = product.notes || '';
-            if (elements.productActive) elements.productActive.checked = product.active !== false;
-        } else {
-            elements.modalTitle.textContent = 'Tambah Produk';
-            if (elements.productActive) elements.productActive.checked = true;
-        }
-        
-        elements.productModal.classList.add('active');
-        vibrate(10);
-    }
-    
-    function closeProductModal() {
-        elements.productModal.classList.remove('active');
-        currentProductId = null;
-    }
-    
-    function saveProduct(formData) {
-        console.log('💾 Saving product:', formData);
-        
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            closeProductModal();
-            return;
-        }
-        
-        showToast('✅ Product saved!', 'success');
-        closeProductModal();
-    }
-    
-    function openDeleteModal(product) {
-        if (!product) return;
-        
-        currentProductId = product.id;
-        elements.deleteProductInfo.innerHTML = `
-            <strong>${escapeHtml(product.name)}</strong><br>
-            <small>ID: ${product.id}</small>
-        `;
-        
-        elements.deleteProductModal.classList.add('active');
-        vibrate(10);
-    }
-    
-    function closeDeleteModal() {
-        elements.deleteProductModal.classList.remove('active');
-        currentProductId = null;
-    }
-    
-    function confirmDelete() {
-        if (!currentProductId || !currentWebsite) return;
-        
-        console.log('🗑️ Deleting product:', currentProductId);
-        
-        showToast('✅ Product deleted!', 'success');
-        closeDeleteModal();
-    }
-    
-    function openUploadModal(callback, acceptType = 'image/*') {
-        currentUploadCallback = callback;
-        
-        if (elements.uploadPreview) {
-            elements.uploadPreview.style.display = 'none';
-        }
-        if (elements.uploadArea) {
-            elements.uploadArea.style.display = 'flex';
-        }
-        if (elements.fileInput) {
-            elements.fileInput.value = '';
-            elements.fileInput.accept = acceptType;
-        }
-        if (elements.confirmUploadBtn) {
-            elements.confirmUploadBtn.disabled = true;
-        }
-        
-        elements.uploadModal.classList.add('active');
-    }
-    
-    function closeUploadModal() {
-        elements.uploadModal.classList.remove('active');
-        currentUploadCallback = null;
-    }
-
-    function handleImageUpload(file) {
-        const reader = new FileReader();
-        
-        reader.onload = (e) => {
-            const imageUrl = e.target.result;
+            const theme = tg.themeParams;
+            console.log('🎨 Applying Telegram theme');
             
-            if (elements.uploadArea) {
-                elements.uploadArea.style.display = 'none';
+            if (theme.bg_color) {
+                document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
             }
-            
-            if (elements.uploadPreview) {
-                elements.uploadPreview.style.display = 'block';
-                const img = elements.uploadPreview.querySelector('img');
-                if (img) {
-                    img.src = imageUrl;
-                }
+            if (theme.text_color) {
+                document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
             }
-            
-            if (elements.confirmUploadBtn) {
-                elements.confirmUploadBtn.disabled = false;
+            if (theme.hint_color) {
+                document.documentElement.style.setProperty('--tg-hint-color', theme.hint_color);
             }
-        };
-        
-        reader.readAsDataURL(file);
-    }
-
-    // ==================== FUNGSI UPDATE UI ====================
-    async function updateUI(user) {
-        currentUser = user;
-        
-        setUserAvatar(user);
-        
-        if (elements.loading) elements.loading.style.display = 'none';
-        
-        const website = await fetchWebsiteData(user.id);
-        
-        if (website) {
-            if (elements.error) elements.error.style.display = 'none';
-            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'none';
-            if (elements.panelContent) elements.panelContent.style.display = 'block';
-            
-            updateWebsiteUI(website);
-            
-            const productsData = await fetchProducts(website.id);
-            updateProductsUI(productsData);
-        } else {
-            if (elements.error) elements.error.style.display = 'none';
-            if (elements.panelContent) elements.panelContent.style.display = 'none';
-            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'flex';
+            if (theme.link_color) {
+                document.documentElement.style.setProperty('--tg-link-color', theme.link_color);
+            }
+            if (theme.button_color) {
+                document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
+            }
+            if (theme.button_text_color) {
+                document.documentElement.style.setProperty('--tg-button-text-color', theme.button_text_color);
+            }
+        } catch (themeError) {
+            console.warn('⚠️ Error applying Telegram theme:', themeError);
         }
     }
 
-    // ==================== FUNGSI SHOW ERROR ====================
-    function showError(message) {
-        vibrate(30);
-        
-        if (elements.loading) elements.loading.style.display = 'none';
-        if (elements.error) {
-            elements.error.style.display = 'flex';
-            if (elements.errorMessage) {
-                elements.errorMessage.textContent = message;
-            }
-        }
-        if (elements.panelContent) {
-            elements.panelContent.style.display = 'none';
-        }
-        if (elements.noWebsiteMessage) {
-            elements.noWebsiteMessage.style.display = 'none';
-        }
-    }
-
-    // ==================== FUNGSI INIT ====================
+    // ==================== INITIALIZATION ====================
     async function init() {
-        console.log('🛠️ Initializing Panel...');
-
+        showLoading(true);
+        
         try {
-            let telegramUserData = null;
-            let tg = null;
-
-            if (window.Telegram?.WebApp) {
-                console.log('📱 Running inside Telegram Web App');
-                tg = window.Telegram.WebApp;
-                
+            // Get Telegram user data
+            let telegramUser = null;
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
                 tg.expand();
                 tg.ready();
                 
-                if (tg.initDataUnsafe?.user) {
-                    telegramUserData = tg.initDataUnsafe.user;
-                    
-                    if (tg.initDataUnsafe?.user?.photo_url) {
-                        telegramUserData.photo_url = tg.initDataUnsafe.user.photo_url;
+                if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                    telegramUser = tg.initDataUnsafe.user;
+                    if (tg.initDataUnsafe.user.photo_url) {
+                        telegramUser.photo_url = tg.initDataUnsafe.user.photo_url;
                     }
-                    
-                    console.log('📱 Telegram user data:', telegramUserData);
                 }
                 
                 applyTelegramTheme(tg);
-            } else {
-                console.log('🌐 Running in standalone web browser');
-                
-                telegramUserData = {
+            }
+            
+            // Fallback for testing
+            if (!telegramUser) {
+                telegramUser = {
                     id: 7998861975,
                     first_name: 'Test',
                     last_name: 'User',
                     username: 'test_user'
                 };
             }
-
-            if (!telegramUserData) {
-                showError('No user data available');
+            
+            setUser(telegramUser);
+            
+            // Load website data
+            currentWebsite = await loadWebsite();
+            
+            if (!currentWebsite) {
+                if (elements.panelContent) elements.panelContent.style.display = 'none';
+                if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'flex';
+                showLoading(false);
                 return;
             }
-
-            await updateUI(telegramUserData);
-
+            
+            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'none';
+            if (elements.panelContent) elements.panelContent.style.display = 'block';
+            
+            // Load all data
+            await loadAllData();
+            
         } catch (error) {
-            console.error('💥 Fatal error in init:', error);
-            showError('Failed to initialize panel');
+            console.error('❌ Init error:', error);
+            showToast('Gagal memuat data', 'error');
+        } finally {
+            showLoading(false);
         }
     }
 
-    // ==================== SETUP EVENT LISTENERS ====================
+    // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        elements.tabButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                
-                elements.tabButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                elements.tabContents.forEach(content => {
-                    content.classList.remove('active');
-                });
-                document.getElementById(`tab-${tab}`).classList.add('active');
-                
+        // Refresh button
+        if (elements.refreshBtn) {
+            elements.refreshBtn.addEventListener('click', () => {
                 vibrate(10);
-            });
-        });
-        
-        const colorPairs = [
-            { picker: 'primaryColor', hex: 'primaryColorHex' },
-            { picker: 'secondaryColor', hex: 'secondaryColorHex' },
-            { picker: 'bgColor', hex: 'bgColorHex' },
-            { picker: 'textColor', hex: 'textColorHex' },
-            { picker: 'cardColor', hex: 'cardColorHex' },
-            { picker: 'accentColor', hex: 'accentColorHex' }
-        ];
-        
-        colorPairs.forEach(pair => {
-            const picker = document.getElementById(pair.picker);
-            const hex = document.getElementById(pair.hex);
-            
-            if (picker && hex) {
-                picker.addEventListener('input', () => {
-                    hex.value = picker.value;
-                });
-                
-                hex.addEventListener('input', () => {
-                    if (/^#[0-9A-F]{6}$/i.test(hex.value)) {
-                        picker.value = hex.value;
-                    }
-                });
-            }
-        });
-        
-        // Logo events
-        if (elements.uploadLogoBtn) {
-            elements.uploadLogoBtn.addEventListener('click', () => {
-                openUploadModal((imageUrl) => {
-                    if (!imageUrl.startsWith('data:image/png') && !imageUrl.toLowerCase().endsWith('.png')) {
-                        showToast('Hanya file PNG yang diperbolehkan untuk logo', 'error');
-                        return;
-                    }
-                    if (elements.logoImage) {
-                        elements.logoImage.src = imageUrl;
-                    }
-                    if (elements.logoUrl) {
-                        elements.logoUrl.value = imageUrl;
-                    }
-                    showToast('✅ Logo updated! (PNG)', 'success');
-                }, 'image/png');
+                loadAllData();
+                showToast('Data diperbarui', 'success');
             });
         }
         
-        if (elements.saveLogoBtn) {
-            elements.saveLogoBtn.addEventListener('click', saveLogo);
-        }
-        
-        // Banner events - menggunakan fungsi baru
-        if (elements.addBannerBtn) {
-            elements.addBannerBtn.addEventListener('click', addBannerWithLink);
-        }
-        
-        if (elements.saveBannersBtn) {
-            elements.saveBannersBtn.addEventListener('click', saveBanners);
-        }
-        
-        if (elements.saveColorsBtn) {
-            elements.saveColorsBtn.addEventListener('click', saveColors);
-        }
-        
-        if (elements.saveFontBtn) {
-            elements.saveFontBtn.addEventListener('click', () => {
-                const font = {
-                    family: elements.fontFamily?.value || 'Inter',
-                    size: parseInt(elements.fontSize?.value) || 14
-                };
-                saveSettings('font', font);
-            });
-        }
-        
-        if (elements.saveGeneralBtn) {
-            elements.saveGeneralBtn.addEventListener('click', () => {
-                const general = {
-                    title: elements.websiteTitle?.value || '',
-                    description: elements.websiteDescription?.value || '',
-                    contact: {
-                        whatsapp: elements.contactWhatsApp?.value || '',
-                        telegram: elements.contactTelegram?.value || ''
-                    }
-                };
-                saveSettings('general', general);
-            });
-        }
-        
-        if (elements.saveSeoBtn) {
-            elements.saveSeoBtn.addEventListener('click', () => {
-                const seo = {
-                    title: elements.metaTitle?.value || '',
-                    description: elements.metaDescription?.value || '',
-                    keywords: elements.metaKeywords?.value || ''
-                };
-                saveSettings('seo', seo);
-            });
-        }
-        
-        if (elements.savePaymentsBtn) {
-            elements.savePaymentsBtn.addEventListener('click', () => {
-                const payments = {
-                    bank: {
-                        enabled: elements.bankEnabled?.checked || false,
-                        name: elements.bankName?.value || 'BCA',
-                        account: elements.bankAccount?.value || '',
-                        holder: elements.bankHolder?.value || ''
-                    },
-                    ewallet: {
-                        enabled: elements.ewalletEnabled?.checked || false,
-                        provider: elements.ewalletProvider?.value || 'DANA',
-                        number: elements.ewalletNumber?.value || ''
-                    },
-                    qris: {
-                        enabled: elements.qrisEnabled?.checked || false,
-                        url: elements.qrisPreview?.src || elements.qrisUrl?.value || ''
-                    },
-                    crypto: {
-                        enabled: elements.cryptoEnabled?.checked || false,
-                        address: elements.cryptoAddress?.value || ''
-                    }
-                };
-                saveSettings('payments', payments);
-            });
-        }
-        
-        if (elements.savePaymentNotesBtn) {
-            elements.savePaymentNotesBtn.addEventListener('click', () => {
-                const notes = {
-                    payment: elements.paymentNotes?.value || '',
-                    confirmation: elements.confirmationNotes?.value || ''
-                };
-                saveSettings('payment-notes', notes);
-            });
-        }
-        
-        if (elements.saveMaintenanceBtn) {
-            elements.saveMaintenanceBtn.addEventListener('click', () => {
-                const maintenance = {
-                    enabled: elements.maintenanceMode?.checked || false,
-                    message: elements.maintenanceMessage?.value || 'Website sedang dalam perbaikan'
-                };
-                saveSettings('maintenance', maintenance);
-            });
-        }
-        
-        if (elements.bankEnabled) {
-            elements.bankEnabled.addEventListener('change', () => {
-                if (elements.bankDetails) {
-                    elements.bankDetails.style.opacity = elements.bankEnabled.checked ? '1' : '0.5';
-                }
-            });
-        }
-        
-        if (elements.ewalletEnabled) {
-            elements.ewalletEnabled.addEventListener('change', () => {
-                if (elements.ewalletDetails) {
-                    elements.ewalletDetails.style.opacity = elements.ewalletEnabled.checked ? '1' : '0.5';
-                }
-            });
-        }
-        
-        if (elements.qrisEnabled) {
-            elements.qrisEnabled.addEventListener('change', () => {
-                if (elements.qrisDetails) {
-                    elements.qrisDetails.style.opacity = elements.qrisEnabled.checked ? '1' : '0.5';
-                }
-            });
-        }
-        
-        if (elements.cryptoEnabled) {
-            elements.cryptoEnabled.addEventListener('change', () => {
-                if (elements.cryptoDetails) {
-                    elements.cryptoDetails.style.display = elements.cryptoEnabled.checked ? 'block' : 'none';
-                }
-            });
-        }
-        
-        if (elements.uploadQrisBtn) {
-            elements.uploadQrisBtn.addEventListener('click', () => {
-                openUploadModal((imageUrl) => {
-                    if (elements.qrisPreview) {
-                        elements.qrisPreview.src = imageUrl;
-                    }
-                    if (elements.qrisUrl) {
-                        elements.qrisUrl.value = imageUrl;
-                    }
-                    showToast('✅ QRIS updated!', 'success');
-                });
-            });
-        }
-        
-        if (elements.maintenanceMode) {
-            elements.maintenanceMode.addEventListener('change', () => {
-                if (elements.maintenanceMessageGroup) {
-                    elements.maintenanceMessageGroup.style.display = elements.maintenanceMode.checked ? 'block' : 'none';
-                }
-            });
-        }
-        
-        if (elements.previewWebsiteBtn) {
-            elements.previewWebsiteBtn.addEventListener('click', previewWebsite);
-        }
-        
+        // Copy endpoint
         if (elements.copyEndpointBtn) {
             elements.copyEndpointBtn.addEventListener('click', copyEndpoint);
         }
         
-        if (elements.addProductBtn) {
-            elements.addProductBtn.addEventListener('click', () => {
-                openProductModal();
-            });
+        // Preview website
+        if (elements.previewWebsiteBtn) {
+            elements.previewWebsiteBtn.addEventListener('click', previewWebsite);
         }
         
-        if (elements.closeProductModal) {
-            elements.closeProductModal.addEventListener('click', closeProductModal);
-        }
-        
-        if (elements.cancelProductBtn) {
-            elements.cancelProductBtn.addEventListener('click', closeProductModal);
-        }
-        
-        if (elements.productForm) {
-            elements.productForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                
-                const formData = {
-                    id: currentProductId,
-                    name: elements.productName.value,
-                    description: elements.productDescription.value,
-                    price: parseInt(elements.productPrice.value) || 0,
-                    stock: parseInt(elements.productStock.value) || 0,
-                    category: elements.productCategory.value,
-                    image: elements.productImage.value,
-                    notes: elements.productNotes.value,
-                    active: elements.productActive.checked
-                };
-                
-                saveProduct(formData);
-            });
-        }
-        
-        if (elements.closeDeleteModal) {
-            elements.closeDeleteModal.addEventListener('click', closeDeleteModal);
-        }
-        
-        if (elements.cancelDeleteBtn) {
-            elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-        }
-        
-        if (elements.confirmDeleteBtn) {
-            elements.confirmDeleteBtn.addEventListener('click', confirmDelete);
-        }
-        
-        if (elements.closeUploadModal) {
-            elements.closeUploadModal.addEventListener('click', closeUploadModal);
-        }
-        
-        if (elements.uploadArea) {
-            elements.uploadArea.addEventListener('click', () => {
-                if (elements.fileInput) {
-                    elements.fileInput.click();
-                }
-            });
-            
-            elements.uploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                elements.uploadArea.style.borderColor = '#40a7e3';
-                elements.uploadArea.style.background = 'rgba(64, 167, 227, 0.1)';
-            });
-            
-            elements.uploadArea.addEventListener('dragleave', () => {
-                elements.uploadArea.style.borderColor = 'var(--border-color)';
-                elements.uploadArea.style.background = 'rgba(255, 255, 255, 0.02)';
-            });
-            
-            elements.uploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                elements.uploadArea.style.borderColor = 'var(--border-color)';
-                elements.uploadArea.style.background = 'rgba(255, 255, 255, 0.02)';
-                
-                const files = e.dataTransfer.files;
-                if (files.length > 0 && files[0].type.startsWith('image/')) {
-                    handleImageUpload(files[0]);
-                }
-            });
-        }
-        
-        if (elements.fileInput) {
-            elements.fileInput.addEventListener('change', () => {
-                if (elements.fileInput.files.length > 0) {
-                    handleImageUpload(elements.fileInput.files[0]);
-                }
-            });
-        }
-        
-        if (elements.changeImageBtn) {
-            elements.changeImageBtn.addEventListener('click', () => {
-                if (elements.fileInput) {
-                    elements.fileInput.click();
-                }
-            });
-        }
-        
-        if (elements.confirmUploadBtn) {
-            elements.confirmUploadBtn.addEventListener('click', () => {
-                if (currentUploadCallback && elements.uploadPreview) {
-                    const img = elements.uploadPreview.querySelector('img');
-                    if (img) {
-                        currentUploadCallback(img.src);
-                    }
-                }
-                closeUploadModal();
-            });
-        }
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === elements.productModal) {
-                closeProductModal();
-            }
-            if (e.target === elements.deleteProductModal) {
-                closeDeleteModal();
-            }
-            if (e.target === elements.uploadModal) {
-                closeUploadModal();
-            }
-        });
-        
-        setupKeyboardDismiss();
+        // Quick action clicks (already handled by href)
     }
-
-    // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
-    window.panel.editProduct = (id) => {
-        const product = products.find(p => p.id === id);
-        if (product) {
-            openProductModal(product);
-        }
-    };
-    
-    window.panel.deleteProduct = (id) => {
-        const product = products.find(p => p.id === id);
-        if (product) {
-            openDeleteModal(product);
-        }
-    };
 
     // ==================== START ====================
     setupEventListeners();
