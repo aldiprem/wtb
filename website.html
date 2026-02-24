@@ -11,24 +11,29 @@
     <meta name="description" id="dynamicDescription" content="Toko online terpercaya">
     <meta name="keywords" id="dynamicKeywords" content="toko, online, topup">
     
-    <!-- CSS - Path untuk GitHub Pages -->
+    <!-- CSS -->
     <link rel="stylesheet" href="/wtb/css/website.css">
     
     <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Memuat website...</div>
+    <!-- Loading Overlay dengan Animasi -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Memuat website...</div>
+            <div class="loading-progress">
+                <div class="loading-bar"></div>
+            </div>
+        </div>
     </div>
 
-    <!-- Sidebar Navigation -->
+    <!-- Sidebar Navigation dengan Desain Modern -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo">
@@ -41,8 +46,13 @@
         </div>
         
         <div class="sidebar-profile">
-            <div class="profile-avatar" id="sidebarAvatar">
-                <img src="https://ui-avatars.com/api/?name=Guest&size=80&background=40a7e3&color=fff" alt="Profile">
+            <div class="profile-avatar-wrapper">
+                <div class="profile-avatar" id="sidebarAvatar">
+                    <img src="https://ui-avatars.com/api/?name=Guest&size=80&background=40a7e3&color=fff" alt="Profile">
+                </div>
+                <div class="profile-verified" id="profileVerified" style="display: none;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
             </div>
             <div class="profile-info">
                 <div class="profile-name" id="sidebarName">Guest User</div>
@@ -98,14 +108,13 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Top Header -->
+        <!-- Top Header dengan Glassmorphism -->
         <header class="main-header">
             <button class="menu-toggle" id="menuToggle">
                 <i class="fas fa-bars"></i>
             </button>
             
             <div class="header-logo" id="headerLogo">
-                <!-- Logo akan diisi oleh JavaScript -->
                 <i class="fas fa-store"></i>
                 <span id="storeName">Toko Online</span>
             </div>
@@ -114,106 +123,171 @@
                 <button class="header-btn" id="searchToggle">
                     <i class="fas fa-search"></i>
                 </button>
-                <button class="header-btn" id="cartBtn">
+                <button class="header-btn cart-btn" id="cartBtn">
                     <i class="fas fa-shopping-cart"></i>
                     <span class="cart-badge" id="cartBadge">0</span>
                 </button>
             </div>
         </header>
 
-        <!-- Search Bar (Hidden by default) -->
+        <!-- Search Bar dengan Animasi -->
         <div class="search-bar" id="searchBar">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Cari produk...">
-            <button class="search-close" id="searchClose">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Cari produk impianmu...">
+                <button class="search-close" id="searchClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
 
-        <!-- Banner Slider -->
+        <!-- Banner Slider dengan Animasi Modern -->
         <div class="banner-slider" id="bannerSlider">
             <div class="slider-container" id="sliderContainer">
                 <!-- Banners will be loaded here -->
             </div>
+            
+            <!-- Navigation Buttons -->
+            <button class="slider-nav prev" id="sliderPrev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="slider-nav next" id="sliderNext">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <div class="slider-pagination" id="sliderPagination"></div>
             <div class="slider-dots" id="sliderDots"></div>
         </div>
 
-        <!-- Quick Categories -->
+        <!-- Quick Categories dengan Desain Card -->
         <div class="quick-categories">
             <div class="section-header">
                 <h2>Kategori <span>Populer</span></h2>
-                <a href="#" class="view-all" data-page="categories">Lihat Semua</a>
+                <a href="#" class="view-all" data-page="categories">
+                    Lihat Semua <i class="fas fa-arrow-right"></i>
+                </a>
             </div>
-            <div class="categories-grid" id="categoriesGrid">
-                <!-- Categories will be loaded here -->
-            </div>
+            <div class="categories-grid" id="categoriesGrid"></div>
         </div>
 
-        <!-- Featured Products -->
+        <!-- Featured Products dengan Grid Modern -->
         <div class="featured-products">
             <div class="section-header">
-                <h2>Produk <span>Unggulan</span></h2>
-                <a href="#" class="view-all" data-page="products">Lihat Semua</a>
+                <div>
+                    <h2>Produk <span>Unggulan</span></h2>
+                    <p class="section-subtitle">Produk terbaik pilihan pelanggan</p>
+                </div>
+                <a href="#" class="view-all" data-page="products">
+                    Lihat Semua <i class="fas fa-arrow-right"></i>
+                </a>
             </div>
-            <div class="products-grid" id="featuredProducts">
-                <!-- Products will be loaded here -->
-            </div>
+            <div class="products-grid" id="featuredProducts"></div>
         </div>
 
         <!-- Popular Products -->
         <div class="popular-products">
             <div class="section-header">
-                <h2>Produk <span>Terlaris</span></h2>
-                <a href="#" class="view-all" data-page="products?sort=popular">Lihat Semua</a>
+                <div>
+                    <h2>Produk <span>Terlaris</span></h2>
+                    <p class="section-subtitle">Paling banyak dibeli hari ini</p>
+                </div>
+                <a href="#" class="view-all" data-page="products?sort=popular">
+                    Lihat Semua <i class="fas fa-arrow-right"></i>
+                </a>
             </div>
-            <div class="products-grid" id="popularProducts">
-                <!-- Products will be loaded here -->
-            </div>
+            <div class="products-grid" id="popularProducts"></div>
         </div>
 
-        <!-- Promo Banner -->
-        <div class="promo-banner" id="promoBanner">
-            <!-- Promo banner will be loaded here -->
-        </div>
+        <!-- Promo Banner dengan Animasi -->
+        <div class="promo-banner" id="promoBanner"></div>
 
-        <!-- Payment Methods -->
+        <!-- Payment Methods dengan Desain Modern -->
         <div class="payment-methods">
-            <h3>Metode Pembayaran</h3>
-            <div class="payment-icons" id="paymentIcons">
-                <!-- Payment methods will be loaded here -->
+            <div class="payment-header">
+                <h3><i class="fas fa-credit-card"></i> Metode Pembayaran</h3>
+                <span class="payment-badge">Aman & Terpercaya</span>
             </div>
+            <div class="payment-icons" id="paymentIcons"></div>
         </div>
 
-        <!-- Footer -->
+        <!-- Footer Modern -->
         <footer class="main-footer">
+            <div class="footer-wave">
+                <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+                    <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" class="wave-fill"></path>
+                    <path d="M0,0V15.81C13,21.25,27.93,25.23,44.52,27.3c69.7,8.48,137.53,21.86,206.93,34.53C353.09,79.8,431.52,93.7,512,98.41c69.93,4.19,140.81-1.17,210.14-12.55C786.85,75.58,849.84,56.88,910.38,37.16,970.92,17.44,1046.1,1.2,1118.4,6.43c24.66,1.86,48.59,6.56,71.6,12.56V0Z" class="wave-fill"></path>
+                </svg>
+            </div>
+            
             <div class="footer-content">
                 <div class="footer-section">
-                    <h4>Tentang Kami</h4>
-                    <p id="footerDescription">Toko online terpercaya sejak 2024</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Kontak</h4>
-                    <p id="footerContact">
-                        <i class="fab fa-whatsapp"></i> <span id="contactWhatsApp">-</span><br>
-                        <i class="fab fa-telegram"></i> <span id="contactTelegram">-</span>
-                    </p>
-                </div>
-                <div class="footer-section">
-                    <h4>Ikuti Kami</h4>
-                    <div class="social-icons">
+                    <div class="footer-logo">
+                        <i class="fas fa-store"></i>
+                        <span id="footerStoreName">Toko Online</span>
+                    </div>
+                    <p id="footerDescription">Toko online terpercaya sejak 2024 dengan ribuan produk berkualitas dan pelayanan terbaik.</p>
+                    <div class="footer-social">
                         <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
                         <a href="#" class="social-icon"><i class="fab fa-facebook"></i></a>
                         <a href="#" class="social-icon"><i class="fab fa-tiktok"></i></a>
+                        <a href="#" class="social-icon"><i class="fab fa-whatsapp"></i></a>
+                    </div>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Kontak</h4>
+                    <ul class="footer-contact">
+                        <li>
+                            <i class="fab fa-whatsapp"></i>
+                            <span id="contactWhatsApp">-</span>
+                        </li>
+                        <li>
+                            <i class="fab fa-telegram"></i>
+                            <span id="contactTelegram">-</span>
+                        </li>
+                        <li>
+                            <i class="fas fa-envelope"></i>
+                            <span id="contactEmail">support@example.com</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Informasi</h4>
+                    <ul class="footer-links">
+                        <li><a href="#">Tentang Kami</a></li>
+                        <li><a href="#">Syarat & Ketentuan</a></li>
+                        <li><a href="#">Kebijakan Privasi</a></li>
+                        <li><a href="#">FAQ</a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Download App</h4>
+                    <p>Dapatkan pengalaman belanja lebih baik dengan aplikasi mobile kami.</p>
+                    <div class="app-badges">
+                        <a href="#" class="app-badge">
+                            <i class="fab fa-google-play"></i>
+                            <span>Google Play</span>
+                        </a>
+                        <a href="#" class="app-badge">
+                            <i class="fab fa-apple"></i>
+                            <span>App Store</span>
+                        </a>
                     </div>
                 </div>
             </div>
+            
             <div class="footer-bottom">
-                © 2024 <span id="footerStoreName">Toko Online</span>. All rights reserved.
+                <div class="footer-bottom-content">
+                    <span>© 2024 <span id="footerStoreName2">Toko Online</span>. All rights reserved.</span>
+                    <span class="footer-version">Version 2.0.0</span>
+                </div>
             </div>
         </footer>
     </div>
 
-    <!-- Cart Sidebar -->
+    <!-- Cart Sidebar Modern -->
     <div class="cart-sidebar" id="cartSidebar">
         <div class="cart-header">
             <h3><i class="fas fa-shopping-cart"></i> Keranjang</h3>
@@ -222,12 +296,15 @@
             </button>
         </div>
         
-        <div class="cart-items" id="cartItems">
-            <!-- Cart items will be loaded here -->
-        </div>
+        <div class="cart-items" id="cartItems"></div>
         
-        <div class="cart-empty" id="cartEmpty" style="display: none;">
-            <i class="fas fa-shopping-cart"></i>
+        <div class="cart-empty" id="cartEmpty">
+            <div class="empty-animation">
+                <i class="fas fa-shopping-cart"></i>
+                <div class="empty-dots">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
             <p>Keranjang belanja kosong</p>
             <button class="btn-primary" id="shopNowBtn">Belanja Sekarang</button>
         </div>
@@ -243,21 +320,21 @@
         </div>
     </div>
 
-    <!-- Product Detail Modal -->
+    <!-- Product Detail Modal dengan Desain Modern -->
     <div class="modal" id="productModal">
+        <div class="modal-overlay"></div>
         <div class="modal-content product-detail-modal">
             <button class="modal-close-btn" id="closeProductModal">
                 <i class="fas fa-times"></i>
             </button>
             
-            <div class="product-detail" id="productDetail">
-                <!-- Product detail will be loaded here -->
-            </div>
+            <div class="product-detail" id="productDetail"></div>
         </div>
     </div>
 
     <!-- Checkout Modal -->
     <div class="modal" id="checkoutModal">
+        <div class="modal-overlay"></div>
         <div class="modal-content checkout-modal">
             <div class="modal-header">
                 <h2><i class="fas fa-credit-card"></i> Checkout</h2>
@@ -266,14 +343,13 @@
                 </button>
             </div>
             
-            <div class="checkout-body" id="checkoutBody">
-                <!-- Checkout form will be loaded here -->
-            </div>
+            <div class="checkout-body" id="checkoutBody"></div>
         </div>
     </div>
 
-    <!-- Login Modal -->
+    <!-- Login Modal dengan Desain Modern -->
     <div class="modal" id="loginModal">
+        <div class="modal-overlay"></div>
         <div class="modal-content login-modal">
             <div class="modal-header">
                 <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
@@ -283,27 +359,30 @@
             </div>
             
             <div class="login-body">
+                <div class="login-illustration">
+                    <i class="fas fa-user-circle"></i>
+                </div>
                 <div class="login-options">
                     <button class="btn-telegram" id="telegramLogin">
                         <i class="fab fa-telegram"></i>
-                        Login dengan Telegram
+                        <span>Login dengan Telegram</span>
                     </button>
                     <div class="divider">
                         <span>atau</span>
                     </div>
                     <button class="btn-guest" id="guestLogin">
                         <i class="fas fa-user"></i>
-                        Lanjut sebagai Tamu
+                        <span>Lanjut sebagai Tamu</span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast Notifications -->
+    <!-- Toast Notifications dengan Animasi -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- JavaScript - Path untuk GitHub Pages -->
+    <!-- JavaScript -->
     <script src="/wtb/js/website.js"></script>
 </body>
 </html>
