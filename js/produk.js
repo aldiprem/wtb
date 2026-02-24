@@ -1,4 +1,4 @@
-// produk.js - Manajemen Produk dengan Struktur Hierarki (VERSI BARU)
+// produk.js - Manajemen Produk dengan Struktur Hierarki (VERSI BARU DENGAN FITUR LENGKAP)
 (function() {
     'use strict';
     
@@ -20,6 +20,10 @@
     // Item state
     let currentItemStok = [];
     let currentItemFields = [];
+
+    // Track open/close state
+    let openLayanan = new Set();
+    let openAplikasi = new Set();
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -234,6 +238,25 @@
         }
     }
 
+    // ==================== TOGGLE FUNCTIONS ====================
+    function toggleLayanan(layananNama) {
+        if (openLayanan.has(layananNama)) {
+            openLayanan.delete(layananNama);
+        } else {
+            openLayanan.add(layananNama);
+        }
+        renderProducts();
+    }
+
+    function toggleAplikasi(aplikasiId) {
+        if (openAplikasi.has(aplikasiId)) {
+            openAplikasi.delete(aplikasiId);
+        } else {
+            openAplikasi.add(aplikasiId);
+        }
+        renderProducts();
+    }
+
     // ==================== RENDER FUNCTIONS ====================
     function renderProducts() {
         if (!elements.productsContainer) return;
@@ -249,6 +272,9 @@
         let html = '';
         
         productsData.forEach(layanan => {
+            const isLayananOpen = openLayanan.has(layanan.layanan_nama);
+            const layananId = `layanan-${layanan.layanan_nama.replace(/\s+/g, '-')}`;
+            
             html += `
                 <div class="layanan-card">
                     <div class="layanan-header">
@@ -262,33 +288,43 @@
                             <div class="layanan-nama">${escapeHtml(layanan.layanan_nama)}</div>
                             ${layanan.layanan_desc ? `<div class="layanan-desc">${escapeHtml(layanan.layanan_desc)}</div>` : ''}
                         </div>
-                        <div class="layanan-actions">
+                        <div class="layanan-actions-right">
+                            <button class="btn-icon add" onclick="window.produk.addLayanan()" title="Tambah Layanan">
+                                <i class="fas fa-plus"></i>
+                            </button>
                             <button class="btn-icon edit" onclick="window.produk.editLayanan('${escapeHtml(layanan.layanan_nama)}')" title="Edit Layanan">
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button class="btn-icon delete" onclick="window.produk.deleteLayanan('${escapeHtml(layanan.layanan_nama)}')" title="Hapus Layanan">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            <button class="btn-icon toggle" onclick="window.produk.toggleLayanan('${escapeHtml(layanan.layanan_nama)}')" title="${isLayananOpen ? 'Tutup' : 'Buka'}">
+                                <i class="fas fa-chevron-${isLayananOpen ? 'up' : 'down'}"></i>
+                            </button>
                         </div>
                     </div>
                     
-                    <div class="layanan-banner">
-                        ${layanan.layanan_banner ? 
-                            `<img src="${escapeHtml(layanan.layanan_banner)}" alt="Banner" onerror="this.style.display='none'">` : ''
-                        }
-                    </div>
-                    
-                    <div class="layanan-catatan">
-                        ${layanan.layanan_catatan ? 
-                            `<small><i class="fas fa-sticky-note"></i> ${escapeHtml(layanan.layanan_catatan)}</small>` : ''
-                        }
-                    </div>
-                    
-                    <div class="aplikasi-container">
-            `;
+                    ${isLayananOpen ? `
+                        <div class="layanan-banner">
+                            ${layanan.layanan_banner ? 
+                                `<img src="${escapeHtml(layanan.layanan_banner)}" alt="Banner" onerror="this.style.display='none'">` : ''
+                            }
+                        </div>
+                        
+                        <div class="layanan-catatan">
+                            ${layanan.layanan_catatan ? 
+                                `<small><i class="fas fa-sticky-note"></i> ${escapeHtml(layanan.layanan_catatan)}</small>` : ''
+                            }
+                        </div>
+                        
+                        <div class="aplikasi-container">
+                    ` : ''}
             
-            layanan.aplikasi.forEach(aplikasi => {
-                html += `
+            ${isLayananOpen ? layanan.aplikasi.map(aplikasi => {
+                const aplikasiId = `aplikasi-${layanan.layanan_nama}-${aplikasi.aplikasi_nama}`.replace(/\s+/g, '-');
+                const isAplikasiOpen = openAplikasi.has(aplikasiId);
+                
+                return `
                     <div class="aplikasi-card">
                         <div class="aplikasi-header">
                             <div class="aplikasi-logo">
@@ -301,85 +337,100 @@
                                 <div class="aplikasi-nama">${escapeHtml(aplikasi.aplikasi_nama)}</div>
                                 ${aplikasi.aplikasi_desc ? `<div class="aplikasi-desc">${escapeHtml(aplikasi.aplikasi_desc)}</div>` : ''}
                             </div>
-                            <div class="aplikasi-actions">
+                            <div class="aplikasi-actions-right">
+                                <button class="btn-icon add" onclick="window.produk.addAplikasi('${escapeHtml(layanan.layanan_nama)}')" title="Tambah Aplikasi">
+                                    <i class="fas fa-plus"></i>
+                                </button>
                                 <button class="btn-icon edit" onclick="window.produk.editAplikasi('${escapeHtml(layanan.layanan_nama)}', '${escapeHtml(aplikasi.aplikasi_nama)}')" title="Edit Aplikasi">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="btn-icon delete" onclick="window.produk.deleteAplikasi('${escapeHtml(layanan.layanan_nama)}', '${escapeHtml(aplikasi.aplikasi_nama)}')" title="Hapus Aplikasi">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                            </div>
-                        </div>
-                        
-                        <div class="aplikasi-catatan">
-                            ${aplikasi.aplikasi_catatan ? 
-                                `<small><i class="fas fa-sticky-note"></i> ${escapeHtml(aplikasi.aplikasi_catatan)}</small>` : ''
-                            }
-                        </div>
-                        
-                        <div class="items-container">
-                `;
-                
-                aplikasi.items.forEach(item => {
-                    const durasi = formatDurasi(item.item_durasi_jumlah, item.item_durasi_satuan);
-                    const tipeClass = item.item_tipe === 'seller' ? 'seller' : item.item_tipe === 'buyer' ? 'buyer' : '';
-                    const readyClass = item.item_ready ? 'ready' : 'sold';
-                    const metode = item.item_metode || 'directly';
-                    const stokCount = metode === 'directly' ? (item.item_stok?.length || 0) : 0;
-                    
-                    html += `
-                        <div class="item-card ${readyClass}" data-id="${item.id}">
-                            <div class="item-info">
-                                <div class="item-nama">
-                                    ${escapeHtml(item.item_nama)}
-                                    ${tipeClass ? `<span class="item-tipe ${tipeClass}">${tipeClass}</span>` : ''}
-                                </div>
-                                ${durasi ? `<div class="item-durasi">${escapeHtml(durasi)}</div>` : ''}
-                                <div class="item-meta">
-                                    <span class="item-harga">${formatRupiah(item.item_harga)}</span>
-                                    <span class="item-metode ${metode}">
-                                        <i class="fas fa-${metode === 'directly' ? 'bolt' : 'clipboard-list'}"></i>
-                                        ${metode === 'directly' ? 'Direct' : 'Request'}
-                                    </span>
-                                    ${metode === 'directly' ? `
-                                        <span class="item-stok ${stokCount === 0 ? 'habis' : ''}">
-                                            <i class="fas fa-cubes"></i>
-                                            ${stokCount} stok
-                                        </span>
-                                    ` : ''}
-                                    <span class="item-status ${readyClass}">
-                                        <i class="fas fa-${item.item_ready ? 'check-circle' : 'times-circle'}"></i>
-                                        ${item.item_ready ? 'Ready' : 'Sold'}
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="item-actions">
-                                <button class="btn-icon edit" onclick="window.produk.editItem(${item.id})" title="Edit Item">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn-icon delete" onclick="window.produk.deleteItem(${item.id})" title="Hapus Item">
-                                    <i class="fas fa-trash"></i>
+                                <button class="btn-icon toggle" onclick="window.produk.toggleAplikasi('${escapeHtml(aplikasiId)}')" title="${isAplikasiOpen ? 'Tutup' : 'Buka'}">
+                                    <i class="fas fa-chevron-${isAplikasiOpen ? 'up' : 'down'}"></i>
                                 </button>
                             </div>
                         </div>
-                    `;
-                });
-                
-                html += `
-                            <button class="btn-add-item" onclick="window.produk.addItem('${escapeHtml(layanan.layanan_nama)}', '${escapeHtml(aplikasi.aplikasi_nama)}')">
-                                <i class="fas fa-plus"></i> Tambah Item
-                            </button>
-                        </div>
+                        
+                        ${isAplikasiOpen ? `
+                            <div class="aplikasi-catatan">
+                                ${aplikasi.aplikasi_catatan ? 
+                                    `<small><i class="fas fa-sticky-note"></i> ${escapeHtml(aplikasi.aplikasi_catatan)}</small>` : ''
+                                }
+                            </div>
+                            
+                            <div class="items-container">
+                                ${aplikasi.items.map(item => {
+                                    const durasi = formatDurasi(item.item_durasi_jumlah, item.item_durasi_satuan);
+                                    const tipeClass = item.item_tipe === 'seller' ? 'seller' : item.item_tipe === 'buyer' ? 'buyer' : '';
+                                    const readyClass = item.item_ready ? 'ready' : 'sold';
+                                    const metode = item.item_metode || 'directly';
+                                    const stokCount = metode === 'directly' ? (item.item_stok?.length || 0) : 0;
+                                    const hasFields = metode === 'request' && item.item_fields?.length > 0;
+                                    
+                                    return `
+                                        <div class="item-card ${readyClass}" data-id="${item.id}">
+                                            <div class="item-info">
+                                                <div class="item-nama">
+                                                    ${escapeHtml(item.item_nama)}
+                                                </div>
+                                                <div class="item-durasi-harga">
+                                                    ${durasi ? `${escapeHtml(durasi)} • ` : ''}
+                                                    <span class="item-harga">${formatRupiah(item.item_harga)}</span>
+                                                </div>
+                                                <div class="item-badges">
+                                                    ${metode === 'directly' ? `
+                                                        <span class="badge stok-badge">
+                                                            <i class="fas fa-cubes"></i> stok:${stokCount}
+                                                        </span>
+                                                    ` : ''}
+                                                    ${item.item_tipe ? `
+                                                        <span class="badge tipe-badge ${item.item_tipe}">
+                                                            <i class="fas fa-${item.item_tipe === 'seller' ? 'store' : 'shopping-cart'}"></i>
+                                                            ${item.item_tipe}
+                                                        </span>
+                                                    ` : ''}
+                                                    <span class="badge status-badge ${readyClass}">
+                                                        <i class="fas fa-${item.item_ready ? 'check-circle' : 'times-circle'}"></i>
+                                                        ${item.item_ready ? 'Ready' : 'Sold'}
+                                                    </span>
+                                                    ${metode === 'request' ? `
+                                                        <span class="badge metode-badge request ${hasFields ? 'active' : 'inactive'}">
+                                                            <i class="fas fa-clipboard-list"></i>
+                                                            Request:${hasFields ? '✅' : '🚫'}
+                                                        </span>
+                                                    ` : ''}
+                                                </div>
+                                            </div>
+                                            <div class="item-actions">
+                                                <button class="btn-icon edit" onclick="window.produk.editItem(${item.id})" title="Edit Item">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn-icon delete" onclick="window.produk.deleteItem(${item.id})" title="Hapus Item">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                                
+                                <button class="btn-add-item" onclick="window.produk.addItem('${escapeHtml(layanan.layanan_nama)}', '${escapeHtml(aplikasi.aplikasi_nama)}')">
+                                    <i class="fas fa-plus"></i> Tambah Item
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 `;
-            });
+            }).join('') : ''}
             
-            html += `
+            ${isLayananOpen ? `
                         <button class="btn-add-aplikasi" onclick="window.produk.addAplikasi('${escapeHtml(layanan.layanan_nama)}')">
                             <i class="fas fa-plus"></i> Tambah Aplikasi
                         </button>
                     </div>
                 </div>
+            ` : ''}
             `;
         });
         
@@ -1004,7 +1055,11 @@
                 currentItemFields.splice(index, 1);
                 renderItemFieldsList();
             }
-        }
+        },
+        
+        // Toggle functions
+        toggleLayanan: (layananNama) => toggleLayanan(layananNama),
+        toggleAplikasi: (aplikasiId) => toggleAplikasi(aplikasiId)
     };
 
     // ==================== START ====================
