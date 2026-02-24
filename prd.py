@@ -74,6 +74,8 @@ def init_db():
 
 # ==================== FUNGSI MIGRASI DATABASE ====================
 
+# ==================== FUNGSI MIGRASI DATABASE ====================
+
 def migrate_database():
     """Migrasi database ke struktur terbaru - menambahkan kolom yang belum ada"""
     conn = None
@@ -94,13 +96,20 @@ def migrate_database():
         
         print("📊 Existing columns:", existing_columns)
         
-        # CEK APAKAH MASIH ADA KOLOM LAMA 'layanan' (bukan 'layanan_nama')
-        if 'layanan' in existing_columns and 'layanan_nama' not in existing_columns:
+        # CEK APAKAH MASIH ADA KOLOM LAMA
+        if 'layanan' in existing_columns:
             print("⚠️ Kolom lama 'layanan' ditemukan. Melakukan migrasi khusus...")
+            
+            # Backup data terlebih dahulu
+            cursor.execute("SELECT * FROM products")
+            rows = cursor.fetchall()
+            
+            # Drop tabel lama
+            cursor.execute("DROP TABLE products")
             
             # Buat tabel baru dengan struktur yang benar
             cursor.execute('''
-                CREATE TABLE products_new (
+                CREATE TABLE products (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     website_id INTEGER NOT NULL,
                     
@@ -139,41 +148,57 @@ def migrate_database():
                 )
             ''')
             
-            # Salin data dari tabel lama ke tabel baru
-            # Asumsikan kolom 'layanan' di tabel lama = 'layanan_nama' di tabel baru
-            copy_columns = []
-            for col in existing_columns:
-                if col != 'layanan':  # skip kolom lama
-                    copy_columns.append(col)
-            
-            # Tambahkan layanan_nama dengan nilai dari kolom layanan
-            cursor.execute('''
-                INSERT INTO products_new (
-                    id, website_id, 
-                    layanan_nama, layanan_gambar, layanan_banner, layanan_desc, layanan_catatan,
-                    aplikasi_nama, aplikasi_gambar, aplikasi_desc, aplikasi_catatan,
-                    item_nama, item_durasi_jumlah, item_durasi_satuan, item_harga, 
-                    item_tipe, item_metode, item_stok, item_fields, item_ready,
-                    aktif, terjual, created_at, updated_at
-                )
-                SELECT 
-                    id, website_id,
-                    layanan, layanan_gambar, layanan_banner, layanan_desc, layanan_catatan,
-                    aplikasi_nama, aplikasi_gambar, aplikasi_desc, aplikasi_catatan,
-                    item_nama, item_durasi_jumlah, item_durasi_satuan, item_harga,
-                    item_tipe, item_metode, item_stok, item_fields, item_ready,
-                    aktif, terjual, created_at, updated_at
-                FROM products
-            ''')
-            
-            # Hapus tabel lama dan rename tabel baru
-            cursor.execute("DROP TABLE products")
-            cursor.execute("ALTER TABLE products_new RENAME TO products")
+            # Insert ulang data jika ada
+            if rows:
+                for row in rows:
+                    # Mapping kolom lama ke baru
+                    row_dict = dict(row)
+                    layanan_value = row_dict.get('layanan', '')
+                    
+                    cursor.execute('''
+                        INSERT INTO products (
+                            id, website_id,
+                            layanan_nama, layanan_gambar, layanan_banner, layanan_desc, layanan_catatan,
+                            aplikasi_nama, aplikasi_gambar, aplikasi_desc, aplikasi_catatan,
+                            item_nama, item_durasi_jumlah, item_durasi_satuan, item_harga,
+                            item_tipe, item_metode, item_stok, item_fields, item_ready,
+                            aktif, terjual, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        row_dict.get('id'),
+                        row_dict.get('website_id'),
+                        layanan_value,  # gunakan nilai dari kolom 'layanan' untuk 'layanan_nama'
+                        row_dict.get('layanan_gambar', ''),
+                        row_dict.get('layanan_banner', ''),
+                        row_dict.get('layanan_desc', ''),
+                        row_dict.get('layanan_catatan', ''),
+                        row_dict.get('aplikasi_nama', ''),
+                        row_dict.get('aplikasi_gambar', ''),
+                        row_dict.get('aplikasi_desc', ''),
+                        row_dict.get('aplikasi_catatan', ''),
+                        row_dict.get('item_nama', ''),
+                        row_dict.get('item_durasi_jumlah', 0),
+                        row_dict.get('item_durasi_satuan', 'hari'),
+                        row_dict.get('item_harga', 0),
+                        row_dict.get('item_tipe', 'seller'),
+                        row_dict.get('item_metode', 'directly'),
+                        row_dict.get('item_stok', '[]'),
+                        row_dict.get('item_fields', '[]'),
+                        row_dict.get('item_ready', 1),
+                        row_dict.get('aktif', 1),
+                        row_dict.get('terjual', 0),
+                        row_dict.get('created_at', datetime.now().isoformat()),
+                        row_dict.get('updated_at', datetime.now().isoformat())
+                    ))
+                
+                print(f"✅ {len(rows)} baris data berhasil dimigrasi")
+            else:
+                print("ℹ️ Tidak ada data yang perlu dimigrasi")
             
             print("✅ Migrasi kolom 'layanan' ke 'layanan_nama' selesai")
         
+        # Migrasi normal: tambahkan kolom yang belum ada (jika masih ada tabel dengan kolom yang kurang)
         else:
-            # Migrasi normal: tambahkan kolom yang belum ada
             required_columns = {
                 'layanan_nama': 'TEXT NOT NULL DEFAULT ""',
                 'layanan_gambar': 'TEXT',
@@ -221,6 +246,8 @@ def migrate_database():
         
     except Exception as e:
         print(f"⚠️ Migration error: {e}")
+        import traceback
+        traceback.print_exc()
         if conn:
             conn.rollback()
         return False
