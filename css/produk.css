@@ -1200,3 +1200,206 @@ input:checked + .toggle-slider:before {
         margin: 10px;
     }
 }
+
+/* Tambahkan di bagian yang sesuai (setelah .layanan-actions atau di bagian buttons) */
+
+/* Tombol untuk mengelola layanan dan aplikasi */
+.btn-manage {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--tg-text-color);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-manage:hover {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.btn-manage i {
+  font-size: 16px;
+}
+
+.btn-manage.manage-layanan:hover {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  border-color: #8b5cf6;
+}
+
+.btn-manage.manage-aplikasi:hover {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-color: #f59e0b;
+}
+
+/* Tombol manage di header layanan */
+.layanan-manage-btn {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #8b5cf6;
+}
+
+.layanan-manage-btn:hover {
+  background: #8b5cf6 !important;
+  color: white !important;
+}
+
+/* Tombol manage di header aplikasi */
+.aplikasi-manage-btn {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+}
+
+.aplikasi-manage-btn:hover {
+  background: #f59e0b !important;
+  color: white !important;
+}
+
+/* Tooltip */
+[data-tooltip] {
+  position: relative;
+  cursor: pointer;
+}
+
+[data-tooltip]:before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 6px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 100;
+  margin-bottom: 8px;
+  backdrop-filter: blur(5px);
+  border: 1px solid var(--border-color);
+}
+
+[data-tooltip]:hover:before {
+  opacity: 1;
+}
+
+/* Form Sections untuk Manage */
+.form-section.manage-layanan {
+  border-left: 3px solid #8b5cf6;
+}
+
+.form-section.manage-aplikasi {
+  border-left: 3px solid #f59e0b;
+}
+
+.form-section.manage-item {
+  border-left: 3px solid var(--primary-color);
+}
+
+/* Info Badge untuk manage mode */
+.manage-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(64, 167, 227, 0.1);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  border-left: 3px solid var(--primary-color);
+}
+
+.manage-info i {
+  color: var(--primary-color);
+  font-size: 16px;
+}
+
+.manage-info strong {
+  color: var(--primary-color);
+}
+
+/* Multiple Items Container */
+.multiple-items-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.item-group {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.item-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.item-group-header h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.item-group-header .badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: rgba(64, 167, 227, 0.15);
+  color: var(--primary-color);
+  border-radius: 20px;
+}
+
+.remove-item-group {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.1);
+  border: none;
+  color: var(--danger-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.remove-item-group:hover {
+  background: var(--danger-color);
+  color: white;
+}
+
+.item-group-fields {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.item-group-fields .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+  .item-group-fields {
+    grid-template-columns: 1fr;
+  }
+}
