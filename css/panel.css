@@ -1493,16 +1493,6 @@ input:checked + .slider:before {
     opacity: 0.5;
 }
 
-.banner-footer-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 20px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border-color);
-    gap: 12px;
-}
-
 .banner-footer-actions .btn-add.left {
     margin-right: auto;
     justify-content: flex-start;
@@ -1776,15 +1766,17 @@ input:checked + .slider:before {
     }
 }
 
-/* ===== BUBBLE BUTTONS ===== */
+/* ===== BUBBLE BUTTONS - FIXED POSITION ===== */
 .banner-footer-actions {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color);
-  gap: 12px;
+  width: 100%;
 }
 
 .btn-bubble {
@@ -1792,7 +1784,7 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 12px 20px;
   border-radius: 40px;
   font-size: 14px;
   font-weight: 500;
@@ -1801,7 +1793,8 @@ input:checked + .slider:before {
   border: 1px solid var(--border-color);
   background: rgba(255, 255, 255, 0.05);
   color: var(--tg-text-color);
-  min-width: 140px;
+  flex: 1;
+  max-width: calc(50% - 6px);
   white-space: nowrap;
 }
 
@@ -1825,23 +1818,14 @@ input:checked + .slider:before {
   box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
 }
 
-/* Responsive untuk mobile */
+/* Responsive */
 @media (max-width: 480px) {
   .btn-bubble {
-    min-width: 120px;
-    padding: 8px 16px;
+    padding: 10px 16px;
     font-size: 13px;
   }
 
   .btn-bubble i {
     font-size: 14px;
-  }
-}
-
-@media (max-width: 360px) {
-  .btn-bubble {
-    min-width: 100px;
-    padding: 8px 12px;
-    font-size: 12px;
   }
 }
