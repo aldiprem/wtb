@@ -1,8 +1,8 @@
-// panel.js - Panel Admin dengan Dashboard Lengkap
+// panel.js - Panel Dashboard untuk User Website
 (function() {
     'use strict';
     
-    console.log('🛠️ Panel Admin - Initializing...');
+    console.log('📊 Panel Dashboard - Initializing...');
 
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
@@ -10,58 +10,89 @@
 
     // ==================== STATE ====================
     let currentUser = null;
-    let currentWebsite = null;
-    let products = [];
-    let orders = [];
+    let userWebsites = [];
+    let allProducts = [];
+    let allOrders = [];
+    let allCustomers = [];
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
         toastContainer: document.getElementById('toastContainer'),
-        loading: document.getElementById('loading'),
-        error: document.getElementById('error'),
-        errorMessage: document.getElementById('errorMessage'),
         websiteBadge: document.getElementById('websiteBadge'),
-        panelContent: document.getElementById('panelContent'),
-        noWebsiteMessage: document.getElementById('noWebsiteMessage'),
+        
+        // Header
+        menuToggle: document.getElementById('menuToggle'),
         refreshBtn: document.getElementById('refreshBtn'),
+        userProfile: document.getElementById('userProfile'),
+        userAvatar: document.getElementById('userAvatar'),
         
-        // Profile (tetap sama)
-        profileAvatar: document.getElementById('profileAvatar'),
-        profileName: document.getElementById('profileName'),
-        profileBadge: document.getElementById('profileBadge'),
-        profileUsername: document.getElementById('profileUsername'),
-        profileId: document.getElementById('profileId'),
-        websiteEndpoint: document.getElementById('websiteEndpoint'),
-        copyEndpointBtn: document.getElementById('copyEndpointBtn'),
-        previewWebsiteBtn: document.getElementById('previewWebsiteBtn'),
-        websiteStatus: document.getElementById('websiteStatus'),
-        
-        // Stats
-        statTotalProducts: document.getElementById('statTotalProducts'),
-        statRevenue: document.getElementById('statRevenue'),
-        statOrders: document.getElementById('statOrders'),
-        statCustomers: document.getElementById('statCustomers'),
+        // Sidebar
+        sidebar: document.getElementById('sidebar'),
+        sidebarClose: document.getElementById('sidebarClose'),
+        sidebarName: document.getElementById('sidebarName'),
+        sidebarUsername: document.getElementById('sidebarUsername'),
+        sidebarAvatar: document.getElementById('sidebarAvatar'),
+        sidebarTotalWebsites: document.getElementById('sidebarTotalWebsites'),
+        sidebarTotalProducts: document.getElementById('sidebarTotalProducts'),
+        menuWebsitesBadge: document.getElementById('menuWebsitesBadge'),
+        menuOrdersBadge: document.getElementById('menuOrdersBadge'),
+        logoutBtn: document.getElementById('logoutBtn'),
         
         // Navigation
-        productsNav: document.getElementById('productsNav'),
-        appearanceNav: document.getElementById('appearanceNav'),
-        paymentsNav: document.getElementById('paymentsNav'),
-        settingsNav: document.getElementById('settingsNav'),
+        menuItems: document.querySelectorAll('.menu-item'),
+        pages: document.querySelectorAll('.page'),
+        
+        // Dashboard Stats
+        statTotalWebsites: document.getElementById('statTotalWebsites'),
+        statTotalProducts: document.getElementById('statTotalProducts'),
+        statTotalOrders: document.getElementById('statTotalOrders'),
+        statTotalRevenue: document.getElementById('statTotalRevenue'),
+        statTotalCustomers: document.getElementById('statTotalCustomers'),
+        statActiveWebsites: document.getElementById('statActiveWebsites'),
+        
+        // Quick Actions
+        quickActions: document.getElementById('quickActions'),
         
         // Recent Orders
-        recentOrdersList: document.getElementById('recentOrdersList'),
-        emptyOrders: document.getElementById('emptyOrders'),
+        recentOrders: document.getElementById('recentOrders'),
         
-        // Popular Products
-        popularProductsList: document.getElementById('popularProductsList'),
-        emptyPopularProducts: document.getElementById('emptyPopularProducts'),
+        // Top Products
+        topProducts: document.getElementById('topProducts'),
         
-        // Website Info
-        websiteCreatedDate: document.getElementById('websiteCreatedDate'),
-        websiteEndDate: document.getElementById('websiteEndDate'),
-        totalStock: document.getElementById('totalStock'),
-        lowStockCount: document.getElementById('lowStockCount')
+        // Websites
+        websitesGrid: document.getElementById('websitesGrid'),
+        websitesEmptyState: document.getElementById('websitesEmptyState'),
+        createWebsiteBtn: document.getElementById('createWebsiteBtn'),
+        
+        // Products
+        productWebsiteSelector: document.getElementById('productWebsiteSelector'),
+        manageProductsBtn: document.getElementById('manageProductsBtn'),
+        productsSummary: document.getElementById('productsSummary'),
+        
+        // Orders
+        orderStatusFilter: document.getElementById('orderStatusFilter'),
+        ordersTableBody: document.getElementById('ordersTableBody'),
+        ordersEmptyState: document.getElementById('ordersEmptyState'),
+        
+        // Transactions
+        transactionPeriod: document.getElementById('transactionPeriod'),
+        transactionTotal: document.getElementById('transactionTotal'),
+        transactionCount: document.getElementById('transactionCount'),
+        transactionAverage: document.getElementById('transactionAverage'),
+        transactionsList: document.getElementById('transactionsList'),
+        
+        // Customers
+        customerSearch: document.getElementById('customerSearch'),
+        customersGrid: document.getElementById('customersGrid'),
+        
+        // Settings Links
+        appearanceSettings: document.getElementById('appearanceSettings'),
+        profileSettings: document.getElementById('profileSettings'),
+        paymentSettings: document.getElementById('paymentSettings'),
+        notificationSettings: document.getElementById('notificationSettings'),
+        seoSettings: document.getElementById('seoSettings'),
+        integrationSettings: document.getElementById('integrationSettings')
     };
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -99,11 +130,6 @@
         return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    function formatNumber(num) {
-        if (num === undefined || num === null) return '0';
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    }
-
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -118,14 +144,21 @@
             return date.toLocaleDateString('id-ID', {
                 day: 'numeric',
                 month: 'short',
-                year: 'numeric'
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
             });
         } catch (e) {
             return dateString;
         }
     }
 
-    // ==================== API FUNCTIONS (SAMA PERSIS DENGAN KODE ASLI) ====================
+    function generateAvatarUrl(name) {
+        if (!name) return `https://ui-avatars.com/api/?name=U&size=80&background=40a7e3&color=fff`;
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=80&background=40a7e3&color=fff`;
+    }
+
+    // ==================== API FUNCTIONS ====================
     async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
         try {
             const response = await fetch(url, {
@@ -153,506 +186,787 @@
         }
     }
 
-    // Fungsi verifikasi kepemilikan (SAMA PERSIS DENGAN KODE ASLI)
-    function isOwner(userId) {
-        return currentWebsite && Number(currentWebsite.owner_id) === Number(userId);
-    }
-
-    async function fetchWebsiteData(userId) {
-        try {
-            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/user/${userId}`, {
-                method: 'GET'
-            });
+    async function loadUserData() {
+        // Cek user dari Telegram atau localStorage
+        let userId = null;
+        let userData = null;
+        
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+            userData = window.Telegram.WebApp.initDataUnsafe.user;
+            userId = userData.id;
             
-            if (data.success && data.websites && data.websites.length > 0) {
-                return data.websites[0];
+            // Simpan ke localStorage
+            localStorage.setItem('panel_user', JSON.stringify({
+                id: userId,
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                username: userData.username,
+                photo_url: userData.photo_url
+            }));
+        } else {
+            // Coba ambil dari localStorage
+            const savedUser = localStorage.getItem('panel_user');
+            if (savedUser) {
+                userData = JSON.parse(savedUser);
+                userId = userData.id;
+            } else {
+                // Default untuk testing
+                userData = {
+                    id: 123456789,
+                    first_name: 'User',
+                    last_name: '',
+                    username: 'user'
+                };
+                userId = userData.id;
             }
-            return null;
-        } catch (error) {
-            console.error('❌ Error fetching website:', error);
-            return null;
         }
+        
+        currentUser = userData;
+        
+        // Update UI dengan data user
+        const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'User';
+        const username = userData.username ? `@${userData.username}` : '@user';
+        
+        if (elements.sidebarName) elements.sidebarName.textContent = fullName;
+        if (elements.sidebarUsername) elements.sidebarUsername.textContent = username;
+        
+        const avatarUrl = userData.photo_url || generateAvatarUrl(fullName);
+        
+        if (elements.userAvatar) elements.userAvatar.src = avatarUrl;
+        if (elements.sidebarAvatar) {
+            const img = elements.sidebarAvatar.querySelector('img');
+            if (img) img.src = avatarUrl;
+        }
+        
+        return userId;
     }
 
-    async function fetchProducts(websiteId) {
+    async function loadUserWebsites(userId) {
         try {
-            const data = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${websiteId}`, {
+            showLoading(true);
+            
+            // Ambil semua websites
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/websites`, {
                 method: 'GET'
             });
             
-            if (data.success) {
-                return data.data || [];
+            if (response.success && response.websites) {
+                // Filter berdasarkan user ID
+                userWebsites = response.websites.filter(w => w.owner_id === userId);
+                
+                // Update badge
+                if (elements.menuWebsitesBadge) {
+                    elements.menuWebsitesBadge.textContent = userWebsites.length;
+                }
+                if (elements.sidebarTotalWebsites) {
+                    elements.sidebarTotalWebsites.textContent = userWebsites.length;
+                }
+                
+                // Hitung website aktif
+                const activeCount = userWebsites.filter(w => w.status === 'active').length;
+                if (elements.statActiveWebsites) {
+                    elements.statActiveWebsites.textContent = activeCount;
+                }
+                
+                return userWebsites;
+            } else {
+                userWebsites = [];
+                return [];
             }
+        } catch (error) {
+            console.error('❌ Error loading websites:', error);
+            showToast('Gagal memuat data website', 'error');
+            userWebsites = [];
             return [];
-        } catch (error) {
-            console.error('❌ Error fetching products:', error);
-            return [];
-        }
-    }
-
-    async function loadWebsite() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const endpoint = urlParams.get('website');
-        
-        if (!endpoint) {
-            showToast('Website tidak ditemukan', 'error');
-            setTimeout(() => {
-                window.location.href = '/wtb/dashboard.html';
-            }, 2000);
-            return null;
-        }
-        
-        try {
-            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
-                method: 'GET'
-            });
-            
-            if (data.success && data.website) {
-                return data.website;
-            }
-            return null;
-        } catch (error) {
-            console.error('❌ Error loading website:', error);
-            return null;
-        }
-    }
-
-    // ==================== LOAD DATA ====================
-    async function loadAllData() {
-        if (!currentWebsite) return;
-        
-        showLoading(true);
-        
-        try {
-            // Load products
-            products = await fetchProducts(currentWebsite.id);
-            
-            // Generate dummy orders untuk demo
-            orders = generateDummyOrders();
-            
-            // Update UI
-            updateUI();
-            
-        } catch (error) {
-            console.error('❌ Error loading data:', error);
-            showToast('Gagal memuat data', 'error');
         } finally {
             showLoading(false);
         }
     }
 
-    // Dummy data generator
-    function generateDummyOrders() {
-        const statuses = ['pending', 'processing', 'completed', 'cancelled'];
-        const statusText = {
-            'pending': 'Menunggu',
-            'processing': 'Diproses',
-            'completed': 'Selesai',
-            'cancelled': 'Dibatalkan'
-        };
+    async function loadProductsAndOrders() {
+        if (!userWebsites || userWebsites.length === 0) return;
         
-        return Array(5).fill().map((_, i) => ({
-            id: i + 1,
-            order_number: `ORD-${Date.now().toString().slice(-6)}${i + 1}`,
-            customer_name: `Customer ${i + 1}`,
-            total: Math.floor(Math.random() * 500000) + 50000,
-            status: statuses[Math.floor(Math.random() * statuses.length)],
-            status_text: statusText[statuses[Math.floor(Math.random() * statuses.length)]],
-            date: new Date(Date.now() - i * 86400000).toISOString()
-        }));
-    }
-
-    function calculateStats() {
-        let totalProducts = 0;
-        let totalStock = 0;
-        let lowStock = 0;
-        let totalRevenue = 0;
+        showLoading(true);
         
-        products.forEach(layanan => {
-            layanan.aplikasi?.forEach(aplikasi => {
-                aplikasi.items?.forEach(item => {
-                    totalProducts++;
-                    if (item.item_metode === 'directly') {
-                        const stokCount = item.item_stok?.length || 0;
-                        totalStock += stokCount;
-                        if (stokCount > 0 && stokCount <= 5) lowStock++;
+        try {
+            let totalProducts = 0;
+            let totalOrders = 0;
+            let totalRevenue = 0;
+            let allOrdersList = [];
+            let allProductsList = [];
+            let customersSet = new Map();
+            
+            // Loop setiap website untuk mengambil produk dan pesanan
+            for (const website of userWebsites) {
+                try {
+                    // Ambil produk
+                    const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+                        method: 'GET'
+                    });
+                    
+                    if (productsResponse.success && productsResponse.data) {
+                        totalProducts += productsResponse.data.length || 0;
+                        
+                        // Kumpulkan produk untuk top products
+                        productsResponse.data.forEach(layanan => {
+                            if (layanan.aplikasi) {
+                                layanan.aplikasi.forEach(aplikasi => {
+                                    if (aplikasi.items) {
+                                        aplikasi.items.forEach(item => {
+                                            allProductsList.push({
+                                                ...item,
+                                                website_name: website.endpoint,
+                                                layanan_nama: layanan.layanan_nama,
+                                                aplikasi_nama: aplikasi.aplikasi_nama
+                                            });
+                                        });
+                                    }
+                                });
+                            }
+                        });
                     }
-                });
-            });
-        });
-        
-        // Hitung pendapatan dummy dari orders
-        orders.forEach(order => {
-            if (order.status === 'completed') {
-                totalRevenue += order.total;
-            }
-        });
-        
-        return {
-            totalProducts,
-            totalStock,
-            lowStock,
-            totalRevenue,
-            totalOrders: orders.length,
-            totalCustomers: Math.floor(Math.random() * 50) + 10 // Dummy customers
-        };
-    }
-
-    // ==================== UPDATE UI ====================
-    function updateUI() {
-        // Update profile
-        if (currentUser) {
-            const fullName = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || 'User';
-            const username = currentUser.username ? `@${currentUser.username}` : '(no username)';
-            
-            if (elements.profileName) elements.profileName.textContent = fullName;
-            if (elements.profileUsername) elements.profileUsername.innerHTML = `<i class="fab fa-telegram"></i> ${username}`;
-            if (elements.profileId) elements.profileId.innerHTML = `<i class="fas fa-id-card"></i> ID: ${currentUser.id}`;
-            
-            if (currentUser.photo_url) {
-                elements.profileAvatar.src = currentUser.photo_url;
-            } else {
-                elements.profileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=120&background=40a7e3&color=fff`;
-            }
-        }
-        
-        // Update website info
-        if (currentWebsite) {
-            const endpoint = currentWebsite.endpoint;
-            
-            if (elements.websiteBadge) elements.websiteBadge.textContent = `/${endpoint}`;
-            if (elements.websiteEndpoint) elements.websiteEndpoint.textContent = `/${endpoint}`;
-            if (elements.websiteStatus) {
-                if (currentWebsite.status === 'active') {
-                    elements.websiteStatus.innerHTML = '<i class="fas fa-check-circle" style="color: #10b981;"></i>';
-                } else {
-                    elements.websiteStatus.innerHTML = '<i class="fas fa-times-circle" style="color: #ef4444;"></i>';
+                    
+                    // Ambil orders (jika ada endpoint)
+                    try {
+                        const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
+                            method: 'GET'
+                        });
+                        
+                        if (ordersResponse.success && ordersResponse.orders) {
+                            totalOrders += ordersResponse.orders.length;
+                            
+                            ordersResponse.orders.forEach(order => {
+                                totalRevenue += order.total || 0;
+                                allOrdersList.push({
+                                    ...order,
+                                    website_endpoint: website.endpoint
+                                });
+                                
+                                if (order.customer_id && !customersSet.has(order.customer_id)) {
+                                    customersSet.set(order.customer_id, {
+                                        id: order.customer_id,
+                                        name: order.customer_name || 'Customer',
+                                        orders: 1,
+                                        total_spent: order.total || 0
+                                    });
+                                } else if (order.customer_id) {
+                                    const customer = customersSet.get(order.customer_id);
+                                    customer.orders += 1;
+                                    customer.total_spent += order.total || 0;
+                                }
+                            });
+                        }
+                    } catch (orderError) {
+                        console.log('ℹ️ No orders for website:', website.endpoint);
+                    }
+                    
+                } catch (websiteError) {
+                    console.error('❌ Error loading data for website:', website.endpoint, websiteError);
                 }
             }
             
-            if (elements.websiteCreatedDate) elements.websiteCreatedDate.textContent = formatDate(currentWebsite.created_at);
-            if (elements.websiteEndDate) elements.websiteEndDate.textContent = formatDate(currentWebsite.end_date) || 'Tidak terbatas';
+            allProducts = allProductsList;
+            allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            allCustomers = Array.from(customersSet.values());
             
-            // Update navigation links
-            const baseUrl = `/wtb/html`;
-            if (elements.productsNav) elements.productsNav.href = `${baseUrl}/produk.html?website=${endpoint}`;
-            if (elements.appearanceNav) elements.appearanceNav.href = `${baseUrl}/tampilan.html?website=${endpoint}`;
-            if (elements.paymentsNav) elements.paymentsNav.href = `${baseUrl}/pembayaran.html?website=${endpoint}`;
-            if (elements.settingsNav) elements.settingsNav.href = `${baseUrl}/pengaturan.html?website=${endpoint}`;
+            // Update stats
+            if (elements.statTotalWebsites) {
+                elements.statTotalWebsites.textContent = userWebsites.length;
+            }
+            if (elements.statTotalProducts) {
+                elements.statTotalProducts.textContent = totalProducts;
+            }
+            if (elements.sidebarTotalProducts) {
+                elements.sidebarTotalProducts.textContent = totalProducts;
+            }
+            if (elements.statTotalOrders) {
+                elements.statTotalOrders.textContent = totalOrders;
+            }
+            if (elements.statTotalRevenue) {
+                elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
+            }
+            if (elements.statTotalCustomers) {
+                elements.statTotalCustomers.textContent = allCustomers.length;
+            }
+            if (elements.menuOrdersBadge) {
+                elements.menuOrdersBadge.textContent = totalOrders;
+            }
             
-            // View all links
-            const viewAllOrders = document.getElementById('ordersViewAll');
-            const viewAllProducts = document.getElementById('productsViewAll');
-            if (viewAllOrders) viewAllOrders.href = `${baseUrl}/pesanan.html?website=${endpoint}`;
-            if (viewAllProducts) viewAllProducts.href = `${baseUrl}/produk.html?website=${endpoint}`;
+            // Render sections
+            renderQuickActions();
+            renderRecentOrders();
+            renderTopProducts();
+            renderWebsitesGrid();
+            renderProductSelector();
+            renderOrdersTable();
+            renderTransactions(totalRevenue, allOrdersList.length);
+            renderCustomersGrid();
+            
+        } catch (error) {
+            console.error('❌ Error loading products and orders:', error);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ==================== RENDER FUNCTIONS ====================
+    function renderQuickActions() {
+        if (!elements.quickActions) return;
+        
+        let html = '';
+        
+        if (userWebsites.length > 0) {
+            // Tampilkan actions untuk setiap website
+            userWebsites.slice(0, 4).forEach(website => {
+                html += `
+                    <a href="/produk?website=${website.endpoint}" class="quick-action-card">
+                        <i class="fas fa-box"></i>
+                        <span>Kelola Produk</span>
+                        <small>/${website.endpoint}</small>
+                    </a>
+                    <a href="/tampilan?website=${website.endpoint}" class="quick-action-card">
+                        <i class="fas fa-paint-brush"></i>
+                        <span>Atur Tampilan</span>
+                        <small>/${website.endpoint}</small>
+                    </a>
+                `;
+            });
+        } else {
+            html = `
+                <a href="/format" class="quick-action-card">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Buat Website Baru</span>
+                </a>
+            `;
         }
         
-        // Calculate and update stats
-        const stats = calculateStats();
-        
-        if (elements.statTotalProducts) elements.statTotalProducts.textContent = stats.totalProducts;
-        if (elements.statRevenue) elements.statRevenue.textContent = formatRupiah(stats.totalRevenue);
-        if (elements.statOrders) elements.statOrders.textContent = stats.totalOrders;
-        if (elements.statCustomers) elements.statCustomers.textContent = stats.totalCustomers;
-        
-        if (elements.totalStock) elements.totalStock.textContent = stats.totalStock;
-        if (elements.lowStockCount) elements.lowStockCount.textContent = stats.lowStock;
-        
-        // Render recent orders
-        renderRecentOrders();
-        
-        // Render popular products
-        renderPopularProducts();
+        elements.quickActions.innerHTML = html;
     }
 
     function renderRecentOrders() {
-        if (!elements.recentOrdersList) return;
+        if (!elements.recentOrders) return;
         
-        if (orders.length === 0) {
-            elements.recentOrdersList.innerHTML = '';
-            if (elements.emptyOrders) elements.emptyOrders.style.display = 'block';
+        if (allOrders.length === 0) {
+            elements.recentOrders.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <i class="fas fa-shopping-cart"></i>
+                    <p>Belum ada pesanan</p>
+                </div>
+            `;
             return;
         }
         
-        if (elements.emptyOrders) elements.emptyOrders.style.display = 'none';
-        
         let html = '';
-        orders.slice(0, 5).forEach(order => {
+        const recent = allOrders.slice(0, 5);
+        
+        recent.forEach(order => {
+            const statusClass = `status-${order.status || 'pending'}`;
+            const statusText = order.status || 'Pending';
+            
             html += `
-                <div class="order-item" data-id="${order.id}">
+                <div class="order-item">
                     <div class="order-info">
-                        <div class="order-number">${escapeHtml(order.order_number)}</div>
-                        <div class="order-customer">${escapeHtml(order.customer_name)}</div>
+                        <div class="order-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="order-details">
+                            <h4>${escapeHtml(order.customer_name || 'Customer')}</h4>
+                            <div class="order-meta">
+                                <span><i class="fas fa-tag"></i> ${order.id || 'ORD-' + Math.floor(Math.random() * 1000)}</span>
+                                <span><i class="fas fa-globe"></i> ${order.website_endpoint || '-'}</span>
+                                <span class="order-status ${statusClass}">${statusText}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="order-meta">
-                        <span class="order-status ${order.status}">${escapeHtml(order.status_text)}</span>
-                        <span class="order-total">${formatRupiah(order.total)}</span>
-                    </div>
+                    <div class="order-amount">${formatRupiah(order.total || 0)}</div>
                 </div>
             `;
         });
         
-        elements.recentOrdersList.innerHTML = html;
+        elements.recentOrders.innerHTML = html;
     }
 
-    function renderPopularProducts() {
-        if (!elements.popularProductsList) return;
+    function renderTopProducts() {
+        if (!elements.topProducts) return;
         
-        // Collect all items
-        const allItems = [];
-        products.forEach(layanan => {
-            layanan.aplikasi?.forEach(aplikasi => {
-                aplikasi.items?.forEach(item => {
-                    allItems.push({
-                        ...item,
-                        layanan_nama: layanan.layanan_nama,
-                        aplikasi_nama: aplikasi.aplikasi_nama
-                    });
-                });
-            });
-        });
-        
-        // Sort by terjual (dummy)
-        const popular = allItems.sort((a, b) => (b.terjual || 0) - (a.terjual || 0)).slice(0, 3);
-        
-        if (popular.length === 0) {
-            elements.popularProductsList.innerHTML = '';
-            if (elements.emptyPopularProducts) elements.emptyPopularProducts.style.display = 'block';
+        if (allProducts.length === 0) {
+            elements.topProducts.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <i class="fas fa-box"></i>
+                    <p>Belum ada produk</p>
+                </div>
+            `;
             return;
         }
         
-        if (elements.emptyPopularProducts) elements.emptyPopularProducts.style.display = 'none';
+        // Sort by sold count (asumsi) and take top 4
+        const top = allProducts.slice(0, 4);
         
         let html = '';
-        popular.forEach(item => {
+        top.forEach(product => {
             html += `
-                <div class="product-mini-card" data-id="${item.id}">
-                    <div class="product-mini-info">
-                        <div class="product-mini-name">${escapeHtml(item.item_nama)}</div>
-                        <div class="product-mini-category">${escapeHtml(item.aplikasi_nama)}</div>
+                <div class="top-product-card">
+                    <div class="product-image">
+                        <img src="${product.item_gambar || 'https://via.placeholder.com/120x120/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(product.item_nama)}" onerror="this.src='https://via.placeholder.com/120x120/40a7e3/ffffff?text=Product';">
                     </div>
-                    <div class="product-mini-stats">
-                        <span class="product-mini-price">${formatRupiah(item.item_harga)}</span>
-                        <span class="product-mini-sold"><i class="fas fa-shopping-cart"></i> ${item.terjual || 0}</span>
+                    <div class="product-info">
+                        <h4>${escapeHtml(product.item_nama || 'Produk')}</h4>
+                        <div class="product-category">${escapeHtml(product.layanan_nama || '')} / ${escapeHtml(product.aplikasi_nama || '')}</div>
+                        <div class="product-stats">
+                            <span class="product-sold">
+                                <i class="fas fa-shopping-bag"></i> ${product.sold || 0}
+                            </span>
+                            <span class="product-revenue">${formatRupiah(product.item_harga || 0)}</span>
+                        </div>
                     </div>
                 </div>
             `;
         });
         
-        elements.popularProductsList.innerHTML = html;
+        elements.topProducts.innerHTML = html;
     }
 
-    // ==================== ACTION FUNCTIONS (SAMA PERSIS DENGAN KODE ASLI) ====================
-    function copyEndpoint() {
-        if (!currentWebsite) return;
+    function renderWebsitesGrid() {
+        if (!elements.websitesGrid || !elements.websitesEmptyState) return;
         
-        const endpoint = `/${currentWebsite.endpoint}`;
-        
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(endpoint).then(() => {
-                showToast('✅ Endpoint copied!', 'success');
-            }).catch(() => {
-                fallbackCopy(endpoint);
-            });
-        } else {
-            fallbackCopy(endpoint);
-        }
-    }
-    
-    function fallbackCopy(text) {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        
-        try {
-            document.execCommand('copy');
-            showToast('✅ Endpoint copied!', 'success');
-        } catch (err) {
-            showToast('❌ Failed to copy', 'error');
+        if (userWebsites.length === 0) {
+            elements.websitesGrid.innerHTML = '';
+            elements.websitesEmptyState.style.display = 'block';
+            return;
         }
         
-        document.body.removeChild(textarea);
-    }
-
-    function previewWebsite() {
-        if (!currentWebsite) return;
+        elements.websitesEmptyState.style.display = 'none';
         
-        const url = `https://aldiprem.github.io/wtb/website?store=${currentWebsite.endpoint}`;
-        window.open(url, '_blank');
-    }
-
-    // ==================== APPLY TELEGRAM THEME (SAMA PERSIS DENGAN KODE ASLI) ====================
-    function applyTelegramTheme(tg) {
-        if (!tg || !tg.themeParams) return;
+        let html = '';
         
-        try {
-            const theme = tg.themeParams;
+        userWebsites.forEach(website => {
+            const status = website.status === 'active' ? 
+                '<span class="status-badge status-active">Active</span>' : 
+                '<span class="status-badge status-inactive">Inactive</span>';
             
-            if (theme.bg_color) {
-                document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
-            }
-            if (theme.text_color) {
-                document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
-            }
-            if (theme.hint_color) {
-                document.documentElement.style.setProperty('--tg-hint-color', theme.hint_color);
-            }
-            if (theme.link_color) {
-                document.documentElement.style.setProperty('--tg-link-color', theme.link_color);
-            }
-            if (theme.button_color) {
-                document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
-            }
-            if (theme.button_text_color) {
-                document.documentElement.style.setProperty('--tg-button-text-color', theme.button_text_color);
-            }
-        } catch (themeError) {
-            console.warn('⚠️ Error applying Telegram theme:', themeError);
-        }
-    }
-
-    // ==================== SET USER AVATAR (SAMA PERSIS DENGAN KODE ASLI) ====================
-    function setUserAvatar(user) {
-        if (!user) return;
-        
-        if (user.photo_url) {
-            elements.profileAvatar.src = user.photo_url;
-        } else {
-            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
-            elements.profileAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=120&background=40a7e3&color=fff`;
-        }
-    }
-
-    // ==================== SHOW ERROR (SAMA PERSIS DENGAN KODE ASLI) ====================
-    function showError(message, isOwnerError = false) {
-        vibrate(30);
-        
-        if (elements.loading) elements.loading.style.display = 'none';
-        if (elements.error) {
-            elements.error.style.display = 'flex';
-            if (elements.errorMessage) {
-                if (isOwnerError) {
-                    elements.errorMessage.innerHTML = `
-                        <strong>❌ Access Denied</strong><br>
-                        <small>Your ID is not authorized as owner</small>
-                    `;
-                } else {
-                    elements.errorMessage.textContent = message;
-                }
-            }
-        }
-        if (elements.panelContent) {
-            elements.panelContent.style.display = 'none';
-        }
-        if (elements.noWebsiteMessage) {
-            elements.noWebsiteMessage.style.display = 'none';
-        }
-        showLoading(false);
-    }
-
-    // ==================== UPDATE UI (SAMA PERSIS DENGAN KODE ASLI) ====================
-    async function updateUI(user) {
-        currentUser = user;
-        
-        setUserAvatar(user);
-        
-        if (elements.loading) elements.loading.style.display = 'none';
-        
-        const website = await fetchWebsiteData(user.id);
-        
-        if (website) {
-            if (elements.error) elements.error.style.display = 'none';
-            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'none';
-            if (elements.panelContent) elements.panelContent.style.display = 'block';
-            
-            currentWebsite = website;
-            
-            // Load all data
-            await loadAllData();
-            
-        } else {
-            if (elements.error) elements.error.style.display = 'none';
-            if (elements.panelContent) elements.panelContent.style.display = 'none';
-            if (elements.noWebsiteMessage) elements.noWebsiteMessage.style.display = 'flex';
-        }
-    }
-
-    // ==================== INITIALIZATION (SAMA PERSIS DENGAN KODE ASLI) ====================
-    async function init() {
-        console.log('🛠️ Initializing Panel...');
-
-        try {
-            let telegramUserData = null;
-            let tg = null;
-
-            if (window.Telegram?.WebApp) {
-                console.log('📱 Running inside Telegram Web App');
-                tg = window.Telegram.WebApp;
-                
-                tg.expand();
-                tg.ready();
-                
-                if (tg.initDataUnsafe?.user) {
-                    telegramUserData = tg.initDataUnsafe.user;
+            html += `
+                <div class="website-card">
+                    <div class="website-header">
+                        <div class="website-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="website-info">
+                            <h3>${escapeHtml(website.username || 'Website')}</h3>
+                            <div class="website-endpoint">
+                                <i class="fas fa-link"></i>
+                                <span>/${escapeHtml(website.endpoint)}</span>
+                            </div>
+                        </div>
+                    </div>
                     
-                    if (tg.initDataUnsafe?.user?.photo_url) {
-                        telegramUserData.photo_url = tg.initDataUnsafe.user.photo_url;
-                    }
-                    
-                    console.log('📱 Telegram user data:', telegramUserData);
-                }
-                
-                applyTelegramTheme(tg);
+                    <div class="website-body">
+                        <div class="website-stats">
+                            <div class="website-stat">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">Produk</span>
+                            </div>
+                            <div class="website-stat">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">Pesanan</span>
+                            </div>
+                        </div>
+                        
+                        <div class="website-actions">
+                            <a href="/produk?website=${website.endpoint}" class="website-btn primary">
+                                <i class="fas fa-box"></i> Produk
+                            </a>
+                            <a href="/tampilan?website=${website.endpoint}" class="website-btn secondary">
+                                <i class="fas fa-paint-brush"></i> Tampilan
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.websitesGrid.innerHTML = html;
+    }
+
+    function renderProductSelector() {
+        if (!elements.productWebsiteSelector) return;
+        
+        let options = '<option value="">Pilih Website</option>';
+        
+        userWebsites.forEach(website => {
+            options += `<option value="${website.endpoint}">/${website.endpoint}</option>`;
+        });
+        
+        elements.productWebsiteSelector.innerHTML = options;
+        
+        elements.productWebsiteSelector.addEventListener('change', (e) => {
+            const endpoint = e.target.value;
+            if (endpoint) {
+                elements.manageProductsBtn.href = `/produk?website=${endpoint}`;
             } else {
-                console.log('🌐 Running in standalone web browser');
-                
-                telegramUserData = {
-                    id: 7998861975,
-                    first_name: 'Test',
-                    last_name: 'User',
-                    username: 'test_user'
-                };
+                elements.manageProductsBtn.href = '#';
             }
+        });
+    }
 
-            if (!telegramUserData) {
-                showError('No user data available');
+    function renderOrdersTable() {
+        if (!elements.ordersTableBody || !elements.ordersEmptyState) return;
+        
+        if (allOrders.length === 0) {
+            elements.ordersTableBody.innerHTML = '';
+            elements.ordersEmptyState.style.display = 'block';
+            return;
+        }
+        
+        elements.ordersEmptyState.style.display = 'none';
+        
+        let html = '';
+        const filteredOrders = filterOrdersByStatus();
+        
+        filteredOrders.forEach(order => {
+            const statusClass = `status-${order.status || 'pending'}`;
+            const statusText = order.status || 'Pending';
+            
+            html += `
+                <tr>
+                    <td>#${order.id || 'ORD' + Math.floor(Math.random() * 10000)}</td>
+                    <td>${escapeHtml(order.customer_name || 'Customer')}</td>
+                    <td>${escapeHtml(order.product_name || '-')}</td>
+                    <td>${formatRupiah(order.total || 0)}</td>
+                    <td>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </td>
+                    <td>${formatDate(order.created_at)}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="table-btn" onclick="window.panel.viewOrder('${order.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="table-btn" onclick="window.panel.updateOrderStatus('${order.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        elements.ordersTableBody.innerHTML = html;
+    }
+
+    function filterOrdersByStatus() {
+        const filter = elements.orderStatusFilter?.value || 'all';
+        
+        if (filter === 'all') return allOrders;
+        
+        return allOrders.filter(order => (order.status || 'pending') === filter);
+    }
+
+    function renderTransactions(totalRevenue, totalCount) {
+        if (!elements.transactionTotal || !elements.transactionCount || !elements.transactionAverage) return;
+        
+        elements.transactionTotal.textContent = formatRupiah(totalRevenue);
+        elements.transactionCount.textContent = totalCount;
+        
+        const average = totalCount > 0 ? totalRevenue / totalCount : 0;
+        elements.transactionAverage.textContent = formatRupiah(Math.round(average));
+        
+        if (elements.transactionsList) {
+            if (allOrders.length === 0) {
+                elements.transactionsList.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <i class="fas fa-credit-card"></i>
+                        <p>Belum ada transaksi</p>
+                    </div>
+                `;
                 return;
             }
-
-            await updateUI(telegramUserData);
-
-        } catch (error) {
-            console.error('💥 Fatal error in init:', error);
-            showError('Failed to initialize panel');
+            
+            let html = '';
+            allOrders.slice(0, 10).forEach(order => {
+                html += `
+                    <div class="transaction-item">
+                        <div class="transaction-info">
+                            <div class="transaction-icon">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="transaction-details">
+                                <h4>${escapeHtml(order.customer_name || 'Customer')}</h4>
+                                <div class="transaction-meta">
+                                    <span>${formatDate(order.created_at)}</span>
+                                    <span>• ${order.website_endpoint || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="transaction-amount">${formatRupiah(order.total || 0)}</div>
+                    </div>
+                `;
+            });
+            
+            elements.transactionsList.innerHTML = html;
         }
     }
 
-    // ==================== SETUP EVENT LISTENERS ====================
+    function renderCustomersGrid() {
+        if (!elements.customersGrid) return;
+        
+        if (allCustomers.length === 0) {
+            elements.customersGrid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Belum Ada Pelanggan</h3>
+                    <p>Pelanggan akan muncul setelah ada pesanan</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        allCustomers.slice(0, 6).forEach(customer => {
+            html += `
+                <div class="customer-card">
+                    <div class="customer-avatar">
+                        <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(customer.name.charAt(0))}&size=56&background=40a7e3&color=fff" alt="${escapeHtml(customer.name)}">
+                    </div>
+                    <div class="customer-info">
+                        <h4>${escapeHtml(customer.name)}</h4>
+                        <div class="customer-username">ID: ${customer.id}</div>
+                        <div class="customer-stats">
+                            <span><i class="fas fa-shopping-bag"></i> ${customer.orders || 0}</span>
+                            <span><i class="fas fa-credit-card"></i> ${formatRupiah(customer.total_spent || 0)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.customersGrid.innerHTML = html;
+    }
+
+    // ==================== NAVIGATION ====================
+    function showPage(pageId) {
+        elements.pages.forEach(page => {
+            page.classList.remove('active');
+        });
+        
+        const targetPage = document.getElementById(`page-${pageId}`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
+        
+        elements.menuItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === pageId) {
+                item.classList.add('active');
+            }
+        });
+        
+        vibrate(10);
+    }
+
+    function toggleSidebar() {
+        if (elements.sidebar) {
+            elements.sidebar.classList.toggle('active');
+        }
+    }
+
+    function closeSidebar() {
+        if (elements.sidebar) {
+            elements.sidebar.classList.remove('active');
+        }
+    }
+
+    // ==================== SETTINGS NAVIGATION ====================
+    function setupSettingsLinks() {
+        // Appearance Settings - Link ke tampilan.html
+        if (elements.appearanceSettings && userWebsites.length > 0) {
+            elements.appearanceSettings.href = `/tampilan?website=${userWebsites[0].endpoint}`;
+        }
+        
+        // Product Management - Link ke produk.html
+        if (elements.manageProductsBtn && userWebsites.length > 0) {
+            elements.manageProductsBtn.href = `/produk?website=${userWebsites[0].endpoint}`;
+        }
+        
+        // Profile Settings
+        if (elements.profileSettings) {
+            elements.profileSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
+            });
+        }
+        
+        // Payment Settings
+        if (elements.paymentSettings) {
+            elements.paymentSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
+            });
+        }
+        
+        // Notification Settings
+        if (elements.notificationSettings) {
+            elements.notificationSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
+            });
+        }
+        
+        // SEO Settings
+        if (elements.seoSettings) {
+            elements.seoSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
+            });
+        }
+        
+        // Integration Settings
+        if (elements.integrationSettings) {
+            elements.integrationSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
+            });
+        }
+    }
+
+    // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
+        // Menu toggle
+        if (elements.menuToggle) {
+            elements.menuToggle.addEventListener('click', toggleSidebar);
+        }
+        
+        // Sidebar close
+        if (elements.sidebarClose) {
+            elements.sidebarClose.addEventListener('click', closeSidebar);
+        }
+        
         // Refresh button
         if (elements.refreshBtn) {
-            elements.refreshBtn.addEventListener('click', () => {
+            elements.refreshBtn.addEventListener('click', async () => {
                 vibrate(10);
-                loadAllData();
+                showToast('Menyegarkan data...', 'info');
+                await loadUserWebsites(currentUser?.id);
+                await loadProductsAndOrders();
                 showToast('Data diperbarui', 'success');
             });
         }
         
-        // Copy endpoint
-        if (elements.copyEndpointBtn) {
-            elements.copyEndpointBtn.addEventListener('click', copyEndpoint);
+        // Navigation
+        elements.menuItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = item.dataset.page;
+                if (page) {
+                    showPage(page);
+                }
+                closeSidebar();
+            });
+        });
+        
+        // Logout
+        if (elements.logoutBtn) {
+            elements.logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('panel_user');
+                window.location.href = '/';
+            });
         }
         
-        // Preview website
-        if (elements.previewWebsiteBtn) {
-            elements.previewWebsiteBtn.addEventListener('click', previewWebsite);
+        // Order status filter
+        if (elements.orderStatusFilter) {
+            elements.orderStatusFilter.addEventListener('change', renderOrdersTable);
+        }
+        
+        // Customer search
+        if (elements.customerSearch) {
+            elements.customerSearch.addEventListener('input', (e) => {
+                const search = e.target.value.toLowerCase();
+                // Implement search functionality
+            });
+        }
+        
+        // Transaction period
+        if (elements.transactionPeriod) {
+            elements.transactionPeriod.addEventListener('change', () => {
+                // Implement period filter
+                showToast('Fitur filter periode akan segera tersedia', 'info');
+            });
+        }
+        
+        // Click outside to close sidebar
+        document.addEventListener('click', (e) => {
+            if (elements.sidebar?.classList.contains('active')) {
+                if (!elements.sidebar.contains(e.target) && !elements.menuToggle?.contains(e.target)) {
+                    closeSidebar();
+                }
+            }
+        });
+        
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+    }
+
+    // ==================== INITIALIZATION ====================
+    async function init() {
+        showLoading(true);
+        
+        try {
+            // Load user data
+            const userId = await loadUserData();
+            
+            // Load user websites
+            await loadUserWebsites(userId);
+            
+            // Load products and orders
+            await loadProductsAndOrders();
+            
+            // Setup settings links
+            setupSettingsLinks();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Apply Telegram theme if available
+            if (window.Telegram?.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.ready();
+                
+                if (tg.themeParams) {
+                    const theme = tg.themeParams;
+                    if (theme.bg_color) {
+                        document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
+                    }
+                    if (theme.text_color) {
+                        document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
+                    }
+                }
+            }
+            
+            console.log('✅ Panel initialized');
+            
+        } catch (error) {
+            console.error('❌ Init error:', error);
+            showToast('Gagal memuat dashboard', 'error');
+        } finally {
+            showLoading(false);
         }
     }
 
+    // ==================== EXPOSE GLOBAL FUNCTIONS ====================
+    window.panel = {
+        viewOrder: (orderId) => {
+            showToast(`Melihat detail pesanan #${orderId}`, 'info');
+        },
+        updateOrderStatus: (orderId) => {
+            showToast(`Fitur update status akan segera tersedia`, 'info');
+        }
+    };
+
     // ==================== START ====================
-    setupEventListeners();
     init();
 })();
