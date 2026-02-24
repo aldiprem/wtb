@@ -862,8 +862,8 @@ def reorder_banners(website_id):
 def api_get_products(website_id):
     """Get all products for a website"""
     try:
-        products = products_db.get_products(website_id)
-        stats = products_db.get_products_stats(website_id)
+        products = prd.get_products(website_id)
+        stats = prd.get_products_stats(website_id)
         return jsonify({
             'success': True,
             'products': products,
@@ -877,7 +877,7 @@ def api_get_products(website_id):
 def api_get_products_grouped(website_id):
     """Get products grouped by layanan and aplikasi"""
     try:
-        grouped = products_db.get_products_by_layanan(website_id)
+        grouped = prd.get_products_by_layanan(website_id)
         return jsonify({
             'success': True,
             'grouped': grouped
@@ -899,7 +899,7 @@ def api_add_product(website_id):
         if missing:
             return jsonify({'success': False, 'error': f'Missing: {missing}'}), 400
         
-        product_id = products_db.add_product(website_id, data)
+        product_id = prd.add_product(website_id, data)
         
         return jsonify({
             'success': True,
@@ -917,7 +917,7 @@ def api_update_product(product_id):
         data = request.json
         print(f"📦 Updating product {product_id}:", data)
         
-        success = products_db.update_product(product_id, data)
+        success = prd.update_product(product_id, data)
         
         if success:
             return jsonify({'success': True, 'message': 'Product updated successfully'})
@@ -931,7 +931,7 @@ def api_update_product(product_id):
 def api_delete_product(product_id):
     """Delete product"""
     try:
-        success = products_db.delete_product(product_id)
+        success = prd.delete_product(product_id)
         
         if success:
             return jsonify({'success': True, 'message': 'Product deleted successfully'})
@@ -951,7 +951,7 @@ def api_add_stok(product_id):
         if not stok_data:
             return jsonify({'success': False, 'error': 'No stock data provided'}), 400
         
-        success = products_db.add_stok(product_id, stok_data)
+        success = prd.add_stok(product_id, stok_data)
         
         if success:
             return jsonify({'success': True, 'message': f'{len(stok_data)} stock items added'})
@@ -965,7 +965,7 @@ def api_add_stok(product_id):
 def api_remove_stok(product_id, index):
     """Remove specific stock item"""
     try:
-        success = products_db.remove_stok(product_id, index)
+        success = prd.remove_stok(product_id, index)
         
         if success:
             return jsonify({'success': True, 'message': 'Stock removed successfully'})
@@ -979,7 +979,7 @@ def api_remove_stok(product_id, index):
 def api_consume_stok(product_id):
     """Consume one stock item (for checkout)"""
     try:
-        stok_item = products_db.consume_stok(product_id)
+        stok_item = prd.consume_stok(product_id)
         
         if stok_item:
             return jsonify({
