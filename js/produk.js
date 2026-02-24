@@ -191,7 +191,7 @@
         if (!endpoint) {
             showToast('Website tidak ditemukan', 'error');
             setTimeout(() => {
-                window.location.href = '/wtb/panel.html';
+                window.location.href = '/wtb/html/panel.html';
             }, 2000);
             return null;
         }
@@ -819,7 +819,7 @@
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.location.href = '/wtb/panel.html';
+                window.location.href = '/wtb/html/panel.html';
             });
         }
         
