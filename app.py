@@ -176,6 +176,8 @@ def create_website():
     try:
         data = request.json
         print(f"📥 Received data: {data}")
+        print(f"📥 Request headers: {dict(request.headers)}")
+        print(f"📥 Request origin: {request.headers.get('Origin', 'None')}")
 
         required = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email']
         missing = [f for f in required if f not in data or not data[f]]
@@ -231,6 +233,7 @@ def create_website():
             return jsonify({'success': True, 'website_id': website_id, 'message': 'Website created successfully'})
 
     except sqlite3.IntegrityError as e:
+        print(f"❌ Database error: {str(e)}")
         return jsonify({'success': False, 'error': 'Database error: ' + str(e)}), 400
     except Exception as e:
         print(f"❌ Error: {str(e)}")
