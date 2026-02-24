@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Pengaturan Tampilan - Website Panel</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/wtb/css/tampilan.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="tampilan-container">
+        <!-- Header -->
+        <header class="tampilan-header">
+            <div class="header-left">
+                <a href="/wtb/panel.html" class="back-btn" id="backToPanel">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon">
+                    <i class="fas fa-paint-brush"></i>
+                </div>
+                <div class="header-title">
+                    <h1>Pengaturan Tampilan</h1>
+                    <span class="website-badge" id="websiteBadge">/endpoint</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-primary" id="saveAllBtn">
+                    <i class="fas fa-save"></i> Simpan Semua
+                </button>
+            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="tampilan-tabs">
+            <button class="tab-btn active" data-tab="logo">
+                <i class="fas fa-image"></i>
+                <span>Logo</span>
+            </button>
+            <button class="tab-btn" data-tab="banner">
+                <i class="fas fa-images"></i>
+                <span>Banner Slider</span>
+            </button>
+            <button class="tab-btn" data-tab="promo">
+                <i class="fas fa-bullhorn"></i>
+                <span>Promosi</span>
+            </button>
+            <button class="tab-btn" data-tab="warna">
+                <i class="fas fa-palette"></i>
+                <span>Warna</span>
+            </button>
+            <button class="tab-btn" data-tab="font">
+                <i class="fas fa-font"></i>
+                <span>Font</span>
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tampilan-content">
+            <!-- Tab: Logo -->
+            <div id="tab-logo" class="tab-content active">
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-image"></i> Logo Website (PNG Only)</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="logo-preview" id="logoPreview">
+                            <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
+                            <div class="logo-overlay">
+                                <button class="btn-upload" id="uploadLogoBtn">
+                                    <i class="fas fa-cloud-upload-alt"></i> Ganti Logo (PNG)
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="logoUrl">
+                                <i class="fas fa-link"></i> URL Logo (PNG)
+                            </label>
+                            <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
+                            <small>Format PNG hanya, upload atau masukkan URL</small>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveLogoBtn">
+                                <i class="fas fa-save"></i> Simpan Logo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Banner Slider -->
+            <div id="tab-banner" class="tab-content">
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-images"></i> Banner Slider (Wajib 1280x760)</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="banner-info-message">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Gunakan link gambar (contoh: dari Imgur, Postimages, dll). Ukuran wajib <strong>1280x760 pixel</strong>.</span>
+                        </div>
+
+                        <div class="banner-slider-container" id="bannerSliderContainer">
+                            <div class="banner-track" id="bannerTrack">
+                                <!-- Banner items will be added here dynamically -->
+                            </div>
+                        </div>
+                        
+                        <div class="empty-banner-message" id="emptyBannerMessage">
+                            <i class="fas fa-link"></i>
+                            <p>Belum ada banner. Klik tombol "Add Banner" untuk menambahkan link gambar.</p>
+                        </div>
+
+                        <div class="banner-button-container">
+                            <button class="banner-action-btn banner-add-btn" id="addBannerBtn">
+                                <i class="fas fa-plus-circle"></i> Add Banner
+                            </button>
+                            <button class="banner-action-btn banner-save-btn" id="saveBannersBtn">
+                                <i class="fas fa-save"></i> Simpan Banner
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Promosi -->
+            <div id="tab-promo" class="tab-content">
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-bullhorn"></i> Pengaturan Promosi</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Banner Promosi -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-image"></i> Banner Promosi (1280x760)
+                            </h4>
+                            <div class="promo-banner-preview" id="promoBannerPreview">
+                                <img src="https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner" alt="Promo Banner Preview" id="promoBannerImage">
+                                <div class="promo-overlay">
+                                    <button class="btn-upload-small" id="uploadPromoBtn">
+                                        <i class="fas fa-cloud-upload-alt"></i> Ganti Banner
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="promoBannerUrl">
+                                    <i class="fas fa-link"></i> URL Banner Promosi
+                                </label>
+                                <input type="url" id="promoBannerUrl" placeholder="https://example.com/promo-banner.jpg">
+                                <small>Ukuran gambar harus 1280x760 pixel</small>
+                            </div>
+                        </div>
+
+                        <!-- Deskripsi Promosi -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-align-left"></i> Deskripsi Promosi
+                            </h4>
+                            <div class="form-group">
+                                <label for="promoDescription">Deskripsi</label>
+                                <textarea id="promoDescription" rows="3" placeholder="Contoh: Promo spesial akhir bulan! Diskon hingga 50% untuk semua produk."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Waktu Berakhir -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-clock"></i> Waktu Berakhir
+                            </h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="promoEndDate">Tanggal Berakhir</label>
+                                    <input type="date" id="promoEndDate">
+                                </div>
+                                <div class="form-group">
+                                    <label for="promoEndTime">Jam Berakhir</label>
+                                    <input type="time" id="promoEndTime">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="promoNeverEnd">
+                                    <span class="checkbox-text">Tidak ada batas waktu</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Catatan Penting -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-sticky-note"></i> Catatan Penting
+                            </h4>
+                            <div class="form-group">
+                                <label for="promoNotes">Catatan</label>
+                                <textarea id="promoNotes" rows="3" placeholder="Contoh: Promo tidak berlaku kelipatan, minimal pembelian Rp 50.000"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Status Promo -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-toggle-on"></i> Status Promo
+                            </h4>
+                            <div class="status-toggle">
+                                <label class="toggle">
+                                    <input type="checkbox" id="promoActive" checked>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktifkan Promo</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn-primary" id="savePromoBtn">
+                                <i class="fas fa-save"></i> Simpan Pengaturan Promosi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Warna -->
+            <div id="tab-warna" class="tab-content">
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-palette"></i> Warna Website</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="color-grid-2col">
+                            <div class="color-item">
+                                <label>Primary Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="primaryColor" value="#40a7e3">
+                                    <input type="text" id="primaryColorHex" value="#40a7e3" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Secondary Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="secondaryColor" value="#FFD700">
+                                    <input type="text" id="secondaryColorHex" value="#FFD700" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Background Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="bgColor" value="#0f0f0f">
+                                    <input type="text" id="bgColorHex" value="#0f0f0f" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Text Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="textColor" value="#ffffff">
+                                    <input type="text" id="textColorHex" value="#ffffff" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Card Background</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="cardColor" value="#1a1a1a">
+                                    <input type="text" id="cardColorHex" value="#1a1a1a" maxlength="7">
+                                </div>
+                            </div>
+                            <div class="color-item">
+                                <label>Accent Color</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="accentColor" value="#10b981">
+                                    <input type="text" id="accentColorHex" value="#10b981" maxlength="7">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveColorsBtn">
+                                <i class="fas fa-save"></i> Simpan Warna
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Font -->
+            <div id="tab-font" class="tab-content">
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-font"></i> Font & Tipografi</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="fontFamily">Font Family</label>
+                                <select id="fontFamily">
+                                    <option value="Inter">Inter (Modern)</option>
+                                    <option value="Poppins">Poppins (Bulat)</option>
+                                    <option value="Roboto">Roboto (Standar)</option>
+                                    <option value="Open Sans">Open Sans</option>
+                                    <option value="Montserrat">Montserrat</option>
+                                    <option value="Lato">Lato</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="fontSize">Font Size (px)</label>
+                                <input type="number" id="fontSize" min="12" max="24" value="14">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary" id="saveFontBtn">
+                                <i class="fas fa-save"></i> Simpan Font
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Upload Gambar -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content upload-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-cloud-upload-alt"></i> Upload Gambar</h2>
+                <button class="modal-close" id="closeUploadModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & drop atau klik untuk upload</p>
+                    <small>Format: JPG, PNG, GIF (Max 5MB)</small>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                </div>
+                <div class="upload-preview" id="uploadPreview" style="display: none;">
+                    <img src="" alt="Preview">
+                    <button class="btn-change" id="changeImageBtn">
+                        <i class="fas fa-sync-alt"></i> Ganti
+                    </button>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" id="confirmUploadBtn" disabled>
+                        <i class="fas fa-check"></i> Gunakan Gambar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/wtb/js/tampilan.js"></script>
+</body>
+</html>
