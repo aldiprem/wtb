@@ -1343,20 +1343,178 @@ input:checked + .slider:before {
     min-width: min-content;
 }
 
-.banner-slide {
-    width: 320px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border-color);
-    flex-shrink: 0;
-}
+/* ===== PERBAIKAN BANNER SLIDER ===== */
 
+/* Header banner dengan tombol upload di kanan */
 .banner-slide-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
+    padding: 0 4px;
+}
+
+.banner-header-left {
+    display: flex;
+    align-items: center;
+}
+
+.banner-header-right {
+    display: flex;
+    align-items: center;
+}
+
+/* Tombol upload di header */
+.banner-header-right .upload-btn {
+    background: rgba(64, 167, 227, 0.2);
+    color: var(--primary-color);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.banner-header-right .upload-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Footer untuk tombol navigasi dan hapus */
+.banner-footer-actions-slide {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-color);
+}
+
+.banner-footer-left {
+    display: flex;
+    gap: 8px;
+}
+
+.banner-footer-right {
+    display: flex;
+}
+
+/* Ukuran banner slide diperbesar */
+.banner-slide {
+    width: 340px; /* Diperbesar dari 320px */
+    padding: 18px; /* Diperbesar dari 16px */
+}
+
+/* Image wrapper sedikit lebih besar */
+.banner-image-wrapper {
+    height: 170px; /* Diperbesar dari 150px */
+    border-radius: 14px;
+}
+
+/* Position indicator diperkecil dan rata kiri */
+.banner-position-indicator {
+    font-size: 10px; /* Diperkecil dari 11px */
+    padding: 3px 8px; /* Diperkecil */
+    width: fit-content;
+    margin-top: 6px;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Tombol footer actions */
+.banner-footer-actions-slide .btn-icon-small {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.banner-footer-actions-slide .btn-icon-small.move-left,
+.banner-footer-actions-slide .btn-icon-small.move-right {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.banner-footer-actions-slide .btn-icon-small.delete {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.banner-footer-actions-slide .btn-icon-small.delete:hover {
+    background: #ef4444;
+    color: white;
+}
+
+/* Perbaikan footer actions utama */
+.banner-footer-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-add-left {
+    padding: 12px 24px;
+    border-radius: 30px;
+    border: none;
+    background: rgba(64, 167, 227, 0.1);
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    border: 1px solid rgba(64, 167, 227, 0.3);
+}
+
+.btn-add-left:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-primary-right {
+    padding: 12px 24px;
+    border-radius: 30px;
+    border: none;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-primary-right:hover {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .banner-slide {
+        width: 280px;
+        padding: 14px;
+    }
+    
+    .banner-footer-actions {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .btn-add-left,
+    .btn-primary-right {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 .banner-number {
@@ -1405,20 +1563,6 @@ input:checked + .slider:before {
     position: relative;
 }
 
-.banner-image-wrapper {
-    width: 100%;
-    height: 150px;
-    border-radius: 12px;
-    background-color: #1a1a1a;
-    background-size: cover;
-    background-repeat: no-repeat;
-    position: relative;
-    overflow: hidden;
-    cursor: grab;
-    transition: all 0.2s;
-    border: 2px solid transparent;
-}
-
 .banner-image-wrapper.dragging-active {
     cursor: grabbing;
     border-color: var(--primary-color);
@@ -1457,16 +1601,6 @@ input:checked + .slider:before {
     font-size: 12px;
     background: rgba(0, 0, 0, 0.5);
     padding: 4px 12px;
-    border-radius: 20px;
-}
-
-.banner-position-indicator {
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--tg-hint-color);
-    text-align: center;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 4px;
     border-radius: 20px;
 }
 
