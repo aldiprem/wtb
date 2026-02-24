@@ -159,131 +159,111 @@
             <div class="slider-dots" id="sliderDots"></div>
         </div>
 
-        <!-- Quick Categories dengan Desain Card -->
+        <!-- Quick Categories dengan Desain Card - Layanan Tersedia -->
         <div class="quick-categories">
-            <div class="section-header">
-                <h2>Kategori <span>Populer</span></h2>
-                <a href="#" class="view-all" data-page="categories">
-                    Lihat Semua <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-            <div class="categories-grid" id="categoriesGrid"></div>
+          <div class="section-header">
+            <h2>Layanan <span>Tersedia</span></h2>
+            <a href="#" class="view-all" data-page="categories">
+              Lihat Semua <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
+          <div class="categories-grid" id="categoriesGrid"></div>
         </div>
-
-        <!-- Featured Products dengan Grid Modern -->
-        <div class="featured-products">
-            <div class="section-header">
-                <div>
-                    <h2>Produk <span>Unggulan</span></h2>
-                    <p class="section-subtitle">Produk terbaik pilihan pelanggan</p>
-                </div>
-                <a href="#" class="view-all" data-page="products">
-                    Lihat Semua <i class="fas fa-arrow-right"></i>
-                </a>
-            </div>
-            <div class="products-grid" id="featuredProducts"></div>
-        </div>
-
-        <!-- Popular Products -->
+        
+        <!-- Popular Products - Produk Terlaris -->
         <div class="popular-products">
-            <div class="section-header">
-                <div>
-                    <h2>Produk <span>Terlaris</span></h2>
-                    <p class="section-subtitle">Paling banyak dibeli hari ini</p>
-                </div>
-                <a href="#" class="view-all" data-page="products?sort=popular">
-                    Lihat Semua <i class="fas fa-arrow-right"></i>
-                </a>
+          <div class="section-header">
+            <div>
+              <h2>Produk <span>Terlaris</span></h2>
+              <p class="section-subtitle">Paling laris dibeli pelanggan</p>
             </div>
-            <div class="products-grid" id="popularProducts"></div>
+            <a href="#" class="view-all" data-page="products?sort=popular">
+              Lihat Semua <i class="fas fa-arrow-right"></i>
+            </a>
+          </div>
+          <div class="popular-products-grid" id="popularProducts"></div>
         </div>
-
-        <!-- Promo Banner dengan Animasi -->
-        <div class="promo-banner" id="promoBanner"></div>
-
+        
+        <!-- Promo Slider dengan Border Khusus -->
+        <div class="promo-slider-section">
+          <div class="section-header">
+            <div>
+              <h2>Promo <span>Spesial</span></h2>
+              <p class="section-subtitle">Jangan lewatkan penawaran terbatas</p>
+            </div>
+          </div>
+          <div class="promo-slider-container" id="promoSliderContainer">
+            <div class="promo-slider-track" id="promoSliderTrack">
+              <!-- Promo cards akan diisi oleh JavaScript -->
+            </div>
+            <button class="promo-slider-nav prev" id="promoSliderPrev">
+              <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="promo-slider-nav next" id="promoSliderNext">
+              <i class="fas fa-chevron-right"></i>
+            </button>
+          </div>
+          <div class="promo-slider-dots" id="promoSliderDots"></div>
+        </div>
+        
         <!-- Payment Methods dengan Desain Modern -->
         <div class="payment-methods">
-            <div class="payment-header">
-                <h3><i class="fas fa-credit-card"></i> Metode Pembayaran</h3>
-                <span class="payment-badge">Aman & Terpercaya</span>
-            </div>
-            <div class="payment-icons" id="paymentIcons"></div>
+          <div class="payment-header">
+            <h3><i class="fas fa-credit-card"></i> Metode Pembayaran</h3>
+            <span class="payment-badge">Aman & Terpercaya</span>
+          </div>
+          <div class="payment-icons" id="paymentIcons"></div>
         </div>
-
-        <!-- Footer Modern -->
+        
+        <!-- Footer Modern (Hilangkan bagian Informasi dan Download App) -->
         <footer class="main-footer">
-            <div class="footer-wave">
-                <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
-                    <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" class="wave-fill"></path>
-                    <path d="M0,0V15.81C13,21.25,27.93,25.23,44.52,27.3c69.7,8.48,137.53,21.86,206.93,34.53C353.09,79.8,431.52,93.7,512,98.41c69.93,4.19,140.81-1.17,210.14-12.55C786.85,75.58,849.84,56.88,910.38,37.16,970.92,17.44,1046.1,1.2,1118.4,6.43c24.66,1.86,48.59,6.56,71.6,12.56V0Z" class="wave-fill"></path>
-                </svg>
+          <div class="footer-wave">
+            <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
+              <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" class="wave-fill"></path>
+              <path d="M0,0V15.81C13,21.25,27.93,25.23,44.52,27.3c69.7,8.48,137.53,21.86,206.93,34.53C353.09,79.8,431.52,93.7,512,98.41c69.93,4.19,140.81-1.17,210.14-12.55C786.85,75.58,849.84,56.88,910.38,37.16,970.92,17.44,1046.1,1.2,1118.4,6.43c24.66,1.86,48.59,6.56,71.6,12.56V0Z" class="wave-fill"></path>
+            </svg>
+          </div>
+        
+          <div class="footer-content" style="grid-template-columns: 1fr 1fr;">
+            <div class="footer-section">
+              <div class="footer-logo">
+                <i class="fas fa-store"></i>
+                <span id="footerStoreName">Toko Online</span>
+              </div>
+              <p id="footerDescription">Toko online terpercaya sejak 2024 dengan ribuan produk berkualitas dan pelayanan terbaik.</p>
+              <div class="footer-social">
+                <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-icon"><i class="fab fa-facebook"></i></a>
+                <a href="#" class="social-icon"><i class="fab fa-tiktok"></i></a>
+                <a href="#" class="social-icon"><i class="fab fa-whatsapp"></i></a>
+              </div>
             </div>
-            
-            <div class="footer-content">
-                <div class="footer-section">
-                    <div class="footer-logo">
-                        <i class="fas fa-store"></i>
-                        <span id="footerStoreName">Toko Online</span>
-                    </div>
-                    <p id="footerDescription">Toko online terpercaya sejak 2024 dengan ribuan produk berkualitas dan pelayanan terbaik.</p>
-                    <div class="footer-social">
-                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-facebook"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-tiktok"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-whatsapp"></i></a>
-                    </div>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Kontak</h4>
-                    <ul class="footer-contact">
-                        <li>
-                            <i class="fab fa-whatsapp"></i>
-                            <span id="contactWhatsApp">-</span>
-                        </li>
-                        <li>
-                            <i class="fab fa-telegram"></i>
-                            <span id="contactTelegram">-</span>
-                        </li>
-                        <li>
-                            <i class="fas fa-envelope"></i>
-                            <span id="contactEmail">support@example.com</span>
-                        </li>
-                    </ul>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Informasi</h4>
-                    <ul class="footer-links">
-                        <li><a href="#">Tentang Kami</a></li>
-                        <li><a href="#">Syarat & Ketentuan</a></li>
-                        <li><a href="#">Kebijakan Privasi</a></li>
-                        <li><a href="#">FAQ</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Download App</h4>
-                    <p>Dapatkan pengalaman belanja lebih baik dengan aplikasi mobile kami.</p>
-                    <div class="app-badges">
-                        <a href="#" class="app-badge">
-                            <i class="fab fa-google-play"></i>
-                            <span>Google Play</span>
-                        </a>
-                        <a href="#" class="app-badge">
-                            <i class="fab fa-apple"></i>
-                            <span>App Store</span>
-                        </a>
-                    </div>
-                </div>
+        
+            <div class="footer-section">
+              <h4>Kontak</h4>
+              <ul class="footer-contact">
+                <li>
+                  <i class="fab fa-whatsapp"></i>
+                  <span id="contactWhatsApp">-</span>
+                </li>
+                <li>
+                  <i class="fab fa-telegram"></i>
+                  <span id="contactTelegram">-</span>
+                </li>
+                <li>
+                  <i class="fas fa-envelope"></i>
+                  <span id="contactEmail">support@example.com</span>
+                </li>
+              </ul>
             </div>
-            
-            <div class="footer-bottom">
-                <div class="footer-bottom-content">
-                    <span>© 2024 <span id="footerStoreName2">Toko Online</span>. All rights reserved.</span>
-                    <span class="footer-version">Version 2.0.0</span>
-                </div>
+          </div>
+        
+          <div class="footer-bottom">
+            <div class="footer-bottom-content">
+              <span>© 2024 <span id="footerStoreName2">Toko Online</span>. All rights reserved.</span>
+              <span class="footer-version">Version 2.0.0</span>
             </div>
+          </div>
         </footer>
     </div>
 
