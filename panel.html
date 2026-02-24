@@ -153,7 +153,7 @@
                 <!-- Multiple Banner Settings - Collapsible -->
                 <div class="settings-card collapsible">
                     <div class="card-header" onclick="toggleCard(this)">
-                        <h3><i class="fas fa-images"></i> Banner Slider</h3>
+                        <h3><i class="fas fa-images"></i> Banner Slider (Wajib 1280x760)</h3>
                         <div class="header-actions">
                             <button class="btn-icon-small toggle-btn" onclick="event.stopPropagation()">
                                 <i class="fas fa-chevron-down"></i>
@@ -161,21 +161,27 @@
                         </div>
                     </div>
                     <div class="card-body" style="display: none;">
+                        <!-- Info banner -->
+                        <div class="banner-info-message" style="background: rgba(64, 167, 227, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid var(--primary-color);">
+                            <i class="fas fa-info-circle" style="color: var(--primary-color); margin-right: 8px;"></i>
+                            <span>Gunakan link gambar (contoh: dari Imgur, Postimages, dll). Ukuran wajib <strong>1280x760 pixel</strong>.</span>
+                        </div>
+                        
                         <div class="banner-slider-container" id="bannerSliderContainer">
                             <div class="banner-track" id="bannerTrack">
                                 <!-- Banner items will be added here dynamically -->
                             </div>
                         </div>
                         <div class="empty-banner-message" id="emptyBannerMessage" style="display: flex;">
-                            <i class="fas fa-images"></i>
-                            <p>Belum ada banner. Klik tombol Tambah di bawah untuk menambahkan.</p>
+                            <i class="fas fa-link"></i>
+                            <p>Belum ada banner. Klik tombol "Add Banner" untuk menambahkan link gambar.</p>
                         </div>
                         <div class="banner-footer-actions">
                             <button class="btn-add left" id="addBannerBtn">
                                 <i class="fas fa-plus-circle"></i> Add Banner
                             </button>
                             <button class="btn-primary right" id="saveBannersBtn">
-                                <i class="fas fa-save"></i> Simpan Perubahan
+                                <i class="fas fa-save"></i> Simpan Semua Banner
                             </button>
                         </div>
                     </div>
@@ -712,7 +718,7 @@
         </div>
     </div>
 
-    <!-- Upload Image Modal -->
+    <!-- Upload Image Modal (untuk logo dan QRIS saja) -->
     <div id="uploadModal" class="modal">
         <div class="modal-content upload-modal">
             <div class="modal-header">
