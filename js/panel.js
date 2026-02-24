@@ -62,7 +62,8 @@
         
         // Error State
         error: document.getElementById('error'),
-        errorMessage: document.getElementById('errorMessage')
+        errorMessage: document.getElementById('errorMessage'),
+        loading: document.getElementById('loading')
     };
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -137,10 +138,11 @@
                 if (isOwnerError) {
                     elements.errorMessage.innerHTML = `
                         <strong>❌ Access Denied</strong><br>
-                        <small>Anda tidak memiliki akses ke website ini</small>
+                        <small>Anda tidak memiliki akses ke website ini</small><br>
+                        <small style="font-size:10px; margin-top:5px;">Debug: ${message}</small>
                     `;
                 } else {
-                    elements.errorMessage.textContent = message;
+                    elements.errorMessage.innerHTML = message;
                 }
             }
         }
@@ -231,17 +233,18 @@
 
     // ==================== VERIFIKASI KEPEMILIKAN ====================
     async function verifyWebsiteOwnership(website, userId) {
-        console.log('🔍 Verifying ownership:', { websiteOwnerId: website.owner_id, userId: userId });
+        console.log('🔍 Verifying ownership:');
+        console.log('   - Website owner_id:', website.owner_id, '| Type:', typeof website.owner_id);
+        console.log('   - User ID:', userId, '| Type:', typeof userId);
         
-        // Konversi ke number untuk perbandingan yang aman
-        const websiteOwnerId = Number(website.owner_id);
-        const telegramUserId = Number(userId);
+        // Konversi ke string untuk perbandingan yang aman
+        const websiteOwnerId = String(website.owner_id).trim();
+        const telegramUserId = String(userId).trim();
+        
+        console.log('   - After conversion - Website owner:', websiteOwnerId, 'User:', telegramUserId);
         
         if (websiteOwnerId !== telegramUserId) {
-            console.warn('⛔ Unauthorized access attempt:', {
-                websiteOwner: websiteOwnerId,
-                user: telegramUserId
-            });
+            console.warn('⛔ Unauthorized access attempt - ID mismatch');
             return false;
         }
         
@@ -288,7 +291,7 @@
                 // Verifikasi kepemilikan dengan user saat ini
                 if (!currentUser) {
                     console.error('❌ No current user data');
-                    showError('Tidak dapat memverifikasi user', true);
+                    showError('Tidak dapat memverifikasi user - data user tidak ada', true);
                     return null;
                 }
                 
@@ -296,7 +299,8 @@
                 
                 if (!isOwner) {
                     console.error('❌ User is not the owner of this website');
-                    showError('Anda tidak memiliki akses ke website ini', true);
+                    const debugMsg = `Website owner: ${data.website.owner_id}, Your ID: ${currentUser.id}`;
+                    showError(debugMsg, true);
                     return null;
                 }
                 
@@ -327,6 +331,7 @@
         try {
             // Load products
             products = await fetchProducts(currentWebsite.id);
+            console.log('📦 Products loaded:', products.length);
             
             // Load orders (dummy untuk demo - nanti bisa dari API orders)
             orders = generateDummyOrders();
@@ -396,14 +401,15 @@
                         totalStock += stokCount;
                         if (stokCount > 0 && stokCount <= 5) lowStock++;
                     }
-                    // Hitung pendapatan dari orders yang completed
-                    orders.forEach(order => {
-                        if (order.status === 'completed') {
-                            totalRevenue += order.total || 0;
-                        }
-                    });
                 });
             });
+        });
+        
+        // Hitung pendapatan dari orders yang completed
+        orders.forEach(order => {
+            if (order.status === 'completed') {
+                totalRevenue += order.total || 0;
+            }
         });
         
         return {
@@ -560,6 +566,7 @@
     // ==================== USER FUNCTIONS ====================
     function setUser(user) {
         currentUser = user;
+        console.log('👤 User set:', currentUser);
         
         if (user.photo_url) {
             elements.profileAvatar.src = user.photo_url;
@@ -690,6 +697,7 @@
                     last_name: 'User',
                     username: 'test_user'
                 };
+                console.log('🧪 Test user data:', telegramUser);
             }
 
             if (!telegramUser) {
@@ -697,6 +705,7 @@
                 return;
             }
             
+            // Set user FIRST sebelum verifikasi
             setUser(telegramUser);
             
             // Load website data dengan verifikasi otomatis
