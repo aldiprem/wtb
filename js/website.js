@@ -256,7 +256,7 @@
       showLoading('Memuat data website...');
     
       try {
-        console.log(`📡 Loading website data for endpoint: ${end}`);
+        console.log(`📡 Loading website data for endpoint: ${endpoint}`);
     
         const result = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
           method: 'GET',
