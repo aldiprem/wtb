@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>Panel Admin - Website Manager</title>
+    <title>Panel Dashboard - Website Manager</title>
     
     <!-- CSS -->
     <link rel="stylesheet" href="/wtb/css/panel.css">
@@ -27,87 +27,130 @@
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- Main Container -->
     <div class="panel-container">
-        <!-- Header -->
-        <div class="panel-header">
+        <!-- Header with Menu Toggle -->
+        <header class="panel-header">
             <div class="header-left">
-                <div class="logo-wrapper">
-                    <i class="fas fa-store"></i>
+                <button class="menu-toggle" id="menuToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="header-icon">
+                    <i class="fas fa-chart-pie"></i>
                 </div>
                 <div class="header-title">
-                    <h1>Panel Admin</h1>
-                    <span class="badge-admin" id="websiteBadge">LOADING...</span>
+                    <h1>Panel Dashboard</h1>
+                    <span class="website-badge" id="websiteBadge">/endpoint</span>
                 </div>
             </div>
             <div class="header-right">
                 <button class="btn-icon" id="refreshBtn" title="Refresh Data">
                     <i class="fas fa-sync-alt"></i>
                 </button>
+                <div class="user-profile" id="userProfile">
+                    <img src="https://ui-avatars.com/api/?name=User&size=40&background=40a7e3&color=fff" alt="User" id="userAvatar">
+                </div>
             </div>
-        </div>
+        </header>
 
-        <!-- Loading State -->
-        <div id="loading" class="loading-state">
-            <div class="spinner"></div>
-            <span>Loading panel...</span>
-        </div>
-
-        <!-- Error State -->
-        <div id="error" class="error-state" style="display: none;">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span id="errorMessage">Access Denied</span>
-            <button class="retry-btn" onclick="location.reload()">Retry</button>
-        </div>
-
-        <!-- No Website Found Message -->
-        <div id="noWebsiteMessage" class="no-website-message" style="display: none;">
-            <i class="fas fa-store-alt"></i>
-            <h3>Anda belum memiliki website</h3>
-            <p>Silakan buat website terlebih dahulu di dashboard owner</p>
-            <a href="/" class="btn-primary">
-                <i class="fas fa-arrow-left"></i> Kembali ke Dashboard
-            </a>
-        </div>
-
-        <!-- Main Content -->
-        <div id="panelContent" class="panel-content" style="display: none;">
-            <!-- Profile Card (Tetap seperti kode asli) -->
-            <div class="profile-card">
-                <div class="profile-avatar" id="userAvatarContainer">
-                    <img id="profileAvatar" src="https://ui-avatars.com/api/?name=User&size=120&background=40a7e3&color=fff" alt="User">
-                    <div class="profile-status" id="websiteStatus">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
+        <!-- Sidebar Navigation -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-crown"></i>
+                    <span>Panel Owner</span>
+                </div>
+                <button class="sidebar-close" id="sidebarClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="sidebar-profile">
+                <div class="profile-avatar" id="sidebarAvatar">
+                    <img src="https://ui-avatars.com/api/?name=User&size=80&background=40a7e3&color=fff" alt="Profile">
                 </div>
                 <div class="profile-info">
-                    <div class="profile-name-wrapper">
-                        <h2 id="profileName">Loading...</h2>
-                        <span class="profile-badge" id="profileBadge">OWNER</span>
+                    <div class="profile-name" id="sidebarName">Loading...</div>
+                    <div class="profile-username" id="sidebarUsername">@loading</div>
+                </div>
+                <div class="profile-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="sidebarTotalWebsites">0</span>
+                        <span class="stat-label">Websites</span>
                     </div>
-                    <div class="profile-meta">
-                        <span id="profileUsername"><i class="fab fa-telegram"></i> @loading</span>
-                        <span id="profileId"><i class="fas fa-id-card"></i> ID: -</span>
-                    </div>
-                    <div class="profile-website">
-                        <span class="website-endpoint" id="websiteEndpoint">/endpoint</span>
-                        <div class="website-actions">
-                            <button class="btn-icon-small copy-btn" id="copyEndpointBtn" title="Copy Endpoint">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                            <button class="btn-icon-small preview-btn" id="previewWebsiteBtn" title="Preview Website">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="sidebarTotalProducts">0</span>
+                        <span class="stat-label">Products</span>
                     </div>
                 </div>
             </div>
+            
+            <nav class="sidebar-menu">
+                <a href="#" class="menu-item active" data-page="dashboard">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="menu-item" data-page="websites">
+                    <i class="fas fa-globe"></i>
+                    <span>Website Saya</span>
+                    <span class="menu-badge" id="menuWebsitesBadge">0</span>
+                </a>
+                <a href="#" class="menu-item" data-page="products">
+                    <i class="fas fa-box"></i>
+                    <span>Produk</span>
+                </a>
+                <a href="#" class="menu-item" data-page="orders">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Pesanan</span>
+                    <span class="menu-badge" id="menuOrdersBadge">0</span>
+                </a>
+                <a href="#" class="menu-item" data-page="transactions">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Transaksi</span>
+                </a>
+                <a href="#" class="menu-item" data-page="customers">
+                    <i class="fas fa-users"></i>
+                    <span>Pelanggan</span>
+                </a>
+                <a href="#" class="menu-item" data-page="settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="#" class="menu-item" data-page="help">
+                    <i class="fas fa-question-circle"></i>
+                    <span>Bantuan</span>
+                </a>
+                <a href="#" class="menu-item" data-page="logout" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Keluar</span>
+                </a>
+                <div class="sidebar-copyright">
+                    © 2024 Panel Dashboard
+                </div>
+            </div>
+        </div>
 
-            <!-- Dashboard Navigation Grid -->
-            <div class="dashboard-grid">
-                <!-- Statistik Cards -->
+        <!-- Main Content Area -->
+        <main class="panel-content" id="panelContent">
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <!-- Stats Cards -->
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-icon products">
+                        <div class="stat-icon total-websites">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Websites</span>
+                            <span class="stat-value" id="statTotalWebsites">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon total-products">
                             <i class="fas fa-box"></i>
                         </div>
                         <div class="stat-info">
@@ -115,130 +158,363 @@
                             <span class="stat-value" id="statTotalProducts">0</span>
                         </div>
                     </div>
+                    
                     <div class="stat-card">
-                        <div class="stat-icon revenue">
-                            <i class="fas fa-money-bill-wave"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Pendapatan</span>
-                            <span class="stat-value" id="statRevenue">Rp 0</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon orders">
+                        <div class="stat-icon total-orders">
                             <i class="fas fa-shopping-cart"></i>
                         </div>
                         <div class="stat-info">
-                            <span class="stat-label">Pesanan</span>
-                            <span class="stat-value" id="statOrders">0</span>
+                            <span class="stat-label">Total Pesanan</span>
+                            <span class="stat-value" id="statTotalOrders">0</span>
                         </div>
                     </div>
+                    
                     <div class="stat-card">
-                        <div class="stat-icon customers">
+                        <div class="stat-icon total-revenue">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Pendapatan</span>
+                            <span class="stat-value" id="statTotalRevenue">Rp 0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon total-customers">
                             <i class="fas fa-users"></i>
                         </div>
                         <div class="stat-info">
                             <span class="stat-label">Pelanggan</span>
-                            <span class="stat-value" id="statCustomers">0</span>
+                            <span class="stat-value" id="statTotalCustomers">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon active-websites">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Website Aktif</span>
+                            <span class="stat-value" id="statActiveWebsites">0</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Navigation Cards -->
-                <div class="nav-grid">
-                    <a href="#" class="nav-card" id="productsNav">
-                        <div class="nav-icon">
-                            <i class="fas fa-box"></i>
-                        </div>
-                        <div class="nav-info">
-                            <span class="nav-title">Kelola Produk</span>
-                            <span class="nav-desc">Tambah, edit, hapus produk</span>
-                        </div>
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                    <a href="#" class="nav-card" id="appearanceNav">
-                        <div class="nav-icon">
-                            <i class="fas fa-paint-brush"></i>
-                        </div>
-                        <div class="nav-info">
-                            <span class="nav-title">Tampilan</span>
-                            <span class="nav-desc">Logo, banner, warna, font</span>
-                        </div>
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                    <a href="#" class="nav-card" id="paymentsNav">
-                        <div class="nav-icon">
-                            <i class="fas fa-credit-card"></i>
-                        </div>
-                        <div class="nav-info">
-                            <span class="nav-title">Pembayaran</span>
-                            <span class="nav-desc">Bank, e-wallet, QRIS, crypto</span>
-                        </div>
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
-                    <a href="#" class="nav-card" id="settingsNav">
-                        <div class="nav-icon">
-                            <i class="fas fa-cog"></i>
-                        </div>
-                        <div class="nav-info">
-                            <span class="nav-title">Pengaturan</span>
-                            <span class="nav-desc">Umum, SEO, maintenance</span>
-                        </div>
-                        <i class="fas fa-chevron-right"></i>
-                    </a>
+                <!-- Quick Actions -->
+                <div class="quick-actions-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-bolt"></i>
+                        Quick Actions
+                    </h2>
+                    <div class="quick-actions-grid" id="quickActions">
+                        <!-- Akan diisi oleh JavaScript -->
+                    </div>
                 </div>
 
-                <!-- Recent Orders Section -->
-                <div class="recent-orders">
+                <!-- Recent Orders -->
+                <div class="recent-orders-section">
                     <div class="section-header">
-                        <h3><i class="fas fa-clock"></i> Pesanan Terbaru</h3>
-                        <a href="#" class="view-all" id="ordersViewAll">Lihat Semua</a>
+                        <h2 class="section-title">
+                            <i class="fas fa-history"></i>
+                            Pesanan Terbaru
+                        </h2>
+                        <a href="#" class="view-all-link" data-page="orders">
+                            Lihat Semua <i class="fas fa-arrow-right"></i>
+                        </a>
                     </div>
-                    <div class="orders-list" id="recentOrdersList">
-                        <!-- Orders will be loaded here -->
-                    </div>
-                    <div class="empty-orders" id="emptyOrders" style="display: none;">
-                        <i class="fas fa-shopping-cart"></i>
-                        <p>Belum ada pesanan</p>
+                    <div class="recent-orders-list" id="recentOrders">
+                        <!-- Akan diisi oleh JavaScript -->
                     </div>
                 </div>
 
-                <!-- Popular Products Section -->
-                <div class="popular-products">
+                <!-- Top Products -->
+                <div class="top-products-section">
                     <div class="section-header">
-                        <h3><i class="fas fa-fire"></i> Produk Terlaris</h3>
-                        <a href="#" class="view-all" id="productsViewAll">Lihat Semua</a>
+                        <h2 class="section-title">
+                            <i class="fas fa-star"></i>
+                            Produk Terlaris
+                        </h2>
+                        <a href="#" class="view-all-link" data-page="products">
+                            Lihat Semua <i class="fas fa-arrow-right"></i>
+                        </a>
                     </div>
-                    <div class="products-mini-grid" id="popularProductsList">
-                        <!-- Products will be loaded here -->
-                    </div>
-                    <div class="empty-products" id="emptyPopularProducts" style="display: none;">
-                        <i class="fas fa-box-open"></i>
-                        <p>Belum ada produk</p>
-                    </div>
-                </div>
-
-                <!-- Website Info -->
-                <div class="website-info">
-                    <div class="info-row">
-                        <span class="info-label">Dibuat pada:</span>
-                        <span class="info-value" id="websiteCreatedDate">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Masa aktif:</span>
-                        <span class="info-value" id="websiteEndDate">-</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Total stok:</span>
-                        <span class="info-value" id="totalStock">0</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Stok menipis:</span>
-                        <span class="info-value warning" id="lowStockCount">0</span>
+                    <div class="top-products-grid" id="topProducts">
+                        <!-- Akan diisi oleh JavaScript -->
                     </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Websites Page -->
+            <div class="page" id="page-websites">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-globe"></i>
+                        Website Saya
+                    </h2>
+                    <a href="/format?from=panel" class="btn-primary" id="createWebsiteBtn">
+                        <i class="fas fa-plus-circle"></i>
+                        Buat Website Baru
+                    </a>
+                </div>
+
+                <div class="websites-grid" id="websitesGrid">
+                    <!-- Akan diisi oleh JavaScript -->
+                </div>
+
+                <div class="empty-state" id="websitesEmptyState" style="display: none;">
+                    <i class="fas fa-globe"></i>
+                    <h3>Belum Ada Website</h3>
+                    <p>Mulai dengan membuat website pertamamu</p>
+                    <a href="/format?from=panel" class="btn-primary">
+                        <i class="fas fa-plus-circle"></i>
+                        Buat Website Baru
+                    </a>
+                </div>
+            </div>
+
+            <!-- Products Page -->
+            <div class="page" id="page-products">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-box"></i>
+                        Produk
+                    </h2>
+                    <div class="header-actions">
+                        <select class="website-selector" id="productWebsiteSelector">
+                            <option value="">Pilih Website</option>
+                        </select>
+                        <a href="#" class="btn-primary" id="manageProductsBtn">
+                            <i class="fas fa-edit"></i>
+                            Kelola Produk
+                        </a>
+                    </div>
+                </div>
+
+                <div class="products-summary" id="productsSummary">
+                    <!-- Akan diisi oleh JavaScript -->
+                </div>
+            </div>
+
+            <!-- Orders Page -->
+            <div class="page" id="page-orders">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-shopping-cart"></i>
+                        Pesanan
+                    </h2>
+                    <div class="header-actions">
+                        <select class="status-filter" id="orderStatusFilter">
+                            <option value="all">Semua Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="orders-table-container">
+                    <table class="orders-table">
+                        <thead>
+                            <tr>
+                                <th>ID Pesanan</th>
+                                <th>Pelanggan</th>
+                                <th>Produk</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Tanggal</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                            <!-- Akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="empty-state" id="ordersEmptyState" style="display: none;">
+                    <i class="fas fa-shopping-cart"></i>
+                    <h3>Belum Ada Pesanan</h3>
+                    <p>Pesanan akan muncul di sini setelah ada pelanggan yang membeli</p>
+                </div>
+            </div>
+
+            <!-- Transactions Page -->
+            <div class="page" id="page-transactions">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-credit-card"></i>
+                        Transaksi
+                    </h2>
+                    <div class="header-actions">
+                        <select class="period-selector" id="transactionPeriod">
+                            <option value="today">Hari Ini</option>
+                            <option value="week">Minggu Ini</option>
+                            <option value="month">Bulan Ini</option>
+                            <option value="year">Tahun Ini</option>
+                            <option value="all">Semua</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="transactions-summary">
+                    <div class="summary-card">
+                        <div class="summary-label">Total Pendapatan</div>
+                        <div class="summary-value" id="transactionTotal">Rp 0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Jumlah Transaksi</div>
+                        <div class="summary-value" id="transactionCount">0</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Rata-rata</div>
+                        <div class="summary-value" id="transactionAverage">Rp 0</div>
+                    </div>
+                </div>
+
+                <div class="transactions-list" id="transactionsList">
+                    <!-- Akan diisi oleh JavaScript -->
+                </div>
+            </div>
+
+            <!-- Customers Page -->
+            <div class="page" id="page-customers">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-users"></i>
+                        Pelanggan
+                    </h2>
+                    <div class="header-actions">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Cari pelanggan..." id="customerSearch">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="customers-grid" id="customersGrid">
+                    <!-- Akan diisi oleh JavaScript -->
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="page-settings">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-cog"></i>
+                        Pengaturan
+                    </h2>
+                </div>
+
+                <div class="settings-grid">
+                    <a href="/tampilan?website=current" class="settings-card" id="appearanceSettings">
+                        <div class="settings-icon">
+                            <i class="fas fa-paint-brush"></i>
+                        </div>
+                        <div class="settings-info">
+                            <h3>Tampilan Website</h3>
+                            <p>Atur logo, warna, font, dan banner</p>
+                        </div>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+
+                    <a href="#" class="settings-card" id="profileSettings">
+                        <div class="settings-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="settings-info">
+                            <h3>Profil</h3>
+                            <p>Ubah informasi profil dan password</p>
+                        </div>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+
+                    <a href="#" class="settings-card" id="paymentSettings">
+                        <div class="settings-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="settings-info">
+                            <h3>Metode Pembayaran</h3>
+                            <p>Atur metode pembayaran yang tersedia</p>
+                        </div>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+
+                    <a href="#" class="settings-card" id="notificationSettings">
+                        <div class="settings-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <div class="settings-info">
+                            <h3>Notifikasi</h3>
+                            <p>Atur notifikasi pesanan dan promosi</p>
+                        </div>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+
+                    <a href="#" class="settings-card" id="seoSettings">
+                        <div class="settings-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="settings-info">
+                            <h3>SEO</h3>
+                            <p>Optimasi mesin pencari</p>
+                        </div>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+
+                    <a href="#" class="settings-card" id="integrationSettings">
+                        <div class="settings-icon">
+                            <i class="fas fa-plug"></i>
+                        </div>
+                        <div class="settings-info">
+                            <h3>Integrasi</h3>
+                            <p>Hubungkan dengan layanan lain</p>
+                        </div>
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Help Page -->
+            <div class="page" id="page-help">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-question-circle"></i>
+                        Bantuan
+                    </h2>
+                </div>
+
+                <div class="help-grid">
+                    <div class="help-card">
+                        <i class="fas fa-book"></i>
+                        <h3>Dokumentasi</h3>
+                        <p>Pelajari cara menggunakan panel</p>
+                        <a href="#" class="help-link">Baca Dokumentasi</a>
+                    </div>
+
+                    <div class="help-card">
+                        <i class="fas fa-video"></i>
+                        <h3>Video Tutorial</h3>
+                        <p>Tonton tutorial penggunaan</p>
+                        <a href="#" class="help-link">Lihat Video</a>
+                    </div>
+
+                    <div class="help-card">
+                        <i class="fas fa-life-ring"></i>
+                        <h3>FAQ</h3>
+                        <p>Pertanyaan yang sering diajukan</p>
+                        <a href="#" class="help-link">Baca FAQ</a>
+                    </div>
+
+                    <div class="help-card">
+                        <i class="fas fa-headset"></i>
+                        <h3>Dukungan</h3>
+                        <p>Hubungi tim dukungan</p>
+                        <a href="#" class="help-link">Hubungi Kami</a>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
     <!-- JavaScript -->
