@@ -1,4 +1,4 @@
-# tmp.py - Database handler untuk tampilan website (VERSI DENGAN MULTIPLE BANNER)
+# tmp.py - Database handler untuk tampilan website (VERSI DENGAN MULTIPLE BANNER DAN PROMO)
 import sqlite3
 import json
 
@@ -16,9 +16,6 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Drop existing table if needed (uncomment if you want to reset)
-    # cursor.execute('DROP TABLE IF EXISTS tampilan')
-    
     # Create tampilan table with new structure
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS tampilan (
@@ -44,14 +41,33 @@ def init_db():
     )
     ''')
 
+    # Create promo table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS promo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        website_id INTEGER UNIQUE NOT NULL,
+        banner TEXT,
+        description TEXT,
+        end_date TEXT,
+        end_time TEXT,
+        never_end BOOLEAN DEFAULT 0,
+        notes TEXT,
+        active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE
+    )
+    ''')
+
     conn.commit()
     conn.close()
-    print("✅ Database tmp initialized with new structure")
+    print("✅ Database tmp initialized with new structure (tables: tampilan, promo)")
 
 # Inisialisasi database
 init_db()
 
-# ==================== FUNGSI UTAMA ====================
+# ==================== FUNGSI UNTUK TAMPILAN ====================
+
 def get_tampilan(website_id):
     """Ambil data tampilan berdasarkan website_id"""
     conn = get_db()
@@ -563,3 +579,86 @@ def save_general(website_id, title, description, contact_whatsapp, contact_teleg
     conn.commit()
     conn.close()
     return True
+
+# ==================== FUNGSI UNTUK PROMO ====================
+
+def get_promo(website_id):
+    """Ambil data promo berdasarkan website_id"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT * FROM promo WHERE website_id = ?', (website_id,))
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row:
+        return dict(row)
+    return None
+
+def save_promo(website_id, data):
+    """Simpan atau update data promo"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM promo WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+
+    if existing:
+        # Update
+        cursor.execute('''
+        UPDATE promo SET
+            banner = ?,
+            description = ?,
+            end_date = ?,
+            end_time = ?,
+            never_end = ?,
+            notes = ?,
+            active = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (
+            data.get('banner', ''),
+            data.get('description', ''),
+            data.get('end_date'),
+            data.get('end_time'),
+            1 if data.get('never_end', False) else 0,
+            data.get('notes', ''),
+            1 if data.get('active', True) else 0,
+            website_id
+        ))
+        result_id = existing['id']
+    else:
+        # Insert
+        cursor.execute('''
+        INSERT INTO promo (
+            website_id, banner, description, end_date, end_time, never_end, notes, active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            website_id,
+            data.get('banner', ''),
+            data.get('description', ''),
+            data.get('end_date'),
+            data.get('end_time'),
+            1 if data.get('never_end', False) else 0,
+            data.get('notes', ''),
+            1 if data.get('active', True) else 0
+        ))
+        result_id = cursor.lastrowid
+
+    conn.commit()
+    conn.close()
+    return result_id
+
+def delete_promo(website_id):
+    """Hapus data promo"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM promo WHERE website_id = ?', (website_id,))
+    deleted = cursor.rowcount > 0
+    
+    conn.commit()
+    conn.close()
+    return deleted
