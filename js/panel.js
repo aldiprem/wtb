@@ -600,7 +600,7 @@
         elements.productWebsiteSelector.addEventListener('change', (e) => {
             const endpoint = e.target.value;
             if (endpoint) {
-                elements.manageProductsBtn.href = `/html/produk?website=${endpoint}`;
+                elements.manageProductsBtn.href = `/wtb/html/produk?website=${endpoint}`;
             } else {
                 elements.manageProductsBtn.href = '#';
             }
@@ -783,7 +783,7 @@
         
         // Product Management - Link ke produk.html
         if (elements.manageProductsBtn && userWebsites.length > 0) {
-            elements.manageProductsBtn.href = `/html/produk?website=${userWebsites[0].endpoint}`;
+            elements.manageProductsBtn.href = `/wtb/html/produk?website=${userWebsites[0].endpoint}`;
         }
         
         // Profile Settings
