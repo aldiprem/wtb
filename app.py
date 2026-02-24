@@ -1231,7 +1231,7 @@ def reorder_promos(website_id):
 # ==================== ROUTES UNTUK PROMO LAMA (BACKWARD COMPATIBILITY) ====================
 
 @app.route('/api/tampilan/<int:website_id>/promo', methods=['GET'])
-def get_promo_old(website_id):  # <-- Ubah nama fungsi
+def get_promo_old(website_id):
     """Get promo data by website_id (old single promo format)"""
     try:
         # Try to get from new format first
@@ -1248,7 +1248,7 @@ def get_promo_old(website_id):  # <-- Ubah nama fungsi
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/promo', methods=['POST'])
-def save_promo_old(website_id):  # <-- Ubah nama fungsi
+def save_promo_old(website_id):
     """Save or update promo settings (old single promo format)"""
     try:
         data = request.json
@@ -1290,7 +1290,7 @@ def save_promo_old(website_id):  # <-- Ubah nama fungsi
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/promo', methods=['DELETE'])
-def delete_promo_old(website_id):  # <-- Ubah nama fungsi
+def delete_promo_old(website_id):
     """Delete promo settings (old single promo format)"""
     try:
         # Delete all promos
