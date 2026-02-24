@@ -1336,7 +1336,7 @@
       }
     
       // Redirect ke halaman produk dengan parameter website
-      const url = `/wtb/produk.html?website=${currentWebsite.endpoint}`;
+      const url = `/wtb/html/produk.html?website=${currentWebsite.endpoint}`;
       window.location.href = url;
     }
     
@@ -1443,7 +1443,7 @@
       // Redirect ke halaman produk dengan parameter
       if (!currentWebsite) return;
     
-      let url = `/wtb/produk.html?website=${currentWebsite.endpoint}`;
+      let url = `/wtb/html/produk.html?website=${currentWebsite.endpoint}`;
       if (product) {
         url += `&edit=${product.id}`;
       }
