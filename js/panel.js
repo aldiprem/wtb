@@ -158,32 +158,47 @@
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=80&background=40a7e3&color=fff`;
     }
 
-    // ==================== API FUNCTIONS ====================
-    async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
-        try {
-            const response = await fetch(url, {
-                ...options,
-                mode: 'cors',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP error ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            if (retries > 0) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                return fetchWithRetry(url, options, retries - 1);
-            }
-            throw error;
+    async function fetchWithRetry(url, options, retries = 2) { // Kurangi dari 3 ke 2
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout 5 detik
+    
+        const response = await fetch(url, {
+          ...options,
+          mode: 'cors',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...options.headers
+          },
+          signal: controller.signal
+        });
+    
+        clearTimeout(timeoutId);
+    
+        if (!response.ok) {
+          // Jika 404, jangan retry
+          if (response.status === 404) {
+            throw new Error('Not Found', { cause: '404' });
+          }
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP error ${response.status}`);
         }
+    
+        return await response.json();
+      } catch (error) {
+        // Jika 404 atau AbortError, jangan retry
+        if (error.cause === '404' || error.name === 'AbortError') {
+          throw error;
+        }
+    
+        if (retries > 0) {
+          console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return fetchWithRetry(url, options, retries - 1);
+        }
+        throw error;
+      }
     }
 
     async function loadUserData() {
@@ -284,129 +299,146 @@
     }
 
     async function loadProductsAndOrders() {
-        if (!userWebsites || userWebsites.length === 0) return;
-        
-        showLoading(true);
-        
-        try {
-            let totalProducts = 0;
-            let totalOrders = 0;
-            let totalRevenue = 0;
-            let allOrdersList = [];
-            let allProductsList = [];
-            let customersSet = new Map();
-            
-            // Loop setiap website untuk mengambil produk dan pesanan
-            for (const website of userWebsites) {
-                try {
-                    // Ambil produk
-                    const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
-                        method: 'GET'
+      if (!userWebsites || userWebsites.length === 0) return;
+    
+      showLoading(true);
+    
+      try {
+        let totalProducts = 0;
+        let totalOrders = 0;
+        let totalRevenue = 0;
+        let allOrdersList = [];
+        let allProductsList = [];
+        let customersSet = new Map();
+    
+        // Batasi jumlah request concurrent
+        const batchSize = 2; // Proses 2 website sekaligus
+        for (let i = 0; i < userWebsites.length; i += batchSize) {
+          const batch = userWebsites.slice(i, i + batchSize);
+    
+          // Proses batch secara concurrent
+          await Promise.all(batch.map(async (website) => {
+            try {
+              // Ambil produk
+              console.log(`📦 Loading products for website ${website.id}...`);
+              const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+                method: 'GET'
+              }).catch(err => {
+                console.log(`⚠️ No products for website ${website.id}:`, err.message);
+                return { success: false, data: [] };
+              });
+    
+              if (productsResponse.success && productsResponse.data) {
+                totalProducts += productsResponse.data.length || 0;
+    
+                // Kumpulkan produk untuk top products
+                productsResponse.data.forEach(layanan => {
+                  if (layanan.aplikasi) {
+                    layanan.aplikasi.forEach(aplikasi => {
+                      if (aplikasi.items) {
+                        aplikasi.items.forEach(item => {
+                          allProductsList.push({
+                            ...item,
+                            website_name: website.endpoint,
+                            layanan_nama: layanan.layanan_nama,
+                            aplikasi_nama: aplikasi.aplikasi_nama
+                          });
+                        });
+                      }
                     });
-                    
-                    if (productsResponse.success && productsResponse.data) {
-                        totalProducts += productsResponse.data.length || 0;
-                        
-                        // Kumpulkan produk untuk top products
-                        productsResponse.data.forEach(layanan => {
-                            if (layanan.aplikasi) {
-                                layanan.aplikasi.forEach(aplikasi => {
-                                    if (aplikasi.items) {
-                                        aplikasi.items.forEach(item => {
-                                            allProductsList.push({
-                                                ...item,
-                                                website_name: website.endpoint,
-                                                layanan_nama: layanan.layanan_nama,
-                                                aplikasi_nama: aplikasi.aplikasi_nama
-                                            });
-                                        });
-                                    }
-                                });
-                            }
-                        });
+                  }
+                });
+              }
+    
+              // Ambil orders - dengan error handling yang lebih baik
+              console.log(`📦 Loading orders for website ${website.id}...`);
+              try {
+                const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
+                  method: 'GET'
+                });
+    
+                if (ordersResponse.success && ordersResponse.orders) {
+                  totalOrders += ordersResponse.orders.length;
+    
+                  ordersResponse.orders.forEach(order => {
+                    totalRevenue += order.total || 0;
+                    allOrdersList.push({
+                      ...order,
+                      website_endpoint: website.endpoint
+                    });
+    
+                    if (order.customer_id && !customersSet.has(order.customer_id)) {
+                      customersSet.set(order.customer_id, {
+                        id: order.customer_id,
+                        name: order.customer_name || 'Customer',
+                        orders: 1,
+                        total_spent: order.total || 0
+                      });
+                    } else if (order.customer_id) {
+                      const customer = customersSet.get(order.customer_id);
+                      customer.orders += 1;
+                      customer.total_spent += order.total || 0;
                     }
-                    
-                    // Ambil orders (jika ada endpoint)
-                    try {
-                        const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
-                            method: 'GET'
-                        });
-                        
-                        if (ordersResponse.success && ordersResponse.orders) {
-                            totalOrders += ordersResponse.orders.length;
-                            
-                            ordersResponse.orders.forEach(order => {
-                                totalRevenue += order.total || 0;
-                                allOrdersList.push({
-                                    ...order,
-                                    website_endpoint: website.endpoint
-                                });
-                                
-                                if (order.customer_id && !customersSet.has(order.customer_id)) {
-                                    customersSet.set(order.customer_id, {
-                                        id: order.customer_id,
-                                        name: order.customer_name || 'Customer',
-                                        orders: 1,
-                                        total_spent: order.total || 0
-                                    });
-                                } else if (order.customer_id) {
-                                    const customer = customersSet.get(order.customer_id);
-                                    customer.orders += 1;
-                                    customer.total_spent += order.total || 0;
-                                }
-                            });
-                        }
-                    } catch (orderError) {
-                        console.log('ℹ️ No orders for website:', website.endpoint);
-                    }
-                    
-                } catch (websiteError) {
-                    console.error('❌ Error loading data for website:', website.endpoint, websiteError);
+                  });
                 }
+              } catch (orderError) {
+                // Ini normal karena endpoint orders mungkin belum ada
+                console.log(`ℹ️ Orders endpoint not available for website ${website.id} (coming soon)`);
+              }
+    
+            } catch (websiteError) {
+              console.error(`❌ Error loading data for website:`, website.endpoint, websiteError);
             }
-            
-            allProducts = allProductsList;
-            allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            allCustomers = Array.from(customersSet.values());
-            
-            // Update stats
-            if (elements.statTotalWebsites) {
-                elements.statTotalWebsites.textContent = userWebsites.length;
-            }
-            if (elements.statTotalProducts) {
-                elements.statTotalProducts.textContent = totalProducts;
-            }
-            if (elements.sidebarTotalProducts) {
-                elements.sidebarTotalProducts.textContent = totalProducts;
-            }
-            if (elements.statTotalOrders) {
-                elements.statTotalOrders.textContent = totalOrders;
-            }
-            if (elements.statTotalRevenue) {
-                elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
-            }
-            if (elements.statTotalCustomers) {
-                elements.statTotalCustomers.textContent = allCustomers.length;
-            }
-            if (elements.menuOrdersBadge) {
-                elements.menuOrdersBadge.textContent = totalOrders;
-            }
-            
-            // Render sections
-            renderQuickActions();
-            renderRecentOrders();
-            renderTopProducts();
-            renderWebsitesGrid();
-            renderProductSelector();
-            renderOrdersTable();
-            renderTransactions(totalRevenue, allOrdersList.length);
-            renderCustomersGrid();
-            
-        } catch (error) {
-            console.error('❌ Error loading products and orders:', error);
-        } finally {
-            showLoading(false);
+          }));
+    
+          // Beri jeda antar batch untuk mengurangi beban
+          if (i + batchSize < userWebsites.length) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
+    
+        allProducts = allProductsList;
+        allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        allCustomers = Array.from(customersSet.values());
+    
+        // Update stats
+        if (elements.statTotalWebsites) {
+          elements.statTotalWebsites.textContent = userWebsites.length;
+        }
+        if (elements.statTotalProducts) {
+          elements.statTotalProducts.textContent = totalProducts;
+        }
+        if (elements.sidebarTotalProducts) {
+          elements.sidebarTotalProducts.textContent = totalProducts;
+        }
+        if (elements.statTotalOrders) {
+          elements.statTotalOrders.textContent = totalOrders;
+        }
+        if (elements.statTotalRevenue) {
+          elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
+        }
+        if (elements.statTotalCustomers) {
+          elements.statTotalCustomers.textContent = allCustomers.length;
+        }
+        if (elements.menuOrdersBadge) {
+          elements.menuOrdersBadge.textContent = totalOrders;
+        }
+    
+        // Render sections
+        renderQuickActions();
+        renderRecentOrders();
+        renderTopProducts();
+        renderWebsitesGrid();
+        renderProductSelector();
+        renderOrdersTable();
+        renderTransactions(totalRevenue, allOrdersList.length);
+        renderCustomersGrid();
+    
+      } catch (error) {
+        console.error('❌ Error loading products and orders:', error);
+      } finally {
+        showLoading(false);
+      }
     }
 
     function renderQuickActions() {
