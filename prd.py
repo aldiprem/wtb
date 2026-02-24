@@ -72,8 +72,11 @@ def init_db():
 
 # ==================== FUNGSI MIGRASI DATABASE ====================
 
+# ==================== FUNGSI MIGRASI DATABASE ====================
+
 def migrate_database():
     """Migrasi database ke struktur terbaru - menambahkan kolom yang belum ada"""
+    conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
@@ -85,48 +88,125 @@ def migrate_database():
             conn.close()
             return False
         
-        # Cek struktur tabel saat ini
+        # Dapatkan daftar kolom yang sudah ada
         cursor.execute("PRAGMA table_info(products)")
         existing_columns = [col[1] for col in cursor.fetchall()]
         
         print("📊 Existing columns:", existing_columns)
         
-        # Daftar kolom yang harus ada (lengkap dari struktur terbaru)
-        required_columns = {
-            'layanan_nama': 'TEXT NOT NULL DEFAULT ""',
-            'layanan_gambar': 'TEXT',
-            'layanan_banner': 'TEXT',
-            'layanan_desc': 'TEXT',
-            'layanan_catatan': 'TEXT',
-            'aplikasi_nama': 'TEXT',
-            'aplikasi_gambar': 'TEXT',
-            'aplikasi_desc': 'TEXT',
-            'aplikasi_catatan': 'TEXT',
-            'item_nama': 'TEXT',
-            'item_durasi_jumlah': 'INTEGER DEFAULT 0',
-            'item_durasi_satuan': 'TEXT DEFAULT "hari"',
-            'item_harga': 'INTEGER DEFAULT 0',
-            'item_tipe': 'TEXT DEFAULT "seller"',
-            'item_metode': 'TEXT DEFAULT "directly"',
-            'item_stok': 'TEXT DEFAULT "[]"',
-            'item_fields': 'TEXT DEFAULT "[]"',
-            'item_ready': 'BOOLEAN DEFAULT 1'
-        }
+        # CEK APAKAH MASIH ADA KOLOM LAMA 'layanan' (bukan 'layanan_nama')
+        if 'layanan' in existing_columns and 'layanan_nama' not in existing_columns:
+            print("⚠️ Kolom lama 'layanan' ditemukan. Melakukan migrasi khusus...")
+            
+            # Buat tabel baru dengan struktur yang benar
+            cursor.execute('''
+                CREATE TABLE products_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    website_id INTEGER NOT NULL,
+                    
+                    -- Level: Layanan
+                    layanan_id INTEGER,
+                    layanan_nama TEXT NOT NULL DEFAULT '',
+                    layanan_gambar TEXT,
+                    layanan_banner TEXT,
+                    layanan_desc TEXT,
+                    layanan_catatan TEXT,
+                    
+                    -- Level: Aplikasi
+                    aplikasi_id INTEGER,
+                    aplikasi_nama TEXT,
+                    aplikasi_gambar TEXT,
+                    aplikasi_desc TEXT,
+                    aplikasi_catatan TEXT,
+                    
+                    -- Level: Item
+                    item_id INTEGER,
+                    item_nama TEXT,
+                    item_durasi_jumlah INTEGER DEFAULT 0,
+                    item_durasi_satuan TEXT DEFAULT 'hari',
+                    item_harga INTEGER DEFAULT 0,
+                    item_tipe TEXT DEFAULT 'seller',
+                    item_metode TEXT DEFAULT 'directly',
+                    item_stok TEXT DEFAULT '[]',
+                    item_fields TEXT DEFAULT '[]',
+                    item_ready BOOLEAN DEFAULT 1,
+                    
+                    -- Metadata
+                    aktif BOOLEAN DEFAULT 1,
+                    terjual INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Salin data dari tabel lama ke tabel baru
+            # Asumsikan kolom 'layanan' di tabel lama = 'layanan_nama' di tabel baru
+            copy_columns = []
+            for col in existing_columns:
+                if col != 'layanan':  # skip kolom lama
+                    copy_columns.append(col)
+            
+            # Tambahkan layanan_nama dengan nilai dari kolom layanan
+            cursor.execute('''
+                INSERT INTO products_new (
+                    id, website_id, 
+                    layanan_nama, layanan_gambar, layanan_banner, layanan_desc, layanan_catatan,
+                    aplikasi_nama, aplikasi_gambar, aplikasi_desc, aplikasi_catatan,
+                    item_nama, item_durasi_jumlah, item_durasi_satuan, item_harga, 
+                    item_tipe, item_metode, item_stok, item_fields, item_ready,
+                    aktif, terjual, created_at, updated_at
+                )
+                SELECT 
+                    id, website_id,
+                    layanan, layanan_gambar, layanan_banner, layanan_desc, layanan_catatan,
+                    aplikasi_nama, aplikasi_gambar, aplikasi_desc, aplikasi_catatan,
+                    item_nama, item_durasi_jumlah, item_durasi_satuan, item_harga,
+                    item_tipe, item_metode, item_stok, item_fields, item_ready,
+                    aktif, terjual, created_at, updated_at
+                FROM products
+            ''')
+            
+            # Hapus tabel lama dan rename tabel baru
+            cursor.execute("DROP TABLE products")
+            cursor.execute("ALTER TABLE products_new RENAME TO products")
+            
+            print("✅ Migrasi kolom 'layanan' ke 'layanan_nama' selesai")
         
-        columns_added = []
+        else:
+            # Migrasi normal: tambahkan kolom yang belum ada
+            required_columns = {
+                'layanan_nama': 'TEXT NOT NULL DEFAULT ""',
+                'layanan_gambar': 'TEXT',
+                'layanan_banner': 'TEXT',
+                'layanan_desc': 'TEXT',
+                'layanan_catatan': 'TEXT',
+                'aplikasi_nama': 'TEXT',
+                'aplikasi_gambar': 'TEXT',
+                'aplikasi_desc': 'TEXT',
+                'aplikasi_catatan': 'TEXT',
+                'item_nama': 'TEXT',
+                'item_durasi_jumlah': 'INTEGER DEFAULT 0',
+                'item_durasi_satuan': 'TEXT DEFAULT "hari"',
+                'item_harga': 'INTEGER DEFAULT 0',
+                'item_tipe': 'TEXT DEFAULT "seller"',
+                'item_metode': 'TEXT DEFAULT "directly"',
+                'item_stok': 'TEXT DEFAULT "[]"',
+                'item_fields': 'TEXT DEFAULT "[]"',
+                'item_ready': 'BOOLEAN DEFAULT 1'
+            }
+            
+            columns_added = []
+            for col_name, col_type in required_columns.items():
+                if col_name not in existing_columns:
+                    try:
+                        alter_sql = f"ALTER TABLE products ADD COLUMN {col_name} {col_type}"
+                        cursor.execute(alter_sql)
+                        columns_added.append(col_name)
+                        print(f"✅ Column '{col_name}' added successfully")
+                    except Exception as e:
+                        print(f"❌ Failed to add column '{col_name}': {e}")
         
-        # Tambahkan kolom yang belum ada
-        for col_name, col_type in required_columns.items():
-            if col_name not in existing_columns:
-                try:
-                    alter_sql = f"ALTER TABLE products ADD COLUMN {col_name} {col_type}"
-                    cursor.execute(alter_sql)
-                    columns_added.append(col_name)
-                    print(f"✅ Column '{col_name}' added successfully")
-                except Exception as e:
-                    print(f"❌ Failed to add column '{col_name}': {e}")
-        
-        # Buat ulang indexes jika perlu
+        # Buat ulang indexes
         try:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_website ON products(website_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_products_layanan ON products(layanan_nama)')
@@ -136,17 +216,17 @@ def migrate_database():
             print(f"⚠️ Failed to create indexes: {e}")
         
         conn.commit()
-        conn.close()
-        
-        if columns_added:
-            print(f"✅ Migration complete. Added columns: {', '.join(columns_added)}")
-        else:
-            print("✅ Database already up to date. No columns added.")
-        
+        print("✅ Database migration completed successfully")
         return True
+        
     except Exception as e:
         print(f"⚠️ Migration error: {e}")
+        if conn:
+            conn.rollback()
         return False
+    finally:
+        if conn:
+            conn.close()
 
 # ==================== FUNGSI UNTUK LAYANAN ====================
 
