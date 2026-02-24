@@ -335,37 +335,58 @@
         }
     }
 
-    // ==================== UPDATE UI ====================
+    // Update promos (NEW) - PERBAIKAN DI SINI
     function updateUI() {
-        // Update logo
-        if (tampilanData.logo) {
-            if (elements.logoImage) elements.logoImage.src = tampilanData.logo;
-            if (elements.logoUrl) elements.logoUrl.value = tampilanData.logo;
-        }
-        
-        // Update banners
-        if (tampilanData.banners && Array.isArray(tampilanData.banners)) {
-            banners = tampilanData.banners.map(b => {
-                if (typeof b === 'string') {
-                    return { url: b, positionX: 50, positionY: 50 };
-                } else {
-                    return {
-                        url: b.url || '',
-                        positionX: b.positionX || 50,
-                        positionY: b.positionY || 50
-                    };
-                }
-            });
-            hasUnsavedBanners = false;
-        } else {
-            banners = [];
-            hasUnsavedBanners = false;
-        }
-        renderBannerTrack();
-        
-        // Update promos (NEW)
-        if (tampilanData.promos && Array.isArray(tampilanData.promos)) {
-            promos = tampilanData.promos.map(promo => ({
+      // Update logo
+      if (tampilanData.logo) {
+        if (elements.logoImage) elements.logoImage.src = tampilanData.logo;
+        if (elements.logoUrl) elements.logoUrl.value = tampilanData.logo;
+      }
+    
+      // Update banners
+      if (tampilanData.banners && Array.isArray(tampilanData.banners)) {
+        banners = tampilanData.banners.map(b => {
+          if (typeof b === 'string') {
+            return { url: b, positionX: 50, positionY: 50 };
+          } else {
+            return {
+              url: b.url || '',
+              positionX: b.positionX || 50,
+              positionY: b.positionY || 50
+            };
+          }
+        });
+        hasUnsavedBanners = false;
+      } else {
+        banners = [];
+        hasUnsavedBanners = false;
+      }
+      renderBannerTrack();
+    
+      // PERBAIKAN: Update promos - pastikan data selalu array
+      if (tampilanData.promos) {
+        console.log('📦 Raw promos data:', tampilanData.promos);
+    
+        if (Array.isArray(tampilanData.promos)) {
+          // Data sudah berupa array
+          promos = tampilanData.promos.map(promo => ({
+            id: promo.id || Date.now() + Math.random(),
+            title: promo.title || '',
+            banner: promo.banner || '',
+            description: promo.description || '',
+            end_date: promo.end_date || '',
+            end_time: promo.end_time || '',
+            never_end: promo.never_end || false,
+            notes: promo.notes || '',
+            active: promo.active !== false
+          }));
+          hasUnsavedPromos = false;
+        } else if (typeof tampilanData.promos === 'string') {
+          // Data berupa string JSON
+          try {
+            const parsed = JSON.parse(tampilanData.promos);
+            if (Array.isArray(parsed)) {
+              promos = parsed.map(promo => ({
                 id: promo.id || Date.now() + Math.random(),
                 title: promo.title || '',
                 banner: promo.banner || '',
@@ -375,66 +396,79 @@
                 never_end: promo.never_end || false,
                 notes: promo.notes || '',
                 active: promo.active !== false
-            }));
-            hasUnsavedPromos = false;
-        } else if (tampilanData.promo) {
-            // Migrate old single promo to new format
-            const oldPromo = tampilanData.promo;
-            promos = [{
-                id: Date.now(),
-                title: oldPromo.title || 'Promo',
-                banner: oldPromo.banner || '',
-                description: oldPromo.description || '',
-                end_date: oldPromo.end_date || '',
-                end_time: oldPromo.end_time || '',
-                never_end: oldPromo.never_end || false,
-                notes: oldPromo.notes || '',
-                active: oldPromo.active !== false
-            }];
-            hasUnsavedPromos = true;
-        } else {
+              }));
+            } else {
+              promos = [];
+            }
+          } catch (e) {
+            console.error('❌ Error parsing promos:', e);
             promos = [];
-            hasUnsavedPromos = false;
+          }
+          hasUnsavedPromos = false;
+        } else {
+          promos = [];
+          hasUnsavedPromos = false;
         }
-        renderPromos();
-        
-        // Update colors
-        if (tampilanData.colors) {
-            const colors = tampilanData.colors;
-            
-            if (elements.primaryColor) {
-                elements.primaryColor.value = colors.primary || '#40a7e3';
-                elements.primaryColorHex.value = colors.primary || '#40a7e3';
-            }
-            if (elements.secondaryColor) {
-                elements.secondaryColor.value = colors.secondary || '#FFD700';
-                elements.secondaryColorHex.value = colors.secondary || '#FFD700';
-            }
-            if (elements.bgColor) {
-                elements.bgColor.value = colors.background || '#0f0f0f';
-                elements.bgColorHex.value = colors.background || '#0f0f0f';
-            }
-            if (elements.textColor) {
-                elements.textColor.value = colors.text || '#ffffff';
-                elements.textColorHex.value = colors.text || '#ffffff';
-            }
-            if (elements.cardColor) {
-                elements.cardColor.value = colors.card || '#1a1a1a';
-                elements.cardColorHex.value = colors.card || '#1a1a1a';
-            }
-            if (elements.accentColor) {
-                elements.accentColor.value = colors.accent || '#10b981';
-                elements.accentColorHex.value = colors.accent || '#10b981';
-            }
+      } else if (tampilanData.promo) {
+        // Migrate old single promo to new format
+        const oldPromo = tampilanData.promo;
+        promos = [{
+          id: Date.now(),
+          title: oldPromo.title || 'Promo',
+          banner: oldPromo.banner || '',
+          description: oldPromo.description || '',
+          end_date: oldPromo.end_date || '',
+          end_time: oldPromo.end_time || '',
+          never_end: oldPromo.never_end || false,
+          notes: oldPromo.notes || '',
+          active: oldPromo.active !== false
+            }];
+        hasUnsavedPromos = true;
+      } else {
+        promos = [];
+        hasUnsavedPromos = false;
+      }
+    
+      console.log('📦 Processed promos:', promos);
+      renderPromos();
+    
+      // Update colors
+      if (tampilanData.colors) {
+        const colors = tampilanData.colors;
+    
+        if (elements.primaryColor) {
+          elements.primaryColor.value = colors.primary || '#40a7e3';
+          elements.primaryColorHex.value = colors.primary || '#40a7e3';
         }
-        
-        // Update font
-        if (tampilanData.font_family && elements.fontFamily) {
-            elements.fontFamily.value = tampilanData.font_family;
+        if (elements.secondaryColor) {
+          elements.secondaryColor.value = colors.secondary || '#FFD700';
+          elements.secondaryColorHex.value = colors.secondary || '#FFD700';
         }
-        if (tampilanData.font_size && elements.fontSize) {
-            elements.fontSize.value = tampilanData.font_size;
+        if (elements.bgColor) {
+          elements.bgColor.value = colors.background || '#0f0f0f';
+          elements.bgColorHex.value = colors.background || '#0f0f0f';
         }
+        if (elements.textColor) {
+          elements.textColor.value = colors.text || '#ffffff';
+          elements.textColorHex.value = colors.text || '#ffffff';
+        }
+        if (elements.cardColor) {
+          elements.cardColor.value = colors.card || '#1a1a1a';
+          elements.cardColorHex.value = colors.card || '#1a1a1a';
+        }
+        if (elements.accentColor) {
+          elements.accentColor.value = colors.accent || '#10b981';
+          elements.accentColorHex.value = colors.accent || '#10b981';
+        }
+      }
+    
+      // Update font
+      if (tampilanData.font_family && elements.fontFamily) {
+        elements.fontFamily.value = tampilanData.font_family;
+      }
+      if (tampilanData.font_size && elements.fontSize) {
+        elements.fontSize.value = tampilanData.font_size;
+      }
     }
 
     // ==================== BANNER FUNCTIONS (existing) ====================
@@ -1074,38 +1108,56 @@
     }
 
     async function saveAllPromos() {
-        if (!currentWebsite) {
-            showToast('Website tidak ditemukan', 'error');
-            return;
+      if (!currentWebsite) {
+        showToast('Website tidak ditemukan', 'error');
+        return;
+      }
+    
+      if (promos.length === 0) {
+        showToast('Belum ada promosi untuk disimpan', 'warning');
+        return;
+      }
+    
+      showLoading(true);
+    
+      try {
+        // Pastikan data promo bersih sebelum dikirim
+        const cleanPromos = promos.map(promo => ({
+          id: promo.id,
+          title: promo.title,
+          banner: promo.banner,
+          description: promo.description || '',
+          end_date: promo.end_date || null,
+          end_time: promo.end_time || null,
+          never_end: promo.never_end || false,
+          notes: promo.notes || '',
+          active: promo.active !== false
+        }));
+    
+        console.log('📤 Saving promos:', cleanPromos);
+    
+        // Save all promos to server
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
+          method: 'POST',
+          body: JSON.stringify({ promos: cleanPromos })
+        });
+    
+        console.log('📥 Save response:', response);
+    
+        if (response.success) {
+          showToast(`✅ ${promos.length} promosi disimpan!`, 'success');
+          hasUnsavedPromos = false;
+          // Reload data dari server untuk memastikan konsistensi
+          await loadTampilanData();
+        } else {
+          throw new Error(response.error || 'Gagal menyimpan promosi');
         }
-        
-        if (promos.length === 0) {
-            showToast('Belum ada promosi untuk disimpan', 'warning');
-            return;
-        }
-        
-        showLoading(true);
-        
-        try {
-            // Save all promos to server
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
-                method: 'POST',
-                body: JSON.stringify({ promos: promos })
-            });
-            
-            if (response.success) {
-                showToast(`✅ ${promos.length} promosi disimpan!`, 'success');
-                hasUnsavedPromos = false;
-                await loadTampilanData();
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan promosi');
-            }
-        } catch (error) {
-            console.error('❌ Error saving promos:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
-        }
+      } catch (error) {
+        console.error('❌ Error saving promos:', error);
+        showToast(error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
     }
 
     // ==================== SAVE FUNCTIONS ====================
