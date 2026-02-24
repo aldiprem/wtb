@@ -1128,6 +1128,59 @@ def api_delete_item(item_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK PROMO ====================
+
+@app.route('/api/tampilan/<int:website_id>/promo', methods=['GET'])
+def get_promo(website_id):
+    """Get promo data by website_id"""
+    try:
+        data = tmp.get_promo(website_id)
+        if data:
+            return jsonify({'success': True, 'promo': data})
+        else:
+            return jsonify({'success': False, 'error': 'Promo not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/promo', methods=['POST'])
+def save_promo(website_id):
+    """Save or update promo settings"""
+    try:
+        data = request.json
+        print(f"📢 Received promo data for website {website_id}:", data)
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Simpan data promo
+        result = tmp.save_promo(website_id, data)
+        
+        return jsonify({'success': True, 'message': 'Promo saved successfully', 'id': result})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/promo', methods=['DELETE'])
+def delete_promo(website_id):
+    """Delete promo settings"""
+    try:
+        success = tmp.delete_promo(website_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Promo deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Promo not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
