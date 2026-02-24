@@ -1,4 +1,4 @@
-// produk.js - Manajemen Produk dengan Tampilan Tree (DENGAN TOMBOL MANAGE)
+// produk.js - Manajemen Produk dengan Struktur Hierarki (VERSI BARU)
 (function() {
     'use strict';
     
@@ -10,82 +10,74 @@
 
     // ==================== STATE ====================
     let currentWebsite = null;
-    let products = [];
-    let filteredProducts = [];
-    let editingProductId = null;
+    let productsData = [];
     
-    // Form State (camelCase untuk internal)
-    let formData = {
-        layanan: '',
-        layananGambar: '',
-        layananDesc: '',
-        aplikasi: '',
-        aplikasiGambar: '',
-        aplikasiDesc: '',
-        itemNama: '',
-        itemDurasi: '',
-        harga: 0,
-        fitur: 'biasa',
-        method: 'directly',
-        stok: [],
-        fields: [],
-        aktif: true
-    };
-
-    // Filter State
-    let searchQuery = '';
-    let methodFilter = 'all';
-    let statusFilter = 'all';
+    // Current selections
+    let currentLayanan = null;
+    let currentAplikasi = null;
+    let currentItem = null;
+    
+    // Item state
+    let currentItemStok = [];
+    let currentItemFields = [];
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
         toastContainer: document.getElementById('toastContainer'),
         websiteBadge: document.getElementById('websiteBadge'),
-        productsTree: document.getElementById('productsTree'),
+        productsContainer: document.getElementById('productsContainer'),
         emptyState: document.getElementById('emptyState'),
-        searchInput: document.getElementById('searchInput'),
-        methodFilter: document.getElementById('methodFilter'),
-        statusFilter: document.getElementById('statusFilter'),
-        addProductBtn: document.getElementById('addProductBtn'),
-        emptyAddBtn: document.getElementById('emptyAddBtn'),
         backToPanel: document.getElementById('backToPanel'),
         
-        // Modal
-        productModal: document.getElementById('productModal'),
-        modalTitle: document.getElementById('modalTitle'),
-        closeModalBtn: document.getElementById('closeModalBtn'),
-        cancelFormBtn: document.getElementById('cancelFormBtn'),
-        productForm: document.getElementById('productForm'),
+        // Layanan Modal
+        layananModal: document.getElementById('layananModal'),
+        layananModalTitle: document.getElementById('layananModalTitle'),
+        layananForm: document.getElementById('layananForm'),
+        layananId: document.getElementById('layananId'),
+        layananNama: document.getElementById('layananNama'),
+        layananGambar: document.getElementById('layananGambar'),
+        layananBanner: document.getElementById('layananBanner'),
+        layananDesc: document.getElementById('layananDesc'),
+        layananCatatan: document.getElementById('layananCatatan'),
+        closeLayananModal: document.getElementById('closeLayananModal'),
+        cancelLayananBtn: document.getElementById('cancelLayananBtn'),
         
-        // Form Inputs
-        layananInput: document.getElementById('layananInput'),
-        layananGambarInput: document.getElementById('layananGambarInput'),
-        layananDescInput: document.getElementById('layananDescInput'),
-        aplikasiInput: document.getElementById('aplikasiInput'),
-        aplikasiGambarInput: document.getElementById('aplikasiGambarInput'),
-        aplikasiDescInput: document.getElementById('aplikasiDescInput'),
-        itemNamaInput: document.getElementById('itemNamaInput'),
-        itemDurasiInput: document.getElementById('itemDurasiInput'),
-        itemHargaInput: document.getElementById('itemHargaInput'),
-        itemFiturInput: document.getElementById('itemFiturInput'),
-        methodRadios: document.querySelectorAll('input[name="method"]'),
-        directlyPanel: document.getElementById('directlyPanel'),
-        requestPanel: document.getElementById('requestPanel'),
-        produkAktif: document.getElementById('produkAktif'),
-        saveProductBtn: document.getElementById('saveProductBtn'),
+        // Aplikasi Modal
+        aplikasiModal: document.getElementById('aplikasiModal'),
+        aplikasiModalTitle: document.getElementById('aplikasiModalTitle'),
+        aplikasiForm: document.getElementById('aplikasiForm'),
+        aplikasiId: document.getElementById('aplikasiId'),
+        aplikasiLayananNama: document.getElementById('aplikasiLayananNama'),
+        aplikasiNama: document.getElementById('aplikasiNama'),
+        aplikasiGambar: document.getElementById('aplikasiGambar'),
+        aplikasiDesc: document.getElementById('aplikasiDesc'),
+        aplikasiCatatan: document.getElementById('aplikasiCatatan'),
+        closeAplikasiModal: document.getElementById('closeAplikasiModal'),
+        cancelAplikasiBtn: document.getElementById('cancelAplikasiBtn'),
         
-        // Stok
-        stokContainer: document.getElementById('stokContainer'),
-        stokList: document.getElementById('stokList'),
-        emptyStok: document.getElementById('emptyStok'),
-        addStokBtn: document.getElementById('addStokBtn'),
-        
-        // Fields
-        fieldsContainer: document.getElementById('fieldsContainer'),
-        fieldsList: document.getElementById('fieldsList'),
-        emptyFields: document.getElementById('emptyFields'),
-        addFieldBtn: document.getElementById('addFieldBtn'),
+        // Item Modal
+        itemModal: document.getElementById('itemModal'),
+        itemModalTitle: document.getElementById('itemModalTitle'),
+        itemForm: document.getElementById('itemForm'),
+        itemId: document.getElementById('itemId'),
+        itemNama: document.getElementById('itemNama'),
+        itemDurasiJumlah: document.getElementById('itemDurasiJumlah'),
+        itemDurasiSatuan: document.getElementById('itemDurasiSatuan'),
+        itemHarga: document.getElementById('itemHarga'),
+        itemTipeRadios: document.querySelectorAll('input[name="itemTipe"]'),
+        itemMetodeRadios: document.querySelectorAll('input[name="itemMetode"]'),
+        itemDirectlyPanel: document.getElementById('itemDirectlyPanel'),
+        itemRequestPanel: document.getElementById('itemRequestPanel'),
+        itemStokList: document.getElementById('itemStokList'),
+        emptyItemStok: document.getElementById('emptyItemStok'),
+        addItemStokBtn: document.getElementById('addItemStokBtn'),
+        itemFieldsList: document.getElementById('itemFieldsList'),
+        emptyItemFields: document.getElementById('emptyItemFields'),
+        addItemFieldBtn: document.getElementById('addItemFieldBtn'),
+        itemReadyRadios: document.querySelectorAll('input[name="itemReady"]'),
+        closeItemModal: document.getElementById('closeItemModal'),
+        cancelItemBtn: document.getElementById('cancelItemBtn'),
         
         // Stok Modal
         stokModal: document.getElementById('stokModal'),
@@ -106,6 +98,7 @@
         
         // Delete Modal
         deleteModal: document.getElementById('deleteModal'),
+        deleteMessage: document.getElementById('deleteMessage'),
         deleteInfo: document.getElementById('deleteInfo'),
         closeDeleteModal: document.getElementById('closeDeleteModal'),
         cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
@@ -143,6 +136,7 @@
     }
 
     function formatRupiah(angka) {
+        if (!angka) return 'Rp 0';
         return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
@@ -151,6 +145,11 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function formatDurasi(jumlah, satuan) {
+        if (!jumlah || jumlah === 0) return '';
+        return `${jumlah} ${satuan}`;
     }
 
     // ==================== API FUNCTIONS ====================
@@ -213,256 +212,152 @@
         }
     }
 
-    async function loadProducts(websiteId) {
+    async function loadAllData() {
+        if (!currentWebsite) return;
+        
+        showLoading(true);
+        
         try {
-            const data = await fetchWithRetry(`${API_BASE_URL}/api/products/${websiteId}`, {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
                 method: 'GET'
             });
             
             if (data.success) {
-                products = data.products || [];
-                applyFilters();
+                productsData = data.data || [];
+                renderProducts();
             }
         } catch (error) {
-            console.error('❌ Error loading products:', error);
-            showToast('Gagal memuat produk', 'error');
-        }
-    }
-
-    async function saveProduct() {
-        if (!currentWebsite) return;
-        
-        // Mapping dari camelCase (formData) ke underscore (database)
-        const productData = {
-            layanan: formData.layanan,
-            layanan_gambar: formData.layananGambar,
-            layanan_desc: formData.layananDesc,
-            aplikasi: formData.aplikasi,
-            aplikasi_gambar: formData.aplikasiGambar,
-            aplikasi_desc: formData.aplikasiDesc,
-            item_nama: formData.itemNama,
-            item_durasi: formData.itemDurasi,
-            harga: parseInt(formData.harga) || 0,
-            fitur: formData.fitur,
-            method: formData.method,
-            stok: formData.method === 'directly' ? formData.stok : [],
-            fields: formData.method === 'request' ? formData.fields : [],
-            aktif: formData.aktif
-        };
-        
-        console.log('📤 Sending product data:', productData);
-        
-        showLoading(true);
-        
-        try {
-            let response;
-            if (editingProductId) {
-                response = await fetchWithRetry(`${API_BASE_URL}/api/products/${editingProductId}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(productData)
-                });
-            } else {
-                response = await fetchWithRetry(`${API_BASE_URL}/api/products/${currentWebsite.id}`, {
-                    method: 'POST',
-                    body: JSON.stringify(productData)
-                });
-            }
-            
-            if (response.success) {
-                showToast(
-                    editingProductId ? '✅ Produk diperbarui' : '✅ Produk ditambahkan',
-                    'success'
-                );
-                closeModal();
-                await loadProducts(currentWebsite.id);
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan');
-            }
-        } catch (error) {
-            console.error('❌ Error saving product:', error);
-            showToast(error.message, 'error');
+            console.error('❌ Error loading data:', error);
+            showToast('Gagal memuat data', 'error');
         } finally {
             showLoading(false);
         }
-    }
-
-    async function deleteProduct(productId) {
-        if (!currentWebsite) return;
-        
-        showLoading(true);
-        
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/products/${productId}`, {
-                method: 'DELETE'
-            });
-            
-            if (response.success) {
-                showToast('✅ Produk dihapus', 'success');
-                elements.deleteModal.classList.remove('active');
-                await loadProducts(currentWebsite.id);
-            } else {
-                throw new Error(response.error || 'Gagal menghapus');
-            }
-        } catch (error) {
-            console.error('❌ Error deleting product:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
-        }
-    }
-
-    // ==================== FILTER FUNCTIONS ====================
-    function applyFilters() {
-        filteredProducts = products.filter(p => {
-            // Search filter
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
-                const match = 
-                    (p.layanan || '').toLowerCase().includes(query) ||
-                    (p.aplikasi || '').toLowerCase().includes(query) ||
-                    (p.item_nama || '').toLowerCase().includes(query);
-                if (!match) return false;
-            }
-            
-            // Method filter
-            if (methodFilter !== 'all' && p.method !== methodFilter) {
-                return false;
-            }
-            
-            // Status filter
-            if (statusFilter !== 'all') {
-                const isActive = p.aktif ? 'active' : 'inactive';
-                if (isActive !== statusFilter) return false;
-            }
-            
-            return true;
-        });
-        
-        renderProducts();
     }
 
     // ==================== RENDER FUNCTIONS ====================
-    // 🔥 DITAMBAH: Tombol manage di setiap layanan dan aplikasi
     function renderProducts() {
-        if (!elements.productsTree) return;
+        if (!elements.productsContainer) return;
         
-        if (filteredProducts.length === 0) {
-            elements.productsTree.innerHTML = '';
+        if (productsData.length === 0) {
+            elements.productsContainer.innerHTML = '';
             elements.emptyState.style.display = 'block';
             return;
         }
         
         elements.emptyState.style.display = 'none';
         
-        // Group by layanan
-        const grouped = {};
-        filteredProducts.forEach(p => {
-            if (!grouped[p.layanan]) {
-                grouped[p.layanan] = {
-                    gambar: p.layanan_gambar || '',
-                    desc: p.layanan_desc || '',
-                    aplikasi: {}
-                };
-            }
-            
-            if (!grouped[p.layanan].aplikasi[p.aplikasi]) {
-                grouped[p.layanan].aplikasi[p.aplikasi] = {
-                    gambar: p.aplikasi_gambar || '',
-                    desc: p.aplikasi_desc || '',
-                    items: []
-                };
-            }
-            
-            grouped[p.layanan].aplikasi[p.aplikasi].items.push(p);
-        });
-        
         let html = '';
         
-        for (const [layanan, layananData] of Object.entries(grouped)) {
+        productsData.forEach(layanan => {
             html += `
                 <div class="layanan-card">
-                    <div class="layanan-header" onclick="toggleLayanan(this)">
+                    <div class="layanan-header">
                         <div class="layanan-icon">
-                            ${layananData.gambar ? 
-                                `<img src="${escapeHtml(layananData.gambar)}" alt="${escapeHtml(layanan)}">` : 
+                            ${layanan.layanan_gambar ? 
+                                `<img src="${escapeHtml(layanan.layanan_gambar)}" alt="${escapeHtml(layanan.layanan_nama)}">` : 
                                 `<i class="fas fa-layer-group"></i>`
                             }
                         </div>
                         <div class="layanan-info">
-                            <div class="layanan-nama">${escapeHtml(layanan)}</div>
-                            ${layananData.desc ? `<div class="layanan-desc">${escapeHtml(layananData.desc)}</div>` : ''}
+                            <div class="layanan-nama">${escapeHtml(layanan.layanan_nama)}</div>
+                            ${layanan.layanan_desc ? `<div class="layanan-desc">${escapeHtml(layanan.layanan_desc)}</div>` : ''}
                         </div>
                         <div class="layanan-actions">
-                            <!-- 🔥 TOMBOL MANAGE LAYANAN (BARU) -->
-                            <button class="btn-manage manage-layanan" data-tooltip="Kelola Layanan" onclick="event.stopPropagation(); window.produk.manageLayanan('${escapeHtml(layanan)}')">
-                                <i class="fas fa-cog"></i>
+                            <button class="btn-icon edit" onclick="window.produk.editLayanan('${escapeHtml(layanan.layanan_nama)}')" title="Edit Layanan">
+                                <i class="fas fa-edit"></i>
                             </button>
-                            <button class="layanan-toggle" onclick="event.stopPropagation(); toggleLayanan(this)">
-                                <i class="fas fa-chevron-down"></i>
+                            <button class="btn-icon delete" onclick="window.produk.deleteLayanan('${escapeHtml(layanan.layanan_nama)}')" title="Hapus Layanan">
+                                <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="layanan-content">
+                    
+                    <div class="layanan-banner">
+                        ${layanan.layanan_banner ? 
+                            `<img src="${escapeHtml(layanan.layanan_banner)}" alt="Banner" onerror="this.style.display='none'">` : ''
+                        }
+                    </div>
+                    
+                    <div class="layanan-catatan">
+                        ${layanan.layanan_catatan ? 
+                            `<small><i class="fas fa-sticky-note"></i> ${escapeHtml(layanan.layanan_catatan)}</small>` : ''
+                        }
+                    </div>
+                    
+                    <div class="aplikasi-container">
             `;
             
-            for (const [aplikasi, appData] of Object.entries(layananData.aplikasi)) {
+            layanan.aplikasi.forEach(aplikasi => {
                 html += `
                     <div class="aplikasi-card">
-                        <div class="aplikasi-header" onclick="toggleAplikasi(this)">
+                        <div class="aplikasi-header">
                             <div class="aplikasi-logo">
-                                ${appData.gambar ? 
-                                    `<img src="${escapeHtml(appData.gambar)}" alt="${escapeHtml(aplikasi)}">` : 
+                                ${aplikasi.aplikasi_gambar ? 
+                                    `<img src="${escapeHtml(aplikasi.aplikasi_gambar)}" alt="${escapeHtml(aplikasi.aplikasi_nama)}">` : 
                                     `<i class="fas fa-mobile-alt"></i>`
                                 }
                             </div>
                             <div class="aplikasi-info">
-                                <div class="aplikasi-nama">${escapeHtml(aplikasi)}</div>
-                                ${appData.desc ? `<div class="aplikasi-desc">${escapeHtml(appData.desc)}</div>` : ''}
+                                <div class="aplikasi-nama">${escapeHtml(aplikasi.aplikasi_nama)}</div>
+                                ${aplikasi.aplikasi_desc ? `<div class="aplikasi-desc">${escapeHtml(aplikasi.aplikasi_desc)}</div>` : ''}
                             </div>
-                            <span class="aplikasi-count">${appData.items.length} item</span>
                             <div class="aplikasi-actions">
-                                <!-- 🔥 TOMBOL MANAGE APLIKASI (BARU) -->
-                                <button class="btn-manage manage-aplikasi" data-tooltip="Kelola Aplikasi" onclick="event.stopPropagation(); window.produk.manageAplikasi('${escapeHtml(layanan)}', '${escapeHtml(aplikasi)}')">
-                                    <i class="fas fa-cog"></i>
+                                <button class="btn-icon edit" onclick="window.produk.editAplikasi('${escapeHtml(layanan.layanan_nama)}', '${escapeHtml(aplikasi.aplikasi_nama)}')" title="Edit Aplikasi">
+                                    <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="aplikasi-toggle" onclick="event.stopPropagation(); toggleAplikasi(this)">
-                                    <i class="fas fa-chevron-down"></i>
+                                <button class="btn-icon delete" onclick="window.produk.deleteAplikasi('${escapeHtml(layanan.layanan_nama)}', '${escapeHtml(aplikasi.aplikasi_nama)}')" title="Hapus Aplikasi">
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="aplikasi-items">
+                        
+                        <div class="aplikasi-catatan">
+                            ${aplikasi.aplikasi_catatan ? 
+                                `<small><i class="fas fa-sticky-note"></i> ${escapeHtml(aplikasi.aplikasi_catatan)}</small>` : ''
+                            }
+                        </div>
+                        
+                        <div class="items-container">
                 `;
                 
-                appData.items.forEach(item => {
-                    const stockCount = item.method === 'directly' ? (item.stok?.length || 0) : 0;
-                    const stockClass = stockCount === 0 ? 'habis' : stockCount <= 5 ? 'low' : '';
+                aplikasi.items.forEach(item => {
+                    const durasi = formatDurasi(item.item_durasi_jumlah, item.item_durasi_satuan);
+                    const tipeClass = item.item_tipe === 'seller' ? 'seller' : item.item_tipe === 'buyer' ? 'buyer' : '';
+                    const readyClass = item.item_ready ? 'ready' : 'sold';
+                    const metode = item.item_metode || 'directly';
+                    const stokCount = metode === 'directly' ? (item.item_stok?.length || 0) : 0;
                     
                     html += `
-                        <div class="item-row" data-id="${item.id}">
+                        <div class="item-card ${readyClass}" data-id="${item.id}">
                             <div class="item-info">
-                                <div class="item-nama">${escapeHtml(item.item_nama)}</div>
-                                ${item.item_durasi ? `<div class="item-durasi">${escapeHtml(item.item_durasi)}</div>` : ''}
+                                <div class="item-nama">
+                                    ${escapeHtml(item.item_nama)}
+                                    ${tipeClass ? `<span class="item-tipe ${tipeClass}">${tipeClass}</span>` : ''}
+                                </div>
+                                ${durasi ? `<div class="item-durasi">${escapeHtml(durasi)}</div>` : ''}
                                 <div class="item-meta">
-                                    <span class="item-harga">${formatRupiah(item.harga)}</span>
-                                    ${item.fitur !== 'biasa' ? 
-                                        `<span class="item-badge ${item.fitur}">${item.fitur}</span>` : ''}
-                                    <span class="item-method ${item.method}">
-                                        <i class="fas fa-${item.method === 'directly' ? 'bolt' : 'clipboard-list'}"></i>
-                                        ${item.method === 'directly' ? 'Direct' : 'Request'}
+                                    <span class="item-harga">${formatRupiah(item.item_harga)}</span>
+                                    <span class="item-metode ${metode}">
+                                        <i class="fas fa-${metode === 'directly' ? 'bolt' : 'clipboard-list'}"></i>
+                                        ${metode === 'directly' ? 'Direct' : 'Request'}
                                     </span>
-                                    ${item.method === 'directly' ? `
-                                        <span class="item-stok ${stockClass}">
+                                    ${metode === 'directly' ? `
+                                        <span class="item-stok ${stokCount === 0 ? 'habis' : ''}">
                                             <i class="fas fa-cubes"></i>
-                                            ${stockCount} stok
+                                            ${stokCount} stok
                                         </span>
                                     ` : ''}
+                                    <span class="item-status ${readyClass}">
+                                        <i class="fas fa-${item.item_ready ? 'check-circle' : 'times-circle'}"></i>
+                                        ${item.item_ready ? 'Ready' : 'Sold'}
+                                    </span>
                                 </div>
                             </div>
                             <div class="item-actions">
-                                <button class="btn-icon edit" onclick="window.produk.editProduct(${item.id})" title="Edit">
+                                <button class="btn-icon edit" onclick="window.produk.editItem(${item.id})" title="Edit Item">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn-icon delete" onclick="window.produk.deleteProduct(${item.id})" title="Hapus">
+                                <button class="btn-icon delete" onclick="window.produk.deleteItem(${item.id})" title="Hapus Item">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -471,214 +366,244 @@
                 });
                 
                 html += `
+                            <button class="btn-add-item" onclick="window.produk.addItem('${escapeHtml(layanan.layanan_nama)}', '${escapeHtml(aplikasi.aplikasi_nama)}')">
+                                <i class="fas fa-plus"></i> Tambah Item
+                            </button>
                         </div>
                     </div>
                 `;
-            }
+            });
             
             html += `
+                        <button class="btn-add-aplikasi" onclick="window.produk.addAplikasi('${escapeHtml(layanan.layanan_nama)}')">
+                            <i class="fas fa-plus"></i> Tambah Aplikasi
+                        </button>
                     </div>
                 </div>
             `;
-        }
-        
-        elements.productsTree.innerHTML = html;
-    }
-
-    // ==================== FORM FUNCTIONS ====================
-    function resetForm() {
-        formData = {
-            layanan: '',
-            layananGambar: '',
-            layananDesc: '',
-            aplikasi: '',
-            aplikasiGambar: '',
-            aplikasiDesc: '',
-            itemNama: '',
-            itemDurasi: '',
-            harga: 0,
-            fitur: 'biasa',
-            method: 'directly',
-            stok: [],
-            fields: [],
-            aktif: true
-        };
-        
-        editingProductId = null;
-        
-        // Reset inputs
-        if (elements.layananInput) {
-            elements.layananInput.value = '';
-            elements.layananInput.disabled = false;
-            elements.layananInput.classList.remove('disabled');
-        }
-        if (elements.layananGambarInput) elements.layananGambarInput.value = '';
-        if (elements.layananDescInput) elements.layananDescInput.value = '';
-        
-        if (elements.aplikasiInput) {
-            elements.aplikasiInput.value = '';
-            elements.aplikasiInput.disabled = false;
-            elements.aplikasiInput.classList.remove('disabled');
-        }
-        if (elements.aplikasiGambarInput) elements.aplikasiGambarInput.value = '';
-        if (elements.aplikasiDescInput) elements.aplikasiDescInput.value = '';
-        
-        if (elements.itemNamaInput) elements.itemNamaInput.value = '';
-        if (elements.itemDurasiInput) elements.itemDurasiInput.value = '';
-        if (elements.itemHargaInput) elements.itemHargaInput.value = '';
-        if (elements.itemFiturInput) elements.itemFiturInput.value = 'biasa';
-        
-        // Reset method
-        elements.methodRadios.forEach(radio => {
-            if (radio.value === 'directly') radio.checked = true;
         });
-        updateMethodUI('directly');
         
-        // Reset stok & fields
-        formData.stok = [];
-        formData.fields = [];
-        renderStokList();
-        renderFieldsList();
-        
-        if (elements.produkAktif) elements.produkAktif.checked = true;
+        elements.productsContainer.innerHTML = html;
     }
 
-    // 🔥 FUNGSI BARU: Manage Layanan
-    function manageLayanan(layanan) {
-        resetForm();
-        
-        // Set layanan dan disable input
-        formData.layanan = layanan;
-        elements.layananInput.value = layanan;
-        elements.layananInput.disabled = true;
-        elements.layananInput.classList.add('disabled');
-        
-        // Tambah info manage
-        const infoHtml = `
-            <div class="manage-info">
-                <i class="fas fa-layer-group"></i>
-                <span>Menambah produk untuk layanan: <strong>${escapeHtml(layanan)}</strong></span>
-            </div>
-        `;
-        
-        // Sisipkan info di awal form
-        const form = elements.productForm;
-        const existingInfo = form.querySelector('.manage-info');
-        if (existingInfo) existingInfo.remove();
-        form.insertAdjacentHTML('afterbegin', infoHtml);
-        
-        elements.modalTitle.textContent = `Tambah Produk untuk Layanan: ${layanan}`;
-        elements.productModal.classList.add('active');
-        vibrate(10);
-    }
-
-    // 🔥 FUNGSI BARU: Manage Aplikasi
-    function manageAplikasi(layanan, aplikasi) {
-        resetForm();
-        
-        // Set layanan dan aplikasi, disable input
-        formData.layanan = layanan;
-        formData.aplikasi = aplikasi;
-        
-        elements.layananInput.value = layanan;
-        elements.layananInput.disabled = true;
-        elements.layananInput.classList.add('disabled');
-        
-        elements.aplikasiInput.value = aplikasi;
-        elements.aplikasiInput.disabled = true;
-        elements.aplikasiInput.classList.add('disabled');
-        
-        // Tambah info manage
-        const infoHtml = `
-            <div class="manage-info aplikasi">
-                <i class="fas fa-mobile-alt"></i>
-                <span>Menambah produk untuk aplikasi: <strong>${escapeHtml(aplikasi)}</strong> (Layanan: ${escapeHtml(layanan)})</span>
-            </div>
-        `;
-        
-        // Sisipkan info di awal form
-        const form = elements.productForm;
-        const existingInfo = form.querySelector('.manage-info');
-        if (existingInfo) existingInfo.remove();
-        form.insertAdjacentHTML('afterbegin', infoHtml);
-        
-        elements.modalTitle.textContent = `Tambah Produk untuk Aplikasi: ${aplikasi}`;
-        elements.productModal.classList.add('active');
-        vibrate(10);
-    }
-
-    function loadProductForEdit(product) {
-        editingProductId = product.id;
-        
-        // Mapping dari database (underscore) ke form (camelCase)
-        formData = {
-            layanan: product.layanan || '',
-            layananGambar: product.layanan_gambar || '',
-            layananDesc: product.layanan_desc || '',
-            aplikasi: product.aplikasi || '',
-            aplikasiGambar: product.aplikasi_gambar || '',
-            aplikasiDesc: product.aplikasi_desc || '',
-            itemNama: product.item_nama || '',
-            itemDurasi: product.item_durasi || '',
-            harga: product.harga || 0,
-            fitur: product.fitur || 'biasa',
-            method: product.method || 'directly',
-            stok: product.stok || [],
-            fields: product.fields || [],
-            aktif: product.aktif !== false
-        };
-        
-        // Fill inputs
-        elements.layananInput.value = formData.layanan;
-        elements.layananGambarInput.value = formData.layananGambar;
-        elements.layananDescInput.value = formData.layananDesc;
-        elements.aplikasiInput.value = formData.aplikasi;
-        elements.aplikasiGambarInput.value = formData.aplikasiGambar;
-        elements.aplikasiDescInput.value = formData.aplikasiDesc;
-        elements.itemNamaInput.value = formData.itemNama;
-        elements.itemDurasiInput.value = formData.itemDurasi;
-        elements.itemHargaInput.value = formData.harga;
-        elements.itemFiturInput.value = formData.fitur;
-        
-        // Set method
-        elements.methodRadios.forEach(radio => {
-            if (radio.value === formData.method) radio.checked = true;
-        });
-        updateMethodUI(formData.method);
-        
-        // Render stok & fields
-        renderStokList();
-        renderFieldsList();
-        
-        elements.produkAktif.checked = formData.aktif;
-        elements.modalTitle.textContent = 'Edit Produk';
-    }
-
-    function updateMethodUI(method) {
-        if (method === 'directly') {
-            elements.directlyPanel.style.display = 'block';
-            elements.requestPanel.style.display = 'none';
+    // ==================== LAYANAN FUNCTIONS ====================
+    function openLayananModal(layanan = null) {
+        if (layanan) {
+            elements.layananModalTitle.textContent = 'Edit Layanan';
+            elements.layananNama.value = layanan.layanan_nama || '';
+            elements.layananGambar.value = layanan.layanan_gambar || '';
+            elements.layananBanner.value = layanan.layanan_banner || '';
+            elements.layananDesc.value = layanan.layanan_desc || '';
+            elements.layananCatatan.value = layanan.layanan_catatan || '';
         } else {
-            elements.directlyPanel.style.display = 'none';
-            elements.requestPanel.style.display = 'block';
+            elements.layananModalTitle.textContent = 'Tambah Layanan';
+            elements.layananForm.reset();
         }
-        formData.method = method;
+        
+        elements.layananModal.classList.add('active');
+        vibrate(10);
     }
 
-    // ==================== STOK FUNCTIONS ====================
-    function renderStokList() {
-        if (!elements.stokList) return;
+    function closeLayananModal() {
+        elements.layananModal.classList.remove('active');
+    }
+
+    async function saveLayanan(e) {
+        e.preventDefault();
         
-        if (formData.stok.length === 0) {
-            elements.stokList.innerHTML = '';
-            elements.emptyStok.style.display = 'block';
+        if (!currentWebsite) return;
+        
+        const data = {
+            layanan_nama: elements.layananNama.value.trim(),
+            layanan_gambar: elements.layananGambar.value.trim(),
+            layanan_banner: elements.layananBanner.value.trim(),
+            layanan_desc: elements.layananDesc.value.trim(),
+            layanan_catatan: elements.layananCatatan.value.trim()
+        };
+        
+        if (!data.layanan_nama) {
+            showToast('Nama layanan wajib diisi', 'warning');
             return;
         }
         
-        elements.emptyStok.style.display = 'none';
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/products/layanan/${currentWebsite.id}`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.success) {
+                showToast('✅ Layanan disimpan', 'success');
+                closeLayananModal();
+                await loadAllData();
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan');
+            }
+        } catch (error) {
+            console.error('❌ Error saving layanan:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ==================== APLIKASI FUNCTIONS ====================
+    function openAplikasiModal(layananNama, aplikasi = null) {
+        elements.aplikasiLayananNama.value = layananNama;
+        
+        if (aplikasi) {
+            elements.aplikasiModalTitle.textContent = 'Edit Aplikasi';
+            elements.aplikasiNama.value = aplikasi.aplikasi_nama || '';
+            elements.aplikasiGambar.value = aplikasi.aplikasi_gambar || '';
+            elements.aplikasiDesc.value = aplikasi.aplikasi_desc || '';
+            elements.aplikasiCatatan.value = aplikasi.aplikasi_catatan || '';
+        } else {
+            elements.aplikasiModalTitle.textContent = 'Tambah Aplikasi';
+            elements.aplikasiForm.reset();
+            elements.aplikasiLayananNama.value = layananNama;
+        }
+        
+        elements.aplikasiModal.classList.add('active');
+        vibrate(10);
+    }
+
+    function closeAplikasiModal() {
+        elements.aplikasiModal.classList.remove('active');
+    }
+
+    async function saveAplikasi(e) {
+        e.preventDefault();
+        
+        if (!currentWebsite) return;
+        
+        const layananNama = elements.aplikasiLayananNama.value;
+        const data = {
+            aplikasi_nama: elements.aplikasiNama.value.trim(),
+            aplikasi_gambar: elements.aplikasiGambar.value.trim(),
+            aplikasi_desc: elements.aplikasiDesc.value.trim(),
+            aplikasi_catatan: elements.aplikasiCatatan.value.trim()
+        };
+        
+        if (!data.aplikasi_nama) {
+            showToast('Nama aplikasi wajib diisi', 'warning');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/products/aplikasi/${currentWebsite.id}/${encodeURIComponent(layananNama)}`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.success) {
+                showToast('✅ Aplikasi disimpan', 'success');
+                closeAplikasiModal();
+                await loadAllData();
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan');
+            }
+        } catch (error) {
+            console.error('❌ Error saving aplikasi:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ==================== ITEM FUNCTIONS ====================
+    function openItemModal(layananNama, aplikasiNama, item = null) {
+        currentLayanan = layananNama;
+        currentAplikasi = aplikasiNama;
+        
+        if (item) {
+            currentItem = item;
+            elements.itemModalTitle.textContent = 'Edit Item';
+            elements.itemId.value = item.id || '';
+            elements.itemNama.value = item.item_nama || '';
+            elements.itemDurasiJumlah.value = item.item_durasi_jumlah || 0;
+            elements.itemDurasiSatuan.value = item.item_durasi_satuan || 'hari';
+            elements.itemHarga.value = item.item_harga || 0;
+            
+            // Set tipe
+            elements.itemTipeRadios.forEach(radio => {
+                if (radio.value === (item.item_tipe || '')) {
+                    radio.checked = true;
+                }
+            });
+            
+            // Set metode
+            elements.itemMetodeRadios.forEach(radio => {
+                if (radio.value === (item.item_metode || 'directly')) {
+                    radio.checked = true;
+                }
+            });
+            
+            // Set stok & fields
+            currentItemStok = item.item_stok || [];
+            currentItemFields = item.item_fields || [];
+            
+            // Set ready
+            elements.itemReadyRadios.forEach(radio => {
+                if (radio.value === (item.item_ready ? 'ready' : 'sold')) {
+                    radio.checked = true;
+                }
+            });
+        } else {
+            elements.itemModalTitle.textContent = 'Tambah Item';
+            elements.itemForm.reset();
+            elements.itemDurasiJumlah.value = 1;
+            elements.itemDurasiSatuan.value = 'hari';
+            elements.itemTipeRadios[0].checked = true; // seller
+            elements.itemMetodeRadios[0].checked = true; // directly
+            elements.itemReadyRadios[0].checked = true; // ready
+            currentItemStok = [];
+            currentItemFields = [];
+        }
+        
+        updateItemMethodUI();
+        renderItemStokList();
+        renderItemFieldsList();
+        
+        elements.itemModal.classList.add('active');
+        vibrate(10);
+    }
+
+    function closeItemModal() {
+        elements.itemModal.classList.remove('active');
+        currentItem = null;
+        currentItemStok = [];
+        currentItemFields = [];
+    }
+
+    function updateItemMethodUI() {
+        const metode = document.querySelector('input[name="itemMetode"]:checked')?.value || 'directly';
+        
+        if (metode === 'directly') {
+            elements.itemDirectlyPanel.style.display = 'block';
+            elements.itemRequestPanel.style.display = 'none';
+        } else {
+            elements.itemDirectlyPanel.style.display = 'none';
+            elements.itemRequestPanel.style.display = 'block';
+        }
+    }
+
+    function renderItemStokList() {
+        if (!elements.itemStokList) return;
+        
+        if (currentItemStok.length === 0) {
+            elements.itemStokList.innerHTML = '';
+            elements.emptyItemStok.style.display = 'block';
+            return;
+        }
+        
+        elements.emptyItemStok.style.display = 'none';
         
         let html = '';
-        formData.stok.forEach((item, index) => {
+        currentItemStok.forEach((item, index) => {
             html += `
                 <div class="stok-item" data-index="${index}">
                     <span class="stok-item-data">${escapeHtml(item)}</span>
@@ -694,23 +619,22 @@
             `;
         });
         
-        elements.stokList.innerHTML = html;
+        elements.itemStokList.innerHTML = html;
     }
 
-    // ==================== FIELDS FUNCTIONS ====================
-    function renderFieldsList() {
-        if (!elements.fieldsList) return;
+    function renderItemFieldsList() {
+        if (!elements.itemFieldsList) return;
         
-        if (formData.fields.length === 0) {
-            elements.fieldsList.innerHTML = '';
-            elements.emptyFields.style.display = 'block';
+        if (currentItemFields.length === 0) {
+            elements.itemFieldsList.innerHTML = '';
+            elements.emptyItemFields.style.display = 'block';
             return;
         }
         
-        elements.emptyFields.style.display = 'none';
+        elements.emptyItemFields.style.display = 'none';
         
         let html = '';
-        formData.fields.forEach((field, index) => {
+        currentItemFields.forEach((field, index) => {
             html += `
                 <div class="field-item" data-index="${index}">
                     <div class="field-info">
@@ -731,63 +655,93 @@
             `;
         });
         
-        elements.fieldsList.innerHTML = html;
+        elements.itemFieldsList.innerHTML = html;
     }
 
-    // ==================== MODAL FUNCTIONS ====================
-    function openModal() {
-        resetForm();
+    async function saveItem(e) {
+        e.preventDefault();
         
-        // Hapus info manage jika ada
-        const existingInfo = elements.productForm.querySelector('.manage-info');
-        if (existingInfo) existingInfo.remove();
+        if (!currentWebsite || !currentLayanan || !currentAplikasi) return;
         
-        elements.modalTitle.textContent = 'Tambah Produk';
-        elements.productModal.classList.add('active');
-        vibrate(10);
+        const tipe = document.querySelector('input[name="itemTipe"]:checked')?.value || '';
+        const metode = document.querySelector('input[name="itemMetode"]:checked')?.value || 'directly';
+        const ready = document.querySelector('input[name="itemReady"]:checked')?.value === 'ready';
+        
+        const data = {
+            id: elements.itemId.value ? parseInt(elements.itemId.value) : null,
+            item_nama: elements.itemNama.value.trim(),
+            item_durasi_jumlah: parseInt(elements.itemDurasiJumlah.value) || 0,
+            item_durasi_satuan: elements.itemDurasiSatuan.value,
+            item_harga: parseInt(elements.itemHarga.value) || 0,
+            item_tipe: tipe,
+            item_metode: metode,
+            item_stok: metode === 'directly' ? currentItemStok : [],
+            item_fields: metode === 'request' ? currentItemFields : [],
+            item_ready: ready,
+            aktif: true
+        };
+        
+        if (!data.item_nama) {
+            showToast('Nama item wajib diisi', 'warning');
+            return;
+        }
+        
+        if (data.item_harga <= 0) {
+            showToast('Harga wajib diisi dan lebih dari 0', 'warning');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(
+                `${API_BASE_URL}/api/products/item/${currentWebsite.id}/${encodeURIComponent(currentLayanan)}/${encodeURIComponent(currentAplikasi)}`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                }
+            );
+            
+            if (response.success) {
+                showToast('✅ Item disimpan', 'success');
+                closeItemModal();
+                await loadAllData();
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan');
+            }
+        } catch (error) {
+            console.error('❌ Error saving item:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
     }
 
-    function closeModal() {
-        elements.productModal.classList.remove('active');
-        resetForm();
-    }
-
-    function openDeleteModal(productId) {
-        const product = products.find(p => p.id === productId);
-        if (!product) return;
+    // ==================== DELETE FUNCTIONS ====================
+    function openDeleteModal(type, name, callback) {
+        let message = '';
+        switch(type) {
+            case 'layanan':
+                message = `Hapus layanan "${name}"? Semua aplikasi dan item di dalamnya akan ikut terhapus.`;
+                break;
+            case 'aplikasi':
+                message = `Hapus aplikasi "${name}"? Semua item di dalamnya akan ikut terhapus.`;
+                break;
+            case 'item':
+                message = `Hapus item "${name}"?`;
+                break;
+        }
         
-        elements.deleteInfo.innerHTML = `
-            <strong>${escapeHtml(product.item_nama)}</strong><br>
-            <small>${escapeHtml(product.aplikasi)} • ${escapeHtml(product.layanan)}</small>
-        `;
+        elements.deleteMessage.textContent = message;
+        elements.deleteInfo.innerHTML = `<strong>${escapeHtml(name)}</strong>`;
         
         elements.deleteModal.classList.add('active');
-        window._deletingProductId = productId;
+        window._deleteCallback = callback;
     }
 
-    // ==================== VALIDATION ====================
-    function validateForm() {
-        if (!formData.layanan) {
-            showToast('Nama layanan wajib diisi', 'warning');
-            elements.layananInput.focus();
-            return false;
-        }
-        if (!formData.aplikasi) {
-            showToast('Nama aplikasi wajib diisi', 'warning');
-            elements.aplikasiInput.focus();
-            return false;
-        }
-        if (!formData.itemNama) {
-            showToast('Nama item wajib diisi', 'warning');
-            elements.itemNamaInput.focus();
-            return false;
-        }
-        if (!formData.harga || formData.harga <= 0) {
-            showToast('Harga wajib diisi dan lebih dari 0', 'warning');
-            elements.itemHargaInput.focus();
-            return false;
-        }
-        return true;
+    function closeDeleteModal() {
+        elements.deleteModal.classList.remove('active');
+        window._deleteCallback = null;
     }
 
     // ==================== INITIALIZATION ====================
@@ -795,25 +749,10 @@
         showLoading(true);
         
         try {
-            // Load website data
             currentWebsite = await loadWebsite();
             if (!currentWebsite) return;
             
-            // Load products
-            await loadProducts(currentWebsite.id);
-            
-            // Check for edit parameter
-            const urlParams = new URLSearchParams(window.location.search);
-            const editId = urlParams.get('edit');
-            if (editId) {
-                const product = products.find(p => p.id === parseInt(editId));
-                if (product) {
-                    setTimeout(() => {
-                        loadProductForEdit(product);
-                        elements.productModal.classList.add('active');
-                    }, 500);
-                }
-            }
+            await loadAllData();
             
         } catch (error) {
             console.error('❌ Init error:', error);
@@ -833,244 +772,239 @@
             });
         }
         
-        // Add product buttons
-        if (elements.addProductBtn) {
-            elements.addProductBtn.addEventListener('click', openModal);
-        }
-        if (elements.emptyAddBtn) {
-            elements.emptyAddBtn.addEventListener('click', openModal);
-        }
+        // Add Layanan button (from empty state)
+        document.getElementById('addLayananBtn').addEventListener('click', () => openLayananModal());
         
-        // Close modal
-        if (elements.closeModalBtn) {
-            elements.closeModalBtn.addEventListener('click', closeModal);
-        }
-        if (elements.cancelFormBtn) {
-            elements.cancelFormBtn.addEventListener('click', closeModal);
-        }
+        // Layanan modal
+        elements.closeLayananModal.addEventListener('click', closeLayananModal);
+        elements.cancelLayananBtn.addEventListener('click', closeLayananModal);
+        elements.layananForm.addEventListener('submit', saveLayanan);
         
-        // Form submit
-        if (elements.productForm) {
-            elements.productForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                
-                // Update formData from inputs
-                formData.layanan = elements.layananInput.value;
-                formData.layananGambar = elements.layananGambarInput.value;
-                formData.layananDesc = elements.layananDescInput.value;
-                formData.aplikasi = elements.aplikasiInput.value;
-                formData.aplikasiGambar = elements.aplikasiGambarInput.value;
-                formData.aplikasiDesc = elements.aplikasiDescInput.value;
-                formData.itemNama = elements.itemNamaInput.value;
-                formData.itemDurasi = elements.itemDurasiInput.value;
-                formData.harga = parseInt(elements.itemHargaInput.value) || 0;
-                formData.fitur = elements.itemFiturInput.value;
-                formData.aktif = elements.produkAktif.checked;
-                
-                if (validateForm()) {
-                    saveProduct();
-                }
-            });
-        }
+        // Aplikasi modal
+        elements.closeAplikasiModal.addEventListener('click', closeAplikasiModal);
+        elements.cancelAplikasiBtn.addEventListener('click', closeAplikasiModal);
+        elements.aplikasiForm.addEventListener('submit', saveAplikasi);
+        
+        // Item modal
+        elements.closeItemModal.addEventListener('click', closeItemModal);
+        elements.cancelItemBtn.addEventListener('click', closeItemModal);
+        elements.itemForm.addEventListener('submit', saveItem);
         
         // Method change
-        elements.methodRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                updateMethodUI(e.target.value);
-            });
+        elements.itemMetodeRadios.forEach(radio => {
+            radio.addEventListener('change', updateItemMethodUI);
         });
         
         // Stok modal
-        if (elements.addStokBtn) {
-            elements.addStokBtn.addEventListener('click', () => {
-                elements.stokDataInput.value = '';
-                elements.stokModal.classList.add('active');
-            });
-        }
+        elements.addItemStokBtn.addEventListener('click', () => {
+            elements.stokDataInput.value = '';
+            elements.stokModal.classList.add('active');
+        });
         
-        if (elements.closeStokModal) {
-            elements.closeStokModal.addEventListener('click', () => {
+        elements.closeStokModal.addEventListener('click', () => {
+            elements.stokModal.classList.remove('active');
+        });
+        
+        elements.cancelStokBtn.addEventListener('click', () => {
+            elements.stokModal.classList.remove('active');
+        });
+        
+        elements.confirmStokBtn.addEventListener('click', () => {
+            const data = elements.stokDataInput.value;
+            if (data.trim()) {
+                const lines = data.split('\n').map(l => l.trim()).filter(l => l);
+                currentItemStok = [...currentItemStok, ...lines];
+                renderItemStokList();
                 elements.stokModal.classList.remove('active');
-            });
-        }
-        
-        if (elements.cancelStokBtn) {
-            elements.cancelStokBtn.addEventListener('click', () => {
-                elements.stokModal.classList.remove('active');
-            });
-        }
-        
-        if (elements.confirmStokBtn) {
-            elements.confirmStokBtn.addEventListener('click', () => {
-                const data = elements.stokDataInput.value;
-                if (data.trim()) {
-                    const lines = data.split('\n').map(l => l.trim()).filter(l => l);
-                    formData.stok = [...formData.stok, ...lines];
-                    renderStokList();
-                    elements.stokModal.classList.remove('active');
-                    showToast(`✅ ${lines.length} data stok ditambahkan`, 'success');
-                }
-            });
-        }
+                showToast(`✅ ${lines.length} data stok ditambahkan`, 'success');
+            }
+        });
         
         // Field modal
-        if (elements.addFieldBtn) {
-            elements.addFieldBtn.addEventListener('click', () => {
-                elements.fieldNamaInput.value = '';
-                elements.fieldTipeInput.value = 'text';
-                elements.fieldPlaceholderInput.value = '';
-                elements.fieldRequiredInput.checked = true;
-                elements.fieldModal.classList.add('active');
-            });
-        }
+        elements.addItemFieldBtn.addEventListener('click', () => {
+            elements.fieldNamaInput.value = '';
+            elements.fieldTipeInput.value = 'text';
+            elements.fieldPlaceholderInput.value = '';
+            elements.fieldRequiredInput.checked = true;
+            elements.fieldModal.classList.add('active');
+        });
         
-        if (elements.closeFieldModal) {
-            elements.closeFieldModal.addEventListener('click', () => {
-                elements.fieldModal.classList.remove('active');
-            });
-        }
+        elements.closeFieldModal.addEventListener('click', () => {
+            elements.fieldModal.classList.remove('active');
+        });
         
-        if (elements.cancelFieldBtn) {
-            elements.cancelFieldBtn.addEventListener('click', () => {
-                elements.fieldModal.classList.remove('active');
-            });
-        }
+        elements.cancelFieldBtn.addEventListener('click', () => {
+            elements.fieldModal.classList.remove('active');
+        });
         
-        if (elements.confirmFieldBtn) {
-            elements.confirmFieldBtn.addEventListener('click', () => {
-                const nama = elements.fieldNamaInput.value.trim();
-                if (!nama) {
-                    showToast('Nama field wajib diisi', 'warning');
-                    return;
-                }
-                
-                const field = {
-                    nama: nama,
-                    tipe: elements.fieldTipeInput.value,
-                    placeholder: elements.fieldPlaceholderInput.value,
-                    required: elements.fieldRequiredInput.checked
-                };
-                
-                formData.fields.push(field);
-                renderFieldsList();
-                elements.fieldModal.classList.remove('active');
-                showToast('✅ Field ditambahkan', 'success');
-            });
-        }
+        elements.confirmFieldBtn.addEventListener('click', () => {
+            const nama = elements.fieldNamaInput.value.trim();
+            if (!nama) {
+                showToast('Nama field wajib diisi', 'warning');
+                return;
+            }
+            
+            const field = {
+                nama: nama,
+                tipe: elements.fieldTipeInput.value,
+                placeholder: elements.fieldPlaceholderInput.value,
+                required: elements.fieldRequiredInput.checked
+            };
+            
+            currentItemFields.push(field);
+            renderItemFieldsList();
+            elements.fieldModal.classList.remove('active');
+            showToast('✅ Field ditambahkan', 'success');
+        });
         
         // Delete modal
-        if (elements.closeDeleteModal) {
-            elements.closeDeleteModal.addEventListener('click', () => {
-                elements.deleteModal.classList.remove('active');
-            });
-        }
+        elements.closeDeleteModal.addEventListener('click', closeDeleteModal);
+        elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
         
-        if (elements.cancelDeleteBtn) {
-            elements.cancelDeleteBtn.addEventListener('click', () => {
-                elements.deleteModal.classList.remove('active');
-            });
-        }
-        
-        if (elements.confirmDeleteBtn) {
-            elements.confirmDeleteBtn.addEventListener('click', () => {
-                if (window._deletingProductId) {
-                    deleteProduct(window._deletingProductId);
-                }
-            });
-        }
-        
-        // Filters
-        if (elements.searchInput) {
-            elements.searchInput.addEventListener('input', (e) => {
-                searchQuery = e.target.value;
-                applyFilters();
-            });
-        }
-        
-        if (elements.methodFilter) {
-            elements.methodFilter.addEventListener('change', (e) => {
-                methodFilter = e.target.value;
-                applyFilters();
-            });
-        }
-        
-        if (elements.statusFilter) {
-            elements.statusFilter.addEventListener('change', (e) => {
-                statusFilter = e.target.value;
-                applyFilters();
-            });
-        }
+        elements.confirmDeleteBtn.addEventListener('click', async () => {
+            if (window._deleteCallback) {
+                await window._deleteCallback();
+                closeDeleteModal();
+            }
+        });
         
         // Click outside modal
         window.addEventListener('click', (e) => {
-            if (e.target === elements.productModal) {
-                closeModal();
-            }
-            if (e.target === elements.stokModal) {
-                elements.stokModal.classList.remove('active');
-            }
-            if (e.target === elements.fieldModal) {
-                elements.fieldModal.classList.remove('active');
-            }
-            if (e.target === elements.deleteModal) {
-                elements.deleteModal.classList.remove('active');
-            }
+            if (e.target === elements.layananModal) closeLayananModal();
+            if (e.target === elements.aplikasiModal) closeAplikasiModal();
+            if (e.target === elements.itemModal) closeItemModal();
+            if (e.target === elements.stokModal) elements.stokModal.classList.remove('active');
+            if (e.target === elements.fieldModal) elements.fieldModal.classList.remove('active');
+            if (e.target === elements.deleteModal) closeDeleteModal();
         });
     }
 
-    // ==================== TOGGLE FUNCTIONS ====================
-    window.toggleLayanan = function(element) {
-        const header = element.closest('.layanan-header');
-        const content = header.nextElementSibling;
-        const toggle = header.querySelector('.layanan-toggle i');
-        
-        content.classList.toggle('open');
-        toggle.style.transform = content.classList.contains('open') ? 'rotate(180deg)' : '';
-    };
-
-    window.toggleAplikasi = function(element) {
-        const header = element.closest('.aplikasi-header');
-        const items = header.nextElementSibling;
-        const toggle = header.querySelector('.aplikasi-toggle i');
-        
-        items.classList.toggle('open');
-        toggle.style.transform = items.classList.contains('open') ? 'rotate(180deg)' : '';
-    };
-
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.produk = {
-        editProduct: (id) => {
-            const product = products.find(p => p.id === id);
-            if (product) {
-                loadProductForEdit(product);
-                elements.productModal.classList.add('active');
+        // Layanan
+        addLayanan: () => openLayananModal(),
+        editLayanan: (layananNama) => {
+            const layanan = productsData.find(l => l.layanan_nama === layananNama);
+            if (layanan) openLayananModal(layanan);
+        },
+        deleteLayanan: (layananNama) => {
+            openDeleteModal('layanan', layananNama, async () => {
+                if (!currentWebsite) return;
+                showLoading(true);
+                try {
+                    const response = await fetchWithRetry(
+                        `${API_BASE_URL}/api/products/layanan/${currentWebsite.id}/${encodeURIComponent(layananNama)}`,
+                        { method: 'DELETE' }
+                    );
+                    if (response.success) {
+                        showToast('✅ Layanan dihapus', 'success');
+                        await loadAllData();
+                    }
+                } catch (error) {
+                    showToast(error.message, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
+        },
+        
+        // Aplikasi
+        addAplikasi: (layananNama) => openAplikasiModal(layananNama),
+        editAplikasi: (layananNama, aplikasiNama) => {
+            const layanan = productsData.find(l => l.layanan_nama === layananNama);
+            if (layanan) {
+                const aplikasi = layanan.aplikasi.find(a => a.aplikasi_nama === aplikasiNama);
+                if (aplikasi) openAplikasiModal(layananNama, aplikasi);
             }
         },
-        deleteProduct: (id) => {
-            openDeleteModal(id);
+        deleteAplikasi: (layananNama, aplikasiNama) => {
+            openDeleteModal('aplikasi', aplikasiNama, async () => {
+                if (!currentWebsite) return;
+                showLoading(true);
+                try {
+                    const response = await fetchWithRetry(
+                        `${API_BASE_URL}/api/products/aplikasi/${currentWebsite.id}/${encodeURIComponent(layananNama)}/${encodeURIComponent(aplikasiNama)}`,
+                        { method: 'DELETE' }
+                    );
+                    if (response.success) {
+                        showToast('✅ Aplikasi dihapus', 'success');
+                        await loadAllData();
+                    }
+                } catch (error) {
+                    showToast(error.message, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
         },
+        
+        // Item
+        addItem: (layananNama, aplikasiNama) => openItemModal(layananNama, aplikasiNama),
+        editItem: (itemId) => {
+            for (const layanan of productsData) {
+                for (const aplikasi of layanan.aplikasi) {
+                    const item = aplikasi.items.find(i => i.id === itemId);
+                    if (item) {
+                        openItemModal(layanan.layanan_nama, aplikasi.aplikasi_nama, item);
+                        return;
+                    }
+                }
+            }
+        },
+        deleteItem: (itemId) => {
+            let itemNama = '';
+            for (const layanan of productsData) {
+                for (const aplikasi of layanan.aplikasi) {
+                    const item = aplikasi.items.find(i => i.id === itemId);
+                    if (item) {
+                        itemNama = item.item_nama;
+                        break;
+                    }
+                }
+            }
+            
+            openDeleteModal('item', itemNama, async () => {
+                if (!currentWebsite) return;
+                showLoading(true);
+                try {
+                    const response = await fetchWithRetry(
+                        `${API_BASE_URL}/api/products/item/${itemId}`,
+                        { method: 'DELETE' }
+                    );
+                    if (response.success) {
+                        showToast('✅ Item dihapus', 'success');
+                        await loadAllData();
+                    }
+                } catch (error) {
+                    showToast(error.message, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
+        },
+        
+        // Stok
         editStok: (index) => {
-            const newValue = prompt('Edit data stok:', formData.stok[index]);
+            const newValue = prompt('Edit data stok:', currentItemStok[index]);
             if (newValue !== null) {
-                formData.stok[index] = newValue;
-                renderStokList();
+                currentItemStok[index] = newValue;
+                renderItemStokList();
             }
         },
         deleteStok: (index) => {
             if (confirm('Hapus data stok ini?')) {
-                formData.stok.splice(index, 1);
-                renderStokList();
+                currentItemStok.splice(index, 1);
+                renderItemStokList();
             }
         },
+        
+        // Fields
         deleteField: (index) => {
             if (confirm('Hapus field ini?')) {
-                formData.fields.splice(index, 1);
-                renderFieldsList();
+                currentItemFields.splice(index, 1);
+                renderItemFieldsList();
             }
-        },
-        // 🔥 FUNGSI BARU: Manage Layanan dan Aplikasi
-        manageLayanan: (layanan) => manageLayanan(layanan),
-        manageAplikasi: (layanan, aplikasi) => manageAplikasi(layanan, aplikasi)
+        }
     };
 
     // ==================== START ====================
