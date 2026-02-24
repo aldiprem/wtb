@@ -1228,6 +1228,36 @@ def reorder_promos(website_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK ORDERS ====================
+
+@app.route('/api/orders/website/<int:website_id>', methods=['GET', 'OPTIONS'])
+def get_orders_by_website(website_id):
+    """Get orders for a specific website"""
+    try:
+        # Untuk sementara return empty array karena belum ada tabel orders
+        # Nanti bisa diintegrasikan dengan database orders
+        return jsonify({
+            'success': True, 
+            'orders': [],
+            'message': 'Orders feature coming soon'
+        })
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/orders/user/<int:user_id>', methods=['GET', 'OPTIONS'])
+def get_orders_by_user(user_id):
+    """Get orders for a specific user (customer)"""
+    try:
+        return jsonify({
+            'success': True, 
+            'orders': [],
+            'message': 'Orders feature coming soon'
+        })
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== ROUTES UNTUK PROMO LAMA (BACKWARD COMPATIBILITY) ====================
 
 @app.route('/api/tampilan/<int:website_id>/promo', methods=['GET'])
