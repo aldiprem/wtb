@@ -1,16 +1,19 @@
-// Website JavaScript for Public Store - GitHub Pages Version
+// website.js - Enhanced Version dengan Animasi dan Fitur Modern
 (function() {
-    console.log('🏪 Website Store - Initializing...');
+    'use strict';
+    
+    console.log('🏪 Website Store Modern - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com'; // URL backend Flask
+    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 1000;
+    const ANIMATION_DURATION = 300;
 
     // ==================== FUNGSI GET ENDPOINT DARI URL ====================
     function getEndpointFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
-        const endpoint = urlParams.get('store'); // ?store=premy
+        const endpoint = urlParams.get('store');
         console.log('📍 Endpoint from URL:', endpoint);
         return endpoint;
     }
@@ -30,6 +33,7 @@
         sidebarAvatar: document.getElementById('sidebarAvatar'),
         sidebarName: document.getElementById('sidebarName'),
         sidebarUsername: document.getElementById('sidebarUsername'),
+        profileVerified: document.getElementById('profileVerified'),
         loginBtn: document.getElementById('loginBtn'),
         orderBadge: document.getElementById('orderBadge'),
         
@@ -48,6 +52,9 @@
         // Banner
         bannerSlider: document.getElementById('bannerSlider'),
         sliderContainer: document.getElementById('sliderContainer'),
+        sliderPrev: document.getElementById('sliderPrev'),
+        sliderNext: document.getElementById('sliderNext'),
+        sliderPagination: document.getElementById('sliderPagination'),
         sliderDots: document.getElementById('sliderDots'),
         
         // Categories
@@ -67,7 +74,9 @@
         footerDescription: document.getElementById('footerDescription'),
         contactWhatsApp: document.getElementById('contactWhatsApp'),
         contactTelegram: document.getElementById('contactTelegram'),
+        contactEmail: document.getElementById('contactEmail'),
         footerStoreName: document.getElementById('footerStoreName'),
+        footerStoreName2: document.getElementById('footerStoreName2'),
         sidebarYear: document.getElementById('sidebarYear'),
         
         // Cart
@@ -112,19 +121,40 @@
     let touchStartX = 0;
     let touchEndX = 0;
     let retryCount = 0;
+    let isLoading = false;
 
     // ==================== FUNGSI LOADING OVERLAY ====================
     function showLoading(message = 'Memuat website...') {
+        if (isLoading) return;
+        isLoading = true;
+        
         if (elements.loadingOverlay) {
             const loadingText = elements.loadingOverlay.querySelector('.loading-text');
             if (loadingText) loadingText.textContent = message;
             elements.loadingOverlay.style.display = 'flex';
+            
+            // Animate loading bar
+            const loadingBar = elements.loadingOverlay.querySelector('.loading-bar');
+            if (loadingBar) {
+                loadingBar.style.animation = 'none';
+                loadingBar.offsetHeight;
+                loadingBar.style.animation = 'loading 2s ease-in-out infinite';
+            }
         }
     }
 
     function hideLoading() {
+        if (!isLoading) return;
+        
         if (elements.loadingOverlay) {
-            elements.loadingOverlay.style.display = 'none';
+            elements.loadingOverlay.style.opacity = '0';
+            setTimeout(() => {
+                elements.loadingOverlay.style.display = 'none';
+                elements.loadingOverlay.style.opacity = '1';
+                isLoading = false;
+            }, 500);
+        } else {
+            isLoading = false;
         }
     }
 
@@ -151,18 +181,38 @@
         return div.innerHTML;
     }
 
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
     // ==================== FUNGSI TOAST ====================
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
         
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
+        
+        const icon = type === 'success' ? 'check-circle' : 
+                     type === 'error' ? 'exclamation-circle' : 
+                     type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+        
         toast.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+            <i class="fas fa-${icon}"></i>
             <span>${message}</span>
         `;
         
         elements.toastContainer.appendChild(toast);
+        
+        // Trigger reflow
+        toast.offsetHeight;
         
         setTimeout(() => {
             toast.classList.add('fade-out');
@@ -175,19 +225,25 @@
     // ==================== FUNGSI FETCH DENGAN RETRY ====================
     async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
             const response = await fetch(url, {
                 ...options,
                 mode: 'cors',
-                cache: 'no-cache'
+                cache: 'no-cache',
+                signal: controller.signal
             });
-            
+
+            clearTimeout(timeoutId);
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             return await response.json();
         } catch (error) {
-            if (retries > 0) {
+            if (retries > 0 && error.name !== 'AbortError') {
                 console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                 return fetchWithRetry(url, options, retries - 1);
@@ -217,20 +273,24 @@
                 const data = result.website;
                 websiteData = data;
                 
-                // Load tampilan data untuk website ini
                 await loadTampilanData(data.id);
                 
-                // Set products dari database
-                products = data.products || [];
+                // Transform products data from old format if needed
+                if (data.products && Array.isArray(data.products)) {
+                    products = data.products;
+                } else {
+                    products = [];
+                }
                 
-                // Set categories dari database (jika ada)
                 categories = data.categories || [];
                 
-                // Update UI dengan data dari database
                 updateWebsiteUI(data);
-                
-                // Render semua komponen
                 renderAllComponents();
+                
+                // Animate elements after loading
+                setTimeout(() => {
+                    animateElements();
+                }, 100);
                 
                 hideLoading();
                 return data;
@@ -242,18 +302,27 @@
             console.error('❌ Error loading website:', error);
             hideLoading();
             
-            // Tampilkan pesan error di halaman
             if (elements.storeName) {
                 elements.storeName.textContent = 'Website Tidak Ditemukan';
             }
             
             showToast(error.message || 'Gagal memuat data website', 'error');
-            
-            // Kosongkan semua konten
             clearAllContent();
             
             return null;
         }
+    }
+
+    function animateElements() {
+        // Animate category cards
+        document.querySelectorAll('.category-card').forEach((card, index) => {
+            card.style.animation = `fadeInUp 0.5s ease ${index * 0.1}s forwards`;
+        });
+        
+        // Animate product cards
+        document.querySelectorAll('.product-card').forEach((card, index) => {
+            card.style.animation = `fadeInUp 0.5s ease ${index * 0.05}s forwards`;
+        });
     }
 
     // ==================== FUNGSI LOAD TAMPILAN DATA ====================
@@ -289,7 +358,6 @@
     }
 
     function clearAllContent() {
-        // Kosongkan semua container
         if (elements.sliderContainer) elements.sliderContainer.innerHTML = '';
         if (elements.categoriesGrid) elements.categoriesGrid.innerHTML = '';
         if (elements.featuredProducts) elements.featuredProducts.innerHTML = '';
@@ -297,25 +365,20 @@
         if (elements.promoBanner) elements.promoBanner.innerHTML = '';
         if (elements.paymentIcons) elements.paymentIcons.innerHTML = '';
         
-        // Sembunyikan banner slider
         if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
     }
 
     function renderAllComponents() {
-        // Render logo di header
         renderLogo();
         
-        // Render banner dari tampilanData
         if (tampilanData?.banners && Array.isArray(tampilanData.banners) && tampilanData.banners.length > 0) {
             renderBanners(tampilanData.banners);
         } else if (tampilanData?.banner) {
-            // Fallback ke banner lama (string)
             const banners = Array.isArray(tampilanData.banner) 
                 ? tampilanData.banner.map(b => ({ url: b, positionX: 50, positionY: 50 }))
                 : [{ url: tampilanData.banner, positionX: 50, positionY: 50 }];
             renderBanners(banners);
         } else if (websiteData?.settings?.banner) {
-            // Fallback ke settings lama
             const banners = Array.isArray(websiteData.settings.banner) 
                 ? websiteData.settings.banner.map(b => ({ url: b, positionX: 50, positionY: 50 }))
                 : [{ url: websiteData.settings.banner, positionX: 50, positionY: 50 }];
@@ -324,31 +387,28 @@
             if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
         }
         
-        // Render promo banner
-        if (tampilanData?.promo_banner && elements.promoBanner) {
+        // Render promo banner from promos array
+        if (tampilanData?.promos && Array.isArray(tampilanData.promos) && tampilanData.promos.length > 0) {
+            const activePromos = tampilanData.promos.filter(p => p.active !== false);
+            if (activePromos.length > 0) {
+                renderPromoBanner(activePromos[0]);
+            }
+        } else if (tampilanData?.promo_banner && elements.promoBanner) {
             elements.promoBanner.innerHTML = `<img src="${tampilanData.promo_banner}" alt="Promo">`;
         } else if (websiteData?.settings?.promo_banner && elements.promoBanner) {
             elements.promoBanner.innerHTML = `<img src="${websiteData.settings.promo_banner}" alt="Promo">`;
         }
         
-        // Render payment methods dari tampilanData
-        if (tampilanData) {
-            renderPaymentMethodsFromTampilan();
-        } else if (websiteData?.settings?.payments) {
-            renderPaymentMethods(websiteData.settings.payments);
-        }
-        
-        // Render products
+        renderPaymentMethods();
         renderProducts();
+        renderCategories();
         
-        // Apply theme dari tampilanData
         if (tampilanData?.colors) {
             applyThemeColors(tampilanData.colors);
         } else if (websiteData?.settings?.colors) {
             applyThemeColors(websiteData.settings.colors);
         }
         
-        // Apply font dari tampilanData
         if (tampilanData) {
             applyFont({
                 family: tampilanData.font_family || 'Inter',
@@ -359,31 +419,49 @@
         }
     }
 
+    function renderPromoBanner(promo) {
+        if (!elements.promoBanner || !promo || !promo.banner) return;
+        
+        elements.promoBanner.innerHTML = `
+            <img src="${promo.banner}" alt="${escapeHtml(promo.title || 'Promo')}" 
+                 onerror="this.style.display='none';">
+        `;
+        
+        elements.promoBanner.addEventListener('click', () => {
+            showToast(promo.description || 'Promo spesial!', 'info');
+        });
+    }
+
     // ==================== FUNGSI RENDER LOGO ====================
     function renderLogo() {
         let headerLogoContainer = elements.headerLogo;
         if (!headerLogoContainer) return;
         
         if (tampilanData?.logo) {
-            // Jika ada logo, tampilkan gambar
             headerLogoContainer.innerHTML = `
-                <img src="${tampilanData.logo}" alt="Logo" class="header-logo-img" style="height: 40px; width: auto; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <img src="${tampilanData.logo}" alt="Logo" class="header-logo-img" 
+                     style="height: 40px; width: auto; object-fit: contain;" 
+                     onload="this.style.opacity='1';" 
+                     style="opacity:0; transition:opacity 0.3s"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="header-logo-fallback" style="display: none; align-items: center; gap: 8px;">
                     <i class="fas fa-store"></i>
                     <span id="storeName">${websiteData?.username || 'Toko Online'}</span>
                 </div>
             `;
             
-            // Cek apakah logo berhasil dimuat
             const logoImg = headerLogoContainer.querySelector('img');
             const fallback = headerLogoContainer.querySelector('.header-logo-fallback');
+            
+            logoImg.onload = function() {
+                this.style.opacity = '1';
+            };
             
             logoImg.onerror = function() {
                 this.style.display = 'none';
                 if (fallback) fallback.style.display = 'flex';
             };
         } else {
-            // Jika tidak ada logo, tampilkan icon dan nama toko
             headerLogoContainer.innerHTML = `
                 <i class="fas fa-store"></i>
                 <span id="storeName">${websiteData?.username || 'Toko Online'}</span>
@@ -391,16 +469,17 @@
         }
     }
 
-    // ==================== FUNGSI RENDER PAYMENT METHODS DARI TAMPILAN ====================
-    function renderPaymentMethodsFromTampilan() {
+    // ==================== FUNGSI RENDER PAYMENT METHODS ====================
+    function renderPaymentMethods() {
         if (!elements.paymentIcons) return;
         
         let html = '';
+        let hasPayments = false;
         
-        // Render bank accounts
         if (tampilanData?.banks && tampilanData.banks.length > 0) {
             tampilanData.banks.forEach(bank => {
                 if (bank.enabled) {
+                    hasPayments = true;
                     html += `
                         <div class="payment-icon">
                             <i class="fas fa-university"></i>
@@ -411,10 +490,10 @@
             });
         }
         
-        // Render e-wallet accounts
         if (tampilanData?.ewallets && tampilanData.ewallets.length > 0) {
             tampilanData.ewallets.forEach(ewallet => {
                 if (ewallet.enabled) {
+                    hasPayments = true;
                     html += `
                         <div class="payment-icon">
                             <i class="fas fa-wallet"></i>
@@ -425,8 +504,8 @@
             });
         }
         
-        // Render QRIS
         if (tampilanData?.qris && tampilanData.qris.enabled) {
+            hasPayments = true;
             html += `
                 <div class="payment-icon">
                     <i class="fas fa-qrcode"></i>
@@ -435,8 +514,8 @@
             `;
         }
         
-        // Render crypto
         if (tampilanData?.crypto && tampilanData.crypto.enabled) {
+            hasPayments = true;
             html += `
                 <div class="payment-icon">
                     <i class="fab fa-bitcoin"></i>
@@ -445,10 +524,56 @@
             `;
         }
         
-        // Jika tidak ada metode pembayaran dari tampilan, coba dari settings
-        if (html === '' && websiteData?.settings?.payments) {
-            renderPaymentMethods(websiteData.settings.payments);
+        if (!hasPayments && websiteData?.settings?.payments) {
+            renderPaymentMethodsFromSettings(websiteData.settings.payments);
             return;
+        }
+        
+        if (!hasPayments) {
+            elements.paymentIcons.innerHTML = '<div class="empty-message">Belum ada metode pembayaran</div>';
+        } else {
+            elements.paymentIcons.innerHTML = html;
+        }
+    }
+
+    function renderPaymentMethodsFromSettings(payments) {
+        if (!elements.paymentIcons) return;
+        
+        let html = '';
+        
+        if (payments.bank && payments.bank.length > 0) {
+            payments.bank.forEach(bank => {
+                html += `
+                    <div class="payment-icon">
+                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" 
+                             alt="${bank.name}" 
+                             onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank';">
+                        <span>${bank.name}</span>
+                    </div>
+                `;
+            });
+        }
+        
+        if (payments.ewallet && payments.ewallet.length > 0) {
+            payments.ewallet.forEach(wallet => {
+                html += `
+                    <div class="payment-icon">
+                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" 
+                             alt="${wallet.name}" 
+                             onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet';">
+                        <span>${wallet.name}</span>
+                    </div>
+                `;
+            });
+        }
+        
+        if (payments.qris && payments.qris.enabled) {
+            html += `
+                <div class="payment-icon">
+                    <i class="fas fa-qrcode"></i>
+                    <span>QRIS</span>
+                </div>
+            `;
         }
         
         if (html === '') {
@@ -460,7 +585,6 @@
 
     // ==================== FUNGSI UPDATE UI ====================
     function updateWebsiteUI(data) {
-        // Update meta tags dari tampilanData atau settings
         if (elements.dynamicTitle) {
             elements.dynamicTitle.textContent = tampilanData?.seo_title || data.settings?.title || 'Toko Online';
         }
@@ -471,26 +595,26 @@
             elements.dynamicKeywords.content = tampilanData?.seo_keywords || data.settings?.seo?.keywords || 'toko, online, topup';
         }
         
-        // Update store name (akan digunakan jika tidak ada logo)
         const storeName = data.username || 'Toko Online';
         if (elements.storeName) elements.storeName.textContent = storeName;
         if (elements.sidebarStoreName) elements.sidebarStoreName.textContent = storeName;
         if (elements.footerStoreName) elements.footerStoreName.textContent = storeName;
+        if (elements.footerStoreName2) elements.footerStoreName2.textContent = storeName;
         
-        // Update footer description
         if (elements.footerDescription) {
-            elements.footerDescription.textContent = tampilanData?.description || data.settings?.description || 'Toko online terpercaya sejak 2024';
+            elements.footerDescription.textContent = tampilanData?.description || data.settings?.description || 'Toko online terpercaya sejak 2024 dengan ribuan produk berkualitas dan pelayanan terbaik.';
         }
         
-        // Update contact info
         if (elements.contactWhatsApp) {
             elements.contactWhatsApp.textContent = tampilanData?.contact_whatsapp || data.settings?.contact?.whatsapp || '-';
         }
         if (elements.contactTelegram) {
             elements.contactTelegram.textContent = tampilanData?.contact_telegram || data.settings?.contact?.telegram || '-';
         }
+        if (elements.contactEmail) {
+            elements.contactEmail.textContent = data.email || 'support@example.com';
+        }
         
-        // Update sidebar avatar (tetap pakai avatar user, bukan logo)
         if (elements.sidebarAvatar && currentUser) {
             const fullName = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || 'User';
             const img = elements.sidebarAvatar.querySelector('img');
@@ -499,7 +623,6 @@
             }
         }
         
-        // Update year
         if (elements.sidebarYear) {
             elements.sidebarYear.textContent = new Date().getFullYear();
         }
@@ -532,7 +655,7 @@
 
     // ==================== FUNGSI RENDER BANNER ====================
     function renderBanners(banners) {
-        if (!elements.sliderContainer || !elements.sliderDots || !banners || banners.length === 0) {
+        if (!elements.sliderContainer || !banners || banners.length === 0) {
             if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
             return;
         }
@@ -540,10 +663,10 @@
         elements.bannerSlider.style.display = 'block';
         
         let slidesHtml = '';
+        let paginationHtml = '';
         let dotsHtml = '';
         
         banners.forEach((banner, index) => {
-            // Banner bisa berupa string URL atau object dengan url dan positionX/positionY
             let bannerUrl = '';
             let positionX = 50;
             let positionY = 50;
@@ -561,9 +684,15 @@
                     <div class="banner-image-container">
                         <img src="${bannerUrl}" alt="Banner ${index + 1}" 
                              style="object-position: ${positionX}% ${positionY}%;"
-                             onerror="this.src='https://via.placeholder.com/800x400/40a7e3/ffffff?text=Banner+${index+1}';">
+                             onload="this.style.opacity='1'"
+                             style="opacity:0; transition:opacity 0.5s"
+                             onerror="this.src='https://via.placeholder.com/800x400/40a7e3/ffffff?text=Banner+${index+1}'; this.onload=null;">
                     </div>
                 </div>
+            `;
+            
+            paginationHtml += `
+                <span class="${index === 0 ? 'active' : ''}" data-index="${index}"></span>
             `;
             
             dotsHtml += `
@@ -572,24 +701,61 @@
         });
         
         elements.sliderContainer.innerHTML = slidesHtml;
-        elements.sliderDots.innerHTML = dotsHtml;
+        if (elements.sliderPagination) elements.sliderPagination.innerHTML = paginationHtml;
+        if (elements.sliderDots) elements.sliderDots.innerHTML = dotsHtml;
         
-        // Setup touch events untuk slider
-        setupBannerTouchEvents();
-        
-        // Setup dot clicks
-        document.querySelectorAll('.slider-dot').forEach(dot => {
-            dot.addEventListener('click', () => {
-                const index = parseInt(dot.dataset.index);
-                goToSlide(index);
-                resetAutoSlide();
-            });
+        // Setup banner images to fade in
+        document.querySelectorAll('.slider-slide img').forEach(img => {
+            if (img.complete) {
+                img.style.opacity = '1';
+            }
         });
         
-        startBannerAutoSlide(banners.length);
+        setupBannerEvents(banners.length);
     }
 
-    // ==================== FUNGSI SETUP TOUCH EVENTS UNTUK BANNER ====================
+    function setupBannerEvents(totalSlides) {
+        if (totalSlides <= 1) {
+            if (elements.sliderPrev) elements.sliderPrev.style.display = 'none';
+            if (elements.sliderNext) elements.sliderNext.style.display = 'none';
+            if (elements.sliderPagination) elements.sliderPagination.style.display = 'none';
+            return;
+        }
+        
+        // Setup navigation buttons
+        if (elements.sliderPrev) {
+            elements.sliderPrev.addEventListener('click', () => {
+                const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
+                goToSlide(prevIndex);
+                resetAutoSlide();
+            });
+        }
+        
+        if (elements.sliderNext) {
+            elements.sliderNext.addEventListener('click', () => {
+                const nextIndex = (currentBannerIndex + 1) % totalSlides;
+                goToSlide(nextIndex);
+                resetAutoSlide();
+            });
+        }
+        
+        // Setup pagination clicks
+        if (elements.sliderPagination) {
+            elements.sliderPagination.querySelectorAll('span').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    const index = parseInt(dot.dataset.index);
+                    goToSlide(index);
+                    resetAutoSlide();
+                });
+            });
+        }
+        
+        // Setup touch events
+        setupBannerTouchEvents();
+        
+        startBannerAutoSlide(totalSlides);
+    }
+
     function setupBannerTouchEvents() {
         const slider = elements.sliderContainer;
         if (!slider) return;
@@ -603,7 +769,7 @@
             handleSwipe();
         }, { passive: true });
         
-        // Juga support mouse untuk testing di desktop
+        // Mouse events for desktop
         let mouseDown = false;
         let mouseStartX = 0;
         
@@ -628,11 +794,9 @@
                 const totalSlides = slides.length;
                 
                 if (diff > 0) {
-                    // Swipe kanan (previous)
                     const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
                     goToSlide(prevIndex);
                 } else {
-                    // Swipe kiri (next)
                     const nextIndex = (currentBannerIndex + 1) % totalSlides;
                     goToSlide(nextIndex);
                 }
@@ -654,11 +818,9 @@
         
         if (Math.abs(diff) > 50) {
             if (diff > 0) {
-                // Swipe kanan (previous)
                 const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
                 goToSlide(prevIndex);
             } else {
-                // Swipe kiri (next)
                 const nextIndex = (currentBannerIndex + 1) % totalSlides;
                 goToSlide(nextIndex);
             }
@@ -673,7 +835,7 @@
         bannerInterval = setInterval(() => {
             const nextIndex = (currentBannerIndex + 1) % totalSlides;
             goToSlide(nextIndex);
-        }, 3000); // 3 detik
+        }, 5000);
     }
 
     function resetAutoSlide() {
@@ -686,29 +848,176 @@
 
     function goToSlide(index) {
         const slides = document.querySelectorAll('.slider-slide');
+        const paginationSpans = elements.sliderPagination?.querySelectorAll('span');
         const dots = document.querySelectorAll('.slider-dot');
         
-        if (!slides.length || !dots.length) return;
+        if (!slides.length) return;
         
         slides.forEach(slide => slide.classList.remove('active'));
-        dots.forEach(dot => dot.classList.remove('active'));
-        
         slides[index].classList.add('active');
-        dots[index].classList.add('active');
+        
+        if (paginationSpans) {
+            paginationSpans.forEach(dot => dot.classList.remove('active'));
+            paginationSpans[index]?.classList.add('active');
+        }
+        
+        if (dots.length) {
+            dots.forEach(dot => dot.classList.remove('active'));
+            dots[index]?.classList.add('active');
+        }
         
         currentBannerIndex = index;
+    }
+
+    // ==================== FUNGSI RENDER CATEGORIES ====================
+    function renderCategories() {
+        if (!elements.categoriesGrid) return;
+        
+        const categoryColors = [
+            'linear-gradient(135deg, #40a7e3, #2d8bcb)',
+            'linear-gradient(135deg, #10b981, #059669)',
+            'linear-gradient(135deg, #f59e0b, #d97706)',
+            'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+            'linear-gradient(135deg, #ec4899, #db2777)',
+            'linear-gradient(135deg, #14b8a6, #0d9488)'
+        ];
+        
+        let html = '';
+        
+        if (categories.length > 0) {
+            categories.slice(0, 8).forEach((category, index) => {
+                const gradient = categoryColors[index % categoryColors.length];
+                html += `
+                    <div class="category-card" data-id="${category.id}">
+                        <div class="category-icon" style="background: ${gradient}20; color: ${gradient.split(',')[0]}">
+                            <i class="fas fa-${category.icon || 'tag'}"></i>
+                        </div>
+                        <div class="category-info">
+                            <h4>${escapeHtml(category.name)}</h4>
+                            <span>${category.count || 0} produk</span>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            const defaultCategories = [
+                { name: 'Elektronik', icon: 'mobile-alt', count: 24 },
+                { name: 'Fashion', icon: 'tshirt', count: 56 },
+                { name: 'Makanan', icon: 'utensils', count: 32 },
+                { name: 'Kesehatan', icon: 'heartbeat', count: 18 },
+                { name: 'Olahraga', icon: 'futbol', count: 15 },
+                { name: 'Buku', icon: 'book', count: 27 }
+            ];
+            
+            defaultCategories.slice(0, 6).forEach((category, index) => {
+                const gradient = categoryColors[index % categoryColors.length];
+                html += `
+                    <div class="category-card">
+                        <div class="category-icon" style="background: ${gradient}20; color: ${gradient.split(',')[0]}">
+                            <i class="fas fa-${category.icon}"></i>
+                        </div>
+                        <div class="category-info">
+                            <h4>${category.name}</h4>
+                            <span>${category.count} produk</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        elements.categoriesGrid.innerHTML = html;
+        
+        document.querySelectorAll('.category-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const categoryId = card.dataset.id;
+                showToast(`Kategori: ${card.querySelector('h4').textContent}`, 'info');
+            });
+        });
     }
 
     // ==================== FUNGSI RENDER PRODUCTS ====================
     function renderProducts() {
         if (!elements.featuredProducts || !elements.popularProducts) return;
         
-        // Filter produk berdasarkan featured dan popular
-        const featured = products.filter(p => p.featured).slice(0, 4);
-        const popular = products.filter(p => p.popular).slice(0, 4);
+        let featured = [];
+        let popular = [];
+        
+        if (products.length > 0) {
+            featured = products.filter(p => p.featured).slice(0, 4);
+            popular = products.filter(p => p.popular).slice(0, 4);
+        }
+        
+        // If not enough featured/popular, add random products
+        if (featured.length < 4 && products.length > 0) {
+            const remaining = products.filter(p => !p.featured).slice(0, 4 - featured.length);
+            featured = [...featured, ...remaining];
+        }
+        
+        if (popular.length < 4 && products.length > 0) {
+            const remaining = products.filter(p => !p.popular).slice(0, 4 - popular.length);
+            popular = [...popular, ...remaining];
+        }
+        
+        // If still no products, use dummy data
+        if (featured.length === 0) {
+            featured = getDummyProducts();
+        }
+        
+        if (popular.length === 0) {
+            popular = getDummyProducts().reverse();
+        }
         
         renderProductGrid(elements.featuredProducts, featured);
         renderProductGrid(elements.popularProducts, popular);
+    }
+
+    function getDummyProducts() {
+        return [
+            {
+                id: 1,
+                name: 'Paket Premium 1 Bulan',
+                description: 'Akses penuh semua fitur premium',
+                price: 150000,
+                original_price: 200000,
+                image: 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Premium',
+                rating: 4.8,
+                sold: 156,
+                stock: 50
+            },
+            {
+                id: 2,
+                name: 'Top Up Diamond Game',
+                description: 'Diamond murah dan cepat',
+                price: 50000,
+                original_price: 65000,
+                image: 'https://via.placeholder.com/300x200/10b981/ffffff?text=Diamond',
+                rating: 4.9,
+                sold: 324,
+                stock: 200
+            },
+            {
+                id: 3,
+                name: 'Voucher Diskon 50%',
+                description: 'Untuk pembelian pertama',
+                price: 25000,
+                original_price: 50000,
+                image: 'https://via.placeholder.com/300x200/f59e0b/ffffff?text=Voucher',
+                rating: 4.7,
+                sold: 89,
+                stock: 25
+            },
+            {
+                id: 4,
+                name: 'Membership VIP',
+                description: 'Akses eksklusif konten VIP',
+                price: 300000,
+                original_price: 400000,
+                image: 'https://via.placeholder.com/300x200/8b5cf6/ffffff?text=VIP',
+                rating: 4.9,
+                sold: 67,
+                stock: 15
+            }
+        ];
     }
 
     function renderProductGrid(container, productsToRender) {
@@ -724,17 +1033,25 @@
             const discount = product.original_price ? 
                 Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
             
+            const stars = generateStars(product.rating || 4.5);
+            
             html += `
                 <div class="product-card" data-id="${product.id}">
                     <div class="product-image">
-                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" alt="${escapeHtml(product.name)}"
-                             onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image';">
-                        ${discount > 0 ? `<span class="product-discount">-${discount}%</span>` : ''}
-                        ${product.stock <= 0 ? '<span class="product-soldout">Habis</span>' : ''}
+                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" 
+                             alt="${escapeHtml(product.name)}"
+                             loading="lazy"
+                             onload="this.style.opacity='1'"
+                             style="opacity:0; transition:opacity 0.3s"
+                             onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'; this.onload=null;">
+                        <div class="product-badges">
+                            ${discount > 0 ? `<span class="product-discount">-${discount}%</span>` : ''}
+                            ${product.stock <= 0 ? '<span class="product-soldout">Habis</span>' : ''}
+                        </div>
                     </div>
                     <div class="product-info">
                         <h3>${escapeHtml(product.name)}</h3>
-                        <p class="product-desc">${escapeHtml(product.description ? product.description.substring(0, 30) : '')}...</p>
+                        <p class="product-desc">${escapeHtml(product.description ? product.description.substring(0, 40) + '...' : 'Produk berkualitas')}</p>
                         <div class="product-price">
                             <span class="price">${formatPrice(product.price)}</span>
                             ${product.original_price ? 
@@ -742,7 +1059,7 @@
                         </div>
                         <div class="product-meta">
                             <span class="rating">
-                                <i class="fas fa-star"></i> ${product.rating || 0}
+                                ${stars} ${product.rating || 0}
                             </span>
                             <span class="sold">
                                 <i class="fas fa-shopping-bag"></i> ${product.sold || 0} terjual
@@ -750,7 +1067,7 @@
                         </div>
                         <button class="btn-add-cart" onclick="event.stopPropagation(); window.website.addToCart(${product.id})">
                             <i class="fas fa-cart-plus"></i>
-                            <span>Tambah</span>
+                            <span>Tambah ke Keranjang</span>
                         </button>
                     </div>
                 </div>
@@ -758,6 +1075,22 @@
         });
         
         container.innerHTML = html;
+        
+        // Lazy load images
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src || img.src;
+                    img.classList.add('loaded');
+                    observer.unobserve(img);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.product-image img').forEach(img => {
+            imageObserver.observe(img);
+        });
         
         document.querySelectorAll('.product-card').forEach(card => {
             card.addEventListener('click', () => {
@@ -769,48 +1102,23 @@
         });
     }
 
-    // ==================== FUNGSI RENDER PAYMENT METHODS ====================
-    function renderPaymentMethods(payments) {
-        if (!elements.paymentIcons || !payments) return;
+    function generateStars(rating) {
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 >= 0.5;
+        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
         
-        let html = '';
-        
-        if (payments.bank && payments.bank.length > 0) {
-            payments.bank.forEach(bank => {
-                html += `
-                    <div class="payment-icon">
-                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank';">
-                        <span>${bank.name}</span>
-                    </div>
-                `;
-            });
+        let stars = '';
+        for (let i = 0; i < fullStars; i++) {
+            stars += '<i class="fas fa-star"></i>';
+        }
+        if (halfStar) {
+            stars += '<i class="fas fa-star-half-alt"></i>';
+        }
+        for (let i = 0; i < emptyStars; i++) {
+            stars += '<i class="far fa-star"></i>';
         }
         
-        if (payments.ewallet && payments.ewallet.length > 0) {
-            payments.ewallet.forEach(wallet => {
-                html += `
-                    <div class="payment-icon">
-                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet';">
-                        <span>${wallet.name}</span>
-                    </div>
-                `;
-            });
-        }
-        
-        if (payments.qris && payments.qris.enabled) {
-            html += `
-                <div class="payment-icon">
-                    <i class="fas fa-qrcode"></i>
-                    <span>QRIS</span>
-                </div>
-            `;
-        }
-        
-        if (html === '') {
-            elements.paymentIcons.innerHTML = '<div class="empty-message">Belum ada metode pembayaran</div>';
-        } else {
-            elements.paymentIcons.innerHTML = html;
-        }
+        return stars;
     }
 
     // ==================== FUNGSI CART ====================
@@ -841,7 +1149,7 @@
     }
 
     function addToCart(productId, variant = null, quantity = 1) {
-        const product = products.find(p => p.id === productId);
+        const product = products.find(p => p.id === productId) || getDummyProducts().find(p => p.id === productId);
         if (!product) return;
         
         if (product.stock <= 0) {
@@ -878,6 +1186,14 @@
         updateCartUI();
         showToast('Produk ditambahkan ke keranjang', 'success');
         vibrate(10);
+        
+        // Animate cart button
+        if (elements.cartBtn) {
+            elements.cartBtn.classList.add('pulse');
+            setTimeout(() => {
+                elements.cartBtn.classList.remove('pulse');
+            }, 300);
+        }
     }
 
     function removeFromCart(index) {
@@ -911,6 +1227,11 @@
             elements.cartBadge.style.display = totalItems > 0 ? 'flex' : 'none';
         }
         
+        if (elements.orderBadge) {
+            elements.orderBadge.textContent = totalItems;
+            elements.orderBadge.style.display = totalItems > 0 ? 'flex' : 'none';
+        }
+        
         if (!elements.cartItems || !elements.cartEmpty || !elements.cartFooter) return;
         
         if (cart.length === 0) {
@@ -930,8 +1251,10 @@
                 total += itemTotal;
                 
                 cartHtml += `
-                    <div class="cart-item" data-index="${index}">
-                        <img src="${item.image || 'https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(item.name)}" onerror="this.src='https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product';">
+                    <div class="cart-item" data-index="${index}" style="animation-delay: ${index * 0.1}s">
+                        <img src="${item.image || 'https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product'}" 
+                             alt="${escapeHtml(item.name)}" 
+                             onerror="this.src='https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product';">
                         <div class="cart-item-details">
                             <h4>${escapeHtml(item.name)}</h4>
                             ${item.variant ? `<p class="cart-item-variant">${escapeHtml(item.variant)}</p>` : ''}
@@ -962,7 +1285,7 @@
 
     // ==================== FUNGSI PRODUCT MODAL ====================
     function openProductModal(productId) {
-        const product = products.find(p => p.id === productId);
+        const product = products.find(p => p.id === productId) || getDummyProducts().find(p => p.id === productId);
         if (!product) return;
         
         currentProduct = product;
@@ -990,15 +1313,22 @@
             `;
         }
         
+        const stars = generateStars(product.rating || 4.5);
+        
         const productHtml = `
             <div class="product-detail-images">
                 <div class="main-image">
-                    <img src="${product.image || 'https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(product.name)}" id="mainProductImage"
-                         onerror="this.src='https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product';">
+                    <img src="${product.image || 'https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'}" 
+                         alt="${escapeHtml(product.name)}" 
+                         id="mainProductImage"
+                         onload="this.style.opacity='1'"
+                         style="opacity:0; transition:opacity 0.3s"
+                         onerror="this.src='https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'; this.onload=null;">
                 </div>
                 <div class="thumbnail-images">
                     ${product.images ? product.images.map(img => 
-                        `<img src="${img}" alt="Thumb" onclick="document.getElementById('mainProductImage').src='${img}'" onerror="this.style.display='none';">`
+                        `<img src="${img}" alt="Thumb" onclick="document.getElementById('mainProductImage').src='${img}'; document.querySelectorAll('.thumbnail-images img').forEach(i => i.classList.remove('active')); this.classList.add('active');" 
+                              onerror="this.style.display='none';">`
                     ).join('') : ''}
                 </div>
             </div>
@@ -1006,11 +1336,9 @@
                 <h2>${escapeHtml(product.name)}</h2>
                 <div class="product-rating">
                     <div class="stars">
-                        ${Array(5).fill(0).map((_, i) => 
-                            `<i class="fas fa-star${i < Math.floor(product.rating || 0) ? '' : i < (product.rating || 0) ? '-half-alt' : '-o'}"></i>`
-                        ).join('')}
+                        ${stars}
                     </div>
-                    <span>${product.rating || 0} (${product.reviews || 0} ulasan)</span>
+                    <span>${product.rating || 4.5} (${product.reviews || 0} ulasan)</span>
                 </div>
                 <div class="product-price-detail">
                     <span class="current-price">${formatPrice(product.price)}</span>
@@ -1026,12 +1354,12 @@
                 </div>
                 <div class="product-description">
                     <h4>Deskripsi</h4>
-                    <p>${escapeHtml(product.description || 'Tidak ada deskripsi')}</p>
+                    <p>${escapeHtml(product.description || 'Produk berkualitas dengan harga terbaik. Dapatkan sekarang juga!')}</p>
                 </div>
                 ${variantsHtml}
                 <div class="product-notes">
                     <h4>Catatan</h4>
-                    <p>${escapeHtml(product.notes || '')}</p>
+                    <p>${escapeHtml(product.notes || 'Pastikan data yang dimasukkan benar.')}</p>
                 </div>
                 <div class="product-actions-detail">
                     <div class="quantity-selector">
@@ -1060,6 +1388,7 @@
         }
         
         elements.productModal.classList.add('active');
+        document.body.style.overflow = 'hidden';
         
         // Setup event listeners untuk variant
         document.querySelectorAll('.variant-btn').forEach(btn => {
@@ -1142,6 +1471,7 @@
     function closeProductModal() {
         if (elements.productModal) {
             elements.productModal.classList.remove('active');
+            document.body.style.overflow = '';
         }
         currentProduct = null;
     }
@@ -1154,12 +1484,14 @@
         if (elements.sidebar) {
             elements.sidebar.classList.remove('active');
         }
+        document.body.style.overflow = 'hidden';
         vibrate(10);
     }
 
     function closeCart() {
         if (elements.cartSidebar) {
             elements.cartSidebar.classList.remove('active');
+            document.body.style.overflow = '';
         }
     }
 
@@ -1167,6 +1499,11 @@
     function toggleSidebar() {
         if (elements.sidebar) {
             elements.sidebar.classList.toggle('active');
+            if (elements.sidebar.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
             vibrate(10);
         }
     }
@@ -1174,6 +1511,7 @@
     function closeSidebar() {
         if (elements.sidebar) {
             elements.sidebar.classList.remove('active');
+            document.body.style.overflow = '';
         }
     }
 
@@ -1181,6 +1519,7 @@
     function openLoginModal() {
         if (elements.loginModal) {
             elements.loginModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
         vibrate(10);
     }
@@ -1188,6 +1527,7 @@
     function closeLoginModal() {
         if (elements.loginModal) {
             elements.loginModal.classList.remove('active');
+            document.body.style.overflow = '';
         }
     }
 
@@ -1245,6 +1585,9 @@
                 img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=80&background=40a7e3&color=fff`;
             }
         }
+        if (elements.profileVerified && user.is_premium) {
+            elements.profileVerified.style.display = 'flex';
+        }
         if (elements.loginBtn) {
             elements.loginBtn.innerHTML = '<i class="fas fa-user"></i> Profile';
         }
@@ -1269,9 +1612,44 @@
         }
     }
 
+    // ==================== FUNGSI SEARCH ====================
+    function toggleSearch() {
+        if (elements.searchBar) {
+            elements.searchBar.classList.toggle('active');
+            if (elements.searchBar.classList.contains('active')) {
+                elements.searchInput.focus();
+            }
+        }
+    }
+
+    function setupSearch() {
+        if (!elements.searchInput) return;
+        
+        const debouncedSearch = debounce((query) => {
+            if (query.length > 2) {
+                // Implement search functionality
+                showToast(`Mencari: ${query}`, 'info');
+            }
+        }, 500);
+        
+        elements.searchInput.addEventListener('input', (e) => {
+            debouncedSearch(e.target.value);
+        });
+        
+        elements.searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = e.target.value;
+                if (query.length > 0) {
+                    showToast(`Mencari: ${query}`, 'info');
+                }
+            }
+        });
+    }
+
     // ==================== FUNGSI INIT ====================
     async function init() {
-        console.log('🏪 Initializing Website Store...');
+        console.log('🏪 Initializing Modern Website Store...');
         
         currentEndpoint = getEndpointFromUrl();
         console.log('📍 Endpoint:', currentEndpoint);
@@ -1289,186 +1667,37 @@
         loadUser();
         
         setupEventListeners();
+        setupSearch();
         
         if (window.Telegram?.WebApp) {
             const tg = window.Telegram.WebApp;
             tg.expand();
             tg.ready();
+            tg.enableClosingConfirmation();
             
             if (tg.initDataUnsafe?.user && !currentUser) {
                 setUser(tg.initDataUnsafe.user);
             }
+            
+            // Apply Telegram theme
+            if (tg.themeParams) {
+                const theme = tg.themeParams;
+                if (theme.bg_color) {
+                    document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
+                }
+                if (theme.text_color) {
+                    document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
+                }
+                if (theme.button_color) {
+                    document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
+                }
+            }
         }
         
-        console.log('✅ Website initialized');
+        console.log('✅ Modern Website initialized');
     }
 
-    // ==================== SETUP EVENT LISTENERS ====================
-    function setupEventListeners() {
-        if (elements.menuToggle) {
-            elements.menuToggle.addEventListener('click', toggleSidebar);
-        }
-        
-        if (elements.sidebarClose) {
-            elements.sidebarClose.addEventListener('click', closeSidebar);
-        }
-        
-        if (elements.cartBtn) {
-            elements.cartBtn.addEventListener('click', openCart);
-        }
-        
-        if (elements.cartClose) {
-            elements.cartClose.addEventListener('click', closeCart);
-        }
-        
-        if (elements.searchToggle) {
-            elements.searchToggle.addEventListener('click', toggleSearch);
-        }
-        
-        if (elements.searchClose) {
-            elements.searchClose.addEventListener('click', toggleSearch);
-        }
-        
-        if (elements.shopNowBtn) {
-            elements.shopNowBtn.addEventListener('click', () => {
-                closeCart();
-                document.querySelector('.featured-products')?.scrollIntoView({ behavior: 'smooth' });
-            });
-        }
-        
-        if (elements.closeProductModal) {
-            elements.closeProductModal.addEventListener('click', closeProductModal);
-        }
-        
-        if (elements.closeCheckoutModal) {
-            elements.closeCheckoutModal.addEventListener('click', () => {
-                elements.checkoutModal.classList.remove('active');
-            });
-        }
-        
-        if (elements.closeLoginModal) {
-            elements.closeLoginModal.addEventListener('click', closeLoginModal);
-        }
-        
-        if (elements.loginBtn) {
-            elements.loginBtn.addEventListener('click', openLoginModal);
-        }
-        
-        if (elements.telegramLogin) {
-            elements.telegramLogin.addEventListener('click', loginWithTelegram);
-        }
-        
-        if (elements.guestLogin) {
-            elements.guestLogin.addEventListener('click', loginAsGuest);
-        }
-        
-        if (elements.checkoutBtn) {
-            elements.checkoutBtn.addEventListener('click', () => {
-                if (cart.length === 0) {
-                    showToast('Keranjang belanja kosong', 'warning');
-                    return;
-                }
-                
-                if (!currentUser) {
-                    openLoginModal();
-                    return;
-                }
-                
-                if (elements.checkoutModal) {
-                    let checkoutHtml = `
-                        <div class="checkout-items">
-                            <h3>Ringkasan Belanja</h3>
-                    `;
-                    
-                    let total = 0;
-                    cart.forEach(item => {
-                        const itemTotal = item.price * item.quantity;
-                        total += itemTotal;
-                        
-                        checkoutHtml += `
-                            <div class="checkout-item">
-                                <span>${escapeHtml(item.name)} ${item.variant ? `(${escapeHtml(item.variant)})` : ''} x${item.quantity}</span>
-                                <span>${formatPrice(itemTotal)}</span>
-                            </div>
-                        `;
-                    });
-                    
-                    checkoutHtml += `
-                            <div class="checkout-total">
-                                <strong>Total</strong>
-                                <strong>${formatPrice(total)}</strong>
-                            </div>
-                        </div>
-                        <div class="checkout-payment">
-                            <h3>Metode Pembayaran</h3>
-                            <div class="payment-options">
-                                ${websiteData?.settings?.payments?.bank?.map(bank => `
-                                    <label class="payment-option">
-                                        <input type="radio" name="payment" value="bank_${bank.name}">
-                                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" alt="${bank.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank';">
-                                        <span>${bank.name}</span>
-                                    </label>
-                                `).join('')}
-                                ${websiteData?.settings?.payments?.ewallet?.map(wallet => `
-                                    <label class="payment-option">
-                                        <input type="radio" name="payment" value="ewallet_${wallet.name}">
-                                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" alt="${wallet.name}" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet';">
-                                        <span>${wallet.name}</span>
-                                    </label>
-                                `).join('')}
-                                ${websiteData?.settings?.payments?.qris?.enabled ? `
-                                    <label class="payment-option">
-                                        <input type="radio" name="payment" value="qris">
-                                        <i class="fas fa-qrcode"></i>
-                                        <span>QRIS</span>
-                                    </label>
-                                ` : ''}
-                            </div>
-                        </div>
-                        <div class="checkout-actions">
-                            <button class="btn-secondary" onclick="window.website.closeCheckoutModal()">Batal</button>
-                            <button class="btn-primary" onclick="window.website.processCheckout()">
-                                <i class="fas fa-check"></i> Proses Pembayaran
-                            </button>
-                        </div>
-                    `;
-                    
-                    elements.checkoutBody.innerHTML = checkoutHtml;
-                    elements.checkoutModal.classList.add('active');
-                }
-            });
-        }
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === elements.productModal) {
-                closeProductModal();
-            }
-            if (e.target === elements.checkoutModal) {
-                elements.checkoutModal.classList.remove('active');
-            }
-            if (e.target === elements.loginModal) {
-                closeLoginModal();
-            }
-            if (e.target === elements.cartSidebar) {
-                closeCart();
-            }
-            if (e.target === elements.sidebar) {
-                closeSidebar();
-            }
-        });
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeSidebar();
-                closeCart();
-                closeProductModal();
-                elements.checkoutModal?.classList.remove('active');
-                closeLoginModal();
-            }
-        });
-    }
-
-    // ==================== FUNGSI KEYBOARD HANDLER ====================
+    // ==================== SETUP KEYBOARD HANDLER ====================
     function setupKeyboardHandler() {
         function scrollToInput(input) {
             const rect = input.getBoundingClientRect();
@@ -1545,14 +1774,167 @@
         });
     }
 
-    // ==================== FUNGSI SEARCH ====================
-    function toggleSearch() {
-        if (elements.searchBar) {
-            elements.searchBar.classList.toggle('active');
-            if (elements.searchBar.classList.contains('active')) {
-                elements.searchInput.focus();
-            }
+    // ==================== SETUP EVENT LISTENERS ====================
+    function setupEventListeners() {
+        if (elements.menuToggle) {
+            elements.menuToggle.addEventListener('click', toggleSidebar);
         }
+        
+        if (elements.sidebarClose) {
+            elements.sidebarClose.addEventListener('click', closeSidebar);
+        }
+        
+        if (elements.cartBtn) {
+            elements.cartBtn.addEventListener('click', openCart);
+        }
+        
+        if (elements.cartClose) {
+            elements.cartClose.addEventListener('click', closeCart);
+        }
+        
+        if (elements.searchToggle) {
+            elements.searchToggle.addEventListener('click', toggleSearch);
+        }
+        
+        if (elements.searchClose) {
+            elements.searchClose.addEventListener('click', toggleSearch);
+        }
+        
+        if (elements.shopNowBtn) {
+            elements.shopNowBtn.addEventListener('click', () => {
+                closeCart();
+                document.querySelector('.featured-products')?.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
+        
+        if (elements.closeProductModal) {
+            elements.closeProductModal.addEventListener('click', closeProductModal);
+        }
+        
+        if (elements.closeCheckoutModal) {
+            elements.closeCheckoutModal.addEventListener('click', () => {
+                elements.checkoutModal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        }
+        
+        if (elements.closeLoginModal) {
+            elements.closeLoginModal.addEventListener('click', closeLoginModal);
+        }
+        
+        if (elements.loginBtn) {
+            elements.loginBtn.addEventListener('click', openLoginModal);
+        }
+        
+        if (elements.telegramLogin) {
+            elements.telegramLogin.addEventListener('click', loginWithTelegram);
+        }
+        
+        if (elements.guestLogin) {
+            elements.guestLogin.addEventListener('click', loginAsGuest);
+        }
+        
+        if (elements.checkoutBtn) {
+            elements.checkoutBtn.addEventListener('click', () => {
+                if (cart.length === 0) {
+                    showToast('Keranjang belanja kosong', 'warning');
+                    return;
+                }
+                
+                if (!currentUser) {
+                    openLoginModal();
+                    return;
+                }
+                
+                if (elements.checkoutModal) {
+                    let checkoutHtml = `
+                        <div class="checkout-items">
+                            <h3>Ringkasan Belanja</h3>
+                    `;
+                    
+                    let total = 0;
+                    cart.forEach(item => {
+                        const itemTotal = item.price * item.quantity;
+                        total += itemTotal;
+                        
+                        checkoutHtml += `
+                            <div class="checkout-item">
+                                <span>${escapeHtml(item.name)} ${item.variant ? `(${escapeHtml(item.variant)})` : ''} x${item.quantity}</span>
+                                <span>${formatPrice(itemTotal)}</span>
+                            </div>
+                        `;
+                    });
+                    
+                    checkoutHtml += `
+                            <div class="checkout-total">
+                                <strong>Total</strong>
+                                <strong>${formatPrice(total)}</strong>
+                            </div>
+                        </div>
+                        <div class="checkout-payment">
+                            <h3>Metode Pembayaran</h3>
+                            <div class="payment-options">
+                                <label class="payment-option">
+                                    <input type="radio" name="payment" value="bank" checked>
+                                    <i class="fas fa-university"></i>
+                                    <span>Transfer Bank</span>
+                                </label>
+                                <label class="payment-option">
+                                    <input type="radio" name="payment" value="ewallet">
+                                    <i class="fas fa-wallet"></i>
+                                    <span>E-Wallet</span>
+                                </label>
+                                <label class="payment-option">
+                                    <input type="radio" name="payment" value="qris">
+                                    <i class="fas fa-qrcode"></i>
+                                    <span>QRIS</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-secondary" onclick="window.website.closeCheckoutModal()">Batal</button>
+                            <button class="btn-primary" onclick="window.website.processCheckout()">
+                                <i class="fas fa-check"></i> Proses Pembayaran
+                            </button>
+                        </div>
+                    `;
+                    
+                    elements.checkoutBody.innerHTML = checkoutHtml;
+                    elements.checkoutModal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                }
+            });
+        }
+        
+        window.addEventListener('click', (e) => {
+            if (e.target === elements.productModal) {
+                closeProductModal();
+            }
+            if (e.target === elements.checkoutModal) {
+                elements.checkoutModal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            if (e.target === elements.loginModal) {
+                closeLoginModal();
+            }
+            if (e.target === elements.cartSidebar) {
+                closeCart();
+            }
+            if (e.target === elements.sidebar) {
+                closeSidebar();
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSidebar();
+                closeCart();
+                closeProductModal();
+                elements.checkoutModal?.classList.remove('active');
+                closeLoginModal();
+                document.body.style.overflow = '';
+            }
+        });
     }
 
     // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
@@ -1563,6 +1945,7 @@
         closeCheckoutModal: () => {
             if (elements.checkoutModal) {
                 elements.checkoutModal.classList.remove('active');
+                document.body.style.overflow = '';
             }
         },
         processCheckout: () => {
@@ -1572,13 +1955,16 @@
                 return;
             }
             
-            showToast('Pesanan sedang diproses', 'success');
+            showToast('Memproses pesanan...', 'info');
+            
             setTimeout(() => {
                 elements.checkoutModal.classList.remove('active');
+                document.body.style.overflow = '';
                 cart = [];
                 saveCart();
                 updateCartUI();
-                showToast('Pesanan berhasil! Terima kasih telah berbelanja', 'success');
+                showToast('✅ Pesanan berhasil! Terima kasih telah berbelanja', 'success');
+                vibrate(30);
             }, 2000);
         }
     };
