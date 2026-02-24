@@ -230,6 +230,42 @@ def create_website():
             website_id = cursor.lastrowid
             db.commit()
             print(f"✅ Website created with ID: {website_id}")
+            
+            # ========== TAMBAHKAN INI: BUAT DATA TAMPILAN DEFAULT ==========
+            try:
+                # Import tmp di sini untuk menghindari circular import
+                import tmp
+                
+                # Buat data tampilan default
+                default_tampilan = {
+                    'logo': '',
+                    'banners': [],
+                    'promos': [],
+                    'colors': {
+                        'primary': '#40a7e3',
+                        'secondary': '#FFD700',
+                        'background': '#0f0f0f',
+                        'text': '#ffffff',
+                        'card': '#1a1a1a',
+                        'accent': '#10b981'
+                    },
+                    'font_family': 'Inter',
+                    'font_size': 14,
+                    'title': data['username'],
+                    'description': f'Toko online {data["username"]}',
+                    'contact_whatsapp': '',
+                    'contact_telegram': ''
+                }
+                
+                # Simpan ke database tampilan
+                tmp.save_tampilan(website_id, default_tampilan)
+                print(f"✅ Default tampilan created for website ID: {website_id}")
+                
+            except Exception as e:
+                print(f"⚠️ Warning: Failed to create default tampilan: {e}")
+                import traceback
+                traceback.print_exc()
+            # ========== SELESAI TAMBAHAN ==========
 
             return jsonify({'success': True, 'website_id': website_id, 'message': 'Website created successfully'})
 
