@@ -3,7 +3,7 @@
     console.log('📝 Create Website Form - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://intimate-benefit-editions-girls.trycloudflare.com';
+    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -127,46 +127,59 @@
         try {
             console.log('📤 Sending data to server:', formData);
 
+            // Gunakan AbortController untuk timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 detik timeout
+
             const response = await fetch(`${API_BASE_URL}/api/websites`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(formData)
+                mode: 'cors',
+                body: JSON.stringify(formData),
+                signal: controller.signal
             });
 
-            const responseText = await response.text();
-            console.log('📥 Raw response:', responseText);
-
-            let data;
-            try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('❌ Failed to parse response:', e);
-                throw new Error('Invalid response from server');
-            }
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
-                throw new Error(data.error || `Server error: ${response.status}`);
+                // Coba parse error response
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                } catch (e) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
             }
 
+            const data = await response.json();
+            console.log('📥 Response data:', data);
+
             if (data.success) {
-                showToast('✅ Website created successfully!', 'success');
+                showToast('✅ Website berhasil dibuat!', 'success');
                 
-                // Redirect ke dashboard setelah 1 detik
+                // Redirect ke dashboard setelah 1.5 detik
                 setTimeout(() => {
-                    window.location.href = '/';
-                }, 1000);
+                    window.location.href = '/dashboard';
+                }, 1500);
                 
                 return true;
             } else {
-                throw new Error(data.error || 'Failed to create website');
+                throw new Error(data.error || 'Gagal membuat website');
             }
 
         } catch (error) {
             console.error('❌ Error creating website:', error);
-            showToast(error.message || 'Failed to create website', 'error');
+            
+            if (error.name === 'AbortError') {
+                showToast('❌ Koneksi timeout. Periksa koneksi Anda.', 'error');
+            } else if (error.message.includes('Failed to fetch')) {
+                showToast('❌ Tidak dapat terhubung ke server. Periksa koneksi.', 'error');
+            } else {
+                showToast(error.message || 'Gagal membuat website', 'error');
+            }
             return false;
         }
     }
@@ -206,13 +219,13 @@
         showLoading(true);
 
         // Kirim ke server
-        await createWebsite(formData);
+        const success = await createWebsite(formData);
 
         // Hide loading
         showLoading(false);
 
-        // Enable submit button
-        if (elements.submitBtn) {
+        // Enable submit button jika gagal
+        if (!success && elements.submitBtn) {
             elements.submitBtn.disabled = false;
             elements.submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Website';
         }
@@ -269,6 +282,36 @@
         });
     }
 
+    // ==================== TEST CONNECTION ====================
+    async function testConnection() {
+        try {
+            console.log('🔍 Testing connection to server...');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            const response = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors',
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Server connection OK:', data);
+                return true;
+            } else {
+                console.warn('⚠️ Server returned error:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.warn('⚠️ Cannot connect to server:', error.message);
+            return false;
+        }
+    }
+
     // ==================== TOGGLE PASSWORD ====================
     window.togglePassword = function() {
         const passwordInput = document.getElementById('password');
@@ -284,7 +327,7 @@
     };
 
     // ==================== INITIALIZATION ====================
-    function init() {
+    async function init() {
         console.log('🚀 Initializing create form...');
 
         // Setup form submit
@@ -293,6 +336,8 @@
             console.log('✅ Form submit handler attached');
         } else {
             console.error('❌ Form not found!');
+            showToast('❌ Form tidak ditemukan', 'error');
+            return;
         }
 
         // Setup keyboard handler
@@ -303,6 +348,12 @@
             setTimeout(() => {
                 elements.endpoint.focus();
             }, 500);
+        }
+
+        // Test koneksi ke server
+        const isConnected = await testConnection();
+        if (!isConnected) {
+            showToast('⚠️ Tidak dapat terhubung ke server. Periksa koneksi.', 'warning', 5000);
         }
 
         // Cek Telegram WebApp
@@ -320,6 +371,11 @@
                 if (theme.text_color) {
                     document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
                 }
+            }
+            
+            // Isi owner ID otomatis dari Telegram
+            if (tg.initDataUnsafe?.user?.id && elements.ownerId) {
+                elements.ownerId.value = tg.initDataUnsafe.user.id;
             }
         }
 
