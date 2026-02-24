@@ -1,4 +1,4 @@
-/* produk.css - Manajemen Produk dengan Struktur Hierarki (VERSI BARU) */
+/* produk.css - Manajemen Produk dengan Struktur Hierarki (VERSI BARU DENGAN FITUR LENGKAP) */
 
 :root {
     --tg-bg-color: #0f0f0f;
@@ -291,10 +291,45 @@ body {
     color: var(--tg-hint-color);
 }
 
-.layanan-actions {
+/* Tombol Actions di kanan */
+.layanan-actions-right {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
+    margin-left: auto;
+}
+
+.aplikasi-actions-right {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+/* Style untuk tombol add */
+.btn-icon.add {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success-color);
+}
+
+.btn-icon.add:hover {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+/* Style untuk tombol toggle */
+.btn-icon.toggle {
+    background: rgba(64, 167, 227, 0.1);
+    border-color: rgba(64, 167, 227, 0.3);
+    color: var(--primary-color);
+}
+
+.btn-icon.toggle:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
 }
 
 .layanan-banner {
@@ -386,12 +421,6 @@ body {
     color: var(--tg-hint-color);
 }
 
-.aplikasi-actions {
-    display: flex;
-    gap: 6px;
-    flex-shrink: 0;
-}
-
 .aplikasi-catatan {
     padding: 8px 16px;
     background: rgba(245, 158, 11, 0.05);
@@ -418,11 +447,12 @@ body {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 12px 16px;
+    padding: 16px;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color-light);
-    border-radius: 10px;
+    border-radius: 12px;
     transition: all 0.2s;
+    width: 100%;
 }
 
 .item-card:hover {
@@ -437,106 +467,104 @@ body {
 
 .item-info {
     flex: 1;
+    min-width: 0; /* Prevent flex overflow */
 }
 
 .item-nama {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.item-tipe {
-    font-size: 10px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 20px;
-    text-transform: uppercase;
-}
-
-.item-tipe.seller {
-    background: rgba(16, 185, 129, 0.2);
-    color: var(--seller-color);
-}
-
-.item-tipe.buyer {
-    background: rgba(245, 158, 11, 0.2);
-    color: var(--buyer-color);
-}
-
-.item-durasi {
-    font-size: 12px;
-    color: var(--tg-hint-color);
-    margin-bottom: 4px;
-}
-
-.item-meta {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-
-.item-harga {
     font-size: 16px;
-    font-weight: 700;
-    color: var(--success-color);
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--tg-text-color);
 }
 
-.item-metode {
+.item-durasi-harga {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: var(--tg-hint-color);
+}
+
+.item-durasi-harga .item-harga {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+.item-badges {
     display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+
+.item-badges::-webkit-scrollbar {
+    height: 4px;
+}
+
+.item-badges::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.badge {
+    display: inline-flex;
     align-items: center;
     gap: 4px;
-    font-size: 11px;
-    padding: 4px 8px;
+    padding: 4px 10px;
     border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
 }
 
-.item-metode.directly {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--success-color);
+.badge i {
+    font-size: 10px;
 }
 
-.item-metode.request {
-    background: rgba(245, 158, 11, 0.15);
+.stok-badge {
+    background: rgba(64, 167, 227, 0.1);
+    color: var(--primary-color);
+    border-color: rgba(64, 167, 227, 0.3);
+}
+
+.tipe-badge.seller {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--seller-color);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.tipe-badge.buyer {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--buyer-color);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.status-badge.ready {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--ready-color);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.status-badge.sold {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--sold-color);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.metode-badge.request {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.metode-badge.request.active {
     color: var(--warning-color);
 }
 
-.item-stok {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
+.metode-badge.request.inactive {
     color: var(--tg-hint-color);
-}
-
-.item-stok i {
-    color: var(--primary-color);
-}
-
-.item-stok.habis {
-    color: var(--danger-color);
-}
-
-.item-status {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 20px;
-}
-
-.item-status.ready {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--ready-color);
-}
-
-.item-status.sold {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--sold-color);
+    opacity: 0.6;
 }
 
 .item-actions {
@@ -572,6 +600,16 @@ body {
 .btn-icon.delete:hover {
     background: var(--danger-color);
     border-color: var(--danger-color);
+}
+
+.btn-icon.add:hover {
+    background: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.btn-icon.toggle:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
 .btn-primary {
@@ -701,7 +739,7 @@ body {
 }
 
 .empty-state .btn-primary {
-    padding: 3px 6px;
+    padding: 8px 16px;
     font-size: 13px;
 }
 
@@ -1092,7 +1130,7 @@ input[type="radio"]:checked + .toggle-label {
         flex-wrap: wrap;
     }
     
-    .layanan-actions {
+    .layanan-actions-right {
         width: 100%;
         justify-content: flex-end;
     }
@@ -1101,13 +1139,14 @@ input[type="radio"]:checked + .toggle-label {
         flex-wrap: wrap;
     }
     
-    .aplikasi-actions {
+    .aplikasi-actions-right {
         width: 100%;
         justify-content: flex-end;
     }
     
     .item-card {
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: flex-start;
     }
     
     .item-actions {
