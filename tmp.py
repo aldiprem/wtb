@@ -1,4 +1,4 @@
-# tmp.py - Database handler untuk tampilan website (VERSI DENGAN MULTIPLE BANNER DAN PROMO)
+# tmp.py - Database handler untuk tampilan website (VERSI DENGAN MULTIPLE BANNER DAN MULTIPLE PROMO)
 import sqlite3
 import json
 
@@ -23,6 +23,7 @@ def init_db():
         website_id INTEGER UNIQUE NOT NULL,
         logo TEXT,
         banners TEXT DEFAULT '[]',  -- JSON array untuk multiple banner
+        promos TEXT DEFAULT '[]',    -- JSON array untuk multiple promo (NEW)
         colors TEXT DEFAULT '{}',
         font_family TEXT DEFAULT 'Inter',
         font_size INTEGER DEFAULT 14,
@@ -41,7 +42,7 @@ def init_db():
     )
     ''')
 
-    # Create promo table
+    # Create promo table (OLD - untuk backward compatibility)
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS promo (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,6 +87,16 @@ def get_tampilan(website_id):
                 data['banners'] = json.loads(data['banners'])
             except:
                 data['banners'] = []
+        
+        # Parse promos (NEW)
+        if data['promos']:
+            try:
+                data['promos'] = json.loads(data['promos'])
+            except:
+                data['promos'] = []
+        else:
+            data['promos'] = []
+        
         if data['colors']:
             try:
                 data['colors'] = json.loads(data['colors'])
@@ -136,6 +147,7 @@ def save_tampilan(website_id, data):
     # Siapkan data dengan nilai default
     colors = json.dumps(data.get('colors', {}))
     banners = json.dumps(data.get('banners', []))
+    promos = json.dumps(data.get('promos', []))  # NEW
     banner_positions = json.dumps(data.get('banner_positions', []))
     payment_notes = json.dumps(data.get('payment_notes', {}))
     banks = json.dumps(data.get('banks', []))
@@ -158,6 +170,7 @@ def save_tampilan(website_id, data):
         UPDATE tampilan SET
             logo = COALESCE(?, logo),
             banners = COALESCE(?, banners),
+            promos = COALESCE(?, promos),  -- NEW
             colors = COALESCE(?, colors),
             font_family = COALESCE(?, font_family),
             font_size = COALESCE(?, font_size),
@@ -177,6 +190,7 @@ def save_tampilan(website_id, data):
         ''', (
             logo,
             banners,
+            promos,
             colors,
             font_family,
             font_size,
@@ -198,15 +212,16 @@ def save_tampilan(website_id, data):
         # Insert
         cursor.execute('''
         INSERT INTO tampilan (
-            website_id, logo, banners, colors, font_family, font_size,
+            website_id, logo, banners, promos, colors, font_family, font_size,
             title, description, contact_whatsapp, contact_telegram, 
             banner_positions, payment_notes, banks, ewallets, qris, crypto,
             maintenance_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             website_id,
             logo,
             banners,
+            promos,
             colors,
             font_family,
             font_size,
@@ -332,6 +347,11 @@ def update_tampilan(website_id, data):
         current_banners = json.loads(current_dict['banners']) if current_dict['banners'] else []
     except:
         current_banners = []
+    
+    try:
+        current_promos = json.loads(current_dict['promos']) if current_dict['promos'] else []  # NEW
+    except:
+        current_promos = []
         
     try:
         current_colors = json.loads(current_dict['colors']) if current_dict['colors'] else {}
@@ -371,6 +391,7 @@ def update_tampilan(website_id, data):
     # Siapkan nilai baru (gunakan data baru jika ada,否则 pakai yang lama)
     new_logo = data.get('logo', current_dict['logo'])
     new_banners = json.dumps(data.get('banners', current_banners))
+    new_promos = json.dumps(data.get('promos', current_promos))  # NEW
     new_colors = json.dumps(data.get('colors', current_colors))
     new_banner_positions = json.dumps(data.get('banner_positions', current_banner_positions))
     new_font_family = data.get('font_family', current_dict['font_family'])
@@ -391,6 +412,7 @@ def update_tampilan(website_id, data):
     UPDATE tampilan SET
         logo = ?,
         banners = ?,
+        promos = ?,
         colors = ?,
         font_family = ?,
         font_size = ?,
@@ -410,6 +432,7 @@ def update_tampilan(website_id, data):
     ''', (
         new_logo,
         new_banners,
+        new_promos,
         new_colors,
         new_font_family,
         new_font_size,
@@ -580,85 +603,74 @@ def save_general(website_id, title, description, contact_whatsapp, contact_teleg
     conn.close()
     return True
 
-# ==================== FUNGSI UNTUK PROMO ====================
+# ==================== FUNGSI UNTUK PROMO (MULTIPLE - NEW) ====================
 
-def get_promo(website_id):
-    """Ambil data promo berdasarkan website_id"""
+def get_promos(website_id):
+    """Ambil semua data promo berdasarkan website_id"""
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute('SELECT * FROM promo WHERE website_id = ?', (website_id,))
+    cursor.execute('SELECT promos FROM tampilan WHERE website_id = ?', (website_id,))
     row = cursor.fetchone()
 
     conn.close()
 
-    if row:
-        return dict(row)
+    if row and row['promos']:
+        try:
+            promos = json.loads(row['promos'])
+            return promos
+        except:
+            return []
+    return []
+
+def save_promos(website_id, promos_data):
+    """Simpan semua data promo"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    promos_json = json.dumps(promos_data)
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            promos = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (promos_json, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, promos, colors, font_family, font_size)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (website_id, promos_json, '{}', 'Inter', 14))
+    
+    conn.commit()
+    conn.close()
+    return len(promos_data)
+
+# ==================== FUNGSI UNTUK PROMO LAMA (BACKWARD COMPATIBILITY) ====================
+
+def get_promo(website_id):
+    """Ambil data promo berdasarkan website_id (old single format)"""
+    promos = get_promos(website_id)
+    if promos and len(promos) > 0:
+        return promos[0]
     return None
 
 def save_promo(website_id, data):
-    """Simpan atau update data promo"""
-    conn = get_db()
-    cursor = conn.cursor()
-
-    # Cek apakah sudah ada
-    cursor.execute('SELECT id FROM promo WHERE website_id = ?', (website_id,))
-    existing = cursor.fetchone()
-
-    if existing:
-        # Update
-        cursor.execute('''
-        UPDATE promo SET
-            banner = ?,
-            description = ?,
-            end_date = ?,
-            end_time = ?,
-            never_end = ?,
-            notes = ?,
-            active = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE website_id = ?
-        ''', (
-            data.get('banner', ''),
-            data.get('description', ''),
-            data.get('end_date'),
-            data.get('end_time'),
-            1 if data.get('never_end', False) else 0,
-            data.get('notes', ''),
-            1 if data.get('active', True) else 0,
-            website_id
-        ))
-        result_id = existing['id']
+    """Simpan atau update data promo (old single format)"""
+    promos = get_promos(website_id)
+    
+    if promos and len(promos) > 0:
+        promos[0] = data
     else:
-        # Insert
-        cursor.execute('''
-        INSERT INTO promo (
-            website_id, banner, description, end_date, end_time, never_end, notes, active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            website_id,
-            data.get('banner', ''),
-            data.get('description', ''),
-            data.get('end_date'),
-            data.get('end_time'),
-            1 if data.get('never_end', False) else 0,
-            data.get('notes', ''),
-            1 if data.get('active', True) else 0
-        ))
-        result_id = cursor.lastrowid
-
-    conn.commit()
-    conn.close()
-    return result_id
+        promos = [data]
+    
+    return save_promos(website_id, promos)
 
 def delete_promo(website_id):
-    """Hapus data promo"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('DELETE FROM promo WHERE website_id = ?', (website_id,))
-    deleted = cursor.rowcount > 0
-    
-    conn.commit()
-    conn.close()
-    return deleted
+    """Hapus data promo (old single format)"""
+    return save_promos(website_id, [])
