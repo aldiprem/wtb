@@ -1181,6 +1181,178 @@ def delete_promo(website_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK PROMO (REVISED - MULTIPLE) ====================
+
+@app.route('/api/tampilan/<int:website_id>/promos', methods=['GET'])
+def get_promos(website_id):
+    """Get all promos for a website"""
+    try:
+        data = tmp.get_promos(website_id)
+        return jsonify({'success': True, 'promos': data})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/promos', methods=['POST'])
+def save_promos(website_id):
+    """Save all promos for a website"""
+    try:
+        data = request.json
+        print(f"📢 Received promos data for website {website_id}:", data)
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        promos = data.get('promos', [])
+        
+        # Validasi setiap promo
+        for promo in promos:
+            if 'title' not in promo or not promo['title']:
+                return jsonify({'success': False, 'error': 'Each promo must have a title'}), 400
+            if 'banner' not in promo or not promo['banner']:
+                return jsonify({'success': False, 'error': 'Each promo must have a banner URL'}), 400
+        
+        # Simpan semua promos
+        result = tmp.save_promos(website_id, promos)
+        
+        return jsonify({'success': True, 'message': f'{len(promos)} promos saved successfully', 'count': result})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/promos/<int:promo_index>', methods=['DELETE'])
+def delete_promo(website_id, promo_index):
+    """Delete a specific promo"""
+    try:
+        print(f"🗑️ Deleting promo at index {promo_index}")
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Get existing promos
+        existing = tmp.get_promos(website_id)
+        if not existing:
+            return jsonify({'success': False, 'error': 'Promos not found'}), 404
+        
+        if promo_index < 0 or promo_index >= len(existing):
+            return jsonify({'success': False, 'error': 'Promo not found'}), 404
+        
+        # Remove promo
+        existing.pop(promo_index)
+        
+        # Save updated promos
+        tmp.save_promos(website_id, existing)
+        
+        return jsonify({'success': True, 'message': 'Promo deleted successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/promos/reorder', methods=['POST'])
+def reorder_promos(website_id):
+    """Reorder promos"""
+    try:
+        data = request.json
+        new_order = data.get('order', [])
+        
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        existing = tmp.get_promos(website_id)
+        if not existing:
+            return jsonify({'success': False, 'error': 'Promos not found'}), 404
+        
+        # Reorder based on new_order
+        if len(new_order) == len(existing):
+            new_promos = [existing[i] for i in new_order]
+            tmp.save_promos(website_id, new_promos)
+            return jsonify({'success': True, 'message': 'Promos reordered successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid order'}), 400
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== ROUTES UNTUK PROMO LAMA (BACKWARD COMPATIBILITY) ====================
+
+@app.route('/api/tampilan/<int:website_id>/promo', methods=['GET'])
+def get_promo(website_id):
+    """Get promo data by website_id (old single promo format)"""
+    try:
+        # Try to get from new format first
+        promos = tmp.get_promos(website_id)
+        if promos and len(promos) > 0:
+            # Return first promo for backward compatibility
+            return jsonify({'success': True, 'promo': promos[0]})
+        else:
+            return jsonify({'success': False, 'error': 'Promo not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/promo', methods=['POST'])
+def save_promo(website_id):
+    """Save or update promo settings (old single promo format)"""
+    try:
+        data = request.json
+        print(f"📢 Received promo data for website {website_id}:", data)
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Convert old format to new format
+        promo = {
+            'title': data.get('title', 'Promo'),
+            'banner': data.get('banner', ''),
+            'description': data.get('description', ''),
+            'end_date': data.get('end_date'),
+            'end_time': data.get('end_time'),
+            'never_end': data.get('never_end', False),
+            'notes': data.get('notes', ''),
+            'active': data.get('active', True)
+        }
+        
+        # Get existing promos
+        existing = tmp.get_promos(website_id)
+        
+        if existing and len(existing) > 0:
+            # Update first promo
+            existing[0] = promo
+            tmp.save_promos(website_id, existing)
+        else:
+            # Create new promos array
+            tmp.save_promos(website_id, [promo])
+        
+        return jsonify({'success': True, 'message': 'Promo saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/promo', methods=['DELETE'])
+def delete_promo(website_id):
+    """Delete promo settings (old single promo format)"""
+    try:
+        # Delete all promos
+        tmp.save_promos(website_id, [])
+        return jsonify({'success': True, 'message': 'Promo deleted successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
