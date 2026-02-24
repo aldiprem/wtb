@@ -1,4 +1,4 @@
-/* panel.css - Panel Admin dengan Dashboard Lengkap */
+/* panel.css - Panel Admin dengan Dashboard */
 
 :root {
     --tg-bg-color: #0f0f0f;
@@ -18,13 +18,6 @@
     --bg-card: rgba(255, 255, 255, 0.05);
     --bg-card-hover: rgba(255, 255, 255, 0.08);
     --border-color: rgba(255, 255, 255, 0.1);
-    --border-color-light: rgba(255, 255, 255, 0.05);
-    
-    /* Status colors */
-    --pending-color: #f59e0b;
-    --processing-color: #3b82f6;
-    --completed-color: #10b981;
-    --cancelled-color: #ef4444;
 }
 
 * {
@@ -146,8 +139,6 @@ body {
     margin: 0 auto;
     padding: 16px;
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
 }
 
 /* ===== HEADER ===== */
@@ -222,6 +213,103 @@ body {
     transform: rotate(180deg);
 }
 
+/* ===== LOADING & ERROR STATES ===== */
+.loading-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.error-state {
+    text-align: center;
+    padding: 40px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 16px;
+    margin: 20px 0;
+}
+
+.error-state i {
+    color: var(--danger-color);
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+
+.retry-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    color: white;
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: all 0.2s;
+}
+
+.retry-btn:hover {
+    background: var(--primary-color);
+}
+
+/* ===== NO WEBSITE MESSAGE ===== */
+.no-website-message {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--bg-card);
+    border-radius: 24px;
+    border: 1px solid var(--border-color);
+}
+
+.no-website-message i {
+    font-size: 80px;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    opacity: 0.7;
+}
+
+.no-website-message h3 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.no-website-message p {
+    color: var(--tg-hint-color);
+    margin-bottom: 24px;
+}
+
+.no-website-message .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.no-website-message .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
+}
+
 /* ===== PROFILE CARD ===== */
 .profile-card {
     display: flex;
@@ -254,7 +342,6 @@ body {
     position: absolute;
     bottom: 5px;
     right: 5px;
-    background: var(--success-color);
     width: 24px;
     height: 24px;
     border-radius: 50%;
@@ -266,7 +353,6 @@ body {
 
 .profile-status i {
     font-size: 14px;
-    color: white;
 }
 
 .profile-info {
@@ -429,31 +515,15 @@ body {
     font-weight: 700;
 }
 
-/* ===== QUICK ACTIONS ===== */
-.quick-actions {
-    margin-bottom: 24px;
-}
-
-.quick-actions h3 {
-    font-size: 18px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 16px;
-}
-
-.quick-actions h3 i {
-    color: var(--primary-color);
-}
-
-.action-grid {
+/* ===== NAVIGATION GRID ===== */
+.nav-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
+    margin-bottom: 24px;
 }
 
-.action-card {
+.nav-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
@@ -467,18 +537,18 @@ body {
     position: relative;
 }
 
-.action-card:hover {
+.nav-card:hover {
     transform: translateY(-2px);
     border-color: var(--primary-color);
     background: var(--bg-card-hover);
 }
 
-.action-card:hover .fa-chevron-right {
+.nav-card:hover .fa-chevron-right {
     transform: translateX(4px);
     color: var(--primary-color);
 }
 
-.action-icon {
+.nav-icon {
     width: 48px;
     height: 48px;
     border-radius: 12px;
@@ -490,18 +560,18 @@ body {
     color: var(--primary-color);
 }
 
-.action-info {
+.nav-info {
     flex: 1;
 }
 
-.action-title {
+.nav-title {
     display: block;
     font-size: 16px;
     font-weight: 600;
     margin-bottom: 4px;
 }
 
-.action-desc {
+.nav-desc {
     display: block;
     font-size: 11px;
     color: var(--tg-hint-color);
@@ -538,9 +608,6 @@ body {
     text-decoration: none;
     font-size: 13px;
     font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 4px;
     transition: all 0.2s;
 }
 
@@ -553,6 +620,7 @@ body {
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
     font-size: 10px;
+    margin-left: 4px;
 }
 
 /* ===== RECENT ORDERS ===== */
@@ -611,22 +679,22 @@ body {
 
 .order-status.pending {
     background: rgba(245, 158, 11, 0.15);
-    color: var(--pending-color);
+    color: #f59e0b;
 }
 
 .order-status.processing {
     background: rgba(59, 130, 246, 0.15);
-    color: var(--processing-color);
+    color: #3b82f6;
 }
 
 .order-status.completed {
     background: rgba(16, 185, 129, 0.15);
-    color: var(--completed-color);
+    color: #10b981;
 }
 
 .order-status.cancelled {
     background: rgba(239, 68, 68, 0.15);
-    color: var(--cancelled-color);
+    color: #ef4444;
 }
 
 .order-total {
@@ -637,33 +705,7 @@ body {
     text-align: right;
 }
 
-.empty-orders,
-.empty-products {
-    text-align: center;
-    padding: 40px 20px;
-    background: var(--bg-card);
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
-    color: var(--tg-hint-color);
-}
-
-.empty-orders i,
-.empty-products i {
-    font-size: 48px;
-    margin-bottom: 12px;
-    opacity: 0.5;
-}
-
-.empty-orders p,
-.empty-products p {
-    font-size: 14px;
-}
-
 /* ===== POPULAR PRODUCTS ===== */
-.popular-products {
-    margin-bottom: 24px;
-}
-
 .products-mini-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -726,124 +768,58 @@ body {
     color: var(--primary-color);
 }
 
-/* ===== QUICK STATS ===== */
-.quick-stats {
+/* ===== WEBSITE INFO ===== */
+.website-info {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 20px;
-    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
 }
 
-.stat-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 0;
-}
-
-.stat-row:first-child {
-    padding-top: 0;
-}
-
-.stat-row:last-child {
-    padding-bottom: 0;
-    border-top: 1px solid var(--border-color);
-    margin-top: 8px;
-}
-
-.stat-item {
-    flex: 1;
+.info-row {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.stat-item:first-child {
-    border-right: 1px solid var(--border-color);
-    padding-right: 16px;
-    margin-right: 16px;
-}
-
-.stat-key {
+.info-label {
     font-size: 12px;
     color: var(--tg-hint-color);
 }
 
-.stat-value {
+.info-value {
     font-size: 16px;
     font-weight: 600;
 }
 
-/* ===== NO WEBSITE MESSAGE ===== */
-.no-website-message {
+.info-value.warning {
+    color: var(--warning-color);
+}
+
+/* ===== EMPTY STATES ===== */
+.empty-orders,
+.empty-products {
     text-align: center;
-    padding: 60px 20px;
+    padding: 40px 20px;
     background: var(--bg-card);
-    border-radius: 24px;
+    border-radius: 16px;
     border: 1px solid var(--border-color);
-}
-
-.no-website-message i {
-    font-size: 80px;
-    color: var(--primary-color);
-    margin-bottom: 20px;
-    opacity: 0.7;
-}
-
-.no-website-message h3 {
-    font-size: 20px;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.no-website-message p {
     color: var(--tg-hint-color);
-    margin-bottom: 24px;
 }
 
-.no-website-message .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 24px;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-    border: none;
-    border-radius: 30px;
-    font-size: 14px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.2s;
-}
-
-.no-website-message .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
-}
-
-/* ===== SCROLLBAR ===== */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+.empty-orders i,
+.empty-products i {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
 }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
-    .action-grid {
+    .nav-grid {
         grid-template-columns: repeat(2, 1fr);
     }
     
@@ -853,10 +829,6 @@ body {
 }
 
 @media (max-width: 768px) {
-    .panel-container {
-        padding: 12px;
-    }
-    
     .profile-card {
         flex-direction: column;
         text-align: center;
@@ -876,14 +848,6 @@ body {
     
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .action-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .products-mini-grid {
-        grid-template-columns: 1fr;
     }
     
     .order-item {
@@ -934,8 +898,12 @@ body {
         font-size: 20px;
     }
     
+    .stats-grid {
+        gap: 8px;
+    }
+    
     .stat-card {
-        padding: 16px;
+        padding: 12px;
     }
     
     .stat-icon {
@@ -948,14 +916,15 @@ body {
         font-size: 18px;
     }
     
-    .profile-meta {
-        flex-direction: column;
-        gap: 8px;
-        align-items: center;
+    .nav-grid {
+        grid-template-columns: 1fr;
     }
     
-    .profile-website {
-        flex-direction: column;
-        width: 100%;
+    .products-mini-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .website-info {
+        grid-template-columns: 1fr;
     }
 }
