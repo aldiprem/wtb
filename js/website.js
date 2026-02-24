@@ -109,6 +109,7 @@
 
     // ==================== STATE ====================
     let currentEndpoint = null;
+    let currentWebsite = null;
     let websiteData = null;
     let tampilanData = null;
     let products = [];
@@ -251,63 +252,63 @@
         }
     }
 
-    // ==================== FUNGSI LOAD WEBSITE DATA ====================
     async function loadWebsiteData(endpoint) {
-        showLoading('Memuat data website...');
-        
-        try {
-            console.log(`📡 Loading website data for endpoint: ${endpoint}`);
-            
-            const result = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            console.log('📥 Website data:', result);
-            
-            if (result.success && result.website) {
-                const data = result.website;
-                websiteData = data;
-                
-                await loadTampilanData(data.id);
-                
-                if (data.products && Array.isArray(data.products)) {
-                    products = data.products;
-                } else {
-                    products = [];
-                }
-                
-                categories = data.categories || [];
-                
-                updateWebsiteUI(data);
-                renderAllComponents();
-                
-                setTimeout(() => {
-                    animateElements();
-                }, 100);
-                
-                hideLoading();
-                return data;
-            } else {
-                throw new Error('Invalid response from server');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error loading website:', error);
-            hideLoading();
-            
-            if (elements.storeName) {
-                elements.storeName.textContent = 'Website Tidak Ditemukan';
-            }
-            
-            showToast(error.message || 'Gagal memuat data website', 'error');
-            clearAllContent();
-            
-            return null;
+      showLoading('Memuat data website...');
+    
+      try {
+        console.log(`📡 Loading website data for endpoint: ${end}`);
+    
+        const result = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+    
+        console.log('📥 Website data:', result);
+    
+        if (result.success && result.website) {
+          const data = result.website;
+          websiteData = data;
+          currentWebsite = data; // <-- TAMBAHKAN INI
+    
+          await loadTampilanData(data.id);
+    
+          if (data.products && Array.isArray(data.products)) {
+            products = data.products;
+          } else {
+            products = [];
+          }
+    
+          categories = data.categories || [];
+    
+          updateWebsiteUI(data);
+          renderAllComponents();
+    
+          setTimeout(() => {
+            animateElements();
+          }, 100);
+    
+          hideLoading();
+          return data;
+        } else {
+          throw new Error('Invalid response from server');
         }
+    
+      } catch (error) {
+        console.error('❌ Error loading website:', error);
+        hideLoading();
+    
+        if (elements.storeName) {
+          elements.storeName.textContent = 'Website Tidak Ditemukan';
+        }
+    
+        showToast(error.message || 'Gagal memuat data website', 'error');
+        clearAllContent();
+    
+        return null;
+      }
     }
 
     function animateElements() {
