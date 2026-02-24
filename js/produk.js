@@ -1,4 +1,4 @@
-// produk.js - Manajemen Produk dengan Tampilan Tree
+// produk.js - Manajemen Produk dengan Tampilan Tree (VERSI FINAL - SUDAH DIPERBAIKI)
 (function() {
     'use strict';
     
@@ -14,7 +14,7 @@
     let filteredProducts = [];
     let editingProductId = null;
     
-    // Form State
+    // Form State (camelCase untuk internal)
     let formData = {
         layanan: '',
         layananGambar: '',
@@ -229,18 +229,20 @@
         }
     }
 
+    // 🔥 PERBAIKAN UTAMA: Fungsi saveProduct dengan key yang sesuai database (underscore)
     async function saveProduct() {
         if (!currentWebsite) return;
         
+        // Mapping dari camelCase (formData) ke underscore (database)
         const productData = {
             layanan: formData.layanan,
-            layananGambar: formData.layananGambar,
-            layananDesc: formData.layananDesc,
+            layanan_gambar: formData.layananGambar,      // 🔥 konversi ke underscore
+            layanan_desc: formData.layananDesc,          // 🔥 konversi ke underscore
             aplikasi: formData.aplikasi,
-            aplikasiGambar: formData.aplikasiGambar,
-            aplikasiDesc: formData.aplikasiDesc,
-            itemNama: formData.itemNama,
-            itemDurasi: formData.itemDurasi,
+            aplikasi_gambar: formData.aplikasiGambar,    // 🔥 konversi ke underscore
+            aplikasi_desc: formData.aplikasiDesc,        // 🔥 konversi ke underscore
+            item_nama: formData.itemNama,                 // 🔥 konversi ke underscore (PENTING!)
+            item_durasi: formData.itemDurasi,             // 🔥 konversi ke underscore
             harga: parseInt(formData.harga) || 0,
             fitur: formData.fitur,
             method: formData.method,
@@ -248,6 +250,8 @@
             fields: formData.method === 'request' ? formData.fields : [],
             aktif: formData.aktif
         };
+        
+        console.log('📤 Sending product data:', productData); // Untuk debugging
         
         showLoading(true);
         
@@ -317,7 +321,7 @@
                 const match = 
                     (p.layanan || '').toLowerCase().includes(query) ||
                     (p.aplikasi || '').toLowerCase().includes(query) ||
-                    (p.itemNama || '').toLowerCase().includes(query);
+                    (p.item_nama || '').toLowerCase().includes(query);  // 🔥 pake item_nama
                 if (!match) return false;
             }
             
@@ -339,6 +343,7 @@
     }
 
     // ==================== RENDER FUNCTIONS ====================
+    // 🔥 PERBAIKAN: Render dengan key dari database (underscore)
     function renderProducts() {
         if (!elements.productsTree) return;
         
@@ -350,21 +355,21 @@
         
         elements.emptyState.style.display = 'none';
         
-        // Group by layanan
+        // Group by layanan (menggunakan key dari database)
         const grouped = {};
         filteredProducts.forEach(p => {
             if (!grouped[p.layanan]) {
                 grouped[p.layanan] = {
-                    gambar: p.layananGambar || '',
-                    desc: p.layananDesc || '',
+                    gambar: p.layanan_gambar || '',      // 🔥 dari database
+                    desc: p.layanan_desc || '',          // 🔥 dari database
                     aplikasi: {}
                 };
             }
             
             if (!grouped[p.layanan].aplikasi[p.aplikasi]) {
                 grouped[p.layanan].aplikasi[p.aplikasi] = {
-                    gambar: p.aplikasiGambar || '',
-                    desc: p.aplikasiDesc || '',
+                    gambar: p.aplikasi_gambar || '',    // 🔥 dari database
+                    desc: p.aplikasi_desc || '',        // 🔥 dari database
                     items: []
                 };
             }
@@ -428,8 +433,8 @@
                     html += `
                         <div class="item-row" data-id="${item.id}">
                             <div class="item-info">
-                                <div class="item-nama">${escapeHtml(item.itemNama)}</div>
-                                ${item.itemDurasi ? `<div class="item-durasi">${escapeHtml(item.itemDurasi)}</div>` : ''}
+                                <div class="item-nama">${escapeHtml(item.item_nama)}</div>  <!-- 🔥 item_nama dari database -->
+                                ${item.item_durasi ? `<div class="item-durasi">${escapeHtml(item.item_durasi)}</div>` : ''}  <!-- 🔥 item_durasi dari database -->
                                 <div class="item-meta">
                                     <span class="item-harga">${formatRupiah(item.harga)}</span>
                                     ${item.fitur !== 'biasa' ? 
@@ -521,19 +526,20 @@
         if (elements.produkAktif) elements.produkAktif.checked = true;
     }
 
+    // 🔥 PERBAIKAN: Load product untuk edit (mapping dari underscore ke camelCase)
     function loadProductForEdit(product) {
         editingProductId = product.id;
         
-        // Set formData
+        // Mapping dari database (underscore) ke form (camelCase)
         formData = {
             layanan: product.layanan || '',
-            layananGambar: product.layananGambar || '',
-            layananDesc: product.layananDesc || '',
+            layananGambar: product.layanan_gambar || '',      // 🔥 dari layanan_gambar
+            layananDesc: product.layanan_desc || '',          // 🔥 dari layanan_desc
             aplikasi: product.aplikasi || '',
-            aplikasiGambar: product.aplikasiGambar || '',
-            aplikasiDesc: product.aplikasiDesc || '',
-            itemNama: product.itemNama || '',
-            itemDurasi: product.itemDurasi || '',
+            aplikasiGambar: product.aplikasi_gambar || '',    // 🔥 dari aplikasi_gambar
+            aplikasiDesc: product.aplikasi_desc || '',        // 🔥 dari aplikasi_desc
+            itemNama: product.item_nama || '',                 // 🔥 dari item_nama
+            itemDurasi: product.item_durasi || '',             // 🔥 dari item_durasi
             harga: product.harga || 0,
             fitur: product.fitur || 'biasa',
             method: product.method || 'directly',
@@ -666,7 +672,7 @@
         if (!product) return;
         
         elements.deleteInfo.innerHTML = `
-            <strong>${escapeHtml(product.itemNama)}</strong><br>
+            <strong>${escapeHtml(product.item_nama)}</strong><br>  <!-- 🔥 pake item_nama -->
             <small>${escapeHtml(product.aplikasi)} • ${escapeHtml(product.layanan)}</small>
         `;
         
