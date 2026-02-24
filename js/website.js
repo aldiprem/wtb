@@ -869,56 +869,51 @@
         currentBannerIndex = index;
     }
 
-    // ==================== FUNGSI RENDER CATEGORIES ====================
+    // ==================== FUNGSI RENDER LAYANAN (KATEGORI) ====================
     function renderCategories() {
         if (!elements.categoriesGrid) return;
         
-        const categoryColors = [
-            'linear-gradient(135deg, #40a7e3, #2d8bcb)',
-            'linear-gradient(135deg, #10b981, #059669)',
-            'linear-gradient(135deg, #f59e0b, #d97706)',
-            'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-            'linear-gradient(135deg, #ec4899, #db2777)',
-            'linear-gradient(135deg, #14b8a6, #0d9488)'
-        ];
-        
         let html = '';
         
-        if (categories.length > 0) {
-            categories.slice(0, 8).forEach((category, index) => {
-                const gradient = categoryColors[index % categoryColors.length];
+        if (productsData?.layanan && productsData.layanan.length > 0) {
+            // Tampilkan layanan dari database
+            productsData.layanan.slice(0, 6).forEach(layanan => {
+                const totalAplikasi = layanan.aplikasi?.length || 0;
                 html += `
-                    <div class="category-card" data-id="${category.id}">
-                        <div class="category-icon" style="background: ${gradient}20; color: ${gradient.split(',')[0]}">
-                            <i class="fas fa-${category.icon || 'tag'}"></i>
+                    <div class="category-card" data-layanan="${layanan.layanan_nama}">
+                        <div class="category-icon">
+                            ${layanan.layanan_gambar ? 
+                                `<img src="${layanan.layanan_gambar}" alt="${layanan.layanan_nama}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                                `<i class="fas fa-layer-group"></i>`
+                            }
                         </div>
                         <div class="category-info">
-                            <h4>${escapeHtml(category.name)}</h4>
-                            <span>${category.count || 0} produk</span>
+                            <h4>${escapeHtml(layanan.layanan_nama)}</h4>
+                            <span><i class="fas fa-mobile-alt"></i> ${totalAplikasi} Aplikasi</span>
                         </div>
                     </div>
                 `;
             });
         } else {
-            const defaultCategories = [
-                { name: 'Elektronik', icon: 'mobile-alt', count: 24 },
-                { name: 'Fashion', icon: 'tshirt', count: 56 },
-                { name: 'Makanan', icon: 'utensils', count: 32 },
-                { name: 'Kesehatan', icon: 'heartbeat', count: 18 },
-                { name: 'Olahraga', icon: 'futbol', count: 15 },
-                { name: 'Buku', icon: 'book', count: 27 }
+            // Dummy data jika belum ada layanan
+            const dummyLayanan = [
+                { nama: 'Premium Apps', icon: 'fa-crown', count: 12 },
+                { nama: 'Game Voucher', icon: 'fa-gamepad', count: 24 },
+                { nama: 'Streaming', icon: 'fa-film', count: 8 },
+                { nama: 'Software', icon: 'fa-code', count: 15 },
+                { nama: 'Top Up Games', icon: 'fa-diamond', count: 32 },
+                { nama: 'E-Book', icon: 'fa-book', count: 45 }
             ];
             
-            defaultCategories.slice(0, 6).forEach((category, index) => {
-                const gradient = categoryColors[index % categoryColors.length];
+            dummyLayanan.forEach(layanan => {
                 html += `
                     <div class="category-card">
-                        <div class="category-icon" style="background: ${gradient}20; color: ${gradient.split(',')[0]}">
-                            <i class="fas fa-${category.icon}"></i>
+                        <div class="category-icon">
+                            <i class="fas ${layanan.icon}"></i>
                         </div>
                         <div class="category-info">
-                            <h4>${category.name}</h4>
-                            <span>${category.count} produk</span>
+                            <h4>${layanan.nama}</h4>
+                            <span><i class="fas fa-mobile-alt"></i> ${layanan.count} Aplikasi</span>
                         </div>
                     </div>
                 `;
@@ -927,97 +922,294 @@
         
         elements.categoriesGrid.innerHTML = html;
         
+        // Event listener untuk klik kategori
         document.querySelectorAll('.category-card').forEach(card => {
             card.addEventListener('click', () => {
-                const categoryId = card.dataset.id;
-                showToast(`Kategori: ${card.querySelector('h4').textContent}`, 'info');
+                const layanan = card.dataset.layanan || card.querySelector('h4').textContent;
+                showToast(`Layanan: ${layanan}`, 'info');
             });
         });
     }
-
-    // ==================== FUNGSI RENDER PRODUCTS ====================
-    function renderProducts() {
-        if (!elements.featuredProducts || !elements.popularProducts) return;
+    
+    // ==================== FUNGSI RENDER PRODUK TERLARIS ====================
+    function renderPopularProducts() {
+        if (!elements.popularProducts) return;
         
-        let featured = [];
-        let popular = [];
+        let products = [];
         
-        if (products.length > 0) {
-            featured = products.filter(p => p.featured).slice(0, 4);
-            popular = products.filter(p => p.popular).slice(0, 4);
+        if (productsData?.items && productsData.items.length > 0) {
+            // Ambil item dengan sold terbanyak
+            products = [...productsData.items]
+                .sort((a, b) => (b.terjual || 0) - (a.terjual || 0))
+                .slice(0, 6);
         }
         
-        // If not enough featured/popular, add random products
-        if (featured.length < 4 && products.length > 0) {
-            const remaining = products.filter(p => !p.featured).slice(0, 4 - featured.length);
-            featured = [...featured, ...remaining];
+        if (products.length === 0) {
+            // Dummy data
+            products = [
+                { 
+                    id: 1, 
+                    nama: 'Canva Premium', 
+                    aplikasi: 'Canva',
+                    icon: 'fa-paint-brush',
+                    item_count: 28, 
+                    terjual: 156,
+                    gambar: 'https://via.placeholder.com/120x80/40a7e3/ffffff?text=Canva'
+                },
+                { 
+                    id: 2, 
+                    nama: 'Netflix 4K', 
+                    aplikasi: 'Netflix',
+                    icon: 'fa-film',
+                    item_count: 15, 
+                    terjual: 324,
+                    gambar: 'https://via.placeholder.com/120x80/e50914/ffffff?text=Netflix'
+                },
+                { 
+                    id: 3, 
+                    nama: 'Spotify Premium', 
+                    aplikasi: 'Spotify',
+                    icon: 'fa-music',
+                    item_count: 42, 
+                    terjual: 567,
+                    gambar: 'https://via.placeholder.com/120x80/1DB954/ffffff?text=Spotify'
+                },
+                { 
+                    id: 4, 
+                    nama: 'Disney+ Hotstar', 
+                    aplikasi: 'Disney+',
+                    icon: 'fa-magic',
+                    item_count: 19, 
+                    terjual: 89,
+                    gambar: 'https://via.placeholder.com/120x80/113CCF/ffffff?text=Disney'
+                },
+                { 
+                    id: 5, 
+                    nama: 'YouTube Premium', 
+                    aplikasi: 'YouTube',
+                    icon: 'fa-youtube',
+                    item_count: 23, 
+                    terjual: 432,
+                    gambar: 'https://via.placeholder.com/120x80/FF0000/ffffff?text=YouTube'
+                },
+                { 
+                    id: 6, 
+                    nama: 'Microsoft 365', 
+                    aplikasi: 'Office',
+                    icon: 'fa-microsoft',
+                    item_count: 11, 
+                    terjual: 78,
+                    gambar: 'https://via.placeholder.com/120x80/00A4EF/ffffff?text=Office'
+                }
+            ];
         }
         
-        if (popular.length < 4 && products.length > 0) {
-            const remaining = products.filter(p => !p.popular).slice(0, 4 - popular.length);
-            popular = [...popular, ...remaining];
-        }
+        let html = '';
+        products.forEach(product => {
+            const icon = product.icon || 'fa-box';
+            const gambar = product.gambar || product.image || `https://via.placeholder.com/120x80/40a7e3/ffffff?text=${product.nama}`;
+            
+            html += `
+                <div class="popular-product-card" data-id="${product.id}">
+                    <div class="popular-product-image">
+                        <img src="${gambar}" alt="${escapeHtml(product.nama)}" 
+                             onerror="this.src='https://via.placeholder.com/120x80/40a7e3/ffffff?text=Product';">
+                    </div>
+                    <div class="popular-product-info">
+                        <h3><i class="fas ${icon}"></i> ${escapeHtml(product.nama)}</h3>
+                        <div class="popular-product-desc">
+                            <i class="fas fa-mobile-alt"></i> ${escapeHtml(product.aplikasi || 'Aplikasi')}
+                        </div>
+                        <div class="popular-product-stats">
+                            <span><i class="fas fa-box"></i> ${product.item_count || 0} item</span>
+                            <span><i class="fas fa-shopping-bag"></i> ${product.terjual || 0} terjual</span>
+                        </div>
+                        <div class="popular-product-price">
+                            Mulai ${formatPrice(product.harga || 25000)}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
         
-        // If still no products, use dummy data
-        if (featured.length === 0) {
-            featured = getDummyProducts();
-        }
+        elements.popularProducts.innerHTML = html;
         
-        if (popular.length === 0) {
-            popular = getDummyProducts().reverse();
-        }
-        
-        renderProductGrid(elements.featuredProducts, featured);
-        renderProductGrid(elements.popularProducts, popular);
+        // Event listener
+        document.querySelectorAll('.popular-product-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const productId = card.dataset.id;
+                if (productId) {
+                    openProductModal(parseInt(productId));
+                }
+            });
+        });
     }
-
-    function getDummyProducts() {
-        return [
-            {
-                id: 1,
-                name: 'Paket Premium 1 Bulan',
-                description: 'Akses penuh semua fitur premium',
-                price: 150000,
-                original_price: 200000,
-                image: 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Premium',
-                rating: 4.8,
-                sold: 156,
-                stock: 50
-            },
-            {
-                id: 2,
-                name: 'Top Up Diamond Game',
-                description: 'Diamond murah dan cepat',
-                price: 50000,
-                original_price: 65000,
-                image: 'https://via.placeholder.com/300x200/10b981/ffffff?text=Diamond',
-                rating: 4.9,
-                sold: 324,
-                stock: 200
-            },
-            {
-                id: 3,
-                name: 'Voucher Diskon 50%',
-                description: 'Untuk pembelian pertama',
-                price: 25000,
-                original_price: 50000,
-                image: 'https://via.placeholder.com/300x200/f59e0b/ffffff?text=Voucher',
-                rating: 4.7,
-                sold: 89,
-                stock: 25
-            },
-            {
-                id: 4,
-                name: 'Membership VIP',
-                description: 'Akses eksklusif konten VIP',
-                price: 300000,
-                original_price: 400000,
-                image: 'https://via.placeholder.com/300x200/8b5cf6/ffffff?text=VIP',
-                rating: 4.9,
-                sold: 67,
-                stock: 15
+    
+    // ==================== FUNGSI RENDER PROMO SLIDER ====================
+    function renderPromoSlider() {
+        const sliderTrack = document.getElementById('promoSliderTrack');
+        const sliderDots = document.getElementById('promoSliderDots');
+        const prevBtn = document.getElementById('promoSliderPrev');
+        const nextBtn = document.getElementById('promoSliderNext');
+        
+        if (!sliderTrack) return;
+        
+        let promos = [];
+        let currentPromoIndex = 0;
+        
+        // Ambil dari tampilanData
+        if (tampilanData?.promos && Array.isArray(tampilanData.promos) && tampilanData.promos.length > 0) {
+            promos = tampilanData.promos.filter(p => p.active !== false);
+        }
+        
+        // Dummy data jika tidak ada promo
+        if (promos.length === 0) {
+            promos = [
+                {
+                    id: 1,
+                    title: 'Promo Akhir Bulan',
+                    banner: 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo+1',
+                    description: 'Diskon hingga 50% untuk semua produk premium',
+                    end_date: '2024-12-31',
+                    never_end: false,
+                    notes: 'Minimal pembelian Rp 50.000'
+                },
+                {
+                    id: 2,
+                    title: 'Flash Sale',
+                    banner: 'https://via.placeholder.com/1280x760/ff6b6b/ffffff?text=Flash+Sale',
+                    description: 'Promo spesial 12.12',
+                    end_date: '2024-12-12',
+                    never_end: false,
+                    notes: 'Terbatas untuk 100 pembeli pertama'
+                },
+                {
+                    id: 3,
+                    title: 'Promo Spesial',
+                    banner: 'https://via.placeholder.com/1280x760/10b981/ffffff?text=Promo+Spesial',
+                    description: 'Bonus untuk member baru',
+                    never_end: true,
+                    notes: 'Khusus pengguna baru'
+                }
+            ];
+        }
+        
+        let slidesHtml = '';
+        let dotsHtml = '';
+        
+        promos.forEach((promo, index) => {
+            const expiryText = promo.never_end 
+                ? '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tidak ada batas</span>'
+                : `<span class="promo-expiry"><i class="fas fa-clock"></i> ${formatDate(promo.end_date, promo.end_time)}</span>`;
+            
+            slidesHtml += `
+                <div class="promo-card" data-index="${index}">
+                    <div class="promo-banner-wrapper">
+                        <img src="${promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo'}" 
+                             alt="${escapeHtml(promo.title)}"
+                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo';">
+                    </div>
+                    <div class="promo-content">
+                        <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
+                        ${promo.description ? `<p class="promo-description">${escapeHtml(promo.description)}</p>` : ''}
+                        <div class="promo-meta">
+                            ${expiryText}
+                            <span class="promo-status active">
+                                <i class="fas fa-check-circle"></i> Aktif
+                            </span>
+                        </div>
+                        ${promo.notes ? `
+                            <div class="promo-notes">
+                                <i class="fas fa-sticky-note"></i> ${escapeHtml(promo.notes)}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            dotsHtml += `<span class="promo-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`;
+        });
+        
+        sliderTrack.innerHTML = slidesHtml;
+        if (sliderDots) sliderDots.innerHTML = dotsHtml;
+        
+        // Setup slider navigation
+        if (promos.length > 1) {
+            const updateSlider = (index) => {
+                currentPromoIndex = index;
+                sliderTrack.style.transform = `translateX(-${currentPromoIndex * 100}%)`;
+                
+                document.querySelectorAll('.promo-dot').forEach((dot, i) => {
+                    dot.classList.toggle('active', i === currentPromoIndex);
+                });
+            };
+            
+            if (prevBtn) {
+                prevBtn.addEventListener('click', () => {
+                    currentPromoIndex = (currentPromoIndex - 1 + promos.length) % promos.length;
+                    updateSlider(currentPromoIndex);
+                });
             }
-        ];
+            
+            if (nextBtn) {
+                nextBtn.addEventListener('click', () => {
+                    currentPromoIndex = (currentPromoIndex + 1) % promos.length;
+                    updateSlider(currentPromoIndex);
+                });
+            }
+            
+            document.querySelectorAll('.promo-dot').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    const index = parseInt(dot.dataset.index);
+                    updateSlider(index);
+                });
+            });
+        } else {
+            if (prevBtn) prevBtn.style.display = 'none';
+            if (nextBtn) nextBtn.style.display = 'none';
+            if (sliderDots) sliderDots.style.display = 'none';
+        }
+    }
+    
+    // ==================== UPDATE FUNGSI renderAllComponents ====================
+    function renderAllComponents() {
+        renderLogo();
+        
+        // Render banner slider
+        if (tampilanData?.banners && Array.isArray(tampilanData.banners) && tampilanData.banners.length > 0) {
+            renderBanners(tampilanData.banners);
+        } else {
+            if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
+        }
+        
+        // Render layanan (kategori)
+        renderCategories();
+        
+        // Render produk terlaris
+        renderPopularProducts();
+        
+        // Render promo slider
+        renderPromoSlider();
+        
+        // Render payment methods
+        renderPaymentMethods();
+        
+        // Apply theme
+        if (tampilanData?.colors) {
+            applyThemeColors(tampilanData.colors);
+        }
+        
+        if (tampilanData) {
+            applyFont({
+                family: tampilanData.font_family || 'Inter',
+                size: tampilanData.font_size || 14
+            });
+        }
+        
+        // Animate elements
+        setTimeout(() => {
+            animateElements();
+        }, 100);
     }
 
     function renderProductGrid(container, productsToRender) {
