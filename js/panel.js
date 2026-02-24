@@ -419,12 +419,12 @@
             // Tampilkan actions untuk setiap website
             userWebsites.slice(0, 4).forEach(website => {
                 html += `
-                    <a href="/produk?website=${website.endpoint}" class="quick-action-card">
+                    <a href="/html/produk?website=${website.endpoint}" class="quick-action-card">
                         <i class="fas fa-box"></i>
                         <span>Kelola Produk</span>
                         <small>/${website.endpoint}</small>
                     </a>
-                    <a href="/tampilan?website=${website.endpoint}" class="quick-action-card">
+                    <a href="/html/tampilan?website=${website.endpoint}" class="quick-action-card">
                         <i class="fas fa-paint-brush"></i>
                         <span>Atur Tampilan</span>
                         <small>/${website.endpoint}</small>
@@ -572,10 +572,10 @@
                         </div>
                         
                         <div class="website-actions">
-                            <a href="/produk?website=${website.endpoint}" class="website-btn primary">
+                            <a href="/html/produk?website=${website.endpoint}" class="website-btn primary">
                                 <i class="fas fa-box"></i> Produk
                             </a>
-                            <a href="/tampilan?website=${website.endpoint}" class="website-btn secondary">
+                            <a href="/html/tampilan?website=${website.endpoint}" class="website-btn secondary">
                                 <i class="fas fa-paint-brush"></i> Tampilan
                             </a>
                         </div>
@@ -601,7 +601,7 @@
         elements.productWebsiteSelector.addEventListener('change', (e) => {
             const endpoint = e.target.value;
             if (endpoint) {
-                elements.manageProductsBtn.href = `/produk?website=${endpoint}`;
+                elements.manageProductsBtn.href = `/html/produk?website=${endpoint}`;
             } else {
                 elements.manageProductsBtn.href = '#';
             }
@@ -779,12 +779,12 @@
     function setupSettingsLinks() {
         // Appearance Settings - Link ke tampilan.html
         if (elements.appearanceSettings && userWebsites.length > 0) {
-            elements.appearanceSettings.href = `/tampilan?website=${userWebsites[0].endpoint}`;
+            elements.appearanceSettings.href = `/html/tampilan?website=${userWebsites[0].endpoint}`;
         }
         
         // Product Management - Link ke produk.html
         if (elements.manageProductsBtn && userWebsites.length > 0) {
-            elements.manageProductsBtn.href = `/produk?website=${userWebsites[0].endpoint}`;
+            elements.manageProductsBtn.href = `/html/produk?website=${userWebsites[0].endpoint}`;
         }
         
         // Profile Settings
