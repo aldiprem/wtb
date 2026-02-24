@@ -1,159 +1,379 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="HandheldFriendly" content="true">
-    <meta name="MobileOptimized" content="width">
-    <title>Create New Website - MiniApp Manager</title>
+// Format JavaScript - Create Website Page
+(function() {
+    'use strict';
     
-    <!-- CSS -->
-    <link rel="stylesheet" href="/wtb/css/format.css">
-    
-    <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-</head>
-<body>
-    <div class="format-container">
-        <!-- Header -->
-        <div class="format-header">
-            <div class="header-left">
-                <a href="/" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div class="logo-wrapper">
-                    <i class="fas fa-plus-circle"></i>
-                </div>
-                <div class="header-title">
-                    <h1>Create Website</h1>
-                    <span class="badge-form">NEW WEBSITE</span>
-                </div>
-            </div>
-        </div>
+    console.log('📝 Create Website Form - Initializing...');
 
-        <!-- Main Form -->
-        <div class="format-content">
-            <div class="format-card">
-                <div class="card-header">
-                    <h3><i class="fas fa-info-circle"></i> Website Information</h3>
-                </div>
-                <div class="card-body">
-                    <form id="createWebsiteForm">
-                        <!-- Endpoint -->
-                        <div class="form-group">
-                            <label for="endpoint">
-                                <i class="fas fa-link"></i>
-                                Endpoint Website
-                            </label>
-                            <div class="input-wrapper">
-                                <span class="input-prefix">/</span>
-                                <input type="text" id="endpoint" placeholder="my-website" required autofocus>
-                            </div>
-                            <small class="hint">Hanya boleh huruf kecil, angka, dan tanda hubung (-)</small>
-                        </div>
+    // ==================== KONFIGURASI ====================
+    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
 
-                        <!-- Bot Token -->
-                        <div class="form-group">
-                            <label for="botToken">
-                                <i class="fas fa-robot"></i>
-                                Bot Token
-                            </label>
-                            <input type="text" id="botToken" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                            <small class="hint">Dapatkan dari @BotFather di Telegram</small>
-                        </div>
+    // ==================== DOM ELEMENTS ====================
+    const elements = {};
 
-                        <!-- Owner ID -->
-                        <div class="form-group">
-                            <label for="ownerId">
-                                <i class="fas fa-id-card"></i>
-                                Owner ID (Telegram)
-                            </label>
-                            <input type="number" id="ownerId" placeholder="123456789" required>
-                            <small class="hint">ID Telegram pemilik website</small>
-                        </div>
+    // ==================== FUNGSI UTILITY ====================
+    function getElement(id) {
+        const el = document.getElementById(id);
+        if (!el) console.warn(`⚠️ Element #${id} not found`);
+        return el;
+    }
 
-                        <!-- Username -->
-                        <div class="form-group">
-                            <label for="username">
-                                <i class="fas fa-user"></i>
-                                Username
-                            </label>
-                            <input type="text" id="username" placeholder="admin" required>
-                        </div>
+    function showToast(message, type = 'info', duration = 3000) {
+        const toastContainer = getElement('toastContainer');
+        if (!toastContainer) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        
+        // Style toast
+        toast.style.cssText = `
+            background: ${type === 'success' ? '#10b981' : 
+                        type === 'error' ? '#ef4444' : 
+                        type === 'warning' ? '#f59e0b' : '#3b82f6'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideUp 0.3s ease;
+            margin-bottom: 8px;
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                if (toast.parentNode) toast.remove();
+            }, 300);
+        }, duration);
+    }
 
-                        <!-- Password -->
-                        <div class="form-group">
-                            <label for="password">
-                                <i class="fas fa-lock"></i>
-                                Password
-                            </label>
-                            <div class="password-wrapper">
-                                <input type="password" id="password" placeholder="••••••••" required>
-                                <button type="button" class="toggle-password" onclick="togglePassword()">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        </div>
+    function showLoading(show = true) {
+        const loadingOverlay = getElement('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
+    }
 
-                        <!-- Email -->
-                        <div class="form-group">
-                            <label for="email">
-                                <i class="fas fa-envelope"></i>
-                                Email
-                            </label>
-                            <input type="email" id="email" placeholder="admin@example.com" required>
-                        </div>
+    function validateForm() {
+        const endpoint = getElement('endpoint')?.value.trim() || '';
+        const botToken = getElement('botToken')?.value.trim() || '';
+        const ownerId = getElement('ownerId')?.value.trim() || '';
+        const username = getElement('username')?.value.trim() || '';
+        const password = getElement('password')?.value || '';
+        const email = getElement('email')?.value.trim() || '';
 
-                        <!-- Status (Hidden) -->
-                        <input type="hidden" id="status" value="active">
+        // Validasi endpoint
+        if (!endpoint) {
+            showToast('❌ Endpoint tidak boleh kosong', 'error');
+            getElement('endpoint')?.focus();
+            return false;
+        }
+        const endpointRegex = /^[a-z0-9-]+$/;
+        if (!endpointRegex.test(endpoint.toLowerCase())) {
+            showToast('❌ Endpoint hanya boleh huruf kecil, angka, dan tanda hubung (-)', 'error');
+            getElement('endpoint')?.focus();
+            return false;
+        }
 
-                        <!-- Form Actions -->
-                        <div class="form-actions">
-                          <a href="/dashboard" class="btn btn-secondary">
-                            <i class="fas fa-times"></i>
-                            Cancel
-                          </a>
-                          <button type="submit" class="btn btn-primary" id="submitBtn">
-                            <i class="fas fa-save"></i>
-                            Create Website
-                          </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+        // Validasi bot token
+        if (!botToken) {
+            showToast('❌ Bot Token tidak boleh kosong', 'error');
+            getElement('botToken')?.focus();
+            return false;
+        }
+        if (!botToken.includes(':')) {
+            showToast('❌ Format Bot Token tidak valid (harus mengandung :)', 'error');
+            getElement('botToken')?.focus();
+            return false;
+        }
 
-            <!-- Info Card -->
-            <div class="info-card">
-                <div class="info-header">
-                    <i class="fas fa-lightbulb"></i>
-                    <h4>Tips</h4>
-                </div>
-                <div class="info-body">
-                    <ul>
-                        <li><i class="fas fa-check-circle"></i> Endpoint akan menjadi URL website Anda: <code>/premy</code></li>
-                        <li><i class="fas fa-check-circle"></i> Simpan Bot Token dengan aman</li>
-                        <li><i class="fas fa-check-circle"></i> Owner ID harus berupa angka (ID Telegram)</li>
-                        <li><i class="fas fa-check-circle"></i> Gunakan password yang kuat</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
+        // Validasi owner ID
+        if (!ownerId) {
+            showToast('❌ Owner ID tidak boleh kosong', 'error');
+            getElement('ownerId')?.focus();
+            return false;
+        }
+        if (isNaN(parseInt(ownerId))) {
+            showToast('❌ Owner ID harus berupa angka', 'error');
+            getElement('ownerId')?.focus();
+            return false;
+        }
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Creating website...</div>
-    </div>
+        // Validasi username
+        if (!username) {
+            showToast('❌ Username tidak boleh kosong', 'error');
+            getElement('username')?.focus();
+            return false;
+        }
 
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
+        // Validasi password
+        if (!password) {
+            showToast('❌ Password tidak boleh kosong', 'error');
+            getElement('password')?.focus();
+            return false;
+        }
+        if (password.length < 6) {
+            showToast('❌ Password minimal 6 karakter', 'error');
+            getElement('password')?.focus();
+            return false;
+        }
 
-    <!-- JavaScript -->
-    <script src="/wtb/js/format.js"></script>
-</body>
-</html>
+        // Validasi email
+        if (!email) {
+            showToast('❌ Email tidak boleh kosong', 'error');
+            getElement('email')?.focus();
+            return false;
+        }
+        if (!email.includes('@') || !email.includes('.')) {
+            showToast('❌ Format email tidak valid', 'error');
+            getElement('email')?.focus();
+            return false;
+        }
+
+        return true;
+    }
+
+    // ==================== FUNGSI API ====================
+    async function createWebsite(formData) {
+        try {
+            console.log('📤 Sending data to server:', formData);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            const response = await fetch(`${API_BASE_URL}/api/websites`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(formData),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Server error: ${response.status}`);
+                } catch (e) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+            }
+
+            const data = await response.json();
+            console.log('📥 Response data:', data);
+
+            if (data.success) {
+                showToast('✅ Website berhasil dibuat!', 'success');
+                
+                // Redirect ke dashboard setelah 1.5 detik
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 1500);
+                
+                return true;
+            } else {
+                throw new Error(data.error || 'Gagal membuat website');
+            }
+
+        } catch (error) {
+            console.error('❌ Error creating website:', error);
+            
+            if (error.name === 'AbortError') {
+                showToast('❌ Koneksi timeout. Periksa koneksi Anda.', 'error');
+            } else if (error.message.includes('Failed to fetch')) {
+                showToast('❌ Tidak dapat terhubung ke server. Periksa koneksi.', 'error');
+            } else {
+                showToast(error.message || 'Gagal membuat website', 'error');
+            }
+            return false;
+        }
+    }
+
+    // ==================== HANDLE SUBMIT ====================
+    async function handleSubmit(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        
+        console.log('🎯 Form submitted');
+
+        // Validasi form
+        if (!validateForm()) {
+            return;
+        }
+
+        // Siapkan data
+        const formData = {
+            endpoint: getElement('endpoint').value.trim().toLowerCase(),
+            bot_token: getElement('botToken').value.trim(),
+            owner_id: parseInt(getElement('ownerId').value.trim()),
+            username: getElement('username').value.trim(),
+            password: getElement('password').value,
+            email: getElement('email').value.trim().toLowerCase(),
+            status: 'active'
+        };
+
+        console.log('📦 Form data:', formData);
+
+        // Disable submit button
+        const submitBtn = getElement('submitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        }
+
+        // Show loading
+        showLoading(true);
+
+        // Kirim ke server
+        const success = await createWebsite(formData);
+
+        // Hide loading
+        showLoading(false);
+
+        // Enable submit button jika gagal
+        if (!success && submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Create Website';
+        }
+    }
+
+    // ==================== TOGGLE PASSWORD ====================
+    window.togglePassword = function() {
+        const passwordInput = getElement('password');
+        const toggleBtn = document.querySelector('.toggle-password i');
+        
+        if (passwordInput && toggleBtn) {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleBtn.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                toggleBtn.className = 'fas fa-eye';
+            }
+        }
+    };
+
+    // ==================== TEST CONNECTION ====================
+    async function testConnection() {
+        try {
+            console.log('🔍 Testing connection to server...');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+            const response = await fetch(`${API_BASE_URL}/api/health`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                mode: 'cors',
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Server connection OK:', data);
+                return true;
+            } else {
+                console.warn('⚠️ Server returned error:', response.status);
+                return false;
+            }
+        } catch (error) {
+            console.warn('⚠️ Cannot connect to server:', error.message);
+            return false;
+        }
+    }
+
+    // ==================== INITIALIZATION ====================
+    async function init() {
+        console.log('🚀 Initializing create form...');
+
+        // Get form element
+        const form = getElement('createWebsiteForm');
+        
+        if (!form) {
+            console.error('❌ Form #createWebsiteForm tidak ditemukan!');
+            showToast('❌ Form tidak ditemukan', 'error');
+            return;
+        }
+
+        // Setup form submit dengan multiple event listeners untuk memastikan
+        form.removeEventListener('submit', handleSubmit); // Hapus listener lama jika ada
+        form.addEventListener('submit', handleSubmit);
+        console.log('✅ Form submit handler attached');
+
+        // Debug: tambahkan event listener klik pada submit button
+        const submitBtn = getElement('submitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function(e) {
+                console.log('🔘 Submit button clicked');
+                // Form akan tetap submit melalui event submit form
+            });
+        }
+
+        // Auto-focus endpoint
+        const endpoint = getElement('endpoint');
+        if (endpoint) {
+            setTimeout(() => {
+                endpoint.focus();
+            }, 500);
+        }
+
+        // Test koneksi ke server
+        const isConnected = await testConnection();
+        if (!isConnected) {
+            showToast('⚠️ Tidak dapat terhubung ke server. Periksa koneksi.', 'warning', 5000);
+        }
+
+        // Cek Telegram WebApp
+        if (window.Telegram?.WebApp) {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+            tg.ready();
+            
+            // Apply Telegram theme
+            if (tg.themeParams) {
+                const theme = tg.themeParams;
+                if (theme.bg_color) {
+                    document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
+                }
+                if (theme.text_color) {
+                    document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
+                }
+            }
+            
+            // Isi owner ID otomatis dari Telegram
+            const ownerId = getElement('ownerId');
+            if (tg.initDataUnsafe?.user?.id && ownerId) {
+                ownerId.value = tg.initDataUnsafe.user.id;
+            }
+        }
+
+        console.log('✅ Create form initialized');
+    }
+
+    // ==================== START ====================
+    // Jalankan init setelah DOM siap
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+    // Tambahkan event listener tambahan untuk memastikan form bekerja
+    window.addEventListener('load', function() {
+        console.log('📄 Window loaded, checking form...');
+        const form = document.getElementById('createWebsiteForm');
+        if (form && !form.hasAttribute('data-listener')) {
+            console.log('🔧 Adding fallback form listener');
+            form.setAttribute('data-listener', 'true');
+            form.addEventListener('submit', handleSubmit);
+        }
+    });
+})();
