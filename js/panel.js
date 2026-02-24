@@ -1328,6 +1328,136 @@
         }
     }
 
+    // ==================== FUNGSI UNTUK REDIRECT KE HALAMAN PRODUK ====================
+    function openProductsPage() {
+      if (!currentWebsite) {
+        showToast('Website tidak ditemukan', 'error');
+        return;
+      }
+    
+      // Redirect ke halaman produk dengan parameter website
+      const url = `/wtb/produk.html?website=${currentWebsite.endpoint}`;
+      window.location.href = url;
+    }
+    
+    // Di dalam setupEventListeners(), ubah handler untuk addProductBtn:
+    if (elements.addProductBtn) {
+      elements.addProductBtn.addEventListener('click', openProductsPage);
+    }
+    
+    // Update fungsi updateProductsUI untuk menampilkan link ke halaman produk
+    function updateProductsUI(productsData) {
+      products = productsData;
+    
+      const total = products.length;
+      const available = products.filter(p => p.aktif && (
+        (p.method === 'directly' && p.stok && p.stok.length > 0) ||
+        p.method === 'request'
+      )).length;
+      const lowStock = products.filter(p => p.method === 'directly' && p.stok && p.stok.length > 0 && p.stok.length <= 5).length;
+      const sold = products.reduce((sum, p) => sum + (p.terjual || 0), 0);
+    
+      if (elements.totalProducts) elements.totalProducts.textContent = total;
+      if (elements.availableProducts) elements.availableProducts.textContent = available;
+      if (elements.lowStockProducts) elements.lowStockProducts.textContent = lowStock;
+      if (elements.soldProducts) elements.soldProducts.textContent = sold;
+    
+      renderProductsGrid(products);
+    }
+    
+    // Update fungsi renderProductsGrid untuk menampilkan produk dalam grid
+    function renderProductsGrid(products) {
+      if (!elements.productsGrid) return;
+    
+      if (products.length === 0) {
+        elements.productsGrid.innerHTML = '';
+        if (elements.noProductsMessage) {
+          elements.noProductsMessage.style.display = 'flex';
+        }
+        return;
+      }
+    
+      if (elements.noProductsMessage) {
+        elements.noProductsMessage.style.display = 'none';
+      }
+    
+      let html = '';
+      products.forEach(product => {
+        const statusClass = product.aktif ? 'active' : 'inactive';
+        const stockCount = product.method === 'directly' ? (product.stok?.length || 0) : '-';
+        const stockText = product.method === 'directly' ?
+          (stockCount === 0 ? 'Habis' : `${stockCount} stok`) :
+          'Request';
+        const stockClass = product.method === 'directly' && stockCount <= 5 ? 'low-stock' : '';
+    
+        html += `
+                <div class="product-card ${statusClass}" data-id="${product.id}">
+                    <div class="product-image">
+                        <img src="${product.aplikasi_gambar || product.layanan_gambar || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Produk'}" 
+                             alt="${escapeHtml(product.item_nama)}"
+                             onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=Produk';">
+                        <div class="product-status ${statusClass}">
+                            ${product.aktif ? 'Aktif' : 'Nonaktif'}
+                        </div>
+                    </div>
+                    <div class="product-details">
+                        <div class="product-breadcrumb">
+                            <span>${escapeHtml(product.layanan)}</span> <i class="fas fa-chevron-right"></i>
+                            <span>${escapeHtml(product.aplikasi)}</span>
+                        </div>
+                        <h4>${escapeHtml(product.item_nama)}</h4>
+                        ${product.item_durasi ? `<p class="product-duration">${escapeHtml(product.item_durasi)}</p>` : ''}
+                        <div class="product-meta">
+                            <span class="product-price">Rp ${formatNumber(product.harga)}</span>
+                            <span class="product-method ${product.method}">
+                                <i class="fas fa-${product.method === 'directly' ? 'bolt' : 'clipboard-list'}"></i>
+                                ${product.method === 'directly' ? 'Direct' : 'Request'}
+                            </span>
+                        </div>
+                        <div class="product-footer">
+                            <span class="product-stock ${stockClass}">
+                                <i class="fas fa-cubes"></i> ${stockText}
+                            </span>
+                            <span class="product-sold">
+                                <i class="fas fa-shopping-cart"></i> ${product.terjual || 0} terjual
+                            </span>
+                        </div>
+                        <div class="product-actions">
+                            <button class="product-btn edit" onclick="window.panel.editProduct(${product.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="product-btn delete" onclick="window.panel.deleteProduct(${product.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+      });
+    
+      elements.productsGrid.innerHTML = html;
+    }
+    
+    // Update fungsi openProductModal untuk redirect ke halaman produk
+    function openProductModal(product = null) {
+      // Redirect ke halaman produk dengan parameter
+      if (!currentWebsite) return;
+    
+      let url = `/wtb/produk.html?website=${currentWebsite.endpoint}`;
+      if (product) {
+        url += `&edit=${product.id}`;
+      }
+      window.location.href = url;
+    }
+    
+    // Update fungsi editProduct
+    window.panel.editProduct = (id) => {
+      const product = products.find(p => p.id === id);
+      if (product) {
+        openProductModal(product);
+      }
+    };
+
     // ==================== FUNGSI PRODUCT MODAL ====================
     function openProductModal(product = null) {
         currentProductId = product ? product.id : null;
