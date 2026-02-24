@@ -6,8 +6,7 @@ from datetime import datetime
 DATABASE = 'products.db'
 
 def get_db():
-    """Mendapatkan koneksi database"""
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(DATABASE, timeout=30)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -239,179 +238,232 @@ def get_items_by_aplikasi(website_id, layanan_nama, aplikasi_nama):
 
 def save_layanan(website_id, data):
     """Simpan atau update layanan"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Cek apakah layanan sudah ada
-    cursor.execute('''
-        SELECT id FROM products 
-        WHERE website_id = ? AND layanan_nama = ? AND aplikasi_nama IS NULL
-    ''', (website_id, data['layanan_nama']))
-    existing = cursor.fetchone()
-    
-    if existing:
-        # Update layanan yang sudah ada
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Validasi data
+        if not data.get('layanan_nama'):
+            conn.close()
+            return False
+        
+        # Cek apakah layanan sudah ada
         cursor.execute('''
-            UPDATE products SET
-                layanan_gambar = COALESCE(?, layanan_gambar),
-                layanan_banner = COALESCE(?, layanan_banner),
-                layanan_desc = COALESCE(?, layanan_desc),
-                layanan_catatan = COALESCE(?, layanan_catatan),
-                updated_at = CURRENT_TIMESTAMP
-            WHERE website_id = ? AND layanan_nama = ? AND aplikasi_nama IS NULL
-        ''', (
-            data.get('layanan_gambar'),
-            data.get('layanan_banner'),
-            data.get('layanan_desc'),
-            data.get('layanan_catatan'),
-            website_id,
-            data['layanan_nama']
-        ))
-    else:
-        # Insert layanan baru
-        cursor.execute('''
-            INSERT INTO products (
-                website_id, 
-                layanan_nama, layanan_gambar, layanan_banner, layanan_desc, layanan_catatan
-            ) VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            website_id,
-            data['layanan_nama'],
-            data.get('layanan_gambar', ''),
-            data.get('layanan_banner', ''),
-            data.get('layanan_desc', ''),
-            data.get('layanan_catatan', '')
-        ))
-    
-    conn.commit()
-    conn.close()
-    return True
+            SELECT id FROM products 
+            WHERE website_id = ? AND layanan_nama = ? AND (aplikasi_nama IS NULL OR aplikasi_nama = '')
+        ''', (website_id, data['layanan_nama']))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update layanan yang sudah ada
+            cursor.execute('''
+                UPDATE products SET
+                    layanan_gambar = ?,
+                    layanan_banner = ?,
+                    layanan_desc = ?,
+                    layanan_catatan = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE website_id = ? AND layanan_nama = ? AND (aplikasi_nama IS NULL OR aplikasi_nama = '')
+            ''', (
+                data.get('layanan_gambar', ''),
+                data.get('layanan_banner', ''),
+                data.get('layanan_desc', ''),
+                data.get('layanan_catatan', ''),
+                website_id,
+                data['layanan_nama']
+            ))
+        else:
+            # Insert layanan baru - dengan nilai default untuk kolom NOT NULL
+            cursor.execute('''
+                INSERT INTO products (
+                    website_id, 
+                    layanan_nama, 
+                    layanan_gambar, 
+                    layanan_banner, 
+                    layanan_desc, 
+                    layanan_catatan,
+                    aplikasi_nama,
+                    item_nama
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                website_id,
+                data['layanan_nama'],
+                data.get('layanan_gambar', ''),
+                data.get('layanan_banner', ''),
+                data.get('layanan_desc', ''),
+                data.get('layanan_catatan', ''),
+                '',  # aplikasi_nama default empty string
+                ''   # item_nama default empty string
+            ))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Error in save_layanan: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
 
 def save_aplikasi(website_id, layanan_nama, data):
     """Simpan atau update aplikasi dalam layanan"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Cek apakah aplikasi sudah ada
-    cursor.execute('''
-        SELECT id FROM products 
-        WHERE website_id = ? AND layanan_nama = ? AND aplikasi_nama = ? AND item_nama IS NULL
-    ''', (website_id, layanan_nama, data['aplikasi_nama']))
-    existing = cursor.fetchone()
-    
-    if existing:
-        # Update aplikasi yang sudah ada
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Validasi data
+        if not data.get('aplikasi_nama') or not layanan_nama:
+            if conn:
+                conn.close()
+            return False
+        
+        # Cek apakah aplikasi sudah ada
         cursor.execute('''
-            UPDATE products SET
-                aplikasi_gambar = COALESCE(?, aplikasi_gambar),
-                aplikasi_desc = COALESCE(?, aplikasi_desc),
-                aplikasi_catatan = COALESCE(?, aplikasi_catatan),
-                updated_at = CURRENT_TIMESTAMP
+            SELECT id FROM products 
             WHERE website_id = ? AND layanan_nama = ? AND aplikasi_nama = ? AND item_nama IS NULL
-        ''', (
-            data.get('aplikasi_gambar'),
-            data.get('aplikasi_desc'),
-            data.get('aplikasi_catatan'),
-            website_id,
-            layanan_nama,
-            data['aplikasi_nama']
-        ))
-    else:
-        # Insert aplikasi baru
-        cursor.execute('''
-            INSERT INTO products (
+        ''', (website_id, layanan_nama, data['aplikasi_nama']))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update aplikasi yang sudah ada
+            cursor.execute('''
+                UPDATE products SET
+                    aplikasi_gambar = ?,
+                    aplikasi_desc = ?,
+                    aplikasi_catatan = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE website_id = ? AND layanan_nama = ? AND aplikasi_nama = ? AND item_nama IS NULL
+            ''', (
+                data.get('aplikasi_gambar', ''),
+                data.get('aplikasi_desc', ''),
+                data.get('aplikasi_catatan', ''),
                 website_id,
-                layanan_nama, layanan_gambar, layanan_banner, layanan_desc, layanan_catatan,
-                aplikasi_nama, aplikasi_gambar, aplikasi_desc, aplikasi_catatan
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            website_id,
-            layanan_nama,
-            data.get('layanan_gambar', ''),
-            data.get('layanan_banner', ''),
-            data.get('layanan_desc', ''),
-            data.get('layanan_catatan', ''),
-            data['aplikasi_nama'],
-            data.get('aplikasi_gambar', ''),
-            data.get('aplikasi_desc', ''),
-            data.get('aplikasi_catatan', '')
-        ))
-    
-    conn.commit()
-    conn.close()
-    return True
+                layanan_nama,
+                data['aplikasi_nama']
+            ))
+        else:
+            # Insert aplikasi baru
+            cursor.execute('''
+                INSERT INTO products (
+                    website_id,
+                    layanan_nama,
+                    aplikasi_nama,
+                    aplikasi_gambar,
+                    aplikasi_desc,
+                    aplikasi_catatan,
+                    item_nama
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                website_id,
+                layanan_nama,
+                data['aplikasi_nama'],
+                data.get('aplikasi_gambar', ''),
+                data.get('aplikasi_desc', ''),
+                data.get('aplikasi_catatan', ''),
+                ''  # item_nama default empty string
+            ))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Error in save_aplikasi: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
 
 def save_item(website_id, layanan_nama, aplikasi_nama, data):
     """Simpan atau update item dalam aplikasi"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    if data.get('id'):
-        # Update item yang sudah ada
-        cursor.execute('''
-            UPDATE products SET
-                item_nama = ?,
-                item_durasi_jumlah = ?,
-                item_durasi_satuan = ?,
-                item_harga = ?,
-                item_tipe = ?,
-                item_metode = ?,
-                item_stok = ?,
-                item_fields = ?,
-                item_ready = ?,
-                aktif = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ''', (
-            data['item_nama'],
-            data.get('item_durasi_jumlah', 0),
-            data.get('item_durasi_satuan', 'hari'),
-            data.get('item_harga', 0),
-            data.get('item_tipe', ''),
-            data.get('item_metode', 'directly'),
-            json.dumps(data.get('item_stok', [])),
-            json.dumps(data.get('item_fields', [])),
-            1 if data.get('item_ready', True) else 0,
-            1 if data.get('aktif', True) else 0,
-            data['id']
-        ))
-    else:
-        # Insert item baru
-        cursor.execute('''
-            INSERT INTO products (
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Validasi data
+        if not data.get('item_nama') or not layanan_nama or not aplikasi_nama:
+            if conn:
+                conn.close()
+            return False
+        
+        if data.get('id'):
+            # Update item yang sudah ada
+            cursor.execute('''
+                UPDATE products SET
+                    item_nama = ?,
+                    item_durasi_jumlah = ?,
+                    item_durasi_satuan = ?,
+                    item_harga = ?,
+                    item_tipe = ?,
+                    item_metode = ?,
+                    item_stok = ?,
+                    item_fields = ?,
+                    item_ready = ?,
+                    aktif = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', (
+                data['item_nama'],
+                data.get('item_durasi_jumlah', 0),
+                data.get('item_durasi_satuan', 'hari'),
+                data.get('item_harga', 0),
+                data.get('item_tipe', ''),
+                data.get('item_metode', 'directly'),
+                json.dumps(data.get('item_stok', [])),
+                json.dumps(data.get('item_fields', [])),
+                1 if data.get('item_ready', True) else 0,
+                1 if data.get('aktif', True) else 0,
+                data['id']
+            ))
+        else:
+            # Insert item baru
+            cursor.execute('''
+                INSERT INTO products (
+                    website_id,
+                    layanan_nama,
+                    aplikasi_nama,
+                    item_nama,
+                    item_durasi_jumlah,
+                    item_durasi_satuan,
+                    item_harga,
+                    item_tipe,
+                    item_metode,
+                    item_stok,
+                    item_fields,
+                    item_ready,
+                    aktif
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
                 website_id,
                 layanan_nama,
                 aplikasi_nama,
-                item_nama,
-                item_durasi_jumlah,
-                item_durasi_satuan,
-                item_harga,
-                item_tipe,
-                item_metode,
-                item_stok,
-                item_fields,
-                item_ready,
-                aktif
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            website_id,
-            layanan_nama,
-            aplikasi_nama,
-            data['item_nama'],
-            data.get('item_durasi_jumlah', 0),
-            data.get('item_durasi_satuan', 'hari'),
-            data.get('item_harga', 0),
-            data.get('item_tipe', ''),
-            data.get('item_metode', 'directly'),
-            json.dumps(data.get('item_stok', [])),
-            json.dumps(data.get('item_fields', [])),
-            1 if data.get('item_ready', True) else 0,
-            1 if data.get('aktif', True) else 0
-        ))
-    
-    conn.commit()
-    conn.close()
-    return True
+                data['item_nama'],
+                data.get('item_durasi_jumlah', 0),
+                data.get('item_durasi_satuan', 'hari'),
+                data.get('item_harga', 0),
+                data.get('item_tipe', ''),
+                data.get('item_metode', 'directly'),
+                json.dumps(data.get('item_stok', [])),
+                json.dumps(data.get('item_fields', [])),
+                1 if data.get('item_ready', True) else 0,
+                1 if data.get('aktif', True) else 0
+            ))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Error in save_item: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
 
 def delete_layanan(website_id, layanan_nama):
     """Hapus seluruh layanan beserta aplikasi dan item di dalamnya"""
