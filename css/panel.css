@@ -2186,3 +2186,75 @@ input:checked + .slider:before {
 .banner-footer-actions {
     display: none; /* Sembunyikan style lama */
 }
+
+/* ===== PRODUCT BREADCRUMB ===== */
+.product-breadcrumb {
+  font-size: 10px;
+  color: var(--tg-hint-color);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.product-breadcrumb i {
+  font-size: 8px;
+}
+
+.product-duration {
+  font-size: 11px;
+  color: var(--tg-hint-color);
+  margin-bottom: 8px;
+}
+
+.product-method {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.product-method.directly {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--success-color);
+}
+
+.product-method.request {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning-color);
+}
+
+.product-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+  font-size: 11px;
+}
+
+.product-stock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--tg-hint-color);
+}
+
+.product-stock.low-stock {
+  color: var(--warning-color);
+}
+
+.product-stock i {
+  font-size: 11px;
+}
+
+.product-sold {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--tg-hint-color);
+}
