@@ -1493,18 +1493,6 @@ input:checked + .slider:before {
     opacity: 0.5;
 }
 
-.banner-footer-actions .btn-add.left {
-    margin-right: auto;
-    justify-content: flex-start;
-    min-width: 180px;
-}
-
-.banner-footer-actions .btn-primary.right {
-    margin-left: auto;
-    justify-content: flex-end;
-    min-width: 180px;
-}
-
 /* ===== BANNER PREVIEW (untuk website) ===== */
 .banner-image-container {
     width: 100%;
@@ -1663,6 +1651,58 @@ input:checked + .slider:before {
     background: rgba(255, 255, 255, 0.3);
 }
 
+/* ===== BUBBLE BUTTONS - FIXED POSITION ===== */
+.banner-footer-actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  width: 100%;
+}
+
+.btn-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--tg-text-color);
+  flex: 1;
+  max-width: calc(50% - 6px);
+  white-space: nowrap;
+}
+
+.btn-bubble i {
+  font-size: 16px;
+}
+
+.btn-bubble:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.btn-bubble.primary {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.btn-bubble.primary:hover {
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+  box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
     .panel-container {
@@ -1759,73 +1799,12 @@ input:checked + .slider:before {
         flex-direction: column;
     }
     
-    .banner-footer-actions .btn-add.left,
-    .banner-footer-actions .btn-primary.right {
-        min-width: 100%;
-        margin: 0;
+    .btn-bubble {
+      padding: 10px 16px;
+      font-size: 13px;
     }
-}
-
-/* ===== BUBBLE BUTTONS - FIXED POSITION ===== */
-.banner-footer-actions {
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
-  width: 100%;
-}
-
-.btn-bubble {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border-radius: 40px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid var(--border-color);
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--tg-text-color);
-  flex: 1;
-  max-width: calc(50% - 6px);
-  white-space: nowrap;
-}
-
-.btn-bubble i {
-  font-size: 16px;
-}
-
-.btn-bubble:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-}
-
-.btn-bubble.primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  border-color: var(--primary-color);
-  color: white;
-}
-
-.btn-bubble.primary:hover {
-  background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
-  box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-  .btn-bubble {
-    padding: 10px 16px;
-    font-size: 13px;
-  }
-
-  .btn-bubble i {
-    font-size: 14px;
-  }
+  
+    .btn-bubble i {
+      font-size: 14px;
+    }
 }
