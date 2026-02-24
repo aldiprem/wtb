@@ -150,8 +150,9 @@
     let products = [];
     let currentProductId = null;
     let currentUploadCallback = null;
-    let banners = []; // Array untuk menyimpan multiple banner {url, positionX, positionY, fileData}
-    let hasUnsavedBanners = false; // Flag untuk mengecek apakah ada banner yang belum disimpan
+    let banners = []; // Array untuk menyimpan multiple banner {url, positionX, positionY}
+    let hasUnsavedBanners = false;
+    let urlChangeTimeout = null;
 
     // ==================== FUNGSI VIBRATE ====================
     function vibrate(duration = 20) {
@@ -235,7 +236,6 @@
             body.style.display = 'block';
             toggleBtn.className = 'fas fa-chevron-up';
             
-            // Scroll ke card yang dibuka
             setTimeout(() => {
                 card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 100);
@@ -247,7 +247,6 @@
 
     // ==================== FUNGSI CLOSE KEYBOARD ====================
     function setupKeyboardDismiss() {
-        // Tutup keyboard ketika tap di luar input
         document.addEventListener('touchstart', (e) => {
             const activeElement = document.activeElement;
             if (!activeElement) return;
@@ -259,13 +258,11 @@
             const isModal = e.target.closest('.modal-content');
             const isCard = e.target.closest('.settings-card');
             
-            // Jika tap di luar area input dan bukan di modal/card, tutup keyboard
             if (!isInput && !isModal && !isCard && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
                 activeElement.blur();
             }
         });
         
-        // Handle form submit
         document.querySelectorAll('form').forEach(form => {
             form.addEventListener('submit', () => {
                 const activeElement = document.activeElement;
@@ -275,7 +272,6 @@
             });
         });
         
-        // Handle keyboard hide on scroll
         window.addEventListener('scroll', () => {
             const activeElement = document.activeElement;
             if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
@@ -319,16 +315,13 @@
     function setUserAvatar(user) {
         if (!user) return;
         
-        // Coba dapatkan foto profil dari Telegram jika ada
         if (user.photo_url) {
             elements.websiteAvatar.src = user.photo_url;
         } else {
-            // Fallback ke UI Avatars
             const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
             elements.websiteAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=120&background=40a7e3&color=fff`;
         }
         
-        // Tampilkan informasi user
         if (elements.userInfo) {
             const userHtml = `
                 <div class="user-info-details">
@@ -427,7 +420,7 @@
         
             if (!response.ok) {
                 if (response.status === 404) {
-                    return null; // No tampilan yet
+                    return null;
                 }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -479,7 +472,6 @@
             }
         }
       
-        // Load tampilan data
         const tampilan = await loadTampilan(website.id);
         if (tampilan) {
             website.settings = {
@@ -490,6 +482,517 @@
       
         if (website.settings) {
             updateSettingsUI(website.settings);
+        }
+    }
+
+    // ==================== FUNGSI VALIDASI UKURAN GAMBAR ====================
+    function validateImageSize(url) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            
+            img.onload = () => {
+                const width = img.naturalWidth;
+                const height = img.naturalHeight;
+                
+                console.log(`📏 Image dimensions: ${width}x${height}`);
+                
+                if (width === 1280 && height === 760) {
+                    resolve({ valid: true, width, height });
+                } else {
+                    reject({ 
+                        valid: false, 
+                        width, 
+                        height,
+                        message: `Ukuran gambar harus 1280x760 pixel (saat ini ${width}x${height})`
+                    });
+                }
+            };
+            
+            img.onerror = () => {
+                reject({ 
+                    valid: false, 
+                    message: 'Gagal memuat gambar. Periksa URL dan pastikan gambar dapat diakses.'
+                });
+            };
+            
+            img.src = url;
+        });
+    }
+
+    // ==================== FUNGSI BANNER DENGAN LINK ====================
+    async function processBannerUrl(index, url) {
+        const banner = banners[index];
+        const urlInput = document.getElementById(`banner-url-${index}`);
+        const previewWrapper = document.getElementById(`banner-preview-${index}`);
+        const validationMsg = document.getElementById(`banner-validation-${index}`);
+        const indicator = document.getElementById(`pos-indicator-${index}`);
+        
+        if (!url || url.trim() === '') {
+            banner.url = '';
+            if (previewWrapper) {
+                previewWrapper.style.backgroundImage = 'none';
+                previewWrapper.style.backgroundColor = '#1a1a1a';
+                previewWrapper.classList.remove('has-image');
+                previewWrapper.classList.add('no-image');
+            }
+            if (validationMsg) {
+                validationMsg.innerHTML = '<i class="fas fa-info-circle"></i> Masukkan URL gambar (wajib 1280x760)';
+                validationMsg.className = 'banner-validation-message info';
+            }
+            hasUnsavedBanners = true;
+            return;
+        }
+        
+        if (validationMsg) {
+            validationMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memvalidasi gambar...';
+            validationMsg.className = 'banner-validation-message info';
+        }
+        
+        try {
+            const result = await validateImageSize(url);
+            
+            banner.url = url;
+            
+            if (previewWrapper) {
+                previewWrapper.style.backgroundImage = `url('${url}')`;
+                previewWrapper.style.backgroundColor = 'transparent';
+                previewWrapper.classList.add('has-image');
+                previewWrapper.classList.remove('no-image');
+                
+                // Hapus placeholder jika ada
+                const placeholder = previewWrapper.querySelector('.no-image-placeholder');
+                if (placeholder) placeholder.remove();
+            }
+            
+            if (validationMsg) {
+                validationMsg.innerHTML = '<i class="fas fa-check-circle"></i> Ukuran valid: 1280x760 ✓';
+                validationMsg.className = 'banner-validation-message success';
+            }
+            
+            if (indicator) {
+                indicator.textContent = `X: ${banner.positionX}% Y: ${banner.positionY}%`;
+            }
+            
+            hasUnsavedBanners = true;
+            
+            // Setup long press untuk banner yang baru valid
+            setupBannerLongPress(index);
+            
+        } catch (error) {
+            console.error('❌ Banner validation error:', error);
+            
+            if (validationMsg) {
+                validationMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error.message || 'Gambar tidak valid'}`;
+                validationMsg.className = 'banner-validation-message error';
+            }
+            
+            banner.url = '';
+            
+            if (previewWrapper) {
+                previewWrapper.style.backgroundImage = 'none';
+                previewWrapper.style.backgroundColor = '#1a1a1a';
+                previewWrapper.classList.remove('has-image');
+                previewWrapper.classList.add('no-image');
+                
+                // Tambah placeholder jika belum ada
+                if (!previewWrapper.querySelector('.no-image-placeholder')) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'no-image-placeholder';
+                    placeholder.innerHTML = '<i class="fas fa-image"></i><span>Preview akan tampil di sini</span>';
+                    previewWrapper.appendChild(placeholder);
+                }
+            }
+        }
+    }
+
+    function addBannerWithLink() {
+        const hasEmptyBanner = banners.some(b => !b.url);
+        
+        if (hasEmptyBanner) {
+            showToast('⚠️ Ada banner yang belum diisi URL. Selesaikan atau hapus terlebih dahulu.', 'warning');
+            return;
+        }
+        
+        banners.push({
+            url: '',
+            positionX: 50,
+            positionY: 50
+        });
+        
+        hasUnsavedBanners = true;
+        renderBannerTrackWithLinks();
+        vibrate(10);
+        
+        setTimeout(() => {
+            const lastBannerIndex = banners.length - 1;
+            const urlInput = document.getElementById(`banner-url-${lastBannerIndex}`);
+            if (urlInput) {
+                urlInput.focus();
+            }
+        }, 100);
+    }
+
+    window.panel = window.panel || {};
+    
+    window.panel.deleteBanner = function(index) {
+        if (confirm('Hapus banner ini?')) {
+            banners.splice(index, 1);
+            hasUnsavedBanners = true;
+            renderBannerTrackWithLinks();
+            vibrate(10);
+        }
+    };
+
+    window.panel.moveBanner = function(index, direction) {
+        if (direction === 'left' && index > 0) {
+            [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
+            hasUnsavedBanners = true;
+        } else if (direction === 'right' && index < banners.length - 1) {
+            [banners[index], banners[index + 1]] = [banners[index + 1], banners[index]];
+            hasUnsavedBanners = true;
+        } else {
+            return;
+        }
+        renderBannerTrackWithLinks();
+        vibrate(10);
+    };
+
+    window.panel.handleUrlChange = function(index, url) {
+        if (urlChangeTimeout) {
+            clearTimeout(urlChangeTimeout);
+        }
+        
+        urlChangeTimeout = setTimeout(() => {
+            processBannerUrl(index, url.trim());
+        }, 800);
+    };
+
+    function renderBannerTrackWithLinks() {
+        if (!elements.bannerTrack || !elements.emptyBannerMessage) return;
+        
+        if (banners.length === 0) {
+            elements.bannerTrack.innerHTML = '';
+            elements.emptyBannerMessage.style.display = 'flex';
+            return;
+        }
+        
+        elements.emptyBannerMessage.style.display = 'none';
+        
+        let html = '';
+        banners.forEach((banner, index) => {
+            const hasValidUrl = banner.url && banner.url.trim() !== '';
+            const previewStyle = hasValidUrl 
+                ? `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;` 
+                : 'background-color: #1a1a1a; background-image: none;';
+            
+            let validationClass = 'banner-validation-message info';
+            let validationIcon = '<i class="fas fa-info-circle"></i>';
+            let validationText = 'Masukkan URL gambar (wajib 1280x760)';
+            
+            html += `
+                <div class="banner-slide" data-index="${index}">
+                    <div class="banner-slide-header">
+                        <span class="banner-number">#${index + 1}</span>
+                    </div>
+                    
+                    <div class="banner-url-input-group">
+                        <div class="banner-url-input-wrapper">
+                            <i class="fas fa-link input-icon"></i>
+                            <input 
+                                type="url" 
+                                id="banner-url-${index}" 
+                                class="banner-url-input" 
+                                placeholder="https://i.imgur.com/xxxxxxx.jpg"
+                                value="${banner.url || ''}"
+                                onchange="window.panel.handleUrlChange(${index}, this.value)"
+                                onblur="window.panel.handleUrlChange(${index}, this.value)"
+                                onkeyup="window.panel.handleUrlChange(${index}, this.value)"
+                            >
+                        </div>
+                        <div id="banner-validation-${index}" class="${validationClass}">
+                            ${validationIcon} ${validationText}
+                        </div>
+                    </div>
+                    
+                    <div class="banner-preview-area" id="banner-preview-container-${index}">
+                        <div 
+                            class="banner-image-wrapper ${hasValidUrl ? 'has-image' : 'no-image'}" 
+                            id="banner-preview-${index}"
+                            style="${previewStyle}"
+                            data-index="${index}"
+                        >
+                            ${!hasValidUrl ? '<div class="no-image-placeholder"><i class="fas fa-image"></i><span>Preview akan tampil di sini</span></div>' : ''}
+                        </div>
+                        
+                        ${hasValidUrl ? `
+                            <div class="banner-position-controls">
+                                <div class="banner-position-indicator" id="pos-indicator-${index}">
+                                    X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
+                                </div>
+                                <div class="banner-position-hint">
+                                    <i class="fas fa-hand-pointer"></i> Tekan & tahan gambar untuk menggeser posisi
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="banner-slide-actions-bottom">
+                        <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'left')">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'right')">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button class="btn-icon-small delete" onclick="window.panel.deleteBanner(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.bannerTrack.innerHTML = html;
+        
+        banners.forEach((banner, index) => {
+            if (banner.url && banner.url.trim() !== '') {
+                setupBannerLongPress(index);
+            }
+        });
+    }
+
+    // ==================== FUNGSI SETUP LONG PRESS ====================
+    function setupBannerLongPress(index) {
+        const previewWrapper = document.getElementById(`banner-preview-${index}`);
+        if (!previewWrapper) return;
+        
+        let pressTimer;
+        let isDragging = false;
+        let startX, startY, startPosX, startPosY;
+        
+        const onTouchStart = (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            
+            startX = touch.clientX;
+            startY = touch.clientY;
+            
+            pressTimer = setTimeout(() => {
+                isDragging = true;
+                startPosX = banners[index].positionX || 50;
+                startPosY = banners[index].positionY || 50;
+                previewWrapper.classList.add('dragging-active');
+                vibrate(30);
+            }, 500);
+        };
+        
+        const onTouchMove = (e) => {
+            if (!isDragging) {
+                clearTimeout(pressTimer);
+                return;
+            }
+            
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = previewWrapper.getBoundingClientRect();
+            
+            const deltaX = touch.clientX - startX;
+            const deltaY = touch.clientY - startY;
+            
+            const percentPerPixelX = 100 / rect.width;
+            const percentPerPixelY = 100 / rect.height;
+            
+            let newPosX = startPosX - (deltaX * percentPerPixelX);
+            let newPosY = startPosY - (deltaY * percentPerPixelY);
+            
+            newPosX = Math.max(0, Math.min(100, newPosX));
+            newPosY = Math.max(0, Math.min(100, newPosY));
+            
+            banners[index].positionX = Math.round(newPosX);
+            banners[index].positionY = Math.round(newPosY);
+            
+            previewWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
+            
+            const indicator = document.getElementById(`pos-indicator-${index}`);
+            if (indicator) {
+                indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
+            }
+            
+            hasUnsavedBanners = true;
+        };
+        
+        const onTouchEnd = () => {
+            clearTimeout(pressTimer);
+            if (isDragging) {
+                isDragging = false;
+                previewWrapper.classList.remove('dragging-active');
+            }
+        };
+        
+        const onTouchCancel = () => {
+            clearTimeout(pressTimer);
+            isDragging = false;
+            previewWrapper.classList.remove('dragging-active');
+        };
+        
+        previewWrapper.removeEventListener('touchstart', onTouchStart);
+        previewWrapper.removeEventListener('touchmove', onTouchMove);
+        previewWrapper.removeEventListener('touchend', onTouchEnd);
+        previewWrapper.removeEventListener('touchcancel', onTouchCancel);
+        
+        previewWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+        previewWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+        previewWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
+        previewWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
+    }
+
+    // ==================== FUNGSI SAVE BANNERS ====================
+    async function saveBanners() {
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        const validBanners = banners.filter(b => b.url && b.url.trim() !== '');
+        
+        if (validBanners.length === 0) {
+            showToast('Minimal 1 banner dengan URL gambar yang valid diperlukan', 'warning');
+            return;
+        }
+        
+        showLoading('Menyimpan banner...');
+        
+        try {
+            const bannersToSave = validBanners.map(b => ({
+                url: b.url,
+                positionX: b.positionX || 50,
+                positionY: b.positionY || 50
+            }));
+            
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify({
+                    banners: bannersToSave
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(`✅ ${validBanners.length} banner saved!`, 'success');
+                hasUnsavedBanners = false;
+                
+                const updatedWebsite = await fetchWebsiteData(currentUser.id);
+                if (updatedWebsite) {
+                    updateWebsiteUI(updatedWebsite);
+                }
+            } else {
+                throw new Error(result.error || 'Failed to save banners');
+            }
+        } catch (error) {
+            console.error('❌ Error saving banners:', error);
+            showToast(error.message || 'Failed to save banners', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // ==================== FUNGSI SAVE LOGO ====================
+    async function saveLogo() {
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        const logoUrl = elements.logoUrl?.value || elements.logoImage?.src || '';
+        
+        if (logoUrl && !logoUrl.toLowerCase().endsWith('.png') && !logoUrl.startsWith('data:image/png')) {
+            showToast('Logo harus berformat PNG', 'error');
+            return;
+        }
+        
+        showLoading('Menyimpan logo...');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify({ url: logoUrl })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('✅ Logo saved!', 'success');
+                const updatedWebsite = await fetchWebsiteData(currentUser.id);
+                if (updatedWebsite) {
+                    updateWebsiteUI(updatedWebsite);
+                }
+            } else {
+                throw new Error(result.error || 'Failed to save logo');
+            }
+        } catch (error) {
+            console.error('❌ Error saving logo:', error);
+            showToast(error.message || 'Failed to save logo', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // ==================== FUNGSI SAVE COLORS ====================
+    async function saveColors() {
+        if (!currentWebsite) {
+            showToast('Website not loaded', 'error');
+            return;
+        }
+        
+        const colors = {
+            primary: elements.primaryColorHex?.value || '#40a7e3',
+            secondary: elements.secondaryColorHex?.value || '#FFD700',
+            background: elements.bgColorHex?.value || '#0f0f0f',
+            text: elements.textColorHex?.value || '#ffffff',
+            card: elements.cardColorHex?.value || '#1a1a1a',
+            accent: elements.accentColorHex?.value || '#10b981'
+        };
+        
+        showLoading('Menyimpan warna...');
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+                body: JSON.stringify(colors)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('✅ Warna tersimpan!', 'success');
+                const updatedWebsite = await fetchWebsiteData(currentUser.id);
+                if (updatedWebsite) {
+                    updateWebsiteUI(updatedWebsite);
+                }
+            } else {
+                throw new Error(result.error || 'Failed to save colors');
+            }
+        } catch (error) {
+            console.error('❌ Error saving colors:', error);
+            showToast(error.message || 'Gagal menyimpan warna', 'error');
+        } finally {
+            hideLoading();
         }
     }
 
@@ -505,17 +1008,16 @@
             elements.logoUrl.value = settings.logo;
         }
         
-        // Update banners
+        // Update banners - FORMAT BARU: hanya URL
         if (settings.banners && Array.isArray(settings.banners)) {
             banners = settings.banners.map(b => {
                 if (typeof b === 'string') {
-                    return { url: b, positionX: 50, positionY: 50, fileData: null };
+                    return { url: b, positionX: 50, positionY: 50 };
                 } else {
                     return {
                         url: b.url || '',
                         positionX: b.positionX || 50,
-                        positionY: b.positionY || 50,
-                        fileData: null
+                        positionY: b.positionY || 50
                     };
                 }
             });
@@ -524,7 +1026,7 @@
             banners = [];
             hasUnsavedBanners = false;
         }
-        renderBannerTrack();
+        renderBannerTrackWithLinks();
         
         // Update colors
         if (settings.colors) {
@@ -554,39 +1056,10 @@
                 elements.accentColor.value = colors.accent || '#10b981';
                 elements.accentColorHex.value = colors.accent || '#10b981';
             }
-        } else {
-            // Reset ke default jika tidak ada data
-            if (elements.primaryColor) {
-                elements.primaryColor.value = '#40a7e3';
-                elements.primaryColorHex.value = '#40a7e3';
-            }
-            if (elements.secondaryColor) {
-                elements.secondaryColor.value = '#FFD700';
-                elements.secondaryColorHex.value = '#FFD700';
-            }
-            if (elements.bgColor) {
-                elements.bgColor.value = '#0f0f0f';
-                elements.bgColorHex.value = '#0f0f0f';
-            }
-            if (elements.textColor) {
-                elements.textColor.value = '#ffffff';
-                elements.textColorHex.value = '#ffffff';
-            }
-            if (elements.cardColor) {
-                elements.cardColor.value = '#1a1a1a';
-                elements.cardColorHex.value = '#1a1a1a';
-            }
-            if (elements.accentColor) {
-                elements.accentColor.value = '#10b981';
-                elements.accentColorHex.value = '#10b981';
-            }
         }
         
         // Update font
-        if (settings.font) {
-            if (elements.fontFamily) elements.fontFamily.value = settings.font.family || 'Inter';
-            if (elements.fontSize) elements.fontSize.value = settings.font.size || 14;
-        } else if (settings.font_family || settings.font_size) {
+        if (settings.font_family || settings.font_size) {
             if (elements.fontFamily) elements.fontFamily.value = settings.font_family || 'Inter';
             if (elements.fontSize) elements.fontSize.value = settings.font_size || 14;
         }
@@ -594,8 +1067,8 @@
         // Update general settings
         if (elements.websiteTitle) elements.websiteTitle.value = settings.title || '';
         if (elements.websiteDescription) elements.websiteDescription.value = settings.description || '';
-        if (elements.contactWhatsApp) elements.contactWhatsApp.value = settings.contact_whatsapp || settings.contact?.whatsapp || '';
-        if (elements.contactTelegram) elements.contactTelegram.value = settings.contact_telegram || settings.contact?.telegram || '';
+        if (elements.contactWhatsApp) elements.contactWhatsApp.value = settings.contact_whatsapp || '';
+        if (elements.contactTelegram) elements.contactTelegram.value = settings.contact_telegram || '';
         
         // Update SEO
         if (settings.seo) {
@@ -645,416 +1118,6 @@
             if (elements.maintenanceMessageGroup) {
                 elements.maintenanceMessageGroup.style.display = settings.maintenance.enabled ? 'block' : 'none';
             }
-        }
-    }
-
-    // ==================== FUNGSI RENDER BANNER TRACK ====================
-    function renderBannerTrack() {
-        if (!elements.bannerTrack || !elements.emptyBannerMessage) return;
-        
-        if (banners.length === 0) {
-            elements.bannerTrack.innerHTML = '';
-            elements.emptyBannerMessage.style.display = 'flex';
-            return;
-        }
-        
-        elements.emptyBannerMessage.style.display = 'none';
-        
-        let html = '';
-        banners.forEach((banner, index) => {
-            const imageUrl = banner.fileData || banner.url || `https://via.placeholder.com/300x150/40a7e3/ffffff?text=Banner+${index+1}`;
-            
-            html += `
-                <div class="banner-slide" data-index="${index}">
-                    <div class="banner-slide-header">
-                        <span class="banner-number">#${index + 1}</span>
-                        <button class="banner-upload-header-btn" onclick="window.panel.uploadBannerImage(${index})">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Upload</span>
-                        </button>
-                    </div>
-                    <div class="banner-preview-area" id="banner-preview-${index}">
-                        <div class="banner-image-wrapper" style="background-image: url('${imageUrl}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;">
-                        </div>
-                        <div class="banner-position-indicator" id="pos-indicator-${index}">
-                            X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
-                        </div>
-                    </div>
-                    <div class="banner-slide-actions-bottom">
-                        <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'left')">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.panel.moveBanner(${index}, 'right')">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button class="btn-icon-small delete" onclick="window.panel.deleteBanner(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.bannerTrack.innerHTML = html;
-        
-        // Setup long press events untuk setiap banner
-        banners.forEach((_, index) => {
-            setupBannerLongPress(index);
-        });
-    }
-
-    // ==================== FUNGSI SETUP LONG PRESS ====================
-    function setupBannerLongPress(index) {
-        const previewArea = document.getElementById(`banner-preview-${index}`);
-        if (!previewArea) return;
-        
-        const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
-        if (!imageWrapper) return;
-        
-        let pressTimer;
-        let isPressed = false;
-        let startX, startY, startPosX, startPosY;
-        let isDragging = false;
-        
-        // Touch start - mulai hitung long press
-        const onTouchStart = (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            
-            startX = touch.clientX;
-            startY = touch.clientY;
-            
-            pressTimer = setTimeout(() => {
-                // Long press terdeteksi (500ms)
-                isPressed = true;
-                isDragging = true;
-                
-                // Simpan posisi awal
-                startPosX = banners[index].positionX || 50;
-                startPosY = banners[index].positionY || 50;
-                
-                // Tampilkan visual feedback
-                imageWrapper.classList.add('dragging-active');
-                
-                vibrate(30); // Feedback haptic
-            }, 500); // 500ms long press
-        };
-        
-        // Touch move - jika sedang drag, update posisi
-        const onTouchMove = (e) => {
-            if (!isDragging) {
-                // Jika belum drag, batalkan long press jika bergerak
-                clearTimeout(pressTimer);
-                return;
-            }
-            
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = imageWrapper.getBoundingClientRect();
-            
-            // Hitung delta pergerakan
-            const deltaX = touch.clientX - startX;
-            const deltaY = touch.clientY - startY;
-            
-            // Konversi ke persen (relative terhadap ukuran wrapper)
-            const percentPerPixelX = 100 / rect.width;
-            const percentPerPixelY = 100 / rect.height;
-            
-            // Hitung posisi baru
-            let newPosX = startPosX - (deltaX * percentPerPixelX);
-            let newPosY = startPosY - (deltaY * percentPerPixelY);
-            
-            // Batasi antara 0-100
-            newPosX = Math.max(0, Math.min(100, newPosX));
-            newPosY = Math.max(0, Math.min(100, newPosY));
-            
-            // Update state
-            banners[index].positionX = Math.round(newPosX);
-            banners[index].positionY = Math.round(newPosY);
-            
-            // Update tampilan
-            imageWrapper.style.backgroundPosition = `${banners[index].positionX}% ${banners[index].positionY}%`;
-            
-            // Update indicator
-            const indicator = document.getElementById(`pos-indicator-${index}`);
-            if (indicator) {
-                indicator.textContent = `X: ${banners[index].positionX}% Y: ${banners[index].positionY}%`;
-            }
-            
-            // Tandai ada perubahan yang belum disimpan
-            hasUnsavedBanners = true;
-        };
-        
-        // Touch end - reset semua state
-        const onTouchEnd = (e) => {
-            clearTimeout(pressTimer);
-            
-            if (isDragging) {
-                isDragging = false;
-                imageWrapper.classList.remove('dragging-active');
-            }
-            
-            isPressed = false;
-        };
-        
-        // Touch cancel
-        const onTouchCancel = (e) => {
-            clearTimeout(pressTimer);
-            isDragging = false;
-            isPressed = false;
-            imageWrapper.classList.remove('dragging-active');
-        };
-        
-        // Hapus event listener lama
-        imageWrapper.removeEventListener('touchstart', onTouchStart);
-        imageWrapper.removeEventListener('touchmove', onTouchMove);
-        imageWrapper.removeEventListener('touchend', onTouchEnd);
-        imageWrapper.removeEventListener('touchcancel', onTouchCancel);
-        
-        // Tambah event listener baru
-        imageWrapper.addEventListener('touchstart', onTouchStart, { passive: false });
-        imageWrapper.addEventListener('touchmove', onTouchMove, { passive: false });
-        imageWrapper.addEventListener('touchend', onTouchEnd, { passive: false });
-        imageWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
-    }
-
-    // ==================== FUNGSI BANNER ====================
-    window.panel = window.panel || {};
-    
-    window.panel.uploadBannerImage = function(index) {
-        openUploadModal((imageData) => {
-            banners[index].fileData = imageData;
-            banners[index].url = ''; // Kosongkan URL karena pakai file
-            hasUnsavedBanners = true; // Tandai ada perubahan
-            
-            // Update preview
-            const previewArea = document.getElementById(`banner-preview-${index}`);
-            if (previewArea) {
-                const imageWrapper = previewArea.querySelector('.banner-image-wrapper');
-                if (imageWrapper) {
-                    imageWrapper.style.backgroundImage = `url(${imageData})`;
-                }
-            }
-            
-            showToast('✅ Gambar banner diupload!', 'success');
-        });
-    };
-    
-    function addBanner() {
-        // Cek apakah ada banner yang belum diisi
-        const hasEmptyBanner = banners.some(b => !b.url && !b.fileData);
-        
-        if (hasEmptyBanner) {
-            showToast('⚠️ Ada banner yang belum diisi. Selesaikan atau hapus terlebih dahulu.', 'warning');
-            return;
-        }
-        
-        banners.push({
-            url: '',
-            fileData: null,
-            positionX: 50,
-            positionY: 50
-        });
-        hasUnsavedBanners = true; // Tandai ada perubahan
-        renderBannerTrack();
-        vibrate(10);
-    }
-    
-    window.panel.deleteBanner = function(index) {
-        if (confirm('Hapus banner ini?')) {
-            banners.splice(index, 1);
-            hasUnsavedBanners = true; // Tandai ada perubahan
-            renderBannerTrack();
-            vibrate(10);
-        }
-    };
-    
-    window.panel.moveBanner = function(index, direction) {
-        if (direction === 'left' && index > 0) {
-            [banners[index - 1], banners[index]] = [banners[index], banners[index - 1]];
-            hasUnsavedBanners = true; // Tandai ada perubahan
-        } else if (direction === 'right' && index < banners.length - 1) {
-            [banners[index], banners[index + 1]] = [banners[index + 1], banners[index]];
-            hasUnsavedBanners = true; // Tandai ada perubahan
-        } else {
-            return;
-        }
-        renderBannerTrack();
-        vibrate(10);
-    };
-    
-    // ==================== FUNGSI SAVE BANNERS ====================
-    async function saveBanners() {
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            return;
-        }
-        
-        // Cek apakah ada banner yang belum diisi
-        const hasEmptyBanner = banners.some(b => !b.url && !b.fileData);
-        
-        if (hasEmptyBanner) {
-            showToast('⚠️ Ada banner yang belum diisi. Isi atau hapus terlebih dahulu.', 'warning');
-            return;
-        }
-        
-        // Filter banner yang memiliki konten (URL atau fileData)
-        const validBanners = banners.filter(b => 
-            (b.url && b.url.trim() !== '') || b.fileData
-        );
-        
-        if (validBanners.length === 0) {
-            showToast('Tambahkan minimal 1 banner dengan gambar', 'warning');
-            return;
-        }
-        
-        // Konversi ke format penyimpanan
-        const bannersToSave = validBanners.map(b => ({
-            url: b.url || b.fileData || '',
-            positionX: b.positionX || 50,
-            positionY: b.positionY || 50
-        }));
-        
-        showLoading('Menyimpan banner...');
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify({
-                    banners: bannersToSave
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast(`✅ ${validBanners.length} banner saved!`, 'success');
-                
-                // Clear fileData setelah save (karena sudah jadi URL/base64 di database)
-                banners.forEach(b => {
-                    if (b.fileData) {
-                        b.url = b.fileData;
-                        b.fileData = null;
-                    }
-                });
-                
-                hasUnsavedBanners = false; // Reset flag
-                
-                // Refresh data
-                const updatedWebsite = await fetchWebsiteData(currentUser.id);
-                if (updatedWebsite) {
-                    updateWebsiteUI(updatedWebsite);
-                }
-            } else {
-                throw new Error(result.error || 'Failed to save banners');
-            }
-        } catch (error) {
-            console.error('❌ Error saving banners:', error);
-            showToast(error.message || 'Failed to save banners', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ==================== FUNGSI SAVE LOGO ====================
-    async function saveLogo() {
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            return;
-        }
-        
-        const logoUrl = elements.logoUrl?.value || elements.logoImage?.src || '';
-        
-        // Validasi PNG (cek dari URL atau data URL)
-        if (logoUrl && !logoUrl.toLowerCase().endsWith('.png') && !logoUrl.startsWith('data:image/png')) {
-            showToast('Logo harus berformat PNG', 'error');
-            return;
-        }
-        
-        showLoading('Menyimpan logo...');
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify({ url: logoUrl })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast('✅ Logo saved!', 'success');
-                // Refresh data
-                const updatedWebsite = await fetchWebsiteData(currentUser.id);
-                if (updatedWebsite) {
-                    updateWebsiteUI(updatedWebsite);
-                }
-            } else {
-                throw new Error(result.error || 'Failed to save logo');
-            }
-        } catch (error) {
-            console.error('❌ Error saving logo:', error);
-            showToast(error.message || 'Failed to save logo', 'error');
-        } finally {
-            hideLoading();
-        }
-    }
-
-    // ==================== FUNGSI SAVE COLORS ====================
-    async function saveColors() {
-        if (!currentWebsite) {
-            showToast('Website not loaded', 'error');
-            return;
-        }
-        
-        const colors = {
-            primary: elements.primaryColorHex?.value || '#40a7e3',
-            secondary: elements.secondaryColorHex?.value || '#FFD700',
-            background: elements.bgColorHex?.value || '#0f0f0f',
-            text: elements.textColorHex?.value || '#ffffff',
-            card: elements.cardColorHex?.value || '#1a1a1a',
-            accent: elements.accentColorHex?.value || '#10b981'
-        };
-        
-        showLoading('Menyimpan warna...');
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/colors`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors',
-                body: JSON.stringify(colors)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                showToast('✅ Warna tersimpan!', 'success');
-                // Refresh data untuk memastikan UI sesuai dengan database
-                const updatedWebsite = await fetchWebsiteData(currentUser.id);
-                if (updatedWebsite) {
-                    updateWebsiteUI(updatedWebsite);
-                }
-            } else {
-                throw new Error(result.error || 'Failed to save colors');
-            }
-        } catch (error) {
-            console.error('❌ Error saving colors:', error);
-            showToast(error.message || 'Gagal menyimpan warna', 'error');
-        } finally {
-            hideLoading();
         }
     }
 
@@ -1249,7 +1312,6 @@
       
             if (result.success) {
                 showToast(`✅ ${section} settings saved!`, 'success');
-                // Refresh website data to get updated settings
                 const updatedWebsite = await fetchWebsiteData(currentUser.id);
                 if (updatedWebsite) {
                     updateWebsiteUI(updatedWebsite);
@@ -1391,7 +1453,6 @@
     async function updateUI(user) {
         currentUser = user;
         
-        // Set user avatar
         setUserAvatar(user);
         
         if (elements.loading) elements.loading.style.display = 'none';
@@ -1451,7 +1512,6 @@
                 if (tg.initDataUnsafe?.user) {
                     telegramUserData = tg.initDataUnsafe.user;
                     
-                    // Coba dapatkan foto profil jika ada
                     if (tg.initDataUnsafe?.user?.photo_url) {
                         telegramUserData.photo_url = tg.initDataUnsafe.user.photo_url;
                     }
@@ -1532,7 +1592,6 @@
         if (elements.uploadLogoBtn) {
             elements.uploadLogoBtn.addEventListener('click', () => {
                 openUploadModal((imageUrl) => {
-                    // Validasi PNG
                     if (!imageUrl.startsWith('data:image/png') && !imageUrl.toLowerCase().endsWith('.png')) {
                         showToast('Hanya file PNG yang diperbolehkan untuk logo', 'error');
                         return;
@@ -1544,7 +1603,7 @@
                         elements.logoUrl.value = imageUrl;
                     }
                     showToast('✅ Logo updated! (PNG)', 'success');
-                }, 'image/png'); // Hanya terima PNG
+                }, 'image/png');
             });
         }
         
@@ -1552,9 +1611,9 @@
             elements.saveLogoBtn.addEventListener('click', saveLogo);
         }
         
-        // Banner events
+        // Banner events - menggunakan fungsi baru
         if (elements.addBannerBtn) {
-            elements.addBannerBtn.addEventListener('click', addBanner);
+            elements.addBannerBtn.addEventListener('click', addBannerWithLink);
         }
         
         if (elements.saveBannersBtn) {
@@ -1829,7 +1888,6 @@
             }
         });
         
-        // Setup keyboard dismiss
         setupKeyboardDismiss();
     }
 
