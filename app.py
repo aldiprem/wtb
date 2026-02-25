@@ -18,7 +18,7 @@ app = Flask(__name__, static_folder='.')
 
 # Konfigurasi CORS yang longgar untuk development dengan tunnel
 CORS(app, 
-     origins='*',  # Izinkan semua origin untuk testing
+     origins='*',
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)
@@ -26,7 +26,6 @@ CORS(app,
 # Middleware untuk menangani proxy headers dari Cloudflare
 @app.before_request
 def before_request():
-    # Jika ada header X-Forwarded-Proto, gunakan itu
     if request.headers.get('X-Forwarded-Proto') == 'https':
         request.environ['wsgi.url_scheme'] = 'https'
     print(f"📥 {request.method} {request.path} - {request.remote_addr}")
@@ -48,7 +47,6 @@ def get_db():
 
 def init_db():
     with get_db() as db:
-        # Create websites table
         db.execute('''
             CREATE TABLE IF NOT EXISTS websites (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,8 +178,6 @@ def create_website():
     try:
         data = request.json
         print(f"📥 Received data: {data}")
-        print(f"📥 Request headers: {dict(request.headers)}")
-        print(f"📥 Request origin: {request.headers.get('Origin', 'None')}")
 
         required = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email']
         missing = [f for f in required if f not in data or not data[f]]
@@ -198,11 +194,9 @@ def create_website():
         except:
             return jsonify({'success': False, 'error': 'Owner ID must be number'}), 400
 
-        # Validasi email
         if '@' not in data['email'] or '.' not in data['email']:
             return jsonify({'success': False, 'error': 'Invalid email'}), 400
 
-        # Validasi bot token
         if ':' not in data['bot_token']:
             return jsonify({'success': False, 'error': 'Invalid bot token'}), 400
 
@@ -210,7 +204,6 @@ def create_website():
         start_date = data.get('start_date', datetime.now().strftime('%Y-%m-%d'))
         end_date = data.get('end_date', calculate_end_date(start_date, 30))
         
-        # Gunakan host URL dari request
         tunnel_url = request.host_url.rstrip('/')
 
         with get_db() as db:
@@ -234,12 +227,8 @@ def create_website():
             db.commit()
             print(f"✅ Website created with ID: {website_id}")
             
-            # ========== TAMBAHKAN INI: BUAT DATA TAMPILAN DEFAULT ==========
+            # Buat data tampilan default
             try:
-                # Import tmp di sini untuk menghindari circular import
-                import tmp
-                
-                # Buat data tampilan default
                 default_tampilan = {
                     'logo': '',
                     'banners': [],
@@ -260,15 +249,11 @@ def create_website():
                     'contact_telegram': ''
                 }
                 
-                # Simpan ke database tampilan
                 tmp.save_tampilan(website_id, default_tampilan)
                 print(f"✅ Default tampilan created for website ID: {website_id}")
                 
             except Exception as e:
                 print(f"⚠️ Warning: Failed to create default tampilan: {e}")
-                import traceback
-                traceback.print_exc()
-            # ========== SELESAI TAMBAHAN ==========
 
             return jsonify({'success': True, 'website_id': website_id, 'message': 'Website created successfully'})
 
@@ -340,118 +325,6 @@ def delete_website(website_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/websites/<int:website_id>/products', methods=['GET', 'OPTIONS'])
-def get_products(website_id):
-    try:
-        with get_db() as db:
-            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
-            if not website:
-                return jsonify({'success': False, 'error': 'Website not found'}), 404
-            
-            products = json.loads(website['products'] or '[]')
-            return jsonify({'success': True, 'products': products})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/websites/<int:website_id>/products', methods=['POST'])
-def add_product(website_id):
-    try:
-        data = request.json
-        
-        with get_db() as db:
-            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
-            if not website:
-                return jsonify({'success': False, 'error': 'Website not found'}), 404
-            
-            products = json.loads(website['products'] or '[]')
-            
-            new_id = 1
-            if products:
-                new_id = max([p.get('id', 0) for p in products]) + 1
-            
-            new_product = {
-                'id': new_id,
-                'name': data.get('name'),
-                'description': data.get('description'),
-                'price': data.get('price'),
-                'stock': data.get('stock', 0),
-                'sold': 0,
-                'category': data.get('category'),
-                'image': data.get('image'),
-                'images': data.get('images', []),
-                'variants': data.get('variants', []),
-                'notes': data.get('notes', ''),
-                'active': data.get('active', True),
-                'featured': data.get('featured', False),
-                'created_at': datetime.now().isoformat()
-            }
-            
-            products.append(new_product)
-            
-            db.execute('UPDATE websites SET products = ? WHERE id = ?',
-                      (json.dumps(products), website_id))
-            db.commit()
-            
-            return jsonify({'success': True, 'product': new_product})
-            
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/websites/<int:website_id>/products/<int:product_id>', methods=['PUT'])
-def update_product(website_id, product_id):
-    try:
-        data = request.json
-        
-        with get_db() as db:
-            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
-            if not website:
-                return jsonify({'success': False, 'error': 'Website not found'}), 404
-            
-            products = json.loads(website['products'] or '[]')
-            
-            updated = False
-            for i, product in enumerate(products):
-                if product.get('id') == product_id:
-                    products[i].update(data)
-                    updated = True
-                    break
-            
-            if not updated:
-                return jsonify({'success': False, 'error': 'Product not found'}), 404
-            
-            db.execute('UPDATE websites SET products = ? WHERE id = ?',
-                      (json.dumps(products), website_id))
-            db.commit()
-            
-            return jsonify({'success': True, 'message': 'Product updated successfully'})
-            
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/websites/<int:website_id>/products/<int:product_id>', methods=['DELETE'])
-def delete_product(website_id, product_id):
-    try:
-        with get_db() as db:
-            website = db.execute('SELECT products FROM websites WHERE id = ?', (website_id,)).fetchone()
-            if not website:
-                return jsonify({'success': False, 'error': 'Website not found'}), 404
-            
-            products = json.loads(website['products'] or '[]')
-            
-            new_products = [p for p in products if p.get('id') != product_id]
-            
-            if len(new_products) == len(products):
-                return jsonify({'success': False, 'error': 'Product not found'}), 404
-            
-            db.execute('UPDATE websites SET products = ? WHERE id = ?',
-                      (json.dumps(new_products), website_id))
-            db.commit()
-            
-            return jsonify({'success': True, 'message': 'Product deleted successfully'})
-            
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/api/websites/user/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_website_by_user(user_id):
     try:
@@ -478,7 +351,6 @@ def test_bot(website_id):
         if not bot_token or not tunnel_url:
             return jsonify({'success': False, 'error': 'Bot token and tunnel URL required'}), 400
         
-        # Validasi format bot token
         if ':' not in bot_token:
             return jsonify({'success': False, 'error': 'Invalid bot token format'}), 400
         
@@ -507,24 +379,18 @@ def debug_info():
 
 @app.route('/website/<string:endpoint>')
 def serve_website(endpoint):
-    """Menampilkan halaman website publik berdasarkan endpoint"""
-    # Validasi apakah endpoint ada di database
     with get_db() as db:
         website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
         if not website:
             return "Website not found", 404
-    # Kirim file website.html
     return send_from_directory('.', 'website.html')
 
 @app.route('/panel/<string:endpoint>')
 def serve_panel(endpoint):
-    """Menampilkan halaman panel admin berdasarkan endpoint"""
-    # Validasi apakah endpoint ada di database
     with get_db() as db:
         website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
         if not website:
             return "Website not found", 404
-    # Kirim file panel.html
     return send_from_directory('.', 'html/panel.html')
 
 @app.route('/format')
@@ -543,11 +409,10 @@ def serve_css(filename):
 def serve_js(filename):
     return send_from_directory('js', filename)
 
-# ==================== ROUTES UNTUK TAMPILAN (VERSI BARU) ====================
+# ==================== ROUTES UNTUK TAMPILAN ====================
 
 @app.route('/api/tampilan/<int:website_id>', methods=['GET'])
 def get_tampilan(website_id):
-    """Get tampilan data by website_id"""
     try:
         data = tmp.get_tampilan(website_id)
         if data:
@@ -556,86 +421,58 @@ def get_tampilan(website_id):
             return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/colors', methods=['POST'])
 def save_colors(website_id):
-    """Save color settings"""
     try:
         data = request.json
-        print(f"🎨 Received colors data: {data}")
-        
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Simpan warna - ini akan preserve banner karena menggunakan fungsi khusus
         tmp.save_colors(website_id, data)
-        
         return jsonify({'success': True, 'message': 'Colors saved successfully'})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/banners', methods=['POST'])
 def save_banners(website_id):
-    """Save multiple banners with positions"""
     try:
         data = request.json
-        print(f"🖼️ Received banners data: {data}")
-        
-        # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
         banners = data.get('banners', [])
-        
-        # Validasi banners
         for banner in banners:
             if 'url' not in banner:
                 return jsonify({'success': False, 'error': 'Each banner must have a URL'}), 400
         
-        # Save banners - ini hanya akan update banners, field lain tetap
         tmp.save_banners(website_id, banners)
-        
         return jsonify({'success': True, 'message': f'{len(banners)} banners saved successfully'})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/banners/<int:banner_index>', methods=['DELETE'])
 def delete_banner(website_id, banner_index):
-    """Delete a specific banner"""
     try:
-        print(f"🗑️ Deleting banner at index {banner_index}")
-        
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Get existing tampilan
         existing = tmp.get_tampilan(website_id)
         if not existing:
             return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
         
         banners = existing.get('banners', [])
-        
         if banner_index < 0 or banner_index >= len(banners):
             return jsonify({'success': False, 'error': 'Banner not found'}), 404
         
-        # Remove banner
         banners.pop(banner_index)
-        
-        # Save updated banners
         tmp.save_banners(website_id, banners)
-        
         return jsonify({'success': True, 'message': 'Banner deleted successfully'})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
@@ -643,231 +480,41 @@ def delete_banner(website_id, banner_index):
 
 @app.route('/api/tampilan/<int:website_id>/font-anim', methods=['POST'])
 def save_font_anim(website_id):
-    """Save font and animation settings"""
     try:
         data = request.json
-        print(f"🎭 Received font animation data: {data}")
-        
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Simpan ke tabel tampilan
-        # Bisa tambahkan kolom baru di tmp.db atau simpan di JSON field
         success = tmp.save_font_anim(website_id, data)
-        
         if success:
             return jsonify({'success': True, 'message': 'Font animation saved'})
         else:
             return jsonify({'success': False, 'error': 'Failed to save'}), 500
-            
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/tampilan/<int:website_id>/general', methods=['POST'])
-def save_general(website_id):
-    """Save general settings - preserve banner"""
-    try:
-        data = request.json
-        print(f"⚙️ Received general data: {data}")
-        
-        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
-        if not website:
-            return jsonify({'success': False, 'error': 'Website not found'}), 404
-        
-        # Gunakan fungsi khusus untuk general settings
-        tmp.save_general(
-            website_id,
-            data.get('title'),
-            data.get('description'),
-            data.get('contact', {}).get('whatsapp'),
-            data.get('contact', {}).get('telegram')
-        )
-        
-        return jsonify({'success': True, 'message': 'General settings saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/tampilan/<int:website_id>/seo', methods=['POST'])
-def save_seo(website_id):
-    """Save SEO settings"""
-    try:
-        data = request.json
-        print(f"🔍 Received SEO data: {data}")
-        
-        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
-        if not website:
-            return jsonify({'success': False, 'error': 'Website not found'}), 404
-        
-        # Store SEO data in website settings instead of tampilan
-        current = get_db().execute('SELECT settings FROM websites WHERE id = ?', (website_id,)).fetchone()
-        settings = json.loads(current['settings'] or '{}')
-        
-        # Update SEO settings
-        settings['seo'] = {
-            'title': data.get('title', ''),
-            'description': data.get('description', ''),
-            'keywords': data.get('keywords', '')
-        }
-        
-        # Save back to website
-        get_db().execute('UPDATE websites SET settings = ? WHERE id = ?',
-                        (json.dumps(settings), website_id))
-        get_db().commit()
-        
-        return jsonify({'success': True, 'message': 'SEO settings saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/tampilan/<int:website_id>/payments', methods=['POST'])
-def save_payments(website_id):
-    """Save payment methods settings - preserve banner"""
-    try:
-        data = request.json
-        print(f"💳 Received payment data: {data}")
-        
-        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
-        if not website:
-            return jsonify({'success': False, 'error': 'Website not found'}), 404
-        
-        # Convert payment data to tampilan format
-        banks = []
-        if data.get('bank', {}).get('enabled'):
-            banks.append({
-                'enabled': True,
-                'bank_name': data.get('bank', {}).get('name', 'BCA'),
-                'account': data.get('bank', {}).get('account', ''),
-                'holder': data.get('bank', {}).get('holder', '')
-            })
-        
-        ewallets = []
-        if data.get('ewallet', {}).get('enabled'):
-            ewallets.append({
-                'enabled': True,
-                'provider': data.get('ewallet', {}).get('provider', 'DANA'),
-                'number': data.get('ewallet', {}).get('number', '')
-            })
-        
-        qris = {
-            'enabled': data.get('qris', {}).get('enabled', False),
-            'url': data.get('qris', {}).get('url', '')
-        }
-        
-        crypto = {
-            'enabled': data.get('crypto', {}).get('enabled', False),
-            'address': data.get('crypto', {}).get('address', '')
-        }
-        
-        # Store payment data in website settings (JSON field)
-        current = get_db().execute('SELECT settings FROM websites WHERE id = ?', (website_id,)).fetchone()
-        settings = json.loads(current['settings'] or '{}')
-        
-        # Update payment settings
-        settings['payments'] = {
-            'bank': data.get('bank', {}),
-            'ewallet': data.get('ewallet', {}),
-            'qris': qris,
-            'crypto': crypto
-        }
-        
-        # Save back to website
-        get_db().execute('UPDATE websites SET settings = ? WHERE id = ?',
-                        (json.dumps(settings), website_id))
-        get_db().commit()
-        
-        # Save to tampilan using specialized function - ini akan preserve banner
-        tmp.save_payment_methods(website_id, banks, ewallets, qris, crypto)
-        
-        return jsonify({'success': True, 'message': 'Payment settings saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/tampilan/<int:website_id>/payment-notes', methods=['POST'])
-def save_payment_notes(website_id):
-    """Save payment notes"""
-    try:
-        data = request.json
-        print(f"📝 Received payment notes: {data}")
-        
-        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
-        if not website:
-            return jsonify({'success': False, 'error': 'Website not found'}), 404
-        
-        # Gunakan fungsi khusus untuk payment notes
-        tmp.save_payment_notes(website_id, {
-            'payment': data.get('payment', ''),
-            'confirmation': data.get('confirmation', '')
-        })
-        
-        return jsonify({'success': True, 'message': 'Payment notes saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/tampilan/<int:website_id>/maintenance', methods=['POST'])
-def save_maintenance(website_id):
-    """Save maintenance mode settings"""
-    try:
-        data = request.json
-        print(f"🔧 Received maintenance data: {data}")
-        
-        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
-        if not website:
-            return jsonify({'success': False, 'error': 'Website not found'}), 404
-        
-        # Store maintenance settings in website's main record
-        get_db().execute('UPDATE websites SET status = ? WHERE id = ?',
-                        ('maintenance' if data.get('enabled') else 'active', website_id))
-        get_db().commit()
-        
-        # Store message in tampilan using specialized function
-        tmp.save_maintenance(
-            website_id,
-            data.get('enabled', False),
-            data.get('message', 'Website sedang dalam perbaikan')
-        )
-        
-        return jsonify({'success': True, 'message': 'Maintenance settings saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== ROUTES UNTUK MULTIPLE BANNER DAN LOGO ====================
 
 @app.route('/api/tampilan/<int:website_id>/logo', methods=['POST'])
 def save_logo(website_id):
-    """Save logo"""
     try:
         data = request.json
-        print(f"🖼️ Received logo data: {data}")
-        
-        # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Validasi format PNG (cek dari URL atau data URL)
         logo_url = data.get('url', '')
         if logo_url and not (logo_url.lower().endswith('.png') or logo_url.startswith('data:image/png')):
             return jsonify({'success': False, 'error': 'Logo must be PNG format'}), 400
         
-        # Save logo - ini hanya update logo, field lain tetap
         tmp.save_logo(website_id, logo_url)
-        
         return jsonify({'success': True, 'message': 'Logo saved successfully'})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/banners/reorder', methods=['POST'])
 def reorder_banners(website_id):
-    """Reorder banners"""
     try:
         data = request.json
         new_order = data.get('order', [])
@@ -881,13 +528,9 @@ def reorder_banners(website_id):
             return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
         
         banners = existing.get('banners', [])
-        
-        # Reorder based on new_order
         if len(new_order) == len(banners):
             new_banners = [banners[i] for i in new_order]
-            
             tmp.save_banners(website_id, new_banners)
-            
             return jsonify({'success': True, 'message': 'Banners reordered successfully'})
         else:
             return jsonify({'success': False, 'error': 'Invalid order'}), 400
@@ -895,332 +538,43 @@ def reorder_banners(website_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/products/<int:website_id>', methods=['GET'])
-def api_get_products(website_id):
-    """Get all products for a website"""
-    try:
-        products = prd.get_products(website_id)
-        stats = prd.get_products_stats(website_id)
-        return jsonify({
-            'success': True,
-            'products': products,
-            'stats': stats
-        })
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/grouped/<int:website_id>', methods=['GET'])
-def api_get_products_grouped(website_id):
-    """Get products grouped by layanan and aplikasi"""
-    try:
-        grouped = prd.get_products_by_layanan(website_id)
-        return jsonify({
-            'success': True,
-            'grouped': grouped
-        })
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/<int:website_id>', methods=['POST'])
-def api_add_product(website_id):
-    """Add new product"""
-    try:
-        data = request.json
-        print(f"📦 Adding product for website {website_id}:", data)
-        
-        # Validate required fields
-        required = ['layanan', 'aplikasi', 'item_nama', 'harga', 'method']
-        missing = [f for f in required if f not in data]
-        if missing:
-            return jsonify({'success': False, 'error': f'Missing: {missing}'}), 400
-        
-        product_id = prd.add_product(website_id, data)
-        
-        return jsonify({
-            'success': True,
-            'product_id': product_id,
-            'message': 'Product added successfully'
-        })
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/<int:product_id>', methods=['PUT'])
-def api_update_product(product_id):
-    """Update existing product"""
-    try:
-        data = request.json
-        print(f"📦 Updating product {product_id}:", data)
-        
-        success = prd.update_product(product_id, data)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Product updated successfully'})
-        else:
-            return jsonify({'success': False, 'error': 'Product not found'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/<int:product_id>', methods=['DELETE'])
-def api_delete_product(product_id):
-    """Delete product"""
-    try:
-        success = prd.delete_product(product_id)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Product deleted successfully'})
-        else:
-            return jsonify({'success': False, 'error': 'Product not found'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/<int:product_id>/stok', methods=['POST'])
-def api_add_stok(product_id):
-    """Add stock to product"""
-    try:
-        data = request.json
-        stok_data = data.get('stok', [])
-        
-        if not stok_data:
-            return jsonify({'success': False, 'error': 'No stock data provided'}), 400
-        
-        success = prd.add_stok(product_id, stok_data)
-        
-        if success:
-            return jsonify({'success': True, 'message': f'{len(stok_data)} stock items added'})
-        else:
-            return jsonify({'success': False, 'error': 'Product not found or not direct method'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/<int:product_id>/stok/<int:index>', methods=['DELETE'])
-def api_remove_stok(product_id, index):
-    """Remove specific stock item"""
-    try:
-        success = prd.remove_stok(product_id, index)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Stock removed successfully'})
-        else:
-            return jsonify({'success': False, 'error': 'Product not found or invalid index'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/<int:product_id>/consume-stok', methods=['POST'])
-def api_consume_stok(product_id):
-    """Consume one stock item (for checkout)"""
-    try:
-        stok_item = prd.consume_stok(product_id)
-        
-        if stok_item:
-            return jsonify({
-                'success': True,
-                'stok_item': stok_item,
-                'message': 'Stock consumed successfully'
-            })
-        else:
-            return jsonify({'success': False, 'error': 'No stock available'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== ROUTES UNTUK PRODUK (VERSI BARU) ====================
-
-@app.route('/api/products/layanan/<int:website_id>', methods=['GET'])
-def api_get_layanan(website_id):
-    """Get all layanan"""
-    try:
-        layanan = prd.get_layanan(website_id)
-        return jsonify({'success': True, 'layanan': layanan})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/aplikasi/<int:website_id>/<path:layanan_nama>', methods=['GET'])
-def api_get_aplikasi(website_id, layanan_nama):
-    """Get all aplikasi in a layanan"""
-    try:
-        aplikasi = prd.get_aplikasi_by_layanan(website_id, layanan_nama)
-        return jsonify({'success': True, 'aplikasi': aplikasi})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/items/<int:website_id>/<path:layanan_nama>/<path:aplikasi_nama>', methods=['GET'])
-def api_get_items(website_id, layanan_nama, aplikasi_nama):
-    """Get all items in an aplikasi"""
-    try:
-        items = prd.get_items_by_aplikasi(website_id, layanan_nama, aplikasi_nama)
-        return jsonify({'success': True, 'items': items})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/all/<int:website_id>', methods=['GET'])
-def api_get_all_data(website_id):
-    """Get all structured data"""
-    try:
-        data = prd.get_all_data(website_id)
-        return jsonify({'success': True, 'data': data})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/layanan/<int:website_id>', methods=['POST'])
-def api_save_layanan(website_id):
-    """Save or update layanan"""
-    try:
-        data = request.json
-        print(f"📦 Saving layanan for website {website_id}:", data)
-        
-        if 'layanan_nama' not in data:
-            return jsonify({'success': False, 'error': 'Layanan name required'}), 400
-        
-        success = prd.save_layanan(website_id, data)
-        
-        return jsonify({'success': success, 'message': 'Layanan saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/aplikasi/<int:website_id>/<path:layanan_nama>', methods=['POST'])
-def api_save_aplikasi(website_id, layanan_nama):
-    """Save or update aplikasi in layanan"""
-    try:
-        data = request.json
-        print(f"📦 Saving aplikasi for {layanan_nama}:", data)
-        
-        if 'aplikasi_nama' not in data:
-            return jsonify({'success': False, 'error': 'Aplikasi name required'}), 400
-        
-        success = prd.save_aplikasi(website_id, layanan_nama, data)
-        
-        return jsonify({'success': success, 'message': 'Aplikasi saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/item/<int:website_id>/<path:layanan_nama>/<path:aplikasi_nama>', methods=['POST'])
-def api_save_item(website_id, layanan_nama, aplikasi_nama):
-    """Save or update item in aplikasi"""
-    try:
-        data = request.json
-        print(f"📦 Saving item for {layanan_nama} - {aplikasi_nama}:", data)
-        
-        if 'item_nama' not in data:
-            return jsonify({'success': False, 'error': 'Item name required'}), 400
-        
-        success = prd.save_item(website_id, layanan_nama, aplikasi_nama, data)
-        
-        return jsonify({'success': success, 'message': 'Item saved successfully'})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/layanan/<int:website_id>/<path:layanan_nama>', methods=['DELETE'])
-def api_delete_layanan(website_id, layanan_nama):
-    """Delete layanan"""
-    try:
-        success = prd.delete_layanan(website_id, layanan_nama)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Layanan deleted successfully'})
-        else:
-            return jsonify({'success': False, 'error': 'Layanan not found'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/aplikasi/<int:website_id>/<path:layanan_nama>/<path:aplikasi_nama>', methods=['DELETE'])
-def api_delete_aplikasi(website_id, layanan_nama, aplikasi_nama):
-    """Delete aplikasi"""
-    try:
-        success = prd.delete_aplikasi(website_id, layanan_nama, aplikasi_nama)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Aplikasi deleted successfully'})
-        else:
-            return jsonify({'success': False, 'error': 'Aplikasi not found'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/products/item/<int:item_id>', methods=['DELETE'])
-def api_delete_item(item_id):
-    """Delete item"""
-    try:
-        success = prd.delete_item(item_id)
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Item deleted successfully'})
-        else:
-            return jsonify({'success': False, 'error': 'Item not found'}), 404
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== ROUTES UNTUK PROMO (REVISED - MULTIPLE) ====================
-
 @app.route('/api/tampilan/<int:website_id>/promos', methods=['GET'])
 def get_promos(website_id):
-    """Get all promos for a website"""
     try:
         data = tmp.get_promos(website_id)
         return jsonify({'success': True, 'promos': data})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/promos', methods=['POST'])
 def save_promos(website_id):
-    """Save all promos for a website"""
     try:
         data = request.json
-        print(f"📢 Received promos data for website {website_id}:", data)
-        
-        # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
         promos = data.get('promos', [])
-        
-        # Validasi setiap promo
         for promo in promos:
             if 'title' not in promo or not promo['title']:
                 return jsonify({'success': False, 'error': 'Each promo must have a title'}), 400
             if 'banner' not in promo or not promo['banner']:
                 return jsonify({'success': False, 'error': 'Each promo must have a banner URL'}), 400
         
-        # Simpan semua promos
-        result = tmp.save_promos(website_id, promos)
-        
-        return jsonify({'success': True, 'message': f'{len(promos)} promos saved successfully', 'count': result})
+        tmp.save_promos(website_id, promos)
+        return jsonify({'success': True, 'message': f'{len(promos)} promos saved successfully'})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/promos/<int:promo_index>', methods=['DELETE'])
 def delete_promo(website_id, promo_index):
-    """Delete a specific promo"""
     try:
-        print(f"🗑️ Deleting promo at index {promo_index}")
-        
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Get existing promos
         existing = tmp.get_promos(website_id)
         if not existing:
             return jsonify({'success': False, 'error': 'Promos not found'}), 404
@@ -1228,12 +582,8 @@ def delete_promo(website_id, promo_index):
         if promo_index < 0 or promo_index >= len(existing):
             return jsonify({'success': False, 'error': 'Promo not found'}), 404
         
-        # Remove promo
         existing.pop(promo_index)
-        
-        # Save updated promos
         tmp.save_promos(website_id, existing)
-        
         return jsonify({'success': True, 'message': 'Promo deleted successfully'})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
@@ -1241,7 +591,6 @@ def delete_promo(website_id, promo_index):
 
 @app.route('/api/tampilan/<int:website_id>/promos/reorder', methods=['POST'])
 def reorder_promos(website_id):
-    """Reorder promos"""
     try:
         data = request.json
         new_order = data.get('order', [])
@@ -1254,7 +603,6 @@ def reorder_promos(website_id):
         if not existing:
             return jsonify({'success': False, 'error': 'Promos not found'}), 404
         
-        # Reorder based on new_order
         if len(new_order) == len(existing):
             new_promos = [existing[i] for i in new_order]
             tmp.save_promos(website_id, new_promos)
@@ -1265,14 +613,124 @@ def reorder_promos(website_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK PRODUK ====================
+
+@app.route('/api/products/layanan/<int:website_id>', methods=['GET'])
+def api_get_layanan(website_id):
+    try:
+        layanan = prd.get_layanan(website_id)
+        return jsonify({'success': True, 'layanan': layanan})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/aplikasi/<int:website_id>/<path:layanan_nama>', methods=['GET'])
+def api_get_aplikasi(website_id, layanan_nama):
+    try:
+        aplikasi = prd.get_aplikasi_by_layanan(website_id, layanan_nama)
+        return jsonify({'success': True, 'aplikasi': aplikasi})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/items/<int:website_id>/<path:layanan_nama>/<path:aplikasi_nama>', methods=['GET'])
+def api_get_items(website_id, layanan_nama, aplikasi_nama):
+    try:
+        items = prd.get_items_by_aplikasi(website_id, layanan_nama, aplikasi_nama)
+        return jsonify({'success': True, 'items': items})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/all/<int:website_id>', methods=['GET'])
+def api_get_all_data(website_id):
+    try:
+        data = prd.get_all_data(website_id)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/layanan/<int:website_id>', methods=['POST'])
+def api_save_layanan(website_id):
+    try:
+        data = request.json
+        if 'layanan_nama' not in data:
+            return jsonify({'success': False, 'error': 'Layanan name required'}), 400
+        
+        success = prd.save_layanan(website_id, data)
+        return jsonify({'success': success, 'message': 'Layanan saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/aplikasi/<int:website_id>/<path:layanan_nama>', methods=['POST'])
+def api_save_aplikasi(website_id, layanan_nama):
+    try:
+        data = request.json
+        if 'aplikasi_nama' not in data:
+            return jsonify({'success': False, 'error': 'Aplikasi name required'}), 400
+        
+        success = prd.save_aplikasi(website_id, layanan_nama, data)
+        return jsonify({'success': success, 'message': 'Aplikasi saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/item/<int:website_id>/<path:layanan_nama>/<path:aplikasi_nama>', methods=['POST'])
+def api_save_item(website_id, layanan_nama, aplikasi_nama):
+    try:
+        data = request.json
+        if 'item_nama' not in data:
+            return jsonify({'success': False, 'error': 'Item name required'}), 400
+        
+        success = prd.save_item(website_id, layanan_nama, aplikasi_nama, data)
+        return jsonify({'success': success, 'message': 'Item saved successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/layanan/<int:website_id>/<path:layanan_nama>', methods=['DELETE'])
+def api_delete_layanan(website_id, layanan_nama):
+    try:
+        success = prd.delete_layanan(website_id, layanan_nama)
+        if success:
+            return jsonify({'success': True, 'message': 'Layanan deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Layanan not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/aplikasi/<int:website_id>/<path:layanan_nama>/<path:aplikasi_nama>', methods=['DELETE'])
+def api_delete_aplikasi(website_id, layanan_nama, aplikasi_nama):
+    try:
+        success = prd.delete_aplikasi(website_id, layanan_nama, aplikasi_nama)
+        if success:
+            return jsonify({'success': True, 'message': 'Aplikasi deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Aplikasi not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/products/item/<int:item_id>', methods=['DELETE'])
+def api_delete_item(item_id):
+    try:
+        success = prd.delete_item(item_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Item deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Item not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== ROUTES UNTUK ORDERS ====================
 
 @app.route('/api/orders/website/<int:website_id>', methods=['GET', 'OPTIONS'])
 def get_orders_by_website(website_id):
-    """Get orders for a specific website"""
     try:
-        # Untuk sementara return empty array karena belum ada tabel orders
-        # Nanti bisa diintegrasikan dengan database orders
         return jsonify({
             'success': True, 
             'orders': [],
@@ -1284,7 +742,6 @@ def get_orders_by_website(website_id):
 
 @app.route('/api/orders/user/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_orders_by_user(user_id):
-    """Get orders for a specific user (customer)"""
     try:
         return jsonify({
             'success': True, 
@@ -1295,74 +752,120 @@ def get_orders_by_user(user_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== ROUTES UNTUK PROMO LAMA (BACKWARD COMPATIBILITY) ====================
+# ==================== ROUTES UNTUK SOSIAL ====================
 
-@app.route('/api/tampilan/<int:website_id>/promo', methods=['GET'])
-def get_promo_old(website_id):
-    """Get promo data by website_id (old single promo format)"""
+@app.route('/api/social/telegram/<int:website_id>', methods=['GET'])
+def get_telegram(website_id):
     try:
-        # Try to get from new format first
-        promos = tmp.get_promos(website_id)
-        if promos and len(promos) > 0:
-            # Return first promo for backward compatibility
-            return jsonify({'success': True, 'promo': promos[0]})
-        else:
-            return jsonify({'success': False, 'error': 'Promo not found'}), 404
+        data = ssl.get_telegram(website_id)
+        return jsonify({'success': True, 'data': data})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/tampilan/<int:website_id>/promo', methods=['POST'])
-def save_promo_old(website_id):
-    """Save or update promo settings (old single promo format)"""
+@app.route('/api/social/telegram/<int:website_id>', methods=['POST'])
+def save_telegram(website_id):
     try:
         data = request.json
-        print(f"📢 Received promo data for website {website_id}:", data)
-        
-        # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Convert old format to new format
-        promo = {
-            'title': data.get('title', 'Promo'),
-            'banner': data.get('banner', ''),
-            'description': data.get('description', ''),
-            'end_date': data.get('end_date'),
-            'end_time': data.get('end_time'),
-            'never_end': data.get('never_end', False),
-            'notes': data.get('notes', ''),
-            'active': data.get('active', True)
-        }
-        
-        # Get existing promos
-        existing = tmp.get_promos(website_id)
-        
-        if existing and len(existing) > 0:
-            # Update first promo
-            existing[0] = promo
-            tmp.save_promos(website_id, existing)
+        success = ssl.save_telegram(website_id, data)
+        if success:
+            return jsonify({'success': True, 'message': 'Telegram settings saved'})
         else:
-            # Create new promos array
-            tmp.save_promos(website_id, [promo])
-        
-        return jsonify({'success': True, 'message': 'Promo saved successfully'})
+            return jsonify({'success': False, 'error': 'Failed to save'}), 500
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/tampilan/<int:website_id>/promo', methods=['DELETE'])
-def delete_promo_old(website_id):
-    """Delete promo settings (old single promo format)"""
+@app.route('/api/social/links/<int:website_id>', methods=['GET'])
+def get_links(website_id):
     try:
-        # Delete all promos
-        tmp.save_promos(website_id, [])
-        return jsonify({'success': True, 'message': 'Promo deleted successfully'})
+        data = ssl.get_links(website_id)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/social/links/<int:website_id>', methods=['POST'])
+def save_links(website_id):
+    try:
+        data = request.json
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        success = ssl.save_links(website_id, data)
+        if success:
+            return jsonify({'success': True, 'message': 'Links saved'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save'}), 500
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/social/force/<int:website_id>', methods=['GET'])
+def get_force(website_id):
+    try:
+        data = ssl.get_all_force(website_id)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/social/force/<int:website_id>', methods=['POST'])
+def save_force(website_id):
+    try:
+        data = request.json
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        force_id = ssl.save_force(website_id, data)
+        if force_id:
+            return jsonify({'success': True, 'id': force_id, 'message': 'Force subscribe saved'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save'}), 500
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/social/force/<int:force_id>', methods=['DELETE'])
+def delete_force(force_id):
+    try:
+        success = ssl.delete_force(force_id)
+        if success:
+            return jsonify({'success': True, 'message': 'Force subscribe deleted'})
+        else:
+            return jsonify({'success': False, 'error': 'Force subscribe not found'}), 404
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/social/force-settings/<int:website_id>', methods=['GET'])
+def get_force_settings(website_id):
+    try:
+        data = ssl.get_force_settings(website_id)
+        return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/social/force-settings/<int:website_id>', methods=['POST'])
+def save_force_settings(website_id):
+    try:
+        data = request.json
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        success = ssl.save_force_settings(website_id, data)
+        if success:
+            return jsonify({'success': True, 'message': 'Force settings saved'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save'}), 500
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1371,59 +874,44 @@ def delete_promo_old(website_id):
 
 @app.route('/api/payments/rekening/<int:website_id>', methods=['GET'])
 def get_rekening(website_id):
-    """Get all rekening for a website"""
     try:
         rekening = pmb.get_all_rekening(website_id)
         return jsonify({'success': True, 'rekening': rekening})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/payments/rekening/<int:website_id>', methods=['POST'])
 def save_rekening(website_id):
-    """Save or update rekening"""
     try:
         data = request.json
-        print(f"💳 Saving rekening for website {website_id}:", data)
-        
-        # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
         rekening_id = pmb.save_rekening(website_id, data)
-        
         if rekening_id:
             return jsonify({'success': True, 'id': rekening_id, 'message': 'Rekening saved successfully'})
         else:
             return jsonify({'success': False, 'error': 'Failed to save rekening'}), 500
-            
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/payments/rekening/<int:rekening_id>', methods=['DELETE'])
 def delete_rekening(rekening_id):
-    """Delete rekening by ID"""
     try:
         success = pmb.delete_rekening(rekening_id)
-        
         if success:
             return jsonify({'success': True, 'message': 'Rekening deleted successfully'})
         else:
             return jsonify({'success': False, 'error': 'Rekening not found'}), 404
-            
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/payments/gateway/<int:website_id>', methods=['GET'])
 def get_gateway(website_id):
-    """Get all gateway for a website"""
     try:
         gateway = pmb.get_all_gateway(website_id)
         return jsonify({'success': True, 'gateway': gateway})
@@ -1433,40 +921,29 @@ def get_gateway(website_id):
 
 @app.route('/api/payments/gateway/<int:website_id>', methods=['POST'])
 def save_gateway(website_id):
-    """Save or update gateway"""
     try:
         data = request.json
-        print(f"💳 Saving gateway for website {website_id}:", data)
-        
-        # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
         gateway_id = pmb.save_gateway(website_id, data)
-        
         if gateway_id:
             return jsonify({'success': True, 'id': gateway_id, 'message': 'Gateway saved successfully'})
         else:
             return jsonify({'success': False, 'error': 'Failed to save gateway'}), 500
-            
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/payments/gateway/<int:gateway_id>', methods=['DELETE'])
 def delete_gateway(gateway_id):
-    """Delete gateway by ID"""
     try:
         success = pmb.delete_gateway(gateway_id)
-        
         if success:
             return jsonify({'success': True, 'message': 'Gateway deleted successfully'})
         else:
             return jsonify({'success': False, 'error': 'Gateway not found'}), 404
-            
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1475,40 +952,16 @@ def delete_gateway(gateway_id):
 
 @app.route('/api/font-templates/save', methods=['POST'])
 def save_font_template():
-    """
-    Menyimpan template font & animasi
-    Request body: {
-        "template_name": "Nama Template",
-        "font_family": "MyCustomFont",
-        "font_file_data": "data:font/ttf;base64,xxxx...", (opsional)
-        "font_file_name": "font.ttf", (opsional)
-        "font_weight": 400,
-        "font_style": "normal",
-        "font_size": 48,
-        "text_color": "#ffffff",
-        "animation_type": "fade",
-        "animation_duration": 2,
-        "animation_delay": 0,
-        "animation_iteration": "infinite",
-        "preview_text": "Toko Online Premium",
-        "preview_subtext": "dengan Layanan Terbaik 24/7",
-        "website_id": 123, (opsional)
-        "user_id": 456, (opsional)
-        "is_public": false (opsional)
-    }
-    """
     try:
         data = request.json
         print(f"📥 Saving font template: {data.get('template_name')}")
         
-        # Validasi data
         if not data.get('template_name'):
             return jsonify({'success': False, 'error': 'Template name required'}), 400
         
         if not data.get('font_family'):
             return jsonify({'success': False, 'error': 'Font family required'}), 400
         
-        # Simpan template
         template_code = tmp_font.save_template(
             template_name=data['template_name'],
             font_family=data['font_family'],
@@ -1540,107 +993,38 @@ def save_font_template():
             
     except Exception as e:
         print(f"❌ Error saving template: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/font-templates/<template_code>', methods=['GET'])
 def get_font_template(template_code):
-    """
-    Mendapatkan template berdasarkan kode
-    """
     try:
         print(f"📥 Getting template: {template_code}")
-        
         template = tmp_font.get_template(template_code)
         
         if template:
-            return jsonify({
-                'success': True,
-                'template': template
-            })
+            return jsonify({'success': True, 'template': template})
         else:
             return jsonify({'success': False, 'error': 'Template not found'}), 404
-            
     except Exception as e:
         print(f"❌ Error getting template: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/font-templates/<template_code>', methods=['PUT'])
-def update_font_template(template_code):
-    """
-    Update template yang sudah ada
-    """
-    try:
-        data = request.json
-        print(f"📥 Updating template: {template_code}")
-        
-        # Update template
-        success = tmp_font.update_template(
-            template_code=template_code,
-            template_name=data.get('template_name'),
-            font_family=data.get('font_family'),
-            font_file_data=data.get('font_file_data'),
-            font_file_name=data.get('font_file_name'),
-            font_weight=data.get('font_weight'),
-            font_style=data.get('font_style'),
-            font_size=data.get('font_size'),
-            text_color=data.get('text_color'),
-            animation_type=data.get('animation_type'),
-            animation_duration=data.get('animation_duration'),
-            animation_delay=data.get('animation_delay'),
-            animation_iteration=data.get('animation_iteration'),
-            preview_text=data.get('preview_text'),
-            preview_subtext=data.get('preview_subtext'),
-            is_public=data.get('is_public')
-        )
-        
-        if success:
-            return jsonify({
-                'success': True,
-                'message': 'Template updated successfully'
-            })
-        else:
-            return jsonify({'success': False, 'error': 'Template not found or update failed'}), 404
-            
-    except Exception as e:
-        print(f"❌ Error updating template: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/api/font-templates/<template_code>', methods=['DELETE'])
 def delete_font_template(template_code):
-    """
-    Menghapus template
-    """
     try:
         print(f"📥 Deleting template: {template_code}")
-        
         success = tmp_font.delete_template(template_code)
         
         if success:
-            return jsonify({
-                'success': True,
-                'message': 'Template deleted successfully'
-            })
+            return jsonify({'success': True, 'message': 'Template deleted successfully'})
         else:
             return jsonify({'success': False, 'error': 'Template not found'}), 404
-            
     except Exception as e:
         print(f"❌ Error deleting template: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/font-templates', methods=['GET'])
 def get_all_font_templates():
-    """
-    Mendapatkan semua template
-    Query params: 
-        - website_id: filter by website
-        - user_id: filter by user
-        - limit: max results (default 50)
-        - offset: offset for pagination (default 0)
-        - popular: get popular templates
-        - search: search by name/code
-    """
     try:
         website_id = request.args.get('website_id', type=int)
         user_id = request.args.get('user_id', type=int)
@@ -1648,8 +1032,6 @@ def get_all_font_templates():
         offset = request.args.get('offset', default=0, type=int)
         popular = request.args.get('popular', default=False, type=bool)
         search = request.args.get('search', default=None, type=str)
-        
-        print(f"📥 Getting templates: website={website_id}, user={user_id}, popular={popular}, search={search}")
         
         if search:
             templates = tmp_font.search_templates(search, limit)
@@ -1662,80 +1044,27 @@ def get_all_font_templates():
         else:
             templates = tmp_font.get_all_templates(limit=limit, offset=offset)
         
-        return jsonify({
-            'success': True,
-            'templates': templates,
-            'count': len(templates)
-        })
-        
+        return jsonify({'success': True, 'templates': templates, 'count': len(templates)})
     except Exception as e:
         print(f"❌ Error getting templates: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/font-templates/check/<template_code>', methods=['GET'])
-def check_font_template(template_code):
-    """
-    Mengecek apakah template dengan kode tertentu ada
-    """
-    try:
-        exists = tmp_font.check_template_exists(template_code)
-        
-        return jsonify({
-            'success': True,
-            'exists': exists,
-            'template_code': template_code
-        })
-        
-    except Exception as e:
-        print(f"❌ Error checking template: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @app.route('/api/font-templates/verify/<template_code>', methods=['GET'])
 def verify_font_template(template_code):
-    """
-    Verifikasi template dan return data lengkap untuk dimuat
-    """
     try:
         template = tmp_font.get_template(template_code)
-        
         if template:
-            return jsonify({
-                'success': True,
-                'template': template,
-                'message': 'Template loaded successfully'
-            })
+            return jsonify({'success': True, 'template': template})
         else:
             return jsonify({'success': False, 'error': 'Template not found'}), 404
-            
     except Exception as e:
         print(f"❌ Error verifying template: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/font-templates/<template_code>/increment', methods=['POST'])
-def increment_template_usage(template_code):
-    """
-    Menambah usage count template
-    """
-    try:
-        success = tmp_font.increment_usage_count(template_code)
-        
-        if success:
-            return jsonify({
-                'success': True,
-                'message': 'Usage count incremented'
-            })
-        else:
-            return jsonify({'success': False, 'error': 'Template not found'}), 404
-            
-    except Exception as e:
-        print(f"❌ Error incrementing usage count: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== ROUTES UNTUK TEMPLATE PER WEBSITE ====================
 
 @app.route('/api/tampilan/<int:website_id>/templates', methods=['GET'])
 def get_website_templates(website_id):
-    """Mendapatkan semua template yang tersimpan untuk website"""
     try:
         templates = tmp.get_website_templates(website_id)
         return jsonify({'success': True, 'templates': templates})
@@ -1745,7 +1074,6 @@ def get_website_templates(website_id):
 
 @app.route('/api/tampilan/<int:website_id>/templates', methods=['POST'])
 def save_website_template(website_id):
-    """Menyimpan template untuk website"""
     try:
         data = request.json
         print(f"📥 Saving template for website {website_id}: {data.get('template_name')}")
@@ -1770,34 +1098,26 @@ def save_website_template(website_id):
 
 @app.route('/api/tampilan/<int:website_id>/templates/<int:template_id>', methods=['DELETE'])
 def delete_website_template(website_id, template_id):
-    """Menghapus template dari website"""
     try:
         success = tmp.delete_website_template(template_id)
-        
         if success:
             return jsonify({'success': True, 'message': 'Template deleted successfully'})
         else:
             return jsonify({'success': False, 'error': 'Template not found'}), 404
-            
     except Exception as e:
         print(f"❌ Error deleting website template: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/apply-template', methods=['POST'])
 def apply_template(website_id):
-    """Menerapkan template ke website"""
     try:
         data = request.json
         template_code = data.get('template_code')
         
-        # Ambil data template dari database font_templates
         template_data = tmp_font.get_template(template_code)
-        
         if not template_data:
             return jsonify({'success': False, 'error': 'Template not found'}), 404
         
-        # Update tampilan dengan data template
-        # Sesuaikan dengan struktur data tampilan Anda
         tampilan_update = {
             'font_family': template_data['font_family'],
             'font_size': template_data['font_size'],
@@ -1809,7 +1129,6 @@ def apply_template(website_id):
         }
         
         tmp.update_tampilan(website_id, tampilan_update)
-        
         return jsonify({'success': True, 'message': 'Template applied successfully'})
         
     except Exception as e:
