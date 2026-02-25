@@ -6,16 +6,16 @@
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
     
-    <!-- Dynamic Meta Tags -->
-    <title id="dynamicTitle">Toko Online - Loading...</title>
-    <meta name="description" id="dynamicDescription" content="Toko online terpercaya dengan ribuan produk digital berkualitas">
-    <meta name="keywords" id="dynamicKeywords" content="toko online, topup, voucher, digital produk, premium account">
+    <!-- Dynamic Meta Tags from Database -->
+    <title id="dynamicTitle">Loading...</title>
+    <meta name="description" id="dynamicDescription" content="">
+    <meta name="keywords" id="dynamicKeywords" content="">
     
     <!-- Open Graph / Social Media -->
-    <meta property="og:title" id="ogTitle" content="Toko Online">
-    <meta property="og:description" id="ogDescription" content="Toko online terpercaya">
+    <meta property="og:title" id="ogTitle" content="">
+    <meta property="og:description" id="ogDescription" content="">
     <meta property="og:image" id="ogImage" content="">
-    <meta property="og:url" id="ogUrl" content="">
+    <meta property="og:url" content="https://aldiprem.github.io/wtb/website.html">
     
     <!-- CSS -->
     <link rel="stylesheet" href="/wtb/css/website.css">
@@ -27,12 +27,21 @@
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Custom Font Animations -->
+    <!-- Dynamic Font Styles from Database -->
     <style id="dynamic-font-styles"></style>
     <style id="animation-keyframes"></style>
+    
+    <!-- Configuration -->
+    <script>
+        window.APP_CONFIG = {
+            API_BASE_URL: 'https://supports-lease-honest-potter.trycloudflare.com',
+            IS_GITHUB_PAGES: true,
+            ASSET_PATH: '/wtb'
+        };
+    </script>
 </head>
 <body>
-    <!-- ===== CRYSTAL LOADING OVERLAY 3D ===== -->
+    <!-- CRYSTAL 3D LOADING OVERLAY -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="crystal-loader">
             <div class="crystal-face front"></div>
@@ -42,29 +51,32 @@
             <div class="crystal-face top"></div>
             <div class="crystal-face bottom"></div>
         </div>
-        <div class="loading-text">Memuat pengalaman belanja 3D...</div>
+        <div class="loading-text">Memuat data dari database...</div>
         <div class="loading-progress">
             <div class="loading-bar"></div>
         </div>
     </div>
 
-    <!-- ===== SIDEBAR NAVIGATION CRYSTAL ===== -->
+    <!-- CRYSTAL BACKGROUND CANVAS (3D Effect) -->
+    <div class="crystal-background" id="crystalBackground"></div>
+
+    <!-- SIDEBAR NAVIGATION -->
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-header crystal-panel">
+        <div class="sidebar-header">
             <div class="sidebar-logo">
                 <div class="logo-3d">
                     <i class="fas fa-cube"></i>
                 </div>
-                <span id="sidebarStoreName">Loading...</span>
+                <span id="sidebarStoreName">Memuat...</span>
             </div>
-            <button class="sidebar-close crystal-btn" id="sidebarClose">
+            <button class="sidebar-close" id="sidebarClose">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         
-        <div class="sidebar-profile crystal-panel">
+        <div class="sidebar-profile">
             <div class="profile-avatar-wrapper">
-                <div class="profile-avatar crystal-avatar" id="sidebarAvatar">
+                <div class="profile-avatar" id="sidebarAvatar">
                     <img src="https://ui-avatars.com/api/?name=Guest&size=100&background=40a7e3&color=fff&bold=true" alt="Profile">
                     <div class="avatar-glow"></div>
                 </div>
@@ -115,9 +127,6 @@
                 <span>Voucher Saya</span>
                 <div class="menu-glow"></div>
             </a>
-        </div>
-        
-        <div class="sidebar-footer">
             <a href="#" class="menu-item crystal-menu-item" data-page="help">
                 <i class="fas fa-question-circle"></i>
                 <span>Bantuan</span>
@@ -128,6 +137,9 @@
                 <span>Tentang</span>
                 <div class="menu-glow"></div>
             </a>
+        </div>
+        
+        <div class="sidebar-footer">
             <div class="sidebar-copyright">
                 <span>© 2024</span>
                 <span id="sidebarYear"></span>
@@ -136,10 +148,10 @@
         </div>
     </div>
 
-    <!-- ===== MAIN CONTENT CRYSTAL ===== -->
+    <!-- MAIN CONTENT -->
     <div class="main-content">
-        <!-- ===== HEADER GLASSMORPHISM 3D ===== -->
-        <header class="main-header crystal-header">
+        <!-- HEADER -->
+        <header class="main-header">
             <button class="menu-toggle crystal-3d-btn" id="menuToggle">
                 <i class="fas fa-bars"></i>
                 <div class="btn-glow"></div>
@@ -149,7 +161,7 @@
                 <div class="logo-3d-small">
                     <i class="fas fa-cube"></i>
                 </div>
-                <span id="storeName">Toko Online</span>
+                <span id="storeName">Memuat...</span>
             </div>
             
             <div class="header-actions">
@@ -157,7 +169,7 @@
                     <i class="fas fa-search"></i>
                     <div class="btn-glow"></div>
                 </button>
-                <button class="header-btn crystal-3d-btn cart-btn" id="cartBtn">
+                <button class="header-btn cart-btn crystal-3d-btn" id="cartBtn">
                     <i class="fas fa-shopping-cart"></i>
                     <span class="cart-badge" id="cartBadge">0</span>
                     <div class="btn-glow"></div>
@@ -165,44 +177,38 @@
             </div>
         </header>
 
-        <!-- ===== SEARCH BAR 3D ===== -->
+        <!-- SEARCH BAR -->
         <div class="search-bar" id="searchBar">
-            <div class="search-container crystal-panel">
+            <div class="search-container">
                 <i class="fas fa-search search-icon-3d"></i>
-                <input type="text" id="searchInput" placeholder="Cari produk impianmu dalam 3D...">
-                <button class="search-close crystal-btn" id="searchClose">
+                <input type="text" id="searchInput" placeholder="Cari produk...">
+                <button class="search-close" id="searchClose">
                     <i class="fas fa-times"></i>
                 </button>
                 <div class="search-glow"></div>
             </div>
         </div>
 
-        <!-- ===== BANNER SLIDER 3D CRYSTAL ===== -->
+        <!-- BANNER SLIDER (DARI DATABASE) -->
         <div class="banner-slider crystal-banner" id="bannerSlider">
-            <div class="slider-container" id="sliderContainer">
-                <!-- Banners akan diisi JavaScript -->
-            </div>
-            
-            <button class="slider-nav crystal-3d-btn prev" id="sliderPrev">
+            <div class="banner-glow"></div>
+            <div class="slider-container" id="sliderContainer"></div>
+            <button class="slider-nav prev crystal-3d-btn" id="sliderPrev">
                 <i class="fas fa-chevron-left"></i>
                 <div class="btn-glow"></div>
             </button>
-            <button class="slider-nav crystal-3d-btn next" id="sliderNext">
+            <button class="slider-nav next crystal-3d-btn" id="sliderNext">
                 <i class="fas fa-chevron-right"></i>
                 <div class="btn-glow"></div>
             </button>
-            
-            <div class="slider-pagination crystal-panel" id="sliderPagination"></div>
-            <div class="slider-dots" id="sliderDots"></div>
-            
-            <div class="banner-glow"></div>
+            <div class="slider-pagination" id="sliderPagination"></div>
         </div>
 
-        <!-- ===== QUICK CATEGORIES 3D ===== -->
-        <div class="quick-categories">
-            <div class="section-header crystal-section">
-                <h2>Layanan <span class="text-gradient-3d">Premium</span></h2>
-                <a href="#" class="view-all crystal-3d-link" data-page="categories">
+        <!-- LAYANAN SECTION (DARI DATABASE products.db) -->
+        <div class="layanan-section crystal-section">
+            <div class="section-header">
+                <h2 class="text-gradient-3d" data-text="Layanan Kami">Layanan <span>Kami</span></h2>
+                <a href="#" class="view-all" data-page="categories">
                     Lihat Semua <i class="fas fa-arrow-right"></i>
                     <div class="link-glow"></div>
                 </a>
@@ -210,59 +216,59 @@
             <div class="categories-grid" id="categoriesGrid"></div>
         </div>
         
-        <!-- ===== POPULAR PRODUCTS 3D ===== -->
-        <div class="popular-products">
-            <div class="section-header crystal-section">
-                <div>
-                    <h2>Produk <span class="text-gradient-3d">Terlaris</span></h2>
-                    <p class="section-subtitle">Paling laris dengan efek 3D</p>
-                </div>
-                <a href="#" class="view-all crystal-3d-link" data-page="products?sort=popular">
+        <!-- APLIKASI SECTION (DARI DATABASE products.db) -->
+        <div class="aplikasi-section crystal-section">
+            <div class="section-header">
+                <h2 class="text-gradient-3d" data-text="Aplikasi Populer">Aplikasi <span>Populer</span></h2>
+                <a href="#" class="view-all" data-page="products">
                     Lihat Semua <i class="fas fa-arrow-right"></i>
                     <div class="link-glow"></div>
                 </a>
             </div>
-            <div class="popular-products-grid" id="popularProducts"></div>
+            <div class="categories-grid" id="aplikasiGrid"></div>
         </div>
         
-        <!-- ===== PROMO SLIDER 3D HOLOGRAPHIC ===== -->
-        <div class="promo-slider-section">
-            <div class="section-header crystal-section">
-                <div>
-                    <h2>Promo <span class="text-gradient-3d holographic">Spesial</span></h2>
-                    <p class="section-subtitle holographic-text">Jangan lewatkan penawaran 3D terbatas</p>
-                </div>
+        <!-- PRODUK TERLARIS (DARI DATABASE products.db - berdasarkan terjual) -->
+        <div class="produk-section crystal-section">
+            <div class="section-header">
+                <h2 class="text-gradient-3d" data-text="Produk Terlaris">Produk <span>Terlaris</span></h2>
+                <p class="section-subtitle">Berdasarkan data penjualan</p>
             </div>
-            <div class="promo-slider-container holographic-container" id="promoSliderContainer">
-                <div class="promo-slider-track" id="promoSliderTrack">
-                    <!-- Promo cards akan diisi JavaScript -->
-                </div>
-                <button class="promo-slider-nav crystal-3d-btn prev" id="promoSliderPrev">
+            <div class="popular-products-grid" id="produkGrid"></div>
+        </div>
+        
+        <!-- PROMO SLIDER (DARI DATABASE tmp.db - promos) -->
+        <div class="promo-slider-section holographic-container">
+            <div class="section-header">
+                <h2 class="holographic-text">Promo <span>Spesial</span></h2>
+                <p class="section-subtitle">Dari database promosi</p>
+            </div>
+            <div class="promo-slider-container" id="promoSliderContainer">
+                <div class="promo-slider-track" id="promoSliderTrack"></div>
+                <button class="promo-slider-nav prev crystal-3d-btn" id="promoSliderPrev">
                     <i class="fas fa-chevron-left"></i>
                     <div class="btn-glow"></div>
                 </button>
-                <button class="promo-slider-nav crystal-3d-btn next" id="promoSliderNext">
+                <button class="promo-slider-nav next crystal-3d-btn" id="promoSliderNext">
                     <i class="fas fa-chevron-right"></i>
                     <div class="btn-glow"></div>
                 </button>
                 <div class="slider-hologram"></div>
             </div>
-            <div class="promo-slider-dots crystal-panel" id="promoSliderDots"></div>
+            <div class="promo-slider-dots" id="promoSliderDots"></div>
         </div>
         
-        <!-- ===== PAYMENT METHODS 3D ===== -->
+        <!-- METODE PEMBAYARAN (DARI DATABASE pmb.db) -->
         <div class="payment-methods crystal-panel">
+            <div class="payment-glow"></div>
             <div class="payment-header">
-                <h3><i class="fas fa-credit-card crystal-icon"></i> Metode Pembayaran 3D</h3>
+                <h3><i class="fas fa-credit-card crystal-icon"></i> Metode Pembayaran</h3>
                 <span class="payment-badge crystal-badge">Aman & Terpercaya</span>
             </div>
-            <div class="payment-icons" id="paymentIcons">
-                <!-- Akan diisi JavaScript -->
-            </div>
-            <div class="payment-glow"></div>
+            <div class="payment-icons" id="paymentIcons"></div>
         </div>
         
-        <!-- ===== FOOTER CRYSTAL 3D ===== -->
+        <!-- FOOTER -->
         <footer class="main-footer">
             <div class="footer-wave-3d">
                 <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
@@ -272,57 +278,53 @@
             </div>
         
             <div class="footer-content">
-                <div class="footer-section crystal-panel">
+                <div class="footer-section">
                     <div class="footer-logo">
                         <div class="logo-3d-footer">
                             <i class="fas fa-cube"></i>
                         </div>
-                        <span id="footerStoreName">Toko Online</span>
+                        <span id="footerStoreName">Memuat...</span>
                     </div>
-                    <p id="footerDescription">Toko online terpercaya sejak 2024 dengan ribuan produk digital berkualitas dan pelayanan terbaik dalam format 3D.</p>
-                    <div class="footer-social">
-                        <a href="#" class="social-icon crystal-social"><i class="fab fa-instagram"></i><div class="social-glow"></div></a>
-                        <a href="#" class="social-icon crystal-social"><i class="fab fa-facebook"></i><div class="social-glow"></div></a>
-                        <a href="#" class="social-icon crystal-social"><i class="fab fa-tiktok"></i><div class="social-glow"></div></a>
-                        <a href="#" class="social-icon crystal-social"><i class="fab fa-whatsapp"></i><div class="social-glow"></div></a>
-                    </div>
+                    <p id="footerDescription"></p>
+                    <div class="footer-social" id="footerSocial"></div>
                 </div>
         
-                <div class="footer-section crystal-panel">
-                    <h4><i class="fas fa-headset crystal-icon"></i> Kontak 3D</h4>
+                <div class="footer-section">
+                    <h4><i class="fas fa-headset"></i> Kontak</h4>
                     <ul class="footer-contact">
-                        <li class="crystal-contact-item">
+                        <li>
                             <i class="fab fa-whatsapp"></i>
-                            <span id="contactWhatsApp">-</span>
+                            <span id="contactWhatsApp"></span>
                             <div class="contact-glow"></div>
                         </li>
-                        <li class="crystal-contact-item">
+                        <li>
                             <i class="fab fa-telegram"></i>
-                            <span id="contactTelegram">-</span>
+                            <span id="contactTelegram"></span>
                             <div class="contact-glow"></div>
                         </li>
-                        <li class="crystal-contact-item">
+                        <li>
                             <i class="fas fa-envelope"></i>
-                            <span id="contactEmail">support@example.com</span>
+                            <span id="contactEmail"></span>
                             <div class="contact-glow"></div>
                         </li>
                     </ul>
                 </div>
             </div>
         
-            <div class="footer-bottom crystal-panel">
+            <div class="footer-bottom">
                 <div class="footer-bottom-content">
-                    <span>© 2024 <span id="footerStoreName2">Toko Online</span>. All rights reserved in 3D.</span>
-                    <span class="footer-version crystal-badge">Version 3.0.0</span>
+                    <span>© 2024 <span id="footerStoreName2">Toko Online</span>. All rights reserved.</span>
+                    <span class="footer-version crystal-badge">v3.0.0</span>
                 </div>
             </div>
         </footer>
     </div>
 
-    <!-- ===== CART SIDEBAR 3D HOLOGRAPHIC ===== -->
+    <!-- CART SIDEBAR -->
     <div class="cart-sidebar holographic-sidebar" id="cartSidebar">
-        <div class="cart-header crystal-panel">
-            <h3><i class="fas fa-shopping-cart crystal-icon"></i> Keranjang 3D</h3>
+        <div class="sidebar-hologram"></div>
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-cart"></i> Keranjang</h3>
             <button class="cart-close crystal-3d-btn" id="cartClose">
                 <i class="fas fa-times"></i>
                 <div class="btn-glow"></div>
@@ -338,113 +340,101 @@
                     <span></span><span></span><span></span>
                 </div>
             </div>
-            <p>Keranjang belanja 3D kosong</p>
-            <button class="btn-primary crystal-3d-btn" id="shopNowBtn">
-                <span>Belanja Sekarang</span>
-                <div class="btn-glow"></div>
-            </button>
+            <p>Keranjang belanja kosong</p>
+            <button class="crystal-3d-btn btn-primary" id="shopNowBtn">Belanja Sekarang</button>
         </div>
         
-        <div class="cart-footer crystal-panel" id="cartFooter">
+        <div class="cart-footer" id="cartFooter">
             <div class="cart-total">
-                <span>Total 3D:</span>
-                <span class="total-price holographic-text" id="cartTotal">Rp 0</span>
+                <span>Total:</span>
+                <span class="total-price" id="cartTotal">Rp 0</span>
             </div>
-            <button class="btn-primary crystal-3d-btn checkout-btn" id="checkoutBtn">
-                <i class="fas fa-credit-card"></i> 
-                <span>Checkout 3D</span>
+            <button class="crystal-3d-btn btn-primary checkout-btn" id="checkoutBtn">
+                <i class="fas fa-credit-card"></i> Checkout
                 <div class="btn-glow"></div>
             </button>
         </div>
-        <div class="sidebar-hologram"></div>
     </div>
 
-    <!-- ===== PRODUCT DETAIL MODAL 3D ===== -->
+    <!-- PRODUCT MODAL -->
     <div class="modal" id="productModal">
         <div class="modal-overlay"></div>
-        <div class="modal-content product-detail-modal crystal-modal">
-            <button class="modal-close-btn crystal-3d-btn" id="closeProductModal">
-                <i class="fas fa-times"></i>
-                <div class="btn-glow"></div>
-            </button>
-            
-            <div class="product-detail holographic-detail" id="productDetail"></div>
+        <div class="modal-content product-detail-modal crystal-modal" id="productModalContent">
             <div class="modal-hologram"></div>
+            <div class="modal-header">
+                <h2><i class="fas fa-box crystal-icon"></i> Detail Produk</h2>
+                <button class="modal-close-btn crystal-3d-btn" id="closeProductModal">
+                    <i class="fas fa-times"></i>
+                    <div class="btn-glow"></div>
+                </button>
+            </div>
+            <div class="modal-body holographic-detail">
+                <div class="product-detail" id="productDetail"></div>
+            </div>
         </div>
     </div>
 
-    <!-- ===== CHECKOUT MODAL 3D ===== -->
+    <!-- CHECKOUT MODAL -->
     <div class="modal" id="checkoutModal">
         <div class="modal-overlay"></div>
         <div class="modal-content checkout-modal crystal-modal">
+            <div class="modal-hologram"></div>
             <div class="modal-header">
-                <h2><i class="fas fa-credit-card crystal-icon"></i> Checkout 3D</h2>
+                <h2><i class="fas fa-credit-card"></i> Checkout</h2>
                 <button class="modal-close-btn crystal-3d-btn" id="closeCheckoutModal">
                     <i class="fas fa-times"></i>
                     <div class="btn-glow"></div>
                 </button>
             </div>
-            
-            <div class="checkout-body" id="checkoutBody"></div>
-            <div class="modal-hologram"></div>
+            <div class="modal-body">
+                <div class="checkout-body" id="checkoutBody"></div>
+            </div>
         </div>
     </div>
 
-    <!-- ===== LOGIN MODAL 3D CRYSTAL ===== -->
+    <!-- LOGIN MODAL -->
     <div class="modal" id="loginModal">
         <div class="modal-overlay"></div>
         <div class="modal-content login-modal crystal-modal">
+            <div class="modal-hologram"></div>
             <div class="modal-header">
-                <h2><i class="fas fa-sign-in-alt crystal-icon"></i> Login 3D</h2>
+                <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
                 <button class="modal-close-btn crystal-3d-btn" id="closeLoginModal">
                     <i class="fas fa-times"></i>
                     <div class="btn-glow"></div>
                 </button>
             </div>
-            
-            <div class="login-body">
-                <div class="login-illustration">
-                    <div class="crystal-avatar-large">
-                        <i class="fas fa-user-circle"></i>
+            <div class="modal-body">
+                <div class="login-body">
+                    <div class="login-illustration">
+                        <div class="crystal-avatar-large">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
                     </div>
-                </div>
-                <div class="login-options">
-                    <button class="btn-telegram crystal-3d-btn" id="telegramLogin">
-                        <i class="fab fa-telegram"></i>
-                        <span>Login dengan Telegram</span>
-                        <div class="btn-glow"></div>
-                    </button>
-                    <div class="divider holographic-divider">
-                        <span>atau dalam 3D</span>
+                    <div class="login-options">
+                        <button class="btn-telegram crystal-3d-btn" id="telegramLogin">
+                            <i class="fab fa-telegram"></i>
+                            <span>Login dengan Telegram</span>
+                            <div class="btn-glow"></div>
+                        </button>
+                        <div class="divider holographic-divider">
+                            <span>atau</span>
+                        </div>
+                        <button class="btn-guest crystal-3d-btn" id="guestLogin">
+                            <i class="fas fa-user"></i>
+                            <span>Lanjut sebagai Tamu</span>
+                            <div class="btn-glow"></div>
+                        </button>
                     </div>
-                    <button class="btn-guest crystal-3d-btn" id="guestLogin">
-                        <i class="fas fa-user"></i>
-                        <span>Lanjut sebagai Tamu</span>
-                        <div class="btn-glow"></div>
-                    </button>
                 </div>
             </div>
-            <div class="modal-hologram"></div>
         </div>
     </div>
 
-    <!-- ===== TOAST NOTIFICATIONS 3D ===== -->
+    <!-- TOAST NOTIFICATIONS -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- ===== CRYSTAL 3D EFFECTS CANVAS ===== -->
-    <canvas id="crystalCanvas" class="crystal-background"></canvas>
-
-    <!-- ===== JAVASCRIPT ===== -->
-    <script>
-        // Global configuration
-        window.APP_CONFIG = {
-            API_BASE_URL: 'https://supports-lease-honest-potter.trycloudflare.com',
-            MAX_RETRIES: 3,
-            RETRY_DELAY: 1000,
-            ANIMATION_DURATION: 300,
-            CRYSTAL_EFFECTS: true
-        };
-    </script>
+    <!-- JAVASCRIPT -->
     <script src="/wtb/js/website.js"></script>
 </body>
 </html>
