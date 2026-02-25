@@ -826,12 +826,8 @@
             });
         }
         
-        // Payment Settings
-        if (elements.paymentSettings) {
-            elements.paymentSettings.addEventListener('click', (e) => {
-                e.preventDefault();
-                showToast('Fitur ini akan segera tersedia', 'info');
-            });
+        if (elements.paymentSettings && userWebsites.length > 0) {
+          elements.paymentSettings.href = `/wtb/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
         }
         
         // Notification Settings
