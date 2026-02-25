@@ -214,36 +214,50 @@
         }
     }
 
+    // ==================== FUNGSI LOAD WEBSITE ====================
     async function loadWebsite() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const endpoint = urlParams.get('website');
-        
-        if (!endpoint) {
-            showToast('Website tidak ditemukan', 'error');
-            setTimeout(() => {
-                window.location.href = '/wtb/html/panel.html';
-            }, 2000);
-            return null;
+      const urlParams = new URLSearchParams(window.location.search);
+      const endpoint = urlParams.get('website');
+    
+      if (!endpoint) {
+        showToast('Website tidak ditemukan', 'error');
+        setTimeout(() => {
+          window.location.href = '/wtb/html/panel.html';
+        }, 2000);
+        return null;
+      }
+    
+      try {
+        const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+          method: 'GET'
+        });
+    
+        if (data.success && data.website) {
+          if (elements.websiteBadge) {
+            elements.websiteBadge.textContent = '/' + data.website.endpoint;
+          }
+          return data.website;
+        } else {
+          throw new Error('Website not found');
         }
-        
-        try {
-            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
-                method: 'GET'
-            });
-            
-            if (data.success && data.website) {
-                if (elements.websiteBadge) {
-                    elements.websiteBadge.textContent = '/' + data.website.endpoint;
-                }
-                return data.website;
-            } else {
-                throw new Error('Website not found');
-            }
-        } catch (error) {
-            console.error('❌ Error loading website:', error);
-            showToast('Gagal memuat data website', 'error');
-            return null;
-        }
+      } catch (error) {
+        console.error('❌ Error loading website:', error);
+        showToast('Gagal memuat data website', 'error');
+        return null;
+      }
+    }
+    
+    // ==================== FUNGSI NAVIGASI ====================
+    function goBackToPanel() {
+      // Simpan halaman settings ke session storage
+      try {
+        sessionStorage.setItem('panel_current_page', 'settings');
+      } catch (e) {
+        console.warn('Failed to save session', e);
+      }
+    
+      // Redirect ke panel
+      window.location.href = '/wtb/html/panel.html';
     }
 
     async function loadRekening() {
@@ -834,12 +848,19 @@
 
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        // Back button
+        // Di tampilan.js, sosial.js, pembayaran.js
         if (elements.backToPanel) {
-            elements.backToPanel.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.location.href = '/wtb/html/panel.html';
-            });
+          elements.backToPanel.addEventListener('click', (e) => {
+            e.preventDefault();
+        
+            // Simpan bahwa kita kembali dari halaman settings
+            try {
+              sessionStorage.setItem('panel_current_page', 'settings');
+              sessionStorage.setItem('panel_return_from', 'settings');
+            } catch (e) {}
+        
+            window.location.href = '/wtb/html/panel.html';
+          });
         }
         
         // Tabs
