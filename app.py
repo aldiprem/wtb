@@ -1479,12 +1479,22 @@ def save_font_template():
     Menyimpan template font & animasi
     Request body: {
         "template_name": "Nama Template",
-        "font_data": {...},
-        "animation_data": {...},
-        "preview_data": {...},
-        "website_id": 123, (optional)
-        "user_id": 456, (optional)
-        "is_public": false (optional)
+        "font_family": "MyCustomFont",
+        "font_file_data": "data:font/ttf;base64,xxxx...", (opsional)
+        "font_file_name": "font.ttf", (opsional)
+        "font_weight": 400,
+        "font_style": "normal",
+        "font_size": 48,
+        "text_color": "#ffffff",
+        "animation_type": "fade",
+        "animation_duration": 2,
+        "animation_delay": 0,
+        "animation_iteration": "infinite",
+        "preview_text": "Toko Online Premium",
+        "preview_subtext": "dengan Layanan Terbaik 24/7",
+        "website_id": 123, (opsional)
+        "user_id": 456, (opsional)
+        "is_public": false (opsional)
     }
     """
     try:
@@ -1495,18 +1505,25 @@ def save_font_template():
         if not data.get('template_name'):
             return jsonify({'success': False, 'error': 'Template name required'}), 400
         
-        if not data.get('font_data'):
-            return jsonify({'success': False, 'error': 'Font data required'}), 400
-        
-        if not data.get('animation_data'):
-            return jsonify({'success': False, 'error': 'Animation data required'}), 400
+        if not data.get('font_family'):
+            return jsonify({'success': False, 'error': 'Font family required'}), 400
         
         # Simpan template
         template_code = tmp_font.save_template(
             template_name=data['template_name'],
-            font_data=data['font_data'],
-            animation_data=data['animation_data'],
-            preview_data=data.get('preview_data', {}),
+            font_family=data['font_family'],
+            font_file_data=data.get('font_file_data'),
+            font_file_name=data.get('font_file_name'),
+            font_weight=data.get('font_weight', 400),
+            font_style=data.get('font_style', 'normal'),
+            font_size=data.get('font_size', 48),
+            text_color=data.get('text_color', '#ffffff'),
+            animation_type=data.get('animation_type', 'none'),
+            animation_duration=data.get('animation_duration', 2),
+            animation_delay=data.get('animation_delay', 0),
+            animation_iteration=data.get('animation_iteration', 'infinite'),
+            preview_text=data.get('preview_text', 'Toko Online Premium'),
+            preview_subtext=data.get('preview_subtext', 'dengan Layanan Terbaik 24/7'),
             website_id=data.get('website_id'),
             user_id=data.get('user_id'),
             is_public=data.get('is_public', False)
@@ -1561,10 +1578,21 @@ def update_font_template(template_code):
         # Update template
         success = tmp_font.update_template(
             template_code=template_code,
-            font_data=data.get('font_data'),
-            animation_data=data.get('animation_data'),
-            preview_data=data.get('preview_data'),
-            template_name=data.get('template_name')
+            template_name=data.get('template_name'),
+            font_family=data.get('font_family'),
+            font_file_data=data.get('font_file_data'),
+            font_file_name=data.get('font_file_name'),
+            font_weight=data.get('font_weight'),
+            font_style=data.get('font_style'),
+            font_size=data.get('font_size'),
+            text_color=data.get('text_color'),
+            animation_type=data.get('animation_type'),
+            animation_duration=data.get('animation_duration'),
+            animation_delay=data.get('animation_delay'),
+            animation_iteration=data.get('animation_iteration'),
+            preview_text=data.get('preview_text'),
+            preview_subtext=data.get('preview_subtext'),
+            is_public=data.get('is_public')
         )
         
         if success:
@@ -1609,6 +1637,7 @@ def get_all_font_templates():
         - website_id: filter by website
         - user_id: filter by user
         - limit: max results (default 50)
+        - offset: offset for pagination (default 0)
         - popular: get popular templates
         - search: search by name/code
     """
@@ -1616,6 +1645,7 @@ def get_all_font_templates():
         website_id = request.args.get('website_id', type=int)
         user_id = request.args.get('user_id', type=int)
         limit = request.args.get('limit', default=50, type=int)
+        offset = request.args.get('offset', default=0, type=int)
         popular = request.args.get('popular', default=False, type=bool)
         search = request.args.get('search', default=None, type=str)
         
@@ -1630,7 +1660,7 @@ def get_all_font_templates():
         elif user_id:
             templates = tmp_font.get_user_templates(user_id, limit)
         else:
-            templates = tmp_font.get_all_templates(limit=limit)
+            templates = tmp_font.get_all_templates(limit=limit, offset=offset)
         
         return jsonify({
             'success': True,
@@ -1679,6 +1709,26 @@ def verify_font_template(template_code):
             
     except Exception as e:
         print(f"❌ Error verifying template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/font-templates/<template_code>/increment', methods=['POST'])
+def increment_template_usage(template_code):
+    """
+    Menambah usage count template
+    """
+    try:
+        success = tmp_font.increment_usage_count(template_code)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Usage count incremented'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error incrementing usage count: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== MAIN ====================
