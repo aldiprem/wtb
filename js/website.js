@@ -1,38 +1,36 @@
-// website.js - Versi Crystal 3D dengan Integrasi API Database (No Dummy Data untuk Endpoint Valid)
+// website.js - Crystal Store 3D dengan Integrasi Database (Tanpa Dummy Data)
 (function() {
     'use strict';
     
-    // ===== KONFIGURASI GLOBAL =====
+    console.log('🏪 Crystal Store 3D - Initializing...');
+
+    // ==================== KONFIGURASI ====================
     const CONFIG = {
-        API_BASE_URL: window.APP_CONFIG?.API_BASE_URL || 'https://supports-lease-honest-potter.trycloudflare.com',
+        API_BASE_URL: window.APP_CONFIG?.apiBaseUrl || 'https://supports-lease-honest-potter.trycloudflare.com',
         MAX_RETRIES: 3,
         RETRY_DELAY: 1000,
         ANIMATION_DURATION: 300,
-        CACHE_DURATION: 5 * 60 * 1000, // 5 menit
+        CACHE_DURATION: 5 * 60 * 1000,
         BANNER_AUTO_SLIDE_INTERVAL: 5000,
         PROMO_AUTO_SLIDE_INTERVAL: 4000,
         TOAST_DURATION: 3000,
         VIBRATE_DURATION: 20,
-        MAX_CART_ITEMS: 50,
-        CRYSTAL_EFFECTS: true
+        MAX_CART_ITEMS: 50
     };
 
-    // ===== STATE MANAGEMENT =====
+    // ==================== STATE MANAGEMENT ====================
     const State = {
-        // Data Website
         currentEndpoint: null,
         currentWebsite: null,
         websiteData: null,
         tampilanData: null,
         
-        // Produk & Kategori dari database
         products: [],
         layanan: [],
         aplikasi: [],
         structuredProducts: [],
         currentProduct: null,
         
-        // Banner & Promo dari database
         banners: [],
         promos: [],
         currentBannerIndex: 0,
@@ -40,35 +38,28 @@
         bannerInterval: null,
         promoInterval: null,
         
-        // Metode Pembayaran dari database
         rekening: [],
         gateway: [],
         
-        // Keranjang
         cart: [],
         cartTotal: 0,
         
-        // User
         currentUser: null,
         isLoggedIn: false,
         
-        // UI State
         isLoading: false,
         isSidebarOpen: false,
         isCartOpen: false,
         isSearchOpen: false,
-        activePage: 'home',
+        activeSection: 'home',
         
-        // Touch & Mouse
         touchStartX: 0,
         touchEndX: 0,
         mouseX: 0,
         mouseY: 0,
         
-        // Cache
         cache: new Map(),
         
-        // Data loaded flags
         dataLoaded: {
             website: false,
             tampilan: false,
@@ -78,10 +69,10 @@
         }
     };
 
-    // ===== DOM ELEMENTS CACHE =====
+    // ==================== DOM ELEMENTS CACHE ====================
     const DOM = {};
 
-    // ===== UTILITY FUNCTIONS =====
+    // ==================== UTILITY FUNCTIONS ====================
     const Utils = {
         formatRupiah: (angka) => {
             if (!angka && angka !== 0) return 'Rp 0';
@@ -193,15 +184,19 @@
         },
 
         checkDataLoaded: () => {
-            // Jika semua data sudah dimuat, sembunyikan loading
             const allLoaded = Object.values(State.dataLoaded).every(v => v === true);
             if (allLoaded && State.isLoading) {
                 Loading.hide();
             }
+        },
+
+        generateAvatarUrl: (name) => {
+            if (!name) return 'https://ui-avatars.com/api/?name=U&size=80&background=40a7e3&color=fff';
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=80&background=40a7e3&color=fff`;
         }
     };
 
-    // ===== TOAST NOTIFICATIONS =====
+    // ==================== TOAST NOTIFICATIONS ====================
     const Toast = {
         show: (message, type = 'info', duration = CONFIG.TOAST_DURATION) => {
             if (!DOM.toastContainer) return;
@@ -242,7 +237,7 @@
         info: (message) => Toast.show(message, 'info')
     };
 
-    // ===== LOADING OVERLAY =====
+    // ==================== LOADING OVERLAY ====================
     const Loading = {
         show: (message = 'Memuat data dari database...') => {
             if (State.isLoading) return;
@@ -285,7 +280,7 @@
         }
     };
 
-    // ===== API SERVICE =====
+    // ==================== API SERVICE ====================
     const API = {
         fetchWithRetry: async (url, options = {}, retries = CONFIG.MAX_RETRIES) => {
             try {
@@ -325,7 +320,6 @@
             }
         },
 
-        // Website Data
         getWebsite: async (endpoint) => {
             const cacheKey = `website_${endpoint}`;
             const cached = Utils.getCache(cacheKey);
@@ -339,14 +333,13 @@
                     Utils.checkDataLoaded();
                     return data.website;
                 }
-                throw new Error('Website not found');
+                throw new Error('Website tidak ditemukan');
             } catch (error) {
                 console.error('❌ Error loading website:', error);
                 throw error;
             }
         },
 
-        // Tampilan Data
         getTampilan: async (websiteId) => {
             const cacheKey = `tampilan_${websiteId}`;
             const cached = Utils.getCache(cacheKey);
@@ -360,6 +353,8 @@
                     Utils.checkDataLoaded();
                     return data.tampilan;
                 }
+                State.dataLoaded.tampilan = true;
+                Utils.checkDataLoaded();
                 return null;
             } catch (error) {
                 if (error.message.includes('404')) {
@@ -368,11 +363,12 @@
                     return null;
                 }
                 console.error('❌ Error loading tampilan:', error);
+                State.dataLoaded.tampilan = true;
+                Utils.checkDataLoaded();
                 return null;
             }
         },
 
-        // Produk Terstruktur
         getStructuredProducts: async (websiteId) => {
             const cacheKey = `products_${websiteId}`;
             const cached = Utils.getCache(cacheKey);
@@ -397,7 +393,6 @@
             }
         },
 
-        // Promos
         getPromos: async (websiteId) => {
             const cacheKey = `promos_${websiteId}`;
             const cached = Utils.getCache(cacheKey);
@@ -422,7 +417,6 @@
             }
         },
 
-        // Metode Pembayaran
         getRekening: async (websiteId) => {
             const cacheKey = `rekening_${websiteId}`;
             const cached = Utils.getCache(cacheKey);
@@ -465,7 +459,6 @@
             }
         },
 
-        // Test Connection
         testConnection: async () => {
             try {
                 const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/health`, { method: 'GET' });
@@ -477,7 +470,7 @@
         }
     };
 
-    // ===== MOUSE INTERACTION EFFECTS =====
+    // ==================== MOUSE INTERACTION EFFECTS ====================
     const MouseEffects = {
         init: () => {
             document.addEventListener('mousemove', (e) => {
@@ -527,7 +520,7 @@
         }
     };
 
-    // ===== BANNER SLIDER =====
+    // ==================== BANNER SLIDER ====================
     const BannerSlider = {
         init: (banners) => {
             if (!DOM.sliderContainer || !banners || banners.length === 0) {
@@ -558,7 +551,7 @@
                     bannerUrl = banner;
                 } else {
                     bannerUrl = banner.url || '';
-                    positionX = banner.positionX || banner.position || 50;
+                    positionX = banner.positionX || 50;
                     positionY = banner.positionY || 50;
                 }
 
@@ -582,7 +575,6 @@
             DOM.sliderContainer.innerHTML = slidesHtml;
             if (DOM.sliderPagination) DOM.sliderPagination.innerHTML = paginationHtml;
 
-            // Load images
             document.querySelectorAll('.slider-slide img').forEach(img => {
                 if (img.complete) {
                     img.style.opacity = '1';
@@ -711,7 +703,7 @@
         }
     };
 
-    // ===== PROMO SLIDER =====
+    // ==================== PROMO SLIDER ====================
     const PromoSlider = {
         init: (promos) => {
             State.promos = promos || [];
@@ -733,7 +725,7 @@
             let dotsHtml = '';
 
             State.promos.forEach((promo, index) => {
-                if (!promo.active) return; // Hanya promo aktif
+                if (!promo.active) return;
 
                 const expiryText = promo.never_end 
                     ? '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tidak ada batas</span>'
@@ -847,7 +839,7 @@
         }
     };
 
-    // ===== LAYANAN RENDER =====
+    // ==================== LAYANAN RENDER ====================
     const Layanan = {
         render: (structuredProducts) => {
             if (!DOM.categoriesGrid) return;
@@ -866,7 +858,7 @@
                     <div class="category-card glow-effect" data-layanan="${Utils.escapeHtml(layanan.layanan_nama)}" style="animation-delay: ${index * 0.1}s">
                         <div class="category-icon">
                             ${icon ? 
-                                `<img src="${icon}" alt="${Utils.escapeHtml(layanan.layanan_nama)}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                                `<img src="${icon}" alt="${Utils.escapeHtml(layanan.layanan_nama)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/70x70/40a7e3/ffffff?text=${layanan.layanan_nama.charAt(0)}';">` : 
                                 `<i class="fas fa-layer-group"></i>`
                             }
                         </div>
@@ -889,19 +881,50 @@
                     if (layanan) {
                         Toast.info(`Layanan: ${layanan}`);
                         Utils.vibrate();
-                        // Di sini bisa redirect ke halaman produk dengan filter layanan
                     }
                 });
             });
+        },
+
+        renderAll: (structuredProducts) => {
+            const grid = document.getElementById('allCategoriesGrid');
+            if (!grid) return;
+
+            if (!structuredProducts || structuredProducts.length === 0) {
+                grid.innerHTML = '<div class="empty-message">Belum ada layanan</div>';
+                return;
+            }
+
+            let html = '';
+            structuredProducts.forEach((layanan, index) => {
+                const icon = layanan.layanan_gambar || '';
+                const itemCount = layanan.aplikasi?.reduce((sum, app) => sum + (app.items?.length || 0), 0) || 0;
+
+                html += `
+                    <div class="category-card glow-effect" data-layanan="${Utils.escapeHtml(layanan.layanan_nama)}">
+                        <div class="category-icon">
+                            ${icon ? 
+                                `<img src="${icon}" alt="${Utils.escapeHtml(layanan.layanan_nama)}" onerror="this.src='https://via.placeholder.com/70x70/40a7e3/ffffff?text=${layanan.layanan_nama.charAt(0)}';">` : 
+                                `<i class="fas fa-layer-group"></i>`
+                            }
+                        </div>
+                        <div class="category-info">
+                            <h4>${Utils.escapeHtml(layanan.layanan_nama)}</h4>
+                            <span><i class="fas fa-box"></i> ${itemCount} Produk</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
         }
     };
 
-    // ===== APLIKASI RENDER =====
+    // ==================== APLIKASI RENDER ====================
     const Aplikasi = {
         render: (structuredProducts) => {
             if (!DOM.aplikasiGrid) return;
 
-            // Kumpulkan semua aplikasi unik dari semua layanan
             const allApps = [];
             structuredProducts.forEach(layanan => {
                 layanan.aplikasi?.forEach(app => {
@@ -917,7 +940,6 @@
                 return;
             }
 
-            // Ambil 8 aplikasi pertama
             let html = '';
             allApps.slice(0, 8).forEach((app, index) => {
                 const icon = app.aplikasi_gambar || '';
@@ -926,7 +948,7 @@
                     <div class="category-card glow-effect" data-aplikasi="${Utils.escapeHtml(app.aplikasi_nama)}" data-layanan="${Utils.escapeHtml(app.layanan_nama)}" style="animation-delay: ${index * 0.1}s">
                         <div class="category-icon">
                             ${icon ? 
-                                `<img src="${icon}" alt="${Utils.escapeHtml(app.aplikasi_nama)}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                                `<img src="${icon}" alt="${Utils.escapeHtml(app.aplikasi_nama)}" onerror="this.src='https://via.placeholder.com/70x70/40a7e3/ffffff?text=${app.aplikasi_nama.charAt(0)}';">` : 
                                 `<i class="fas fa-mobile-alt"></i>`
                             }
                         </div>
@@ -953,15 +975,56 @@
                     }
                 });
             });
+        },
+
+        renderAll: (structuredProducts) => {
+            const grid = document.getElementById('allAppsGrid');
+            if (!grid) return;
+
+            const allApps = [];
+            structuredProducts.forEach(layanan => {
+                layanan.aplikasi?.forEach(app => {
+                    allApps.push({
+                        ...app,
+                        layanan_nama: layanan.layanan_nama
+                    });
+                });
+            });
+
+            if (allApps.length === 0) {
+                grid.innerHTML = '<div class="empty-message">Belum ada aplikasi</div>';
+                return;
+            }
+
+            let html = '';
+            allApps.forEach(app => {
+                const icon = app.aplikasi_gambar || '';
+
+                html += `
+                    <div class="category-card glow-effect" data-aplikasi="${Utils.escapeHtml(app.aplikasi_nama)}" data-layanan="${Utils.escapeHtml(app.layanan_nama)}">
+                        <div class="category-icon">
+                            ${icon ? 
+                                `<img src="${icon}" alt="${Utils.escapeHtml(app.aplikasi_nama)}" onerror="this.src='https://via.placeholder.com/70x70/40a7e3/ffffff?text=${app.aplikasi_nama.charAt(0)}';">` : 
+                                `<i class="fas fa-mobile-alt"></i>`
+                            }
+                        </div>
+                        <div class="category-info">
+                            <h4>${Utils.escapeHtml(app.aplikasi_nama)}</h4>
+                            <span><i class="fas fa-tag"></i> ${Utils.escapeHtml(app.layanan_nama)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
         }
     };
 
-    // ===== PRODUK TERLARIS RENDER =====
+    // ==================== PRODUK TERLARIS RENDER ====================
     const ProdukTerlaris = {
         render: (structuredProducts) => {
             if (!DOM.produkGrid) return;
 
-            // Kumpulkan semua item dari semua aplikasi
             const allItems = [];
             structuredProducts.forEach(layanan => {
                 layanan.aplikasi?.forEach(app => {
@@ -981,7 +1044,6 @@
                 return;
             }
 
-            // Urutkan berdasarkan terjual (desc) dan ambil 6 teratas
             const topItems = allItems
                 .sort((a, b) => (b.terjual || 0) - (a.terjual || 0))
                 .slice(0, 6);
@@ -1027,10 +1089,64 @@
                     }
                 });
             });
+        },
+
+        renderAll: (structuredProducts) => {
+            const grid = document.getElementById('allProductsGrid');
+            if (!grid) return;
+
+            const allItems = [];
+            structuredProducts.forEach(layanan => {
+                layanan.aplikasi?.forEach(app => {
+                    app.items?.forEach(item => {
+                        allItems.push({
+                            ...item,
+                            layanan_nama: layanan.layanan_nama,
+                            aplikasi_nama: app.aplikasi_nama,
+                            aplikasi_gambar: app.aplikasi_gambar || layanan.layanan_gambar
+                        });
+                    });
+                });
+            });
+
+            if (allItems.length === 0) {
+                grid.innerHTML = '<div class="empty-message">Belum ada produk</div>';
+                return;
+            }
+
+            let html = '';
+            allItems.forEach(item => {
+                const gambar = item.item_gambar || item.aplikasi_gambar || `https://via.placeholder.com/300x200/40a7e3/ffffff?text=${encodeURIComponent(item.item_nama)}`;
+
+                html += `
+                    <div class="popular-product-card glow-effect" data-item-id="${item.id}">
+                        <div class="popular-product-image">
+                            <img src="${gambar}" alt="${Utils.escapeHtml(item.item_nama)}" 
+                                 loading="lazy"
+                                 onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=Product';">
+                        </div>
+                        <div class="popular-product-info">
+                            <h3>${Utils.escapeHtml(item.item_nama)}</h3>
+                            <div class="popular-product-desc">
+                                <i class="fas fa-tag"></i> ${Utils.escapeHtml(item.aplikasi_nama || 'Aplikasi')}
+                            </div>
+                            <div class="popular-product-stats">
+                                <span><i class="fas fa-box"></i> ${item.item_stok?.length || 0}</span>
+                                <span><i class="fas fa-shopping-bag"></i> ${item.terjual || 0} terjual</span>
+                            </div>
+                            <div class="popular-product-price">
+                                ${Utils.formatRupiah(item.item_harga || 0)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
         }
     };
 
-    // ===== METODE PEMBAYARAN RENDER =====
+    // ==================== METODE PEMBAYARAN RENDER ====================
     const PaymentMethods = {
         render: (rekening, gateway) => {
             if (!DOM.paymentIcons) return;
@@ -1038,7 +1154,6 @@
             let html = '';
             let hasPayments = false;
 
-            // Rekening Bank/E-Wallet
             if (rekening && rekening.length > 0) {
                 rekening.forEach(rek => {
                     if (rek.active) {
@@ -1053,7 +1168,6 @@
                 });
             }
 
-            // Gateway QRIS
             if (gateway && gateway.length > 0) {
                 gateway.forEach(gw => {
                     if (gw.active) {
@@ -1076,10 +1190,9 @@
         }
     };
 
-    // ===== PRODUCT MODAL =====
+    // ==================== PRODUCT MODAL ====================
     const ProductModal = {
         open: (itemId) => {
-            // Cari item dari structuredProducts
             let foundItem = null;
             let foundLayanan = null;
             let foundAplikasi = null;
@@ -1245,7 +1358,7 @@
         }
     };
 
-    // ===== CART MANAGEMENT =====
+    // ==================== CART MANAGEMENT ====================
     const Cart = {
         init: () => {
             const savedCart = Utils.loadFromStorage('cart');
@@ -1255,7 +1368,6 @@
 
         add: (itemId, variant = null, quantity = 1, itemData = null) => {
             if (!itemData) {
-                // Cari item dari structuredProducts
                 for (const layanan of State.structuredProducts) {
                     for (const app of (layanan.aplikasi || [])) {
                         for (const item of (app.items || [])) {
@@ -1414,7 +1526,7 @@
         }
     };
 
-    // ===== SIDEBAR MANAGEMENT =====
+    // ==================== SIDEBAR MANAGEMENT ====================
     const Sidebar = {
         toggle: () => {
             DOM.sidebar.classList.toggle('active');
@@ -1428,7 +1540,7 @@
         }
     };
 
-    // ===== SEARCH MANAGEMENT =====
+    // ==================== SEARCH MANAGEMENT ====================
     const Search = {
         toggle: () => {
             DOM.searchBar.classList.toggle('active');
@@ -1442,8 +1554,7 @@
         init: () => {
             const debouncedSearch = Utils.debounce((query) => {
                 if (query.length > 2) {
-                    // Implement search logic here
-                    console.log('Searching for:', query);
+                    Search.performSearch(query);
                 }
             }, 500);
 
@@ -1453,14 +1564,19 @@
                     e.preventDefault();
                     const query = e.target.value;
                     if (query.length > 0) {
-                        Toast.info(`Mencari: ${query}`);
+                        Search.performSearch(query);
                     }
                 }
             });
+        },
+
+        performSearch: (query) => {
+            console.log('Searching for:', query);
+            Toast.info(`Mencari: ${query}`);
         }
     };
 
-    // ===== USER MANAGEMENT =====
+    // ==================== USER MANAGEMENT ====================
     const User = {
         init: () => {
             const savedUser = Utils.loadFromStorage('user');
@@ -1520,7 +1636,7 @@
         }
     };
 
-    // ===== LOGIN MODAL =====
+    // ==================== LOGIN MODAL ====================
     const LoginModal = {
         open: () => {
             DOM.loginModal.classList.add('active');
@@ -1534,7 +1650,7 @@
         }
     };
 
-    // ===== CHECKOUT =====
+    // ==================== CHECKOUT ====================
     const Checkout = {
         open: () => {
             if (State.cart.length === 0) {
@@ -1593,7 +1709,6 @@
 
             DOM.checkoutBody.innerHTML = checkoutHtml;
 
-            // Render metode pembayaran dari database
             const paymentOptions = document.getElementById('checkoutPaymentOptions');
             if (paymentOptions) {
                 let optionsHtml = '';
@@ -1653,14 +1768,58 @@
         }
     };
 
-    // ===== THEME MANAGEMENT =====
+    // ==================== SECTION NAVIGATION ====================
+    const SectionNavigation = {
+        init: () => {
+            document.querySelectorAll('.menu-item[data-section]').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const section = item.dataset.section;
+                    SectionNavigation.showSection(section);
+                    Sidebar.close();
+                });
+            });
+
+            document.querySelectorAll('[data-section]').forEach(link => {
+                if (!link.classList.contains('menu-item')) {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const section = link.dataset.section;
+                        SectionNavigation.showSection(section);
+                    });
+                }
+            });
+        },
+
+        showSection: (sectionId) => {
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            const targetSection = document.getElementById(`${sectionId}-section`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+                State.activeSection = sectionId;
+            }
+
+            document.querySelectorAll('.menu-item[data-section]').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.section === sectionId) {
+                    item.classList.add('active');
+                }
+            });
+
+            Utils.vibrate();
+        }
+    };
+
+    // ==================== THEME MANAGEMENT ====================
     const Theme = {
         apply: (tampilan) => {
             if (!tampilan) return;
 
             const root = document.documentElement;
 
-            // Colors
             if (tampilan.colors) {
                 if (tampilan.colors.primary) root.style.setProperty('--primary-color', tampilan.colors.primary);
                 if (tampilan.colors.secondary) root.style.setProperty('--secondary-color', tampilan.colors.secondary);
@@ -1670,21 +1829,15 @@
                 if (tampilan.colors.accent) root.style.setProperty('--success-color', tampilan.colors.accent);
             }
 
-            // Font
             if (tampilan.font_family) root.style.setProperty('--font-family', tampilan.font_family);
             if (tampilan.font_size) root.style.setProperty('--font-size', `${tampilan.font_size}px`);
 
-            // Logo
             if (tampilan.logo && DOM.headerLogo) {
                 DOM.headerLogo.innerHTML = `
-                    <div class="logo-3d-small">
-                        <img src="${tampilan.logo}" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; transform: rotate(-45deg);">
-                    </div>
-                    <span id="storeName">${tampilan.store_display_name || State.websiteData?.username || 'Toko Online'}</span>
+                    <img src="${tampilan.logo}" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; transform: rotate(-45deg);">
                 `;
             }
 
-            // Store name
             if (tampilan.store_display_name) {
                 if (DOM.storeName) DOM.storeName.textContent = tampilan.store_display_name;
                 if (DOM.sidebarStoreName) DOM.sidebarStoreName.textContent = tampilan.store_display_name;
@@ -1692,12 +1845,10 @@
                 if (DOM.footerStoreName2) DOM.footerStoreName2.textContent = tampilan.store_display_name;
             }
 
-            // Description
             if (tampilan.description && DOM.footerDescription) {
                 DOM.footerDescription.textContent = tampilan.description;
             }
 
-            // Contacts
             if (tampilan.contact_whatsapp && DOM.contactWhatsApp) {
                 DOM.contactWhatsApp.textContent = tampilan.contact_whatsapp;
             }
@@ -1707,81 +1858,7 @@
         }
     };
 
-    // ===== INITIALIZATION =====
-    const init = async () => {
-        console.log('🏪 Crystal Store 3D - Initializing...');
-
-        initializeDOMCache();
-
-        Loading.show('Memuat data dari database...');
-
-        try {
-            State.currentEndpoint = Utils.getEndpointFromUrl();
-            if (!State.currentEndpoint) {
-                Toast.error('Endpoint tidak valid. Gunakan ?store=nama-endpoint');
-                Loading.hide();
-                return;
-            }
-
-            // Test connection
-            const isConnected = await API.testConnection();
-            if (!isConnected) {
-                Toast.warning('Tidak dapat terhubung ke server');
-                Loading.hide();
-                return;
-            }
-
-            // Load website data
-            Loading.progress(10);
-            State.websiteData = await API.getWebsite(State.currentEndpoint);
-            
-            if (!State.websiteData) {
-                throw new Error('Website tidak ditemukan');
-            }
-
-            // Load all data concurrently
-            Loading.progress(30);
-            const [tampilan, structuredProducts, promos, rekening, gateway] = await Promise.all([
-                API.getTampilan(State.websiteData.id),
-                API.getStructuredProducts(State.websiteData.id),
-                API.getPromos(State.websiteData.id),
-                API.getRekening(State.websiteData.id),
-                API.getGateway(State.websiteData.id)
-            ]);
-
-            State.tampilanData = tampilan;
-            State.structuredProducts = structuredProducts || [];
-            State.promos = promos || [];
-            State.rekening = rekening || [];
-            State.gateway = gateway || [];
-
-            Loading.progress(80);
-
-            // Update UI
-            updateUI();
-            
-            // Render all components
-            renderAll();
-
-            // Initialize features
-            initFeatures();
-
-            // Mark all data as loaded
-            State.dataLoaded.website = true;
-            State.dataLoaded.tampilan = true;
-            State.dataLoaded.products = true;
-            State.dataLoaded.promos = true;
-            State.dataLoaded.payments = true;
-            Utils.checkDataLoaded();
-
-        } catch (error) {
-            console.error('❌ Init error:', error);
-            Toast.error(error.message || 'Gagal memuat data');
-            Loading.hide();
-        }
-    };
-
-    // Initialize DOM cache
+    // ==================== INITIALIZATION ====================
     const initializeDOMCache = () => {
         const elements = [
             'loadingOverlay', 'dynamicTitle', 'dynamicDescription', 'dynamicKeywords',
@@ -1797,8 +1874,9 @@
             'footerStoreName', 'footerStoreName2', 'sidebarYear',
             'cartSidebar', 'cartClose', 'cartItems', 'cartEmpty', 'cartFooter', 'cartTotal',
             'shopNowBtn', 'checkoutBtn',
-            'productModal', 'checkoutModal', 'loginModal', 'closeProductModal',
-            'closeCheckoutModal', 'closeLoginModal', 'productDetail', 'checkoutBody',
+            'productModal', 'checkoutModal', 'loginModal', 'closeProductModal', 'closeProductModalBtn',
+            'closeCheckoutModal', 'closeCheckoutModalBtn', 'closeLoginModal', 'closeLoginModalBtn',
+            'productDetail', 'checkoutBody',
             'telegramLogin', 'guestLogin', 'toastContainer'
         ];
 
@@ -1807,9 +1885,7 @@
         });
     };
 
-    // Update UI with data
     const updateUI = () => {
-        // Title & Meta
         if (DOM.dynamicTitle) {
             DOM.dynamicTitle.textContent = State.tampilanData?.seo_title || 
                                           State.websiteData?.settings?.title || 
@@ -1821,7 +1897,6 @@
                                             'Toko online terpercaya dengan produk digital berkualitas';
         }
 
-        // Store name
         const storeName = State.tampilanData?.store_display_name || 
                          State.websiteData?.username || 
                          'Toko Online';
@@ -1831,14 +1906,12 @@
         if (DOM.footerStoreName) DOM.footerStoreName.textContent = storeName;
         if (DOM.footerStoreName2) DOM.footerStoreName2.textContent = storeName;
 
-        // Footer
         if (DOM.footerDescription) {
             DOM.footerDescription.textContent = State.tampilanData?.description || 
                                                 State.websiteData?.settings?.description || 
                                                 'Toko online terpercaya sejak 2024 dengan ribuan produk digital berkualitas.';
         }
 
-        // Contacts
         if (DOM.contactWhatsApp) {
             DOM.contactWhatsApp.textContent = State.tampilanData?.contact_whatsapp || 
                                               State.websiteData?.settings?.contact?.whatsapp || 
@@ -1853,44 +1926,29 @@
             DOM.contactEmail.textContent = State.websiteData?.email || 'support@example.com';
         }
 
-        // Year
         if (DOM.sidebarYear) DOM.sidebarYear.textContent = new Date().getFullYear();
+        if (DOM.footerYear) DOM.footerYear.textContent = new Date().getFullYear();
     };
 
-    // Render all components
     const renderAll = () => {
-        // Apply theme
         Theme.apply(State.tampilanData);
-
-        // Banners
         BannerSlider.init(State.tampilanData?.banners || []);
-
-        // Layanan
         Layanan.render(State.structuredProducts);
-
-        // Aplikasi
+        Layanan.renderAll(State.structuredProducts);
         Aplikasi.render(State.structuredProducts);
-
-        // Produk Terlaris
+        Aplikasi.renderAll(State.structuredProducts);
         ProdukTerlaris.render(State.structuredProducts);
-
-        // Promos
+        ProdukTerlaris.renderAll(State.structuredProducts);
         PromoSlider.init(State.promos);
-
-        // Payment Methods
         PaymentMethods.render(State.rekening, State.gateway);
-
-        // Cart
         Cart.init();
-
-        // User
         User.init();
     };
 
-    // Initialize features
     const initFeatures = () => {
         MouseEffects.init();
         Search.init();
+        SectionNavigation.init();
 
         if (window.Telegram?.WebApp) {
             const tg = window.Telegram.WebApp;
@@ -1909,7 +1967,6 @@
         initKeyboardHandler();
     };
 
-    // Keyboard handler
     const initKeyboardHandler = () => {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
@@ -1938,38 +1995,33 @@
         });
     };
 
-    // Setup event listeners
     const setupEventListeners = () => {
-        // Sidebar
         DOM.menuToggle?.addEventListener('click', Sidebar.toggle);
         DOM.sidebarClose?.addEventListener('click', Sidebar.close);
 
-        // Cart
         DOM.cartBtn?.addEventListener('click', Cart.open);
         DOM.cartClose?.addEventListener('click', Cart.close);
         DOM.shopNowBtn?.addEventListener('click', () => {
             Cart.close();
-            document.querySelector('.produk-section')?.scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.popular-products-grid')?.scrollIntoView({ behavior: 'smooth' });
         });
 
-        // Search
         DOM.searchToggle?.addEventListener('click', Search.toggle);
         DOM.searchClose?.addEventListener('click', Search.close);
 
-        // Modals
         DOM.closeProductModal?.addEventListener('click', ProductModal.close);
+        DOM.closeProductModalBtn?.addEventListener('click', ProductModal.close);
         DOM.closeCheckoutModal?.addEventListener('click', Checkout.close);
+        DOM.closeCheckoutModalBtn?.addEventListener('click', Checkout.close);
         DOM.closeLoginModal?.addEventListener('click', LoginModal.close);
+        DOM.closeLoginModalBtn?.addEventListener('click', LoginModal.close);
 
-        // Login
         DOM.loginBtn?.addEventListener('click', LoginModal.open);
         DOM.telegramLogin?.addEventListener('click', User.loginWithTelegram);
         DOM.guestLogin?.addEventListener('click', User.loginAsGuest);
 
-        // Checkout
         DOM.checkoutBtn?.addEventListener('click', Checkout.open);
 
-        // Close modals on overlay click
         window.addEventListener('click', (e) => {
             if (e.target === DOM.productModal) ProductModal.close();
             if (e.target === DOM.checkoutModal) Checkout.close();
@@ -1978,24 +2030,84 @@
             if (e.target === DOM.sidebar) Sidebar.close();
         });
 
-        // Window resize
         window.addEventListener('resize', Utils.throttle(() => {
             if (!Utils.isMobile()) Sidebar.close();
         }, 200));
     };
 
-    // ===== EXPOSE GLOBAL FUNCTIONS =====
+    const init = async () => {
+        console.log('🏪 Crystal Store 3D - Initializing...');
+
+        initializeDOMCache();
+        Loading.show('Memuat data dari database...');
+
+        try {
+            State.currentEndpoint = Utils.getEndpointFromUrl();
+            if (!State.currentEndpoint) {
+                Toast.error('Endpoint tidak valid. Gunakan ?store=nama-endpoint');
+                Loading.hide();
+                return;
+            }
+
+            const isConnected = await API.testConnection();
+            if (!isConnected) {
+                Toast.warning('Tidak dapat terhubung ke server');
+                Loading.hide();
+                return;
+            }
+
+            Loading.progress(10);
+            State.websiteData = await API.getWebsite(State.currentEndpoint);
+            
+            if (!State.websiteData) {
+                throw new Error('Website tidak ditemukan');
+            }
+
+            Loading.progress(30);
+            const [tampilan, structuredProducts, promos, rekening, gateway] = await Promise.all([
+                API.getTampilan(State.websiteData.id),
+                API.getStructuredProducts(State.websiteData.id),
+                API.getPromos(State.websiteData.id),
+                API.getRekening(State.websiteData.id),
+                API.getGateway(State.websiteData.id)
+            ]);
+
+            State.tampilanData = tampilan;
+            State.structuredProducts = structuredProducts || [];
+            State.promos = promos || [];
+            State.rekening = rekening || [];
+            State.gateway = gateway || [];
+
+            Loading.progress(80);
+
+            updateUI();
+            renderAll();
+            initFeatures();
+
+            State.dataLoaded.website = true;
+            State.dataLoaded.tampilan = true;
+            State.dataLoaded.products = true;
+            State.dataLoaded.promos = true;
+            State.dataLoaded.payments = true;
+            Utils.checkDataLoaded();
+
+        } catch (error) {
+            console.error('❌ Init error:', error);
+            Toast.error(error.message || 'Gagal memuat data');
+            Loading.hide();
+        }
+    };
+
     window.website = {
         cartAdd: Cart.add,
-        cartRemove: Cart.remove,
-        cartUpdateQuantity: Cart.updateQuantity,
+        cartRemove: (index) => Cart.remove(index),
+        cartUpdateQuantity: (index, qty) => Cart.updateQuantity(index, qty),
         cartClear: Cart.clear,
         setMainImage: ProductModal.setMainImage,
         vibrate: Utils.vibrate,
         formatRupiah: Utils.formatRupiah
     };
 
-    // ===== START =====
     document.addEventListener('DOMContentLoaded', () => {
         setupEventListeners();
         init();
