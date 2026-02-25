@@ -122,6 +122,14 @@
                     <i class="fas fa-save"></i>
                     <span>Simpan Semua</span>
                 </button>
+                <button class="btn-template" id="checkTemplateBtn" title="Cek Template">
+                  <i class="fas fa-search"></i>
+                  <span>Cek Template</span>
+                </button>
+                <button class="btn-template" id="saveTemplateBtn" title="Simpan Template">
+                  <i class="fas fa-save"></i>
+                  <span>Save Template</span>
+                </button>
             </div>
         </div>
 
@@ -1147,6 +1155,164 @@
             </div>
         </div>
     </div>
+
+  <!-- Template Manager Modal -->
+  <div class="modal" id="templateManagerModal">
+      <div class="modal-content modal-lg">
+          <div class="modal-header">
+              <h2><i class="fas fa-template"></i> Template Manager</h2>
+              <button class="modal-close" id="closeTemplateManagerModal">&times;</button>
+          </div>
+          <div class="modal-body">
+              <!-- Search & Filter -->
+              <div class="template-search-bar">
+                  <div class="search-input-wrapper">
+                      <i class="fas fa-search"></i>
+                      <input type="text" id="templateSearch" placeholder="Cari template..." class="template-search">
+                  </div>
+                  <select id="templateFilter" class="template-filter">
+                      <option value="all">Semua Template</option>
+                      <option value="mine">Template Saya</option>
+                      <option value="public">Public</option>
+                      <option value="popular">Populer</option>
+                      <option value="recent">Terbaru</option>
+                  </select>
+              </div>
+              
+              <!-- Templates Grid -->
+              <div class="templates-grid" id="templatesGrid">
+                  <!-- Akan diisi JavaScript -->
+                  <div class="template-loading">
+                      <i class="fas fa-spinner fa-spin"></i>
+                      <span>Memuat template...</span>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+  
+  <!-- Save Template Modal -->
+  <div class="modal" id="saveTemplateModal">
+      <div class="modal-content modal-sm">
+          <div class="modal-header">
+              <h2><i class="fas fa-save"></i> Save Template</h2>
+              <button class="modal-close" id="closeSaveTemplateModal">&times;</button>
+          </div>
+          <div class="modal-body">
+              <form id="saveTemplateForm">
+                  <div class="form-group">
+                      <label><i class="fas fa-tag"></i> Nama Template</label>
+                      <input type="text" id="saveTemplateName" class="styled-input" 
+                             placeholder="Mis: Animasi Fade Modern" required maxlength="100">
+                      <small class="input-hint">Maksimal 100 karakter</small>
+                  </div>
+                  
+                  <div class="form-group">
+                      <label><i class="fas fa-globe"></i> Visibilitas</label>
+                      <div class="radio-group">
+                          <label class="radio-label">
+                              <input type="radio" name="templateVisibility" value="private" checked>
+                              <span class="radio-text">Private (hanya saya)</span>
+                          </label>
+                          <label class="radio-label">
+                              <input type="radio" name="templateVisibility" value="public">
+                              <span class="radio-text">Public</span>
+                          </label>
+                      </div>
+                  </div>
+                  
+                  <div class="template-code-preview" id="templateCodePreview" style="display: none;">
+                      <label>Kode Template:</label>
+                      <div class="code-box">
+                          <code id="generatedTemplateCode">ABC123...</code>
+                          <button class="copy-code-btn" id="copyTemplateCode">
+                              <i class="fas fa-copy"></i>
+                          </button>
+                      </div>
+                  </div>
+                  
+                  <div class="form-actions">
+                      <button type="button" class="btn-secondary" id="cancelSaveTemplate">Batal</button>
+                      <button type="submit" class="btn-primary" id="confirmSaveTemplate">
+                          <i class="fas fa-save"></i> Simpan Template
+                      </button>
+                  </div>
+              </form>
+          </div>
+      </div>
+  </div>
+  
+  <!-- Load Template Modal -->
+  <div class="modal" id="loadTemplateModal">
+      <div class="modal-content modal-sm">
+          <div class="modal-header">
+              <h2><i class="fas fa-download"></i> Load Template</h2>
+              <button class="modal-close" id="closeLoadTemplateModal">&times;</button>
+          </div>
+          <div class="modal-body">
+              <div class="form-group">
+                  <label><i class="fas fa-key"></i> Masukkan Kode Template</label>
+                  <input type="text" id="loadTemplateCode" class="styled-input" 
+                         placeholder="Contoh: aB3dE5fG7hIj9kL1mN2oP4qR6sT8uV0wX" 
+                         maxlength="35" minlength="35">
+                  <small class="input-hint">Kode template terdiri dari 35 karakter</small>
+              </div>
+              
+              <div class="load-template-preview" id="loadTemplatePreview" style="display: none;">
+                  <h4>Preview Template:</h4>
+                  <div class="preview-card">
+                      <div class="preview-row">
+                          <span class="preview-label">Nama:</span>
+                          <span class="preview-value" id="previewTemplateName">-</span>
+                      </div>
+                      <div class="preview-row">
+                          <span class="preview-label">Font:</span>
+                          <span class="preview-value" id="previewTemplateFont">-</span>
+                      </div>
+                      <div class="preview-row">
+                          <span class="preview-label">Animasi:</span>
+                          <span class="preview-value" id="previewTemplateAnim">-</span>
+                      </div>
+                      <div class="preview-row">
+                          <span class="preview-label">Dibuat:</span>
+                          <span class="preview-value" id="previewTemplateDate">-</span>
+                      </div>
+                  </div>
+              </div>
+              
+              <div class="form-actions">
+                  <button class="btn-secondary" id="cancelLoadTemplate">Batal</button>
+                  <button class="btn-primary" id="verifyLoadTemplate">
+                      <i class="fas fa-search"></i> Verifikasi
+                  </button>
+                  <button class="btn-primary" id="confirmLoadTemplate" style="display: none;">
+                      <i class="fas fa-download"></i> Load Template
+                  </button>
+              </div>
+          </div>
+      </div>
+  </div>
+  
+  <!-- Delete Template Confirmation Modal -->
+  <div class="modal" id="deleteTemplateModal">
+      <div class="modal-content modal-sm">
+          <div class="modal-header danger">
+              <h2><i class="fas fa-exclamation-triangle"></i> Hapus Template</h2>
+              <button class="modal-close" id="closeDeleteTemplateModal">&times;</button>
+          </div>
+          <div class="modal-body">
+              <p class="delete-text">Apakah Anda yakin ingin menghapus template ini?</p>
+              <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
+              <div class="delete-info" id="deleteTemplateInfo"></div>
+              <div class="form-actions">
+                  <button class="btn-secondary" id="cancelDeleteTemplate">Batal</button>
+                  <button class="btn-danger" id="confirmDeleteTemplate">
+                      <i class="fas fa-trash"></i> Hapus
+                  </button>
+              </div>
+          </div>
+      </div>
+  </div>
 
     <!-- Custom Background Modal -->
     <div class="modal" id="customBgModal">
