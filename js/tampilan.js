@@ -9,6 +9,15 @@
     const MAX_RETRIES = 3;
 
     // ==================== STATE ====================
+    let selectedFont = 'Inter';
+    let selectedAnimation = 'none';
+    let animationSettings = {
+        duration: 2,
+        delay: 0,
+        iteration: 'infinite'
+    };
+    let storeDisplayName = 'Toko Online';
+    
     let currentWebsite = null;
     let tampilanData = {};
     
@@ -17,7 +26,7 @@
     let hasUnsavedBanners = false;
     let urlChangeTimeout = null;
     
-    // Promo state (NEW)
+    // Promo state
     let promos = [];
     let hasUnsavedPromos = false;
     let currentPromoId = null;
@@ -50,7 +59,7 @@
         addBannerBtn: document.getElementById('addBannerBtn'),
         saveBannersBtn: document.getElementById('saveBannersBtn'),
         
-        // Promo (NEW)
+        // Promo
         promoContainer: document.getElementById('promoContainer'),
         emptyPromoMessage: document.getElementById('emptyPromoMessage'),
         addPromoBtn: document.getElementById('addPromoBtn'),
@@ -76,6 +85,14 @@
         fontSize: document.getElementById('fontSize'),
         saveFontBtn: document.getElementById('saveFontBtn'),
         
+        // FONT & ANIMASI - ELEMEN BARU
+        fontGrid: document.getElementById('fontGrid'),
+        animationGrid: document.getElementById('animationGrid'),
+        animationControlsContainer: document.getElementById('animationControlsContainer'),
+        storeDisplayNameInput: document.getElementById('storeDisplayName'),
+        saveFontAnimBtn: document.getElementById('saveFontAnimBtn'),
+        animPreviewText: document.getElementById('animPreviewText'),
+        
         // Save All
         saveAllBtn: document.getElementById('saveAllBtn'),
         
@@ -88,7 +105,7 @@
         confirmUploadBtn: document.getElementById('confirmUploadBtn'),
         closeUploadModal: document.getElementById('closeUploadModal'),
         
-        // Promo Modal (NEW)
+        // Promo Modal
         promoModal: document.getElementById('promoModal'),
         promoModalTitle: document.getElementById('promoModalTitle'),
         promoForm: document.getElementById('promoForm'),
@@ -106,7 +123,7 @@
         closePromoModal: document.getElementById('closePromoModal'),
         cancelPromoBtn: document.getElementById('cancelPromoBtn'),
         
-        // Delete Modal (NEW)
+        // Delete Modal
         deleteModal: document.getElementById('deleteModal'),
         deleteMessage: document.getElementById('deleteMessage'),
         deleteInfo: document.getElementById('deleteInfo'),
@@ -168,7 +185,7 @@
         }
     }
 
-    // ==================== KEYBOARD HANDLER (NEW) ====================
+    // ==================== KEYBOARD HANDLER ====================
     function setupKeyboardHandler() {
         function scrollToInput(input) {
             const rect = input.getBoundingClientRect();
@@ -306,15 +323,15 @@
     }
 
     function goBackToPanel() {
-      // Simpan halaman settings ke session storage
-      try {
-        sessionStorage.setItem('panel_current_page', 'settings');
-      } catch (e) {
-        console.warn('Failed to save session', e);
-      }
+        // Simpan halaman settings ke session storage
+        try {
+            sessionStorage.setItem('panel_current_page', 'settings');
+        } catch (e) {
+            console.warn('Failed to save session', e);
+        }
 
-      // Redirect ke panel
-      window.location.href = '/wtb/html/panel.html';
+        // Redirect ke panel
+        window.location.href = '/wtb/html/panel.html';
     }
 
     async function loadTampilanData() {
@@ -333,12 +350,23 @@
             } else {
                 console.log('ℹ️ No tampilan data found, using defaults');
                 tampilanData = {};
-                // Set default values
                 banners = [];
                 promos = [];
                 renderBannerTrack();
                 renderPromos();
             }
+            
+            // Load font & animation settings setelah data tampilan dimuat
+            loadFontAnimSettings();
+            
+            // Render font & animation grids jika window.FontAnimations tersedia
+            if (window.FontAnimations) {
+                renderFontGrid();
+                renderAnimationGrid();
+                renderAnimationControls();
+                updateAnimationPreview();
+            }
+            
         } catch (error) {
             console.error('❌ Error loading tampilan:', error);
             showToast('Gagal memuat data tampilan', 'error');
@@ -347,143 +375,140 @@
         }
     }
 
-    // Update promos (NEW) - PERBAIKAN DI SINI
+    // Update UI
     function updateUI() {
-      // Update logo
-      if (tampilanData.logo) {
-        if (elements.logoImage) elements.logoImage.src = tampilanData.logo;
-        if (elements.logoUrl) elements.logoUrl.value = tampilanData.logo;
-      }
-    
-      // Update banners
-      if (tampilanData.banners && Array.isArray(tampilanData.banners)) {
-        banners = tampilanData.banners.map(b => {
-          if (typeof b === 'string') {
-            return { url: b, positionX: 50, positionY: 50 };
-          } else {
-            return {
-              url: b.url || '',
-              positionX: b.positionX || 50,
-              positionY: b.positionY || 50
-            };
-          }
-        });
-        hasUnsavedBanners = false;
-      } else {
-        banners = [];
-        hasUnsavedBanners = false;
-      }
-      renderBannerTrack();
-    
-      // PERBAIKAN: Update promos - pastikan data selalu array
-      if (tampilanData.promos) {
-        console.log('📦 Raw promos data:', tampilanData.promos);
-    
-        if (Array.isArray(tampilanData.promos)) {
-          // Data sudah berupa array
-          promos = tampilanData.promos.map(promo => ({
-            id: promo.id || Date.now() + Math.random(),
-            title: promo.title || '',
-            banner: promo.banner || '',
-            description: promo.description || '',
-            end_date: promo.end_date || '',
-            end_time: promo.end_time || '',
-            never_end: promo.never_end || false,
-            notes: promo.notes || '',
-            active: promo.active !== false
-          }));
-          hasUnsavedPromos = false;
-        } else if (typeof tampilanData.promos === 'string') {
-          // Data berupa string JSON
-          try {
-            const parsed = JSON.parse(tampilanData.promos);
-            if (Array.isArray(parsed)) {
-              promos = parsed.map(promo => ({
-                id: promo.id || Date.now() + Math.random(),
-                title: promo.title || '',
-                banner: promo.banner || '',
-                description: promo.description || '',
-                end_date: promo.end_date || '',
-                end_time: promo.end_time || '',
-                never_end: promo.never_end || false,
-                notes: promo.notes || '',
-                active: promo.active !== false
-              }));
-            } else {
-              promos = [];
-            }
-          } catch (e) {
-            console.error('❌ Error parsing promos:', e);
-            promos = [];
-          }
-          hasUnsavedPromos = false;
+        // Update logo
+        if (tampilanData.logo) {
+            if (elements.logoImage) elements.logoImage.src = tampilanData.logo;
+            if (elements.logoUrl) elements.logoUrl.value = tampilanData.logo;
+        }
+        
+        // Update banners
+        if (tampilanData.banners && Array.isArray(tampilanData.banners)) {
+            banners = tampilanData.banners.map(b => {
+                if (typeof b === 'string') {
+                    return { url: b, positionX: 50, positionY: 50 };
+                } else {
+                    return {
+                        url: b.url || '',
+                        positionX: b.positionX || 50,
+                        positionY: b.positionY || 50
+                    };
+                }
+            });
+            hasUnsavedBanners = false;
         } else {
-          promos = [];
-          hasUnsavedPromos = false;
+            banners = [];
+            hasUnsavedBanners = false;
         }
-      } else if (tampilanData.promo) {
-        // Migrate old single promo to new format
-        const oldPromo = tampilanData.promo;
-        promos = [{
-          id: Date.now(),
-          title: oldPromo.title || 'Promo',
-          banner: oldPromo.banner || '',
-          description: oldPromo.description || '',
-          end_date: oldPromo.end_date || '',
-          end_time: oldPromo.end_time || '',
-          never_end: oldPromo.never_end || false,
-          notes: oldPromo.notes || '',
-          active: oldPromo.active !== false
+        renderBannerTrack();
+        
+        // Update promos
+        if (tampilanData.promos) {
+            console.log('📦 Raw promos data:', tampilanData.promos);
+        
+            if (Array.isArray(tampilanData.promos)) {
+                promos = tampilanData.promos.map(promo => ({
+                    id: promo.id || Date.now() + Math.random(),
+                    title: promo.title || '',
+                    banner: promo.banner || '',
+                    description: promo.description || '',
+                    end_date: promo.end_date || '',
+                    end_time: promo.end_time || '',
+                    never_end: promo.never_end || false,
+                    notes: promo.notes || '',
+                    active: promo.active !== false
+                }));
+                hasUnsavedPromos = false;
+            } else if (typeof tampilanData.promos === 'string') {
+                try {
+                    const parsed = JSON.parse(tampilanData.promos);
+                    if (Array.isArray(parsed)) {
+                        promos = parsed.map(promo => ({
+                            id: promo.id || Date.now() + Math.random(),
+                            title: promo.title || '',
+                            banner: promo.banner || '',
+                            description: promo.description || '',
+                            end_date: promo.end_date || '',
+                            end_time: promo.end_time || '',
+                            never_end: promo.never_end || false,
+                            notes: promo.notes || '',
+                            active: promo.active !== false
+                        }));
+                    } else {
+                        promos = [];
+                    }
+                } catch (e) {
+                    console.error('❌ Error parsing promos:', e);
+                    promos = [];
+                }
+                hasUnsavedPromos = false;
+            } else {
+                promos = [];
+                hasUnsavedPromos = false;
+            }
+        } else if (tampilanData.promo) {
+            const oldPromo = tampilanData.promo;
+            promos = [{
+                id: Date.now(),
+                title: oldPromo.title || 'Promo',
+                banner: oldPromo.banner || '',
+                description: oldPromo.description || '',
+                end_date: oldPromo.end_date || '',
+                end_time: oldPromo.end_time || '',
+                never_end: oldPromo.never_end || false,
+                notes: oldPromo.notes || '',
+                active: oldPromo.active !== false
             }];
-        hasUnsavedPromos = true;
-      } else {
-        promos = [];
-        hasUnsavedPromos = false;
-      }
-    
-      console.log('📦 Processed promos:', promos);
-      renderPromos();
-    
-      // Update colors
-      if (tampilanData.colors) {
-        const colors = tampilanData.colors;
-    
-        if (elements.primaryColor) {
-          elements.primaryColor.value = colors.primary || '#40a7e3';
-          elements.primaryColorHex.value = colors.primary || '#40a7e3';
+            hasUnsavedPromos = true;
+        } else {
+            promos = [];
+            hasUnsavedPromos = false;
         }
-        if (elements.secondaryColor) {
-          elements.secondaryColor.value = colors.secondary || '#FFD700';
-          elements.secondaryColorHex.value = colors.secondary || '#FFD700';
+        
+        console.log('📦 Processed promos:', promos);
+        renderPromos();
+        
+        // Update colors
+        if (tampilanData.colors) {
+            const colors = tampilanData.colors;
+        
+            if (elements.primaryColor) {
+                elements.primaryColor.value = colors.primary || '#40a7e3';
+                elements.primaryColorHex.value = colors.primary || '#40a7e3';
+            }
+            if (elements.secondaryColor) {
+                elements.secondaryColor.value = colors.secondary || '#FFD700';
+                elements.secondaryColorHex.value = colors.secondary || '#FFD700';
+            }
+            if (elements.bgColor) {
+                elements.bgColor.value = colors.background || '#0f0f0f';
+                elements.bgColorHex.value = colors.background || '#0f0f0f';
+            }
+            if (elements.textColor) {
+                elements.textColor.value = colors.text || '#ffffff';
+                elements.textColorHex.value = colors.text || '#ffffff';
+            }
+            if (elements.cardColor) {
+                elements.cardColor.value = colors.card || '#1a1a1a';
+                elements.cardColorHex.value = colors.card || '#1a1a1a';
+            }
+            if (elements.accentColor) {
+                elements.accentColor.value = colors.accent || '#10b981';
+                elements.accentColorHex.value = colors.accent || '#10b981';
+            }
         }
-        if (elements.bgColor) {
-          elements.bgColor.value = colors.background || '#0f0f0f';
-          elements.bgColorHex.value = colors.background || '#0f0f0f';
+        
+        // Update font
+        if (tampilanData.font_family && elements.fontFamily) {
+            elements.fontFamily.value = tampilanData.font_family;
         }
-        if (elements.textColor) {
-          elements.textColor.value = colors.text || '#ffffff';
-          elements.textColorHex.value = colors.text || '#ffffff';
+        if (tampilanData.font_size && elements.fontSize) {
+            elements.fontSize.value = tampilanData.font_size;
         }
-        if (elements.cardColor) {
-          elements.cardColor.value = colors.card || '#1a1a1a';
-          elements.cardColorHex.value = colors.card || '#1a1a1a';
-        }
-        if (elements.accentColor) {
-          elements.accentColor.value = colors.accent || '#10b981';
-          elements.accentColorHex.value = colors.accent || '#10b981';
-        }
-      }
-    
-      // Update font
-      if (tampilanData.font_family && elements.fontFamily) {
-        elements.fontFamily.value = tampilanData.font_family;
-      }
-      if (tampilanData.font_size && elements.fontSize) {
-        elements.fontSize.value = tampilanData.font_size;
-      }
     }
 
-    // ==================== BANNER FUNCTIONS (existing) ====================
+    // ==================== BANNER FUNCTIONS ====================
     async function validateImageSize(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -842,7 +867,7 @@
         });
     }
 
-    // ==================== PROMO FUNCTIONS (NEW) ====================
+    // ==================== PROMO FUNCTIONS ====================
     async function validatePromoBanner(url) {
         if (!url || url.trim() === '') {
             if (elements.promoBannerValidation) {
@@ -865,7 +890,6 @@
                 elements.promoBannerValidation.className = 'banner-validation-message success';
             }
             
-            // Update preview
             if (elements.promoBannerImageSmall) {
                 elements.promoBannerImageSmall.src = url;
             }
@@ -882,7 +906,6 @@
 
     function openPromoModal(promo = null) {
         if (promo) {
-            // Edit mode
             elements.promoModalTitle.textContent = 'Edit Promosi';
             elements.promoId.value = promo.id || '';
             elements.promoTitle.value = promo.title || '';
@@ -894,7 +917,6 @@
             elements.promoNotes.value = promo.notes || '';
             elements.promoActive.checked = promo.active !== false;
             
-            // Update preview
             if (promo.banner) {
                 elements.promoBannerImageSmall.src = promo.banner;
                 validatePromoBanner(promo.banner);
@@ -904,7 +926,6 @@
             
             currentPromoId = promo.id;
         } else {
-            // Add mode
             elements.promoModalTitle.textContent = 'Tambah Promosi';
             elements.promoForm.reset();
             elements.promoId.value = '';
@@ -922,13 +943,11 @@
             currentPromoId = null;
         }
         
-        // Setup never end toggle
         updatePromoDateFields();
         
         elements.promoModal.classList.add('active');
         vibrate(10);
         
-        // Focus on title
         setTimeout(() => {
             elements.promoTitle.focus();
         }, 300);
@@ -962,7 +981,6 @@
         const notes = elements.promoNotes.value.trim();
         const active = elements.promoActive.checked;
         
-        // Validasi
         if (!title) {
             showToast('Judul promosi wajib diisi', 'warning');
             elements.promoTitle.focus();
@@ -975,7 +993,6 @@
             return;
         }
         
-        // Validasi ukuran banner
         const isValid = await validatePromoBanner(banner);
         if (!isValid) {
             showToast('Banner tidak valid. Periksa URL dan ukuran gambar (harus 1280x760)', 'error');
@@ -1001,13 +1018,11 @@
         };
         
         if (currentPromoId) {
-            // Update existing
             const index = promos.findIndex(p => p.id == currentPromoId);
             if (index !== -1) {
                 promos[index] = promoData;
             }
         } else {
-            // Add new
             promos.push(promoData);
         }
         
@@ -1120,56 +1135,257 @@
     }
 
     async function saveAllPromos() {
-      if (!currentWebsite) {
-        showToast('Website tidak ditemukan', 'error');
-        return;
-      }
-    
-      if (promos.length === 0) {
-        showToast('Belum ada promosi untuk disimpan', 'warning');
-        return;
-      }
-    
-      showLoading(true);
-    
-      try {
-        // Pastikan data promo bersih sebelum dikirim
-        const cleanPromos = promos.map(promo => ({
-          id: promo.id,
-          title: promo.title,
-          banner: promo.banner,
-          description: promo.description || '',
-          end_date: promo.end_date || null,
-          end_time: promo.end_time || null,
-          never_end: promo.never_end || false,
-          notes: promo.notes || '',
-          active: promo.active !== false
-        }));
-    
-        console.log('📤 Saving promos:', cleanPromos);
-    
-        // Save all promos to server
-        const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
-          method: 'POST',
-          body: JSON.stringify({ promos: cleanPromos })
-        });
-    
-        console.log('📥 Save response:', response);
-    
-        if (response.success) {
-          showToast(`✅ ${promos.length} promosi disimpan!`, 'success');
-          hasUnsavedPromos = false;
-          // Reload data dari server untuk memastikan konsistensi
-          await loadTampilanData();
-        } else {
-          throw new Error(response.error || 'Gagal menyimpan promosi');
+        if (!currentWebsite) {
+            showToast('Website tidak ditemukan', 'error');
+            return;
         }
-      } catch (error) {
-        console.error('❌ Error saving promos:', error);
-        showToast(error.message, 'error');
-      } finally {
-        showLoading(false);
-      }
+        
+        if (promos.length === 0) {
+            showToast('Belum ada promosi untuk disimpan', 'warning');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const cleanPromos = promos.map(promo => ({
+                id: promo.id,
+                title: promo.title,
+                banner: promo.banner,
+                description: promo.description || '',
+                end_date: promo.end_date || null,
+                end_time: promo.end_time || null,
+                never_end: promo.never_end || false,
+                notes: promo.notes || '',
+                active: promo.active !== false
+            }));
+        
+            console.log('📤 Saving promos:', cleanPromos);
+        
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
+                method: 'POST',
+                body: JSON.stringify({ promos: cleanPromos })
+            });
+        
+            console.log('📥 Save response:', response);
+        
+            if (response.success) {
+                showToast(`✅ ${promos.length} promosi disimpan!`, 'success');
+                hasUnsavedPromos = false;
+                await loadTampilanData();
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan promosi');
+            }
+        } catch (error) {
+            console.error('❌ Error saving promos:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ==================== FONT & ANIMATION FUNCTIONS ====================
+    function renderFontGrid() {
+        if (!elements.fontGrid) return;
+        if (!window.FontAnimations) {
+            console.warn('FontAnimations not loaded');
+            return;
+        }
+        
+        const allFonts = window.FontAnimations.getAllFonts();
+        let html = '';
+        
+        allFonts.forEach(font => {
+            const isSelected = (font.name === selectedFont);
+            html += window.FontAnimations.renderFontCard(font, isSelected);
+        });
+        
+        elements.fontGrid.innerHTML = html;
+        
+        document.querySelectorAll('.font-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const fontName = card.dataset.font;
+                const fontFamily = card.dataset.family;
+                const fontUrl = card.dataset.url;
+                
+                selectedFont = fontName;
+                
+                if (fontUrl) {
+                    window.FontAnimations.loadFont(fontName, fontUrl);
+                }
+                
+                renderFontGrid();
+                updateAnimationPreview();
+                
+                const previewText = elements.animPreviewText;
+                if (previewText) {
+                    previewText.style.fontFamily = fontFamily;
+                }
+                
+                vibrate(10);
+            });
+        });
+    }
+    
+    function renderAnimationGrid() {
+        if (!elements.animationGrid) return;
+        if (!window.ANIMATION_DATA) {
+            console.warn('ANIMATION_DATA not loaded');
+            return;
+        }
+        
+        const animations = window.ANIMATION_DATA.animations;
+        const previewText = storeDisplayName || 'Toko Online';
+        let html = '';
+        
+        animations.forEach(anim => {
+            const isSelected = (anim.id === selectedAnimation);
+            html += window.FontAnimations.renderAnimationCard(anim, isSelected, previewText);
+        });
+        
+        elements.animationGrid.innerHTML = html;
+        
+        animations.forEach(anim => {
+            if (anim.css && anim.id !== 'none') {
+                if (!document.getElementById(`anim-style-${anim.id}`)) {
+                    const style = document.createElement('style');
+                    style.id = `anim-style-${anim.id}`;
+                    style.textContent = anim.css;
+                    document.head.appendChild(style);
+                }
+            }
+        });
+        
+        document.querySelectorAll('.animation-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const animId = card.dataset.animation;
+                selectedAnimation = animId;
+                
+                renderAnimationGrid();
+                updateAnimationPreview();
+                
+                vibrate(10);
+            });
+        });
+    }
+    
+    function renderAnimationControls() {
+        if (!elements.animationControlsContainer) return;
+        if (!window.FontAnimations) return;
+        
+        elements.animationControlsContainer.innerHTML = window.FontAnimations.renderAnimationControls(animationSettings);
+        
+        const durationSelect = document.getElementById('animDuration');
+        const delaySelect = document.getElementById('animDelay');
+        const iterationSelect = document.getElementById('animIteration');
+        
+        if (durationSelect) {
+            durationSelect.addEventListener('change', (e) => {
+                animationSettings.duration = parseFloat(e.target.value);
+                updateAnimationPreview();
+            });
+        }
+        
+        if (delaySelect) {
+            delaySelect.addEventListener('change', (e) => {
+                animationSettings.delay = parseFloat(e.target.value);
+                updateAnimationPreview();
+            });
+        }
+        
+        if (iterationSelect) {
+            iterationSelect.addEventListener('change', (e) => {
+                animationSettings.iteration = e.target.value;
+                updateAnimationPreview();
+            });
+        }
+    }
+    
+    function updateAnimationPreview() {
+        const previewElement = elements.animPreviewText;
+        if (!previewElement) return;
+        
+        const selectedFontCard = document.querySelector(`.font-card[data-font="${selectedFont}"]`);
+        if (selectedFontCard) {
+            previewElement.style.fontFamily = selectedFontCard.dataset.family;
+        }
+        
+        if (selectedAnimation === 'none') {
+            previewElement.style.animation = 'none';
+        } else {
+            const animName = selectedAnimation.replace('Anim', '');
+            const duration = animationSettings.duration;
+            const delay = animationSettings.delay;
+            const iteration = animationSettings.iteration;
+            
+            previewElement.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+        }
+    }
+    
+    async function saveFontAnimSettings() {
+        if (!currentWebsite) return;
+        
+        const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
+        
+        const data = {
+            store_display_name: storeName,
+            font_family: selectedFont,
+            animation: selectedAnimation,
+            animation_duration: animationSettings.duration,
+            animation_delay: animationSettings.delay,
+            animation_iteration: animationSettings.iteration
+        };
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-anim`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            
+            if (response.success) {
+                showToast('✅ Pengaturan font & animasi disimpan!', 'success');
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan');
+            }
+        } catch (error) {
+            console.error('❌ Error saving font anim:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    function loadFontAnimSettings() {
+        if (!tampilanData) return;
+        
+        if (tampilanData.store_display_name) {
+            storeDisplayName = tampilanData.store_display_name;
+            if (elements.storeDisplayNameInput) {
+                elements.storeDisplayNameInput.value = storeDisplayName;
+            }
+        }
+        
+        if (tampilanData.font_family) {
+            selectedFont = tampilanData.font_family;
+        }
+        
+        if (tampilanData.animation) {
+            selectedAnimation = tampilanData.animation;
+        }
+        
+        if (tampilanData.animation_duration) {
+            animationSettings.duration = tampilanData.animation_duration;
+        }
+        
+        if (tampilanData.animation_delay) {
+            animationSettings.delay = tampilanData.animation_delay;
+        }
+        
+        if (tampilanData.animation_iteration) {
+            animationSettings.iteration = tampilanData.animation_iteration;
+        }
     }
 
     // ==================== SAVE FUNCTIONS ====================
@@ -1288,10 +1504,7 @@
     }
 
     async function saveFont() {
-        if (!currentWebsite) {
-            showToast('Website tidak ditemukan', 'error');
-            return;
-        }
+        if (!currentWebsite) return;
         
         const fontData = {
             family: elements.fontFamily?.value || 'Inter',
@@ -1299,13 +1512,11 @@
         };
         
         showLoading(true);
-        
         try {
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font`, {
                 method: 'POST',
                 body: JSON.stringify(fontData)
             });
-            
             if (response.success) {
                 showToast('✅ Font disimpan!', 'success');
                 await loadTampilanData();
@@ -1313,7 +1524,6 @@
                 throw new Error(response.error || 'Gagal menyimpan font');
             }
         } catch (error) {
-            console.error('❌ Error saving font:', error);
             showToast(error.message, 'error');
         } finally {
             showLoading(false);
@@ -1326,7 +1536,8 @@
             saveBanners(),
             saveAllPromos(),
             saveColors(),
-            saveFont()
+            saveFont(),
+            saveFontAnimSettings()
         ]);
         showToast('✅ Semua pengaturan telah disimpan!', 'success');
     }
@@ -1405,19 +1616,18 @@
 
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        // Di tampilan.js, sosial.js, pembayaran.js
+        // Back to panel
         if (elements.backToPanel) {
-          elements.backToPanel.addEventListener('click', (e) => {
-            e.preventDefault();
-
-            // Simpan bahwa kita kembali dari halaman settings
-            try {
-              sessionStorage.setItem('panel_current_page', 'settings');
-              sessionStorage.setItem('panel_return_from', 'settings');
-            } catch (e) {}
-
-            window.location.href = '/wtb/html/panel.html';
-          });
+            elements.backToPanel.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                try {
+                    sessionStorage.setItem('panel_current_page', 'settings');
+                    sessionStorage.setItem('panel_return_from', 'settings');
+                } catch (e) {}
+                
+                window.location.href = '/wtb/html/panel.html';
+            });
         }
         
         // Tabs
@@ -1496,7 +1706,7 @@
             elements.saveBannersBtn.addEventListener('click', saveBanners);
         }
         
-        // Promo (NEW)
+        // Promo
         if (elements.addPromoBtn) {
             elements.addPromoBtn.addEventListener('click', () => openPromoModal());
         }
@@ -1518,7 +1728,7 @@
             elements.cancelPromoBtn.addEventListener('click', closePromoModal);
         }
         
-        // Promo banner URL validation on input
+        // Promo banner URL validation
         if (elements.promoBannerUrl) {
             let bannerTimeout;
             elements.promoBannerUrl.addEventListener('input', () => {
@@ -1555,6 +1765,22 @@
         // Font
         if (elements.saveFontBtn) {
             elements.saveFontBtn.addEventListener('click', saveFont);
+        }
+        
+        // Font & Animation
+        if (elements.saveFontAnimBtn) {
+            elements.saveFontAnimBtn.addEventListener('click', saveFontAnimSettings);
+        }
+        
+        // Store display name input - update preview实时
+        if (elements.storeDisplayNameInput) {
+            elements.storeDisplayNameInput.addEventListener('input', (e) => {
+                storeDisplayName = e.target.value || 'Toko Online';
+                if (elements.animPreviewText) {
+                    elements.animPreviewText.textContent = storeDisplayName;
+                }
+                updateAnimationPreview();
+            });
         }
         
         // Save All
@@ -1646,7 +1872,7 @@
         deleteBanner: (index) => deleteBanner(index),
         moveBanner: (index, direction) => moveBanner(index, direction),
         
-        // Promo functions (NEW)
+        // Promo functions
         editPromo: (id) => {
             const promo = promos.find(p => p.id == id);
             if (promo) openPromoModal(promo);
