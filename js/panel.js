@@ -1,85 +1,175 @@
-// pembayaran.js - Pengaturan Pembayaran Website
+// panel.js - Panel Dashboard untuk User Website
 (function() {
     'use strict';
     
-    console.log('💳 Payment Manager - Initializing...');
+    console.log('📊 Panel Dashboard - Initializing...');
 
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
     const MAX_RETRIES = 3;
+    
+    // KEY untuk session storage
+    const SESSION_KEYS = {
+        CURRENT_PAGE: 'panel_current_page',
+        WEBSITE_ENDPOINT: 'panel_website_endpoint',
+        LAST_VISIT: 'panel_last_visit'
+    };
 
     // ==================== STATE ====================
-    let currentWebsite = null;
-    let rekeningList = [];
-    let gatewayList = [];
-    let currentRekeningId = null;
-    let currentGatewayId = null;
-    let deleteTarget = null;
+    let currentUser = null;
+    let userWebsites = [];
+    let allProducts = [];
+    let allOrders = [];
+    let allCustomers = [];
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
         toastContainer: document.getElementById('toastContainer'),
         websiteBadge: document.getElementById('websiteBadge'),
-        backToPanel: document.getElementById('backToPanel'),
         
-        // Tabs
-        tabButtons: document.querySelectorAll('.tab-btn'),
-        tabContents: document.querySelectorAll('.tab-content'),
+        // Header
+        menuToggle: document.getElementById('menuToggle'),
+        refreshBtn: document.getElementById('refreshBtn'),
+        userProfile: document.getElementById('userProfile'),
+        userAvatar: document.getElementById('userAvatar'),
         
-        // Rekening
-        rekeningContainer: document.getElementById('rekeningContainer'),
-        emptyRekening: document.getElementById('emptyRekening'),
-        addRekeningBtn: document.getElementById('addRekeningBtn'),
-        emptyAddRekeningBtn: document.getElementById('emptyAddRekeningBtn'),
+        // Sidebar
+        sidebar: document.getElementById('sidebar'),
+        sidebarClose: document.getElementById('sidebarClose'),
+        sidebarName: document.getElementById('sidebarName'),
+        sidebarUsername: document.getElementById('sidebarUsername'),
+        sidebarAvatar: document.getElementById('sidebarAvatar'),
+        sidebarTotalWebsites: document.getElementById('sidebarTotalWebsites'),
+        sidebarTotalProducts: document.getElementById('sidebarTotalProducts'),
+        menuWebsitesBadge: document.getElementById('menuWebsitesBadge'),
+        menuOrdersBadge: document.getElementById('menuOrdersBadge'),
+        logoutBtn: document.getElementById('logoutBtn'),
         
-        // Gateway
-        gatewayContainer: document.getElementById('gatewayContainer'),
-        emptyGateway: document.getElementById('emptyGateway'),
-        addGatewayBtn: document.getElementById('addGatewayBtn'),
-        emptyAddGatewayBtn: document.getElementById('emptyAddGatewayBtn'),
+        // Navigation
+        menuItems: document.querySelectorAll('.menu-item'),
+        pages: document.querySelectorAll('.page'),
         
-        // Rekening Modal
-        rekeningModal: document.getElementById('rekeningModal'),
-        rekeningModalTitle: document.getElementById('rekeningModalTitle'),
-        rekeningForm: document.getElementById('rekeningForm'),
-        rekeningId: document.getElementById('rekeningId'),
-        rekeningLogo: document.getElementById('rekeningLogo'),
-        rekeningLogoImage: document.getElementById('rekeningLogoImage'),
-        rekeningLogoValidation: document.getElementById('rekeningLogoValidation'),
-        rekeningNama: document.getElementById('rekeningNama'),
-        rekeningNomor: document.getElementById('rekeningNomor'),
-        rekeningPemilik: document.getElementById('rekeningPemilik'),
-        rekeningDeskripsi: document.getElementById('rekeningDeskripsi'),
-        rekeningActive: document.getElementById('rekeningActive'),
-        closeRekeningModal: document.getElementById('closeRekeningModal'),
-        cancelRekeningBtn: document.getElementById('cancelRekeningBtn'),
+        // Dashboard Stats
+        statTotalWebsites: document.getElementById('statTotalWebsites'),
+        statTotalProducts: document.getElementById('statTotalProducts'),
+        statTotalOrders: document.getElementById('statTotalOrders'),
+        statTotalRevenue: document.getElementById('statTotalRevenue'),
+        statTotalCustomers: document.getElementById('statTotalCustomers'),
+        statActiveWebsites: document.getElementById('statActiveWebsites'),
         
-        // Gateway Modal
-        gatewayModal: document.getElementById('gatewayModal'),
-        gatewayModalTitle: document.getElementById('gatewayModalTitle'),
-        gatewayForm: document.getElementById('gatewayForm'),
-        gatewayId: document.getElementById('gatewayId'),
-        gatewayNama: document.getElementById('gatewayNama'),
-        gatewayLicenseKey: document.getElementById('gatewayLicenseKey'),
-        gatewayWebhookSecret: document.getElementById('gatewayWebhookSecret'),
-        gatewayQrisId: document.getElementById('gatewayQrisId'),
-        gatewayExpired: document.getElementById('gatewayExpired'),
-        gatewayWarna: document.getElementById('gatewayWarna'),
-        gatewayWarnaHex: document.getElementById('gatewayWarnaHex'),
-        gatewayUkuran: document.getElementById('gatewayUkuran'),
-        gatewayActive: document.getElementById('gatewayActive'),
-        closeGatewayModal: document.getElementById('closeGatewayModal'),
-        cancelGatewayBtn: document.getElementById('cancelGatewayBtn'),
+        // Quick Actions
+        quickActions: document.getElementById('quickActions'),
         
-        // Delete Modal
-        deleteModal: document.getElementById('deleteModal'),
-        deleteMessage: document.getElementById('deleteMessage'),
-        deleteInfo: document.getElementById('deleteInfo'),
-        closeDeleteModal: document.getElementById('closeDeleteModal'),
-        cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-        confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
+        // Recent Orders
+        recentOrders: document.getElementById('recentOrders'),
+        
+        // Top Products
+        topProducts: document.getElementById('topProducts'),
+        
+        // Websites
+        websitesGrid: document.getElementById('websitesGrid'),
+        websitesEmptyState: document.getElementById('websitesEmptyState'),
+        createWebsiteBtn: document.getElementById('createWebsiteBtn'),
+        
+        // Products
+        productWebsiteSelector: document.getElementById('productWebsiteSelector'),
+        manageProductsBtn: document.getElementById('manageProductsBtn'),
+        productsSummary: document.getElementById('productsSummary'),
+        
+        // Orders
+        orderStatusFilter: document.getElementById('orderStatusFilter'),
+        ordersTableBody: document.getElementById('ordersTableBody'),
+        ordersEmptyState: document.getElementById('ordersEmptyState'),
+        
+        // Transactions
+        transactionPeriod: document.getElementById('transactionPeriod'),
+        transactionTotal: document.getElementById('transactionTotal'),
+        transactionCount: document.getElementById('transactionCount'),
+        transactionAverage: document.getElementById('transactionAverage'),
+        transactionsList: document.getElementById('transactionsList'),
+        
+        // Customers
+        customerSearch: document.getElementById('customerSearch'),
+        customersGrid: document.getElementById('customersGrid'),
+        
+        // Settings Links
+        appearanceSettings: document.getElementById('appearanceSettings'),
+        socialSettings: document.getElementById('socialSettings'),
+        paymentSettings: document.getElementById('paymentSettings'),
+        notificationSettings: document.getElementById('notificationSettings'),
+        seoSettings: document.getElementById('seoSettings'),
+        integrationSettings: document.getElementById('integrationSettings')
     };
+
+    // ==================== SESSION STORAGE FUNCTIONS ====================
+    
+    /**
+     * Menyimpan halaman aktif ke session storage
+     * @param {string} pageId - ID halaman (dashboard, websites, products, dll)
+     */
+    function saveCurrentPage(pageId) {
+        try {
+            sessionStorage.setItem(SESSION_KEYS.CURRENT_PAGE, pageId);
+            sessionStorage.setItem(SESSION_KEYS.LAST_VISIT, new Date().toISOString());
+            console.log(`💾 Session saved: current page = ${pageId}`);
+        } catch (e) {
+            console.warn('⚠️ Failed to save session:', e);
+        }
+    }
+
+    /**
+     * Mengambil halaman terakhir dari session storage
+     * @returns {string|null} pageId atau null jika tidak ada
+     */
+    function getLastPage() {
+        try {
+            const page = sessionStorage.getItem(SESSION_KEYS.CURRENT_PAGE);
+            return page || null;
+        } catch (e) {
+            console.warn('⚠️ Failed to load session:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Menyimpan endpoint website yang sedang aktif
+     * @param {string} endpoint - Endpoint website
+     */
+    function saveWebsiteEndpoint(endpoint) {
+        try {
+            sessionStorage.setItem(SESSION_KEYS.WEBSITE_ENDPOINT, endpoint);
+        } catch (e) {
+            console.warn('⚠️ Failed to save website endpoint:', e);
+        }
+    }
+
+    /**
+     * Mengambil endpoint website terakhir
+     * @returns {string|null} endpoint atau null jika tidak ada
+     */
+    function getLastWebsiteEndpoint() {
+        try {
+            return sessionStorage.getItem(SESSION_KEYS.WEBSITE_ENDPOINT);
+        } catch (e) {
+            console.warn('⚠️ Failed to load website endpoint:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Menghapus semua session (saat logout)
+     */
+    function clearSession() {
+        try {
+            sessionStorage.removeItem(SESSION_KEYS.CURRENT_PAGE);
+            sessionStorage.removeItem(SESSION_KEYS.WEBSITE_ENDPOINT);
+            sessionStorage.removeItem(SESSION_KEYS.LAST_VISIT);
+            console.log('🗑️ Session cleared');
+        } catch (e) {
+            console.warn('⚠️ Failed to clear session:', e);
+        }
+    }
 
     // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
@@ -111,6 +201,11 @@
         }
     }
 
+    function formatRupiah(angka) {
+        if (!angka) return 'Rp 0';
+        return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
     function escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -118,77 +213,32 @@
         return div.innerHTML;
     }
 
-    // ==================== KEYBOARD HANDLER ====================
-    function setupKeyboardHandler() {
-        function scrollToInput(input) {
-            const rect = input.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const keyboardHeight = windowHeight * 0.4;
-            
-            if (rect.bottom > windowHeight - keyboardHeight) {
-                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
-                window.scrollTo({ top: scrollY, behavior: 'smooth' });
-            }
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateString;
         }
-        
-        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
-        
-        modalInputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                setTimeout(() => {
-                    scrollToInput(input);
-                    
-                    const modal = input.closest('.modal');
-                    if (modal) {
-                        modal.classList.add('modal-with-input');
-                        const modalContent = modal.querySelector('.modal-content');
-                        if (modalContent) {
-                            modalContent.style.maxHeight = '70vh';
-                            modalContent.style.overflowY = 'auto';
-                        }
-                    }
-                }, 300);
-            });
-            
-            input.addEventListener('blur', () => {
-                const modal = input.closest('.modal');
-                if (modal) {
-                    modal.classList.remove('modal-with-input');
-                }
-            });
-        });
-        
-        document.addEventListener('touchstart', (e) => {
-            const activeElement = document.activeElement;
-            if (!activeElement) return;
-            
-            const isInput = e.target.tagName === 'INPUT' || 
-                           e.target.tagName === 'TEXTAREA' || 
-                           e.target.tagName === 'SELECT' ||
-                           e.target.closest('.modal-content');
-            
-            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                activeElement.blur();
-            }
-        });
-        
-        let viewportHeight = window.innerHeight;
-        window.addEventListener('resize', () => {
-            const newHeight = window.innerHeight;
-            
-            if (newHeight < viewportHeight * 0.7) {
-                document.body.classList.add('keyboard-visible');
-            } else if (newHeight > viewportHeight * 0.8) {
-                document.body.classList.remove('keyboard-visible');
-            }
-            
-            viewportHeight = newHeight;
-        });
     }
 
-    // ==================== API FUNCTIONS ====================
-    async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+    function generateAvatarUrl(name) {
+        if (!name) return `https://ui-avatars.com/api/?name=U&size=80&background=40a7e3&color=fff`;
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=80&background=40a7e3&color=fff`;
+    }
+
+    async function fetchWithRetry(url, options, retries = 2) {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
             const response = await fetch(url, {
                 ...options,
                 mode: 'cors',
@@ -196,17 +246,28 @@
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                     ...options.headers
-                }
+                },
+                signal: controller.signal
             });
             
+            clearTimeout(timeoutId);
+            
             if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('Not Found', { cause: '404' });
+                }
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.error || `HTTP error ${response.status}`);
             }
             
             return await response.json();
         } catch (error) {
+            if (error.cause === '404' || error.name === 'AbortError') {
+                throw error;
+            }
+            
             if (retries > 0) {
+                console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 return fetchWithRetry(url, options, retries - 1);
             }
@@ -214,615 +275,733 @@
         }
     }
 
-    // ==================== FUNGSI LOAD WEBSITE ====================
-    async function loadWebsite() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const endpoint = urlParams.get('website');
-    
-      if (!endpoint) {
-        showToast('Website tidak ditemukan', 'error');
-        setTimeout(() => {
-          window.location.href = '/wtb/html/panel.html';
-        }, 2000);
-        return null;
-      }
-    
-      try {
-        const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
-          method: 'GET'
-        });
-    
-        if (data.success && data.website) {
-          if (elements.websiteBadge) {
-            elements.websiteBadge.textContent = '/' + data.website.endpoint;
-          }
-          return data.website;
+    async function loadUserData() {
+        let userId = null;
+        let userData = null;
+        
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+            userData = window.Telegram.WebApp.initDataUnsafe.user;
+            userId = userData.id;
+            
+            localStorage.setItem('panel_user', JSON.stringify({
+                id: userId,
+                first_name: userData.first_name,
+                last_name: userData.last_name,
+                username: userData.username,
+                photo_url: userData.photo_url
+            }));
         } else {
-          throw new Error('Website not found');
+            const savedUser = localStorage.getItem('panel_user');
+            if (savedUser) {
+                userData = JSON.parse(savedUser);
+                userId = userData.id;
+            } else {
+                userData = {
+                    id: 123456789,
+                    first_name: 'User',
+                    last_name: '',
+                    username: 'user'
+                };
+                userId = userData.id;
+            }
         }
-      } catch (error) {
-        console.error('❌ Error loading website:', error);
-        showToast('Gagal memuat data website', 'error');
-        return null;
-      }
-    }
-    
-    // ==================== FUNGSI NAVIGASI ====================
-    function goBackToPanel() {
-      // Simpan halaman settings ke session storage
-      try {
-        sessionStorage.setItem('panel_current_page', 'settings');
-      } catch (e) {
-        console.warn('Failed to save session', e);
-      }
-    
-      // Redirect ke panel
-      window.location.href = '/wtb/html/panel.html';
+        
+        currentUser = userData;
+        
+        const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'User';
+        const username = userData.username ? `@${userData.username}` : '@user';
+        
+        if (elements.sidebarName) elements.sidebarName.textContent = fullName;
+        if (elements.sidebarUsername) elements.sidebarUsername.textContent = username;
+        
+        const avatarUrl = userData.photo_url || generateAvatarUrl(fullName);
+        
+        if (elements.userAvatar) elements.userAvatar.src = avatarUrl;
+        if (elements.sidebarAvatar) {
+            const img = elements.sidebarAvatar.querySelector('img');
+            if (img) img.src = avatarUrl;
+        }
+        
+        return userId;
     }
 
-    async function loadRekening() {
-        if (!currentWebsite) return;
-        
+    async function loadUserWebsites(userId) {
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
+            showLoading(true);
+            
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/websites`, {
                 method: 'GET'
             });
             
-            if (response.success) {
-                rekeningList = response.rekening || [];
-                renderRekening();
-            } else {
-                rekeningList = [];
-                renderRekening();
-            }
-        } catch (error) {
-            console.error('❌ Error loading rekening:', error);
-            rekeningList = [];
-            renderRekening();
-        }
-    }
-
-    async function loadGateway() {
-        if (!currentWebsite) return;
-        
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${currentWebsite.id}`, {
-                method: 'GET'
-            });
-            
-            if (response.success) {
-                gatewayList = response.gateway || [];
-                renderGateway();
-            } else {
-                gatewayList = [];
-                renderGateway();
-            }
-        } catch (error) {
-            console.error('❌ Error loading gateway:', error);
-            gatewayList = [];
-            renderGateway();
-        }
-    }
-
-    // ==================== VALIDASI GAMBAR ====================
-    async function validateImageSize(url, requiredWidth = 420, requiredHeight = 420) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-            
-            img.onload = () => {
-                const width = img.naturalWidth;
-                const height = img.naturalHeight;
+            if (response.success && response.websites) {
+                userWebsites = response.websites.filter(w => w.owner_id === userId);
                 
-                console.log(`📏 Image dimensions: ${width}x${height}`);
-                
-                if (width === requiredWidth && height === requiredHeight) {
-                    resolve({ valid: true, width, height });
-                } else {
-                    reject({ 
-                        valid: false, 
-                        width, 
-                        height,
-                        message: `Ukuran gambar harus ${requiredWidth}x${requiredHeight} pixel (saat ini ${width}x${height})`
-                    });
+                if (elements.menuWebsitesBadge) {
+                    elements.menuWebsitesBadge.textContent = userWebsites.length;
                 }
-            };
-            
-            img.onerror = () => {
-                reject({ 
-                    valid: false, 
-                    message: 'Gagal memuat gambar. Periksa URL dan pastikan gambar dapat diakses.'
-                });
-            };
-            
-            img.src = url;
-        });
+                if (elements.sidebarTotalWebsites) {
+                    elements.sidebarTotalWebsites.textContent = userWebsites.length;
+                }
+                
+                const activeCount = userWebsites.filter(w => w.status === 'active').length;
+                if (elements.statActiveWebsites) {
+                    elements.statActiveWebsites.textContent = activeCount;
+                }
+                
+                // Simpan endpoint website pertama ke session jika ada
+                if (userWebsites.length > 0) {
+                    saveWebsiteEndpoint(userWebsites[0].endpoint);
+                }
+                
+                return userWebsites;
+            } else {
+                userWebsites = [];
+                return [];
+            }
+        } catch (error) {
+            console.error('❌ Error loading websites:', error);
+            showToast('Gagal memuat data website', 'error');
+            userWebsites = [];
+            return [];
+        } finally {
+            showLoading(false);
+        }
     }
 
-    // ==================== RENDER FUNCTIONS ====================
-    function renderRekening() {
-        if (!elements.rekeningContainer || !elements.emptyRekening) return;
+    async function loadProductsAndOrders() {
+        if (!userWebsites || userWebsites.length === 0) return;
         
-        if (rekeningList.length === 0) {
-            elements.rekeningContainer.innerHTML = '';
-            elements.emptyRekening.style.display = 'block';
+        showLoading(true);
+        
+        try {
+            let totalProducts = 0;
+            let totalOrders = 0;
+            let totalRevenue = 0;
+            let allOrdersList = [];
+            let allProductsList = [];
+            let customersSet = new Map();
+            
+            const batchSize = 2;
+            for (let i = 0; i < userWebsites.length; i += batchSize) {
+                const batch = userWebsites.slice(i, i + batchSize);
+                
+                await Promise.all(batch.map(async (website) => {
+                    try {
+                        console.log(`📦 Loading products for website ${website.id}...`);
+                        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+                            method: 'GET'
+                        }).catch(err => {
+                            console.log(`⚠️ No products for website ${website.id}:`, err.message);
+                            return { success: false, data: [] };
+                        });
+                        
+                        if (productsResponse.success && productsResponse.data) {
+                            totalProducts += productsResponse.data.length || 0;
+                            
+                            productsResponse.data.forEach(layanan => {
+                                if (layanan.aplikasi) {
+                                    layanan.aplikasi.forEach(aplikasi => {
+                                        if (aplikasi.items) {
+                                            aplikasi.items.forEach(item => {
+                                                allProductsList.push({
+                                                    ...item,
+                                                    website_name: website.endpoint,
+                                                    layanan_nama: layanan.layanan_nama,
+                                                    aplikasi_nama: aplikasi.aplikasi_nama
+                                                });
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                        
+                        console.log(`📦 Loading orders for website ${website.id}...`);
+                        try {
+                            const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
+                                method: 'GET'
+                            });
+                            
+                            if (ordersResponse.success && ordersResponse.orders) {
+                                totalOrders += ordersResponse.orders.length;
+                                
+                                ordersResponse.orders.forEach(order => {
+                                    totalRevenue += order.total || 0;
+                                    allOrdersList.push({
+                                        ...order,
+                                        website_endpoint: website.endpoint
+                                    });
+                                    
+                                    if (order.customer_id && !customersSet.has(order.customer_id)) {
+                                        customersSet.set(order.customer_id, {
+                                            id: order.customer_id,
+                                            name: order.customer_name || 'Customer',
+                                            orders: 1,
+                                            total_spent: order.total || 0
+                                        });
+                                    } else if (order.customer_id) {
+                                        const customer = customersSet.get(order.customer_id);
+                                        customer.orders += 1;
+                                        customer.total_spent += order.total || 0;
+                                    }
+                                });
+                            }
+                        } catch (orderError) {
+                            console.log(`ℹ️ Orders endpoint not available for website ${website.id} (coming soon)`);
+                        }
+                        
+                    } catch (websiteError) {
+                        console.error(`❌ Error loading data for website:`, website.endpoint, websiteError);
+                    }
+                }));
+                
+                if (i + batchSize < userWebsites.length) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+            
+            allProducts = allProductsList;
+            allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            allCustomers = Array.from(customersSet.values());
+            
+            if (elements.statTotalWebsites) {
+                elements.statTotalWebsites.textContent = userWebsites.length;
+            }
+            if (elements.statTotalProducts) {
+                elements.statTotalProducts.textContent = totalProducts;
+            }
+            if (elements.sidebarTotalProducts) {
+                elements.sidebarTotalProducts.textContent = totalProducts;
+            }
+            if (elements.statTotalOrders) {
+                elements.statTotalOrders.textContent = totalOrders;
+            }
+            if (elements.statTotalRevenue) {
+                elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
+            }
+            if (elements.statTotalCustomers) {
+                elements.statTotalCustomers.textContent = allCustomers.length;
+            }
+            if (elements.menuOrdersBadge) {
+                elements.menuOrdersBadge.textContent = totalOrders;
+            }
+            
+            renderQuickActions();
+            renderRecentOrders();
+            renderTopProducts();
+            renderWebsitesGrid();
+            renderProductSelector();
+            renderOrdersTable();
+            renderTransactions(totalRevenue, allOrdersList.length);
+            renderCustomersGrid();
+            
+        } catch (error) {
+            console.error('❌ Error loading products and orders:', error);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function renderQuickActions() {
+        if (!elements.quickActions) return;
+        
+        let html = '';
+        
+        if (userWebsites.length > 0) {
+            userWebsites.slice(0, 4).forEach(website => {
+                html += `
+                    <a href="/wtb/html/produk.html?website=${website.endpoint}" class="quick-action-card">
+                        <i class="fas fa-box"></i>
+                        <span>Kelola Produk</span>
+                        <small>/${website.endpoint}</small>
+                    </a>
+                    <a href="/wtb/html/tampilan.html?website=${website.endpoint}" class="quick-action-card">
+                        <i class="fas fa-paint-brush"></i>
+                        <span>Atur Tampilan</span>
+                        <small>/${website.endpoint}</small>
+                    </a>
+                `;
+            });
+        } else {
+            html = `
+                <a href="/wtb/html/format.html" class="quick-action-card">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Buat Website Baru</span>
+                </a>
+            `;
+        }
+        
+        elements.quickActions.innerHTML = html;
+    }
+
+    function renderRecentOrders() {
+        if (!elements.recentOrders) return;
+        
+        if (allOrders.length === 0) {
+            elements.recentOrders.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <i class="fas fa-shopping-cart"></i>
+                    <p>Belum ada pesanan</p>
+                </div>
+            `;
             return;
         }
         
-        elements.emptyRekening.style.display = 'none';
-        
         let html = '';
-        rekeningList.forEach(rek => {
-            const activeClass = rek.active ? 'active' : 'inactive';
-            const activeIcon = rek.active ? 'check-circle' : 'times-circle';
-            const activeText = rek.active ? 'Aktif' : 'Tidak Aktif';
+        const recent = allOrders.slice(0, 5);
+        
+        recent.forEach(order => {
+            const statusClass = `status-${order.status || 'pending'}`;
+            const statusText = order.status || 'Pending';
             
             html += `
-                <div class="payment-card ${!rek.active ? 'inactive' : ''}" data-id="${rek.id}">
-                    <div class="payment-card-header">
-                        <div class="payment-logo">
-                            <img src="${escapeHtml(rek.logo_url)}" 
-                                 alt="${escapeHtml(rek.nama)}"
-                                 onerror="this.src='https://via.placeholder.com/60x60/40a7e3/ffffff?text=${escapeHtml(rek.nama.charAt(0))}';">
-                        </div>
-                        <div class="payment-info">
-                            <div class="payment-nama">${escapeHtml(rek.nama)}</div>
-                            <span class="payment-status ${activeClass}">
-                                <i class="fas fa-${activeIcon}"></i> ${activeText}
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="payment-details">
-                        <div class="detail-row">
-                            <i class="fas fa-hashtag"></i>
-                            <span class="detail-label">Nomor:</span>
-                            <span class="detail-value">${escapeHtml(rek.nomor)}</span>
-                        </div>
-                        <div class="detail-row">
+                <div class="order-item">
+                    <div class="order-info">
+                        <div class="order-avatar">
                             <i class="fas fa-user"></i>
-                            <span class="detail-label">Pemilik:</span>
-                            <span class="detail-value">${escapeHtml(rek.pemilik)}</span>
                         </div>
-                        ${rek.deskripsi ? `
-                            <div class="payment-description">
-                                <i class="fas fa-sticky-note"></i>
-                                ${escapeHtml(rek.deskripsi)}
+                        <div class="order-details">
+                            <h4>${escapeHtml(order.customer_name || 'Customer')}</h4>
+                            <div class="order-meta">
+                                <span><i class="fas fa-tag"></i> ${order.id || 'ORD-' + Math.floor(Math.random() * 1000)}</span>
+                                <span><i class="fas fa-globe"></i> ${order.website_endpoint || '-'}</span>
+                                <span class="order-status ${statusClass}">${statusText}</span>
                             </div>
-                        ` : ''}
+                        </div>
                     </div>
-                    
-                    <div class="payment-actions">
-                        <button class="payment-action-btn edit" onclick="window.pembayaran.editRekening(${rek.id})" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="payment-action-btn delete" onclick="window.pembayaran.deleteRekening(${rek.id})" title="Hapus">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                    <div class="order-amount">${formatRupiah(order.total || 0)}</div>
+                </div>
+            `;
+        });
+        
+        elements.recentOrders.innerHTML = html;
+    }
+
+    function renderTopProducts() {
+        if (!elements.topProducts) return;
+        
+        if (allProducts.length === 0) {
+            elements.topProducts.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <i class="fas fa-box"></i>
+                    <p>Belum ada produk</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const top = allProducts.slice(0, 4);
+        
+        let html = '';
+        top.forEach(product => {
+            html += `
+                <div class="top-product-card">
+                    <div class="product-image">
+                        <img src="${product.item_gambar || 'https://via.placeholder.com/120x120/40a7e3/ffffff?text=Product'}" alt="${escapeHtml(product.item_nama)}" onerror="this.src='https://via.placeholder.com/120x120/40a7e3/ffffff?text=Product';">
+                    </div>
+                    <div class="product-info">
+                        <h4>${escapeHtml(product.item_nama || 'Produk')}</h4>
+                        <div class="product-category">${escapeHtml(product.layanan_nama || '')} / ${escapeHtml(product.aplikasi_nama || '')}</div>
+                        <div class="product-stats">
+                            <span class="product-sold">
+                                <i class="fas fa-shopping-bag"></i> ${product.sold || 0}
+                            </span>
+                            <span class="product-revenue">${formatRupiah(product.item_harga || 0)}</span>
+                        </div>
                     </div>
                 </div>
             `;
         });
         
-        elements.rekeningContainer.innerHTML = html;
+        elements.topProducts.innerHTML = html;
     }
 
-    function renderGateway() {
-        if (!elements.gatewayContainer || !elements.emptyGateway) return;
+    function renderWebsitesGrid() {
+        if (!elements.websitesGrid || !elements.websitesEmptyState) return;
         
-        if (gatewayList.length === 0) {
-            elements.gatewayContainer.innerHTML = '';
-            elements.emptyGateway.style.display = 'block';
+        if (userWebsites.length === 0) {
+            elements.websitesGrid.innerHTML = '';
+            elements.websitesEmptyState.style.display = 'block';
             return;
         }
         
-        elements.emptyGateway.style.display = 'none';
+        elements.websitesEmptyState.style.display = 'none';
         
         let html = '';
-        gatewayList.forEach(gw => {
-            const activeClass = gw.active ? 'active' : 'inactive';
-            const activeIcon = gw.active ? 'check-circle' : 'times-circle';
-            const activeText = gw.active ? 'Aktif' : 'Tidak Aktif';
+        
+        userWebsites.forEach(website => {
+            const status = website.status === 'active' ?
+                '<span class="status-badge status-active">Active</span>' :
+                '<span class="status-badge status-inactive">Inactive</span>';
             
             html += `
-                <div class="payment-card ${!gw.active ? 'inactive' : ''}" data-id="${gw.id}">
-                    <div class="payment-card-header">
-                        <div class="payment-logo">
+                <div class="website-card">
+                    <div class="website-header">
+                        <div class="website-icon">
                             <i class="fas fa-globe"></i>
                         </div>
-                        <div class="payment-info">
-                            <div class="payment-nama">
-                                ${escapeHtml(gw.nama || 'Cashify')}
-                                <span class="gateway-badge">Gateway</span>
+                        <div class="website-info">
+                            <h3>${escapeHtml(website.username || 'Website')}</h3>
+                            <div class="website-endpoint">
+                                <i class="fas fa-link"></i>
+                                <span>/${escapeHtml(website.endpoint)}</span>
                             </div>
-                            <span class="payment-status ${activeClass}">
-                                <i class="fas fa-${activeIcon}"></i> ${activeText}
-                            </span>
                         </div>
                     </div>
                     
-                    <div class="payment-details">
-                        <div class="detail-row">
-                            <i class="fas fa-key"></i>
-                            <span class="detail-label">License:</span>
-                            <span class="detail-value">${escapeHtml(gw.license_key.substring(0, 15))}...</span>
+                    <div class="website-body">
+                        <div class="website-stats">
+                            <div class="website-stat">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">Produk</span>
+                            </div>
+                            <div class="website-stat">
+                                <span class="stat-value">0</span>
+                                <span class="stat-label">Pesanan</span>
+                            </div>
                         </div>
-                        <div class="detail-row">
-                            <i class="fas fa-clock"></i>
-                            <span class="detail-label">Expired:</span>
-                            <span class="detail-value">${gw.expired_menit} menit</span>
+                        
+                        <div class="website-actions">
+                            <a href="/wtb/html/produk.html?website=${website.endpoint}" class="website-btn primary">
+                                <i class="fas fa-box"></i> Produk
+                            </a>
+                            <a href="/wtb/html/tampilan.html?website=${website.endpoint}" class="website-btn secondary">
+                                <i class="fas fa-paint-brush"></i> Tampilan
+                            </a>
                         </div>
-                        <div class="detail-row">
-                            <i class="fas fa-qrcode"></i>
-                            <span class="detail-label">QRIS ID:</span>
-                            <span class="detail-value">${gw.qris_id ? escapeHtml(gw.qris_id) : '-'}</span>
-                        </div>
-                        <div class="detail-row">
-                            <i class="fas fa-palette"></i>
-                            <span class="detail-label">Warna QR:</span>
-                            <span class="detail-value" style="display: flex; align-items: center; gap: 4px;">
-                                <span style="display: inline-block; width: 16px; height: 16px; background: ${gw.warna_qr}; border-radius: 4px;"></span>
-                                ${escapeHtml(gw.warna_qr)}
-                            </span>
-                        </div>
-                        <div class="detail-row">
-                            <i class="fas fa-arrows-alt"></i>
-                            <span class="detail-label">Ukuran QR:</span>
-                            <span class="detail-value">${gw.ukuran_qr}x${gw.ukuran_qr}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="payment-actions">
-                        <button class="payment-action-btn edit" onclick="window.pembayaran.editGateway(${gw.id})" title="Edit">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="payment-action-btn delete" onclick="window.pembayaran.deleteGateway(${gw.id})" title="Hapus">
-                            <i class="fas fa-trash"></i>
-                        </button>
                     </div>
                 </div>
             `;
         });
         
-        elements.gatewayContainer.innerHTML = html;
+        elements.websitesGrid.innerHTML = html;
     }
 
-    // ==================== REKENING FUNCTIONS ====================
-    function openRekeningModal(rekening = null) {
-        if (rekening) {
-            // Edit mode
-            elements.rekeningModalTitle.textContent = 'Edit Rekening';
-            elements.rekeningId.value = rekening.id || '';
-            elements.rekeningLogo.value = rekening.logo_url || '';
-            elements.rekeningLogoImage.src = rekening.logo_url || 'https://via.placeholder.com/420x420/40a7e3/ffffff?text=Logo';
-            elements.rekeningNama.value = rekening.nama || '';
-            elements.rekeningNomor.value = rekening.nomor || '';
-            elements.rekeningPemilik.value = rekening.pemilik || '';
-            elements.rekeningDeskripsi.value = rekening.deskripsi || '';
-            elements.rekeningActive.checked = rekening.active !== false;
-            
-            // Validate logo if exists
-            if (rekening.logo_url) {
-                validateRekeningLogo(rekening.logo_url);
-            }
-        } else {
-            // Add mode
-            elements.rekeningModalTitle.textContent = 'Tambah Rekening';
-            elements.rekeningForm.reset();
-            elements.rekeningId.value = '';
-            elements.rekeningLogoImage.src = 'https://via.placeholder.com/420x420/40a7e3/ffffff?text=Logo';
-            elements.rekeningActive.checked = true;
-            
-            if (elements.rekeningLogoValidation) {
-                elements.rekeningLogoValidation.innerHTML = '<i class="fas fa-info-circle"></i> Masukkan URL logo (wajib 420x420)';
-                elements.rekeningLogoValidation.className = 'validation-message info';
-            }
-        }
+    function renderProductSelector() {
+        if (!elements.productWebsiteSelector) return;
         
-        elements.rekeningModal.classList.add('active');
-        vibrate(10);
+        let options = '<option value="">Pilih Website</option>';
         
-        setTimeout(() => {
-            elements.rekeningLogo.focus();
-        }, 300);
+        userWebsites.forEach(website => {
+            options += `<option value="${website.endpoint}">/${website.endpoint}</option>`;
+        });
+        
+        elements.productWebsiteSelector.innerHTML = options;
+        
+        elements.productWebsiteSelector.addEventListener('change', (e) => {
+            const endpoint = e.target.value;
+            if (endpoint) {
+                elements.manageProductsBtn.href = `/wtb/html/produk?website=${endpoint}`;
+            } else {
+                elements.manageProductsBtn.href = '#';
+            }
+        });
     }
 
-    function closeRekeningModal() {
-        elements.rekeningModal.classList.remove('active');
-        currentRekeningId = null;
+    function renderOrdersTable() {
+        if (!elements.ordersTableBody || !elements.ordersEmptyState) return;
+        
+        if (allOrders.length === 0) {
+            elements.ordersTableBody.innerHTML = '';
+            elements.ordersEmptyState.style.display = 'block';
+            return;
+        }
+        
+        elements.ordersEmptyState.style.display = 'none';
+        
+        let html = '';
+        const filteredOrders = filterOrdersByStatus();
+        
+        filteredOrders.forEach(order => {
+            const statusClass = `status-${order.status || 'pending'}`;
+            const statusText = order.status || 'Pending';
+            
+            html += `
+                <tr>
+                    <td>#${order.id || 'ORD' + Math.floor(Math.random() * 10000)}</td>
+                    <td>${escapeHtml(order.customer_name || 'Customer')}</td>
+                    <td>${escapeHtml(order.product_name || '-')}</td>
+                    <td>${formatRupiah(order.total || 0)}</td>
+                    <td>
+                        <span class="status-badge ${statusClass}">${statusText}</span>
+                    </td>
+                    <td>${formatDate(order.created_at)}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="table-btn" onclick="window.panel.viewOrder('${order.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="table-btn" onclick="window.panel.updateOrderStatus('${order.id}')">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        elements.ordersTableBody.innerHTML = html;
     }
 
-    async function validateRekeningLogo(url) {
-        if (!url || url.trim() === '') {
-            if (elements.rekeningLogoValidation) {
-                elements.rekeningLogoValidation.innerHTML = '<i class="fas fa-exclamation-triangle"></i> URL logo wajib diisi';
-                elements.rekeningLogoValidation.className = 'validation-message error';
-            }
-            return false;
-        }
+    function filterOrdersByStatus() {
+        const filter = elements.orderStatusFilter?.value || 'all';
         
-        if (elements.rekeningLogoValidation) {
-            elements.rekeningLogoValidation.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memvalidasi gambar...';
-            elements.rekeningLogoValidation.className = 'validation-message info';
-        }
+        if (filter === 'all') return allOrders;
         
-        try {
-            const result = await validateImageSize(url, 420, 420);
-            
-            if (elements.rekeningLogoValidation) {
-                elements.rekeningLogoValidation.innerHTML = '<i class="fas fa-check-circle"></i> Ukuran valid: 420x420 ✓';
-                elements.rekeningLogoValidation.className = 'validation-message success';
-            }
-            
-            elements.rekeningLogoImage.src = url;
-            return true;
-        } catch (error) {
-            if (elements.rekeningLogoValidation) {
-                elements.rekeningLogoValidation.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${error.message || 'Gambar tidak valid'}`;
-                elements.rekeningLogoValidation.className = 'validation-message error';
-            }
-            return false;
-        }
+        return allOrders.filter(order => (order.status || 'pending') === filter);
     }
 
-    async function saveRekening(e) {
-        e.preventDefault();
+    function renderTransactions(totalRevenue, totalCount) {
+        if (!elements.transactionTotal || !elements.transactionCount || !elements.transactionAverage) return;
         
-        if (!currentWebsite) return;
+        elements.transactionTotal.textContent = formatRupiah(totalRevenue);
+        elements.transactionCount.textContent = totalCount;
         
-        const logoUrl = elements.rekeningLogo.value.trim();
-        const nama = elements.rekeningNama.value.trim();
-        const nomor = elements.rekeningNomor.value.trim();
-        const pemilik = elements.rekeningPemilik.value.trim();
-        const deskripsi = elements.rekeningDeskripsi.value.trim();
-        const active = elements.rekeningActive.checked;
+        const average = totalCount > 0 ? totalRevenue / totalCount : 0;
+        elements.transactionAverage.textContent = formatRupiah(Math.round(average));
         
-        // Validasi
-        if (!logoUrl) {
-            showToast('URL logo wajib diisi', 'warning');
-            elements.rekeningLogo.focus();
-            return;
-        }
-        
-        if (!nama) {
-            showToast('Nama aplikasi/rekening wajib diisi', 'warning');
-            elements.rekeningNama.focus();
-            return;
-        }
-        
-        if (!nomor) {
-            showToast('Nomor rekening wajib diisi', 'warning');
-            elements.rekeningNomor.focus();
-            return;
-        }
-        
-        if (!pemilik) {
-            showToast('Nama pemilik wajib diisi', 'warning');
-            elements.rekeningPemilik.focus();
-            return;
-        }
-        
-        // Validasi logo
-        const isValid = await validateRekeningLogo(logoUrl);
-        if (!isValid) {
-            showToast('Logo tidak valid. Periksa URL dan ukuran gambar (harus 420x420)', 'error');
-            return;
-        }
-        
-        const data = {
-            id: elements.rekeningId.value ? parseInt(elements.rekeningId.value) : null,
-            logo_url: logoUrl,
-            nama: nama,
-            nomor: nomor,
-            pemilik: pemilik,
-            deskripsi: deskripsi,
-            active: active
-        };
-        
-        showLoading(true);
-        
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
-                method: 'POST',
-                body: JSON.stringify(data)
+        if (elements.transactionsList) {
+            if (allOrders.length === 0) {
+                elements.transactionsList.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <i class="fas fa-credit-card"></i>
+                        <p>Belum ada transaksi</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            allOrders.slice(0, 10).forEach(order => {
+                html += `
+                    <div class="transaction-item">
+                        <div class="transaction-info">
+                            <div class="transaction-icon">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="transaction-details">
+                                <h4>${escapeHtml(order.customer_name || 'Customer')}</h4>
+                                <div class="transaction-meta">
+                                    <span>${formatDate(order.created_at)}</span>
+                                    <span>• ${order.website_endpoint || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="transaction-amount">${formatRupiah(order.total || 0)}</div>
+                    </div>
+                `;
             });
             
-            if (response.success) {
-                showToast(`✅ Rekening ${data.id ? 'diperbarui' : 'ditambahkan'}`, 'success');
-                closeRekeningModal();
-                await loadRekening();
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan');
-            }
-        } catch (error) {
-            console.error('❌ Error saving rekening:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
+            elements.transactionsList.innerHTML = html;
         }
     }
 
-    function deleteRekening(id) {
-        const rekening = rekeningList.find(r => r.id === id);
-        if (!rekening) return;
+    function renderCustomersGrid() {
+        if (!elements.customersGrid) return;
         
-        deleteTarget = { type: 'rekening', id, nama: rekening.nama };
+        if (allCustomers.length === 0) {
+            elements.customersGrid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Belum Ada Pelanggan</h3>
+                    <p>Pelanggan akan muncul setelah ada pesanan</p>
+                </div>
+            `;
+            return;
+        }
         
-        elements.deleteMessage.textContent = `Hapus rekening "${rekening.nama}"?`;
-        elements.deleteInfo.innerHTML = `<strong>${escapeHtml(rekening.nama)}</strong><br>${escapeHtml(rekening.nomor)}`;
+        let html = '';
+        allCustomers.slice(0, 6).forEach(customer => {
+            html += `
+                <div class="customer-card">
+                    <div class="customer-avatar">
+                        <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(customer.name.charAt(0))}&size=56&background=40a7e3&color=fff" alt="${escapeHtml(customer.name)}">
+                    </div>
+                    <div class="customer-info">
+                        <h4>${escapeHtml(customer.name)}</h4>
+                        <div class="customer-username">ID: ${customer.id}</div>
+                        <div class="customer-stats">
+                            <span><i class="fas fa-shopping-bag"></i> ${customer.orders || 0}</span>
+                            <span><i class="fas fa-credit-card"></i> ${formatRupiah(customer.total_spent || 0)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
         
-        elements.deleteModal.classList.add('active');
+        elements.customersGrid.innerHTML = html;
+    }
+
+    // ==================== NAVIGATION ====================
+    function showPage(pageId) {
+        elements.pages.forEach(page => {
+            page.classList.remove('active');
+        });
+        
+        const targetPage = document.getElementById(`page-${pageId}`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
+        
+        elements.menuItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === pageId) {
+                item.classList.add('active');
+            }
+        });
+        
+        // Simpan halaman aktif ke session storage
+        saveCurrentPage(pageId);
+        
         vibrate(10);
     }
 
-    // ==================== GATEWAY FUNCTIONS ====================
-    function openGatewayModal(gateway = null) {
-        if (gateway) {
-            // Edit mode
-            elements.gatewayModalTitle.textContent = 'Edit Gateway Cashify';
-            elements.gatewayId.value = gateway.id || '';
-            elements.gatewayLicenseKey.value = gateway.license_key || '';
-            elements.gatewayWebhookSecret.value = gateway.webhook_secret || '';
-            elements.gatewayQrisId.value = gateway.qris_id || '';
-            elements.gatewayExpired.value = gateway.expired_menit || 30;
-            elements.gatewayWarna.value = gateway.warna_qr || '#000000';
-            elements.gatewayWarnaHex.value = gateway.warna_qr || '#000000';
-            elements.gatewayUkuran.value = gateway.ukuran_qr || 420;
-            elements.gatewayActive.checked = gateway.active !== false;
+    /**
+     * Memulihkan halaman terakhir dari session storage
+     * Jika tidak ada, default ke dashboard
+     */
+    function restoreLastPage() {
+        const lastPage = getLastPage();
+        
+        // Validasi apakah pageId valid
+        const validPages = ['dashboard', 'websites', 'products', 'orders', 'transactions', 'customers', 'settings', 'help'];
+        
+        if (lastPage && validPages.includes(lastPage)) {
+            console.log(`🔄 Restoring last page: ${lastPage}`);
+            showPage(lastPage);
         } else {
-            // Add mode
-            elements.gatewayModalTitle.textContent = 'Tambah Gateway Cashify';
-            elements.gatewayForm.reset();
-            elements.gatewayId.value = '';
-            elements.gatewayNama.value = 'Cashify';
-            elements.gatewayExpired.value = 30;
-            elements.gatewayWarna.value = '#000000';
-            elements.gatewayWarnaHex.value = '#000000';
-            elements.gatewayUkuran.value = 420;
-            elements.gatewayActive.checked = true;
+            console.log('🔄 No saved page, showing dashboard');
+            showPage('dashboard');
         }
-        
-        elements.gatewayModal.classList.add('active');
-        vibrate(10);
-        
-        setTimeout(() => {
-            elements.gatewayLicenseKey.focus();
-        }, 300);
     }
 
-    function closeGatewayModal() {
-        elements.gatewayModal.classList.remove('active');
-        currentGatewayId = null;
+    function toggleSidebar() {
+        if (elements.sidebar) {
+            elements.sidebar.classList.toggle('active');
+        }
     }
 
-    async function saveGateway(e) {
-        e.preventDefault();
-        
-        if (!currentWebsite) return;
-        
-        const licenseKey = elements.gatewayLicenseKey.value.trim();
-        const webhookSecret = elements.gatewayWebhookSecret.value.trim();
-        const qrisId = elements.gatewayQrisId.value.trim();
-        const expired = parseInt(elements.gatewayExpired.value) || 30;
-        const warna = elements.gatewayWarnaHex.value.trim();
-        const ukuran = parseInt(elements.gatewayUkuran.value) || 420;
-        const active = elements.gatewayActive.checked;
-        
-        // Validasi
-        if (!licenseKey) {
-            showToast('License Key wajib diisi', 'warning');
-            elements.gatewayLicenseKey.focus();
-            return;
+    function closeSidebar() {
+        if (elements.sidebar) {
+            elements.sidebar.classList.remove('active');
+        }
+    }
+
+    // ==================== SETTINGS NAVIGATION ====================
+    function setupSettingsLinks() {
+        if (elements.appearanceSettings && userWebsites.length > 0) {
+            elements.appearanceSettings.href = `/wtb/html/tampilan.html?website=${userWebsites[0].endpoint}`;
         }
         
-        if (!webhookSecret) {
-            showToast('Webhook Secret wajib diisi', 'warning');
-            elements.gatewayWebhookSecret.focus();
-            return;
+        if (elements.manageProductsBtn && userWebsites.length > 0) {
+            elements.manageProductsBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
         }
         
-        if (expired < 1 || expired > 1440) {
-            showToast('Expired harus antara 1-1440 menit', 'warning');
-            elements.gatewayExpired.focus();
-            return;
+        if (elements.socialSettings && userWebsites.length > 0) {
+            elements.socialSettings.href = `/wtb/html/sosial.html?website=${userWebsites[0].endpoint}`;
         }
         
-        // Validasi warna (hex format)
-        if (!/^#[0-9A-F]{6}$/i.test(warna)) {
-            showToast('Format warna tidak valid', 'warning');
-            elements.gatewayWarnaHex.focus();
-            return;
+        if (elements.paymentSettings && userWebsites.length > 0) {
+            elements.paymentSettings.href = `/wtb/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
         }
         
-        const data = {
-            id: elements.gatewayId.value ? parseInt(elements.gatewayId.value) : null,
-            license_key: licenseKey,
-            webhook_secret: webhookSecret,
-            qris_id: qrisId,
-            expired_menit: expired,
-            warna_qr: warna,
-            ukuran_qr: ukuran,
-            active: active
-        };
-        
-        showLoading(true);
-        
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${currentWebsite.id}`, {
-                method: 'POST',
-                body: JSON.stringify(data)
+        if (elements.notificationSettings) {
+            elements.notificationSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
             });
-            
-            if (response.success) {
-                showToast(`✅ Gateway ${data.id ? 'diperbarui' : 'ditambahkan'}`, 'success');
-                closeGatewayModal();
-                await loadGateway();
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan');
-            }
-        } catch (error) {
-            console.error('❌ Error saving gateway:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
+        }
+        
+        if (elements.seoSettings) {
+            elements.seoSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
+            });
+        }
+        
+        if (elements.integrationSettings) {
+            elements.integrationSettings.addEventListener('click', (e) => {
+                e.preventDefault();
+                showToast('Fitur ini akan segera tersedia', 'info');
+            });
         }
     }
 
-    function deleteGateway(id) {
-        const gateway = gatewayList.find(g => g.id === id);
-        if (!gateway) return;
+    // ==================== EVENT LISTENERS ====================
+    function setupEventListeners() {
+        if (elements.menuToggle) {
+            elements.menuToggle.addEventListener('click', toggleSidebar);
+        }
         
-        deleteTarget = { type: 'gateway', id, nama: gateway.nama || 'Cashify' };
+        if (elements.sidebarClose) {
+            elements.sidebarClose.addEventListener('click', closeSidebar);
+        }
         
-        elements.deleteMessage.textContent = `Hapus gateway "${gateway.nama || 'Cashify'}"?`;
-        elements.deleteInfo.innerHTML = `<strong>${escapeHtml(gateway.nama || 'Cashify')}</strong><br>License: ${escapeHtml(gateway.license_key.substring(0, 15))}...`;
+        if (elements.refreshBtn) {
+            elements.refreshBtn.addEventListener('click', async () => {
+                vibrate(10);
+                showToast('Menyegarkan data...', 'info');
+                await loadUserWebsites(currentUser?.id);
+                await loadProductsAndOrders();
+                showToast('Data diperbarui', 'success');
+            });
+        }
         
-        elements.deleteModal.classList.add('active');
-        vibrate(10);
-    }
-
-    // ==================== DELETE FUNCTIONS ====================
-    async function confirmDelete() {
-        if (!deleteTarget) return;
-        
-        showLoading(true);
-        
-        try {
-            let response;
-            
-            if (deleteTarget.type === 'rekening') {
-                response = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${deleteTarget.id}`, {
-                    method: 'DELETE'
-                });
-            } else if (deleteTarget.type === 'gateway') {
-                response = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${deleteTarget.id}`, {
-                    method: 'DELETE'
-                });
-            }
-            
-            if (response.success) {
-                showToast(`✅ ${deleteTarget.type === 'rekening' ? 'Rekening' : 'Gateway'} dihapus`, 'success');
-                
-                if (deleteTarget.type === 'rekening') {
-                    await loadRekening();
-                } else {
-                    await loadGateway();
+        elements.menuItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = item.dataset.page;
+                if (page) {
+                    showPage(page);
                 }
-            } else {
-                throw new Error(response.error || 'Gagal menghapus');
-            }
-        } catch (error) {
-            console.error('❌ Error deleting:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
-            closeDeleteModal();
+                closeSidebar();
+            });
+        });
+        
+        if (elements.logoutBtn) {
+            elements.logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                clearSession(); // Hapus session saat logout
+                localStorage.removeItem('panel_user');
+                window.location.href = '/';
+            });
         }
-    }
-
-    function closeDeleteModal() {
-        elements.deleteModal.classList.remove('active');
-        deleteTarget = null;
+        
+        if (elements.orderStatusFilter) {
+            elements.orderStatusFilter.addEventListener('change', renderOrdersTable);
+        }
+        
+        if (elements.customerSearch) {
+            elements.customerSearch.addEventListener('input', (e) => {
+                const search = e.target.value.toLowerCase();
+                // Implement search functionality
+            });
+        }
+        
+        if (elements.transactionPeriod) {
+            elements.transactionPeriod.addEventListener('change', () => {
+                showToast('Fitur filter periode akan segera tersedia', 'info');
+            });
+        }
+        
+        document.addEventListener('click', (e) => {
+            if (elements.sidebar?.classList.contains('active')) {
+                if (!elements.sidebar.contains(e.target) && !elements.menuToggle?.contains(e.target)) {
+                    closeSidebar();
+                }
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSidebar();
+            }
+        });
+        
+        // Simpan state saat user akan meninggalkan halaman (opsional)
+        window.addEventListener('beforeunload', () => {
+            // Tidak perlu melakukan apa-apa, session storage sudah tersimpan
+        });
     }
 
     // ==================== INITIALIZATION ====================
@@ -830,133 +1009,52 @@
         showLoading(true);
         
         try {
-            currentWebsite = await loadWebsite();
-            if (!currentWebsite) return;
+            const userId = await loadUserData();
+            await loadUserWebsites(userId);
+            await loadProductsAndOrders();
             
-            await Promise.all([
-                loadRekening(),
-                loadGateway()
-            ]);
+            setupSettingsLinks();
+            setupEventListeners();
+            
+            // Pulihkan halaman terakhir dari session storage
+            restoreLastPage();
+            
+            if (window.Telegram?.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.ready();
+                
+                if (tg.themeParams) {
+                    const theme = tg.themeParams;
+                    if (theme.bg_color) {
+                        document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
+                    }
+                    if (theme.text_color) {
+                        document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
+                    }
+                }
+            }
+            
+            console.log('✅ Panel initialized with session storage');
             
         } catch (error) {
             console.error('❌ Init error:', error);
-            showToast('Gagal memuat data', 'error');
+            showToast('Gagal memuat dashboard', 'error');
         } finally {
             showLoading(false);
         }
     }
 
-    // ==================== EVENT LISTENERS ====================
-    function setupEventListeners() {
-        // Di tampilan.js, sosial.js, pembayaran.js
-        if (elements.backToPanel) {
-          elements.backToPanel.addEventListener('click', (e) => {
-            e.preventDefault();
-        
-            // Simpan bahwa kita kembali dari halaman settings
-            try {
-              sessionStorage.setItem('panel_current_page', 'settings');
-              sessionStorage.setItem('panel_return_from', 'settings');
-            } catch (e) {}
-        
-            window.location.href = '/wtb/html/panel.html';
-          });
-        }
-        
-        // Tabs
-        elements.tabButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                
-                elements.tabButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                elements.tabContents.forEach(content => {
-                    content.classList.remove('active');
-                });
-                document.getElementById(`tab-${tab}`).classList.add('active');
-                
-                vibrate(10);
-            });
-        });
-        
-        // Add Rekening buttons
-        if (elements.addRekeningBtn) {
-            elements.addRekeningBtn.addEventListener('click', () => openRekeningModal());
-        }
-        if (elements.emptyAddRekeningBtn) {
-            elements.emptyAddRekeningBtn.addEventListener('click', () => openRekeningModal());
-        }
-        
-        // Add Gateway buttons
-        if (elements.addGatewayBtn) {
-            elements.addGatewayBtn.addEventListener('click', () => openGatewayModal());
-        }
-        if (elements.emptyAddGatewayBtn) {
-            elements.emptyAddGatewayBtn.addEventListener('click', () => openGatewayModal());
-        }
-        
-        // Rekening modal
-        elements.closeRekeningModal.addEventListener('click', closeRekeningModal);
-        elements.cancelRekeningBtn.addEventListener('click', closeRekeningModal);
-        elements.rekeningForm.addEventListener('submit', saveRekening);
-        
-        // Logo validation on input
-        let logoTimeout;
-        elements.rekeningLogo.addEventListener('input', () => {
-            clearTimeout(logoTimeout);
-            logoTimeout = setTimeout(() => {
-                validateRekeningLogo(elements.rekeningLogo.value.trim());
-            }, 800);
-        });
-        
-        // Gateway modal
-        elements.closeGatewayModal.addEventListener('click', closeGatewayModal);
-        elements.cancelGatewayBtn.addEventListener('click', closeGatewayModal);
-        elements.gatewayForm.addEventListener('submit', saveGateway);
-        
-        // Color picker sync
-        if (elements.gatewayWarna && elements.gatewayWarnaHex) {
-            elements.gatewayWarna.addEventListener('input', () => {
-                elements.gatewayWarnaHex.value = elements.gatewayWarna.value;
-            });
-            
-            elements.gatewayWarnaHex.addEventListener('input', () => {
-                if (/^#[0-9A-F]{6}$/i.test(elements.gatewayWarnaHex.value)) {
-                    elements.gatewayWarna.value = elements.gatewayWarnaHex.value;
-                }
-            });
-        }
-        
-        // Delete modal
-        elements.closeDeleteModal.addEventListener('click', closeDeleteModal);
-        elements.cancelDeleteBtn.addEventListener('click', closeDeleteModal);
-        elements.confirmDeleteBtn.addEventListener('click', confirmDelete);
-        
-        // Click outside modal
-        window.addEventListener('click', (e) => {
-            if (e.target === elements.rekeningModal) closeRekeningModal();
-            if (e.target === elements.gatewayModal) closeGatewayModal();
-            if (e.target === elements.deleteModal) closeDeleteModal();
-        });
-    }
-
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
-    window.pembayaran = {
-        editRekening: (id) => {
-            const rekening = rekeningList.find(r => r.id === id);
-            if (rekening) openRekeningModal(rekening);
+    window.panel = {
+        viewOrder: (orderId) => {
+            showToast(`Melihat detail pesanan #${orderId}`, 'info');
         },
-        deleteRekening: (id) => deleteRekening(id),
-        editGateway: (id) => {
-            const gateway = gatewayList.find(g => g.id === id);
-            if (gateway) openGatewayModal(gateway);
-        },
-        deleteGateway: (id) => deleteGateway(id)
+        updateOrderStatus: (orderId) => {
+            showToast(`Fitur update status akan segera tersedia`, 'info');
+        }
     };
 
     // ==================== START ====================
-    setupKeyboardHandler();
-    setupEventListeners();
     init();
 })();
