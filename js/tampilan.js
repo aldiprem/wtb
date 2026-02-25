@@ -1,4 +1,4 @@
-// tampilan.js - Pengaturan Tampilan Website (VERSI DENGAN MULTIPLE PROMO)
+// tampilan.js - Pengaturan Tampilan Website (VERSI DENGAN TEMPLATE FONT)
 (function() {
     'use strict';
     
@@ -9,15 +9,6 @@
     const MAX_RETRIES = 3;
 
     // ==================== STATE ====================
-    let selectedFont = 'Inter';
-    let selectedAnimation = 'none';
-    let animationSettings = {
-        duration: 2,
-        delay: 0,
-        iteration: 'infinite'
-    };
-    let storeDisplayName = 'Toko Online';
-    
     let currentWebsite = null;
     let tampilanData = {};
     
@@ -31,6 +22,13 @@
     let hasUnsavedPromos = false;
     let currentPromoId = null;
     let promoToDelete = null;
+    
+    // Font Template state
+    let currentTemplateCode = null;
+    let currentTemplateData = null;
+    let storeDisplayName = 'Toko Online';
+    let allTemplates = [];
+    let searchTimeout = null;
     
     // Current upload callback
     let currentUploadCallback = null;
@@ -52,6 +50,9 @@
         logoUrl: document.getElementById('logoUrl'),
         uploadLogoBtn: document.getElementById('uploadLogoBtn'),
         saveLogoBtn: document.getElementById('saveLogoBtn'),
+        
+        // Store Display Name
+        storeDisplayNameInput: document.getElementById('storeDisplayName'),
         
         // Banner
         bannerTrack: document.getElementById('bannerTrack'),
@@ -80,18 +81,49 @@
         accentColorHex: document.getElementById('accentColorHex'),
         saveColorsBtn: document.getElementById('saveColorsBtn'),
         
-        // Font
-        fontFamily: document.getElementById('fontFamily'),
-        fontSize: document.getElementById('fontSize'),
-        saveFontBtn: document.getElementById('saveFontBtn'),
+        // Font Template - New Elements
+        createFontTemplateBtn: document.getElementById('createFontTemplateBtn'),
+        viewAllTemplatesBtn: document.getElementById('viewAllTemplatesBtn'),
         
-        // FONT & ANIMASI - ELEMEN BARU
-        fontGrid: document.getElementById('fontGrid'),
-        animationGrid: document.getElementById('animationGrid'),
-        animationControlsContainer: document.getElementById('animationControlsContainer'),
-        storeDisplayNameInput: document.getElementById('storeDisplayName'),
-        saveFontAnimBtn: document.getElementById('saveFontAnimBtn'),
-        animPreviewText: document.getElementById('animPreviewText'),
+        // Template Input Tabs
+        templateInputTabs: document.querySelectorAll('.template-input-tab'),
+        templateInputPanels: document.querySelectorAll('.template-input-panel'),
+        
+        // Input by Code
+        fontTemplateCode: document.getElementById('fontTemplateCode'),
+        verifyTemplateCode: document.getElementById('verifyTemplateCode'),
+        
+        // Input by Search
+        templateSearchInput: document.getElementById('templateSearchInput'),
+        clearSearchBtn: document.getElementById('clearSearchBtn'),
+        templateSearchResults: document.getElementById('templateSearchResults'),
+        
+        // Template Actions
+        applyTemplateBtn: document.getElementById('applyTemplateBtn'),
+        testTemplateBtn: document.getElementById('testTemplateBtn'),
+        saveTemplateCodeBtn: document.getElementById('saveTemplateCodeBtn'),
+        
+        // Template Preview
+        templatePreviewCard: document.getElementById('templatePreviewCard'),
+        templatePreviewText: document.getElementById('templatePreviewText'),
+        previewFontName: document.getElementById('previewFontName'),
+        previewAnimName: document.getElementById('previewAnimName'),
+        clearTemplatePreview: document.getElementById('clearTemplatePreview'),
+        
+        // Selected Template Info
+        selectedTemplateInfo: document.getElementById('selectedTemplateInfo'),
+        selectedTemplateName: document.getElementById('selectedTemplateName'),
+        changeTemplateBtn: document.getElementById('changeTemplateBtn'),
+        
+        // Validation Message
+        templateValidationMessage: document.getElementById('templateValidationMessage'),
+        
+        // All Templates Modal
+        allTemplatesModal: document.getElementById('allTemplatesModal'),
+        closeAllTemplatesModal: document.getElementById('closeAllTemplatesModal'),
+        modalTemplateSearch: document.getElementById('modalTemplateSearch'),
+        modalTemplateFilter: document.getElementById('modalTemplateFilter'),
+        allTemplatesGrid: document.getElementById('allTemplatesGrid'),
         
         // Save All
         saveAllBtn: document.getElementById('saveAllBtn'),
@@ -183,6 +215,18 @@
         } catch (e) {
             return dateString;
         }
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 
     // ==================== KEYBOARD HANDLER ====================
@@ -311,6 +355,12 @@
                 if (elements.websiteBadge) {
                     elements.websiteBadge.textContent = '/' + data.website.endpoint;
                 }
+                
+                // Update create template button href
+                if (elements.createFontTemplateBtn) {
+                    elements.createFontTemplateBtn.href = `/wtb/html/tampilan/font.html?website=${endpoint}`;
+                }
+                
                 return data.website;
             } else {
                 throw new Error('Website not found');
@@ -323,14 +373,11 @@
     }
 
     function goBackToPanel() {
-        // Simpan halaman settings ke session storage
         try {
             sessionStorage.setItem('panel_current_page', 'settings');
-        } catch (e) {
-            console.warn('Failed to save session', e);
-        }
-
-        // Redirect ke panel
+            sessionStorage.setItem('panel_return_from', 'settings');
+        } catch (e) {}
+        
         window.location.href = '/wtb/html/panel.html';
     }
 
@@ -356,15 +403,14 @@
                 renderPromos();
             }
             
-            // Load font & animation settings setelah data tampilan dimuat
-            loadFontAnimSettings();
-            
-            // Render font & animation grids jika window.FontAnimations tersedia
-            if (window.FontAnimations) {
-                renderFontGrid();
-                renderAnimationGrid();
-                renderAnimationControls();
-                updateAnimationPreview();
+            // Load saved template code
+            if (tampilanData.font_template_code) {
+                currentTemplateCode = tampilanData.font_template_code;
+                if (elements.fontTemplateCode) {
+                    elements.fontTemplateCode.value = currentTemplateCode;
+                }
+                // Verify and load template data
+                await verifyTemplateCode(currentTemplateCode, true);
             }
             
         } catch (error) {
@@ -381,6 +427,14 @@
         if (tampilanData.logo) {
             if (elements.logoImage) elements.logoImage.src = tampilanData.logo;
             if (elements.logoUrl) elements.logoUrl.value = tampilanData.logo;
+        }
+        
+        // Update store display name
+        if (tampilanData.store_display_name) {
+            storeDisplayName = tampilanData.store_display_name;
+            if (elements.storeDisplayNameInput) {
+                elements.storeDisplayNameInput.value = storeDisplayName;
+            }
         }
         
         // Update banners
@@ -497,14 +551,6 @@
                 elements.accentColor.value = colors.accent || '#10b981';
                 elements.accentColorHex.value = colors.accent || '#10b981';
             }
-        }
-        
-        // Update font
-        if (tampilanData.font_family && elements.fontFamily) {
-            elements.fontFamily.value = tampilanData.font_family;
-        }
-        if (tampilanData.font_size && elements.fontSize) {
-            elements.fontSize.value = tampilanData.font_size;
         }
     }
 
@@ -1184,207 +1230,387 @@
         }
     }
 
-    // ==================== FONT & ANIMATION FUNCTIONS ====================
-    function renderFontGrid() {
-        if (!elements.fontGrid) return;
-        if (!window.FontAnimations) {
-            console.warn('FontAnimations not loaded');
-            return;
-        }
+    // ==================== FONT TEMPLATE FUNCTIONS ====================
+    async function loadAllTemplates(filter = 'all', search = '') {
+        if (!elements.allTemplatesGrid) return;
         
-        const allFonts = window.FontAnimations.getAllFonts();
-        let html = '';
+        elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
         
-        allFonts.forEach(font => {
-            const isSelected = (font.name === selectedFont);
-            html += window.FontAnimations.renderFontCard(font, isSelected);
-        });
-        
-        elements.fontGrid.innerHTML = html;
-        
-        document.querySelectorAll('.font-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const fontName = card.dataset.font;
-                const fontFamily = card.dataset.family;
-                const fontUrl = card.dataset.url;
-                
-                selectedFont = fontName;
-                
-                if (fontUrl) {
-                    window.FontAnimations.loadFont(fontName, fontUrl);
-                }
-                
-                renderFontGrid();
-                updateAnimationPreview();
-                
-                const previewText = elements.animPreviewText;
-                if (previewText) {
-                    previewText.style.fontFamily = fontFamily;
-                }
-                
-                vibrate(10);
-            });
-        });
-    }
-    
-    function renderAnimationGrid() {
-        if (!elements.animationGrid) return;
-        if (!window.ANIMATION_DATA) {
-            console.warn('ANIMATION_DATA not loaded');
-            return;
-        }
-        
-        const animations = window.ANIMATION_DATA.animations;
-        const previewText = storeDisplayName || 'Toko Online';
-        let html = '';
-        
-        animations.forEach(anim => {
-            const isSelected = (anim.id === selectedAnimation);
-            html += window.FontAnimations.renderAnimationCard(anim, isSelected, previewText);
-        });
-        
-        elements.animationGrid.innerHTML = html;
-        
-        animations.forEach(anim => {
-            if (anim.css && anim.id !== 'none') {
-                if (!document.getElementById(`anim-style-${anim.id}`)) {
-                    const style = document.createElement('style');
-                    style.id = `anim-style-${anim.id}`;
-                    style.textContent = anim.css;
-                    document.head.appendChild(style);
-                }
-            }
-        });
-        
-        document.querySelectorAll('.animation-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const animId = card.dataset.animation;
-                selectedAnimation = animId;
-                
-                renderAnimationGrid();
-                updateAnimationPreview();
-                
-                vibrate(10);
-            });
-        });
-    }
-    
-    function renderAnimationControls() {
-        if (!elements.animationControlsContainer) return;
-        if (!window.FontAnimations) return;
-        
-        elements.animationControlsContainer.innerHTML = window.FontAnimations.renderAnimationControls(animationSettings);
-        
-        const durationSelect = document.getElementById('animDuration');
-        const delaySelect = document.getElementById('animDelay');
-        const iterationSelect = document.getElementById('animIteration');
-        
-        if (durationSelect) {
-            durationSelect.addEventListener('change', (e) => {
-                animationSettings.duration = parseFloat(e.target.value);
-                updateAnimationPreview();
-            });
-        }
-        
-        if (delaySelect) {
-            delaySelect.addEventListener('change', (e) => {
-                animationSettings.delay = parseFloat(e.target.value);
-                updateAnimationPreview();
-            });
-        }
-        
-        if (iterationSelect) {
-            iterationSelect.addEventListener('change', (e) => {
-                animationSettings.iteration = e.target.value;
-                updateAnimationPreview();
-            });
-        }
-    }
-    
-    function updateAnimationPreview() {
-        const previewElement = elements.animPreviewText;
-        if (!previewElement) return;
-        
-        const selectedFontCard = document.querySelector(`.font-card[data-font="${selectedFont}"]`);
-        if (selectedFontCard) {
-            previewElement.style.fontFamily = selectedFontCard.dataset.family;
-        }
-        
-        if (selectedAnimation === 'none') {
-            previewElement.style.animation = 'none';
-        } else {
-            const animName = selectedAnimation.replace('Anim', '');
-            const duration = animationSettings.duration;
-            const delay = animationSettings.delay;
-            const iteration = animationSettings.iteration;
+        try {
+            let url = `${API_BASE_URL}/api/font-templates?limit=50`;
             
-            previewElement.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+            if (search) {
+                url = `${API_BASE_URL}/api/font-templates?search=${encodeURIComponent(search)}`;
+            } else if (filter === 'popular') {
+                url = `${API_BASE_URL}/api/font-templates?popular=true`;
+            } else if (filter === 'public') {
+                url = `${API_BASE_URL}/api/font-templates?is_public=true`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.success) {
+                allTemplates = data.templates;
+                renderAllTemplates(allTemplates);
+            } else {
+                throw new Error(data.error || 'Gagal memuat template');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading templates:', error);
+            elements.allTemplatesGrid.innerHTML = `<div class="template-loading error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>Gagal memuat template: ${error.message}</span>
+            </div>`;
         }
     }
-    
-    async function saveFontAnimSettings() {
-        if (!currentWebsite) return;
+
+    function renderAllTemplates(templates) {
+        if (!elements.allTemplatesGrid) return;
         
-        const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
+        if (templates.length === 0) {
+            elements.allTemplatesGrid.innerHTML = `<div class="template-loading">
+                <i class="fas fa-folder-open"></i>
+                <span>Belum ada template</span>
+            </div>`;
+            return;
+        }
         
-        const data = {
-            store_display_name: storeName,
-            font_family: selectedFont,
-            animation: selectedAnimation,
-            animation_duration: animationSettings.duration,
-            animation_delay: animationSettings.delay,
-            animation_iteration: animationSettings.iteration
-        };
+        let html = '';
+        templates.forEach(template => {
+            const date = new Date(template.created_at).toLocaleDateString('id-ID');
+            const badgeClass = template.is_public ? 'public' : 'private';
+            const badgeText = template.is_public ? 'Public' : 'Private';
+            
+            html += `
+                <div class="template-card" data-code="${template.template_code}" data-name="${template.template_name}">
+                    <div class="template-preview">
+                        <span class="template-preview-text">Aa</span>
+                    </div>
+                    <div class="template-info">
+                        <div class="template-name">
+                            ${template.template_name}
+                            <span class="template-badge ${badgeClass}">${badgeText}</span>
+                        </div>
+                        <div class="template-meta">
+                            <span><i class="fas fa-font"></i> ${template.font_preview || 'Inter'}</span>
+                            <span><i class="fas fa-film"></i> ${template.anim_preview || 'None'}</span>
+                            <span><i class="fas fa-calendar"></i> ${date}</span>
+                        </div>
+                        <div class="template-code-small">
+                            <code>${template.template_code.substring(0, 20)}...</code>
+                        </div>
+                        <div class="template-actions">
+                            <button class="template-btn select" onclick="window.tampilan.selectTemplateFromList('${template.template_code}', '${template.template_name}')">
+                                <i class="fas fa-check"></i> Pilih
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.allTemplatesGrid.innerHTML = html;
+    }
+
+    async function searchTemplates(query) {
+        if (!elements.templateSearchResults) return;
+        
+        if (query.length < 2) {
+            elements.templateSearchResults.style.display = 'none';
+            elements.templateSearchResults.innerHTML = '';
+            if (elements.clearSearchBtn) {
+                elements.clearSearchBtn.style.display = 'none';
+            }
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/font-templates?search=${encodeURIComponent(query)}&limit=10`);
+            const data = await response.json();
+            
+            if (data.success && data.templates.length > 0) {
+                let resultsHtml = '<div class="search-results-header">Hasil pencarian:</div>';
+                
+                data.templates.forEach(template => {
+                    resultsHtml += `
+                        <div class="search-result-item" data-code="${template.template_code}" data-name="${template.template_name}">
+                            <div class="result-info">
+                                <strong>${template.template_name}</strong>
+                                <small>${template.template_code.substring(0, 15)}...</small>
+                            </div>
+                            <div class="result-preview">
+                                <span>Font: ${template.font_preview || 'Inter'}</span>
+                                <span>Anim: ${template.anim_preview || 'None'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                elements.templateSearchResults.innerHTML = resultsHtml;
+                elements.templateSearchResults.style.display = 'block';
+                
+                // Add click handlers
+                document.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const code = item.dataset.code;
+                        const name = item.dataset.name;
+                        selectTemplateFromSearch(code, name);
+                    });
+                });
+                
+                if (elements.clearSearchBtn) {
+                    elements.clearSearchBtn.style.display = 'flex';
+                }
+            } else {
+                elements.templateSearchResults.innerHTML = '<div class="no-results">Tidak ada template ditemukan</div>';
+                elements.templateSearchResults.style.display = 'block';
+            }
+            
+        } catch (error) {
+            console.error('❌ Error searching templates:', error);
+            elements.templateSearchResults.innerHTML = '<div class="no-results error">Gagal mencari template</div>';
+            elements.templateSearchResults.style.display = 'block';
+        }
+    }
+
+    function selectTemplateFromSearch(code, name) {
+        if (elements.fontTemplateCode) {
+            elements.fontTemplateCode.value = code;
+        }
+        if (elements.templateSearchInput) {
+            elements.templateSearchInput.value = name;
+        }
+        
+        // Hide search results
+        if (elements.templateSearchResults) {
+            elements.templateSearchResults.style.display = 'none';
+            elements.templateSearchResults.innerHTML = '';
+        }
+        if (elements.clearSearchBtn) {
+            elements.clearSearchBtn.style.display = 'none';
+        }
+        
+        // Auto verify
+        verifyTemplateCode(code);
+    }
+
+    function selectTemplateFromList(code, name) {
+        if (elements.fontTemplateCode) {
+            elements.fontTemplateCode.value = code;
+        }
+        
+        closeAllTemplatesModal();
+        verifyTemplateCode(code);
+        showToast(`Template "${name}" dipilih`, 'success');
+    }
+
+    async function verifyTemplateCode(code, silent = false) {
+        if (!code || code.length !== 35) {
+            if (!silent) {
+                showValidationMessage('Kode template harus 35 karakter', 'error');
+            }
+            disableTemplateActions(true);
+            return false;
+        }
+        
+        if (!silent) {
+            showValidationMessage('Memverifikasi template...', 'info');
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/font-templates/verify/${code}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                currentTemplateData = data.template;
+                currentTemplateCode = code;
+                
+                showValidationMessage(`✅ Template "${data.template.template_name}" ditemukan`, 'success');
+                showTemplatePreview(data.template);
+                enableTemplateActions();
+                
+                // Show selected template info
+                if (elements.selectedTemplateInfo && elements.selectedTemplateName) {
+                    elements.selectedTemplateName.textContent = data.template.template_name;
+                    elements.selectedTemplateInfo.style.display = 'block';
+                }
+                
+                return true;
+            } else {
+                showValidationMessage('❌ Template tidak ditemukan', 'error');
+                disableTemplateActions(true);
+                hideTemplatePreview();
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('❌ Error verifying template:', error);
+            showValidationMessage('Gagal memverifikasi template', 'error');
+            disableTemplateActions(true);
+            hideTemplatePreview();
+            return false;
+        }
+    }
+
+    function showTemplatePreview(template) {
+        if (!elements.templatePreviewCard) return;
+        
+        const fontData = template.font_data || {};
+        const animData = template.animation_data || {};
+        
+        // Update preview text
+        if (elements.templatePreviewText) {
+            elements.templatePreviewText.textContent = template.preview_data?.text || 'Toko Online';
+            elements.templatePreviewText.style.fontFamily = fontData.family || 'Inter';
+            elements.templatePreviewText.style.fontSize = `${fontData.size || 16}px`;
+            elements.templatePreviewText.style.fontWeight = fontData.weight || 400;
+            elements.templatePreviewText.style.color = fontData.color || '#ffffff';
+        }
+        
+        // Update info
+        if (elements.previewFontName) {
+            elements.previewFontName.textContent = (fontData.family || 'Inter').split(',')[0];
+        }
+        if (elements.previewAnimName) {
+            elements.previewAnimName.textContent = animData.name || 'None';
+        }
+        
+        elements.templatePreviewCard.style.display = 'block';
+    }
+
+    function hideTemplatePreview() {
+        if (elements.templatePreviewCard) {
+            elements.templatePreviewCard.style.display = 'none';
+        }
+    }
+
+    function showValidationMessage(message, type) {
+        if (elements.templateValidationMessage) {
+            elements.templateValidationMessage.innerHTML = message;
+            elements.templateValidationMessage.className = `validation-message ${type}`;
+        }
+    }
+
+    function disableTemplateActions(disabled = true) {
+        if (elements.applyTemplateBtn) {
+            elements.applyTemplateBtn.disabled = disabled;
+        }
+        if (elements.testTemplateBtn) {
+            elements.testTemplateBtn.disabled = disabled;
+        }
+    }
+
+    function enableTemplateActions() {
+        disableTemplateActions(false);
+    }
+
+    function clearTemplateSelection() {
+        currentTemplateCode = null;
+        currentTemplateData = null;
+        
+        if (elements.fontTemplateCode) {
+            elements.fontTemplateCode.value = '';
+        }
+        if (elements.templateSearchInput) {
+            elements.templateSearchInput.value = '';
+        }
+        if (elements.templateSearchResults) {
+            elements.templateSearchResults.style.display = 'none';
+            elements.templateSearchResults.innerHTML = '';
+        }
+        if (elements.clearSearchBtn) {
+            elements.clearSearchBtn.style.display = 'none';
+        }
+        if (elements.selectedTemplateInfo) {
+            elements.selectedTemplateInfo.style.display = 'none';
+        }
+        
+        hideTemplatePreview();
+        showValidationMessage('', 'info');
+        disableTemplateActions(true);
+    }
+
+    function openAllTemplatesModal() {
+        if (elements.allTemplatesModal) {
+            elements.allTemplatesModal.classList.add('active');
+            loadAllTemplates();
+        }
+    }
+
+    function closeAllTemplatesModal() {
+        if (elements.allTemplatesModal) {
+            elements.allTemplatesModal.classList.remove('active');
+        }
+    }
+
+    async function applyTemplate() {
+        if (!currentTemplateData || !currentWebsite) return;
+        
+        // Here you would apply the template settings to the current website
+        // This could involve saving the template code and refreshing the preview
+        
+        showToast(`Template "${currentTemplateData.template_name}" akan diterapkan setelah disimpan`, 'info');
+    }
+
+    function testTemplatePreview() {
+        if (!currentTemplateData) return;
+        
+        // Refresh preview
+        showTemplatePreview(currentTemplateData);
+        showToast('Preview diperbarui', 'success');
+        vibrate();
+    }
+
+    async function saveTemplateCode() {
+        if (!currentWebsite) {
+            showToast('Website tidak ditemukan', 'error');
+            return;
+        }
+        
+        const templateCode = elements.fontTemplateCode?.value.trim();
+        
+        if (!templateCode) {
+            showToast('Masukkan kode template', 'warning');
+            return;
+        }
+        
+        if (templateCode.length !== 35) {
+            showToast('Kode template harus 35 karakter', 'warning');
+            return;
+        }
         
         showLoading(true);
         
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-anim`, {
+            // First verify the template exists
+            const verified = await verifyTemplateCode(templateCode, true);
+            if (!verified) {
+                throw new Error('Template tidak valid');
+            }
+            
+            // Save to server
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-template`, {
                 method: 'POST',
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    template_code: templateCode,
+                    store_display_name: storeDisplayName
+                })
             });
             
             if (response.success) {
-                showToast('✅ Pengaturan font & animasi disimpan!', 'success');
+                showToast('✅ Kode template disimpan!', 'success');
+                await loadTampilanData();
             } else {
                 throw new Error(response.error || 'Gagal menyimpan');
             }
+            
         } catch (error) {
-            console.error('❌ Error saving font anim:', error);
+            console.error('❌ Error saving template code:', error);
             showToast(error.message, 'error');
         } finally {
             showLoading(false);
-        }
-    }
-    
-    function loadFontAnimSettings() {
-        if (!tampilanData) return;
-        
-        if (tampilanData.store_display_name) {
-            storeDisplayName = tampilanData.store_display_name;
-            if (elements.storeDisplayNameInput) {
-                elements.storeDisplayNameInput.value = storeDisplayName;
-            }
-        }
-        
-        if (tampilanData.font_family) {
-            selectedFont = tampilanData.font_family;
-        }
-        
-        if (tampilanData.animation) {
-            selectedAnimation = tampilanData.animation;
-        }
-        
-        if (tampilanData.animation_duration) {
-            animationSettings.duration = tampilanData.animation_duration;
-        }
-        
-        if (tampilanData.animation_delay) {
-            animationSettings.delay = tampilanData.animation_delay;
-        }
-        
-        if (tampilanData.animation_iteration) {
-            animationSettings.iteration = tampilanData.animation_iteration;
         }
     }
 
@@ -1396,6 +1622,7 @@
         }
         
         const logoUrl = elements.logoUrl?.value || elements.logoImage?.src || '';
+        const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
         
         if (logoUrl && !logoUrl.toLowerCase().endsWith('.png') && !logoUrl.startsWith('data:image/png')) {
             showToast('Logo harus berformat PNG', 'error');
@@ -1405,16 +1632,25 @@
         showLoading(true);
         
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
+            // Save logo
+            const logoResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
                 method: 'POST',
                 body: JSON.stringify({ url: logoUrl })
             });
             
-            if (response.success) {
-                showToast('✅ Logo disimpan!', 'success');
+            // Save store name
+            const storeResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-anim`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    store_display_name: storeName
+                })
+            });
+            
+            if (logoResponse.success && storeResponse.success) {
+                showToast('✅ Logo & Nama Store disimpan!', 'success');
                 await loadTampilanData();
             } else {
-                throw new Error(response.error || 'Gagal menyimpan logo');
+                throw new Error('Gagal menyimpan');
             }
         } catch (error) {
             console.error('❌ Error saving logo:', error);
@@ -1503,41 +1739,13 @@
         }
     }
 
-    async function saveFont() {
-        if (!currentWebsite) return;
-        
-        const fontData = {
-            family: elements.fontFamily?.value || 'Inter',
-            size: parseInt(elements.fontSize?.value) || 14
-        };
-        
-        showLoading(true);
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font`, {
-                method: 'POST',
-                body: JSON.stringify(fontData)
-            });
-            if (response.success) {
-                showToast('✅ Font disimpan!', 'success');
-                await loadTampilanData();
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan font');
-            }
-        } catch (error) {
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
-        }
-    }
-
     async function saveAll() {
         await Promise.all([
             saveLogo(),
             saveBanners(),
             saveAllPromos(),
             saveColors(),
-            saveFont(),
-            saveFontAnimSettings()
+            saveTemplateCode()
         ]);
         showToast('✅ Semua pengaturan telah disimpan!', 'success');
     }
@@ -1620,13 +1828,7 @@
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', (e) => {
                 e.preventDefault();
-                
-                try {
-                    sessionStorage.setItem('panel_current_page', 'settings');
-                    sessionStorage.setItem('panel_return_from', 'settings');
-                } catch (e) {}
-                
-                window.location.href = '/wtb/html/panel.html';
+                goBackToPanel();
             });
         }
         
@@ -1644,6 +1846,22 @@
                 document.getElementById(`tab-${tab}`).classList.add('active');
                 
                 vibrate(10);
+            });
+        });
+        
+        // Template Input Tabs
+        elements.templateInputTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const type = tab.dataset.inputType;
+                
+                elements.templateInputTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                elements.templateInputPanels.forEach(panel => {
+                    panel.classList.remove('active');
+                });
+                
+                document.getElementById(`inputBy${type === 'code' ? 'Code' : 'Search'}Panel`).classList.add('active');
             });
         });
         
@@ -1695,6 +1913,13 @@
         
         if (elements.saveLogoBtn) {
             elements.saveLogoBtn.addEventListener('click', saveLogo);
+        }
+        
+        // Store display name input
+        if (elements.storeDisplayNameInput) {
+            elements.storeDisplayNameInput.addEventListener('input', (e) => {
+                storeDisplayName = e.target.value || 'Toko Online';
+            });
         }
         
         // Banner
@@ -1762,24 +1987,97 @@
             elements.saveColorsBtn.addEventListener('click', saveColors);
         }
         
-        // Font
-        if (elements.saveFontBtn) {
-            elements.saveFontBtn.addEventListener('click', saveFont);
+        // Font Template Events
+        if (elements.viewAllTemplatesBtn) {
+            elements.viewAllTemplatesBtn.addEventListener('click', openAllTemplatesModal);
         }
         
-        // Font & Animation
-        if (elements.saveFontAnimBtn) {
-            elements.saveFontAnimBtn.addEventListener('click', saveFontAnimSettings);
+        if (elements.closeAllTemplatesModal) {
+            elements.closeAllTemplatesModal.addEventListener('click', closeAllTemplatesModal);
         }
         
-        // Store display name input - update preview实时
-        if (elements.storeDisplayNameInput) {
-            elements.storeDisplayNameInput.addEventListener('input', (e) => {
-                storeDisplayName = e.target.value || 'Toko Online';
-                if (elements.animPreviewText) {
-                    elements.animPreviewText.textContent = storeDisplayName;
+        if (elements.verifyTemplateCode) {
+            elements.verifyTemplateCode.addEventListener('click', () => {
+                const code = elements.fontTemplateCode?.value.trim();
+                if (code) {
+                    verifyTemplateCode(code);
+                } else {
+                    showToast('Masukkan kode template', 'warning');
                 }
-                updateAnimationPreview();
+            });
+        }
+        
+        if (elements.fontTemplateCode) {
+            elements.fontTemplateCode.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const code = e.target.value.trim();
+                    if (code) {
+                        verifyTemplateCode(code);
+                    }
+                }
+            });
+        }
+        
+        if (elements.templateSearchInput) {
+            const debouncedSearch = debounce((e) => {
+                searchTemplates(e.target.value);
+            }, 500);
+            
+            elements.templateSearchInput.addEventListener('input', debouncedSearch);
+            
+            elements.templateSearchInput.addEventListener('focus', () => {
+                if (elements.templateSearchInput.value.length >= 2) {
+                    searchTemplates(elements.templateSearchInput.value);
+                }
+            });
+        }
+        
+        if (elements.clearSearchBtn) {
+            elements.clearSearchBtn.addEventListener('click', () => {
+                if (elements.templateSearchInput) {
+                    elements.templateSearchInput.value = '';
+                }
+                if (elements.templateSearchResults) {
+                    elements.templateSearchResults.style.display = 'none';
+                    elements.templateSearchResults.innerHTML = '';
+                }
+                elements.clearSearchBtn.style.display = 'none';
+            });
+        }
+        
+        if (elements.applyTemplateBtn) {
+            elements.applyTemplateBtn.addEventListener('click', applyTemplate);
+        }
+        
+        if (elements.testTemplateBtn) {
+            elements.testTemplateBtn.addEventListener('click', testTemplatePreview);
+        }
+        
+        if (elements.saveTemplateCodeBtn) {
+            elements.saveTemplateCodeBtn.addEventListener('click', saveTemplateCode);
+        }
+        
+        if (elements.clearTemplatePreview) {
+            elements.clearTemplatePreview.addEventListener('click', clearTemplateSelection);
+        }
+        
+        if (elements.changeTemplateBtn) {
+            elements.changeTemplateBtn.addEventListener('click', clearTemplateSelection);
+        }
+        
+        // Modal template search and filter
+        if (elements.modalTemplateSearch) {
+            const debouncedModalSearch = debounce((e) => {
+                loadAllTemplates('all', e.target.value);
+            }, 500);
+            
+            elements.modalTemplateSearch.addEventListener('input', debouncedModalSearch);
+        }
+        
+        if (elements.modalTemplateFilter) {
+            elements.modalTemplateFilter.addEventListener('change', (e) => {
+                loadAllTemplates(e.target.value, elements.modalTemplateSearch?.value || '');
             });
         }
         
@@ -1862,6 +2160,9 @@
             if (e.target === elements.deleteModal) {
                 closeDeleteModal();
             }
+            if (e.target === elements.allTemplatesModal) {
+                closeAllTemplatesModal();
+            }
         });
     }
 
@@ -1877,7 +2178,10 @@
             const promo = promos.find(p => p.id == id);
             if (promo) openPromoModal(promo);
         },
-        deletePromo: (id) => deletePromo(id)
+        deletePromo: (id) => deletePromo(id),
+        
+        // Template functions
+        selectTemplateFromList: (code, name) => selectTemplateFromList(code, name)
     };
 
     // ==================== START ====================
