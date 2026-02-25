@@ -10,6 +10,7 @@ import secrets
 import tmp
 import traceback
 import prd
+import pmb
 
 app = Flask(__name__, static_folder='.')
 
@@ -1362,6 +1363,110 @@ def delete_promo_old(website_id):
         # Delete all promos
         tmp.save_promos(website_id, [])
         return jsonify({'success': True, 'message': 'Promo deleted successfully'})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== ROUTES UNTUK PEMBAYARAN ====================
+
+@app.route('/api/payments/rekening/<int:website_id>', methods=['GET'])
+def get_rekening(website_id):
+    """Get all rekening for a website"""
+    try:
+        rekening = pmb.get_all_rekening(website_id)
+        return jsonify({'success': True, 'rekening': rekening})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/payments/rekening/<int:website_id>', methods=['POST'])
+def save_rekening(website_id):
+    """Save or update rekening"""
+    try:
+        data = request.json
+        print(f"💳 Saving rekening for website {website_id}:", data)
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        rekening_id = pmb.save_rekening(website_id, data)
+        
+        if rekening_id:
+            return jsonify({'success': True, 'id': rekening_id, 'message': 'Rekening saved successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save rekening'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/payments/rekening/<int:rekening_id>', methods=['DELETE'])
+def delete_rekening(rekening_id):
+    """Delete rekening by ID"""
+    try:
+        success = pmb.delete_rekening(rekening_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Rekening deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Rekening not found'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/payments/gateway/<int:website_id>', methods=['GET'])
+def get_gateway(website_id):
+    """Get all gateway for a website"""
+    try:
+        gateway = pmb.get_all_gateway(website_id)
+        return jsonify({'success': True, 'gateway': gateway})
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/payments/gateway/<int:website_id>', methods=['POST'])
+def save_gateway(website_id):
+    """Save or update gateway"""
+    try:
+        data = request.json
+        print(f"💳 Saving gateway for website {website_id}:", data)
+        
+        # Validasi website exists
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        gateway_id = pmb.save_gateway(website_id, data)
+        
+        if gateway_id:
+            return jsonify({'success': True, 'id': gateway_id, 'message': 'Gateway saved successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save gateway'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/payments/gateway/<int:gateway_id>', methods=['DELETE'])
+def delete_gateway(gateway_id):
+    """Delete gateway by ID"""
+    try:
+        success = pmb.delete_gateway(gateway_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Gateway deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Gateway not found'}), 404
+            
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
