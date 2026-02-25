@@ -17,7 +17,7 @@
     const RETRY_DELAY = 1000;
     
     // Google Fonts API Key (free tier)
-    const GOOGLE_FONTS_API_KEY = 'AIzaSyA7nJqZQF8QxQxQxQxQxQxQxQxQxQxQxQx'; // Ganti dengan API key Anda
+    const GOOGLE_FONTS_API_KEY = '';
     
     // Animation presets
     const ANIMATION_PRESETS = {
@@ -959,47 +959,32 @@
         }
         
         async loadGoogleFonts(query = '') {
-            try {
-                // Simulasi data Google Fonts (tanpa API key)
-                const fonts = [
-                    { family: 'Roboto', category: 'sans-serif', variants: ['100', '300', '400', '500', '700', '900'] },
-                    { family: 'Open Sans', category: 'sans-serif', variants: ['300', '400', '600', '700', '800'] },
-                    { family: 'Lato', category: 'sans-serif', variants: ['100', '300', '400', '700', '900'] },
-                    { family: 'Montserrat', category: 'sans-serif', variants: ['100', '200', '300', '400', '500', '600', '700', '800', '900'] },
-                    { family: 'Poppins', category: 'sans-serif', variants: ['100', '200', '300', '400', '500', '600', '700', '800', '900'] },
-                    { family: 'Roboto Condensed', category: 'sans-serif', variants: ['300', '400', '700'] },
-                    { family: 'Source Sans Pro', category: 'sans-serif', variants: ['200', '300', '400', '600', '700', '900'] },
-                    { family: 'Raleway', category: 'sans-serif', variants: ['100', '200', '300', '400', '500', '600', '700', '800', '900'] },
-                    { family: 'Merriweather', category: 'serif', variants: ['300', '400', '700', '900'] },
-                    { family: 'Playfair Display', category: 'serif', variants: ['400', '500', '600', '700', '800', '900'] },
-                    { family: 'Oswald', category: 'sans-serif', variants: ['200', '300', '400', '500', '600', '700'] },
-                    { family: 'Noto Sans', category: 'sans-serif', variants: ['400', '700'] },
-                    { family: 'Ubuntu', category: 'sans-serif', variants: ['300', '400', '500', '700'] },
-                    { family: 'Nunito', category: 'sans-serif', variants: ['200', '300', '400', '600', '700', '800', '900'] },
-                    { family: 'Quicksand', category: 'sans-serif', variants: ['300', '400', '500', '600', '700'] },
-                    { family: 'Titillium Web', category: 'sans-serif', variants: ['200', '300', '400', '600', '700', '900'] },
-                    { family: 'PT Sans', category: 'sans-serif', variants: ['400', '700'] },
-                    { family: 'Fira Sans', category: 'sans-serif', variants: ['100', '200', '300', '400', '500', '600', '700', '800', '900'] },
-                    { family: 'Dosis', category: 'sans-serif', variants: ['200', '300', '400', '500', '600', '700', '800'] },
-                    { family: 'Indie Flower', category: 'handwriting', variants: ['400'] },
-                    { family: 'Pacifico', category: 'handwriting', variants: ['400'] },
-                    { family: 'Satisfy', category: 'handwriting', variants: ['400'] },
-                    { family: 'Great Vibes', category: 'handwriting', variants: ['400'] },
-                    { family: 'Caveat', category: 'handwriting', variants: ['400', '500', '600', '700'] },
-                    { family: 'Amatic SC', category: 'handwriting', variants: ['400', '700'] }
+          try {
+            // Simulasi data Google Fonts (tanpa API key)
+            const fonts = [
+              { family: 'Inter', category: 'sans-serif' },
+              { family: 'Roboto', category: 'sans-serif' },
+              { family: 'Open Sans', category: 'sans-serif' },
+              { family: 'Lato', category: 'sans-serif' },
+              { family: 'Montserrat', category: 'sans-serif' },
+              { family: 'Poppins', category: 'sans-serif' },
+              { family: 'Raleway', category: 'sans-serif' },
+              { family: 'Oswald', category: 'sans-serif' },
+              { family: 'Merriweather', category: 'serif' },
+              { family: 'Playfair Display', category: 'serif' }
                 ];
-                
-                if (query) {
-                    return fonts.filter(f => 
-                        f.family.toLowerCase().includes(query.toLowerCase())
-                    );
-                }
-                
-                return fonts;
-            } catch (error) {
-                console.error('❌ Error loading Google Fonts:', error);
-                return [];
+        
+            if (query) {
+              return fonts.filter(f =>
+                f.family.toLowerCase().includes(query.toLowerCase())
+              );
             }
+        
+            return fonts;
+          } catch (error) {
+            console.error('❌ Error loading Google Fonts:', error);
+            return [];
+          }
         }
     }
 
@@ -1018,10 +1003,10 @@
             this.setupEventListeners();
         }
         
-        async loadGoogleFonts(query = '') {
-            const fonts = await this.api.loadGoogleFonts(query);
-            this.renderGoogleFonts(fonts);
-        }
+      // Replace with empty function
+      async loadGoogleFonts(query = '') {
+        return [];
+      }
         
         renderGoogleFonts(fonts) {
             const grid = this.dom.get('googleFontGrid');
