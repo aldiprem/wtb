@@ -5,117 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <meta name="theme-color" content="#40a7e3">
-    <meta name="color-scheme" content="dark">
-    
-    <title>Font & Animations Studio - Pengaturan Tampilan Website</title>
+    <title>Font Studio - Pengaturan Font & Animasi</title>
     
     <!-- CSS -->
     <link rel="stylesheet" href="/wtb/css/tampilan/font.css">
     
     <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Prism.js untuk syntax highlighting (opsional) -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
-    
-    <script>
-      // Nonaktifkan Eruda atau handle inisialisasi
-      if (window.Telegram?.WebApp) {
-        // Mencegah eruda load jika belum siap
-        window.addEventListener('load', function() {
-          if (window.eruda && !window.eruda._isInit) {
-            try {
-              window.eruda.init();
-            } catch (e) {
-              console.log('Eruda init skipped');
-            }
-          }
-        });
-      }
-    </script>
-    
 </head>
 <body>
-    <!-- Quick Navigation Buttons - FLOATING GLASS BUTTONS -->
-    <div class="quick-nav-buttons" id="quickNavButtons">
-      <!-- Preview Popup Trigger Button -->
-      <button class="nav-btn preview-popup-btn" id="previewPopupBtn" title="Lihat Preview di Popup">
-        <i class="fas fa-eye"></i>
-        <span class="nav-tooltip">Preview Popup</span>
-      </button>
-    
-      <!-- Scroll to Top Button -->
-      <button class="nav-btn scroll-top-btn" id="scrollTopBtn" title="Scroll ke Atas">
-        <i class="fas fa-chevron-up"></i>
-        <span class="nav-tooltip">Ke Atas</span>
-      </button>
-    
-      <!-- Scroll to Bottom Button -->
-      <button class="nav-btn scroll-bottom-btn" id="scrollBottomBtn" title="Scroll ke Bawah">
-        <i class="fas fa-chevron-down"></i>
-        <span class="nav-tooltip">Ke Bawah</span>
-      </button>
-    
-      <!-- Scroll to Last Position Button (akan muncul setelah scroll) -->
-      <button class="nav-btn scroll-last-btn" id="scrollLastBtn" style="display: none;" title="Kembali ke Posisi Sebelumnya">
-        <i class="fas fa-history"></i>
-        <span class="nav-tooltip">Kembali</span>
-      </button>
-    </div>
-    
-    <!-- PREVIEW POPUP MODAL - GLASS BUBBLE -->
-    <div class="preview-popup" id="previewPopup">
-      <div class="preview-popup-overlay"></div>
-      <div class="preview-popup-content">
-        <div class="preview-popup-header">
-          <h3><i class="fas fa-eye"></i> Live Preview</h3>
-          <button class="preview-popup-close" id="previewPopupClose">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        <div class="preview-popup-body">
-          <div class="preview-popup-frame">
-            <div class="preview-popup-box">
-              <div class="preview-popup-text-container">
-                <span class="preview-popup-text" id="previewPopupTextElement">
-                  Toko Online Premium
-                </span>
-                <div class="preview-popup-subtext" id="previewPopupSubtext">
-                  dengan Layanan Terbaik 24/7
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="preview-popup-footer">
-          <div class="preview-popup-info">
-            <span><i class="fas fa-font"></i> <span id="popupFontInfo">Inter</span></span>
-            <span><i class="fas fa-film"></i> <span id="popupAnimInfo">Fade</span></span>
-          </div>
-          <button class="preview-popup-refresh" id="previewPopupRefresh">
-            <i class="fas fa-sync-alt"></i> Refresh
-          </button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Scroll Position Indicator (hidden) -->
-    <div class="scroll-pos-indicator" id="scrollPosIndicator" style="display: none;">
-      <span id="lastScrollPos">0</span>
-    </div>
-  
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Memuat Studio Font & Animasi...</div>
-        <div class="loading-progress">
-            <div class="loading-progress-bar"></div>
-        </div>
+        <div class="loading-text">Memuat Studio Font...</div>
     </div>
 
     <!-- Main Container -->
@@ -131,175 +37,86 @@
                 </div>
                 <div class="header-title">
                     <h1>Font & Animation Studio</h1>
-                    <div class="website-badge" id="websiteBadge">/website-name</div>
                 </div>
             </div>
             <div class="header-right">
                 <button class="btn-save-all" id="saveAllBtn">
-                    <i class="fas fa-save"></i>
-                    <span>Simpan Semua</span>
-                </button>
-                <button class="btn-template" id="checkTemplateBtn" title="Cek Template">
-                  <i class="fas fa-search"></i>
-                  <span>Cek Template</span>
-                </button>
-                <button class="btn-template" id="saveTemplateBtn" title="Simpan Template">
-                  <i class="fas fa-save"></i>
-                  <span>Save Template</span>
+                    <i class="fas fa-save"></i> Simpan
                 </button>
             </div>
         </div>
 
-        <!-- Main Studio Layout -->
+        <!-- Main Layout -->
         <div class="studio-layout">
-            <!-- Left Sidebar - Controls -->
+            <!-- Left Panel - Controls -->
             <div class="studio-sidebar">
-                <!-- Font Manager Section -->
+                <!-- Font Manager -->
                 <div class="control-section">
                     <div class="section-header" data-toggle="fontSection">
                         <h2><i class="fas fa-font"></i> Font Manager</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
                     <div class="section-content" id="fontSection">
-                        <!-- Font Type Selector -->
+                        <!-- Upload Font File -->
                         <div class="control-group">
                             <label class="control-label">
-                                <i class="fas fa-globe"></i>
-                                Sumber Font
+                                <i class="fas fa-upload"></i>
+                                Upload Font File (.ttf)
                             </label>
-                            <div class="font-source-tabs">
-                                <button class="source-tab active" data-source="google">
-                                    <i class="fab fa-google"></i>
-                                    Google Fonts
+                            <div class="upload-area" id="fontUploadArea">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Klik atau drag & drop file font</p>
+                                <small>Format: TTF (TrueType Font) - Max 5MB</small>
+                                <input type="file" id="fontFileInput" accept=".ttf" style="display: none;">
+                            </div>
+                            <div class="uploaded-file-info" id="uploadedFileInfo" style="display: none;">
+                                <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                                <span id="uploadedFileName">font.ttf</span>
+                                <button class="btn-icon-small" id="removeFontBtn" title="Hapus font">
+                                    <i class="fas fa-times"></i>
                                 </button>
-                                <button class="source-tab" data-source="dafont">
-                                    <i class="fas fa-link"></i>
-                                    Dafont.com
-                                </button>
-                                <button class="source-tab" data-source="custom">
-                                    <i class="fas fa-code"></i>
-                                    Custom CSS
-                                </button>
                             </div>
                         </div>
-
-                        <!-- Google Fonts Input Panel -->
-                        <div class="font-source-panel active" id="googleFontPanel">
-                            <div class="control-group">
-                                <label class="control-label">
-                                    <i class="fas fa-search"></i>
-                                    Pilih Google Font
-                                </label>
-                                <div class="google-font-selector">
-                                    <div class="selector-header">
-                                        <input type="text" 
-                                               class="font-search-input" 
-                                               id="googleFontSearch" 
-                                               placeholder="Cari font... (contoh: Poppins, Roboto)">
-                                        <button class="btn-apply-font" id="applyGoogleFont">
-                                            <i class="fas fa-check"></i>
-                                            Terapkan
-                                        </button>
-                                    </div>
-                                    <div class="font-preview-grid" id="googleFontGrid">
-                                        <!-- Akan diisi oleh JavaScript -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Dafont.com Input Panel -->
-                        <div class="font-source-panel" id="dafontPanel">
-                            <div class="control-group">
-                                <label class="control-label">
-                                    <i class="fas fa-link"></i>
-                                    Dafont.com URL
-                                </label>
-                                <div class="input-with-icon">
-                                    <i class="fas fa-link input-icon"></i>
-                                    <input type="url" 
-                                           id="dafontUrl" 
-                                           class="styled-input" 
-                                           placeholder="https://www.dafont.com/nama-font.font">
-                                </div>
-                                <small class="input-hint">
-                                    <i class="fas fa-info-circle"></i>
-                                    Paste URL font dari dafont.com (contoh: https://www.dafont.com/squeaky.font)
-                                </small>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label class="control-label">
-                                    <i class="fas fa-font"></i>
-                                    Font Family Name
-                                </label>
-                                <input type="text" 
-                                       id="dafontFamily" 
-                                       class="styled-input" 
-                                       placeholder="Nama font family (contoh: Squeaky)">
-                                <small class="input-hint">
-                                    Nama yang akan digunakan di CSS (biasanya sama dengan nama font)
-                                </small>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label class="control-label">
-                                    <i class="fas fa-download"></i>
-                                    File URL (Optional)
-                                </label>
-                                <input type="url" 
-                                       id="dafontFileUrl" 
-                                       class="styled-input" 
-                                       placeholder="https://example.com/font.woff2">
-                                <small class="input-hint">
-                                    URL langsung ke file font (.woff2, .ttf, .otf) jika tersedia
-                                </small>
-                            </div>
-                            
-                            <button class="btn-apply-font full-width" id="applyDafont">
-                                <i class="fas fa-download"></i>
-                                Load & Preview Font
-                            </button>
-                        </div>
-
-                        <!-- Custom CSS Font Panel -->
-                        <div class="font-source-panel" id="customFontPanel">
-                            <div class="control-group">
-                                <label class="control-label">
-                                    <i class="fas fa-code"></i>
-                                    @font-face CSS
-                                </label>
-                                <textarea id="customFontCss" 
-                                          class="code-textarea" 
-                                          rows="6" 
-                                          placeholder="@font-face {
-    font-family: 'MyCustomFont';
-    src: url('https://example.com/font.woff2') format('woff2'),
-         url('https://example.com/font.woff') format('woff');
-    font-weight: normal;
-    font-style: normal;
-}"></textarea>
-                            </div>
-                            
-                            <div class="control-group">
-                                <label class="control-label">
-                                    <i class="fas fa-font"></i>
-                                    Font Family untuk Preview
-                                </label>
-                                <input type="text" 
-                                       id="customFontFamily" 
-                                       class="styled-input" 
-                                       placeholder="'MyCustomFont', sans-serif">
-                            </div>
-                            
-                            <button class="btn-apply-font full-width" id="applyCustomFont">
-                                <i class="fas fa-code"></i>
-                                Apply Custom Font
-                            </button>
-                        </div>
-
-                        <!-- Font Style Controls -->
+                        
+                        <!-- Font Family Name -->
                         <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-font"></i>
+                                Font Family Name
+                            </label>
+                            <input type="text" 
+                                   id="fontFamily" 
+                                   class="styled-input" 
+                                   placeholder="Nama font (contoh: Squeaky)"
+                                   value="MyCustomFont">
+                            <small class="input-hint">
+                                Nama yang akan digunakan di CSS
+                            </small>
+                        </div>
+                        
+                        <!-- Alternative: URL Font -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-link"></i>
+                                Atau URL Font (.ttf)
+                            </label>
+                            <input type="url" 
+                                   id="fontUrl" 
+                                   class="styled-input" 
+                                   placeholder="https://example.com/font.ttf">
+                            <small class="input-hint">
+                                URL langsung ke file .ttf (jika sudah dihosting)
+                            </small>
+                        </div>
+                        
+                        <!-- Load Font Button -->
+                        <button class="btn-apply-font full-width" id="loadFontBtn">
+                            <i class="fas fa-download"></i>
+                            Load & Preview Font
+                        </button>
+                        
+                        <!-- Font Style Controls -->
+                        <div class="control-group" style="margin-top: 20px;">
                             <label class="control-label">
                                 <i class="fas fa-sliders-h"></i>
                                 Font Style
@@ -324,155 +141,32 @@
                                 </select>
                                 
                                 <select id="fontSize" class="style-select">
-                                    <option value="12">12px</option>
-                                    <option value="14">14px</option>
-                                    <option value="16" selected>16px</option>
-                                    <option value="18">18px</option>
-                                    <option value="20">20px</option>
                                     <option value="24">24px</option>
-                                    <option value="28">28px</option>
                                     <option value="32">32px</option>
-                                    <option value="36">36px</option>
                                     <option value="40">40px</option>
-                                    <option value="48">48px</option>
+                                    <option value="48" selected>48px</option>
                                     <option value="56">56px</option>
                                     <option value="64">64px</option>
+                                    <option value="72">72px</option>
                                 </select>
                             </div>
                         </div>
-
-                        <!-- Text Transform -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-text-height"></i>
-                                Text Transform
-                            </label>
-                            <div class="button-group">
-                                <button class="style-btn" data-transform="none">None</button>
-                                <button class="style-btn" data-transform="uppercase">UPPERCASE</button>
-                                <button class="style-btn" data-transform="lowercase">lowercase</button>
-                                <button class="style-btn" data-transform="capitalize">Capitalize</button>
-                            </div>
-                        </div>
-
-                        <!-- Letter Spacing -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-arrows-alt-h"></i>
-                                Letter Spacing
-                            </label>
-                            <div class="range-control">
-                                <input type="range" id="letterSpacing" min="-5" max="20" value="0" step="0.5">
-                                <span class="range-value" id="letterSpacingValue">0px</span>
-                            </div>
-                        </div>
-
-                        <!-- Word Spacing -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-arrows-alt-h"></i>
-                                Word Spacing
-                            </label>
-                            <div class="range-control">
-                                <input type="range" id="wordSpacing" min="-5" max="30" value="0" step="0.5">
-                                <span class="range-value" id="wordSpacingValue">0px</span>
-                            </div>
-                        </div>
-
-                        <!-- Line Height -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-arrows-alt-v"></i>
-                                Line Height
-                            </label>
-                            <div class="range-control">
-                                <input type="range" id="lineHeight" min="0.8" max="3" value="1.5" step="0.1">
-                                <span class="range-value" id="lineHeightValue">1.5</span>
-                            </div>
-                        </div>
-
-                        <!-- Text Shadow -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-shadow"></i>
-                                Text Shadow
-                            </label>
-                            <div class="shadow-controls">
-                                <div class="shadow-row">
-                                    <input type="number" id="shadowX" value="2" placeholder="X" class="shadow-input">
-                                    <input type="number" id="shadowY" value="2" placeholder="Y" class="shadow-input">
-                                    <input type="number" id="shadowBlur" value="4" placeholder="Blur" class="shadow-input">
-                                </div>
-                                <div class="shadow-row">
-                                    <input type="color" id="shadowColor" value="#000000">
-                                    <input type="range" id="shadowOpacity" min="0" max="1" value="0.5" step="0.1">
-                                    <button class="btn-toggle-shadow" id="toggleShadow">
-                                        <i class="fas fa-power-off"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Text Stroke (Webkit) -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-border-all"></i>
-                                Text Stroke (Webkit)
-                            </label>
-                            <div class="stroke-controls">
-                                <input type="range" id="strokeWidth" min="0" max="5" value="0" step="0.5">
-                                <input type="color" id="strokeColor" value="#000000">
-                                <span class="range-value" id="strokeValue">0px</span>
-                            </div>
-                        </div>
-
-                        <!-- Gradient Text -->
+                        
+                        <!-- Text Color -->
                         <div class="control-group">
                             <label class="control-label">
                                 <i class="fas fa-palette"></i>
-                                Gradient Text
+                                Text Color
                             </label>
-                            <div class="gradient-controls">
-                                <select id="gradientType" class="style-select">
-                                    <option value="none">None</option>
-                                    <option value="linear">Linear Gradient</option>
-                                    <option value="radial">Radial Gradient</option>
-                                </select>
-                                
-                                <div class="gradient-colors" id="gradientColors">
-                                    <input type="color" class="gradient-color" value="#ff6b6b">
-                                    <input type="color" class="gradient-color" value="#4ecdc4">
-                                    <button class="add-gradient-color">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </div>
-                                
-                                <input type="text" id="gradientAngle" placeholder="Angle (deg)" value="45">
-                            </div>
-                        </div>
-
-                        <!-- Background Text -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-fill-drip"></i>
-                                Background Text
-                            </label>
-                            <select id="bgType" class="style-select">
-                                <option value="none">No Background</option>
-                                <option value="color">Solid Color</option>
-                                <option value="gradient">Gradient</option>
-                                <option value="pattern">Pattern</option>
-                                <option value="image">Image</option>
-                            </select>
-                            
-                            <div class="bg-controls" id="bgControls">
-                                <!-- Akan diisi JavaScript -->
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="textColor" value="#ffffff">
+                                <input type="text" id="textColorHex" value="#ffffff">
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Animation Manager Section -->
+                
+                <!-- Animation Manager -->
                 <div class="control-section">
                     <div class="section-header" data-toggle="animationSection">
                         <h2><i class="fas fa-film"></i> Animation Studio</h2>
@@ -485,990 +179,203 @@
                                 <i class="fas fa-magic"></i>
                                 Pilih Animasi
                             </label>
-                            <div class="animation-grid" id="animationGrid">
-                                <!-- Akan diisi JavaScript -->
-                            </div>
+                            <select id="animationType" class="style-select">
+                                <option value="none">Tidak Ada</option>
+                                <option value="fade" selected>Fade</option>
+                                <option value="bounce">Bounce</option>
+                                <option value="pulse">Pulse</option>
+                                <option value="shake">Shake</option>
+                                <option value="float">Float</option>
+                                <option value="rotate">Rotate</option>
+                                <option value="wave">Wave</option>
+                                <option value="glitch">Glitch</option>
+                                <option value="rainbow">Rainbow</option>
+                                <option value="heartbeat">Heartbeat</option>
+                            </select>
                         </div>
-
-                        <!-- Animation Timeline -->
+                        
+                        <!-- Duration -->
                         <div class="control-group">
                             <label class="control-label">
                                 <i class="fas fa-clock"></i>
-                                Timeline
-                            </label>
-                            <div class="timeline-controls">
-                                <div class="timeline-row">
-                                    <span class="timeline-label">Durasi</span>
-                                    <input type="range" id="animDuration" min="0.1" max="10" value="2" step="0.1">
-                                    <span class="timeline-value" id="animDurationValue">2s</span>
-                                </div>
-                                
-                                <div class="timeline-row">
-                                    <span class="timeline-label">Delay</span>
-                                    <input type="range" id="animDelay" min="0" max="5" value="0" step="0.1">
-                                    <span class="timeline-value" id="animDelayValue">0s</span>
-                                </div>
-                                
-                                <div class="timeline-row">
-                                    <span class="timeline-label">Iterasi</span>
-                                    <select id="animIteration" class="style-select">
-                                        <option value="1">1x</option>
-                                        <option value="2">2x</option>
-                                        <option value="3">3x</option>
-                                        <option value="4">4x</option>
-                                        <option value="5">5x</option>
-                                        <option value="infinite" selected>Tak Terbatas</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="timeline-row">
-                                    <span class="timeline-label">Direction</span>
-                                    <select id="animDirection" class="style-select">
-                                        <option value="normal">Normal</option>
-                                        <option value="reverse">Reverse</option>
-                                        <option value="alternate">Alternate</option>
-                                        <option value="alternate-reverse">Alternate Reverse</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="timeline-row">
-                                    <span class="timeline-label">Fill Mode</span>
-                                    <select id="animFillMode" class="style-select">
-                                        <option value="none">None</option>
-                                        <option value="forwards">Forwards</option>
-                                        <option value="backwards">Backwards</option>
-                                        <option value="both">Both</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Easing Functions -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-chart-line"></i>
-                                Easing (Timing Function)
-                            </label>
-                            <div class="easing-grid" id="easingGrid">
-                                <button class="easing-btn" data-easing="linear">Linear</button>
-                                <button class="easing-btn" data-easing="ease">Ease</button>
-                                <button class="easing-btn" data-easing="ease-in">Ease In</button>
-                                <button class="easing-btn" data-easing="ease-out">Ease Out</button>
-                                <button class="easing-btn" data-easing="ease-in-out">Ease In Out</button>
-                                <button class="easing-btn" data-easing="cubic-bezier(0.68, -0.55, 0.265, 1.55)">Bounce</button>
-                                <button class="easing-btn" data-easing="cubic-bezier(0.175, 0.885, 0.32, 1.275)">Spring</button>
-                                <button class="easing-btn" data-easing="cubic-bezier(0.6, -0.28, 0.735, 0.045)">Back In</button>
-                                <button class="easing-btn" data-easing="cubic-bezier(0.215, 0.610, 0.355, 1)">Back Out</button>
-                                <button class="easing-btn" data-easing="cubic-bezier(0.645, 0.045, 0.355, 1)">Power 1</button>
-                            </div>
-                            
-                            <div class="custom-easing">
-                                <input type="text" id="customEasing" class="styled-input" placeholder="cubic-bezier(0.4, 0, 0.2, 1)">
-                                <button class="btn-apply-easing" id="applyCustomEasing">
-                                    <i class="fas fa-check"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Transform Properties -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-arrows-alt"></i>
-                                Transform
-                            </label>
-                            <div class="transform-controls">
-                                <div class="transform-row">
-                                    <span>Scale X</span>
-                                    <input type="range" id="scaleX" min="0" max="3" value="1" step="0.1">
-                                    <span class="transform-value" id="scaleXValue">1</span>
-                                </div>
-                                <div class="transform-row">
-                                    <span>Scale Y</span>
-                                    <input type="range" id="scaleY" min="0" max="3" value="1" step="0.1">
-                                    <span class="transform-value" id="scaleYValue">1</span>
-                                </div>
-                                <div class="transform-row">
-                                    <span>Rotate (deg)</span>
-                                    <input type="range" id="rotate" min="-180" max="180" value="0" step="5">
-                                    <span class="transform-value" id="rotateValue">0°</span>
-                                </div>
-                                <div class="transform-row">
-                                    <span>Skew X</span>
-                                    <input type="range" id="skewX" min="-45" max="45" value="0" step="1">
-                                    <span class="transform-value" id="skewXValue">0°</span>
-                                </div>
-                                <div class="transform-row">
-                                    <span>Skew Y</span>
-                                    <input type="range" id="skewY" min="-45" max="45" value="0" step="1">
-                                    <span class="transform-value" id="skewYValue">0°</span>
-                                </div>
-                                <div class="transform-row">
-                                    <span>Translate X</span>
-                                    <input type="range" id="translateX" min="-100" max="100" value="0" step="5">
-                                    <span class="transform-value" id="translateXValue">0px</span>
-                                </div>
-                                <div class="transform-row">
-                                    <span>Translate Y</span>
-                                    <input type="range" id="translateY" min="-100" max="100" value="0" step="5">
-                                    <span class="transform-value" id="translateYValue">0px</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Opacity -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-adjust"></i>
-                                Opacity
+                                Durasi (detik)
                             </label>
                             <div class="range-control">
-                                <input type="range" id="opacity" min="0" max="1" value="1" step="0.05">
-                                <span class="range-value" id="opacityValue">1.0</span>
+                                <input type="range" id="animDuration" min="0.5" max="5" value="2" step="0.5">
+                                <span class="range-value" id="animDurationValue">2s</span>
                             </div>
                         </div>
-
-                        <!-- Filter Effects -->
+                        
+                        <!-- Delay -->
                         <div class="control-group">
                             <label class="control-label">
-                                <i class="fas fa-filter"></i>
-                                Filter Effects
+                                <i class="fas fa-hourglass-half"></i>
+                                Delay (detik)
                             </label>
-                            <div class="filter-controls">
-                                <div class="filter-row">
-                                    <span>Blur</span>
-                                    <input type="range" id="filterBlur" min="0" max="10" value="0" step="0.5">
-                                    <span class="filter-value" id="filterBlurValue">0px</span>
-                                </div>
-                                <div class="filter-row">
-                                    <span>Brightness</span>
-                                    <input type="range" id="filterBrightness" min="0" max="2" value="1" step="0.1">
-                                    <span class="filter-value" id="filterBrightnessValue">1</span>
-                                </div>
-                                <div class="filter-row">
-                                    <span>Contrast</span>
-                                    <input type="range" id="filterContrast" min="0" max="2" value="1" step="0.1">
-                                    <span class="filter-value" id="filterContrastValue">1</span>
-                                </div>
-                                <div class="filter-row">
-                                    <span>Grayscale</span>
-                                    <input type="range" id="filterGrayscale" min="0" max="1" value="0" step="0.1">
-                                    <span class="filter-value" id="filterGrayscaleValue">0%</span>
-                                </div>
-                                <div class="filter-row">
-                                    <span>Hue Rotate</span>
-                                    <input type="range" id="filterHue" min="0" max="360" value="0" step="10">
-                                    <span class="filter-value" id="filterHueValue">0°</span>
-                                </div>
-                                <div class="filter-row">
-                                    <span>Saturate</span>
-                                    <input type="range" id="filterSaturate" min="0" max="2" value="1" step="0.1">
-                                    <span class="filter-value" id="filterSaturateValue">1</span>
-                                </div>
-                                <div class="filter-row">
-                                    <span>Sepia</span>
-                                    <input type="range" id="filterSepia" min="0" max="1" value="0" step="0.1">
-                                    <span class="filter-value" id="filterSepiaValue">0%</span>
-                                </div>
-                                <div class="filter-row">
-                                    <span>Invert</span>
-                                    <input type="range" id="filterInvert" min="0" max="1" value="0" step="0.1">
-                                    <span class="filter-value" id="filterInvertValue">0%</span>
-                                </div>
+                            <div class="range-control">
+                                <input type="range" id="animDelay" min="0" max="2" value="0" step="0.1">
+                                <span class="range-value" id="animDelayValue">0s</span>
                             </div>
                         </div>
-
-                        <!-- Animation Events -->
+                        
+                        <!-- Iteration -->
                         <div class="control-group">
                             <label class="control-label">
-                                <i class="fas fa-bolt"></i>
-                                Animation Events
+                                <i class="fas fa-redo-alt"></i>
+                                Perulangan
                             </label>
-                            <div class="event-controls">
-                                <div class="checkbox-row">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="eventStart">
-                                        <span class="checkbox-text">On Start</span>
-                                    </label>
-                                    <button class="event-action" data-event="start">Add Action</button>
-                                </div>
-                                <div class="checkbox-row">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="eventEnd">
-                                        <span class="checkbox-text">On End</span>
-                                    </label>
-                                    <button class="event-action" data-event="end">Add Action</button>
-                                </div>
-                                <div class="checkbox-row">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="eventIteration">
-                                        <span class="checkbox-text">On Iteration</span>
-                                    </label>
-                                    <button class="event-action" data-event="iteration">Add Action</button>
-                                </div>
-                                <div class="checkbox-row">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" id="eventCancel">
-                                        <span class="checkbox-text">On Cancel</span>
-                                    </label>
-                                    <button class="event-action" data-event="cancel">Add Action</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Save Animation Preset -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-save"></i>
-                                Save Animation Preset
-                            </label>
-                            <div class="preset-controls">
-                                <input type="text" id="presetName" class="styled-input" placeholder="Nama preset">
-                                <button class="btn-save-preset" id="savePreset">
-                                    <i class="fas fa-save"></i>
-                                    Save
-                                </button>
-                            </div>
-                            <div class="preset-list" id="presetList">
-                                <!-- Akan diisi JavaScript -->
-                            </div>
+                            <select id="animIteration" class="style-select">
+                                <option value="1">1x</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="infinite" selected>Tak Terbatas</option>
+                            </select>
                         </div>
                     </div>
                 </div>
-
-                <!-- Keyframe Editor Section -->
+                
+                <!-- Template Manager -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="keyframeSection">
-                        <h2><i class="fas fa-key"></i> Keyframe Editor</h2>
+                    <div class="section-header" data-toggle="templateSection">
+                        <h2><i class="fas fa-save"></i> Template Manager</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="section-content" id="keyframeSection">
-                        <!-- Keyframe Timeline -->
-                        <div class="keyframe-timeline" id="keyframeTimeline">
-                            <div class="timeline-header">
-                                <span>0%</span>
-                                <span>25%</span>
-                                <span>50%</span>
-                                <span>75%</span>
-                                <span>100%</span>
-                            </div>
-                            <div class="timeline-track" id="timelineTrack">
-                                <div class="keyframe-marker" data-position="0" style="left: 0%">0%</div>
-                                <div class="keyframe-marker" data-position="25" style="left: 25%">25%</div>
-                                <div class="keyframe-marker" data-position="50" style="left: 50%">50%</div>
-                                <div class="keyframe-marker" data-position="75" style="left: 75%">75%</div>
-                                <div class="keyframe-marker" data-position="100" style="left: 100%">100%</div>
-                            </div>
-                        </div>
-
-                        <!-- Add Keyframe -->
+                    <div class="section-content" id="templateSection">
+                        <!-- Save Template -->
                         <div class="control-group">
                             <label class="control-label">
-                                <i class="fas fa-plus-circle"></i>
-                                Add Keyframe
+                                <i class="fas fa-tag"></i>
+                                Nama Template
                             </label>
-                            <div class="add-keyframe">
-                                <input type="range" id="keyframePosition" min="0" max="100" value="50" step="1">
-                                <span class="position-value" id="keyframePosValue">50%</span>
-                                <button class="btn-add-keyframe" id="addKeyframe">
-                                    <i class="fas fa-plus"></i>
-                                    Add
+                            <input type="text" id="templateName" class="styled-input" placeholder="Contoh: My Custom Font Bounce">
+                        </div>
+                        
+                        <button class="btn-apply-font full-width" id="saveTemplateBtn">
+                            <i class="fas fa-save"></i>
+                            Simpan Template
+                        </button>
+                        
+                        <div class="template-code-display" id="savedCodeDisplay" style="display: none; margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
+                            <small>Kode Template:</small>
+                            <div style="font-family: monospace; font-size: 16px; color: #40a7e3; letter-spacing: 2px; margin: 8px 0;" id="generatedCode">ABCDEFGHIJKLMNOPQRSTUVWXYZ12345</div>
+                            <button class="btn-icon" id="copyCodeBtn" style="width: auto; padding: 8px 16px;">
+                                <i class="fas fa-copy"></i> Salin Kode
+                            </button>
+                        </div>
+                        
+                        <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                            <label class="control-label">
+                                <i class="fas fa-key"></i>
+                                Load Template
+                            </label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="loadTemplateCode" class="styled-input" placeholder="Masukkan kode 35 karakter" maxlength="35">
+                                <button class="btn-apply-font" id="loadTemplateBtn" style="width: auto;">
+                                    <i class="fas fa-download"></i>
                                 </button>
                             </div>
                         </div>
-
-                        <!-- Keyframe Properties -->
-                        <div class="keyframe-properties" id="keyframeProperties">
-                            <!-- Akan diisi JavaScript saat keyframe dipilih -->
-                        </div>
                     </div>
                 </div>
-
-                <!-- Text Content Editor -->
+                
+                <!-- Preview Text Editor -->
                 <div class="control-section">
                     <div class="section-header" data-toggle="textSection">
-                        <h2><i class="fas fa-edit"></i> Text Editor</h2>
+                        <h2><i class="fas fa-edit"></i> Preview Text</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
                     <div class="section-content" id="textSection">
                         <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-heading"></i>
-                                Preview Text
-                            </label>
-                            <textarea id="previewText" 
-                                      class="code-textarea" 
-                                      rows="3">Toko Online Premium dengan Layanan Terbaik 24/7</textarea>
+                            <textarea id="previewText" class="code-textarea" rows="2">Toko Online Premium</textarea>
                         </div>
-
                         <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-align-left"></i>
-                                Text Alignment
-                            </label>
-                            <div class="alignment-buttons">
-                                <button class="align-btn" data-align="left">
-                                    <i class="fas fa-align-left"></i>
-                                </button>
-                                <button class="align-btn" data-align="center">
-                                    <i class="fas fa-align-center"></i>
-                                </button>
-                                <button class="align-btn" data-align="right">
-                                    <i class="fas fa-align-right"></i>
-                                </button>
-                                <button class="align-btn" data-align="justify">
-                                    <i class="fas fa-align-justify"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-paint-brush"></i>
-                                Text Color
-                            </label>
-                            <div class="color-picker-wrapper">
-                                <input type="color" id="textColor" value="#ffffff">
-                                <input type="text" id="textColorHex" value="#ffffff" placeholder="#RRGGBB">
-                            </div>
-                        </div>
-
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-eraser"></i>
-                                Reset All
-                            </label>
-                            <button class="btn-reset" id="resetAllBtn">
-                                <i class="fas fa-undo-alt"></i>
-                                Reset ke Default
-                            </button>
+                            <input type="text" id="previewSubtext" class="styled-input" value="dengan Layanan Terbaik 24/7">
                         </div>
                     </div>
                 </div>
             </div>
-
+            
             <!-- Center Preview Area -->
             <div class="preview-area">
                 <div class="preview-header">
                     <h3><i class="fas fa-eye"></i> Live Preview</h3>
                     <div class="preview-controls">
-                        <select id="previewSize" class="preview-size">
-                            <option value="12">12px</option>
-                            <option value="14">14px</option>
-                            <option value="16" selected>16px</option>
-                            <option value="18">18px</option>
-                            <option value="20">20px</option>
-                            <option value="24">24px</option>
-                            <option value="28">28px</option>
-                            <option value="32">32px</option>
-                            <option value="36">36px</option>
-                            <option value="40">40px</option>
-                            <option value="48">48px</option>
-                            <option value="56">56px</option>
-                            <option value="64">64px</option>
-                            <option value="72">72px</option>
-                            <option value="96">96px</option>
-                        </select>
-                        
-                        <select id="previewDevice" class="preview-device">
-                            <option value="desktop">Desktop</option>
-                            <option value="tablet">Tablet</option>
-                            <option value="mobile">Mobile</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                        
                         <button class="preview-fullscreen" id="fullscreenPreview">
                             <i class="fas fa-expand"></i>
                         </button>
                     </div>
                 </div>
                 
-                <div class="preview-container" id="previewContainer">
-                    <div class="preview-frame" id="previewFrame">
-                        <div class="preview-content" id="previewContent">
-                            <div class="preview-box" id="previewBox">
-                                <div class="preview-text-container" id="previewTextContainer">
-                                    <span class="preview-text" id="previewTextElement">
-                                        Toko Online Premium
-                                    </span>
-                                    <div class="preview-subtext" id="previewSubtext">
-                                        dengan Layanan Terbaik 24/7
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <!-- Preview Canvas -->
+                <div class="preview-canvas" id="previewCanvas">
+                    <div class="preview-text-display" id="previewTextDisplay">
+                        Toko Online Premium
+                    </div>
+                    <div class="preview-subtext-display" id="previewSubtextDisplay">
+                        dengan Layanan Terbaik 24/7
                     </div>
                 </div>
-
-                <!-- Animation Timeline Visualizer -->
-                <div class="timeline-visualizer">
-                    <div class="timeline-visualizer-header">
-                        <span class="timeline-label">Timeline</span>
-                        <span class="timeline-time" id="timelineTime">0s / 2s</span>
-                    </div>
-                    <div class="timeline-visualizer-track">
-                        <div class="timeline-visualizer-progress" id="timelineProgress" style="width: 0%"></div>
-                        <div class="timeline-visualizer-marker" id="timelineMarker"></div>
-                    </div>
-                    <div class="timeline-controls">
-                        <button class="timeline-btn" id="playAnimation">
-                            <i class="fas fa-play"></i>
-                        </button>
-                        <button class="timeline-btn" id="pauseAnimation">
-                            <i class="fas fa-pause"></i>
-                        </button>
-                        <button class="timeline-btn" id="stopAnimation">
-                            <i class="fas fa-stop"></i>
-                        </button>
-                        <button class="timeline-btn" id="restartAnimation">
-                            <i class="fas fa-redo-alt"></i>
-                        </button>
-                        <button class="timeline-btn" id="loopAnimation">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Preview Settings Bar -->
-                <div class="preview-settings-bar">
-                    <div class="preview-bg-selector">
-                        <button class="bg-btn" data-bg="dark">Dark</button>
-                        <button class="bg-btn" data-bg="light">Light</button>
-                        <button class="bg-btn" data-bg="grid">Grid</button>
-                        <button class="bg-btn" data-bg="gradient">Gradient</button>
-                        <button class="bg-btn" data-bg="custom" id="customBgBtn">
-                            <i class="fas fa-palette"></i>
-                        </button>
-                    </div>
-                    <div class="preview-zoom">
-                        <button class="zoom-btn" id="zoomOut">
-                            <i class="fas fa-search-minus"></i>
-                        </button>
-                        <span class="zoom-level" id="zoomLevel">100%</span>
-                        <button class="zoom-btn" id="zoomIn">
-                            <i class="fas fa-search-plus"></i>
-                        </button>
-                        <button class="zoom-btn" id="resetZoom">
-                            <i class="fas fa-undo"></i>
-                        </button>
-                    </div>
+                
+                <!-- Animation Timeline Controls -->
+                <div class="timeline-controls" style="padding: 16px 20px;">
+                    <button class="timeline-btn" id="playAnimation">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="timeline-btn" id="pauseAnimation">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button class="timeline-btn" id="restartAnimation">
+                        <i class="fas fa-redo-alt"></i>
+                    </button>
                 </div>
             </div>
-
-            <!-- Right Sidebar - Properties Panel -->
+            
+            <!-- Right Panel - Info -->
             <div class="properties-panel">
-                <!-- Quick Presets -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-star"></i>
-                        Quick Presets
-                    </h3>
-                    <div class="quick-presets-grid" id="quickPresets">
-                        <!-- Akan diisi JavaScript -->
-                    </div>
-                </div>
-
-                <!-- CSS Output -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-code"></i>
-                        CSS Output
-                        <button class="copy-css" id="copyCssBtn" title="Copy CSS">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </h3>
-                    <div class="css-output" id="cssOutput">
-                        <pre><code class="language-css" id="cssCode">
-/* Font & Animation CSS */
-.preview-text {
-    font-family: 'Inter', sans-serif;
-    font-size: 16px;
-    font-weight: 400;
-    color: #ffffff;
-    animation: customAnim 2s infinite;
-}
-
-@keyframes customAnim {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.1); opacity: 0.8; }
-    100% { transform: scale(1); opacity: 1; }
-}
-                        </code></pre>
-                    </div>
-                </div>
-
-                <!-- Font Information -->
+                <!-- Font Info -->
                 <div class="properties-section">
                     <h3 class="properties-title">
                         <i class="fas fa-info-circle"></i>
                         Font Info
                     </h3>
-                    <div class="font-info-panel" id="fontInfo">
+                    <div class="font-info-panel">
                         <div class="info-row">
-                            <span class="info-label">Family:</span>
-                            <span class="info-value" id="infoFamily">Inter, sans-serif</span>
+                            <span class="info-label">Font:</span>
+                            <span class="info-value" id="infoFont">-</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Weight:</span>
                             <span class="info-value" id="infoWeight">400</span>
                         </div>
                         <div class="info-row">
-                            <span class="info-label">Style:</span>
-                            <span class="info-value" id="infoStyle">normal</span>
-                        </div>
-                        <div class="info-row">
                             <span class="info-label">Size:</span>
-                            <span class="info-value" id="infoSize">16px</span>
+                            <span class="info-value" id="infoSize">48px</span>
                         </div>
                         <div class="info-row">
-                            <span class="info-label">Line Height:</span>
-                            <span class="info-value" id="infoLineHeight">1.5</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Charset:</span>
-                            <span class="info-value" id="infoCharset">UTF-8</span>
+                            <span class="info-label">Animasi:</span>
+                            <span class="info-value" id="infoAnimasi">Fade</span>
                         </div>
                     </div>
                 </div>
-
-                <!-- Animation Details -->
+                
+                <!-- CSS Output -->
                 <div class="properties-section">
                     <h3 class="properties-title">
-                        <i class="fas fa-chart-bar"></i>
-                        Animation Stats
+                        <i class="fas fa-code"></i>
+                        CSS Output
                     </h3>
-                    <div class="animation-stats" id="animationStats">
-                        <div class="stat-row">
-                            <span class="stat-label">Current:</span>
-                            <span class="stat-value" id="statCurrent">Fade In</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Duration:</span>
-                            <span class="stat-value" id="statDuration">2s</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Delay:</span>
-                            <span class="stat-value" id="statDelay">0s</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Iteration:</span>
-                            <span class="stat-value" id="statIteration">infinite</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Direction:</span>
-                            <span class="stat-value" id="statDirection">normal</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Easing:</span>
-                            <span class="stat-value" id="statEasing">ease</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Keyframes:</span>
-                            <span class="stat-value" id="statKeyframes">5</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Fonts -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-history"></i>
-                        Recent Fonts
-                    </h3>
-                    <div class="recent-fonts" id="recentFonts">
-                        <!-- Akan diisi JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Character Map -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-keyboard"></i>
-                        Character Map
-                        <button class="expand-chars" id="expandChars">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </h3>
-                    <div class="character-map" id="characterMap">
-                        <!-- Akan diisi JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Font Weights Preview -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-weight-hanging"></i>
-                        Font Weights Preview
-                    </h3>
-                    <div class="weights-preview" id="weightsPreview">
-                        <div class="weight-item" data-weight="100">Thin 100</div>
-                        <div class="weight-item" data-weight="300">Light 300</div>
-                        <div class="weight-item" data-weight="400">Regular 400</div>
-                        <div class="weight-item" data-weight="500">Medium 500</div>
-                        <div class="weight-item" data-weight="600">Semi Bold 600</div>
-                        <div class="weight-item" data-weight="700">Bold 700</div>
-                        <div class="weight-item" data-weight="900">Black 900</div>
-                    </div>
-                </div>
-
-                <!-- Export Options -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-download"></i>
-                        Export
-                    </h3>
-                    <div class="export-options">
-                        <button class="export-btn" id="exportCSS">
-                            <i class="fas fa-code"></i>
-                            Export CSS
-                        </button>
-                        <button class="export-btn" id="exportJSON">
-                            <i class="fas fa-file-code"></i>
-                            Export JSON
-                        </button>
-                        <button class="export-btn" id="exportHTML">
-                            <i class="fas fa-file-code"></i>
-                            Export HTML
-                        </button>
-                        <button class="export-btn" id="exportPreview">
-                            <i class="fas fa-camera"></i>
-                            Screenshot
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Help & Shortcuts -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-question-circle"></i>
-                        Shortcuts
-                    </h3>
-                    <div class="shortcuts-list">
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>Z</kbd>
-                            <span>Undo</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>Y</kbd>
-                            <span>Redo</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Space</kbd>
-                            <span>Play/Pause</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>F11</kbd>
-                            <span>Fullscreen</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>S</kbd>
-                            <span>Save</span>
-                        </div>
-                        <div class="shortcut-item">
-                            <kbd>Ctrl</kbd> + <kbd>P</kbd>
-                            <span>Print CSS</span>
-                        </div>
+                    <div class="css-output">
+                        <pre><code class="language-css" id="cssCode">/* Font akan muncul setelah load */</code></pre>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-  <!-- Template Manager Modal -->
-  <div class="modal" id="templateManagerModal">
-      <div class="modal-content modal-lg">
-          <div class="modal-header">
-              <h2><i class="fas fa-template"></i> Template Manager</h2>
-              <button class="modal-close" id="closeTemplateManagerModal">&times;</button>
-          </div>
-          <div class="modal-body">
-              <!-- Search & Filter -->
-              <div class="template-search-bar">
-                  <div class="search-input-wrapper">
-                      <i class="fas fa-search"></i>
-                      <input type="text" id="templateSearch" placeholder="Cari template..." class="template-search">
-                  </div>
-                  <select id="templateFilter" class="template-filter">
-                      <option value="all">Semua Template</option>
-                      <option value="mine">Template Saya</option>
-                      <option value="public">Public</option>
-                      <option value="popular">Populer</option>
-                      <option value="recent">Terbaru</option>
-                  </select>
-              </div>
-              
-              <!-- Templates Grid -->
-              <div class="templates-grid" id="templatesGrid">
-                  <!-- Akan diisi JavaScript -->
-                  <div class="template-loading">
-                      <i class="fas fa-spinner fa-spin"></i>
-                      <span>Memuat template...</span>
-                  </div>
-              </div>
-          </div>
-      </div>
-  </div>
-  
-  <!-- Save Template Modal -->
-  <div class="modal" id="saveTemplateModal">
-      <div class="modal-content modal-sm">
-          <div class="modal-header">
-              <h2><i class="fas fa-save"></i> Save Template</h2>
-              <button class="modal-close" id="closeSaveTemplateModal">&times;</button>
-          </div>
-          <div class="modal-body">
-              <form id="saveTemplateForm">
-                  <div class="form-group">
-                      <label><i class="fas fa-tag"></i> Nama Template</label>
-                      <input type="text" id="saveTemplateName" class="styled-input" 
-                             placeholder="Mis: Animasi Fade Modern" required maxlength="100">
-                      <small class="input-hint">Maksimal 100 karakter</small>
-                  </div>
-                  
-                  <div class="form-group">
-                      <label><i class="fas fa-globe"></i> Visibilitas</label>
-                      <div class="radio-group">
-                          <label class="radio-label">
-                              <input type="radio" name="templateVisibility" value="private" checked>
-                              <span class="radio-text">Private (hanya saya)</span>
-                          </label>
-                          <label class="radio-label">
-                              <input type="radio" name="templateVisibility" value="public">
-                              <span class="radio-text">Public</span>
-                          </label>
-                      </div>
-                  </div>
-                  
-                  <div class="template-code-preview" id="templateCodePreview" style="display: none;">
-                      <label>Kode Template:</label>
-                      <div class="code-box">
-                          <code id="generatedTemplateCode">ABC123...</code>
-                          <button class="copy-code-btn" id="copyTemplateCode">
-                              <i class="fas fa-copy"></i>
-                          </button>
-                      </div>
-                  </div>
-                  
-                  <div class="form-actions">
-                      <button type="button" class="btn-secondary" id="cancelSaveTemplate">Batal</button>
-                      <button type="submit" class="btn-primary" id="confirmSaveTemplate">
-                          <i class="fas fa-save"></i> Simpan Template
-                      </button>
-                  </div>
-              </form>
-          </div>
-      </div>
-  </div>
-  
-  <!-- Load Template Modal -->
-  <div class="modal" id="loadTemplateModal">
-      <div class="modal-content modal-sm">
-          <div class="modal-header">
-              <h2><i class="fas fa-download"></i> Load Template</h2>
-              <button class="modal-close" id="closeLoadTemplateModal">&times;</button>
-          </div>
-          <div class="modal-body">
-              <div class="form-group">
-                  <label><i class="fas fa-key"></i> Masukkan Kode Template</label>
-                  <input type="text" id="loadTemplateCode" class="styled-input" 
-                         placeholder="Contoh: aB3dE5fG7hIj9kL1mN2oP4qR6sT8uV0wX" 
-                         maxlength="35" minlength="35">
-                  <small class="input-hint">Kode template terdiri dari 35 karakter</small>
-              </div>
-              
-              <div class="load-template-preview" id="loadTemplatePreview" style="display: none;">
-                  <h4>Preview Template:</h4>
-                  <div class="preview-card">
-                      <div class="preview-row">
-                          <span class="preview-label">Nama:</span>
-                          <span class="preview-value" id="previewTemplateName">-</span>
-                      </div>
-                      <div class="preview-row">
-                          <span class="preview-label">Font:</span>
-                          <span class="preview-value" id="previewTemplateFont">-</span>
-                      </div>
-                      <div class="preview-row">
-                          <span class="preview-label">Animasi:</span>
-                          <span class="preview-value" id="previewTemplateAnim">-</span>
-                      </div>
-                      <div class="preview-row">
-                          <span class="preview-label">Dibuat:</span>
-                          <span class="preview-value" id="previewTemplateDate">-</span>
-                      </div>
-                  </div>
-              </div>
-              
-              <div class="form-actions">
-                  <button class="btn-secondary" id="cancelLoadTemplate">Batal</button>
-                  <button class="btn-primary" id="verifyLoadTemplate">
-                      <i class="fas fa-search"></i> Verifikasi
-                  </button>
-                  <button class="btn-primary" id="confirmLoadTemplate" style="display: none;">
-                      <i class="fas fa-download"></i> Load Template
-                  </button>
-              </div>
-          </div>
-      </div>
-  </div>
-  
-  <!-- Delete Template Confirmation Modal -->
-  <div class="modal" id="deleteTemplateModal">
-      <div class="modal-content modal-sm">
-          <div class="modal-header danger">
-              <h2><i class="fas fa-exclamation-triangle"></i> Hapus Template</h2>
-              <button class="modal-close" id="closeDeleteTemplateModal">&times;</button>
-          </div>
-          <div class="modal-body">
-              <p class="delete-text">Apakah Anda yakin ingin menghapus template ini?</p>
-              <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
-              <div class="delete-info" id="deleteTemplateInfo"></div>
-              <div class="form-actions">
-                  <button class="btn-secondary" id="cancelDeleteTemplate">Batal</button>
-                  <button class="btn-danger" id="confirmDeleteTemplate">
-                      <i class="fas fa-trash"></i> Hapus
-                  </button>
-              </div>
-          </div>
-      </div>
-  </div>
-
-    <!-- Custom Background Modal -->
-    <div class="modal" id="customBgModal">
-        <div class="modal-content modal-sm">
-            <div class="modal-header">
-                <h2><i class="fas fa-palette"></i> Custom Background</h2>
-                <button class="modal-close" id="closeBgModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Background Type</label>
-                    <select id="modalBgType" class="styled-input">
-                        <option value="color">Solid Color</option>
-                        <option value="gradient">Gradient</option>
-                        <option value="image">Image URL</option>
-                        <option value="pattern">Pattern</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="modalBgColorGroup">
-                    <label>Color</label>
-                    <input type="color" id="modalBgColor" value="#1a1a1a">
-                </div>
-                
-                <div class="form-group" id="modalBgGradientGroup" style="display: none;">
-                    <label>Gradient CSS</label>
-                    <input type="text" id="modalBgGradient" class="styled-input" placeholder="linear-gradient(45deg, #000, #333)">
-                </div>
-                
-                <div class="form-group" id="modalBgImageGroup" style="display: none;">
-                    <label>Image URL</label>
-                    <input type="url" id="modalBgImage" class="styled-input" placeholder="https://example.com/bg.jpg">
-                </div>
-                
-                <div class="form-actions">
-                    <button class="btn-secondary" id="cancelBgModal">Cancel</button>
-                    <button class="btn-primary" id="applyBgModal">Apply</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Save Preset Modal -->
-    <div class="modal" id="savePresetModal">
-        <div class="modal-content modal-sm">
-            <div class="modal-header">
-                <h2><i class="fas fa-save"></i> Save Preset</h2>
-                <button class="modal-close" id="closePresetModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Preset Name</label>
-                    <input type="text" id="modalPresetName" class="styled-input" placeholder="My Animation">
-                </div>
-                
-                <div class="form-group">
-                    <label>Category</label>
-                    <select id="modalPresetCategory" class="styled-input">
-                        <option value="general">General</option>
-                        <option value="entrance">Entrance</option>
-                        <option value="exit">Exit</option>
-                        <option value="attention">Attention</option>
-                        <option value="text">Text</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="modalPresetDesc" class="styled-input" rows="3" placeholder="Deskripsi animasi..."></textarea>
-                </div>
-                
-                <div class="checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="modalPresetGlobal" checked>
-                        <span class="checkbox-text">Save for all websites</span>
-                    </label>
-                </div>
-                
-                <div class="form-actions">
-                    <button class="btn-secondary" id="cancelPresetModal">Cancel</button>
-                    <button class="btn-primary" id="confirmSavePreset">Save Preset</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Event Action Modal -->
-    <div class="modal" id="eventActionModal">
-        <div class="modal-content modal-sm">
-            <div class="modal-header">
-                <h2><i class="fas fa-bolt"></i> Add Event Action</h2>
-                <button class="modal-close" id="closeEventModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Action Type</label>
-                    <select id="eventActionType" class="styled-input">
-                        <option value="play">Play Animation</option>
-                        <option value="pause">Pause Animation</option>
-                        <option value="stop">Stop Animation</option>
-                        <option value="restart">Restart Animation</option>
-                        <option value="reverse">Reverse Animation</option>
-                        <option value="speed">Change Speed</option>
-                        <option value="color">Change Color</option>
-                        <option value="font">Change Font</option>
-                        <option value="alert">Show Alert</option>
-                        <option value="console">Console Log</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" id="eventSpeedGroup" style="display: none;">
-                    <label>Speed Multiplier</label>
-                    <input type="number" id="eventSpeed" class="styled-input" min="0.1" max="10" step="0.1" value="1">
-                </div>
-                
-                <div class="form-group" id="eventColorGroup" style="display: none;">
-                    <label>Color</label>
-                    <input type="color" id="eventColor" value="#ffffff">
-                </div>
-                
-                <div class="form-group" id="eventMessageGroup" style="display: none;">
-                    <label>Message</label>
-                    <input type="text" id="eventMessage" class="styled-input" placeholder="Hello World">
-                </div>
-                
-                <div class="form-actions">
-                    <button class="btn-secondary" id="cancelEventModal">Cancel</button>
-                    <button class="btn-primary" id="addEventAction">Add Action</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    
     <!-- Toast Notifications -->
     <div class="toast-container" id="toastContainer"></div>
-
+    
     <!-- JavaScript -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
     <script src="/wtb/js/tampilan/font.js"></script>
 </body>
 </html>
