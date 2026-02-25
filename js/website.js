@@ -1,4 +1,4 @@
-// website.js - Versi Crystal 3D dengan Integrasi API Lengkap
+// website.js - Versi Crystal 3D dengan Integrasi API Database (No Dummy Data untuk Endpoint Valid)
 (function() {
     'use strict';
     
@@ -25,19 +25,24 @@
         websiteData: null,
         tampilanData: null,
         
-        // Produk & Kategori
+        // Produk & Kategori dari database
         products: [],
-        categories: [],
-        structuredProducts: null,
+        layanan: [],
+        aplikasi: [],
+        structuredProducts: [],
         currentProduct: null,
         
-        // Banner & Promo
+        // Banner & Promo dari database
         banners: [],
         promos: [],
         currentBannerIndex: 0,
         currentPromoIndex: 0,
         bannerInterval: null,
         promoInterval: null,
+        
+        // Metode Pembayaran dari database
+        rekening: [],
+        gateway: [],
         
         // Keranjang
         cart: [],
@@ -63,8 +68,14 @@
         // Cache
         cache: new Map(),
         
-        // Retry
-        retryCount: 0
+        // Data loaded flags
+        dataLoaded: {
+            website: false,
+            tampilan: false,
+            products: false,
+            promos: false,
+            payments: false
+        }
     };
 
     // ===== DOM ELEMENTS CACHE =====
@@ -72,19 +83,11 @@
 
     // ===== UTILITY FUNCTIONS =====
     const Utils = {
-        // Format Rupiah
         formatRupiah: (angka) => {
             if (!angka && angka !== 0) return 'Rp 0';
             return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         },
 
-        // Format Number
-        formatNumber: (num) => {
-            if (!num && num !== 0) return '0';
-            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        },
-
-        // Format Date
         formatDate: (dateString, timeString) => {
             if (!dateString) return 'Tanpa batas waktu';
             try {
@@ -101,7 +104,6 @@
             }
         },
 
-        // Escape HTML
         escapeHtml: (text) => {
             if (!text) return '';
             const div = document.createElement('div');
@@ -109,7 +111,6 @@
             return div.innerHTML;
         },
 
-        // Debounce
         debounce: (func, wait) => {
             let timeout;
             return function executedFunction(...args) {
@@ -122,7 +123,6 @@
             };
         },
 
-        // Throttle
         throttle: (func, limit) => {
             let inThrottle;
             return function(...args) {
@@ -134,39 +134,12 @@
             };
         },
 
-        // Vibrate
         vibrate: (duration = CONFIG.VIBRATE_DURATION) => {
             if (window.navigator && window.navigator.vibrate) {
                 window.navigator.vibrate(duration);
             }
         },
 
-        // Generate Stars
-        generateStars: (rating) => {
-            const fullStars = Math.floor(rating);
-            const halfStar = rating % 1 >= 0.5;
-            const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-            
-            let stars = '';
-            for (let i = 0; i < fullStars; i++) {
-                stars += '<i class="fas fa-star"></i>';
-            }
-            if (halfStar) {
-                stars += '<i class="fas fa-star-half-alt"></i>';
-            }
-            for (let i = 0; i < emptyStars; i++) {
-                stars += '<i class="far fa-star"></i>';
-            }
-            return stars;
-        },
-
-        // Generate Avatar URL
-        generateAvatarUrl: (name) => {
-            if (!name) return `https://ui-avatars.com/api/?name=U&size=100&background=40a7e3&color=fff&bold=true`;
-            return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=100&background=40a7e3&color=fff&bold=true`;
-        },
-
-        // Cache Management
         setCache: (key, data) => {
             State.cache.set(key, {
                 data,
@@ -184,7 +157,6 @@
             return cached.data;
         },
 
-        // Copy to Clipboard
         copyToClipboard: async (text) => {
             try {
                 await navigator.clipboard.writeText(text);
@@ -195,18 +167,13 @@
             }
         },
 
-        // Detect Mobile
-        isMobile: () => {
-            return window.innerWidth <= 768;
-        },
+        isMobile: () => window.innerWidth <= 768,
 
-        // Get Endpoint from URL
         getEndpointFromUrl: () => {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get('store');
         },
 
-        // Save to LocalStorage
         saveToStorage: (key, data) => {
             try {
                 localStorage.setItem(`website_${State.currentEndpoint}_${key}`, JSON.stringify(data));
@@ -215,7 +182,6 @@
             }
         },
 
-        // Load from LocalStorage
         loadFromStorage: (key) => {
             try {
                 const data = localStorage.getItem(`website_${State.currentEndpoint}_${key}`);
@@ -223,6 +189,14 @@
             } catch (e) {
                 console.error('Error loading from storage:', e);
                 return null;
+            }
+        },
+
+        checkDataLoaded: () => {
+            // Jika semua data sudah dimuat, sembunyikan loading
+            const allLoaded = Object.values(State.dataLoaded).every(v => v === true);
+            if (allLoaded && State.isLoading) {
+                Loading.hide();
             }
         }
     };
@@ -246,7 +220,6 @@
             
             DOM.toastContainer.appendChild(toast);
             
-            // Add mouse position effect
             toast.addEventListener('mousemove', (e) => {
                 const rect = toast.getBoundingClientRect();
                 const x = e.clientX - rect.left;
@@ -271,7 +244,7 @@
 
     // ===== LOADING OVERLAY =====
     const Loading = {
-        show: (message = 'Memuat pengalaman 3D...') => {
+        show: (message = 'Memuat data dari database...') => {
             if (State.isLoading) return;
             State.isLoading = true;
             
@@ -280,7 +253,6 @@
                 if (loadingText) loadingText.textContent = message;
                 DOM.loadingOverlay.style.display = 'flex';
                 
-                // Animate crystal loader
                 const loader = DOM.loadingOverlay.querySelector('.crystal-loader');
                 if (loader) {
                     loader.style.animation = 'none';
@@ -338,8 +310,7 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const data = await response.json();
-                return data;
+                return await response.json();
             } catch (error) {
                 if (error.name === 'AbortError') {
                     throw new Error('Request timeout');
@@ -364,6 +335,8 @@
                 const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/websites/endpoint/${endpoint}`);
                 if (data.success && data.website) {
                     Utils.setCache(cacheKey, data.website);
+                    State.dataLoaded.website = true;
+                    Utils.checkDataLoaded();
                     return data.website;
                 }
                 throw new Error('Website not found');
@@ -383,11 +356,15 @@
                 const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/tampilan/${websiteId}`);
                 if (data.success && data.tampilan) {
                     Utils.setCache(cacheKey, data.tampilan);
+                    State.dataLoaded.tampilan = true;
+                    Utils.checkDataLoaded();
                     return data.tampilan;
                 }
                 return null;
             } catch (error) {
                 if (error.message.includes('404')) {
+                    State.dataLoaded.tampilan = true;
+                    Utils.checkDataLoaded();
                     return null;
                 }
                 console.error('❌ Error loading tampilan:', error);
@@ -405,11 +382,17 @@
                 const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/products/all/${websiteId}`);
                 if (data.success && data.data) {
                     Utils.setCache(cacheKey, data.data);
+                    State.dataLoaded.products = true;
+                    Utils.checkDataLoaded();
                     return data.data;
                 }
+                State.dataLoaded.products = true;
+                Utils.checkDataLoaded();
                 return [];
             } catch (error) {
                 console.error('❌ Error loading products:', error);
+                State.dataLoaded.products = true;
+                Utils.checkDataLoaded();
                 return [];
             }
         },
@@ -424,11 +407,60 @@
                 const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/tampilan/${websiteId}/promos`);
                 if (data.success && data.promos) {
                     Utils.setCache(cacheKey, data.promos);
+                    State.dataLoaded.promos = true;
+                    Utils.checkDataLoaded();
                     return data.promos;
                 }
+                State.dataLoaded.promos = true;
+                Utils.checkDataLoaded();
                 return [];
             } catch (error) {
                 console.error('❌ Error loading promos:', error);
+                State.dataLoaded.promos = true;
+                Utils.checkDataLoaded();
+                return [];
+            }
+        },
+
+        // Metode Pembayaran
+        getRekening: async (websiteId) => {
+            const cacheKey = `rekening_${websiteId}`;
+            const cached = Utils.getCache(cacheKey);
+            if (cached) return cached;
+
+            try {
+                const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/payments/rekening/${websiteId}`);
+                if (data.success) {
+                    Utils.setCache(cacheKey, data.rekening || []);
+                    return data.rekening || [];
+                }
+                return [];
+            } catch (error) {
+                console.error('❌ Error loading rekening:', error);
+                return [];
+            }
+        },
+
+        getGateway: async (websiteId) => {
+            const cacheKey = `gateway_${websiteId}`;
+            const cached = Utils.getCache(cacheKey);
+            if (cached) return cached;
+
+            try {
+                const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/payments/gateway/${websiteId}`);
+                if (data.success) {
+                    Utils.setCache(cacheKey, data.gateway || []);
+                    State.dataLoaded.payments = true;
+                    Utils.checkDataLoaded();
+                    return data.gateway || [];
+                }
+                State.dataLoaded.payments = true;
+                Utils.checkDataLoaded();
+                return [];
+            } catch (error) {
+                console.error('❌ Error loading gateway:', error);
+                State.dataLoaded.payments = true;
+                Utils.checkDataLoaded();
                 return [];
             }
         },
@@ -452,8 +484,7 @@
                 State.mouseX = e.clientX;
                 State.mouseY = e.clientY;
                 
-                // Update glow effects
-                document.querySelectorAll('.glow-effect, .crystal-panel, .crystal-3d-btn').forEach(el => {
+                document.querySelectorAll('.glow-effect, .crystal-panel, .crystal-3d-btn, .menu-item').forEach(el => {
                     const rect = el.getBoundingClientRect();
                     if (
                         e.clientX >= rect.left &&
@@ -469,7 +500,6 @@
                 });
             });
 
-            // 3D Tilt Effect
             document.querySelectorAll('.category-card, .popular-product-card, .promo-card').forEach(el => {
                 el.addEventListener('mousemove', MouseEffects.handleTilt);
                 el.addEventListener('mouseleave', MouseEffects.resetTilt);
@@ -518,7 +548,6 @@
             const banners = State.banners;
             let slidesHtml = '';
             let paginationHtml = '';
-            let dotsHtml = '';
 
             banners.forEach((banner, index) => {
                 let bannerUrl = '';
@@ -540,7 +569,7 @@
                                  style="object-position: ${positionX}% ${positionY}%;"
                                  onload="this.style.opacity='1'"
                                  style="opacity:0; transition:opacity 0.5s"
-                                 onerror="this.src='https://via.placeholder.com/1280x720/40a7e3/ffffff?text=Banner+${index+1}'; this.onload=null;">
+                                 onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'no-image-placeholder\'><i class=\'fas fa-image\'></i><span>Gambar tidak tersedia</span></div>';">
                         </div>
                     </div>
                 `;
@@ -548,15 +577,10 @@
                 paginationHtml += `
                     <span class="${index === 0 ? 'active' : ''}" data-index="${index}"></span>
                 `;
-
-                dotsHtml += `
-                    <span class="slider-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
-                `;
             });
 
             DOM.sliderContainer.innerHTML = slidesHtml;
             if (DOM.sliderPagination) DOM.sliderPagination.innerHTML = paginationHtml;
-            if (DOM.sliderDots) DOM.sliderDots.innerHTML = dotsHtml;
 
             // Load images
             document.querySelectorAll('.slider-slide img').forEach(img => {
@@ -574,17 +598,8 @@
                 return;
             }
 
-            if (DOM.sliderPrev) {
-                DOM.sliderPrev.addEventListener('click', () => {
-                    BannerSlider.prev();
-                });
-            }
-
-            if (DOM.sliderNext) {
-                DOM.sliderNext.addEventListener('click', () => {
-                    BannerSlider.next();
-                });
-            }
+            if (DOM.sliderPrev) DOM.sliderPrev.addEventListener('click', () => BannerSlider.prev());
+            if (DOM.sliderNext) DOM.sliderNext.addEventListener('click', () => BannerSlider.next());
 
             if (DOM.sliderPagination) {
                 DOM.sliderPagination.querySelectorAll('span').forEach(dot => {
@@ -595,7 +610,6 @@
                 });
             }
 
-            // Touch events
             BannerSlider.setupTouchEvents();
         },
 
@@ -611,7 +625,6 @@
                 BannerSlider.handleSwipe();
             }, { passive: true });
 
-            // Mouse drag events
             let mouseDown = false;
             let mouseStartX = 0;
 
@@ -632,11 +645,8 @@
                 const diff = mouseEndX - mouseStartX;
 
                 if (Math.abs(diff) > 50) {
-                    if (diff > 0) {
-                        BannerSlider.prev();
-                    } else {
-                        BannerSlider.next();
-                    }
+                    if (diff > 0) BannerSlider.prev();
+                    else BannerSlider.next();
                 }
 
                 mouseDown = false;
@@ -650,18 +660,14 @@
         handleSwipe: () => {
             const diff = State.touchEndX - State.touchStartX;
             if (Math.abs(diff) > 50) {
-                if (diff > 0) {
-                    BannerSlider.prev();
-                } else {
-                    BannerSlider.next();
-                }
+                if (diff > 0) BannerSlider.prev();
+                else BannerSlider.next();
             }
         },
 
         goTo: (index) => {
             const slides = document.querySelectorAll('.slider-slide');
             const paginationSpans = DOM.sliderPagination?.querySelectorAll('span');
-            const dots = document.querySelectorAll('.slider-dot');
 
             if (!slides.length) return;
 
@@ -671,11 +677,6 @@
             if (paginationSpans) {
                 paginationSpans.forEach(dot => dot.classList.remove('active'));
                 paginationSpans[index]?.classList.add('active');
-            }
-
-            if (dots.length) {
-                dots.forEach(dot => dot.classList.remove('active'));
-                dots[index]?.classList.add('active');
             }
 
             State.currentBannerIndex = index;
@@ -732,6 +733,8 @@
             let dotsHtml = '';
 
             State.promos.forEach((promo, index) => {
+                if (!promo.active) return; // Hanya promo aktif
+
                 const expiryText = promo.never_end 
                     ? '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tidak ada batas</span>'
                     : `<span class="promo-expiry"><i class="fas fa-clock"></i> ${Utils.formatDate(promo.end_date, promo.end_time)}</span>`;
@@ -769,10 +772,14 @@
                 `;
             });
 
+            if (slidesHtml === '') {
+                DOM.promoSliderContainer.style.display = 'none';
+                return;
+            }
+
             DOM.promoSliderTrack.innerHTML = slidesHtml;
             if (DOM.promoSliderDots) DOM.promoSliderDots.innerHTML = dotsHtml;
 
-            // Add tilt effects
             document.querySelectorAll('.promo-card').forEach(card => {
                 card.addEventListener('mousemove', MouseEffects.handleTilt);
                 card.addEventListener('mouseleave', MouseEffects.resetTilt);
@@ -787,17 +794,8 @@
                 return;
             }
 
-            if (DOM.promoSliderPrev) {
-                DOM.promoSliderPrev.addEventListener('click', () => {
-                    PromoSlider.prev();
-                });
-            }
-
-            if (DOM.promoSliderNext) {
-                DOM.promoSliderNext.addEventListener('click', () => {
-                    PromoSlider.next();
-                });
-            }
+            if (DOM.promoSliderPrev) DOM.promoSliderPrev.addEventListener('click', () => PromoSlider.prev());
+            if (DOM.promoSliderNext) DOM.promoSliderNext.addEventListener('click', () => PromoSlider.next());
 
             if (DOM.promoSliderDots) {
                 DOM.promoSliderDots.querySelectorAll('.promo-dot').forEach(dot => {
@@ -849,204 +847,225 @@
         }
     };
 
-    // ===== CATEGORIES RENDER =====
-    const Categories = {
-        render: (categories) => {
+    // ===== LAYANAN RENDER =====
+    const Layanan = {
+        render: (structuredProducts) => {
             if (!DOM.categoriesGrid) return;
 
-            if (!categories || categories.length === 0) {
-                Categories.renderDummy();
+            if (!structuredProducts || structuredProducts.length === 0) {
+                DOM.categoriesGrid.innerHTML = '<div class="empty-message">Belum ada layanan</div>';
                 return;
             }
 
             let html = '';
-            categories.slice(0, 6).forEach((category, index) => {
+            structuredProducts.slice(0, 8).forEach((layanan, index) => {
+                const icon = layanan.layanan_gambar || '';
+                const itemCount = layanan.aplikasi?.reduce((sum, app) => sum + (app.items?.length || 0), 0) || 0;
+
                 html += `
-                    <div class="category-card glow-effect" data-category="${category.id || category.name}" style="animation-delay: ${index * 0.1}s">
+                    <div class="category-card glow-effect" data-layanan="${Utils.escapeHtml(layanan.layanan_nama)}" style="animation-delay: ${index * 0.1}s">
                         <div class="category-icon">
-                            ${category.icon ? 
-                                `<img src="${category.icon}" alt="${category.name}" style="width: 100%; height: 100%; object-fit: cover;">` : 
-                                `<i class="fas ${category.iconClass || 'fa-tag'}"></i>`
+                            ${icon ? 
+                                `<img src="${icon}" alt="${Utils.escapeHtml(layanan.layanan_nama)}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                                `<i class="fas fa-layer-group"></i>`
                             }
                         </div>
                         <div class="category-info">
-                            <h4>${Utils.escapeHtml(category.name)}</h4>
-                            <span><i class="fas fa-box"></i> ${category.count || 0} Produk</span>
+                            <h4>${Utils.escapeHtml(layanan.layanan_nama)}</h4>
+                            <span><i class="fas fa-box"></i> ${itemCount} Produk</span>
                         </div>
                     </div>
                 `;
             });
 
             DOM.categoriesGrid.innerHTML = html;
-            Categories.setupEvents();
-        },
-
-        renderDummy: () => {
-            const dummyCategories = [
-                { name: 'Premium Apps', iconClass: 'fa-crown', count: 12 },
-                { name: 'Game Voucher', iconClass: 'fa-gamepad', count: 24 },
-                { name: 'Streaming', iconClass: 'fa-film', count: 8 },
-                { name: 'Software', iconClass: 'fa-code', count: 15 },
-                { name: 'Top Up Games', iconClass: 'fa-diamond', count: 32 },
-                { name: 'E-Book', iconClass: 'fa-book', count: 45 }
-            ];
-
-            let html = '';
-            dummyCategories.forEach((cat, index) => {
-                html += `
-                    <div class="category-card glow-effect" style="animation-delay: ${index * 0.1}s">
-                        <div class="category-icon">
-                            <i class="fas ${cat.iconClass}"></i>
-                        </div>
-                        <div class="category-info">
-                            <h4>${cat.name}</h4>
-                            <span><i class="fas fa-box"></i> ${cat.count} Produk</span>
-                        </div>
-                    </div>
-                `;
-            });
-
-            DOM.categoriesGrid.innerHTML = html;
-            Categories.setupEvents();
+            Layanan.setupEvents();
         },
 
         setupEvents: () => {
             document.querySelectorAll('.category-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    const category = card.querySelector('h4')?.textContent || 'Kategori';
-                    Toast.info(`Layanan: ${category}`);
-                    Utils.vibrate();
+                    const layanan = card.dataset.layanan;
+                    if (layanan) {
+                        Toast.info(`Layanan: ${layanan}`);
+                        Utils.vibrate();
+                        // Di sini bisa redirect ke halaman produk dengan filter layanan
+                    }
                 });
             });
         }
     };
 
-    // ===== POPULAR PRODUCTS RENDER =====
-    const PopularProducts = {
-        render: (products) => {
-            if (!DOM.popularProducts) return;
+    // ===== APLIKASI RENDER =====
+    const Aplikasi = {
+        render: (structuredProducts) => {
+            if (!DOM.aplikasiGrid) return;
 
-            if (!products || products.length === 0) {
-                PopularProducts.renderDummy();
+            // Kumpulkan semua aplikasi unik dari semua layanan
+            const allApps = [];
+            structuredProducts.forEach(layanan => {
+                layanan.aplikasi?.forEach(app => {
+                    allApps.push({
+                        ...app,
+                        layanan_nama: layanan.layanan_nama
+                    });
+                });
+            });
+
+            if (allApps.length === 0) {
+                DOM.aplikasiGrid.innerHTML = '<div class="empty-message">Belum ada aplikasi</div>';
                 return;
             }
 
+            // Ambil 8 aplikasi pertama
             let html = '';
-            products.slice(0, 6).forEach((product, index) => {
-                const icon = product.icon || 'fa-box';
-                const gambar = product.image || product.gambar || `https://via.placeholder.com/300x200/40a7e3/ffffff?text=${encodeURIComponent(product.name || product.item_nama)}`;
+            allApps.slice(0, 8).forEach((app, index) => {
+                const icon = app.aplikasi_gambar || '';
 
                 html += `
-                    <div class="popular-product-card glow-effect" data-id="${product.id}" style="animation-delay: ${index * 0.1}s">
+                    <div class="category-card glow-effect" data-aplikasi="${Utils.escapeHtml(app.aplikasi_nama)}" data-layanan="${Utils.escapeHtml(app.layanan_nama)}" style="animation-delay: ${index * 0.1}s">
+                        <div class="category-icon">
+                            ${icon ? 
+                                `<img src="${icon}" alt="${Utils.escapeHtml(app.aplikasi_nama)}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                                `<i class="fas fa-mobile-alt"></i>`
+                            }
+                        </div>
+                        <div class="category-info">
+                            <h4>${Utils.escapeHtml(app.aplikasi_nama)}</h4>
+                            <span><i class="fas fa-tag"></i> ${Utils.escapeHtml(app.layanan_nama)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            DOM.aplikasiGrid.innerHTML = html;
+            Aplikasi.setupEvents();
+        },
+
+        setupEvents: () => {
+            document.querySelectorAll('[data-aplikasi]').forEach(card => {
+                card.addEventListener('click', () => {
+                    const aplikasi = card.dataset.aplikasi;
+                    const layanan = card.dataset.layanan;
+                    if (aplikasi) {
+                        Toast.info(`Aplikasi: ${aplikasi} (${layanan})`);
+                        Utils.vibrate();
+                    }
+                });
+            });
+        }
+    };
+
+    // ===== PRODUK TERLARIS RENDER =====
+    const ProdukTerlaris = {
+        render: (structuredProducts) => {
+            if (!DOM.produkGrid) return;
+
+            // Kumpulkan semua item dari semua aplikasi
+            const allItems = [];
+            structuredProducts.forEach(layanan => {
+                layanan.aplikasi?.forEach(app => {
+                    app.items?.forEach(item => {
+                        allItems.push({
+                            ...item,
+                            layanan_nama: layanan.layanan_nama,
+                            aplikasi_nama: app.aplikasi_nama,
+                            aplikasi_gambar: app.aplikasi_gambar || layanan.layanan_gambar
+                        });
+                    });
+                });
+            });
+
+            if (allItems.length === 0) {
+                DOM.produkGrid.innerHTML = '<div class="empty-message">Belum ada produk</div>';
+                return;
+            }
+
+            // Urutkan berdasarkan terjual (desc) dan ambil 6 teratas
+            const topItems = allItems
+                .sort((a, b) => (b.terjual || 0) - (a.terjual || 0))
+                .slice(0, 6);
+
+            let html = '';
+            topItems.forEach((item, index) => {
+                const gambar = item.item_gambar || item.aplikasi_gambar || `https://via.placeholder.com/300x200/40a7e3/ffffff?text=${encodeURIComponent(item.item_nama)}`;
+
+                html += `
+                    <div class="popular-product-card glow-effect" data-item-id="${item.id}" style="animation-delay: ${index * 0.1}s">
                         <div class="popular-product-image">
-                            <img src="${gambar}" alt="${Utils.escapeHtml(product.name || product.item_nama)}" 
+                            <img src="${gambar}" alt="${Utils.escapeHtml(item.item_nama)}" 
                                  loading="lazy"
                                  onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=Product';">
                         </div>
                         <div class="popular-product-info">
-                            <h3><i class="fas ${icon}"></i> ${Utils.escapeHtml(product.name || product.item_nama || 'Produk')}</h3>
+                            <h3>${Utils.escapeHtml(item.item_nama)}</h3>
                             <div class="popular-product-desc">
-                                <i class="fas fa-mobile-alt"></i> ${Utils.escapeHtml(product.category || product.aplikasi || 'Aplikasi')}
+                                <i class="fas fa-tag"></i> ${Utils.escapeHtml(item.aplikasi_nama || 'Aplikasi')}
                             </div>
                             <div class="popular-product-stats">
-                                <span><i class="fas fa-box"></i> ${product.stock || product.item_count || 0}</span>
-                                <span><i class="fas fa-shopping-bag"></i> ${product.sold || product.terjual || 0} terjual</span>
+                                <span><i class="fas fa-box"></i> ${item.item_stok?.length || 0}</span>
+                                <span><i class="fas fa-shopping-bag"></i> ${item.terjual || 0} terjual</span>
                             </div>
                             <div class="popular-product-price">
-                                ${Utils.formatRupiah(product.price || product.harga || 25000)}
+                                ${Utils.formatRupiah(item.item_harga || 0)}
                             </div>
                         </div>
                     </div>
                 `;
             });
 
-            DOM.popularProducts.innerHTML = html;
-            PopularProducts.setupEvents();
-        },
-
-        renderDummy: () => {
-            const dummyProducts = [
-                { id: 1, name: 'Canva Premium', category: 'Canva', icon: 'fa-paint-brush', stock: 28, sold: 156, price: 25000, image: 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Canva' },
-                { id: 2, name: 'Netflix 4K', category: 'Netflix', icon: 'fa-film', stock: 15, sold: 324, price: 45000, image: 'https://via.placeholder.com/300x200/e50914/ffffff?text=Netflix' },
-                { id: 3, name: 'Spotify Premium', category: 'Spotify', icon: 'fa-music', stock: 42, sold: 567, price: 35000, image: 'https://via.placeholder.com/300x200/1DB954/ffffff?text=Spotify' },
-                { id: 4, name: 'Disney+ Hotstar', category: 'Disney+', icon: 'fa-magic', stock: 19, sold: 89, price: 40000, image: 'https://via.placeholder.com/300x200/113CCF/ffffff?text=Disney' },
-                { id: 5, name: 'YouTube Premium', category: 'YouTube', icon: 'fa-youtube', stock: 23, sold: 432, price: 38000, image: 'https://via.placeholder.com/300x200/FF0000/ffffff?text=YouTube' },
-                { id: 6, name: 'Microsoft 365', category: 'Office', icon: 'fa-microsoft', stock: 11, sold: 78, price: 55000, image: 'https://via.placeholder.com/300x200/00A4EF/ffffff?text=Office' }
-            ];
-
-            PopularProducts.render(dummyProducts);
+            DOM.produkGrid.innerHTML = html;
+            ProdukTerlaris.setupEvents();
         },
 
         setupEvents: () => {
             document.querySelectorAll('.popular-product-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    const productId = card.dataset.id;
-                    if (productId) {
-                        ProductModal.open(parseInt(productId));
+                    const itemId = card.dataset.itemId;
+                    if (itemId) {
+                        ProductModal.open(parseInt(itemId));
                     }
                 });
             });
         }
     };
 
-    // ===== PAYMENT METHODS RENDER =====
+    // ===== METODE PEMBAYARAN RENDER =====
     const PaymentMethods = {
-        render: (tampilan) => {
+        render: (rekening, gateway) => {
             if (!DOM.paymentIcons) return;
 
             let html = '';
             let hasPayments = false;
 
-            // Banks
-            if (tampilan?.banks && tampilan.banks.length > 0) {
-                tampilan.banks.forEach(bank => {
-                    if (bank.enabled) {
+            // Rekening Bank/E-Wallet
+            if (rekening && rekening.length > 0) {
+                rekening.forEach(rek => {
+                    if (rek.active) {
                         hasPayments = true;
                         html += `
-                            <div class="payment-icon glow-effect">
-                                <i class="fas fa-university"></i>
-                                <span>${bank.bank_name || 'Bank'}</span>
+                            <div class="payment-icon glow-effect" title="${Utils.escapeHtml(rek.nama)} - ${Utils.escapeHtml(rek.pemilik)}">
+                                <img src="${rek.logo_url}" alt="${Utils.escapeHtml(rek.nama)}" style="width: 40px; height: 40px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=${rek.nama.charAt(0)}';">
+                                <span>${Utils.escapeHtml(rek.nama)}</span>
                             </div>
                         `;
                     }
                 });
             }
 
-            // E-Wallets
-            if (tampilan?.ewallets && tampilan.ewallets.length > 0) {
-                tampilan.ewallets.forEach(ewallet => {
-                    if (ewallet.enabled) {
+            // Gateway QRIS
+            if (gateway && gateway.length > 0) {
+                gateway.forEach(gw => {
+                    if (gw.active) {
                         hasPayments = true;
                         html += `
-                            <div class="payment-icon glow-effect">
-                                <i class="fas fa-wallet"></i>
-                                <span>${ewallet.provider || 'E-Wallet'}</span>
+                            <div class="payment-icon glow-effect" title="QRIS - Cashify">
+                                <i class="fas fa-qrcode" style="font-size: 40px; color: ${gw.warna_qr || '#000000'};"></i>
+                                <span>QRIS</span>
                             </div>
                         `;
                     }
                 });
-            }
-
-            // QRIS
-            if (tampilan?.qris && tampilan.qris.enabled) {
-                hasPayments = true;
-                html += `
-                    <div class="payment-icon glow-effect">
-                        <i class="fas fa-qrcode"></i>
-                        <span>QRIS</span>
-                    </div>
-                `;
-            }
-
-            // Crypto
-            if (tampilan?.crypto && tampilan.crypto.enabled) {
-                hasPayments = true;
-                html += `
-                    <div class="payment-icon glow-effect">
-                        <i class="fab fa-bitcoin"></i>
-                        <span>Crypto</span>
-                    </div>
-                `;
             }
 
             if (!hasPayments) {
@@ -1059,103 +1078,95 @@
 
     // ===== PRODUCT MODAL =====
     const ProductModal = {
-        open: (productId) => {
-            const product = State.products.find(p => p.id === productId) || 
-                           PopularProducts.getDummyProduct(productId);
-            
-            if (!product) return;
+        open: (itemId) => {
+            // Cari item dari structuredProducts
+            let foundItem = null;
+            let foundLayanan = null;
+            let foundAplikasi = null;
 
-            State.currentProduct = product;
-            ProductModal.render(product);
+            for (const layanan of State.structuredProducts) {
+                for (const app of (layanan.aplikasi || [])) {
+                    for (const item of (app.items || [])) {
+                        if (item.id === itemId) {
+                            foundItem = item;
+                            foundLayanan = layanan;
+                            foundAplikasi = app;
+                            break;
+                        }
+                    }
+                    if (foundItem) break;
+                }
+                if (foundItem) break;
+            }
+
+            if (!foundItem) {
+                Toast.error('Produk tidak ditemukan');
+                return;
+            }
+
+            State.currentProduct = { ...foundItem, layanan: foundLayanan, aplikasi: foundAplikasi };
+            ProductModal.render(foundItem, foundLayanan, foundAplikasi);
             
             DOM.productModal.classList.add('active');
             document.body.style.overflow = 'hidden';
             Utils.vibrate();
         },
 
-        render: (product) => {
+        render: (item, layanan, aplikasi) => {
             if (!DOM.productDetail) return;
 
-            const stars = Utils.generateStars(product.rating || 4.5);
-            const variants = product.variants || [];
-
-            let variantsHtml = '';
-            if (variants.length > 0) {
-                variantsHtml = `
-                    <div class="product-variants">
-                        <h4><i class="fas fa-tags crystal-icon"></i> Pilih Varian</h4>
-                        <div class="variant-list">
-                `;
-
-                variants.forEach((variant, index) => {
-                    variantsHtml += `
-                        <button class="variant-btn ${index === 0 ? 'active' : ''}" data-variant='${JSON.stringify(variant)}'>
-                            <span class="variant-name">${Utils.escapeHtml(variant.name)}</span>
-                            <span class="variant-price">${Utils.formatRupiah(variant.price)}</span>
-                        </button>
-                    `;
-                });
-
-                variantsHtml += `
-                        </div>
-                    </div>
-                `;
-            }
+            const gambar = item.item_gambar || aplikasi?.aplikasi_gambar || layanan?.layanan_gambar || 'https://via.placeholder.com/500x500/40a7e3/ffffff?text=Product';
 
             const productHtml = `
                 <div class="product-detail-images">
                     <div class="main-image glow-effect">
-                        <img src="${product.image || 'https://via.placeholder.com/500x500/40a7e3/ffffff?text=Product'}" 
-                             alt="${Utils.escapeHtml(product.name)}" 
+                        <img src="${gambar}" 
+                             alt="${Utils.escapeHtml(item.item_nama)}" 
                              id="mainProductImage"
                              onload="this.style.opacity='1'"
                              style="opacity:0; transition:opacity 0.3s"
                              onerror="this.src='https://via.placeholder.com/500x500/40a7e3/ffffff?text=Product'; this.onload=null;">
                     </div>
-                    ${product.images && product.images.length > 0 ? `
-                        <div class="thumbnail-images">
-                            ${product.images.map((img, i) => 
-                                `<img src="${img}" alt="Thumb ${i+1}" onclick="window.website.setMainImage('${img}', this)" 
-                                      onerror="this.style.display='none';">`
-                            ).join('')}
-                        </div>
-                    ` : ''}
                 </div>
                 <div class="product-detail-info">
-                    <h2>${Utils.escapeHtml(product.name)}</h2>
-                    <div class="product-rating">
-                        <div class="stars">
-                            ${stars}
-                        </div>
-                        <span>${product.rating || 4.5} (${product.reviews || 0} ulasan)</span>
-                    </div>
+                    <h2>${Utils.escapeHtml(item.item_nama)}</h2>
+                    
                     <div class="product-price-detail">
-                        <span class="current-price">${Utils.formatRupiah(product.price)}</span>
-                        ${product.original_price ? 
-                            `<span class="old-price">${Utils.formatRupiah(product.original_price)}</span>
-                             <span class="discount-badge">-${Math.round(((product.original_price - product.price) / product.original_price) * 100)}%</span>` 
-                            : ''}
+                        <span class="current-price">${Utils.formatRupiah(item.item_harga || 0)}</span>
                     </div>
+                    
                     <div class="product-stock">
                         <i class="fas fa-cubes crystal-icon"></i>
-                        <span>Stok: <strong>${product.stock || 0}</strong></span>
-                        <span class="sold-count"><i class="fas fa-shopping-bag"></i> ${product.sold || 0} terjual</span>
+                        <span>Stok: <strong>${item.item_stok?.length || 0}</strong></span>
+                        <span class="sold-count"><i class="fas fa-shopping-bag"></i> ${item.terjual || 0} terjual</span>
                     </div>
-                    <div class="product-description">
-                        <h4><i class="fas fa-align-left crystal-icon"></i> Deskripsi</h4>
-                        <p>${Utils.escapeHtml(product.description || 'Produk berkualitas dengan harga terbaik. Dapatkan sekarang juga!')}</p>
+                    
+                    <div class="product-meta">
+                        <p><i class="fas fa-tag"></i> Layanan: ${Utils.escapeHtml(layanan?.layanan_nama || '-')}</p>
+                        <p><i class="fas fa-mobile-alt"></i> Aplikasi: ${Utils.escapeHtml(aplikasi?.aplikasi_nama || '-')}</p>
+                        ${item.item_durasi_jumlah ? `<p><i class="fas fa-clock"></i> Durasi: ${item.item_durasi_jumlah} ${item.item_durasi_satuan}</p>` : ''}
                     </div>
-                    ${variantsHtml}
-                    <div class="product-notes">
-                        <h4><i class="fas fa-sticky-note crystal-icon"></i> Catatan</h4>
-                        <p>${Utils.escapeHtml(product.notes || 'Pastikan data yang dimasukkan benar.')}</p>
-                    </div>
+                    
+                    ${aplikasi?.aplikasi_desc ? `
+                        <div class="product-description">
+                            <h4><i class="fas fa-align-left crystal-icon"></i> Deskripsi</h4>
+                            <p>${Utils.escapeHtml(aplikasi.aplikasi_desc)}</p>
+                        </div>
+                    ` : ''}
+                    
+                    ${layanan?.layanan_catatan || aplikasi?.aplikasi_catatan ? `
+                        <div class="product-notes">
+                            <h4><i class="fas fa-sticky-note crystal-icon"></i> Catatan</h4>
+                            <p>${Utils.escapeHtml(layanan?.layanan_catatan || aplikasi?.aplikasi_catatan || '')}</p>
+                        </div>
+                    ` : ''}
+                    
                     <div class="product-actions-detail">
                         <div class="quantity-selector">
                             <button class="qty-btn" id="detailQtyMinus">
                                 <i class="fas fa-minus"></i>
                             </button>
-                            <input type="number" id="detailQty" value="1" min="1" max="${product.stock || 999}">
+                            <input type="number" id="detailQty" value="1" min="1" max="${item.item_stok?.length || 999}">
                             <button class="qty-btn" id="detailQtyPlus">
                                 <i class="fas fa-plus"></i>
                             </button>
@@ -1173,19 +1184,10 @@
             `;
 
             DOM.productDetail.innerHTML = productHtml;
-            ProductModal.setupEvents(product);
+            ProductModal.setupEvents(item);
         },
 
-        setupEvents: (product) => {
-            // Variant selection
-            document.querySelectorAll('.variant-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                });
-            });
-
-            // Quantity controls
+        setupEvents: (item) => {
             const qtyInput = document.getElementById('detailQty');
             const qtyMinus = document.getElementById('detailQtyMinus');
             const qtyPlus = document.getElementById('detailQtyPlus');
@@ -1193,58 +1195,32 @@
             if (qtyMinus && qtyInput) {
                 qtyMinus.addEventListener('click', () => {
                     let val = parseInt(qtyInput.value) || 1;
-                    if (val > 1) {
-                        qtyInput.value = val - 1;
-                    }
+                    if (val > 1) qtyInput.value = val - 1;
                 });
             }
 
             if (qtyPlus && qtyInput) {
                 qtyPlus.addEventListener('click', () => {
                     let val = parseInt(qtyInput.value) || 1;
-                    if (val < (product.stock || 999)) {
+                    if (val < (item.item_stok?.length || 999)) {
                         qtyInput.value = val + 1;
                     }
                 });
             }
 
-            // Add to cart
             const addToCartBtn = document.getElementById('detailAddToCart');
             if (addToCartBtn) {
                 addToCartBtn.addEventListener('click', () => {
                     const qty = parseInt(qtyInput?.value) || 1;
-                    const activeVariant = document.querySelector('.variant-btn.active');
-                    let variant = null;
-
-                    if (activeVariant && activeVariant.dataset.variant) {
-                        try {
-                            variant = JSON.parse(activeVariant.dataset.variant);
-                        } catch (e) {
-                            console.error('Error parsing variant', e);
-                        }
-                    }
-
-                    Cart.add(product.id, variant, qty);
+                    Cart.add(item.id, null, qty, item);
                 });
             }
 
-            // Buy now
             const buyNowBtn = document.getElementById('detailBuyNow');
             if (buyNowBtn) {
                 buyNowBtn.addEventListener('click', () => {
                     const qty = parseInt(qtyInput?.value) || 1;
-                    const activeVariant = document.querySelector('.variant-btn.active');
-                    let variant = null;
-
-                    if (activeVariant && activeVariant.dataset.variant) {
-                        try {
-                            variant = JSON.parse(activeVariant.dataset.variant);
-                        } catch (e) {
-                            console.error('Error parsing variant', e);
-                        }
-                    }
-
-                    Cart.add(product.id, variant, qty);
+                    Cart.add(item.id, null, qty, item);
                     ProductModal.close();
                     Cart.open();
                 });
@@ -1273,40 +1249,52 @@
     const Cart = {
         init: () => {
             const savedCart = Utils.loadFromStorage('cart');
-            if (savedCart) {
-                State.cart = savedCart;
-            }
+            if (savedCart) State.cart = savedCart;
             Cart.updateUI();
         },
 
-        add: (productId, variant = null, quantity = 1) => {
-            const product = State.products.find(p => p.id === productId) || 
-                           PopularProducts.getDummyProduct(productId);
-            
-            if (!product) return;
+        add: (itemId, variant = null, quantity = 1, itemData = null) => {
+            if (!itemData) {
+                // Cari item dari structuredProducts
+                for (const layanan of State.structuredProducts) {
+                    for (const app of (layanan.aplikasi || [])) {
+                        for (const item of (app.items || [])) {
+                            if (item.id === itemId) {
+                                itemData = item;
+                                break;
+                            }
+                        }
+                        if (itemData) break;
+                    }
+                    if (itemData) break;
+                }
+            }
 
-            if (product.stock <= 0) {
+            if (!itemData) {
+                Toast.error('Produk tidak ditemukan');
+                return;
+            }
+
+            const stokTersedia = itemData.item_stok?.length || 0;
+            if (stokTersedia <= 0) {
                 Toast.error('Stok habis');
                 return;
             }
 
             const cartItem = {
-                id: productId,
-                name: product.name,
-                price: variant ? variant.price : product.price,
-                variant: variant ? variant.name : null,
+                id: itemData.id,
+                name: itemData.item_nama,
+                price: itemData.item_harga || 0,
                 quantity: quantity,
-                image: product.image,
-                maxStock: product.stock
+                image: itemData.item_gambar || '',
+                maxStock: stokTersedia
             };
 
-            const existingIndex = State.cart.findIndex(item => 
-                item.id === productId && item.variant === cartItem.variant
-            );
+            const existingIndex = State.cart.findIndex(item => item.id === itemId);
 
             if (existingIndex >= 0) {
                 const newQty = State.cart[existingIndex].quantity + quantity;
-                if (newQty > product.stock) {
+                if (newQty > stokTersedia) {
                     Toast.error('Stok tidak mencukupi');
                     return;
                 }
@@ -1320,12 +1308,9 @@
             Toast.success('Produk ditambahkan ke keranjang');
             Utils.vibrate();
 
-            // Animate cart button
             if (DOM.cartBtn) {
                 DOM.cartBtn.classList.add('pulse');
-                setTimeout(() => {
-                    DOM.cartBtn.classList.remove('pulse');
-                }, 300);
+                setTimeout(() => DOM.cartBtn.classList.remove('pulse'), 300);
             }
         },
 
@@ -1343,14 +1328,9 @@
                 return;
             }
 
-            const product = State.products.find(p => p.id === State.cart[index].id);
-            if (product && newQuantity <= product.stock) {
-                State.cart[index].quantity = newQuantity;
-                Utils.saveToStorage('cart', State.cart);
-                Cart.updateUI();
-            } else {
-                Toast.error('Stok tidak mencukupi');
-            }
+            State.cart[index].quantity = newQuantity;
+            Utils.saveToStorage('cart', State.cart);
+            Cart.updateUI();
         },
 
         clear: () => {
@@ -1397,7 +1377,6 @@
                                  onerror="this.src='https://via.placeholder.com/80x80/40a7e3/ffffff?text=Product';">
                             <div class="cart-item-details">
                                 <h4>${Utils.escapeHtml(item.name)}</h4>
-                                ${item.variant ? `<p class="cart-item-variant">${Utils.escapeHtml(item.variant)}</p>` : ''}
                                 <div class="cart-item-price">${Utils.formatRupiah(item.price)}</div>
                                 <div class="cart-item-quantity">
                                     <button class="qty-btn minus" onclick="window.website.cartUpdateQuantity(${index}, ${item.quantity - 1})">
@@ -1418,9 +1397,7 @@
 
                 DOM.cartItems.innerHTML = cartHtml;
                 State.cartTotal = total;
-                if (DOM.cartTotal) {
-                    DOM.cartTotal.textContent = Utils.formatRupiah(total);
-                }
+                if (DOM.cartTotal) DOM.cartTotal.textContent = Utils.formatRupiah(total);
             }
         },
 
@@ -1441,11 +1418,7 @@
     const Sidebar = {
         toggle: () => {
             DOM.sidebar.classList.toggle('active');
-            if (DOM.sidebar.classList.contains('active')) {
-                document.body.style.overflow = 'hidden';
-            } else {
-                document.body.style.overflow = '';
-            }
+            document.body.style.overflow = DOM.sidebar.classList.contains('active') ? 'hidden' : '';
             Utils.vibrate();
         },
 
@@ -1464,22 +1437,17 @@
             }
         },
 
-        close: () => {
-            DOM.searchBar.classList.remove('active');
-        },
+        close: () => DOM.searchBar.classList.remove('active'),
 
         init: () => {
             const debouncedSearch = Utils.debounce((query) => {
                 if (query.length > 2) {
-                    Toast.info(`Mencari: ${query}`);
                     // Implement search logic here
+                    console.log('Searching for:', query);
                 }
             }, 500);
 
-            DOM.searchInput.addEventListener('input', (e) => {
-                debouncedSearch(e.target.value);
-            });
-
+            DOM.searchInput.addEventListener('input', (e) => debouncedSearch(e.target.value));
             DOM.searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -1496,9 +1464,7 @@
     const User = {
         init: () => {
             const savedUser = Utils.loadFromStorage('user');
-            if (savedUser) {
-                User.setUser(savedUser);
-            }
+            if (savedUser) User.setUser(savedUser);
 
             if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
                 const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
@@ -1513,24 +1479,14 @@
             const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
             const username = user.username ? `@${user.username}` : '(no username)';
 
-            if (DOM.sidebarName) {
-                DOM.sidebarName.textContent = fullName;
-            }
-            if (DOM.sidebarUsername) {
-                DOM.sidebarUsername.textContent = username;
-            }
+            if (DOM.sidebarName) DOM.sidebarName.textContent = fullName;
+            if (DOM.sidebarUsername) DOM.sidebarUsername.textContent = username;
             if (DOM.sidebarAvatar) {
                 const img = DOM.sidebarAvatar.querySelector('img');
-                if (img) {
-                    img.src = Utils.generateAvatarUrl(fullName);
-                }
+                if (img) img.src = Utils.generateAvatarUrl(fullName);
             }
-            if (DOM.profileVerified && user.is_premium) {
-                DOM.profileVerified.style.display = 'flex';
-            }
-            if (DOM.loginBtn) {
-                DOM.loginBtn.innerHTML = '<i class="fas fa-user"></i> Profile';
-            }
+            if (DOM.profileVerified && user.is_premium) DOM.profileVerified.style.display = 'flex';
+            if (DOM.loginBtn) DOM.loginBtn.innerHTML = '<i class="fas fa-user"></i> Profile';
 
             Utils.saveToStorage('user', user);
         },
@@ -1547,15 +1503,7 @@
                     Toast.warning('Silakan buka melalui Telegram');
                 }
             } else {
-                const guestUser = {
-                    id: Date.now(),
-                    first_name: 'Guest',
-                    username: 'guest_user',
-                    is_premium: false
-                };
-                User.setUser(guestUser);
-                Toast.info('Login sebagai Guest');
-                LoginModal.close();
+                User.loginAsGuest();
             }
         },
 
@@ -1619,7 +1567,7 @@
 
                 checkoutHtml += `
                     <div class="checkout-item">
-                        <span>${Utils.escapeHtml(item.name)} ${item.variant ? `(${Utils.escapeHtml(item.variant)})` : ''} x${item.quantity}</span>
+                        <span>${Utils.escapeHtml(item.name)} x${item.quantity}</span>
                         <span>${Utils.formatRupiah(itemTotal)}</span>
                     </div>
                 `;
@@ -1633,23 +1581,7 @@
                 </div>
                 <div class="checkout-payment">
                     <h3><i class="fas fa-credit-card crystal-icon"></i> Metode Pembayaran</h3>
-                    <div class="payment-options">
-                        <label class="payment-option glow-effect">
-                            <input type="radio" name="payment" value="bank" checked>
-                            <i class="fas fa-university"></i>
-                            <span>Transfer Bank</span>
-                        </label>
-                        <label class="payment-option glow-effect">
-                            <input type="radio" name="payment" value="ewallet">
-                            <i class="fas fa-wallet"></i>
-                            <span>E-Wallet</span>
-                        </label>
-                        <label class="payment-option glow-effect">
-                            <input type="radio" name="payment" value="qris">
-                            <i class="fas fa-qrcode"></i>
-                            <span>QRIS</span>
-                        </label>
-                    </div>
+                    <div class="payment-options" id="checkoutPaymentOptions"></div>
                 </div>
                 <div class="form-actions">
                     <button class="btn-secondary" id="cancelCheckoutBtn">Batal</button>
@@ -1660,6 +1592,38 @@
             `;
 
             DOM.checkoutBody.innerHTML = checkoutHtml;
+
+            // Render metode pembayaran dari database
+            const paymentOptions = document.getElementById('checkoutPaymentOptions');
+            if (paymentOptions) {
+                let optionsHtml = '';
+
+                State.rekening.filter(r => r.active).forEach(rek => {
+                    optionsHtml += `
+                        <label class="payment-option glow-effect">
+                            <input type="radio" name="payment" value="rekening_${rek.id}">
+                            <img src="${rek.logo_url}" alt="${Utils.escapeHtml(rek.nama)}" style="width: 32px; height: 32px; object-fit: contain;" onerror="this.src='https://via.placeholder.com/32x32/40a7e3/ffffff?text=${rek.nama.charAt(0)}';">
+                            <span>${Utils.escapeHtml(rek.nama)}</span>
+                        </label>
+                    `;
+                });
+
+                State.gateway.filter(g => g.active).forEach(gw => {
+                    optionsHtml += `
+                        <label class="payment-option glow-effect">
+                            <input type="radio" name="payment" value="gateway_${gw.id}">
+                            <i class="fas fa-qrcode" style="font-size: 32px; color: ${gw.warna_qr || '#000000'};"></i>
+                            <span>QRIS (Cashify)</span>
+                        </label>
+                    `;
+                });
+
+                if (optionsHtml === '') {
+                    optionsHtml = '<div class="empty-message">Belum ada metode pembayaran aktif</div>';
+                }
+
+                paymentOptions.innerHTML = optionsHtml;
+            }
 
             document.getElementById('cancelCheckoutBtn')?.addEventListener('click', Checkout.close);
             document.getElementById('processCheckoutBtn')?.addEventListener('click', Checkout.process);
@@ -1707,12 +1671,8 @@
             }
 
             // Font
-            if (tampilan.font_family) {
-                root.style.setProperty('--font-family', tampilan.font_family);
-            }
-            if (tampilan.font_size) {
-                root.style.setProperty('--font-size', `${tampilan.font_size}px`);
-            }
+            if (tampilan.font_family) root.style.setProperty('--font-family', tampilan.font_family);
+            if (tampilan.font_size) root.style.setProperty('--font-size', `${tampilan.font_size}px`);
 
             // Logo
             if (tampilan.logo && DOM.headerLogo) {
@@ -1751,14 +1711,11 @@
     const init = async () => {
         console.log('🏪 Crystal Store 3D - Initializing...');
 
-        // Initialize DOM cache
         initializeDOMCache();
 
-        // Show loading
-        Loading.show('Memuat kristal 3D...');
+        Loading.show('Memuat data dari database...');
 
         try {
-            // Get endpoint
             State.currentEndpoint = Utils.getEndpointFromUrl();
             if (!State.currentEndpoint) {
                 Toast.error('Endpoint tidak valid. Gunakan ?store=nama-endpoint');
@@ -1769,51 +1726,38 @@
             // Test connection
             const isConnected = await API.testConnection();
             if (!isConnected) {
-                Toast.warning('Mode offline - menggunakan data dummy');
+                Toast.warning('Tidak dapat terhubung ke server');
+                Loading.hide();
+                return;
             }
 
             // Load website data
-            Loading.progress(20);
+            Loading.progress(10);
             State.websiteData = await API.getWebsite(State.currentEndpoint);
             
             if (!State.websiteData) {
                 throw new Error('Website tidak ditemukan');
             }
 
-            // Load tampilan data
-            Loading.progress(40);
-            State.tampilanData = await API.getTampilan(State.websiteData.id);
+            // Load all data concurrently
+            Loading.progress(30);
+            const [tampilan, structuredProducts, promos, rekening, gateway] = await Promise.all([
+                API.getTampilan(State.websiteData.id),
+                API.getStructuredProducts(State.websiteData.id),
+                API.getPromos(State.websiteData.id),
+                API.getRekening(State.websiteData.id),
+                API.getGateway(State.websiteData.id)
+            ]);
 
-            // Load products
-            Loading.progress(60);
-            State.structuredProducts = await API.getStructuredProducts(State.websiteData.id);
-            
-            // Flatten products for easy access
-            if (State.structuredProducts) {
-                State.structuredProducts.forEach(layanan => {
-                    layanan.aplikasi?.forEach(aplikasi => {
-                        aplikasi.items?.forEach(item => {
-                            State.products.push({
-                                ...item,
-                                category: layanan.layanan_nama,
-                                aplikasi: aplikasi.aplikasi_nama,
-                                name: item.item_nama,
-                                price: item.item_harga,
-                                image: aplikasi.aplikasi_gambar || layanan.layanan_gambar,
-                                stock: item.item_stok?.length || 0,
-                                sold: item.terjual || 0
-                            });
-                        });
-                    });
-                });
-            }
+            State.tampilanData = tampilan;
+            State.structuredProducts = structuredProducts || [];
+            State.promos = promos || [];
+            State.rekening = rekening || [];
+            State.gateway = gateway || [];
 
-            // Load promos
             Loading.progress(80);
-            State.promos = await API.getPromos(State.websiteData.id);
 
             // Update UI
-            Loading.progress(90);
             updateUI();
             
             // Render all components
@@ -1822,11 +1766,13 @@
             // Initialize features
             initFeatures();
 
-            // Hide loading with delay
-            setTimeout(() => {
-                Loading.hide();
-                Toast.success('Selamat datang di Toko 3D!');
-            }, 1000);
+            // Mark all data as loaded
+            State.dataLoaded.website = true;
+            State.dataLoaded.tampilan = true;
+            State.dataLoaded.products = true;
+            State.dataLoaded.promos = true;
+            State.dataLoaded.payments = true;
+            Utils.checkDataLoaded();
 
         } catch (error) {
             console.error('❌ Init error:', error);
@@ -1843,9 +1789,8 @@
             'sidebarName', 'sidebarUsername', 'profileVerified', 'loginBtn', 'orderBadge',
             'storeName', 'headerLogo', 'searchToggle', 'cartBtn', 'cartBadge',
             'searchBar', 'searchInput', 'searchClose',
-            'bannerSlider', 'sliderContainer', 'sliderPrev', 'sliderNext',
-            'sliderPagination', 'sliderDots',
-            'categoriesGrid', 'popularProducts',
+            'bannerSlider', 'sliderContainer', 'sliderPrev', 'sliderNext', 'sliderPagination',
+            'categoriesGrid', 'aplikasiGrid', 'produkGrid',
             'promoSliderContainer', 'promoSliderTrack', 'promoSliderPrev', 'promoSliderNext', 'promoSliderDots',
             'paymentIcons',
             'footerDescription', 'contactWhatsApp', 'contactTelegram', 'contactEmail',
@@ -1909,9 +1854,7 @@
         }
 
         // Year
-        if (DOM.sidebarYear) {
-            DOM.sidebarYear.textContent = new Date().getFullYear();
-        }
+        if (DOM.sidebarYear) DOM.sidebarYear.textContent = new Date().getFullYear();
     };
 
     // Render all components
@@ -1920,40 +1863,22 @@
         Theme.apply(State.tampilanData);
 
         // Banners
-        if (State.tampilanData?.banners && State.tampilanData.banners.length > 0) {
-            BannerSlider.init(State.tampilanData.banners);
-        } else {
-            if (DOM.bannerSlider) DOM.bannerSlider.style.display = 'none';
-        }
+        BannerSlider.init(State.tampilanData?.banners || []);
 
-        // Categories
-        if (State.structuredProducts && State.structuredProducts.length > 0) {
-            const categories = State.structuredProducts.map(l => ({
-                id: l.layanan_id,
-                name: l.layanan_nama,
-                icon: l.layanan_gambar,
-                count: l.aplikasi?.length || 0
-            }));
-            Categories.render(categories);
-        } else {
-            Categories.renderDummy();
-        }
+        // Layanan
+        Layanan.render(State.structuredProducts);
 
-        // Popular Products
-        if (State.products.length > 0) {
-            const popular = [...State.products]
-                .sort((a, b) => (b.sold || 0) - (a.sold || 0))
-                .slice(0, 6);
-            PopularProducts.render(popular);
-        } else {
-            PopularProducts.renderDummy();
-        }
+        // Aplikasi
+        Aplikasi.render(State.structuredProducts);
+
+        // Produk Terlaris
+        ProdukTerlaris.render(State.structuredProducts);
 
         // Promos
         PromoSlider.init(State.promos);
 
         // Payment Methods
-        PaymentMethods.render(State.tampilanData);
+        PaymentMethods.render(State.rekening, State.gateway);
 
         // Cart
         Cart.init();
@@ -1964,13 +1889,9 @@
 
     // Initialize features
     const initFeatures = () => {
-        // Mouse effects
         MouseEffects.init();
-
-        // Search
         Search.init();
 
-        // Telegram WebApp
         if (window.Telegram?.WebApp) {
             const tg = window.Telegram.WebApp;
             tg.expand();
@@ -1979,19 +1900,12 @@
 
             if (tg.themeParams) {
                 const theme = tg.themeParams;
-                if (theme.bg_color) {
-                    document.documentElement.style.setProperty('--bg-deep-space', theme.bg_color);
-                }
-                if (theme.text_color) {
-                    document.documentElement.style.setProperty('--text-primary', theme.text_color);
-                }
-                if (theme.button_color) {
-                    document.documentElement.style.setProperty('--primary-color', theme.button_color);
-                }
+                if (theme.bg_color) document.documentElement.style.setProperty('--bg-deep-space', theme.bg_color);
+                if (theme.text_color) document.documentElement.style.setProperty('--text-primary', theme.text_color);
+                if (theme.button_color) document.documentElement.style.setProperty('--primary-color', theme.button_color);
             }
         }
 
-        // Keyboard handler
         initKeyboardHandler();
     };
 
@@ -2008,14 +1922,12 @@
                 document.body.style.overflow = '';
             }
 
-            // Ctrl+K for search
             if (e.ctrlKey && e.key === 'k') {
                 e.preventDefault();
                 Search.toggle();
             }
         });
 
-        // Handle input focus for mobile
         const inputs = document.querySelectorAll('input, textarea, select');
         inputs.forEach(input => {
             input.addEventListener('focus', () => {
@@ -2037,7 +1949,7 @@
         DOM.cartClose?.addEventListener('click', Cart.close);
         DOM.shopNowBtn?.addEventListener('click', () => {
             Cart.close();
-            document.querySelector('.popular-products')?.scrollIntoView({ behavior: 'smooth' });
+            document.querySelector('.produk-section')?.scrollIntoView({ behavior: 'smooth' });
         });
 
         // Search
@@ -2068,24 +1980,17 @@
 
         // Window resize
         window.addEventListener('resize', Utils.throttle(() => {
-            if (!Utils.isMobile()) {
-                Sidebar.close();
-            }
+            if (!Utils.isMobile()) Sidebar.close();
         }, 200));
     };
 
     // ===== EXPOSE GLOBAL FUNCTIONS =====
     window.website = {
-        // Cart
         cartAdd: Cart.add,
         cartRemove: Cart.remove,
         cartUpdateQuantity: Cart.updateQuantity,
         cartClear: Cart.clear,
-        
-        // Modal
         setMainImage: ProductModal.setMainImage,
-        
-        // Utility
         vibrate: Utils.vibrate,
         formatRupiah: Utils.formatRupiah
     };
