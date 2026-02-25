@@ -2824,6 +2824,720 @@
         }
     }
 
+    // ==================== TEMPLATE MANAGER ====================
+    class TemplateManager {
+        constructor(state, dom, utils, api) {
+            this.state = state;
+            this.dom = dom;
+            this.utils = utils;
+            this.api = api;
+            this.currentTemplateCode = null;
+            this.templates = [];
+            this.init();
+        }
+        
+        init() {
+            this.setupEventListeners();
+        }
+        
+        setupEventListeners() {
+            // Save Template button
+            const saveTemplateBtn = this.dom.get('saveTemplateBtn');
+            if (saveTemplateBtn) {
+                saveTemplateBtn.addEventListener('click', () => this.openSaveTemplateModal());
+            }
+            
+            // Check Template button
+            const checkTemplateBtn = this.dom.get('checkTemplateBtn');
+            if (checkTemplateBtn) {
+                checkTemplateBtn.addEventListener('click', () => this.openTemplateManager());
+            }
+            
+            // Save Template Modal
+            const saveTemplateForm = document.getElementById('saveTemplateForm');
+            if (saveTemplateForm) {
+                saveTemplateForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveTemplate();
+                });
+            }
+            
+            // Close Save Template Modal
+            const closeSaveModal = this.dom.get('closeSaveTemplateModal');
+            if (closeSaveModal) {
+                closeSaveModal.addEventListener('click', () => this.closeSaveTemplateModal());
+            }
+            
+            const cancelSave = this.dom.get('cancelSaveTemplate');
+            if (cancelSave) {
+                cancelSave.addEventListener('click', () => this.closeSaveTemplateModal());
+            }
+            
+            // Copy Template Code
+            const copyCodeBtn = this.dom.get('copyTemplateCode');
+            if (copyCodeBtn) {
+                copyCodeBtn.addEventListener('click', () => this.copyTemplateCode());
+            }
+            
+            // Template Manager Modal
+            const closeManager = this.dom.get('closeTemplateManagerModal');
+            if (closeManager) {
+                closeManager.addEventListener('click', () => this.closeTemplateManager());
+            }
+            
+            // Load Template Modal
+            const verifyBtn = this.dom.get('verifyLoadTemplate');
+            if (verifyBtn) {
+                verifyBtn.addEventListener('click', () => this.verifyTemplateCode());
+            }
+            
+            const confirmLoad = this.dom.get('confirmLoadTemplate');
+            if (confirmLoad) {
+                confirmLoad.addEventListener('click', () => this.loadVerifiedTemplate());
+            }
+            
+            const closeLoadModal = this.dom.get('closeLoadTemplateModal');
+            if (closeLoadModal) {
+                closeLoadModal.addEventListener('click', () => this.closeLoadTemplateModal());
+            }
+            
+            const cancelLoad = this.dom.get('cancelLoadTemplate');
+            if (cancelLoad) {
+                cancelLoad.addEventListener('click', () => this.closeLoadTemplateModal());
+            }
+            
+            // Delete Template Modal
+            const closeDelete = this.dom.get('closeDeleteTemplateModal');
+            if (closeDelete) {
+                closeDelete.addEventListener('click', () => this.closeDeleteTemplateModal());
+            }
+            
+            const cancelDelete = this.dom.get('cancelDeleteTemplate');
+            if (cancelDelete) {
+                cancelDelete.addEventListener('click', () => this.closeDeleteTemplateModal());
+            }
+            
+            const confirmDelete = this.dom.get('confirmDeleteTemplate');
+            if (confirmDelete) {
+                confirmDelete.addEventListener('click', () => this.confirmDeleteTemplate());
+            }
+            
+            // Template Search
+            const searchInput = this.dom.get('templateSearch');
+            if (searchInput) {
+                const debouncedSearch = this.utils.debounce((e) => {
+                    this.searchTemplates(e.target.value);
+                }, 500);
+                searchInput.addEventListener('input', debouncedSearch);
+            }
+            
+            // Template Filter
+            const filterSelect = this.dom.get('templateFilter');
+            if (filterSelect) {
+                filterSelect.addEventListener('change', (e) => {
+                    this.filterTemplates(e.target.value);
+                });
+            }
+        }
+        
+        openSaveTemplateModal() {
+            const modal = this.dom.get('saveTemplateModal');
+            if (modal) {
+                // Reset form
+                const form = document.getElementById('saveTemplateForm');
+                if (form) form.reset();
+                
+                // Hide code preview
+                const codePreview = this.dom.get('templateCodePreview');
+                if (codePreview) codePreview.style.display = 'none';
+                
+                modal.classList.add('active');
+            }
+        }
+        
+        closeSaveTemplateModal() {
+            const modal = this.dom.get('saveTemplateModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+        
+        async saveTemplate() {
+            const nameInput = this.dom.get('saveTemplateName');
+            const visibilityRadios = document.querySelectorAll('input[name="templateVisibility"]');
+            
+            if (!nameInput || !nameInput.value.trim()) {
+                this.utils.showToast('Nama template wajib diisi', 'warning');
+                return;
+            }
+            
+            const templateName = nameInput.value.trim();
+            let isPublic = false;
+            
+            visibilityRadios.forEach(radio => {
+                if (radio.checked && radio.value === 'public') {
+                    isPublic = true;
+                }
+            });
+            
+            // Get current state data
+            const state = this.state.getState();
+            const fontData = state.currentFont;
+            const animData = state.currentAnimation;
+            const previewData = {
+                text: state.preview.text,
+                align: state.preview.align,
+                device: state.preview.device
+            };
+            
+            // Get website and user info
+            const website = state.website;
+            const websiteId = website ? website.id : null;
+            
+            // Get user from Telegram if available
+            let userId = null;
+            if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                userId = window.Telegram.WebApp.initDataUnsafe.user.id;
+            }
+            
+            this.utils.showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/font-templates/save`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        template_name: templateName,
+                        font_data: fontData,
+                        animation_data: animData,
+                        preview_data: previewData,
+                        website_id: websiteId,
+                        user_id: userId,
+                        is_public: isPublic
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.currentTemplateCode = data.template_code;
+                    
+                    // Show code preview
+                    const codePreview = this.dom.get('templateCodePreview');
+                    const codeElement = this.dom.get('generatedTemplateCode');
+                    if (codePreview && codeElement) {
+                        codeElement.textContent = data.template_code;
+                        codePreview.style.display = 'block';
+                    }
+                    
+                    this.utils.showToast(`✅ Template "${templateName}" disimpan!`, 'success');
+                    
+                    // Change save button text
+                    const saveAllBtn = this.dom.get('saveAllBtn');
+                    if (saveAllBtn) {
+                        saveAllBtn.innerHTML = '<i class="fas fa-sync-alt"></i> PERBARUI';
+                    }
+                    
+                    // Store in session that we're using a template
+                    sessionStorage.setItem('current_template_code', data.template_code);
+                    sessionStorage.setItem('current_template_name', templateName);
+                    
+                } else {
+                    throw new Error(data.error || 'Gagal menyimpan template');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error saving template:', error);
+                this.utils.showToast(error.message, 'error');
+            } finally {
+                this.utils.showLoading(false);
+            }
+        }
+        
+        copyTemplateCode() {
+            const codeElement = this.dom.get('generatedTemplateCode');
+            if (codeElement) {
+                const code = codeElement.textContent;
+                this.utils.copyToClipboard(code);
+            }
+        }
+        
+        openTemplateManager() {
+            const modal = this.dom.get('templateManagerModal');
+            if (modal) {
+                modal.classList.add('active');
+                this.loadTemplates();
+            }
+        }
+        
+        closeTemplateManager() {
+            const modal = this.dom.get('templateManagerModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+        
+        async loadTemplates(filter = 'all', search = '') {
+            const grid = this.dom.get('templatesGrid');
+            if (!grid) return;
+            
+            grid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
+            
+            try {
+                let url = `${API_BASE_URL}/api/font-templates?limit=50`;
+                
+                // Get user ID
+                let userId = null;
+                if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                    userId = window.Telegram.WebApp.initDataUnsafe.user.id;
+                }
+                
+                const website = this.state.getState().website;
+                const websiteId = website ? website.id : null;
+                
+                if (filter === 'mine' && userId) {
+                    url = `${API_BASE_URL}/api/font-templates?user_id=${userId}`;
+                } else if (filter === 'popular') {
+                    url = `${API_BASE_URL}/api/font-templates?popular=true`;
+                } else if (filter === 'recent') {
+                    url = `${API_BASE_URL}/api/font-templates?limit=50`;
+                } else if (websiteId) {
+                    url = `${API_BASE_URL}/api/font-templates?website_id=${websiteId}`;
+                }
+                
+                if (search) {
+                    url = `${API_BASE_URL}/api/font-templates?search=${encodeURIComponent(search)}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.templates = data.templates;
+                    this.renderTemplates(data.templates);
+                } else {
+                    throw new Error(data.error || 'Gagal memuat template');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading templates:', error);
+                grid.innerHTML = `<div class="template-loading error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Gagal memuat template: ${error.message}</span>
+                </div>`;
+            }
+        }
+        
+        renderTemplates(templates) {
+            const grid = this.dom.get('templatesGrid');
+            if (!grid) return;
+            
+            if (templates.length === 0) {
+                grid.innerHTML = `<div class="template-loading">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Belum ada template</span>
+                </div>`;
+                return;
+            }
+            
+            let html = '';
+            const currentCode = sessionStorage.getItem('current_template_code');
+            
+            templates.forEach(template => {
+                const isSelected = currentCode === template.template_code;
+                const date = new Date(template.created_at).toLocaleDateString('id-ID');
+                const badgeClass = template.is_public ? 'public' : 'private';
+                const badgeText = template.is_public ? 'Public' : 'Private';
+                
+                html += `
+                    <div class="template-card ${isSelected ? 'selected' : ''}" data-code="${template.template_code}">
+                        <div class="template-preview">
+                            <span class="template-preview-text">Aa</span>
+                        </div>
+                        <div class="template-info">
+                            <div class="template-name">
+                                ${template.template_name}
+                                <span class="template-badge ${badgeClass}">${badgeText}</span>
+                            </div>
+                            <div class="template-meta">
+                                <span><i class="fas fa-font"></i> ${template.font_preview || 'Inter'}</span>
+                                <span><i class="fas fa-film"></i> ${template.anim_preview || 'None'}</span>
+                                <span><i class="fas fa-calendar"></i> ${date}</span>
+                                <span><i class="fas fa-eye"></i> ${template.usage_count || 0} digunakan</span>
+                            </div>
+                            <div class="template-code">
+                                <code>${template.template_code.substring(0, 20)}...</code>
+                                <button class="copy-code-btn" onclick="window.fontStudio.copyTemplateCode('${template.template_code}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="template-actions">
+                                <button class="template-btn load" onclick="window.fontStudio.loadTemplate('${template.template_code}')">
+                                    <i class="fas fa-download"></i> Load
+                                </button>
+                                <button class="template-btn delete" onclick="window.fontStudio.deleteTemplate('${template.template_code}', '${template.template_name}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            grid.innerHTML = html;
+        }
+        
+        async searchTemplates(query) {
+            if (query.length < 2) {
+                this.loadTemplates();
+                return;
+            }
+            await this.loadTemplates('all', query);
+        }
+        
+        async filterTemplates(filter) {
+            await this.loadTemplates(filter);
+        }
+        
+        openLoadTemplateModal() {
+            const modal = this.dom.get('loadTemplateModal');
+            if (modal) {
+                // Reset
+                const input = this.dom.get('loadTemplateCode');
+                if (input) input.value = '';
+                
+                const preview = this.dom.get('loadTemplatePreview');
+                if (preview) preview.style.display = 'none';
+                
+                const verifyBtn = this.dom.get('verifyLoadTemplate');
+                const confirmBtn = this.dom.get('confirmLoadTemplate');
+                if (verifyBtn) verifyBtn.style.display = 'inline-flex';
+                if (confirmBtn) confirmBtn.style.display = 'none';
+                
+                modal.classList.add('active');
+            }
+        }
+        
+        closeLoadTemplateModal() {
+            const modal = this.dom.get('loadTemplateModal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+        
+        async verifyTemplateCode() {
+            const input = this.dom.get('loadTemplateCode');
+            if (!input || !input.value) {
+                this.utils.showToast('Masukkan kode template', 'warning');
+                return;
+            }
+            
+            const code = input.value.trim();
+            if (code.length !== 35) {
+                this.utils.showToast('Kode template harus 35 karakter', 'warning');
+                return;
+            }
+            
+            this.utils.showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/font-templates/verify/${code}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Show preview
+                    const preview = this.dom.get('loadTemplatePreview');
+                    const template = data.template;
+                    
+                    document.getElementById('previewTemplateName').textContent = template.template_name;
+                    document.getElementById('previewTemplateFont').textContent = 
+                        template.font_data?.family?.split(',')[0] || 'Inter';
+                    document.getElementById('previewTemplateAnim').textContent = 
+                        template.animation_data?.name || 'None';
+                    document.getElementById('previewTemplateDate').textContent = 
+                        new Date(template.created_at).toLocaleDateString('id-ID');
+                    
+                    preview.style.display = 'block';
+                    
+                    // Switch buttons
+                    const verifyBtn = this.dom.get('verifyLoadTemplate');
+                    const confirmBtn = this.dom.get('confirmLoadTemplate');
+                    if (verifyBtn) verifyBtn.style.display = 'none';
+                    if (confirmBtn) confirmBtn.style.display = 'inline-flex';
+                    
+                    // Store template data
+                    this.verifiedTemplate = template;
+                    
+                } else {
+                    this.utils.showToast('Template tidak ditemukan', 'error');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error verifying template:', error);
+                this.utils.showToast('Gagal memverifikasi template', 'error');
+            } finally {
+                this.utils.showLoading(false);
+            }
+        }
+        
+        async loadVerifiedTemplate() {
+            if (!this.verifiedTemplate) return;
+            
+            this.loadTemplateData(this.verifiedTemplate);
+            this.closeLoadTemplateModal();
+        }
+        
+        async loadTemplate(templateCode) {
+            this.utils.showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/font-templates/${templateCode}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.loadTemplateData(data.template);
+                    this.closeTemplateManager();
+                    this.utils.showToast(`✅ Template "${data.template.template_name}" dimuat`, 'success');
+                } else {
+                    throw new Error(data.error || 'Gagal memuat template');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading template:', error);
+                this.utils.showToast(error.message, 'error');
+            } finally {
+                this.utils.showLoading(false);
+            }
+        }
+        
+        loadTemplateData(template) {
+            // Apply font data
+            if (template.font_data) {
+                this.state.updateState('currentFont', template.font_data);
+                
+                // Update UI controls
+                const font = template.font_data;
+                if (this.dom.get('fontWeight')) this.dom.get('fontWeight').value = font.weight || 400;
+                if (this.dom.get('fontStyle')) this.dom.get('fontStyle').value = font.style || 'normal';
+                if (this.dom.get('fontSize')) this.dom.get('fontSize').value = font.size || 16;
+                if (this.dom.get('letterSpacing')) this.dom.get('letterSpacing').value = font.letterSpacing || 0;
+                if (this.dom.get('wordSpacing')) this.dom.get('wordSpacing').value = font.wordSpacing || 0;
+                if (this.dom.get('lineHeight')) this.dom.get('lineHeight').value = font.lineHeight || 1.5;
+                
+                // Update color
+                if (font.color && this.dom.get('textColor')) {
+                    this.dom.get('textColor').value = font.color;
+                    this.dom.get('textColorHex').value = font.color;
+                }
+                
+                // Update transform buttons
+                if (font.transform) {
+                    this.dom.get('transformBtns')?.forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.dataset.transform === font.transform) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+                
+                // Update shadow
+                if (font.shadow) {
+                    const shadow = font.shadow;
+                    if (this.dom.get('shadowX')) this.dom.get('shadowX').value = shadow.x || 2;
+                    if (this.dom.get('shadowY')) this.dom.get('shadowY').value = shadow.y || 2;
+                    if (this.dom.get('shadowBlur')) this.dom.get('shadowBlur').value = shadow.blur || 4;
+                    if (this.dom.get('shadowColor')) this.dom.get('shadowColor').value = shadow.color || '#000000';
+                    if (this.dom.get('shadowOpacity')) this.dom.get('shadowOpacity').value = shadow.opacity || 0.5;
+                    
+                    const shadowBtn = this.dom.get('toggleShadow');
+                    if (shadowBtn) {
+                        if (shadow.enabled) {
+                            shadowBtn.classList.add('active');
+                        } else {
+                            shadowBtn.classList.remove('active');
+                        }
+                    }
+                }
+                
+                // Update stroke
+                if (font.stroke) {
+                    if (this.dom.get('strokeWidth')) this.dom.get('strokeWidth').value = font.stroke.width || 0;
+                    if (this.dom.get('strokeColor')) this.dom.get('strokeColor').value = font.stroke.color || '#000000';
+                }
+                
+                // Update gradient
+                if (font.gradient) {
+                    if (this.dom.get('gradientType')) this.dom.get('gradientType').value = font.gradient.type || 'none';
+                    if (this.dom.get('gradientAngle')) this.dom.get('gradientAngle').value = font.gradient.angle || 45;
+                }
+            }
+            
+            // Apply animation data
+            if (template.animation_data) {
+                const anim = template.animation_data;
+                this.state.updateState('currentAnimation', anim);
+                
+                // Update animation grid
+                const animationManager = window.fontStudio?.animationManager;
+                if (animationManager) {
+                    animationManager.renderAnimationGrid();
+                }
+                
+                // Update timeline controls
+                if (this.dom.get('animDuration')) this.dom.get('animDuration').value = anim.duration || 2;
+                if (this.dom.get('animDelay')) this.dom.get('animDelay').value = anim.delay || 0;
+                if (this.dom.get('animIteration')) this.dom.get('animIteration').value = anim.iteration || 'infinite';
+                if (this.dom.get('animDirection')) this.dom.get('animDirection').value = anim.direction || 'normal';
+                if (this.dom.get('animFillMode')) this.dom.get('animFillMode').value = anim.fillMode || 'both';
+                
+                // Update easing
+                if (anim.easing) {
+                    this.dom.get('easingBtns')?.forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.dataset.easing === anim.easing) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+                
+                // Update transform
+                if (anim.transform) {
+                    const t = anim.transform;
+                    if (this.dom.get('scaleX')) this.dom.get('scaleX').value = t.scaleX || 1;
+                    if (this.dom.get('scaleY')) this.dom.get('scaleY').value = t.scaleY || 1;
+                    if (this.dom.get('rotate')) this.dom.get('rotate').value = t.rotate || 0;
+                    if (this.dom.get('skewX')) this.dom.get('skewX').value = t.skewX || 0;
+                    if (this.dom.get('skewY')) this.dom.get('skewY').value = t.skewY || 0;
+                    if (this.dom.get('translateX')) this.dom.get('translateX').value = t.translateX || 0;
+                    if (this.dom.get('translateY')) this.dom.get('translateY').value = t.translateY || 0;
+                }
+                
+                // Update opacity
+                if (this.dom.get('opacity')) this.dom.get('opacity').value = anim.opacity || 1;
+                
+                // Update filter
+                if (anim.filter) {
+                    const f = anim.filter;
+                    if (this.dom.get('filterBlur')) this.dom.get('filterBlur').value = f.blur || 0;
+                    if (this.dom.get('filterBrightness')) this.dom.get('filterBrightness').value = f.brightness || 1;
+                    if (this.dom.get('filterContrast')) this.dom.get('filterContrast').value = f.contrast || 1;
+                    if (this.dom.get('filterGrayscale')) this.dom.get('filterGrayscale').value = f.grayscale || 0;
+                    if (this.dom.get('filterHue')) this.dom.get('filterHue').value = f.hue || 0;
+                    if (this.dom.get('filterSaturate')) this.dom.get('filterSaturate').value = f.saturate || 1;
+                    if (this.dom.get('filterSepia')) this.dom.get('filterSepia').value = f.sepia || 0;
+                    if (this.dom.get('filterInvert')) this.dom.get('filterInvert').value = f.invert || 0;
+                }
+            }
+            
+            // Apply preview data
+            if (template.preview_data) {
+                const preview = template.preview_data;
+                if (preview.text && this.dom.get('previewText')) {
+                    this.dom.get('previewText').value = preview.text;
+                }
+                if (preview.align) {
+                    this.state.updateState('preview.align', preview.align);
+                    this.dom.get('alignBtns')?.forEach(btn => {
+                        btn.classList.remove('active');
+                        if (btn.dataset.align === preview.align) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+                if (preview.device && this.dom.get('previewDevice')) {
+                    this.dom.get('previewDevice').value = preview.device;
+                }
+            }
+            
+            // Update preview
+            const fontManager = window.fontStudio?.fontManager;
+            if (fontManager) {
+                fontManager.updatePreview();
+            }
+            
+            // Store current template info
+            sessionStorage.setItem('current_template_code', template.template_code);
+            sessionStorage.setItem('current_template_name', template.template_name);
+            
+            // Change save button text
+            const saveAllBtn = this.dom.get('saveAllBtn');
+            if (saveAllBtn) {
+                saveAllBtn.innerHTML = '<i class="fas fa-sync-alt"></i> PERBARUI';
+            }
+            
+            // Trigger refresh
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
+        }
+        
+        async deleteTemplate(templateCode, templateName) {
+            // Show delete confirmation modal
+            const modal = this.dom.get('deleteTemplateModal');
+            const info = this.dom.get('deleteTemplateInfo');
+            
+            if (modal && info) {
+                info.innerHTML = `<strong>${templateName}</strong><br><small>${templateCode}</small>`;
+                modal.classList.add('active');
+                
+                // Store code for deletion
+                this.templateToDelete = { code: templateCode, name: templateName };
+            }
+        }
+        
+        closeDeleteTemplateModal() {
+            const modal = this.dom.get('deleteTemplateModal');
+            if (modal) {
+                modal.classList.remove('active');
+                this.templateToDelete = null;
+            }
+        }
+        
+        async confirmDeleteTemplate() {
+            if (!this.templateToDelete) return;
+            
+            this.utils.showLoading(true);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/font-templates/${this.templateToDelete.code}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.utils.showToast(`✅ Template "${this.templateToDelete.name}" dihapus`, 'success');
+                    this.closeDeleteTemplateModal();
+                    this.loadTemplates(); // Refresh list
+                } else {
+                    throw new Error(data.error || 'Gagal menghapus template');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error deleting template:', error);
+                this.utils.showToast(error.message, 'error');
+            } finally {
+                this.utils.showLoading(false);
+            }
+        }
+        
+        copyTemplateCodeFromCard(code) {
+            this.utils.copyToClipboard(code);
+        }
+    }
+    
+    // Tambahkan ke dalam class FontAnimationStudio
+    // Di constructor:
+    this.templateManager = new TemplateManager(this.state, this.dom, this.utils, this.api);
+    
+    // Di method init(), setelah navigationManager:
+    this.templateManager = new TemplateManager(this.state, this.dom, this.utils, this.api);
+    
+    // Expose untuk akses global
+    window.fontStudio = this;
+
     // ==================== MAIN APPLICATION ====================
     class FontAnimationStudio {
         constructor() {
@@ -2835,6 +3549,7 @@
             this.fontManager = new FontManager(this.state, this.dom, this.api, this.utils);
             this.animationManager = new AnimationManager(this.state, this.dom, this.utils);
             this.previewManager = new PreviewManager(this.state, this.dom, this.utils);
+            this.templateManager = new TemplateManager(this.state, this.dom, this.utils, this.api);
             
             this.init();
         }
@@ -2857,6 +3572,9 @@
                   this.fontManager,
                   this.animationManager
                 );
+                
+                this.templateManager = new TemplateManager(this.state, this.dom, this.utils, this.api);
+                window.fontStudio = this;
                 
                 this.utils.showToast('Font & Animation Studio siap!', 'success');
                 
