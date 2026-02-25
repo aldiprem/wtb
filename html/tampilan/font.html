@@ -46,17 +46,17 @@
             </div>
         </div>
 
-        <!-- Main Layout -->
+        <!-- Main Layout - 2 Kolom -->
         <div class="studio-layout">
-            <!-- Left Panel - Controls -->
+            <!-- Left Panel - Controls (Lebih kecil) -->
             <div class="studio-sidebar">
-                <!-- Font Manager -->
+                <!-- Section yang semuanya di-close saat awal -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="fontSection">
+                    <div class="section-header" data-toggle="fontSection" data-expanded="false">
                         <h2><i class="fas fa-font"></i> Font Manager</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="section-content" id="fontSection">
+                    <div class="section-content hidden" id="fontSection">
                         <!-- Upload Font File -->
                         <div class="control-group">
                             <label class="control-label">
@@ -84,35 +84,13 @@
                                 <i class="fas fa-font"></i>
                                 Font Family Name
                             </label>
-                            <input type="text" 
-                                   id="fontFamily" 
-                                   class="styled-input" 
-                                   placeholder="Nama font (contoh: Squeaky)"
-                                   value="MyCustomFont">
-                            <small class="input-hint">
-                                Nama yang akan digunakan di CSS
-                            </small>
-                        </div>
-                        
-                        <!-- Alternative: URL Font -->
-                        <div class="control-group">
-                            <label class="control-label">
-                                <i class="fas fa-link"></i>
-                                Atau URL Font (.ttf)
-                            </label>
-                            <input type="url" 
-                                   id="fontUrl" 
-                                   class="styled-input" 
-                                   placeholder="https://example.com/font.ttf">
-                            <small class="input-hint">
-                                URL langsung ke file .ttf (jika sudah dihosting)
-                            </small>
+                            <input type="text" id="fontFamily" class="styled-input" placeholder="Nama font (contoh: Squeaky)" value="MyCustomFont">
+                            <small class="input-hint">Nama yang akan digunakan di CSS</small>
                         </div>
                         
                         <!-- Load Font Button -->
                         <button class="btn-apply-font full-width" id="loadFontBtn">
-                            <i class="fas fa-download"></i>
-                            Load & Preview Font
+                            <i class="fas fa-download"></i> Load & Preview Font
                         </button>
                         
                         <!-- Font Style Controls -->
@@ -123,31 +101,28 @@
                             </label>
                             <div class="font-style-controls">
                                 <select id="fontWeight" class="style-select">
-                                    <option value="100">Thin (100)</option>
-                                    <option value="200">Extra Light (200)</option>
-                                    <option value="300">Light (300)</option>
-                                    <option value="400" selected>Regular (400)</option>
-                                    <option value="500">Medium (500)</option>
-                                    <option value="600">Semi Bold (600)</option>
-                                    <option value="700">Bold (700)</option>
-                                    <option value="800">Extra Bold (800)</option>
-                                    <option value="900">Black (900)</option>
+                                    <option value="100">Thin</option>
+                                    <option value="200">Extra Light</option>
+                                    <option value="300">Light</option>
+                                    <option value="400" selected>Regular</option>
+                                    <option value="500">Medium</option>
+                                    <option value="600">Semi Bold</option>
+                                    <option value="700">Bold</option>
+                                    <option value="800">Extra Bold</option>
+                                    <option value="900">Black</option>
                                 </select>
                                 
                                 <select id="fontStyle" class="style-select">
                                     <option value="normal" selected>Normal</option>
                                     <option value="italic">Italic</option>
-                                    <option value="oblique">Oblique</option>
                                 </select>
                                 
                                 <select id="fontSize" class="style-select">
-                                    <option value="24">24px</option>
                                     <option value="32">32px</option>
                                     <option value="40">40px</option>
                                     <option value="48" selected>48px</option>
                                     <option value="56">56px</option>
                                     <option value="64">64px</option>
-                                    <option value="72">72px</option>
                                 </select>
                             </div>
                         </div>
@@ -168,11 +143,11 @@
                 
                 <!-- Animation Manager -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="animationSection">
+                    <div class="section-header" data-toggle="animationSection" data-expanded="false">
                         <h2><i class="fas fa-film"></i> Animation Studio</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="section-content" id="animationSection">
+                    <div class="section-content hidden" id="animationSection">
                         <!-- Animation Type -->
                         <div class="control-group">
                             <label class="control-label">
@@ -188,9 +163,6 @@
                                 <option value="float">Float</option>
                                 <option value="rotate">Rotate</option>
                                 <option value="wave">Wave</option>
-                                <option value="glitch">Glitch</option>
-                                <option value="rainbow">Rainbow</option>
-                                <option value="heartbeat">Heartbeat</option>
                             </select>
                         </div>
                         
@@ -198,7 +170,7 @@
                         <div class="control-group">
                             <label class="control-label">
                                 <i class="fas fa-clock"></i>
-                                Durasi (detik)
+                                Durasi
                             </label>
                             <div class="range-control">
                                 <input type="range" id="animDuration" min="0.5" max="5" value="2" step="0.5">
@@ -210,7 +182,7 @@
                         <div class="control-group">
                             <label class="control-label">
                                 <i class="fas fa-hourglass-half"></i>
-                                Delay (detik)
+                                Delay
                             </label>
                             <div class="range-control">
                                 <input type="range" id="animDelay" min="0" max="2" value="0" step="0.1">
@@ -236,23 +208,23 @@
                 
                 <!-- Template Manager -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="templateSection">
+                    <div class="section-header" data-toggle="templateSection" data-expanded="false">
                         <h2><i class="fas fa-save"></i> Template Manager</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="section-content" id="templateSection">
-                        <!-- Save Template -->
+                    <div class="section-content hidden" id="templateSection">
+                        <!-- Save Template - Tanpa input string manual -->
                         <div class="control-group">
                             <label class="control-label">
                                 <i class="fas fa-tag"></i>
                                 Nama Template
                             </label>
-                            <input type="text" id="templateName" class="styled-input" placeholder="Contoh: My Custom Font Bounce">
+                            <input type="text" id="templateName" class="styled-input" placeholder="Contoh: Squeaky Bounce">
+                            <small class="input-hint">String kode 35 karakter akan dibuat otomatis</small>
                         </div>
                         
                         <button class="btn-apply-font full-width" id="saveTemplateBtn">
-                            <i class="fas fa-save"></i>
-                            Simpan Template
+                            <i class="fas fa-save"></i> Simpan Template
                         </button>
                         
                         <div class="template-code-display" id="savedCodeDisplay" style="display: none; margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
@@ -262,40 +234,31 @@
                                 <i class="fas fa-copy"></i> Salin Kode
                             </button>
                         </div>
-                        
-                        <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                            <label class="control-label">
-                                <i class="fas fa-key"></i>
-                                Load Template
-                            </label>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="text" id="loadTemplateCode" class="styled-input" placeholder="Masukkan kode 35 karakter" maxlength="35">
-                                <button class="btn-apply-font" id="loadTemplateBtn" style="width: auto;">
-                                    <i class="fas fa-download"></i>
-                                </button>
-                            </div>
-                        </div>
                     </div>
                 </div>
                 
                 <!-- Preview Text Editor -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="textSection">
+                    <div class="section-header" data-toggle="textSection" data-expanded="false">
                         <h2><i class="fas fa-edit"></i> Preview Text</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="section-content" id="textSection">
+                    <div class="section-content hidden" id="textSection">
                         <div class="control-group">
-                            <textarea id="previewText" class="code-textarea" rows="2">Toko Online Premium</textarea>
-                        </div>
-                        <div class="control-group">
-                            <input type="text" id="previewSubtext" class="styled-input" value="dengan Layanan Terbaik 24/7">
+                            <textarea id="previewText" class="code-textarea" rows="2">Toko Online</textarea>
                         </div>
                     </div>
                 </div>
+
+                <!-- Tombol Lihat Semua Template -->
+                <div class="control-section">
+                    <button class="btn-view-all-templates" id="viewAllTemplatesBtn">
+                        <i class="fas fa-folder-open"></i> Lihat Semua Template
+                    </button>
+                </div>
             </div>
             
-            <!-- Center Preview Area -->
+            <!-- Right Panel - Preview Area (Lebih besar) -->
             <div class="preview-area">
                 <div class="preview-header">
                     <h3><i class="fas fa-eye"></i> Live Preview</h3>
@@ -306,18 +269,15 @@
                     </div>
                 </div>
                 
-                <!-- Preview Canvas -->
+                <!-- Preview Canvas - Tanpa subtext -->
                 <div class="preview-canvas" id="previewCanvas">
                     <div class="preview-text-display" id="previewTextDisplay">
-                        Toko Online Premium
-                    </div>
-                    <div class="preview-subtext-display" id="previewSubtextDisplay">
-                        dengan Layanan Terbaik 24/7
+                        Toko Online
                     </div>
                 </div>
                 
-                <!-- Animation Timeline Controls -->
-                <div class="timeline-controls" style="padding: 16px 20px;">
+                <!-- Animation Controls Sederhana -->
+                <div class="preview-controls-simple">
                     <button class="timeline-btn" id="playAnimation">
                         <i class="fas fa-play"></i>
                     </button>
@@ -329,43 +289,37 @@
                     </button>
                 </div>
             </div>
-            
-            <!-- Right Panel - Info -->
-            <div class="properties-panel">
-                <!-- Font Info -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-info-circle"></i>
-                        Font Info
-                    </h3>
-                    <div class="font-info-panel">
-                        <div class="info-row">
-                            <span class="info-label">Font:</span>
-                            <span class="info-value" id="infoFont">-</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Weight:</span>
-                            <span class="info-value" id="infoWeight">400</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Size:</span>
-                            <span class="info-value" id="infoSize">48px</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Animasi:</span>
-                            <span class="info-value" id="infoAnimasi">Fade</span>
-                        </div>
+        </div>
+    </div>
+    
+    <!-- MODAL: Lihat Semua Template -->
+    <div class="modal" id="allTemplatesModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-folder-open"></i> Semua Template Font</h2>
+                <button class="modal-close" id="closeAllTemplatesModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Search Bar -->
+                <div class="modal-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="modalTemplateSearch" placeholder="Cari template...">
                     </div>
+                    <select id="modalTemplateFilter" class="template-filter">
+                        <option value="all">Semua</option>
+                        <option value="popular">Populer</option>
+                        <option value="recent">Terbaru</option>
+                    </select>
                 </div>
-                
-                <!-- CSS Output -->
-                <div class="properties-section">
-                    <h3 class="properties-title">
-                        <i class="fas fa-code"></i>
-                        CSS Output
-                    </h3>
-                    <div class="css-output">
-                        <pre><code class="language-css" id="cssCode">/* Font akan muncul setelah load */</code></pre>
+
+                <!-- Templates Grid -->
+                <div class="templates-grid" id="allTemplatesGrid">
+                    <div class="template-loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Memuat template...</span>
                     </div>
                 </div>
             </div>
@@ -376,6 +330,6 @@
     <div class="toast-container" id="toastContainer"></div>
     
     <!-- JavaScript -->
-    <script src="/wtb/js/tampilan/font.js"></script>
+    <script src="/wtb/tampilan/font.js"></script>
 </body>
 </html>
