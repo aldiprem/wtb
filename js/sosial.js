@@ -754,12 +754,19 @@
 
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        // Back button
+        // Di tampilan.js, sosial.js, pembayaran.js
         if (elements.backToPanel) {
-            elements.backToPanel.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.location.href = '/wtb/html/panel.html';
-            });
+          elements.backToPanel.addEventListener('click', (e) => {
+            e.preventDefault();
+
+            // Simpan bahwa kita kembali dari halaman settings
+            try {
+              sessionStorage.setItem('panel_current_page', 'settings');
+              sessionStorage.setItem('panel_return_from', 'settings');
+            } catch (e) {}
+
+            window.location.href = '/wtb/html/panel.html';
+          });
         }
         
         // Save all
