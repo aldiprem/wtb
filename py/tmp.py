@@ -1,4 +1,4 @@
-# tmp.py - Database handler untuk tampilan website (VERSI DENGAN MULTIPLE BANNER DAN MULTIPLE PROMO)
+# tmp.py - Database handler untuk tampilan website (VERSI DENGAN MULTIPLE BANNER, MULTIPLE PROMO, DAN FONT ANIMASI)
 import sqlite3
 import json
 
@@ -16,14 +16,14 @@ def init_db():
     conn = get_db()
     cursor = conn.cursor()
 
-    # Create tampilan table with new structure
+    # Create tampilan table with new structure including font animation columns
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS tampilan (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         website_id INTEGER UNIQUE NOT NULL,
         logo TEXT,
         banners TEXT DEFAULT '[]',  -- JSON array untuk multiple banner
-        promos TEXT DEFAULT '[]',    -- JSON array untuk multiple promo (NEW)
+        promos TEXT DEFAULT '[]',    -- JSON array untuk multiple promo
         colors TEXT DEFAULT '{}',
         font_family TEXT DEFAULT 'Inter',
         font_size INTEGER DEFAULT 14,
@@ -38,6 +38,14 @@ def init_db():
         qris TEXT DEFAULT '{}',
         crypto TEXT DEFAULT '{}',
         maintenance_message TEXT,
+        
+        -- KOLOM BARU UNTUK FONT & ANIMASI
+        store_display_name TEXT DEFAULT 'Toko Online',
+        font_animation TEXT DEFAULT 'none',
+        animation_duration REAL DEFAULT 2,
+        animation_delay REAL DEFAULT 0,
+        animation_iteration TEXT DEFAULT 'infinite',
+        
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
@@ -90,11 +98,10 @@ def get_tampilan(website_id):
         else:
             data['banners'] = []
         
-        # Parse promos - PERBAIKAN DI SINI
+        # Parse promos
         if data['promos']:
             try:
                 promos_data = json.loads(data['promos'])
-                # Pastikan selalu berupa array
                 if isinstance(promos_data, list):
                     data['promos'] = promos_data
                 else:
@@ -159,7 +166,10 @@ def get_tampilan(website_id):
                 data['crypto'] = {}
         else:
             data['crypto'] = {}
-            
+        
+        # Kolom font animasi sudah langsung tersedia sebagai field biasa
+        # Tidak perlu di-parse karena bukan JSON
+        
         return data
     return None
 
@@ -175,7 +185,7 @@ def save_tampilan(website_id, data):
     # Siapkan data dengan nilai default
     colors = json.dumps(data.get('colors', {}))
     banners = json.dumps(data.get('banners', []))
-    promos = json.dumps(data.get('promos', []))  # NEW
+    promos = json.dumps(data.get('promos', []))
     banner_positions = json.dumps(data.get('banner_positions', []))
     payment_notes = json.dumps(data.get('payment_notes', {}))
     banks = json.dumps(data.get('banks', []))
@@ -191,6 +201,13 @@ def save_tampilan(website_id, data):
     contact_whatsapp = data.get('contact_whatsapp')
     contact_telegram = data.get('contact_telegram')
     maintenance_message = data.get('maintenance_message')
+    
+    # Data font animasi
+    store_display_name = data.get('store_display_name', 'Toko Online')
+    font_animation = data.get('font_animation', 'none')
+    animation_duration = data.get('animation_duration', 2)
+    animation_delay = data.get('animation_delay', 0)
+    animation_iteration = data.get('animation_iteration', 'infinite')
 
     if existing:
         # Update
@@ -198,7 +215,7 @@ def save_tampilan(website_id, data):
         UPDATE tampilan SET
             logo = COALESCE(?, logo),
             banners = COALESCE(?, banners),
-            promos = COALESCE(?, promos),  -- NEW
+            promos = COALESCE(?, promos),
             colors = COALESCE(?, colors),
             font_family = COALESCE(?, font_family),
             font_size = COALESCE(?, font_size),
@@ -213,6 +230,14 @@ def save_tampilan(website_id, data):
             qris = COALESCE(?, qris),
             crypto = COALESCE(?, crypto),
             maintenance_message = COALESCE(?, maintenance_message),
+            
+            -- Update kolom font animasi
+            store_display_name = COALESCE(?, store_display_name),
+            font_animation = COALESCE(?, font_animation),
+            animation_duration = COALESCE(?, animation_duration),
+            animation_delay = COALESCE(?, animation_delay),
+            animation_iteration = COALESCE(?, animation_iteration),
+            
             updated_at = CURRENT_TIMESTAMP
         WHERE website_id = ?
         ''', (
@@ -233,6 +258,13 @@ def save_tampilan(website_id, data):
             qris,
             crypto,
             maintenance_message,
+            
+            store_display_name,
+            font_animation,
+            animation_duration,
+            animation_delay,
+            animation_iteration,
+            
             website_id
         ))
         result_id = existing['id']
@@ -243,8 +275,12 @@ def save_tampilan(website_id, data):
             website_id, logo, banners, promos, colors, font_family, font_size,
             title, description, contact_whatsapp, contact_telegram, 
             banner_positions, payment_notes, banks, ewallets, qris, crypto,
-            maintenance_message
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            maintenance_message,
+            
+            -- Kolom font animasi
+            store_display_name, font_animation, animation_duration, 
+            animation_delay, animation_iteration
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             website_id,
             logo,
@@ -263,7 +299,13 @@ def save_tampilan(website_id, data):
             ewallets,
             qris,
             crypto,
-            maintenance_message
+            maintenance_message,
+            
+            store_display_name,
+            font_animation,
+            animation_duration,
+            animation_delay,
+            animation_iteration
         ))
         result_id = cursor.lastrowid
 
@@ -291,9 +333,10 @@ def save_colors(website_id, colors_data):
         ''', (colors, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?)
-        ''', (website_id, colors, 'Inter', 14))
+        INSERT INTO tampilan (website_id, colors, font_family, font_size, 
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, colors, 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
@@ -304,7 +347,6 @@ def save_banners(website_id, banners_data):
     conn = get_db()
     cursor = conn.cursor()
     
-    # banners_data adalah array of objects dengan url, positionX, positionY
     banners_json = json.dumps(banners_data)
     
     # Cek apakah sudah ada
@@ -320,9 +362,10 @@ def save_banners(website_id, banners_data):
         ''', (banners_json, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, banners, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (website_id, banners_json, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, banners, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, banners_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
@@ -346,9 +389,62 @@ def save_logo(website_id, logo_url):
         ''', (logo_url, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, logo, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (website_id, logo_url, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, logo, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, logo_url, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def save_font_anim(website_id, data):
+    """Save font and animation settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            store_display_name = ?,
+            font_family = ?,
+            font_animation = ?,
+            animation_duration = ?,
+            animation_delay = ?,
+            animation_iteration = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (
+            data.get('store_display_name', 'Toko Online'),
+            data.get('font_family', 'Inter'),
+            data.get('animation', 'none'),
+            data.get('animation_duration', 2),
+            data.get('animation_delay', 0),
+            data.get('animation_iteration', 'infinite'),
+            website_id
+        ))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (
+            website_id, 
+            store_display_name, font_family, font_animation, 
+            animation_duration, animation_delay, animation_iteration,
+            colors, font_family, font_size
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            website_id,
+            data.get('store_display_name', 'Toko Online'),
+            data.get('font_family', 'Inter'),
+            data.get('animation', 'none'),
+            data.get('animation_duration', 2),
+            data.get('animation_delay', 0),
+            data.get('animation_iteration', 'infinite'),
+            '{}', 'Inter', 14
+        ))
     
     conn.commit()
     conn.close()
@@ -377,7 +473,7 @@ def update_tampilan(website_id, data):
         current_banners = []
     
     try:
-        current_promos = json.loads(current_dict['promos']) if current_dict['promos'] else []  # NEW
+        current_promos = json.loads(current_dict['promos']) if current_dict['promos'] else []
     except:
         current_promos = []
         
@@ -419,7 +515,7 @@ def update_tampilan(website_id, data):
     # Siapkan nilai baru (gunakan data baru jika ada,否则 pakai yang lama)
     new_logo = data.get('logo', current_dict['logo'])
     new_banners = json.dumps(data.get('banners', current_banners))
-    new_promos = json.dumps(data.get('promos', current_promos))  # NEW
+    new_promos = json.dumps(data.get('promos', current_promos))
     new_colors = json.dumps(data.get('colors', current_colors))
     new_banner_positions = json.dumps(data.get('banner_positions', current_banner_positions))
     new_font_family = data.get('font_family', current_dict['font_family'])
@@ -434,6 +530,13 @@ def update_tampilan(website_id, data):
     new_qris = json.dumps(data.get('qris', current_qris))
     new_crypto = json.dumps(data.get('crypto', current_crypto))
     new_maintenance_message = data.get('maintenance_message', current_dict['maintenance_message'])
+    
+    # Data font animasi
+    new_store_display_name = data.get('store_display_name', current_dict.get('store_display_name', 'Toko Online'))
+    new_font_animation = data.get('font_animation', current_dict.get('font_animation', 'none'))
+    new_animation_duration = data.get('animation_duration', current_dict.get('animation_duration', 2))
+    new_animation_delay = data.get('animation_delay', current_dict.get('animation_delay', 0))
+    new_animation_iteration = data.get('animation_iteration', current_dict.get('animation_iteration', 'infinite'))
 
     # Update database
     cursor.execute('''
@@ -455,6 +558,14 @@ def update_tampilan(website_id, data):
         qris = ?,
         crypto = ?,
         maintenance_message = ?,
+        
+        -- Update kolom font animasi
+        store_display_name = ?,
+        font_animation = ?,
+        animation_duration = ?,
+        animation_delay = ?,
+        animation_iteration = ?,
+        
         updated_at = CURRENT_TIMESTAMP
     WHERE website_id = ?
     ''', (
@@ -475,6 +586,13 @@ def update_tampilan(website_id, data):
         new_qris,
         new_crypto,
         new_maintenance_message,
+        
+        new_store_display_name,
+        new_font_animation,
+        new_animation_duration,
+        new_animation_delay,
+        new_animation_iteration,
+        
         website_id
     ))
 
@@ -503,9 +621,10 @@ def save_payment_notes(website_id, notes_data):
         ''', (notes_json, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, payment_notes, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (website_id, notes_json, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, payment_notes, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, notes_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
@@ -538,9 +657,11 @@ def save_payment_methods(website_id, banks_data, ewallets_data, qris_data, crypt
         ''', (banks_json, ewallets_json, qris_json, crypto_json, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, banks, ewallets, qris, crypto, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (website_id, banks_json, ewallets_json, qris_json, crypto_json, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, banks, ewallets, qris, crypto, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, banks_json, ewallets_json, qris_json, crypto_json, '{}', 'Inter', 14, 
+              'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
@@ -565,15 +686,16 @@ def save_maintenance(website_id, enabled, message):
         ''', (message if enabled else None, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, maintenance_message, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (website_id, message if enabled else None, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, maintenance_message, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, message if enabled else None, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
     return True
 
-# Fungsi khusus untuk menyimpan font
+# Fungsi khusus untuk menyimpan font (lama)
 def save_font(website_id, font_family, font_size):
     """Khusus menyimpan font settings"""
     conn = get_db()
@@ -593,9 +715,10 @@ def save_font(website_id, font_family, font_size):
         ''', (font_family, font_size, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, font_family, font_size, colors)
-        VALUES (?, ?, ?, ?)
-        ''', (website_id, font_family, font_size, '{}'))
+        INSERT INTO tampilan (website_id, font_family, font_size, colors,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, font_family, font_size, '{}', 'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
@@ -623,15 +746,17 @@ def save_general(website_id, title, description, contact_whatsapp, contact_teleg
         ''', (title, description, contact_whatsapp, contact_telegram, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, title, description, contact_whatsapp, contact_telegram, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (website_id, title, description, contact_whatsapp, contact_telegram, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, title, description, contact_whatsapp, contact_telegram, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, title, description, contact_whatsapp, contact_telegram, '{}', 'Inter', 14,
+              'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
     return True
 
-# ==================== FUNGSI UNTUK PROMO (MULTIPLE - NEW) ====================
+# ==================== FUNGSI UNTUK PROMO (MULTIPLE) ====================
 
 def get_promos(website_id):
     """Ambil semua data promo berdasarkan website_id"""
@@ -671,9 +796,10 @@ def save_promos(website_id, promos_data):
         ''', (promos_json, website_id))
     else:
         cursor.execute('''
-        INSERT INTO tampilan (website_id, promos, colors, font_family, font_size)
-        VALUES (?, ?, ?, ?, ?)
-        ''', (website_id, promos_json, '{}', 'Inter', 14))
+        INSERT INTO tampilan (website_id, promos, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, promos_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()
@@ -702,3 +828,70 @@ def save_promo(website_id, data):
 def delete_promo(website_id):
     """Hapus data promo (old single format)"""
     return save_promos(website_id, [])
+
+# ==================== FUNGSI MIGRASI ====================
+
+def migrate_database():
+    """Migrasi database dengan menambahkan kolom baru jika belum ada"""
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Cek apakah tabel tampilan ada
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tampilan'")
+        if not cursor.fetchone():
+            print("⚠️ Tabel tampilan belum ada, inisialisasi dulu...")
+            conn.close()
+            init_db()
+            return
+        
+        # Dapatkan daftar kolom yang sudah ada
+        cursor.execute("PRAGMA table_info(tampilan)")
+        existing_columns = [col[1] for col in cursor.fetchall()]
+        
+        print("📊 Existing columns in tampilan:", existing_columns)
+        
+        # Kolom baru untuk font animasi
+        new_columns = [
+            ('store_display_name', 'TEXT DEFAULT "Toko Online"'),
+            ('font_animation', 'TEXT DEFAULT "none"'),
+            ('animation_duration', 'REAL DEFAULT 2'),
+            ('animation_delay', 'REAL DEFAULT 0'),
+            ('animation_iteration', 'TEXT DEFAULT "infinite"')
+        ]
+        
+        columns_added = []
+        for col_name, col_type in new_columns:
+            if col_name not in existing_columns:
+                try:
+                    alter_sql = f"ALTER TABLE tampilan ADD COLUMN {col_name} {col_type}"
+                    cursor.execute(alter_sql)
+                    columns_added.append(col_name)
+                    print(f"✅ Column '{col_name}' added to tampilan table")
+                except Exception as e:
+                    print(f"❌ Failed to add column '{col_name}': {e}")
+        
+        if columns_added:
+            print(f"✅ Added columns: {', '.join(columns_added)}")
+        else:
+            print("✅ All font animation columns already exist")
+        
+        conn.commit()
+        print("✅ Database migration completed successfully")
+        
+    except Exception as e:
+        print(f"⚠️ Migration error: {e}")
+        import traceback
+        traceback.print_exc()
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+# Jalankan migrasi
+try:
+    migrate_database()
+except Exception as e:
+    print(f"⚠️ Migration warning: {e}")
