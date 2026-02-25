@@ -2305,6 +2305,257 @@
         }
     }
 
+    // ==================== NAVIGATION & PREVIEW POPUP MANAGER ====================
+    class NavigationManager {
+      constructor(state, dom, utils, fontManager, animationManager) {
+        this.state = state;
+        this.dom = dom;
+        this.utils = utils;
+        this.fontManager = fontManager;
+        this.animationManager = animationManager;
+        this.lastScrollPosition = 0;
+        this.scrollTimer = null;
+        this.init();
+      }
+    
+      init() {
+        this.setupEventListeners();
+        this.loadLastScrollPosition();
+      }
+    
+      setupEventListeners() {
+        // Scroll to Top
+        const scrollTopBtn = this.dom.get('scrollTopBtn');
+        if (scrollTopBtn) {
+          scrollTopBtn.addEventListener('click', () => {
+            this.saveCurrentScrollPosition();
+            window.scrollTo({
+              top: 0,
+              behavior: 'smooth'
+            });
+            this.showLastScrollButton();
+            this.utils.vibrate();
+          });
+        }
+    
+        // Scroll to Bottom
+        const scrollBottomBtn = this.dom.get('scrollBottomBtn');
+        if (scrollBottomBtn) {
+          scrollBottomBtn.addEventListener('click', () => {
+            this.saveCurrentScrollPosition();
+            window.scrollTo({
+              top: document.body.scrollHeight,
+              behavior: 'smooth'
+            });
+            this.showLastScrollButton();
+            this.utils.vibrate();
+          });
+        }
+    
+        // Scroll to Last Position
+        const scrollLastBtn = this.dom.get('scrollLastBtn');
+        if (scrollLastBtn) {
+          scrollLastBtn.addEventListener('click', () => {
+            const lastPos = parseInt(localStorage.getItem('lastScrollPosition') || '0');
+            if (lastPos > 0) {
+              window.scrollTo({
+                top: lastPos,
+                behavior: 'smooth'
+              });
+              scrollLastBtn.style.display = 'none';
+              this.utils.vibrate();
+            }
+          });
+        }
+    
+        // Track scroll position
+        window.addEventListener('scroll', () => {
+          clearTimeout(this.scrollTimer);
+          this.scrollTimer = setTimeout(() => {
+            this.saveCurrentScrollPosition();
+          }, 500);
+        });
+    
+        // Preview Popup
+        const previewPopupBtn = this.dom.get('previewPopupBtn');
+        const previewPopup = this.dom.get('previewPopup');
+        const previewPopupClose = this.dom.get('previewPopupClose');
+        const previewPopupRefresh = this.dom.get('previewPopupRefresh');
+    
+        if (previewPopupBtn) {
+          previewPopupBtn.addEventListener('click', () => {
+            this.openPreviewPopup();
+          });
+        }
+    
+        if (previewPopupClose) {
+          previewPopupClose.addEventListener('click', () => {
+            this.closePreviewPopup();
+          });
+        }
+    
+        if (previewPopupRefresh) {
+          previewPopupRefresh.addEventListener('click', () => {
+            this.refreshPreviewPopup();
+          });
+        }
+    
+        // Click outside to close
+        if (previewPopup) {
+          previewPopup.addEventListener('click', (e) => {
+            if (e.target === previewPopup || e.target.classList.contains('preview-popup-overlay')) {
+              this.closePreviewPopup();
+            }
+          });
+        }
+    
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && previewPopup?.classList.contains('active')) {
+            this.closePreviewPopup();
+          }
+        });
+      }
+    
+      saveCurrentScrollPosition() {
+        const currentPos = window.scrollY;
+        this.lastScrollPosition = currentPos;
+        localStorage.setItem('lastScrollPosition', currentPos.toString());
+    
+        const indicator = this.dom.get('lastScrollPos');
+        if (indicator) {
+          indicator.textContent = currentPos;
+        }
+      }
+    
+      loadLastScrollPosition() {
+        const saved = localStorage.getItem('lastScrollPosition');
+        if (saved) {
+          this.lastScrollPosition = parseInt(saved);
+          const indicator = this.dom.get('lastScrollPos');
+          if (indicator) {
+            indicator.textContent = saved;
+          }
+        }
+      }
+    
+      showLastScrollButton() {
+        const scrollLastBtn = this.dom.get('scrollLastBtn');
+        if (scrollLastBtn && this.lastScrollPosition > 0) {
+          scrollLastBtn.style.display = 'flex';
+    
+          // Auto hide after 5 seconds
+          setTimeout(() => {
+            if (scrollLastBtn.style.display === 'flex') {
+              scrollLastBtn.style.display = 'none';
+            }
+          }, 5000);
+        }
+      }
+    
+      openPreviewPopup() {
+        const popup = this.dom.get('previewPopup');
+        if (popup) {
+          this.updatePreviewPopup();
+          popup.classList.add('active');
+          document.body.style.overflow = 'hidden';
+          this.utils.vibrate(30);
+        }
+      }
+    
+      closePreviewPopup() {
+        const popup = this.dom.get('previewPopup');
+        if (popup) {
+          popup.classList.remove('active');
+          document.body.style.overflow = '';
+        }
+      }
+    
+      updatePreviewPopup() {
+        const state = this.state.getState();
+        const font = state.currentFont;
+        const anim = state.currentAnimation;
+    
+        // Update text
+        const popupText = this.dom.get('previewPopupTextElement');
+        const popupSubtext = this.dom.get('previewPopupSubtext');
+    
+        if (popupText) {
+          popupText.textContent = state.preview.text;
+          popupText.style.fontFamily = font.family;
+          popupText.style.fontSize = `${font.size * 2}px`; // Scale for popup
+          popupText.style.fontWeight = font.weight;
+          popupText.style.fontStyle = font.style;
+          popupText.style.color = font.color;
+          popupText.style.letterSpacing = `${font.letterSpacing}px`;
+          popupText.style.wordSpacing = `${font.wordSpacing}px`;
+          popupText.style.lineHeight = font.lineHeight;
+          popupText.style.textTransform = font.transform;
+          popupText.style.textAlign = state.preview.align;
+    
+          // Text shadow
+          if (font.shadow.enabled) {
+            const rgb = this.utils.hexToRgb(font.shadow.color);
+            popupText.style.textShadow = `${font.shadow.x}px ${font.shadow.y}px ${font.shadow.blur}px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${font.shadow.opacity})`;
+          } else {
+            popupText.style.textShadow = 'none';
+          }
+    
+          // Text stroke
+          if (font.stroke.width > 0) {
+            popupText.style.webkitTextStroke = `${font.stroke.width}px ${font.stroke.color}`;
+          } else {
+            popupText.style.webkitTextStroke = 'none';
+          }
+    
+          // Gradient
+          if (font.gradient.type !== 'none') {
+            const colors = font.gradient.colors.join(', ');
+            if (font.gradient.type === 'linear') {
+              popupText.style.background = `linear-gradient(${font.gradient.angle}deg, ${colors})`;
+            } else {
+              popupText.style.background = `radial-gradient(circle, ${colors})`;
+            }
+            popupText.style.webkitBackgroundClip = 'text';
+            popupText.style.webkitTextFillColor = 'transparent';
+          } else {
+            popupText.style.background = 'none';
+            popupText.style.webkitBackgroundClip = 'border-box';
+            popupText.style.webkitTextFillColor = 'currentColor';
+          }
+    
+          // Animation
+          if (anim.id !== 'none') {
+            popupText.style.animation = `${anim.id}Anim ${anim.duration}s ${anim.easing} ${anim.delay}s ${anim.iteration} ${anim.direction} ${anim.fillMode}`;
+          } else {
+            popupText.style.animation = 'none';
+          }
+        }
+    
+        if (popupSubtext) {
+          popupSubtext.style.fontFamily = font.family;
+        }
+    
+        // Update info
+        const popupFontInfo = this.dom.get('popupFontInfo');
+        const popupAnimInfo = this.dom.get('popupAnimInfo');
+    
+        if (popupFontInfo) {
+          popupFontInfo.textContent = font.family.split(',')[0] || 'Inter';
+        }
+    
+        if (popupAnimInfo) {
+          popupAnimInfo.textContent = anim.name || 'Tidak Ada';
+        }
+      }
+    
+      refreshPreviewPopup() {
+        this.updatePreviewPopup();
+        this.utils.showToast('Preview diperbarui', 'success');
+        this.utils.vibrate();
+      }
+    }
+
     // ==================== PREVIEW MANAGER ====================
     class PreviewManager {
         constructor(state, dom, utils) {
@@ -2598,6 +2849,14 @@
                 this.initSectionToggles();
                 this.initCharacterMap();
                 this.initKeyboardShortcuts();
+                // Inisialisasi Navigation Manager
+                this.navigationManager = new NavigationManager(
+                  this.state,
+                  this.dom,
+                  this.utils,
+                  this.fontManager,
+                  this.animationManager
+                );
                 
                 this.utils.showToast('Font & Animation Studio siap!', 'success');
                 
