@@ -12,6 +12,7 @@ from py import tmp
 from py import prd
 from py import pmb
 from py import ssl
+from py import tmp_font
 
 app = Flask(__name__, static_folder='.')
 
@@ -640,30 +641,28 @@ def delete_banner(website_id, banner_index):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@app.route('/api/tampilan/<int:website_id>/font', methods=['POST'])
-def save_font(website_id):
-    """Save font settings - preserve banner"""
+@app.route('/api/tampilan/<int:website_id>/font-anim', methods=['POST'])
+def save_font_anim(website_id):
+    """Save font and animation settings"""
     try:
         data = request.json
-        print(f"🔤 Received font data: {data}")
+        print(f"🎭 Received font animation data: {data}")
         
-        # Validasi website exists
         website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        # Gunakan fungsi khusus untuk font
-        tmp.save_font(
-            website_id, 
-            data.get('family', 'Inter'), 
-            data.get('size', 14)
-        )
+        # Simpan ke tabel tampilan
+        # Bisa tambahkan kolom baru di tmp.db atau simpan di JSON field
+        success = tmp.save_font_anim(website_id, data)
         
-        return jsonify({'success': True, 'message': 'Font saved successfully'})
+        if success:
+            return jsonify({'success': True, 'message': 'Font animation saved'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save'}), 500
+            
     except Exception as e:
         print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/tampilan/<int:website_id>/general', methods=['POST'])
@@ -1472,7 +1471,215 @@ def delete_gateway(gateway_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK FONT TEMPLATES ====================
 
+@app.route('/api/font-templates/save', methods=['POST'])
+def save_font_template():
+    """
+    Menyimpan template font & animasi
+    Request body: {
+        "template_name": "Nama Template",
+        "font_data": {...},
+        "animation_data": {...},
+        "preview_data": {...},
+        "website_id": 123, (optional)
+        "user_id": 456, (optional)
+        "is_public": false (optional)
+    }
+    """
+    try:
+        data = request.json
+        print(f"📥 Saving font template: {data.get('template_name')}")
+        
+        # Validasi data
+        if not data.get('template_name'):
+            return jsonify({'success': False, 'error': 'Template name required'}), 400
+        
+        if not data.get('font_data'):
+            return jsonify({'success': False, 'error': 'Font data required'}), 400
+        
+        if not data.get('animation_data'):
+            return jsonify({'success': False, 'error': 'Animation data required'}), 400
+        
+        # Simpan template
+        template_code = tmp_font.save_template(
+            template_name=data['template_name'],
+            font_data=data['font_data'],
+            animation_data=data['animation_data'],
+            preview_data=data.get('preview_data', {}),
+            website_id=data.get('website_id'),
+            user_id=data.get('user_id'),
+            is_public=data.get('is_public', False)
+        )
+        
+        if template_code:
+            return jsonify({
+                'success': True,
+                'template_code': template_code,
+                'message': f'Template "{data["template_name"]}" saved successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save template'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error saving template: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/font-templates/<template_code>', methods=['GET'])
+def get_font_template(template_code):
+    """
+    Mendapatkan template berdasarkan kode
+    """
+    try:
+        print(f"📥 Getting template: {template_code}")
+        
+        template = tmp_font.get_template(template_code)
+        
+        if template:
+            return jsonify({
+                'success': True,
+                'template': template
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error getting template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/font-templates/<template_code>', methods=['PUT'])
+def update_font_template(template_code):
+    """
+    Update template yang sudah ada
+    """
+    try:
+        data = request.json
+        print(f"📥 Updating template: {template_code}")
+        
+        # Update template
+        success = tmp_font.update_template(
+            template_code=template_code,
+            font_data=data.get('font_data'),
+            animation_data=data.get('animation_data'),
+            preview_data=data.get('preview_data'),
+            template_name=data.get('template_name')
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Template updated successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Template not found or update failed'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error updating template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/font-templates/<template_code>', methods=['DELETE'])
+def delete_font_template(template_code):
+    """
+    Menghapus template
+    """
+    try:
+        print(f"📥 Deleting template: {template_code}")
+        
+        success = tmp_font.delete_template(template_code)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Template deleted successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error deleting template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/font-templates', methods=['GET'])
+def get_all_font_templates():
+    """
+    Mendapatkan semua template
+    Query params: 
+        - website_id: filter by website
+        - user_id: filter by user
+        - limit: max results (default 50)
+        - popular: get popular templates
+        - search: search by name/code
+    """
+    try:
+        website_id = request.args.get('website_id', type=int)
+        user_id = request.args.get('user_id', type=int)
+        limit = request.args.get('limit', default=50, type=int)
+        popular = request.args.get('popular', default=False, type=bool)
+        search = request.args.get('search', default=None, type=str)
+        
+        print(f"📥 Getting templates: website={website_id}, user={user_id}, popular={popular}, search={search}")
+        
+        if search:
+            templates = tmp_font.search_templates(search, limit)
+        elif popular:
+            templates = tmp_font.get_popular_templates(limit)
+        elif website_id:
+            templates = tmp_font.get_website_templates(website_id, limit)
+        elif user_id:
+            templates = tmp_font.get_user_templates(user_id, limit)
+        else:
+            templates = tmp_font.get_all_templates(limit=limit)
+        
+        return jsonify({
+            'success': True,
+            'templates': templates,
+            'count': len(templates)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting templates: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/font-templates/check/<template_code>', methods=['GET'])
+def check_font_template(template_code):
+    """
+    Mengecek apakah template dengan kode tertentu ada
+    """
+    try:
+        exists = tmp_font.check_template_exists(template_code)
+        
+        return jsonify({
+            'success': True,
+            'exists': exists,
+            'template_code': template_code
+        })
+        
+    except Exception as e:
+        print(f"❌ Error checking template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/font-templates/verify/<template_code>', methods=['GET'])
+def verify_font_template(template_code):
+    """
+    Verifikasi template dan return data lengkap untuk dimuat
+    """
+    try:
+        template = tmp_font.get_template(template_code)
+        
+        if template:
+            return jsonify({
+                'success': True,
+                'template': template,
+                'message': 'Template loaded successfully'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error verifying template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== MAIN ====================
 
