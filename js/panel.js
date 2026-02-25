@@ -810,7 +810,7 @@
     function setupSettingsLinks() {
         // Appearance Settings - Link ke tampilan.html
         if (elements.appearanceSettings && userWebsites.length > 0) {
-            elements.appearanceSettings.href = `/html/tampilan?website=${userWebsites[0].endpoint}`;
+            elements.appearanceSettings.href = `/wtb/html/tampilan?website=${userWebsites[0].endpoint}`;
         }
         
         // Product Management - Link ke produk.html
