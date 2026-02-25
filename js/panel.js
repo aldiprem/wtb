@@ -7,6 +7,13 @@
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
     const MAX_RETRIES = 3;
+    
+    // KEY untuk session storage
+    const SESSION_KEYS = {
+        CURRENT_PAGE: 'panel_current_page',
+        WEBSITE_ENDPOINT: 'panel_website_endpoint',
+        LAST_VISIT: 'panel_last_visit'
+    };
 
     // ==================== STATE ====================
     let currentUser = null;
@@ -95,6 +102,75 @@
         integrationSettings: document.getElementById('integrationSettings')
     };
 
+    // ==================== SESSION STORAGE FUNCTIONS ====================
+    
+    /**
+     * Menyimpan halaman aktif ke session storage
+     * @param {string} pageId - ID halaman (dashboard, websites, products, dll)
+     */
+    function saveCurrentPage(pageId) {
+        try {
+            sessionStorage.setItem(SESSION_KEYS.CURRENT_PAGE, pageId);
+            sessionStorage.setItem(SESSION_KEYS.LAST_VISIT, new Date().toISOString());
+            console.log(`💾 Session saved: current page = ${pageId}`);
+        } catch (e) {
+            console.warn('⚠️ Failed to save session:', e);
+        }
+    }
+
+    /**
+     * Mengambil halaman terakhir dari session storage
+     * @returns {string|null} pageId atau null jika tidak ada
+     */
+    function getLastPage() {
+        try {
+            const page = sessionStorage.getItem(SESSION_KEYS.CURRENT_PAGE);
+            return page || null;
+        } catch (e) {
+            console.warn('⚠️ Failed to load session:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Menyimpan endpoint website yang sedang aktif
+     * @param {string} endpoint - Endpoint website
+     */
+    function saveWebsiteEndpoint(endpoint) {
+        try {
+            sessionStorage.setItem(SESSION_KEYS.WEBSITE_ENDPOINT, endpoint);
+        } catch (e) {
+            console.warn('⚠️ Failed to save website endpoint:', e);
+        }
+    }
+
+    /**
+     * Mengambil endpoint website terakhir
+     * @returns {string|null} endpoint atau null jika tidak ada
+     */
+    function getLastWebsiteEndpoint() {
+        try {
+            return sessionStorage.getItem(SESSION_KEYS.WEBSITE_ENDPOINT);
+        } catch (e) {
+            console.warn('⚠️ Failed to load website endpoint:', e);
+            return null;
+        }
+    }
+
+    /**
+     * Menghapus semua session (saat logout)
+     */
+    function clearSession() {
+        try {
+            sessionStorage.removeItem(SESSION_KEYS.CURRENT_PAGE);
+            sessionStorage.removeItem(SESSION_KEYS.WEBSITE_ENDPOINT);
+            sessionStorage.removeItem(SESSION_KEYS.LAST_VISIT);
+            console.log('🗑️ Session cleared');
+        } catch (e) {
+            console.warn('⚠️ Failed to clear session:', e);
+        }
+    }
+
     // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
@@ -158,51 +234,48 @@
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=80&background=40a7e3&color=fff`;
     }
 
-    async function fetchWithRetry(url, options, retries = 2) { // Kurangi dari 3 ke 2
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // Timeout 5 detik
-    
-        const response = await fetch(url, {
-          ...options,
-          mode: 'cors',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            ...options.headers
-          },
-          signal: controller.signal
-        });
-    
-        clearTimeout(timeoutId);
-    
-        if (!response.ok) {
-          // Jika 404, jangan retry
-          if (response.status === 404) {
-            throw new Error('Not Found', { cause: '404' });
-          }
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP error ${response.status}`);
+    async function fetchWithRetry(url, options, retries = 2) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(url, {
+                ...options,
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('Not Found', { cause: '404' });
+                }
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP error ${response.status}`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            if (error.cause === '404' || error.name === 'AbortError') {
+                throw error;
+            }
+            
+            if (retries > 0) {
+                console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return fetchWithRetry(url, options, retries - 1);
+            }
+            throw error;
         }
-    
-        return await response.json();
-      } catch (error) {
-        // Jika 404 atau AbortError, jangan retry
-        if (error.cause === '404' || error.name === 'AbortError') {
-          throw error;
-        }
-    
-        if (retries > 0) {
-          console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          return fetchWithRetry(url, options, retries - 1);
-        }
-        throw error;
-      }
     }
 
     async function loadUserData() {
-        // Cek user dari Telegram atau localStorage
         let userId = null;
         let userData = null;
         
@@ -210,7 +283,6 @@
             userData = window.Telegram.WebApp.initDataUnsafe.user;
             userId = userData.id;
             
-            // Simpan ke localStorage
             localStorage.setItem('panel_user', JSON.stringify({
                 id: userId,
                 first_name: userData.first_name,
@@ -219,13 +291,11 @@
                 photo_url: userData.photo_url
             }));
         } else {
-            // Coba ambil dari localStorage
             const savedUser = localStorage.getItem('panel_user');
             if (savedUser) {
                 userData = JSON.parse(savedUser);
                 userId = userData.id;
             } else {
-                // Default untuk testing
                 userData = {
                     id: 123456789,
                     first_name: 'User',
@@ -238,7 +308,6 @@
         
         currentUser = userData;
         
-        // Update UI dengan data user
         const fullName = [userData.first_name, userData.last_name].filter(Boolean).join(' ') || 'User';
         const username = userData.username ? `@${userData.username}` : '@user';
         
@@ -260,16 +329,13 @@
         try {
             showLoading(true);
             
-            // Ambil semua websites
             const response = await fetchWithRetry(`${API_BASE_URL}/api/websites`, {
                 method: 'GET'
             });
             
             if (response.success && response.websites) {
-                // Filter berdasarkan user ID
                 userWebsites = response.websites.filter(w => w.owner_id === userId);
                 
-                // Update badge
                 if (elements.menuWebsitesBadge) {
                     elements.menuWebsitesBadge.textContent = userWebsites.length;
                 }
@@ -277,10 +343,14 @@
                     elements.sidebarTotalWebsites.textContent = userWebsites.length;
                 }
                 
-                // Hitung website aktif
                 const activeCount = userWebsites.filter(w => w.status === 'active').length;
                 if (elements.statActiveWebsites) {
                     elements.statActiveWebsites.textContent = activeCount;
+                }
+                
+                // Simpan endpoint website pertama ke session jika ada
+                if (userWebsites.length > 0) {
+                    saveWebsiteEndpoint(userWebsites[0].endpoint);
                 }
                 
                 return userWebsites;
@@ -299,157 +369,147 @@
     }
 
     async function loadProductsAndOrders() {
-      if (!userWebsites || userWebsites.length === 0) return;
-    
-      showLoading(true);
-    
-      try {
-        let totalProducts = 0;
-        let totalOrders = 0;
-        let totalRevenue = 0;
-        let allOrdersList = [];
-        let allProductsList = [];
-        let customersSet = new Map();
-    
-        // Batasi jumlah request concurrent
-        const batchSize = 2; // Proses 2 website sekaligus
-        for (let i = 0; i < userWebsites.length; i += batchSize) {
-          const batch = userWebsites.slice(i, i + batchSize);
-    
-          // Proses batch secara concurrent
-          await Promise.all(batch.map(async (website) => {
-            try {
-              // Ambil produk
-              console.log(`📦 Loading products for website ${website.id}...`);
-              const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
-                method: 'GET'
-              }).catch(err => {
-                console.log(`⚠️ No products for website ${website.id}:`, err.message);
-                return { success: false, data: [] };
-              });
-    
-              if (productsResponse.success && productsResponse.data) {
-                totalProducts += productsResponse.data.length || 0;
-    
-                // Kumpulkan produk untuk top products
-                productsResponse.data.forEach(layanan => {
-                  if (layanan.aplikasi) {
-                    layanan.aplikasi.forEach(aplikasi => {
-                      if (aplikasi.items) {
-                        aplikasi.items.forEach(item => {
-                          allProductsList.push({
-                            ...item,
-                            website_name: website.endpoint,
-                            layanan_nama: layanan.layanan_nama,
-                            aplikasi_nama: aplikasi.aplikasi_nama
-                          });
+        if (!userWebsites || userWebsites.length === 0) return;
+        
+        showLoading(true);
+        
+        try {
+            let totalProducts = 0;
+            let totalOrders = 0;
+            let totalRevenue = 0;
+            let allOrdersList = [];
+            let allProductsList = [];
+            let customersSet = new Map();
+            
+            const batchSize = 2;
+            for (let i = 0; i < userWebsites.length; i += batchSize) {
+                const batch = userWebsites.slice(i, i + batchSize);
+                
+                await Promise.all(batch.map(async (website) => {
+                    try {
+                        console.log(`📦 Loading products for website ${website.id}...`);
+                        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+                            method: 'GET'
+                        }).catch(err => {
+                            console.log(`⚠️ No products for website ${website.id}:`, err.message);
+                            return { success: false, data: [] };
                         });
-                      }
-                    });
-                  }
-                });
-              }
-    
-              // Ambil orders - dengan error handling yang lebih baik
-              console.log(`📦 Loading orders for website ${website.id}...`);
-              try {
-                const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
-                  method: 'GET'
-                });
-    
-                if (ordersResponse.success && ordersResponse.orders) {
-                  totalOrders += ordersResponse.orders.length;
-    
-                  ordersResponse.orders.forEach(order => {
-                    totalRevenue += order.total || 0;
-                    allOrdersList.push({
-                      ...order,
-                      website_endpoint: website.endpoint
-                    });
-    
-                    if (order.customer_id && !customersSet.has(order.customer_id)) {
-                      customersSet.set(order.customer_id, {
-                        id: order.customer_id,
-                        name: order.customer_name || 'Customer',
-                        orders: 1,
-                        total_spent: order.total || 0
-                      });
-                    } else if (order.customer_id) {
-                      const customer = customersSet.get(order.customer_id);
-                      customer.orders += 1;
-                      customer.total_spent += order.total || 0;
+                        
+                        if (productsResponse.success && productsResponse.data) {
+                            totalProducts += productsResponse.data.length || 0;
+                            
+                            productsResponse.data.forEach(layanan => {
+                                if (layanan.aplikasi) {
+                                    layanan.aplikasi.forEach(aplikasi => {
+                                        if (aplikasi.items) {
+                                            aplikasi.items.forEach(item => {
+                                                allProductsList.push({
+                                                    ...item,
+                                                    website_name: website.endpoint,
+                                                    layanan_nama: layanan.layanan_nama,
+                                                    aplikasi_nama: aplikasi.aplikasi_nama
+                                                });
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                        
+                        console.log(`📦 Loading orders for website ${website.id}...`);
+                        try {
+                            const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
+                                method: 'GET'
+                            });
+                            
+                            if (ordersResponse.success && ordersResponse.orders) {
+                                totalOrders += ordersResponse.orders.length;
+                                
+                                ordersResponse.orders.forEach(order => {
+                                    totalRevenue += order.total || 0;
+                                    allOrdersList.push({
+                                        ...order,
+                                        website_endpoint: website.endpoint
+                                    });
+                                    
+                                    if (order.customer_id && !customersSet.has(order.customer_id)) {
+                                        customersSet.set(order.customer_id, {
+                                            id: order.customer_id,
+                                            name: order.customer_name || 'Customer',
+                                            orders: 1,
+                                            total_spent: order.total || 0
+                                        });
+                                    } else if (order.customer_id) {
+                                        const customer = customersSet.get(order.customer_id);
+                                        customer.orders += 1;
+                                        customer.total_spent += order.total || 0;
+                                    }
+                                });
+                            }
+                        } catch (orderError) {
+                            console.log(`ℹ️ Orders endpoint not available for website ${website.id} (coming soon)`);
+                        }
+                        
+                    } catch (websiteError) {
+                        console.error(`❌ Error loading data for website:`, website.endpoint, websiteError);
                     }
-                  });
+                }));
+                
+                if (i + batchSize < userWebsites.length) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
                 }
-              } catch (orderError) {
-                // Ini normal karena endpoint orders mungkin belum ada
-                console.log(`ℹ️ Orders endpoint not available for website ${website.id} (coming soon)`);
-              }
-    
-            } catch (websiteError) {
-              console.error(`❌ Error loading data for website:`, website.endpoint, websiteError);
             }
-          }));
-    
-          // Beri jeda antar batch untuk mengurangi beban
-          if (i + batchSize < userWebsites.length) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+            
+            allProducts = allProductsList;
+            allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            allCustomers = Array.from(customersSet.values());
+            
+            if (elements.statTotalWebsites) {
+                elements.statTotalWebsites.textContent = userWebsites.length;
+            }
+            if (elements.statTotalProducts) {
+                elements.statTotalProducts.textContent = totalProducts;
+            }
+            if (elements.sidebarTotalProducts) {
+                elements.sidebarTotalProducts.textContent = totalProducts;
+            }
+            if (elements.statTotalOrders) {
+                elements.statTotalOrders.textContent = totalOrders;
+            }
+            if (elements.statTotalRevenue) {
+                elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
+            }
+            if (elements.statTotalCustomers) {
+                elements.statTotalCustomers.textContent = allCustomers.length;
+            }
+            if (elements.menuOrdersBadge) {
+                elements.menuOrdersBadge.textContent = totalOrders;
+            }
+            
+            renderQuickActions();
+            renderRecentOrders();
+            renderTopProducts();
+            renderWebsitesGrid();
+            renderProductSelector();
+            renderOrdersTable();
+            renderTransactions(totalRevenue, allOrdersList.length);
+            renderCustomersGrid();
+            
+        } catch (error) {
+            console.error('❌ Error loading products and orders:', error);
+        } finally {
+            showLoading(false);
         }
-    
-        allProducts = allProductsList;
-        allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        allCustomers = Array.from(customersSet.values());
-    
-        // Update stats
-        if (elements.statTotalWebsites) {
-          elements.statTotalWebsites.textContent = userWebsites.length;
-        }
-        if (elements.statTotalProducts) {
-          elements.statTotalProducts.textContent = totalProducts;
-        }
-        if (elements.sidebarTotalProducts) {
-          elements.sidebarTotalProducts.textContent = totalProducts;
-        }
-        if (elements.statTotalOrders) {
-          elements.statTotalOrders.textContent = totalOrders;
-        }
-        if (elements.statTotalRevenue) {
-          elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
-        }
-        if (elements.statTotalCustomers) {
-          elements.statTotalCustomers.textContent = allCustomers.length;
-        }
-        if (elements.menuOrdersBadge) {
-          elements.menuOrdersBadge.textContent = totalOrders;
-        }
-    
-        // Render sections
-        renderQuickActions();
-        renderRecentOrders();
-        renderTopProducts();
-        renderWebsitesGrid();
-        renderProductSelector();
-        renderOrdersTable();
-        renderTransactions(totalRevenue, allOrdersList.length);
-        renderCustomersGrid();
-    
-      } catch (error) {
-        console.error('❌ Error loading products and orders:', error);
-      } finally {
-        showLoading(false);
-      }
     }
 
     function renderQuickActions() {
-      if (!elements.quickActions) return;
-    
-      let html = '';
-    
-      if (userWebsites.length > 0) {
-        // Tampilkan actions untuk setiap website
-        userWebsites.slice(0, 4).forEach(website => {
-          html += `
+        if (!elements.quickActions) return;
+        
+        let html = '';
+        
+        if (userWebsites.length > 0) {
+            userWebsites.slice(0, 4).forEach(website => {
+                html += `
                     <a href="/wtb/html/produk.html?website=${website.endpoint}" class="quick-action-card">
                         <i class="fas fa-box"></i>
                         <span>Kelola Produk</span>
@@ -461,17 +521,17 @@
                         <small>/${website.endpoint}</small>
                     </a>
                 `;
-        });
-      } else {
-        html = `
+            });
+        } else {
+            html = `
                 <a href="/wtb/html/format.html" class="quick-action-card">
                     <i class="fas fa-plus-circle"></i>
                     <span>Buat Website Baru</span>
                 </a>
             `;
-      }
-    
-      elements.quickActions.innerHTML = html;
+        }
+        
+        elements.quickActions.innerHTML = html;
     }
 
     function renderRecentOrders() {
@@ -530,7 +590,6 @@
             return;
         }
         
-        // Sort by sold count (asumsi) and take top 4
         const top = allProducts.slice(0, 4);
         
         let html = '';
@@ -558,24 +617,24 @@
     }
 
     function renderWebsitesGrid() {
-      if (!elements.websitesGrid || !elements.websitesEmptyState) return;
-    
-      if (userWebsites.length === 0) {
-        elements.websitesGrid.innerHTML = '';
-        elements.websitesEmptyState.style.display = 'block';
-        return;
-      }
-    
-      elements.websitesEmptyState.style.display = 'none';
-    
-      let html = '';
-    
-      userWebsites.forEach(website => {
-        const status = website.status === 'active' ?
-          '<span class="status-badge status-active">Active</span>' :
-          '<span class="status-badge status-inactive">Inactive</span>';
-    
-        html += `
+        if (!elements.websitesGrid || !elements.websitesEmptyState) return;
+        
+        if (userWebsites.length === 0) {
+            elements.websitesGrid.innerHTML = '';
+            elements.websitesEmptyState.style.display = 'block';
+            return;
+        }
+        
+        elements.websitesEmptyState.style.display = 'none';
+        
+        let html = '';
+        
+        userWebsites.forEach(website => {
+            const status = website.status === 'active' ?
+                '<span class="status-badge status-active">Active</span>' :
+                '<span class="status-badge status-inactive">Inactive</span>';
+            
+            html += `
                 <div class="website-card">
                     <div class="website-header">
                         <div class="website-icon">
@@ -613,9 +672,9 @@
                     </div>
                 </div>
             `;
-      });
-    
-      elements.websitesGrid.innerHTML = html;
+        });
+        
+        elements.websitesGrid.innerHTML = html;
     }
 
     function renderProductSelector() {
@@ -791,7 +850,29 @@
             }
         });
         
+        // Simpan halaman aktif ke session storage
+        saveCurrentPage(pageId);
+        
         vibrate(10);
+    }
+
+    /**
+     * Memulihkan halaman terakhir dari session storage
+     * Jika tidak ada, default ke dashboard
+     */
+    function restoreLastPage() {
+        const lastPage = getLastPage();
+        
+        // Validasi apakah pageId valid
+        const validPages = ['dashboard', 'websites', 'products', 'orders', 'transactions', 'customers', 'settings', 'help'];
+        
+        if (lastPage && validPages.includes(lastPage)) {
+            console.log(`🔄 Restoring last page: ${lastPage}`);
+            showPage(lastPage);
+        } else {
+            console.log('🔄 No saved page, showing dashboard');
+            showPage('dashboard');
+        }
     }
 
     function toggleSidebar() {
@@ -808,26 +889,22 @@
 
     // ==================== SETTINGS NAVIGATION ====================
     function setupSettingsLinks() {
-        // Appearance Settings - Link ke tampilan.html
         if (elements.appearanceSettings && userWebsites.length > 0) {
-            elements.appearanceSettings.href = `/wtb/html/tampilan?website=${userWebsites[0].endpoint}`;
+            elements.appearanceSettings.href = `/wtb/html/tampilan.html?website=${userWebsites[0].endpoint}`;
         }
         
-        // Product Management - Link ke produk.html
         if (elements.manageProductsBtn && userWebsites.length > 0) {
-            elements.manageProductsBtn.href = `/wtb/html/produk?website=${userWebsites[0].endpoint}`;
+            elements.manageProductsBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
         }
         
-        // Di dalam fungsi setupSettingsLinks()
         if (elements.socialSettings && userWebsites.length > 0) {
-          elements.socialSettings.href = `/wtb/html/sosial.html?website=${userWebsites[0].endpoint}`;
+            elements.socialSettings.href = `/wtb/html/sosial.html?website=${userWebsites[0].endpoint}`;
         }
         
         if (elements.paymentSettings && userWebsites.length > 0) {
-          elements.paymentSettings.href = `/wtb/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
+            elements.paymentSettings.href = `/wtb/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
         }
         
-        // Notification Settings
         if (elements.notificationSettings) {
             elements.notificationSettings.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -835,7 +912,6 @@
             });
         }
         
-        // SEO Settings
         if (elements.seoSettings) {
             elements.seoSettings.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -843,7 +919,6 @@
             });
         }
         
-        // Integration Settings
         if (elements.integrationSettings) {
             elements.integrationSettings.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -854,17 +929,14 @@
 
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        // Menu toggle
         if (elements.menuToggle) {
             elements.menuToggle.addEventListener('click', toggleSidebar);
         }
         
-        // Sidebar close
         if (elements.sidebarClose) {
             elements.sidebarClose.addEventListener('click', closeSidebar);
         }
         
-        // Refresh button
         if (elements.refreshBtn) {
             elements.refreshBtn.addEventListener('click', async () => {
                 vibrate(10);
@@ -875,7 +947,6 @@
             });
         }
         
-        // Navigation
         elements.menuItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -887,21 +958,19 @@
             });
         });
         
-        // Logout
         if (elements.logoutBtn) {
             elements.logoutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                clearSession(); // Hapus session saat logout
                 localStorage.removeItem('panel_user');
                 window.location.href = '/';
             });
         }
         
-        // Order status filter
         if (elements.orderStatusFilter) {
             elements.orderStatusFilter.addEventListener('change', renderOrdersTable);
         }
         
-        // Customer search
         if (elements.customerSearch) {
             elements.customerSearch.addEventListener('input', (e) => {
                 const search = e.target.value.toLowerCase();
@@ -909,15 +978,12 @@
             });
         }
         
-        // Transaction period
         if (elements.transactionPeriod) {
             elements.transactionPeriod.addEventListener('change', () => {
-                // Implement period filter
                 showToast('Fitur filter periode akan segera tersedia', 'info');
             });
         }
         
-        // Click outside to close sidebar
         document.addEventListener('click', (e) => {
             if (elements.sidebar?.classList.contains('active')) {
                 if (!elements.sidebar.contains(e.target) && !elements.menuToggle?.contains(e.target)) {
@@ -926,11 +992,15 @@
             }
         });
         
-        // Handle keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeSidebar();
             }
+        });
+        
+        // Simpan state saat user akan meninggalkan halaman (opsional)
+        window.addEventListener('beforeunload', () => {
+            // Tidak perlu melakukan apa-apa, session storage sudah tersimpan
         });
     }
 
@@ -939,22 +1009,16 @@
         showLoading(true);
         
         try {
-            // Load user data
             const userId = await loadUserData();
-            
-            // Load user websites
             await loadUserWebsites(userId);
-            
-            // Load products and orders
             await loadProductsAndOrders();
             
-            // Setup settings links
             setupSettingsLinks();
-            
-            // Setup event listeners
             setupEventListeners();
             
-            // Apply Telegram theme if available
+            // Pulihkan halaman terakhir dari session storage
+            restoreLastPage();
+            
             if (window.Telegram?.WebApp) {
                 const tg = window.Telegram.WebApp;
                 tg.expand();
@@ -971,7 +1035,7 @@
                 }
             }
             
-            console.log('✅ Panel initialized');
+            console.log('✅ Panel initialized with session storage');
             
         } catch (error) {
             console.error('❌ Init error:', error);
