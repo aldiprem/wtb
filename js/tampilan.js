@@ -1,4 +1,4 @@
-// tampilan.js - Pengaturan Tampilan Website (VERSI DENGAN TEMPLATE FONT)
+// tampilan.js - Pengaturan Tampilan Website (VERSI DENGAN TEMPLATE FONT - REVISED)
 (function() {
     'use strict';
     
@@ -23,7 +23,8 @@
     let currentPromoId = null;
     let promoToDelete = null;
     
-    // Font Template state
+    // Font Template state - Baru untuk menyimpan template per website
+    let savedTemplates = [];
     let currentTemplateCode = null;
     let currentTemplateData = null;
     let storeDisplayName = 'Toko Online';
@@ -85,37 +86,34 @@
         createFontTemplateBtn: document.getElementById('createFontTemplateBtn'),
         viewAllTemplatesBtn: document.getElementById('viewAllTemplatesBtn'),
         
-        // Template Input Tabs
+        // Form Tambah Template
+        templateNameInput: document.getElementById('templateNameInput'),
+        templateCodeInput: document.getElementById('templateCodeInput'),
+        saveTemplateToWebsiteBtn: document.getElementById('saveTemplateToWebsiteBtn'),
+        
+        // Saved Templates Grid
+        savedTemplatesGrid: document.getElementById('savedTemplatesGrid'),
+        emptySavedTemplates: document.getElementById('emptySavedTemplates'),
+        
+        // Template Input Tabs (untuk fitur lama, dipertahankan)
         templateInputTabs: document.querySelectorAll('.template-input-tab'),
         templateInputPanels: document.querySelectorAll('.template-input-panel'),
-        
-        // Input by Code
         fontTemplateCode: document.getElementById('fontTemplateCode'),
         verifyTemplateCode: document.getElementById('verifyTemplateCode'),
-        
-        // Input by Search
         templateSearchInput: document.getElementById('templateSearchInput'),
         clearSearchBtn: document.getElementById('clearSearchBtn'),
         templateSearchResults: document.getElementById('templateSearchResults'),
-        
-        // Template Actions
         applyTemplateBtn: document.getElementById('applyTemplateBtn'),
         testTemplateBtn: document.getElementById('testTemplateBtn'),
         saveTemplateCodeBtn: document.getElementById('saveTemplateCodeBtn'),
-        
-        // Template Preview
         templatePreviewCard: document.getElementById('templatePreviewCard'),
         templatePreviewText: document.getElementById('templatePreviewText'),
         previewFontName: document.getElementById('previewFontName'),
         previewAnimName: document.getElementById('previewAnimName'),
         clearTemplatePreview: document.getElementById('clearTemplatePreview'),
-        
-        // Selected Template Info
         selectedTemplateInfo: document.getElementById('selectedTemplateInfo'),
         selectedTemplateName: document.getElementById('selectedTemplateName'),
         changeTemplateBtn: document.getElementById('changeTemplateBtn'),
-        
-        // Validation Message
         templateValidationMessage: document.getElementById('templateValidationMessage'),
         
         // All Templates Modal
@@ -403,15 +401,8 @@
                 renderPromos();
             }
             
-            // Load saved template code
-            if (tampilanData.font_template_code) {
-                currentTemplateCode = tampilanData.font_template_code;
-                if (elements.fontTemplateCode) {
-                    elements.fontTemplateCode.value = currentTemplateCode;
-                }
-                // Verify and load template data
-                await verifyTemplateCode(currentTemplateCode, true);
-            }
+            // Load saved templates
+            await loadSavedTemplates();
             
         } catch (error) {
             console.error('❌ Error loading tampilan:', error);
@@ -1230,7 +1221,260 @@
         }
     }
 
-    // ==================== FONT TEMPLATE FUNCTIONS ====================
+    // ==================== FUNGSI UNTUK TEMPLATE TERSIMPAN (BARU) ====================
+    
+    async function loadSavedTemplates() {
+        if (!currentWebsite) return;
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/templates`, {
+                method: 'GET'
+            });
+            
+            if (response.success && response.templates) {
+                savedTemplates = response.templates;
+                renderSavedTemplates();
+            } else {
+                savedTemplates = [];
+                renderSavedTemplates();
+            }
+        } catch (error) {
+            console.error('❌ Error loading saved templates:', error);
+            savedTemplates = [];
+            renderSavedTemplates();
+        }
+    }
+
+    function renderSavedTemplates() {
+        if (!elements.savedTemplatesGrid || !elements.emptySavedTemplates) return;
+        
+        if (savedTemplates.length === 0) {
+            elements.savedTemplatesGrid.innerHTML = '';
+            elements.emptySavedTemplates.style.display = 'block';
+            return;
+        }
+        
+        elements.emptySavedTemplates.style.display = 'none';
+        
+        let html = '';
+        savedTemplates.forEach(template => {
+            const templateData = template.template_data || {};
+            const fontFamily = templateData.font_family || 'Inter';
+            const animationType = templateData.animation_type || 'pulse';
+            const previewText = templateData.preview_text || 'Toko Online';
+            const previewSubtext = templateData.preview_subtext || 'Premium';
+            const templateCode = template.template_code;
+            const shortCode = templateCode.substring(0, 15) + '...';
+            const createdDate = new Date(template.created_at).toLocaleDateString('id-ID');
+            
+            // Inject font jika ada file font
+            if (templateData.font_file_data) {
+                injectTemplateFont(templateData.font_family, templateData.font_file_data);
+            }
+            
+            html += `
+                <div class="template-saved-card" data-id="${template.id}" data-code="${templateCode}">
+                    <div class="template-preview-border">
+                        <div class="template-preview-text-animated" style="font-family: '${fontFamily}', sans-serif; animation: ${animationType}Anim 2s infinite;">
+                            ${previewText}
+                        </div>
+                        <div class="template-preview-subtext-animated" style="font-family: '${fontFamily}', sans-serif;">
+                            ${previewSubtext}
+                        </div>
+                    </div>
+                    <div class="template-info">
+                        <div class="template-name">
+                            ${escapeHtml(template.template_name || 'Template')}
+                            <span class="template-badge">${template.usage_count || 0} digunakan</span>
+                        </div>
+                        
+                        <div class="template-code-display" onclick="window.tampilan.copyTemplateCode('${templateCode}')" title="Klik untuk copy">
+                            <code>${shortCode}</code>
+                            <i class="fas fa-copy"></i>
+                        </div>
+                        
+                        <div class="template-meta">
+                            <span><i class="fas fa-font"></i> Font: ${fontFamily}</span>
+                            <span><i class="fas fa-film"></i> Animasi: ${animationType}</span>
+                            <span><i class="fas fa-calendar"></i> Dibuat: ${createdDate}</span>
+                        </div>
+                        
+                        <div class="template-actions">
+                            <button class="template-action-btn apply" onclick="window.tampilan.applyTemplate('${templateCode}')">
+                                <i class="fas fa-check"></i> Terapkan
+                            </button>
+                            <button class="template-action-btn copy" onclick="window.tampilan.copyTemplateCode('${templateCode}')">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="template-action-btn delete" onclick="window.tampilan.deleteSavedTemplate('${template.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.savedTemplatesGrid.innerHTML = html;
+    }
+
+    function injectTemplateFont(fontFamily, fontFileData) {
+        if (!fontFileData) return;
+        
+        const fontFace = `
+            @font-face {
+                font-family: '${fontFamily}';
+                src: url('${fontFileData}') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+        `;
+        
+        const oldStyle = document.getElementById(`template-font-${fontFamily}`);
+        if (oldStyle) oldStyle.remove();
+        
+        const style = document.createElement('style');
+        style.id = `template-font-${fontFamily}`;
+        style.textContent = fontFace;
+        document.head.appendChild(style);
+    }
+
+    async function saveTemplateToWebsite() {
+        if (!currentWebsite) {
+            showToast('Website tidak ditemukan', 'error');
+            return;
+        }
+        
+        const templateName = elements.templateNameInput?.value.trim();
+        const templateCode = elements.templateCodeInput?.value.trim();
+        
+        if (!templateName) {
+            showToast('Nama template wajib diisi', 'warning');
+            return;
+        }
+        
+        if (!templateCode || templateCode.length !== 35) {
+            showToast('Kode template harus 35 karakter', 'warning');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            // Verifikasi dulu apakah template valid
+            const verifyResponse = await fetch(`${API_BASE_URL}/api/font-templates/verify/${templateCode}`);
+            const verifyData = await verifyResponse.json();
+            
+            if (!verifyData.success) {
+                throw new Error('Template tidak ditemukan');
+            }
+            
+            // Simpan ke database tampilan
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/templates`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    template_code: templateCode,
+                    template_name: templateName,
+                    template_data: verifyData.template
+                })
+            });
+            
+            if (response.success) {
+                showToast('✅ Template berhasil disimpan!', 'success');
+                
+                // Reset form
+                elements.templateNameInput.value = '';
+                elements.templateCodeInput.value = '';
+                
+                // Reload daftar template
+                await loadSavedTemplates();
+                
+                // Inject font styles untuk preview
+                if (verifyData.template.font_file_data) {
+                    injectTemplateFont(verifyData.template.font_family, verifyData.template.font_file_data);
+                }
+                
+                vibrate();
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error saving template:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function applyTemplate(templateCode) {
+        if (!currentWebsite) return;
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/apply-template`, {
+                method: 'POST',
+                body: JSON.stringify({ template_code: templateCode })
+            });
+            
+            if (response.success) {
+                showToast('✅ Template diterapkan!', 'success');
+                
+                // Reload data tampilan untuk melihat perubahan
+                await loadTampilanData();
+                
+                vibrate();
+            } else {
+                throw new Error(response.error || 'Gagal menerapkan');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error applying template:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function deleteSavedTemplate(templateId) {
+        if (!confirm('Hapus template ini?')) return;
+        
+        if (!currentWebsite) return;
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/templates/${templateId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                showToast('✅ Template dihapus!', 'success');
+                await loadSavedTemplates();
+                vibrate();
+            } else {
+                throw new Error(response.error || 'Gagal menghapus');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error deleting template:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function copyTemplateCode(code) {
+        navigator.clipboard.writeText(code).then(() => {
+            showToast('✅ Kode template disalin!', 'success');
+        }).catch(() => {
+            showToast('Gagal menyalin', 'error');
+        });
+    }
+
+    // ==================== FONT TEMPLATE FUNCTIONS LAMA (dipertahankan) ====================
     async function loadAllTemplates(filter = 'all', search = '') {
         if (!elements.allTemplatesGrid) return;
         
@@ -1545,11 +1789,8 @@
         }
     }
 
-    async function applyTemplate() {
+    async function applyTemplateOld() {
         if (!currentTemplateData || !currentWebsite) return;
-        
-        // Here you would apply the template settings to the current website
-        // This could involve saving the template code and refreshing the preview
         
         showToast(`Template "${currentTemplateData.template_name}" akan diterapkan setelah disimpan`, 'info');
     }
@@ -1987,7 +2228,12 @@
             elements.saveColorsBtn.addEventListener('click', saveColors);
         }
         
-        // Font Template Events
+        // Font Template Events - Baru
+        if (elements.saveTemplateToWebsiteBtn) {
+            elements.saveTemplateToWebsiteBtn.addEventListener('click', saveTemplateToWebsite);
+        }
+        
+        // Font Template Events - Lama
         if (elements.viewAllTemplatesBtn) {
             elements.viewAllTemplatesBtn.addEventListener('click', openAllTemplatesModal);
         }
@@ -2047,7 +2293,7 @@
         }
         
         if (elements.applyTemplateBtn) {
-            elements.applyTemplateBtn.addEventListener('click', applyTemplate);
+            elements.applyTemplateBtn.addEventListener('click', applyTemplateOld);
         }
         
         if (elements.testTemplateBtn) {
@@ -2180,7 +2426,13 @@
         },
         deletePromo: (id) => deletePromo(id),
         
-        // Template functions
+        // Template functions - Baru
+        saveTemplateToWebsite: saveTemplateToWebsite,
+        applyTemplate: applyTemplate,
+        deleteSavedTemplate: deleteSavedTemplate,
+        copyTemplateCode: copyTemplateCode,
+        
+        // Template functions - Lama
         selectTemplateFromList: (code, name) => selectTemplateFromList(code, name)
     };
 
