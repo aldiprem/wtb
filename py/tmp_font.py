@@ -5,7 +5,7 @@ import random
 import string
 from datetime import datetime
 
-DATABASE = 'font_templates.db'
+DATABASE = 'tmp_font.db'
 
 # ==================== FUNGSI DASAR ====================
 def get_db():
@@ -27,14 +27,32 @@ def init_db():
         template_name TEXT NOT NULL,
         website_id INTEGER,
         user_id INTEGER,
-        font_data TEXT NOT NULL,
-        animation_data TEXT NOT NULL,
-        preview_data TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
+        -- Data Font
+        font_family TEXT NOT NULL,
+        font_file_data TEXT,  -- Base64 data URL file TTF
+        font_file_name TEXT,  -- Nama file asli
+        font_weight INTEGER DEFAULT 400,
+        font_style TEXT DEFAULT 'normal',
+        font_size INTEGER DEFAULT 48,
+        text_color TEXT DEFAULT '#ffffff',
+        
+        -- Data Animasi
+        animation_type TEXT DEFAULT 'none',
+        animation_duration REAL DEFAULT 2,
+        animation_delay REAL DEFAULT 0,
+        animation_iteration TEXT DEFAULT 'infinite',
+        
+        -- Preview Text
+        preview_text TEXT DEFAULT 'Toko Online Premium',
+        preview_subtext TEXT DEFAULT 'dengan Layanan Terbaik 24/7',
+        
+        -- Metadata
         is_public BOOLEAN DEFAULT 0,
         usage_count INTEGER DEFAULT 0,
-        last_used TIMESTAMP
+        last_used TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
     
@@ -43,6 +61,7 @@ def init_db():
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_template_name ON font_templates(template_name)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_id ON font_templates(website_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON font_templates(user_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_animation ON font_templates(animation_type)')
     
     conn.commit()
     conn.close()
@@ -69,7 +88,12 @@ def generate_template_code(length=35):
 
 # ==================== FUNGSI CRUD TEMPLATE ====================
 
-def save_template(template_name, font_data, animation_data, preview_data, website_id=None, user_id=None, is_public=False):
+def save_template(template_name, font_family, font_file_data=None, font_file_name=None, 
+                  font_weight=400, font_style='normal', font_size=48, text_color='#ffffff',
+                  animation_type='none', animation_duration=2, animation_delay=0, 
+                  animation_iteration='infinite', preview_text='Toko Online Premium',
+                  preview_subtext='dengan Layanan Terbaik 24/7',
+                  website_id=None, user_id=None, is_public=False):
     """
     Menyimpan template baru
     Returns: template_code jika sukses, None jika gagal
@@ -77,16 +101,11 @@ def save_template(template_name, font_data, animation_data, preview_data, websit
     conn = None
     try:
         # Validasi data
-        if not template_name or not font_data or not animation_data:
+        if not template_name or not font_family:
             return None
         
         # Generate kode unik
         template_code = generate_template_code()
-        
-        # Konversi ke JSON string
-        font_json = json.dumps(font_data)
-        anim_json = json.dumps(animation_data)
-        preview_json = json.dumps(preview_data)
         
         conn = get_db()
         cursor = conn.cursor()
@@ -94,16 +113,29 @@ def save_template(template_name, font_data, animation_data, preview_data, websit
         cursor.execute('''
             INSERT INTO font_templates (
                 template_code, template_name, website_id, user_id,
-                font_data, animation_data, preview_data, is_public
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                font_family, font_file_data, font_file_name,
+                font_weight, font_style, font_size, text_color,
+                animation_type, animation_duration, animation_delay, animation_iteration,
+                preview_text, preview_subtext, is_public
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             template_code,
             template_name,
             website_id,
             user_id,
-            font_json,
-            anim_json,
-            preview_json,
+            font_family,
+            font_file_data,
+            font_file_name,
+            font_weight,
+            font_style,
+            font_size,
+            text_color,
+            animation_type,
+            animation_duration,
+            animation_delay,
+            animation_iteration,
+            preview_text,
+            preview_subtext,
             1 if is_public else 0
         ))
         
@@ -120,7 +152,11 @@ def save_template(template_name, font_data, animation_data, preview_data, websit
         if conn:
             conn.close()
 
-def update_template(template_code, font_data=None, animation_data=None, preview_data=None, template_name=None):
+def update_template(template_code, template_name=None, font_family=None, font_file_data=None,
+                    font_file_name=None, font_weight=None, font_style=None, font_size=None,
+                    text_color=None, animation_type=None, animation_duration=None,
+                    animation_delay=None, animation_iteration=None, preview_text=None,
+                    preview_subtext=None, is_public=None):
     """
     Update template yang sudah ada
     Returns: True jika sukses, False jika gagal
@@ -138,21 +174,65 @@ def update_template(template_code, font_data=None, animation_data=None, preview_
         updates = []
         params = []
         
-        if font_data:
-            updates.append("font_data = ?")
-            params.append(json.dumps(font_data))
-        
-        if animation_data:
-            updates.append("animation_data = ?")
-            params.append(json.dumps(animation_data))
-        
-        if preview_data:
-            updates.append("preview_data = ?")
-            params.append(json.dumps(preview_data))
-        
-        if template_name:
+        if template_name is not None:
             updates.append("template_name = ?")
             params.append(template_name)
+        
+        if font_family is not None:
+            updates.append("font_family = ?")
+            params.append(font_family)
+        
+        if font_file_data is not None:
+            updates.append("font_file_data = ?")
+            params.append(font_file_data)
+        
+        if font_file_name is not None:
+            updates.append("font_file_name = ?")
+            params.append(font_file_name)
+        
+        if font_weight is not None:
+            updates.append("font_weight = ?")
+            params.append(font_weight)
+        
+        if font_style is not None:
+            updates.append("font_style = ?")
+            params.append(font_style)
+        
+        if font_size is not None:
+            updates.append("font_size = ?")
+            params.append(font_size)
+        
+        if text_color is not None:
+            updates.append("text_color = ?")
+            params.append(text_color)
+        
+        if animation_type is not None:
+            updates.append("animation_type = ?")
+            params.append(animation_type)
+        
+        if animation_duration is not None:
+            updates.append("animation_duration = ?")
+            params.append(animation_duration)
+        
+        if animation_delay is not None:
+            updates.append("animation_delay = ?")
+            params.append(animation_delay)
+        
+        if animation_iteration is not None:
+            updates.append("animation_iteration = ?")
+            params.append(animation_iteration)
+        
+        if preview_text is not None:
+            updates.append("preview_text = ?")
+            params.append(preview_text)
+        
+        if preview_subtext is not None:
+            updates.append("preview_subtext = ?")
+            params.append(preview_subtext)
+        
+        if is_public is not None:
+            updates.append("is_public = ?")
+            params.append(1 if is_public else 0)
         
         updates.append("updated_at = CURRENT_TIMESTAMP")
         
@@ -201,77 +281,13 @@ def get_template(template_code):
             ''', (template_code,))
             conn.commit()
             
-            template = dict(row)
-            # Parse JSON
-            template['font_data'] = json.loads(template['font_data'])
-            template['animation_data'] = json.loads(template['animation_data'])
-            template['preview_data'] = json.loads(template['preview_data'])
-            return template
+            return dict(row)
         
         return None
         
     except Exception as e:
         print(f"❌ Error getting template: {e}")
         return None
-    finally:
-        if conn:
-            conn.close()
-
-def get_all_templates(website_id=None, user_id=None, limit=50):
-    """
-    Mendapatkan semua template
-    Bisa difilter berdasarkan website_id atau user_id
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        query = "SELECT * FROM font_templates WHERE 1=1"
-        params = []
-        
-        if website_id:
-            query += " AND (website_id = ? OR is_public = 1)"
-            params.append(website_id)
-        
-        if user_id:
-            query += " AND (user_id = ? OR is_public = 1)"
-            params.append(user_id)
-        
-        query += " ORDER BY created_at DESC LIMIT ?"
-        params.append(limit)
-        
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        
-        templates = []
-        for row in rows:
-            template = dict(row)
-            # Parse JSON (hanya untuk preview, tidak full data)
-            try:
-                font_data = json.loads(template['font_data'])
-                template['font_preview'] = font_data.get('family', 'Inter') if isinstance(font_data, dict) else 'Inter'
-            except:
-                template['font_preview'] = 'Inter'
-            
-            try:
-                anim_data = json.loads(template['animation_data'])
-                template['anim_preview'] = anim_data.get('name', 'None') if isinstance(anim_data, dict) else 'None'
-            except:
-                template['anim_preview'] = 'None'
-            
-            # Hapus data besar untuk list view
-            template.pop('font_data', None)
-            template.pop('animation_data', None)
-            template.pop('preview_data', None)
-            
-            templates.append(template)
-        
-        return templates
-        
-    except Exception as e:
-        print(f"❌ Error getting templates: {e}")
-        return []
     finally:
         if conn:
             conn.close()
@@ -304,9 +320,9 @@ def delete_template(template_code):
         if conn:
             conn.close()
 
-def search_templates(query, limit=20):
+def get_all_templates(limit=50, offset=0):
     """
-    Mencari template berdasarkan nama
+    Mendapatkan semua template
     """
     conn = None
     try:
@@ -314,37 +330,49 @@ def search_templates(query, limit=20):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT * FROM font_templates 
+            SELECT id, template_code, template_name, website_id, user_id,
+                   font_family, font_file_name, font_weight, font_size, text_color,
+                   animation_type, animation_duration, animation_delay, animation_iteration,
+                   preview_text, preview_subtext, is_public, usage_count,
+                   created_at, updated_at, last_used
+            FROM font_templates 
+            ORDER BY created_at DESC
+            LIMIT ? OFFSET ?
+        ''', (limit, offset))
+        
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+        
+    except Exception as e:
+        print(f"❌ Error getting templates: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def search_templates(query, limit=20):
+    """
+    Mencari template berdasarkan nama atau kode
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, template_code, template_name, website_id, user_id,
+                   font_family, font_file_name, font_weight, font_size, text_color,
+                   animation_type, animation_duration, animation_delay, animation_iteration,
+                   preview_text, preview_subtext, is_public, usage_count,
+                   created_at, updated_at, last_used
+            FROM font_templates 
             WHERE template_name LIKE ? OR template_code LIKE ?
             ORDER BY usage_count DESC, created_at DESC
             LIMIT ?
         ''', (f'%{query}%', f'%{query}%', limit))
         
         rows = cursor.fetchall()
-        
-        templates = []
-        for row in rows:
-            template = dict(row)
-            # Hanya ambil preview
-            try:
-                font_data = json.loads(template['font_data'])
-                template['font_preview'] = font_data.get('family', 'Inter') if isinstance(font_data, dict) else 'Inter'
-            except:
-                template['font_preview'] = 'Inter'
-            
-            try:
-                anim_data = json.loads(template['animation_data'])
-                template['anim_preview'] = anim_data.get('name', 'None') if isinstance(anim_data, dict) else 'None'
-            except:
-                template['anim_preview'] = 'None'
-            
-            template.pop('font_data', None)
-            template.pop('animation_data', None)
-            template.pop('preview_data', None)
-            
-            templates.append(template)
-        
-        return templates
+        return [dict(row) for row in rows]
         
     except Exception as e:
         print(f"❌ Error searching templates: {e}")
@@ -363,39 +391,84 @@ def get_popular_templates(limit=10):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT * FROM font_templates 
+            SELECT id, template_code, template_name, website_id, user_id,
+                   font_family, font_file_name, font_weight, font_size, text_color,
+                   animation_type, animation_duration, animation_delay, animation_iteration,
+                   preview_text, preview_subtext, is_public, usage_count,
+                   created_at, updated_at, last_used
+            FROM font_templates 
             WHERE is_public = 1
             ORDER BY usage_count DESC, created_at DESC
             LIMIT ?
         ''', (limit,))
         
         rows = cursor.fetchall()
-        
-        templates = []
-        for row in rows:
-            template = dict(row)
-            try:
-                font_data = json.loads(template['font_data'])
-                template['font_preview'] = font_data.get('family', 'Inter') if isinstance(font_data, dict) else 'Inter'
-            except:
-                template['font_preview'] = 'Inter'
-            
-            try:
-                anim_data = json.loads(template['animation_data'])
-                template['anim_preview'] = anim_data.get('name', 'None') if isinstance(anim_data, dict) else 'None'
-            except:
-                template['anim_preview'] = 'None'
-            
-            template.pop('font_data', None)
-            template.pop('animation_data', None)
-            template.pop('preview_data', None)
-            
-            templates.append(template)
-        
-        return templates
+        return [dict(row) for row in rows]
         
     except Exception as e:
         print(f"❌ Error getting popular templates: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def get_user_templates(user_id, limit=50):
+    """
+    Mendapatkan semua template milik user tertentu
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, template_code, template_name, website_id, user_id,
+                   font_family, font_file_name, font_weight, font_size, text_color,
+                   animation_type, animation_duration, animation_delay, animation_iteration,
+                   preview_text, preview_subtext, is_public, usage_count,
+                   created_at, updated_at, last_used
+            FROM font_templates 
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+        ''', (user_id, limit))
+        
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+        
+    except Exception as e:
+        print(f"❌ Error getting user templates: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def get_website_templates(website_id, limit=50):
+    """
+    Mendapatkan semua template yang terkait dengan website tertentu
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, template_code, template_name, website_id, user_id,
+                   font_family, font_file_name, font_weight, font_size, text_color,
+                   animation_type, animation_duration, animation_delay, animation_iteration,
+                   preview_text, preview_subtext, is_public, usage_count,
+                   created_at, updated_at, last_used
+            FROM font_templates 
+            WHERE website_id = ? OR is_public = 1
+            ORDER BY is_public DESC, usage_count DESC, created_at DESC
+            LIMIT ?
+        ''', (website_id, limit))
+        
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+        
+    except Exception as e:
+        print(f"❌ Error getting website templates: {e}")
         return []
     finally:
         if conn:
@@ -420,57 +493,9 @@ def check_template_exists(template_code):
         if conn:
             conn.close()
 
-def get_user_templates(user_id, limit=50):
+def increment_usage_count(template_code):
     """
-    Mendapatkan semua template milik user tertentu
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT * FROM font_templates 
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-        ''', (user_id, limit))
-        
-        rows = cursor.fetchall()
-        
-        templates = []
-        for row in rows:
-            template = dict(row)
-            try:
-                font_data = json.loads(template['font_data'])
-                template['font_preview'] = font_data.get('family', 'Inter') if isinstance(font_data, dict) else 'Inter'
-            except:
-                template['font_preview'] = 'Inter'
-            
-            try:
-                anim_data = json.loads(template['animation_data'])
-                template['anim_preview'] = anim_data.get('name', 'None') if isinstance(anim_data, dict) else 'None'
-            except:
-                template['anim_preview'] = 'None'
-            
-            template.pop('font_data', None)
-            template.pop('animation_data', None)
-            template.pop('preview_data', None)
-            
-            templates.append(template)
-        
-        return templates
-        
-    except Exception as e:
-        print(f"❌ Error getting user templates: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
-def get_website_templates(website_id, limit=50):
-    """
-    Mendapatkan semua template yang terkait dengan website tertentu
+    Menambah usage count template
     """
     conn = None
     try:
@@ -478,40 +503,17 @@ def get_website_templates(website_id, limit=50):
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT * FROM font_templates 
-            WHERE website_id = ? OR is_public = 1
-            ORDER BY is_public DESC, usage_count DESC, created_at DESC
-            LIMIT ?
-        ''', (website_id, limit))
+            UPDATE font_templates 
+            SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP
+            WHERE template_code = ?
+        ''', (template_code,))
         
-        rows = cursor.fetchall()
-        
-        templates = []
-        for row in rows:
-            template = dict(row)
-            try:
-                font_data = json.loads(template['font_data'])
-                template['font_preview'] = font_data.get('family', 'Inter') if isinstance(font_data, dict) else 'Inter'
-            except:
-                template['font_preview'] = 'Inter'
-            
-            try:
-                anim_data = json.loads(template['animation_data'])
-                template['anim_preview'] = anim_data.get('name', 'None') if isinstance(anim_data, dict) else 'None'
-            except:
-                template['anim_preview'] = 'None'
-            
-            template.pop('font_data', None)
-            template.pop('animation_data', None)
-            template.pop('preview_data', None)
-            
-            templates.append(template)
-        
-        return templates
+        conn.commit()
+        return cursor.rowcount > 0
         
     except Exception as e:
-        print(f"❌ Error getting website templates: {e}")
-        return []
+        print(f"❌ Error incrementing usage count: {e}")
+        return False
     finally:
         if conn:
             conn.close()
@@ -533,12 +535,27 @@ def migrate_database():
             init_db()
             return
         
-        # Cek kolom yang mungkin kurang
+        # Dapatkan daftar kolom yang sudah ada
         cursor.execute("PRAGMA table_info(font_templates)")
         existing_columns = [col[1] for col in cursor.fetchall()]
         
+        print("📊 Existing columns in font_templates:", existing_columns)
+        
         # Kolom yang harus ada
         required_columns = {
+            'font_family': 'TEXT NOT NULL',
+            'font_file_data': 'TEXT',
+            'font_file_name': 'TEXT',
+            'font_weight': 'INTEGER DEFAULT 400',
+            'font_style': 'TEXT DEFAULT "normal"',
+            'font_size': 'INTEGER DEFAULT 48',
+            'text_color': 'TEXT DEFAULT "#ffffff"',
+            'animation_type': 'TEXT DEFAULT "none"',
+            'animation_duration': 'REAL DEFAULT 2',
+            'animation_delay': 'REAL DEFAULT 0',
+            'animation_iteration': 'TEXT DEFAULT "infinite"',
+            'preview_text': 'TEXT DEFAULT "Toko Online Premium"',
+            'preview_subtext': 'TEXT DEFAULT "dengan Layanan Terbaik 24/7"',
             'website_id': 'INTEGER',
             'user_id': 'INTEGER',
             'is_public': 'BOOLEAN DEFAULT 0',
@@ -546,14 +563,21 @@ def migrate_database():
             'last_used': 'TIMESTAMP'
         }
         
+        columns_added = []
         for col_name, col_type in required_columns.items():
             if col_name not in existing_columns:
                 try:
                     alter_sql = f"ALTER TABLE font_templates ADD COLUMN {col_name} {col_type}"
                     cursor.execute(alter_sql)
+                    columns_added.append(col_name)
                     print(f"✅ Column '{col_name}' added to font_templates")
                 except Exception as e:
                     print(f"⚠️ Failed to add column '{col_name}': {e}")
+        
+        if columns_added:
+            print(f"✅ Added columns: {', '.join(columns_added)}")
+        else:
+            print("✅ All columns already exist")
         
         conn.commit()
         print("✅ Font templates database migration completed")
