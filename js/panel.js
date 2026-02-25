@@ -88,7 +88,7 @@
         
         // Settings Links
         appearanceSettings: document.getElementById('appearanceSettings'),
-        profileSettings: document.getElementById('profileSettings'),
+        socialSettings: document.getElementById('socialSettings'),
         paymentSettings: document.getElementById('paymentSettings'),
         notificationSettings: document.getElementById('notificationSettings'),
         seoSettings: document.getElementById('seoSettings'),
@@ -818,12 +818,9 @@
             elements.manageProductsBtn.href = `/wtb/html/produk?website=${userWebsites[0].endpoint}`;
         }
         
-        // Profile Settings
-        if (elements.profileSettings) {
-            elements.profileSettings.addEventListener('click', (e) => {
-                e.preventDefault();
-                showToast('Fitur ini akan segera tersedia', 'info');
-            });
+        // Di dalam fungsi setupSettingsLinks()
+        if (elements.socialSettings && userWebsites.length > 0) {
+          elements.socialSettings.href = `/wtb/html/sosial.html?website=${userWebsites[0].endpoint}`;
         }
         
         if (elements.paymentSettings && userWebsites.length > 0) {
