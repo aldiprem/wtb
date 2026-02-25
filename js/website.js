@@ -1,2300 +1,2099 @@
-// website.js - Enhanced Version dengan Animasi dan Fitur Modern
+// website.js - Versi Crystal 3D dengan Integrasi API Lengkap
 (function() {
     'use strict';
     
-    console.log('🏪 Website Store Modern - Initializing...');
-
-    // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1000;
-    const ANIMATION_DURATION = 300;
-
-    // ==================== FUNGSI GET ENDPOINT DARI URL ====================
-    function getEndpointFromUrl() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const endpoint = urlParams.get('store');
-        console.log('📍 Endpoint from URL:', endpoint);
-        return endpoint;
-    }
-
-    // ==================== DOM ELEMENTS ====================
-    const elements = {
-        loadingOverlay: document.getElementById('loadingOverlay'),
-        dynamicTitle: document.getElementById('dynamicTitle'),
-        dynamicDescription: document.getElementById('dynamicDescription'),
-        dynamicKeywords: document.getElementById('dynamicKeywords'),
-        
-        // Sidebar
-        sidebar: document.getElementById('sidebar'),
-        sidebarClose: document.getElementById('sidebarClose'),
-        menuToggle: document.getElementById('menuToggle'),
-        sidebarStoreName: document.getElementById('sidebarStoreName'),
-        sidebarAvatar: document.getElementById('sidebarAvatar'),
-        sidebarName: document.getElementById('sidebarName'),
-        sidebarUsername: document.getElementById('sidebarUsername'),
-        profileVerified: document.getElementById('profileVerified'),
-        loginBtn: document.getElementById('loginBtn'),
-        orderBadge: document.getElementById('orderBadge'),
-        
-        // Header
-        storeName: document.getElementById('storeName'),
-        headerLogo: document.getElementById('headerLogo'),
-        searchToggle: document.getElementById('searchToggle'),
-        cartBtn: document.getElementById('cartBtn'),
-        cartBadge: document.getElementById('cartBadge'),
-        
-        // Search
-        searchBar: document.getElementById('searchBar'),
-        searchInput: document.getElementById('searchInput'),
-        searchClose: document.getElementById('searchClose'),
-        
-        // Banner
-        bannerSlider: document.getElementById('bannerSlider'),
-        sliderContainer: document.getElementById('sliderContainer'),
-        sliderPrev: document.getElementById('sliderPrev'),
-        sliderNext: document.getElementById('sliderNext'),
-        sliderPagination: document.getElementById('sliderPagination'),
-        sliderDots: document.getElementById('sliderDots'),
-        
-        // Categories
-        categoriesGrid: document.getElementById('categoriesGrid'),
-        
-        // Products
-        featuredProducts: document.getElementById('featuredProducts'),
-        popularProducts: document.getElementById('popularProducts'),
-        
-        // Promo
-        promoBanner: document.getElementById('promoBanner'),
-        
-        // Payment
-        paymentIcons: document.getElementById('paymentIcons'),
-        
-        // Footer
-        footerDescription: document.getElementById('footerDescription'),
-        contactWhatsApp: document.getElementById('contactWhatsApp'),
-        contactTelegram: document.getElementById('contactTelegram'),
-        contactEmail: document.getElementById('contactEmail'),
-        footerStoreName: document.getElementById('footerStoreName'),
-        footerStoreName2: document.getElementById('footerStoreName2'),
-        sidebarYear: document.getElementById('sidebarYear'),
-        
-        // Cart
-        cartSidebar: document.getElementById('cartSidebar'),
-        cartClose: document.getElementById('cartClose'),
-        cartItems: document.getElementById('cartItems'),
-        cartEmpty: document.getElementById('cartEmpty'),
-        cartFooter: document.getElementById('cartFooter'),
-        cartTotal: document.getElementById('cartTotal'),
-        shopNowBtn: document.getElementById('shopNowBtn'),
-        checkoutBtn: document.getElementById('checkoutBtn'),
-        
-        // Modals
-        productModal: document.getElementById('productModal'),
-        checkoutModal: document.getElementById('checkoutModal'),
-        loginModal: document.getElementById('loginModal'),
-        closeProductModal: document.getElementById('closeProductModal'),
-        closeCheckoutModal: document.getElementById('closeCheckoutModal'),
-        closeLoginModal: document.getElementById('closeLoginModal'),
-        productDetail: document.getElementById('productDetail'),
-        checkoutBody: document.getElementById('checkoutBody'),
-        
-        // Login buttons
-        telegramLogin: document.getElementById('telegramLogin'),
-        guestLogin: document.getElementById('guestLogin'),
-        
-        // Toast
-        toastContainer: document.getElementById('toastContainer')
+    // ===== KONFIGURASI GLOBAL =====
+    const CONFIG = {
+        API_BASE_URL: window.APP_CONFIG?.API_BASE_URL || 'https://supports-lease-honest-potter.trycloudflare.com',
+        MAX_RETRIES: 3,
+        RETRY_DELAY: 1000,
+        ANIMATION_DURATION: 300,
+        CACHE_DURATION: 5 * 60 * 1000, // 5 menit
+        BANNER_AUTO_SLIDE_INTERVAL: 5000,
+        PROMO_AUTO_SLIDE_INTERVAL: 4000,
+        TOAST_DURATION: 3000,
+        VIBRATE_DURATION: 20,
+        MAX_CART_ITEMS: 50,
+        CRYSTAL_EFFECTS: true
     };
 
-    // ==================== STATE ====================
-    let currentEndpoint = null;
-    let currentWebsite = null;
-    let websiteData = null;
-    let tampilanData = null;
-    let products = [];
-    let categories = [];
-    let cart = [];
-    let currentUser = null;
-    let currentProduct = null;
-    let bannerInterval = null;
-    let currentBannerIndex = 0;
-    let touchStartX = 0;
-    let touchEndX = 0;
-    let retryCount = 0;
-    let isLoading = false;
-    let structuredProducts = null;
-
-    // ==================== FUNGSI LOADING OVERLAY ====================
-    function showLoading(message = 'Memuat website...') {
-        if (isLoading) return;
-        isLoading = true;
+    // ===== STATE MANAGEMENT =====
+    const State = {
+        // Data Website
+        currentEndpoint: null,
+        currentWebsite: null,
+        websiteData: null,
+        tampilanData: null,
         
-        if (elements.loadingOverlay) {
-            const loadingText = elements.loadingOverlay.querySelector('.loading-text');
-            if (loadingText) loadingText.textContent = message;
-            elements.loadingOverlay.style.display = 'flex';
-            
-            const loadingBar = elements.loadingOverlay.querySelector('.loading-bar');
-            if (loadingBar) {
-                loadingBar.style.animation = 'none';
-                loadingBar.offsetHeight;
-                loadingBar.style.animation = 'loading 2s ease-in-out infinite';
+        // Produk & Kategori
+        products: [],
+        categories: [],
+        structuredProducts: null,
+        currentProduct: null,
+        
+        // Banner & Promo
+        banners: [],
+        promos: [],
+        currentBannerIndex: 0,
+        currentPromoIndex: 0,
+        bannerInterval: null,
+        promoInterval: null,
+        
+        // Keranjang
+        cart: [],
+        cartTotal: 0,
+        
+        // User
+        currentUser: null,
+        isLoggedIn: false,
+        
+        // UI State
+        isLoading: false,
+        isSidebarOpen: false,
+        isCartOpen: false,
+        isSearchOpen: false,
+        activePage: 'home',
+        
+        // Touch & Mouse
+        touchStartX: 0,
+        touchEndX: 0,
+        mouseX: 0,
+        mouseY: 0,
+        
+        // Cache
+        cache: new Map(),
+        
+        // Retry
+        retryCount: 0
+    };
+
+    // ===== DOM ELEMENTS CACHE =====
+    const DOM = {};
+
+    // ===== UTILITY FUNCTIONS =====
+    const Utils = {
+        // Format Rupiah
+        formatRupiah: (angka) => {
+            if (!angka && angka !== 0) return 'Rp 0';
+            return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        },
+
+        // Format Number
+        formatNumber: (num) => {
+            if (!num && num !== 0) return '0';
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        },
+
+        // Format Date
+        formatDate: (dateString, timeString) => {
+            if (!dateString) return 'Tanpa batas waktu';
+            try {
+                const date = new Date(dateString + 'T' + (timeString || '00:00'));
+                return date.toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return dateString;
             }
-        }
-    }
+        },
 
-    function hideLoading() {
-        if (!isLoading) return;
-        
-        if (elements.loadingOverlay) {
-            elements.loadingOverlay.style.opacity = '0';
-            setTimeout(() => {
-                elements.loadingOverlay.style.display = 'none';
-                elements.loadingOverlay.style.opacity = '1';
-                isLoading = false;
-            }, 500);
-        } else {
-            isLoading = false;
-        }
-    }
+        // Escape HTML
+        escapeHtml: (text) => {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        },
 
-    // ==================== FUNGSI UTILITY ====================
-    function vibrate(duration = 20) {
-        if (window.navigator && window.navigator.vibrate) {
-            window.navigator.vibrate(duration);
-        }
-    }
-
-    function formatNumber(num) {
-        if (num === undefined || num === null) return '0';
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    }
-
-    function formatPrice(price) {
-        return `Rp ${formatNumber(price)}`;
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
+        // Debounce
+        debounce: (func, wait) => {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
                 clearTimeout(timeout);
-                func(...args);
+                timeout = setTimeout(later, wait);
             };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
+        },
 
-    // ==================== FUNGSI TOAST ====================
-    function showToast(message, type = 'info', duration = 3000) {
-        if (!elements.toastContainer) return;
-        
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        
-        const icon = type === 'success' ? 'check-circle' : 
-                     type === 'error' ? 'exclamation-circle' : 
-                     type === 'warning' ? 'exclamation-triangle' : 'info-circle';
-        
-        toast.innerHTML = `
-            <i class="fas fa-${icon}"></i>
-            <span>${message}</span>
-        `;
-        
-        elements.toastContainer.appendChild(toast);
-        
-        toast.offsetHeight;
-        
-        setTimeout(() => {
-            toast.classList.add('fade-out');
+        // Throttle
+        throttle: (func, limit) => {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        },
+
+        // Vibrate
+        vibrate: (duration = CONFIG.VIBRATE_DURATION) => {
+            if (window.navigator && window.navigator.vibrate) {
+                window.navigator.vibrate(duration);
+            }
+        },
+
+        // Generate Stars
+        generateStars: (rating) => {
+            const fullStars = Math.floor(rating);
+            const halfStar = rating % 1 >= 0.5;
+            const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+            
+            let stars = '';
+            for (let i = 0; i < fullStars; i++) {
+                stars += '<i class="fas fa-star"></i>';
+            }
+            if (halfStar) {
+                stars += '<i class="fas fa-star-half-alt"></i>';
+            }
+            for (let i = 0; i < emptyStars; i++) {
+                stars += '<i class="far fa-star"></i>';
+            }
+            return stars;
+        },
+
+        // Generate Avatar URL
+        generateAvatarUrl: (name) => {
+            if (!name) return `https://ui-avatars.com/api/?name=U&size=100&background=40a7e3&color=fff&bold=true`;
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=100&background=40a7e3&color=fff&bold=true`;
+        },
+
+        // Cache Management
+        setCache: (key, data) => {
+            State.cache.set(key, {
+                data,
+                timestamp: Date.now()
+            });
+        },
+
+        getCache: (key) => {
+            const cached = State.cache.get(key);
+            if (!cached) return null;
+            if (Date.now() - cached.timestamp > CONFIG.CACHE_DURATION) {
+                State.cache.delete(key);
+                return null;
+            }
+            return cached.data;
+        },
+
+        // Copy to Clipboard
+        copyToClipboard: async (text) => {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                return false;
+            }
+        },
+
+        // Detect Mobile
+        isMobile: () => {
+            return window.innerWidth <= 768;
+        },
+
+        // Get Endpoint from URL
+        getEndpointFromUrl: () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('store');
+        },
+
+        // Save to LocalStorage
+        saveToStorage: (key, data) => {
+            try {
+                localStorage.setItem(`website_${State.currentEndpoint}_${key}`, JSON.stringify(data));
+            } catch (e) {
+                console.error('Error saving to storage:', e);
+            }
+        },
+
+        // Load from LocalStorage
+        loadFromStorage: (key) => {
+            try {
+                const data = localStorage.getItem(`website_${State.currentEndpoint}_${key}`);
+                return data ? JSON.parse(data) : null;
+            } catch (e) {
+                console.error('Error loading from storage:', e);
+                return null;
+            }
+        }
+    };
+
+    // ===== TOAST NOTIFICATIONS =====
+    const Toast = {
+        show: (message, type = 'info', duration = CONFIG.TOAST_DURATION) => {
+            if (!DOM.toastContainer) return;
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            const icon = type === 'success' ? 'check-circle' : 
+                         type === 'error' ? 'exclamation-circle' : 
+                         type === 'warning' ? 'exclamation-triangle' : 'info-circle';
+            
+            toast.innerHTML = `
+                <i class="fas fa-${icon}"></i>
+                <span>${message}</span>
+            `;
+            
+            DOM.toastContainer.appendChild(toast);
+            
+            // Add mouse position effect
+            toast.addEventListener('mousemove', (e) => {
+                const rect = toast.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                toast.style.setProperty('--x', `${x}px`);
+                toast.style.setProperty('--y', `${y}px`);
+            });
+            
             setTimeout(() => {
-                toast.remove();
-            }, 300);
-        }, duration);
-    }
+                toast.style.animation = 'fadeOut 0.3s ease forwards';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.remove();
+                }, 300);
+            }, duration);
+        },
 
-    // ==================== FUNGSI FETCH DENGAN RETRY ====================
-    async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+        success: (message) => Toast.show(message, 'success'),
+        error: (message) => Toast.show(message, 'error'),
+        warning: (message) => Toast.show(message, 'warning'),
+        info: (message) => Toast.show(message, 'info')
+    };
 
-            const response = await fetch(url, {
-                ...options,
-                mode: 'cors',
-                cache: 'no-cache',
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            if (retries > 0 && error.name !== 'AbortError') {
-                console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-                return fetchWithRetry(url, options, retries - 1);
-            }
-            throw error;
-        }
-    }
-
-    async function loadWebsiteData(endpoint) {
-      showLoading('Memuat data website...');
-    
-      try {
-        console.log(`📡 Loading website data for endpoint: ${endpoint}`);
-    
-        const result = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
-        });
-    
-        console.log('📥 Website data:', result);
-    
-        if (result.success && result.website) {
-          const data = result.website;
-          websiteData = data;
-          currentWebsite = data; // <-- TAMBAHKAN INI
-    
-          await loadTampilanData(data.id);
-    
-          if (data.products && Array.isArray(data.products)) {
-            products = data.products;
-          } else {
-            products = [];
-          }
-    
-          categories = data.categories || [];
-    
-          updateWebsiteUI(data);
-          renderAllComponents();
-    
-          setTimeout(() => {
-            animateElements();
-          }, 100);
-    
-          hideLoading();
-          return data;
-        } else {
-          throw new Error('Invalid response from server');
-        }
-    
-      } catch (error) {
-        console.error('❌ Error loading website:', error);
-        hideLoading();
-    
-        if (elements.storeName) {
-          elements.storeName.textContent = 'Website Tidak Ditemukan';
-        }
-    
-        showToast(error.message || 'Gagal memuat data website', 'error');
-        clearAllContent();
-    
-        return null;
-      }
-    }
-
-    function animateElements() {
-        document.querySelectorAll('.category-card').forEach((card, index) => {
-            card.style.animation = `fadeInUp 0.5s ease ${index * 0.1}s forwards`;
-        });
-        
-        document.querySelectorAll('.product-card').forEach((card, index) => {
-            card.style.animation = `fadeInUp 0.5s ease ${index * 0.05}s forwards`;
-        });
-    }
-
-    // ==================== FUNGSI LOAD TAMPILAN DATA ====================
-    async function loadTampilanData(websiteId) {
-        try {
-            console.log(`📡 Loading tampilan data for website ID: ${websiteId}`);
+    // ===== LOADING OVERLAY =====
+    const Loading = {
+        show: (message = 'Memuat pengalaman 3D...') => {
+            if (State.isLoading) return;
+            State.isLoading = true;
             
-            const result = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${websiteId}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+            if (DOM.loadingOverlay) {
+                const loadingText = DOM.loadingOverlay.querySelector('.loading-text');
+                if (loadingText) loadingText.textContent = message;
+                DOM.loadingOverlay.style.display = 'flex';
+                
+                // Animate crystal loader
+                const loader = DOM.loadingOverlay.querySelector('.crystal-loader');
+                if (loader) {
+                    loader.style.animation = 'none';
+                    loader.offsetHeight;
+                    loader.style.animation = 'crystalRotate 4s infinite linear';
                 }
-            });
-            
-            if (result.success && result.tampilan) {
-                tampilanData = result.tampilan;
-                console.log('📥 Tampilan data:', tampilanData);
-            } else {
-                console.log('ℹ️ No tampilan data found, using defaults');
-                tampilanData = null;
             }
+        },
+
+        hide: () => {
+            if (!State.isLoading) return;
             
-        } catch (error) {
-            if (error.message.includes('404')) {
-                console.log('ℹ️ No tampilan data found, using defaults');
-                tampilanData = null;
+            if (DOM.loadingOverlay) {
+                DOM.loadingOverlay.style.opacity = '0';
+                setTimeout(() => {
+                    DOM.loadingOverlay.style.display = 'none';
+                    DOM.loadingOverlay.style.opacity = '1';
+                    State.isLoading = false;
+                }, 500);
             } else {
+                State.isLoading = false;
+            }
+        },
+
+        progress: (percent) => {
+            const bar = DOM.loadingOverlay?.querySelector('.loading-bar');
+            if (bar) {
+                bar.style.width = `${percent}%`;
+            }
+        }
+    };
+
+    // ===== API SERVICE =====
+    const API = {
+        fetchWithRetry: async (url, options = {}, retries = CONFIG.MAX_RETRIES) => {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+                const response = await fetch(url, {
+                    ...options,
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout');
+                }
+                
+                if (retries > 0) {
+                    console.log(`🔄 Retry... ${CONFIG.MAX_RETRIES - retries + 1}/${CONFIG.MAX_RETRIES}`);
+                    await new Promise(resolve => setTimeout(resolve, CONFIG.RETRY_DELAY));
+                    return API.fetchWithRetry(url, options, retries - 1);
+                }
+                throw error;
+            }
+        },
+
+        // Website Data
+        getWebsite: async (endpoint) => {
+            const cacheKey = `website_${endpoint}`;
+            const cached = Utils.getCache(cacheKey);
+            if (cached) return cached;
+
+            try {
+                const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/websites/endpoint/${endpoint}`);
+                if (data.success && data.website) {
+                    Utils.setCache(cacheKey, data.website);
+                    return data.website;
+                }
+                throw new Error('Website not found');
+            } catch (error) {
+                console.error('❌ Error loading website:', error);
+                throw error;
+            }
+        },
+
+        // Tampilan Data
+        getTampilan: async (websiteId) => {
+            const cacheKey = `tampilan_${websiteId}`;
+            const cached = Utils.getCache(cacheKey);
+            if (cached) return cached;
+
+            try {
+                const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/tampilan/${websiteId}`);
+                if (data.success && data.tampilan) {
+                    Utils.setCache(cacheKey, data.tampilan);
+                    return data.tampilan;
+                }
+                return null;
+            } catch (error) {
+                if (error.message.includes('404')) {
+                    return null;
+                }
                 console.error('❌ Error loading tampilan:', error);
-                tampilanData = null;
+                return null;
             }
-        }
-    }
+        },
 
-    function clearAllContent() {
-        if (elements.sliderContainer) elements.sliderContainer.innerHTML = '';
-        if (elements.categoriesGrid) elements.categoriesGrid.innerHTML = '';
-        if (elements.featuredProducts) elements.featuredProducts.innerHTML = '';
-        if (elements.popularProducts) elements.popularProducts.innerHTML = '';
-        if (elements.promoBanner) elements.promoBanner.innerHTML = '';
-        if (elements.paymentIcons) elements.paymentIcons.innerHTML = '';
-        
-        if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
-    }
+        // Produk Terstruktur
+        getStructuredProducts: async (websiteId) => {
+            const cacheKey = `products_${websiteId}`;
+            const cached = Utils.getCache(cacheKey);
+            if (cached) return cached;
 
-    // ==================== FUNGSI-FUNGSI RENDER UTAMA ====================
-    
-    // 1. FUNGSI RENDER LOGO
-    function renderLogo() {
-        let headerLogoContainer = elements.headerLogo;
-        if (!headerLogoContainer) return;
-        
-        if (tampilanData?.logo) {
-            headerLogoContainer.innerHTML = `
-                <img src="${tampilanData.logo}" alt="Logo" class="header-logo-img" 
-                     style="height: 40px; width: auto; object-fit: contain;" 
-                     onload="this.style.opacity='1';" 
-                     style="opacity:0; transition:opacity 0.3s"
-                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <div class="header-logo-fallback" style="display: none; align-items: center; gap: 8px;">
-                    <i class="fas fa-store"></i>
-                    <span id="storeName">${websiteData?.username || 'Toko Online'}</span>
-                </div>
-            `;
-            
-            const logoImg = headerLogoContainer.querySelector('img');
-            const fallback = headerLogoContainer.querySelector('.header-logo-fallback');
-            
-            logoImg.onload = function() {
-                this.style.opacity = '1';
-            };
-            
-            logoImg.onerror = function() {
-                this.style.display = 'none';
-                if (fallback) fallback.style.display = 'flex';
-            };
-        } else {
-            headerLogoContainer.innerHTML = `
-                <i class="fas fa-store"></i>
-                <span id="storeName">${websiteData?.username || 'Toko Online'}</span>
-            `;
-        }
-    }
-
-    // 2. FUNGSI RENDER PAYMENT METHODS
-    function renderPaymentMethods() {
-        if (!elements.paymentIcons) return;
-        
-        let html = '';
-        let hasPayments = false;
-        
-        if (tampilanData?.banks && tampilanData.banks.length > 0) {
-            tampilanData.banks.forEach(bank => {
-                if (bank.enabled) {
-                    hasPayments = true;
-                    html += `
-                        <div class="payment-icon">
-                            <i class="fas fa-university"></i>
-                            <span>${bank.bank_name || 'Bank'}</span>
-                        </div>
-                    `;
+            try {
+                const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/products/all/${websiteId}`);
+                if (data.success && data.data) {
+                    Utils.setCache(cacheKey, data.data);
+                    return data.data;
                 }
-            });
-        }
-        
-        if (tampilanData?.ewallets && tampilanData.ewallets.length > 0) {
-            tampilanData.ewallets.forEach(ewallet => {
-                if (ewallet.enabled) {
-                    hasPayments = true;
-                    html += `
-                        <div class="payment-icon">
-                            <i class="fas fa-wallet"></i>
-                            <span>${ewallet.provider || 'E-Wallet'}</span>
-                        </div>
-                    `;
+                return [];
+            } catch (error) {
+                console.error('❌ Error loading products:', error);
+                return [];
+            }
+        },
+
+        // Promos
+        getPromos: async (websiteId) => {
+            const cacheKey = `promos_${websiteId}`;
+            const cached = Utils.getCache(cacheKey);
+            if (cached) return cached;
+
+            try {
+                const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/tampilan/${websiteId}/promos`);
+                if (data.success && data.promos) {
+                    Utils.setCache(cacheKey, data.promos);
+                    return data.promos;
                 }
-            });
-        }
-        
-        if (tampilanData?.qris && tampilanData.qris.enabled) {
-            hasPayments = true;
-            html += `
-                <div class="payment-icon">
-                    <i class="fas fa-qrcode"></i>
-                    <span>QRIS</span>
-                </div>
-            `;
-        }
-        
-        if (tampilanData?.crypto && tampilanData.crypto.enabled) {
-            hasPayments = true;
-            html += `
-                <div class="payment-icon">
-                    <i class="fab fa-bitcoin"></i>
-                    <span>Crypto</span>
-                </div>
-            `;
-        }
-        
-        if (!hasPayments && websiteData?.settings?.payments) {
-            renderPaymentMethodsFromSettings(websiteData.settings.payments);
-            return;
-        }
-        
-        if (!hasPayments) {
-            elements.paymentIcons.innerHTML = '<div class="empty-message">Belum ada metode pembayaran</div>';
-        } else {
-            elements.paymentIcons.innerHTML = html;
-        }
-    }
+                return [];
+            } catch (error) {
+                console.error('❌ Error loading promos:', error);
+                return [];
+            }
+        },
 
-    function renderPaymentMethodsFromSettings(payments) {
-        if (!elements.paymentIcons) return;
-        
-        let html = '';
-        
-        if (payments.bank && payments.bank.length > 0) {
-            payments.bank.forEach(bank => {
-                html += `
-                    <div class="payment-icon">
-                        <img src="${bank.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank'}" 
-                             alt="${bank.name}" 
-                             onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Bank';">
-                        <span>${bank.name}</span>
-                    </div>
-                `;
-            });
-        }
-        
-        if (payments.ewallet && payments.ewallet.length > 0) {
-            payments.ewallet.forEach(wallet => {
-                html += `
-                    <div class="payment-icon">
-                        <img src="${wallet.icon || 'https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet'}" 
-                             alt="${wallet.name}" 
-                             onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=Wallet';">
-                        <span>${wallet.name}</span>
-                    </div>
-                `;
-            });
-        }
-        
-        if (payments.qris && payments.qris.enabled) {
-            html += `
-                <div class="payment-icon">
-                    <i class="fas fa-qrcode"></i>
-                    <span>QRIS</span>
-                </div>
-            `;
-        }
-        
-        if (html === '') {
-            elements.paymentIcons.innerHTML = '<div class="empty-message">Belum ada metode pembayaran</div>';
-        } else {
-            elements.paymentIcons.innerHTML = html;
-        }
-    }
-
-    // 3. FUNGSI UPDATE UI
-    function updateWebsiteUI(data) {
-        if (elements.dynamicTitle) {
-            elements.dynamicTitle.textContent = tampilanData?.seo_title || data.settings?.title || 'Toko Online';
-        }
-        if (elements.dynamicDescription) {
-            elements.dynamicDescription.content = tampilanData?.seo_description || data.settings?.description || 'Toko online terpercaya';
-        }
-        if (elements.dynamicKeywords) {
-            elements.dynamicKeywords.content = tampilanData?.seo_keywords || data.settings?.seo?.keywords || 'toko, online, topup';
-        }
-        
-        const storeName = data.username || 'Toko Online';
-        if (elements.storeName) elements.storeName.textContent = storeName;
-        if (elements.sidebarStoreName) elements.sidebarStoreName.textContent = storeName;
-        if (elements.footerStoreName) elements.footerStoreName.textContent = storeName;
-        if (elements.footerStoreName2) elements.footerStoreName2.textContent = storeName;
-        
-        if (elements.footerDescription) {
-            elements.footerDescription.textContent = tampilanData?.description || data.settings?.description || 'Toko online terpercaya sejak 2024 dengan ribuan produk berkualitas dan pelayanan terbaik.';
-        }
-        
-        if (elements.contactWhatsApp) {
-            elements.contactWhatsApp.textContent = tampilanData?.contact_whatsapp || data.settings?.contact?.whatsapp || '-';
-        }
-        if (elements.contactTelegram) {
-            elements.contactTelegram.textContent = tampilanData?.contact_telegram || data.settings?.contact?.telegram || '-';
-        }
-        if (elements.contactEmail) {
-            elements.contactEmail.textContent = data.email || 'support@example.com';
-        }
-        
-        if (elements.sidebarAvatar && currentUser) {
-            const fullName = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || 'User';
-            const img = elements.sidebarAvatar.querySelector('img');
-            if (img) {
-                img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=80&background=40a7e3&color=fff`;
+        // Test Connection
+        testConnection: async () => {
+            try {
+                const data = await API.fetchWithRetry(`${CONFIG.API_BASE_URL}/api/health`, { method: 'GET' });
+                return data.status === 'healthy';
+            } catch (error) {
+                console.warn('⚠️ Cannot connect to server:', error.message);
+                return false;
             }
         }
-        
-        if (elements.sidebarYear) {
-            elements.sidebarYear.textContent = new Date().getFullYear();
-        }
-    }
+    };
 
-    function applyThemeColors(colors) {
-        if (!colors) return;
-        
-        const root = document.documentElement;
-        if (colors.primary) root.style.setProperty('--primary-color', colors.primary);
-        if (colors.secondary) root.style.setProperty('--secondary-color', colors.secondary);
-        if (colors.background) root.style.setProperty('--bg-color', colors.background);
-        if (colors.text) root.style.setProperty('--text-color', colors.text);
-        if (colors.card) root.style.setProperty('--card-bg', colors.card);
-        if (colors.accent) root.style.setProperty('--accent-color', colors.accent);
-    }
-
-    function applyFont(font) {
-        if (!font) return;
-        
-        const root = document.documentElement;
-        if (font.family) {
-            root.style.setProperty('--font-family', font.family);
-            document.body.style.fontFamily = font.family;
-        }
-        if (font.size) {
-            root.style.setProperty('--font-size', `${font.size}px`);
-        }
-    }
-
-    // 4. FUNGSI RENDER BANNER
-    function renderBanners(banners) {
-        if (!elements.sliderContainer || !banners || banners.length === 0) {
-            if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
-            return;
-        }
-        
-        elements.bannerSlider.style.display = 'block';
-        
-        let slidesHtml = '';
-        let paginationHtml = '';
-        let dotsHtml = '';
-        
-        banners.forEach((banner, index) => {
-            let bannerUrl = '';
-            let positionX = 50;
-            let positionY = 50;
-            
-            if (typeof banner === 'string') {
-                bannerUrl = banner;
-            } else {
-                bannerUrl = banner.url || '';
-                positionX = banner.positionX || banner.position || 50;
-                positionY = banner.positionY || 50;
-            }
-            
-            slidesHtml += `
-                <div class="slider-slide ${index === 0 ? 'active' : ''}" data-index="${index}">
-                    <div class="banner-image-container">
-                        <img src="${bannerUrl}" alt="Banner ${index + 1}" 
-                             style="object-position: ${positionX}% ${positionY}%;"
-                             onload="this.style.opacity='1'"
-                             style="opacity:0; transition:opacity 0.5s"
-                             onerror="this.src='https://via.placeholder.com/800x400/40a7e3/ffffff?text=Banner+${index+1}'; this.onload=null;">
-                    </div>
-                </div>
-            `;
-            
-            paginationHtml += `
-                <span class="${index === 0 ? 'active' : ''}" data-index="${index}"></span>
-            `;
-            
-            dotsHtml += `
-                <span class="slider-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
-            `;
-        });
-        
-        elements.sliderContainer.innerHTML = slidesHtml;
-        if (elements.sliderPagination) elements.sliderPagination.innerHTML = paginationHtml;
-        if (elements.sliderDots) elements.sliderDots.innerHTML = dotsHtml;
-        
-        document.querySelectorAll('.slider-slide img').forEach(img => {
-            if (img.complete) {
-                img.style.opacity = '1';
-            }
-        });
-        
-        setupBannerEvents(banners.length);
-    }
-
-    function setupBannerEvents(totalSlides) {
-        if (totalSlides <= 1) {
-            if (elements.sliderPrev) elements.sliderPrev.style.display = 'none';
-            if (elements.sliderNext) elements.sliderNext.style.display = 'none';
-            if (elements.sliderPagination) elements.sliderPagination.style.display = 'none';
-            return;
-        }
-        
-        if (elements.sliderPrev) {
-            elements.sliderPrev.addEventListener('click', () => {
-                const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
-                goToSlide(prevIndex);
-                resetAutoSlide();
-            });
-        }
-        
-        if (elements.sliderNext) {
-            elements.sliderNext.addEventListener('click', () => {
-                const nextIndex = (currentBannerIndex + 1) % totalSlides;
-                goToSlide(nextIndex);
-                resetAutoSlide();
-            });
-        }
-        
-        if (elements.sliderPagination) {
-            elements.sliderPagination.querySelectorAll('span').forEach(dot => {
-                dot.addEventListener('click', () => {
-                    const index = parseInt(dot.dataset.index);
-                    goToSlide(index);
-                    resetAutoSlide();
+    // ===== MOUSE INTERACTION EFFECTS =====
+    const MouseEffects = {
+        init: () => {
+            document.addEventListener('mousemove', (e) => {
+                State.mouseX = e.clientX;
+                State.mouseY = e.clientY;
+                
+                // Update glow effects
+                document.querySelectorAll('.glow-effect, .crystal-panel, .crystal-3d-btn').forEach(el => {
+                    const rect = el.getBoundingClientRect();
+                    if (
+                        e.clientX >= rect.left &&
+                        e.clientX <= rect.right &&
+                        e.clientY >= rect.top &&
+                        e.clientY <= rect.bottom
+                    ) {
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        el.style.setProperty('--x', x);
+                        el.style.setProperty('--y', y);
+                    }
                 });
             });
-        }
-        
-        setupBannerTouchEvents();
-        
-        startBannerAutoSlide(totalSlides);
-    }
 
-    function setupBannerTouchEvents() {
-        const slider = elements.sliderContainer;
-        if (!slider) return;
-        
-        slider.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-        }, { passive: true });
-        
-        slider.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
-        }, { passive: true });
-        
-        let mouseDown = false;
-        let mouseStartX = 0;
-        
-        slider.addEventListener('mousedown', (e) => {
-            mouseDown = true;
-            mouseStartX = e.screenX;
-            e.preventDefault();
-        });
-        
-        slider.addEventListener('mousemove', (e) => {
-            if (!mouseDown) return;
-            e.preventDefault();
-        });
-        
-        slider.addEventListener('mouseup', (e) => {
-            if (!mouseDown) return;
-            const mouseEndX = e.screenX;
-            const diff = mouseEndX - mouseStartX;
+            // 3D Tilt Effect
+            document.querySelectorAll('.category-card, .popular-product-card, .promo-card').forEach(el => {
+                el.addEventListener('mousemove', MouseEffects.handleTilt);
+                el.addEventListener('mouseleave', MouseEffects.resetTilt);
+            });
+        },
+
+        handleTilt: (e) => {
+            const el = e.currentTarget;
+            const rect = el.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
             
-            if (Math.abs(diff) > 50) {
-                const slides = document.querySelectorAll('.slider-slide');
-                const totalSlides = slides.length;
-                
-                if (diff > 0) {
-                    const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
-                    goToSlide(prevIndex);
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            const rotateX = (y - centerY) / 20;
+            const rotateY = (centerX - x) / 20;
+            
+            el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-5px)`;
+        },
+
+        resetTilt: (e) => {
+            const el = e.currentTarget;
+            el.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0)';
+        }
+    };
+
+    // ===== BANNER SLIDER =====
+    const BannerSlider = {
+        init: (banners) => {
+            if (!DOM.sliderContainer || !banners || banners.length === 0) {
+                if (DOM.bannerSlider) DOM.bannerSlider.style.display = 'none';
+                return;
+            }
+
+            DOM.bannerSlider.style.display = 'block';
+            State.banners = banners;
+            State.currentBannerIndex = 0;
+
+            BannerSlider.render();
+            BannerSlider.setupEvents();
+            BannerSlider.startAutoSlide();
+        },
+
+        render: () => {
+            const banners = State.banners;
+            let slidesHtml = '';
+            let paginationHtml = '';
+            let dotsHtml = '';
+
+            banners.forEach((banner, index) => {
+                let bannerUrl = '';
+                let positionX = 50;
+                let positionY = 50;
+
+                if (typeof banner === 'string') {
+                    bannerUrl = banner;
                 } else {
-                    const nextIndex = (currentBannerIndex + 1) % totalSlides;
-                    goToSlide(nextIndex);
+                    bannerUrl = banner.url || '';
+                    positionX = banner.positionX || banner.position || 50;
+                    positionY = banner.positionY || 50;
                 }
-                resetAutoSlide();
-            }
-            
-            mouseDown = false;
-        });
-        
-        slider.addEventListener('mouseleave', () => {
-            mouseDown = false;
-        });
-    }
 
-    function handleSwipe() {
-        const diff = touchEndX - touchStartX;
-        const slides = document.querySelectorAll('.slider-slide');
-        const totalSlides = slides.length;
-        
-        if (Math.abs(diff) > 50) {
-            if (diff > 0) {
-                const prevIndex = (currentBannerIndex - 1 + totalSlides) % totalSlides;
-                goToSlide(prevIndex);
-            } else {
-                const nextIndex = (currentBannerIndex + 1) % totalSlides;
-                goToSlide(nextIndex);
-            }
-            resetAutoSlide();
-        }
-    }
+                slidesHtml += `
+                    <div class="slider-slide ${index === 0 ? 'active' : ''}" data-index="${index}">
+                        <div class="banner-image-container">
+                            <img src="${bannerUrl}" alt="Banner ${index + 1}" 
+                                 style="object-position: ${positionX}% ${positionY}%;"
+                                 onload="this.style.opacity='1'"
+                                 style="opacity:0; transition:opacity 0.5s"
+                                 onerror="this.src='https://via.placeholder.com/1280x720/40a7e3/ffffff?text=Banner+${index+1}'; this.onload=null;">
+                        </div>
+                    </div>
+                `;
 
-    function startBannerAutoSlide(totalSlides) {
-        if (bannerInterval) clearInterval(bannerInterval);
-        if (totalSlides <= 1) return;
-        
-        bannerInterval = setInterval(() => {
-            const nextIndex = (currentBannerIndex + 1) % totalSlides;
-            goToSlide(nextIndex);
-        }, 5000);
-    }
+                paginationHtml += `
+                    <span class="${index === 0 ? 'active' : ''}" data-index="${index}"></span>
+                `;
 
-    function resetAutoSlide() {
-        if (bannerInterval) {
-            clearInterval(bannerInterval);
-            const slides = document.querySelectorAll('.slider-slide');
-            startBannerAutoSlide(slides.length);
-        }
-    }
+                dotsHtml += `
+                    <span class="slider-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
+                `;
+            });
 
-    function goToSlide(index) {
-        const slides = document.querySelectorAll('.slider-slide');
-        const paginationSpans = elements.sliderPagination?.querySelectorAll('span');
-        const dots = document.querySelectorAll('.slider-dot');
-        
-        if (!slides.length) return;
-        
-        slides.forEach(slide => slide.classList.remove('active'));
-        slides[index].classList.add('active');
-        
-        if (paginationSpans) {
-            paginationSpans.forEach(dot => dot.classList.remove('active'));
-            paginationSpans[index]?.classList.add('active');
-        }
-        
-        if (dots.length) {
-            dots.forEach(dot => dot.classList.remove('active'));
-            dots[index]?.classList.add('active');
-        }
-        
-        currentBannerIndex = index;
-    }
+            DOM.sliderContainer.innerHTML = slidesHtml;
+            if (DOM.sliderPagination) DOM.sliderPagination.innerHTML = paginationHtml;
+            if (DOM.sliderDots) DOM.sliderDots.innerHTML = dotsHtml;
 
-    // ==================== FUNGSI-FUNGSI RENDER PRODUK DAN LAYANAN (YANG DIPERBAIKI) ====================
-
-    // Fungsi untuk mengambil data produk terstruktur
-    async function fetchStructuredProducts(websiteId) {
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${websiteId}`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+            // Load images
+            document.querySelectorAll('.slider-slide img').forEach(img => {
+                if (img.complete) {
+                    img.style.opacity = '1';
                 }
             });
-            
-            if (response.success && response.data) {
-                structuredProducts = response.data;
-                return response.data;
-            }
-            return null;
-        } catch (error) {
-            console.error('❌ Error fetching structured products:', error);
-            return null;
-        }
-    }
+        },
 
-    // FUNGSI RENDER LAYANAN (KATEGORI)
-    function renderCategories() {
-        if (!elements.categoriesGrid) return;
-        
-        let html = '';
-        
-        // Coba ambil data dari websiteData?.products (array biasa)
-        if (websiteData?.products && Array.isArray(websiteData.products) && websiteData.products.length > 0) {
-            // Kelompokkan produk berdasarkan kategori/layanan
-            const layananMap = new Map();
-            
-            websiteData.products.forEach(product => {
-                const kategori = product.category || 'Lainnya';
-                if (!layananMap.has(kategori)) {
-                    layananMap.set(kategori, {
-                        nama: kategori,
-                        count: 0,
-                        icon: product.category_icon || 'fa-tag'
+        setupEvents: () => {
+            if (State.banners.length <= 1) {
+                if (DOM.sliderPrev) DOM.sliderPrev.style.display = 'none';
+                if (DOM.sliderNext) DOM.sliderNext.style.display = 'none';
+                if (DOM.sliderPagination) DOM.sliderPagination.style.display = 'none';
+                return;
+            }
+
+            if (DOM.sliderPrev) {
+                DOM.sliderPrev.addEventListener('click', () => {
+                    BannerSlider.prev();
+                });
+            }
+
+            if (DOM.sliderNext) {
+                DOM.sliderNext.addEventListener('click', () => {
+                    BannerSlider.next();
+                });
+            }
+
+            if (DOM.sliderPagination) {
+                DOM.sliderPagination.querySelectorAll('span').forEach(dot => {
+                    dot.addEventListener('click', () => {
+                        const index = parseInt(dot.dataset.index);
+                        BannerSlider.goTo(index);
                     });
-                }
-                layananMap.get(kategori).count++;
+                });
+            }
+
+            // Touch events
+            BannerSlider.setupTouchEvents();
+        },
+
+        setupTouchEvents: () => {
+            if (!DOM.sliderContainer) return;
+
+            DOM.sliderContainer.addEventListener('touchstart', (e) => {
+                State.touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            DOM.sliderContainer.addEventListener('touchend', (e) => {
+                State.touchEndX = e.changedTouches[0].screenX;
+                BannerSlider.handleSwipe();
+            }, { passive: true });
+
+            // Mouse drag events
+            let mouseDown = false;
+            let mouseStartX = 0;
+
+            DOM.sliderContainer.addEventListener('mousedown', (e) => {
+                mouseDown = true;
+                mouseStartX = e.screenX;
+                e.preventDefault();
             });
-            
-            // Konversi ke array dan ambil 6 pertama
-            const layananList = Array.from(layananMap.values()).slice(0, 6);
-            
-            layananList.forEach(layanan => {
+
+            DOM.sliderContainer.addEventListener('mousemove', (e) => {
+                if (!mouseDown) return;
+                e.preventDefault();
+            });
+
+            DOM.sliderContainer.addEventListener('mouseup', (e) => {
+                if (!mouseDown) return;
+                const mouseEndX = e.screenX;
+                const diff = mouseEndX - mouseStartX;
+
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) {
+                        BannerSlider.prev();
+                    } else {
+                        BannerSlider.next();
+                    }
+                }
+
+                mouseDown = false;
+            });
+
+            DOM.sliderContainer.addEventListener('mouseleave', () => {
+                mouseDown = false;
+            });
+        },
+
+        handleSwipe: () => {
+            const diff = State.touchEndX - State.touchStartX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) {
+                    BannerSlider.prev();
+                } else {
+                    BannerSlider.next();
+                }
+            }
+        },
+
+        goTo: (index) => {
+            const slides = document.querySelectorAll('.slider-slide');
+            const paginationSpans = DOM.sliderPagination?.querySelectorAll('span');
+            const dots = document.querySelectorAll('.slider-dot');
+
+            if (!slides.length) return;
+
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[index].classList.add('active');
+
+            if (paginationSpans) {
+                paginationSpans.forEach(dot => dot.classList.remove('active'));
+                paginationSpans[index]?.classList.add('active');
+            }
+
+            if (dots.length) {
+                dots.forEach(dot => dot.classList.remove('active'));
+                dots[index]?.classList.add('active');
+            }
+
+            State.currentBannerIndex = index;
+        },
+
+        next: () => {
+            const nextIndex = (State.currentBannerIndex + 1) % State.banners.length;
+            BannerSlider.goTo(nextIndex);
+            BannerSlider.resetAutoSlide();
+        },
+
+        prev: () => {
+            const prevIndex = (State.currentBannerIndex - 1 + State.banners.length) % State.banners.length;
+            BannerSlider.goTo(prevIndex);
+            BannerSlider.resetAutoSlide();
+        },
+
+        startAutoSlide: () => {
+            if (State.bannerInterval) clearInterval(State.bannerInterval);
+            if (State.banners.length <= 1) return;
+
+            State.bannerInterval = setInterval(() => {
+                BannerSlider.next();
+            }, CONFIG.BANNER_AUTO_SLIDE_INTERVAL);
+        },
+
+        resetAutoSlide: () => {
+            if (State.bannerInterval) {
+                clearInterval(State.bannerInterval);
+                BannerSlider.startAutoSlide();
+            }
+        }
+    };
+
+    // ===== PROMO SLIDER =====
+    const PromoSlider = {
+        init: (promos) => {
+            State.promos = promos || [];
+            State.currentPromoIndex = 0;
+
+            if (!DOM.promoSliderTrack || State.promos.length === 0) {
+                if (DOM.promoSliderContainer) DOM.promoSliderContainer.style.display = 'none';
+                return;
+            }
+
+            DOM.promoSliderContainer.style.display = 'block';
+            PromoSlider.render();
+            PromoSlider.setupEvents();
+            PromoSlider.startAutoSlide();
+        },
+
+        render: () => {
+            let slidesHtml = '';
+            let dotsHtml = '';
+
+            State.promos.forEach((promo, index) => {
+                const expiryText = promo.never_end 
+                    ? '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tidak ada batas</span>'
+                    : `<span class="promo-expiry"><i class="fas fa-clock"></i> ${Utils.formatDate(promo.end_date, promo.end_time)}</span>`;
+
+                const statusClass = promo.active ? 'active' : 'inactive';
+                const statusText = promo.active ? 'Aktif' : 'Tidak Aktif';
+
+                slidesHtml += `
+                    <div class="promo-card glow-effect" data-index="${index}">
+                        <div class="promo-banner-wrapper">
+                            <img src="${promo.banner || 'https://via.placeholder.com/1280x720/40a7e3/ffffff?text=Promo'}" 
+                                 alt="${Utils.escapeHtml(promo.title)}"
+                                 onerror="this.src='https://via.placeholder.com/1280x720/40a7e3/ffffff?text=Promo';">
+                        </div>
+                        <div class="promo-content">
+                            <h3 class="promo-title">${Utils.escapeHtml(promo.title)}</h3>
+                            ${promo.description ? `<p class="promo-description">${Utils.escapeHtml(promo.description)}</p>` : ''}
+                            <div class="promo-meta">
+                                ${expiryText}
+                                <span class="promo-status ${statusClass}">
+                                    <i class="fas fa-${promo.active ? 'check-circle' : 'times-circle'}"></i> ${statusText}
+                                </span>
+                            </div>
+                            ${promo.notes ? `
+                                <div class="promo-notes">
+                                    <i class="fas fa-sticky-note"></i> ${Utils.escapeHtml(promo.notes)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+
+                dotsHtml += `
+                    <span class="promo-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
+                `;
+            });
+
+            DOM.promoSliderTrack.innerHTML = slidesHtml;
+            if (DOM.promoSliderDots) DOM.promoSliderDots.innerHTML = dotsHtml;
+
+            // Add tilt effects
+            document.querySelectorAll('.promo-card').forEach(card => {
+                card.addEventListener('mousemove', MouseEffects.handleTilt);
+                card.addEventListener('mouseleave', MouseEffects.resetTilt);
+            });
+        },
+
+        setupEvents: () => {
+            if (State.promos.length <= 1) {
+                if (DOM.promoSliderPrev) DOM.promoSliderPrev.style.display = 'none';
+                if (DOM.promoSliderNext) DOM.promoSliderNext.style.display = 'none';
+                if (DOM.promoSliderDots) DOM.promoSliderDots.style.display = 'none';
+                return;
+            }
+
+            if (DOM.promoSliderPrev) {
+                DOM.promoSliderPrev.addEventListener('click', () => {
+                    PromoSlider.prev();
+                });
+            }
+
+            if (DOM.promoSliderNext) {
+                DOM.promoSliderNext.addEventListener('click', () => {
+                    PromoSlider.next();
+                });
+            }
+
+            if (DOM.promoSliderDots) {
+                DOM.promoSliderDots.querySelectorAll('.promo-dot').forEach(dot => {
+                    dot.addEventListener('click', () => {
+                        const index = parseInt(dot.dataset.index);
+                        PromoSlider.goTo(index);
+                    });
+                });
+            }
+        },
+
+        goTo: (index) => {
+            if (!DOM.promoSliderTrack) return;
+
+            State.currentPromoIndex = index;
+            DOM.promoSliderTrack.style.transform = `translateX(-${index * 100}%)`;
+
+            document.querySelectorAll('.promo-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        },
+
+        next: () => {
+            const nextIndex = (State.currentPromoIndex + 1) % State.promos.length;
+            PromoSlider.goTo(nextIndex);
+            PromoSlider.resetAutoSlide();
+        },
+
+        prev: () => {
+            const prevIndex = (State.currentPromoIndex - 1 + State.promos.length) % State.promos.length;
+            PromoSlider.goTo(prevIndex);
+            PromoSlider.resetAutoSlide();
+        },
+
+        startAutoSlide: () => {
+            if (State.promoInterval) clearInterval(State.promoInterval);
+            if (State.promos.length <= 1) return;
+
+            State.promoInterval = setInterval(() => {
+                PromoSlider.next();
+            }, CONFIG.PROMO_AUTO_SLIDE_INTERVAL);
+        },
+
+        resetAutoSlide: () => {
+            if (State.promoInterval) {
+                clearInterval(State.promoInterval);
+                PromoSlider.startAutoSlide();
+            }
+        }
+    };
+
+    // ===== CATEGORIES RENDER =====
+    const Categories = {
+        render: (categories) => {
+            if (!DOM.categoriesGrid) return;
+
+            if (!categories || categories.length === 0) {
+                Categories.renderDummy();
+                return;
+            }
+
+            let html = '';
+            categories.slice(0, 6).forEach((category, index) => {
                 html += `
-                    <div class="category-card" data-layanan="${layanan.nama}">
+                    <div class="category-card glow-effect" data-category="${category.id || category.name}" style="animation-delay: ${index * 0.1}s">
                         <div class="category-icon">
-                            <i class="fas ${layanan.icon}"></i>
+                            ${category.icon ? 
+                                `<img src="${category.icon}" alt="${category.name}" style="width: 100%; height: 100%; object-fit: cover;">` : 
+                                `<i class="fas ${category.iconClass || 'fa-tag'}"></i>`
+                            }
                         </div>
                         <div class="category-info">
-                            <h4>${escapeHtml(layanan.nama)}</h4>
-                            <span><i class="fas fa-box"></i> ${layanan.count} Produk</span>
+                            <h4>${Utils.escapeHtml(category.name)}</h4>
+                            <span><i class="fas fa-box"></i> ${category.count || 0} Produk</span>
                         </div>
                     </div>
                 `;
             });
-            
-            elements.categoriesGrid.innerHTML = html;
-        } 
-        // Coba ambil dari API /api/products/all/{website_id} jika ada
-        else if (currentWebsite?.id) {
-            fetchStructuredProducts(currentWebsite.id).then(structuredData => {
-                if (structuredData && structuredData.length > 0) {
-                    renderStructuredCategories(structuredData);
-                } else {
-                    renderDummyCategories();
-                }
-            }).catch(() => {
-                renderDummyCategories();
-            });
-            return;
-        }
-        else {
-            renderDummyCategories();
-            return;
-        }
-        
-        // Event listener untuk klik kategori
-        document.querySelectorAll('.category-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const layanan = card.dataset.layanan || card.querySelector('h4').textContent;
-                showToast(`Layanan: ${layanan}`, 'info');
-            });
-        });
-    }
 
-    // Fungsi untuk render kategori dari data terstruktur
-    function renderStructuredCategories(structuredData) {
-        if (!elements.categoriesGrid) return;
-        
-        let html = '';
-        
-        // Ambil 6 layanan pertama
-        structuredData.slice(0, 6).forEach(layanan => {
-            const totalAplikasi = layanan.aplikasi?.length || 0;
-            const totalItems = layanan.aplikasi?.reduce((sum, app) => sum + (app.items?.length || 0), 0) || 0;
-            
-            html += `
-                <div class="category-card" data-layanan="${layanan.layanan_nama}">
-                    <div class="category-icon">
-                        ${layanan.layanan_gambar ? 
-                            `<img src="${layanan.layanan_gambar}" alt="${layanan.layanan_nama}" style="width: 100%; height: 100%; object-fit: cover;">` : 
-                            `<i class="fas fa-layer-group"></i>`
-                        }
-                    </div>
-                    <div class="category-info">
-                        <h4>${escapeHtml(layanan.layanan_nama)}</h4>
-                        <span><i class="fas fa-mobile-alt"></i> ${totalAplikasi} Aplikasi • ${totalItems} Item</span>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.categoriesGrid.innerHTML = html;
-        
-        document.querySelectorAll('.category-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const layanan = card.dataset.layanan || card.querySelector('h4').textContent;
-                showToast(`Layanan: ${layanan}`, 'info');
-            });
-        });
-    }
+            DOM.categoriesGrid.innerHTML = html;
+            Categories.setupEvents();
+        },
 
-    // Fungsi untuk render dummy categories
-    function renderDummyCategories() {
-        if (!elements.categoriesGrid) return;
-        
-        const dummyLayanan = [
-            { nama: 'Premium Apps', icon: 'fa-crown', count: 12 },
-            { nama: 'Game Voucher', icon: 'fa-gamepad', count: 24 },
-            { nama: 'Streaming', icon: 'fa-film', count: 8 },
-            { nama: 'Software', icon: 'fa-code', count: 15 },
-            { nama: 'Top Up Games', icon: 'fa-diamond', count: 32 },
-            { nama: 'E-Book', icon: 'fa-book', count: 45 }
-        ];
-        
-        let html = '';
-        dummyLayanan.forEach(layanan => {
-            html += `
-                <div class="category-card">
-                    <div class="category-icon">
-                        <i class="fas ${layanan.icon}"></i>
-                    </div>
-                    <div class="category-info">
-                        <h4>${layanan.nama}</h4>
-                        <span><i class="fas fa-box"></i> ${layanan.count} Produk</span>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.categoriesGrid.innerHTML = html;
-    }
-
-    // FUNGSI RENDER PRODUK TERLARIS
-    function renderPopularProducts() {
-        if (!elements.popularProducts) return;
-        
-        let productsToRender = [];
-        
-        // Coba dari websiteData.products
-        if (websiteData?.products && Array.isArray(websiteData.products) && websiteData.products.length > 0) {
-            productsToRender = [...websiteData.products]
-                .sort((a, b) => (b.sold || 0) - (a.sold || 0))
-                .slice(0, 6)
-                .map(p => ({
-                    id: p.id,
-                    nama: p.name,
-                    aplikasi: p.category || 'Aplikasi',
-                    icon: 'fa-box',
-                    item_count: p.stock || 0,
-                    terjual: p.sold || 0,
-                    harga: p.price || 25000,
-                    gambar: p.image
-                }));
-        }
-        
-        // Jika masih kosong, coba dari structured data
-        if (productsToRender.length === 0 && currentWebsite?.id) {
-            fetchStructuredProducts(currentWebsite.id).then(structuredData => {
-                if (structuredData && structuredData.length > 0) {
-                    const allItems = [];
-                    structuredData.forEach(layanan => {
-                        layanan.aplikasi?.forEach(aplikasi => {
-                            aplikasi.items?.forEach(item => {
-                                allItems.push({
-                                    id: item.id,
-                                    nama: item.item_nama,
-                                    aplikasi: aplikasi.aplikasi_nama,
-                                    icon: 'fa-box',
-                                    item_count: 1,
-                                    terjual: item.terjual || 0,
-                                    harga: item.item_harga || 0,
-                                    gambar: aplikasi.aplikasi_gambar || layanan.layanan_gambar
-                                });
-                            });
-                        });
-                    });
-                    
-                    const topItems = allItems
-                        .sort((a, b) => b.terjual - a.terjual)
-                        .slice(0, 6);
-                    
-                    renderPopularProductsGrid(topItems);
-                } else {
-                    renderDummyPopularProducts();
-                }
-            }).catch(() => {
-                renderDummyPopularProducts();
-            });
-            return;
-        }
-        
-        if (productsToRender.length === 0) {
-            renderDummyPopularProducts();
-        } else {
-            renderPopularProductsGrid(productsToRender);
-        }
-    }
-
-    function renderPopularProductsGrid(products) {
-        if (!elements.popularProducts) return;
-        
-        let html = '';
-        products.forEach(product => {
-            const icon = product.icon || 'fa-box';
-            const gambar = product.gambar || `https://via.placeholder.com/120x80/40a7e3/ffffff?text=${encodeURIComponent(product.nama)}`;
-            
-            html += `
-                <div class="popular-product-card" data-id="${product.id}">
-                    <div class="popular-product-image">
-                        <img src="${gambar}" alt="${escapeHtml(product.nama)}" 
-                             onerror="this.src='https://via.placeholder.com/120x80/40a7e3/ffffff?text=Product';">
-                    </div>
-                    <div class="popular-product-info">
-                        <h3><i class="fas ${icon}"></i> ${escapeHtml(product.nama)}</h3>
-                        <div class="popular-product-desc">
-                            <i class="fas fa-mobile-alt"></i> ${escapeHtml(product.aplikasi || 'Aplikasi')}
-                        </div>
-                        <div class="popular-product-stats">
-                            <span><i class="fas fa-box"></i> ${product.item_count || 0} item</span>
-                            <span><i class="fas fa-shopping-bag"></i> ${product.terjual || 0} terjual</span>
-                        </div>
-                        <div class="popular-product-price">
-                            Mulai ${formatPrice(product.harga || 25000)}
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.popularProducts.innerHTML = html;
-        
-        document.querySelectorAll('.popular-product-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const productId = card.dataset.id;
-                if (productId) {
-                    openProductModal(parseInt(productId));
-                }
-            });
-        });
-    }
-
-    function renderDummyPopularProducts() {
-        const dummyProducts = [
-            { 
-                id: 1, 
-                nama: 'Canva Premium', 
-                aplikasi: 'Canva',
-                icon: 'fa-paint-brush',
-                item_count: 28, 
-                terjual: 156,
-                harga: 25000,
-                gambar: 'https://via.placeholder.com/120x80/40a7e3/ffffff?text=Canva'
-            },
-            { 
-                id: 2, 
-                nama: 'Netflix 4K', 
-                aplikasi: 'Netflix',
-                icon: 'fa-film',
-                item_count: 15, 
-                terjual: 324,
-                harga: 45000,
-                gambar: 'https://via.placeholder.com/120x80/e50914/ffffff?text=Netflix'
-            },
-            { 
-                id: 3, 
-                nama: 'Spotify Premium', 
-                aplikasi: 'Spotify',
-                icon: 'fa-music',
-                item_count: 42, 
-                terjual: 567,
-                harga: 35000,
-                gambar: 'https://via.placeholder.com/120x80/1DB954/ffffff?text=Spotify'
-            },
-            { 
-                id: 4, 
-                nama: 'Disney+ Hotstar', 
-                aplikasi: 'Disney+',
-                icon: 'fa-magic',
-                item_count: 19, 
-                terjual: 89,
-                harga: 40000,
-                gambar: 'https://via.placeholder.com/120x80/113CCF/ffffff?text=Disney'
-            },
-            { 
-                id: 5, 
-                nama: 'YouTube Premium', 
-                aplikasi: 'YouTube',
-                icon: 'fa-youtube',
-                item_count: 23, 
-                terjual: 432,
-                harga: 38000,
-                gambar: 'https://via.placeholder.com/120x80/FF0000/ffffff?text=YouTube'
-            },
-            { 
-                id: 6, 
-                nama: 'Microsoft 365', 
-                aplikasi: 'Office',
-                icon: 'fa-microsoft',
-                item_count: 11, 
-                terjual: 78,
-                harga: 55000,
-                gambar: 'https://via.placeholder.com/120x80/00A4EF/ffffff?text=Office'
-            }
-        ];
-        
-        renderPopularProductsGrid(dummyProducts);
-    }
-
-    // FUNGSI RENDER PROMO SLIDER
-    function renderPromoSlider() {
-        const sliderTrack = document.getElementById('promoSliderTrack');
-        const sliderDots = document.getElementById('promoSliderDots');
-        const prevBtn = document.getElementById('promoSliderPrev');
-        const nextBtn = document.getElementById('promoSliderNext');
-        
-        if (!sliderTrack) return;
-        
-        let promos = [];
-        let currentPromoIndex = 0;
-        
-        if (tampilanData?.promos && Array.isArray(tampilanData.promos) && tampilanData.promos.length > 0) {
-            promos = tampilanData.promos.filter(p => p.active !== false);
-        }
-        
-        if (promos.length === 0) {
-            promos = [
-                {
-                    id: 1,
-                    title: 'Promo Akhir Bulan',
-                    banner: 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo+1',
-                    description: 'Diskon hingga 50% untuk semua produk premium',
-                    end_date: '2024-12-31',
-                    never_end: false,
-                    notes: 'Minimal pembelian Rp 50.000'
-                },
-                {
-                    id: 2,
-                    title: 'Flash Sale',
-                    banner: 'https://via.placeholder.com/1280x760/ff6b6b/ffffff?text=Flash+Sale',
-                    description: 'Promo spesial 12.12',
-                    end_date: '2024-12-12',
-                    never_end: false,
-                    notes: 'Terbatas untuk 100 pembeli pertama'
-                },
-                {
-                    id: 3,
-                    title: 'Promo Spesial',
-                    banner: 'https://via.placeholder.com/1280x760/10b981/ffffff?text=Promo+Spesial',
-                    description: 'Bonus untuk member baru',
-                    never_end: true,
-                    notes: 'Khusus pengguna baru'
-                }
+        renderDummy: () => {
+            const dummyCategories = [
+                { name: 'Premium Apps', iconClass: 'fa-crown', count: 12 },
+                { name: 'Game Voucher', iconClass: 'fa-gamepad', count: 24 },
+                { name: 'Streaming', iconClass: 'fa-film', count: 8 },
+                { name: 'Software', iconClass: 'fa-code', count: 15 },
+                { name: 'Top Up Games', iconClass: 'fa-diamond', count: 32 },
+                { name: 'E-Book', iconClass: 'fa-book', count: 45 }
             ];
-        }
-        
-        let slidesHtml = '';
-        let dotsHtml = '';
-        
-        promos.forEach((promo, index) => {
-            const expiryText = promo.never_end 
-                ? '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tidak ada batas</span>'
-                : `<span class="promo-expiry"><i class="fas fa-clock"></i> ${formatDate(promo.end_date, promo.end_time)}</span>`;
-            
-            slidesHtml += `
-                <div class="promo-card" data-index="${index}">
-                    <div class="promo-banner-wrapper">
-                        <img src="${promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo'}" 
-                             alt="${escapeHtml(promo.title)}"
-                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo';">
-                    </div>
-                    <div class="promo-content">
-                        <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
-                        ${promo.description ? `<p class="promo-description">${escapeHtml(promo.description)}</p>` : ''}
-                        <div class="promo-meta">
-                            ${expiryText}
-                            <span class="promo-status active">
-                                <i class="fas fa-check-circle"></i> Aktif
-                            </span>
+
+            let html = '';
+            dummyCategories.forEach((cat, index) => {
+                html += `
+                    <div class="category-card glow-effect" style="animation-delay: ${index * 0.1}s">
+                        <div class="category-icon">
+                            <i class="fas ${cat.iconClass}"></i>
                         </div>
-                        ${promo.notes ? `
-                            <div class="promo-notes">
-                                <i class="fas fa-sticky-note"></i> ${escapeHtml(promo.notes)}
-                            </div>
-                        ` : ''}
+                        <div class="category-info">
+                            <h4>${cat.name}</h4>
+                            <span><i class="fas fa-box"></i> ${cat.count} Produk</span>
+                        </div>
                     </div>
-                </div>
-            `;
-            
-            dotsHtml += `<span class="promo-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`;
-        });
-        
-        sliderTrack.innerHTML = slidesHtml;
-        if (sliderDots) sliderDots.innerHTML = dotsHtml;
-        
-        if (promos.length > 1) {
-            const updateSlider = (index) => {
-                currentPromoIndex = index;
-                sliderTrack.style.transform = `translateX(-${currentPromoIndex * 100}%)`;
-                
-                document.querySelectorAll('.promo-dot').forEach((dot, i) => {
-                    dot.classList.toggle('active', i === currentPromoIndex);
-                });
-            };
-            
-            if (prevBtn) {
-                prevBtn.addEventListener('click', () => {
-                    currentPromoIndex = (currentPromoIndex - 1 + promos.length) % promos.length;
-                    updateSlider(currentPromoIndex);
-                });
-            }
-            
-            if (nextBtn) {
-                nextBtn.addEventListener('click', () => {
-                    currentPromoIndex = (currentPromoIndex + 1) % promos.length;
-                    updateSlider(currentPromoIndex);
-                });
-            }
-            
-            document.querySelectorAll('.promo-dot').forEach(dot => {
-                dot.addEventListener('click', () => {
-                    const index = parseInt(dot.dataset.index);
-                    updateSlider(index);
+                `;
+            });
+
+            DOM.categoriesGrid.innerHTML = html;
+            Categories.setupEvents();
+        },
+
+        setupEvents: () => {
+            document.querySelectorAll('.category-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const category = card.querySelector('h4')?.textContent || 'Kategori';
+                    Toast.info(`Layanan: ${category}`);
+                    Utils.vibrate();
                 });
             });
-        } else {
-            if (prevBtn) prevBtn.style.display = 'none';
-            if (nextBtn) nextBtn.style.display = 'none';
-            if (sliderDots) sliderDots.style.display = 'none';
         }
-    }
+    };
 
-    // FUNGSI RENDER ALL COMPONENTS (UPDATE)
-    function renderAllComponents() {
-        renderLogo();
-        
-        if (tampilanData?.banners && Array.isArray(tampilanData.banners) && tampilanData.banners.length > 0) {
-            renderBanners(tampilanData.banners);
-        } else {
-            if (elements.bannerSlider) elements.bannerSlider.style.display = 'none';
-        }
-        
-        renderCategories();
-        renderPopularProducts();
-        renderPromoSlider();
-        renderPaymentMethods();
-        
-        if (tampilanData?.colors) {
-            applyThemeColors(tampilanData.colors);
-        }
-        
-        if (tampilanData) {
-            applyFont({
-                family: tampilanData.font_family || 'Inter',
-                size: tampilanData.font_size || 14
+    // ===== POPULAR PRODUCTS RENDER =====
+    const PopularProducts = {
+        render: (products) => {
+            if (!DOM.popularProducts) return;
+
+            if (!products || products.length === 0) {
+                PopularProducts.renderDummy();
+                return;
+            }
+
+            let html = '';
+            products.slice(0, 6).forEach((product, index) => {
+                const icon = product.icon || 'fa-box';
+                const gambar = product.image || product.gambar || `https://via.placeholder.com/300x200/40a7e3/ffffff?text=${encodeURIComponent(product.name || product.item_nama)}`;
+
+                html += `
+                    <div class="popular-product-card glow-effect" data-id="${product.id}" style="animation-delay: ${index * 0.1}s">
+                        <div class="popular-product-image">
+                            <img src="${gambar}" alt="${Utils.escapeHtml(product.name || product.item_nama)}" 
+                                 loading="lazy"
+                                 onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=Product';">
+                        </div>
+                        <div class="popular-product-info">
+                            <h3><i class="fas ${icon}"></i> ${Utils.escapeHtml(product.name || product.item_nama || 'Produk')}</h3>
+                            <div class="popular-product-desc">
+                                <i class="fas fa-mobile-alt"></i> ${Utils.escapeHtml(product.category || product.aplikasi || 'Aplikasi')}
+                            </div>
+                            <div class="popular-product-stats">
+                                <span><i class="fas fa-box"></i> ${product.stock || product.item_count || 0}</span>
+                                <span><i class="fas fa-shopping-bag"></i> ${product.sold || product.terjual || 0} terjual</span>
+                            </div>
+                            <div class="popular-product-price">
+                                ${Utils.formatRupiah(product.price || product.harga || 25000)}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            DOM.popularProducts.innerHTML = html;
+            PopularProducts.setupEvents();
+        },
+
+        renderDummy: () => {
+            const dummyProducts = [
+                { id: 1, name: 'Canva Premium', category: 'Canva', icon: 'fa-paint-brush', stock: 28, sold: 156, price: 25000, image: 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Canva' },
+                { id: 2, name: 'Netflix 4K', category: 'Netflix', icon: 'fa-film', stock: 15, sold: 324, price: 45000, image: 'https://via.placeholder.com/300x200/e50914/ffffff?text=Netflix' },
+                { id: 3, name: 'Spotify Premium', category: 'Spotify', icon: 'fa-music', stock: 42, sold: 567, price: 35000, image: 'https://via.placeholder.com/300x200/1DB954/ffffff?text=Spotify' },
+                { id: 4, name: 'Disney+ Hotstar', category: 'Disney+', icon: 'fa-magic', stock: 19, sold: 89, price: 40000, image: 'https://via.placeholder.com/300x200/113CCF/ffffff?text=Disney' },
+                { id: 5, name: 'YouTube Premium', category: 'YouTube', icon: 'fa-youtube', stock: 23, sold: 432, price: 38000, image: 'https://via.placeholder.com/300x200/FF0000/ffffff?text=YouTube' },
+                { id: 6, name: 'Microsoft 365', category: 'Office', icon: 'fa-microsoft', stock: 11, sold: 78, price: 55000, image: 'https://via.placeholder.com/300x200/00A4EF/ffffff?text=Office' }
+            ];
+
+            PopularProducts.render(dummyProducts);
+        },
+
+        setupEvents: () => {
+            document.querySelectorAll('.popular-product-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const productId = card.dataset.id;
+                    if (productId) {
+                        ProductModal.open(parseInt(productId));
+                    }
+                });
             });
         }
-        
-        setTimeout(() => {
-            animateElements();
-        }, 100);
-    }
+    };
 
-    function renderProductGrid(container, productsToRender) {
-        if (!container) return;
-        
-        if (!productsToRender || productsToRender.length === 0) {
-            container.innerHTML = '<div class="empty-message">Tidak ada produk</div>';
-            return;
+    // ===== PAYMENT METHODS RENDER =====
+    const PaymentMethods = {
+        render: (tampilan) => {
+            if (!DOM.paymentIcons) return;
+
+            let html = '';
+            let hasPayments = false;
+
+            // Banks
+            if (tampilan?.banks && tampilan.banks.length > 0) {
+                tampilan.banks.forEach(bank => {
+                    if (bank.enabled) {
+                        hasPayments = true;
+                        html += `
+                            <div class="payment-icon glow-effect">
+                                <i class="fas fa-university"></i>
+                                <span>${bank.bank_name || 'Bank'}</span>
+                            </div>
+                        `;
+                    }
+                });
+            }
+
+            // E-Wallets
+            if (tampilan?.ewallets && tampilan.ewallets.length > 0) {
+                tampilan.ewallets.forEach(ewallet => {
+                    if (ewallet.enabled) {
+                        hasPayments = true;
+                        html += `
+                            <div class="payment-icon glow-effect">
+                                <i class="fas fa-wallet"></i>
+                                <span>${ewallet.provider || 'E-Wallet'}</span>
+                            </div>
+                        `;
+                    }
+                });
+            }
+
+            // QRIS
+            if (tampilan?.qris && tampilan.qris.enabled) {
+                hasPayments = true;
+                html += `
+                    <div class="payment-icon glow-effect">
+                        <i class="fas fa-qrcode"></i>
+                        <span>QRIS</span>
+                    </div>
+                `;
+            }
+
+            // Crypto
+            if (tampilan?.crypto && tampilan.crypto.enabled) {
+                hasPayments = true;
+                html += `
+                    <div class="payment-icon glow-effect">
+                        <i class="fab fa-bitcoin"></i>
+                        <span>Crypto</span>
+                    </div>
+                `;
+            }
+
+            if (!hasPayments) {
+                DOM.paymentIcons.innerHTML = '<div class="empty-message">Belum ada metode pembayaran</div>';
+            } else {
+                DOM.paymentIcons.innerHTML = html;
+            }
         }
-        
-        let html = '';
-        productsToRender.forEach(product => {
-            const discount = product.original_price ? 
-                Math.round(((product.original_price - product.price) / product.original_price) * 100) : 0;
+    };
+
+    // ===== PRODUCT MODAL =====
+    const ProductModal = {
+        open: (productId) => {
+            const product = State.products.find(p => p.id === productId) || 
+                           PopularProducts.getDummyProduct(productId);
             
-            const stars = generateStars(product.rating || 4.5);
+            if (!product) return;
+
+            State.currentProduct = product;
+            ProductModal.render(product);
             
-            html += `
-                <div class="product-card" data-id="${product.id}">
-                    <div class="product-image">
-                        <img src="${product.image || 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'}" 
-                             alt="${escapeHtml(product.name)}"
-                             loading="lazy"
+            DOM.productModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            Utils.vibrate();
+        },
+
+        render: (product) => {
+            if (!DOM.productDetail) return;
+
+            const stars = Utils.generateStars(product.rating || 4.5);
+            const variants = product.variants || [];
+
+            let variantsHtml = '';
+            if (variants.length > 0) {
+                variantsHtml = `
+                    <div class="product-variants">
+                        <h4><i class="fas fa-tags crystal-icon"></i> Pilih Varian</h4>
+                        <div class="variant-list">
+                `;
+
+                variants.forEach((variant, index) => {
+                    variantsHtml += `
+                        <button class="variant-btn ${index === 0 ? 'active' : ''}" data-variant='${JSON.stringify(variant)}'>
+                            <span class="variant-name">${Utils.escapeHtml(variant.name)}</span>
+                            <span class="variant-price">${Utils.formatRupiah(variant.price)}</span>
+                        </button>
+                    `;
+                });
+
+                variantsHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            const productHtml = `
+                <div class="product-detail-images">
+                    <div class="main-image glow-effect">
+                        <img src="${product.image || 'https://via.placeholder.com/500x500/40a7e3/ffffff?text=Product'}" 
+                             alt="${Utils.escapeHtml(product.name)}" 
+                             id="mainProductImage"
                              onload="this.style.opacity='1'"
                              style="opacity:0; transition:opacity 0.3s"
-                             onerror="this.src='https://via.placeholder.com/300x200/40a7e3/ffffff?text=No+Image'; this.onload=null;">
-                        <div class="product-badges">
-                            ${discount > 0 ? `<span class="product-discount">-${discount}%</span>` : ''}
-                            ${product.stock <= 0 ? '<span class="product-soldout">Habis</span>' : ''}
-                        </div>
+                             onerror="this.src='https://via.placeholder.com/500x500/40a7e3/ffffff?text=Product'; this.onload=null;">
                     </div>
-                    <div class="product-info">
-                        <h3>${escapeHtml(product.name)}</h3>
-                        <p class="product-desc">${escapeHtml(product.description ? product.description.substring(0, 40) + '...' : 'Produk berkualitas')}</p>
-                        <div class="product-price">
-                            <span class="price">${formatPrice(product.price)}</span>
-                            ${product.original_price ? 
-                                `<span class="original-price">${formatPrice(product.original_price)}</span>` : ''}
+                    ${product.images && product.images.length > 0 ? `
+                        <div class="thumbnail-images">
+                            ${product.images.map((img, i) => 
+                                `<img src="${img}" alt="Thumb ${i+1}" onclick="window.website.setMainImage('${img}', this)" 
+                                      onerror="this.style.display='none';">`
+                            ).join('')}
                         </div>
-                        <div class="product-meta">
-                            <span class="rating">
-                                ${stars} ${product.rating || 0}
-                            </span>
-                            <span class="sold">
-                                <i class="fas fa-shopping-bag"></i> ${product.sold || 0} terjual
-                            </span>
+                    ` : ''}
+                </div>
+                <div class="product-detail-info">
+                    <h2>${Utils.escapeHtml(product.name)}</h2>
+                    <div class="product-rating">
+                        <div class="stars">
+                            ${stars}
                         </div>
-                        <button class="btn-add-cart" onclick="event.stopPropagation(); window.website.addToCart(${product.id})">
+                        <span>${product.rating || 4.5} (${product.reviews || 0} ulasan)</span>
+                    </div>
+                    <div class="product-price-detail">
+                        <span class="current-price">${Utils.formatRupiah(product.price)}</span>
+                        ${product.original_price ? 
+                            `<span class="old-price">${Utils.formatRupiah(product.original_price)}</span>
+                             <span class="discount-badge">-${Math.round(((product.original_price - product.price) / product.original_price) * 100)}%</span>` 
+                            : ''}
+                    </div>
+                    <div class="product-stock">
+                        <i class="fas fa-cubes crystal-icon"></i>
+                        <span>Stok: <strong>${product.stock || 0}</strong></span>
+                        <span class="sold-count"><i class="fas fa-shopping-bag"></i> ${product.sold || 0} terjual</span>
+                    </div>
+                    <div class="product-description">
+                        <h4><i class="fas fa-align-left crystal-icon"></i> Deskripsi</h4>
+                        <p>${Utils.escapeHtml(product.description || 'Produk berkualitas dengan harga terbaik. Dapatkan sekarang juga!')}</p>
+                    </div>
+                    ${variantsHtml}
+                    <div class="product-notes">
+                        <h4><i class="fas fa-sticky-note crystal-icon"></i> Catatan</h4>
+                        <p>${Utils.escapeHtml(product.notes || 'Pastikan data yang dimasukkan benar.')}</p>
+                    </div>
+                    <div class="product-actions-detail">
+                        <div class="quantity-selector">
+                            <button class="qty-btn" id="detailQtyMinus">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <input type="number" id="detailQty" value="1" min="1" max="${product.stock || 999}">
+                            <button class="qty-btn" id="detailQtyPlus">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <button class="btn-add-to-cart" id="detailAddToCart">
                             <i class="fas fa-cart-plus"></i>
                             <span>Tambah ke Keranjang</span>
                         </button>
+                        <button class="btn-buy-now" id="detailBuyNow">
+                            <i class="fas fa-bolt"></i>
+                            Beli Sekarang
+                        </button>
                     </div>
                 </div>
             `;
-        });
-        
-        container.innerHTML = html;
-        
-        const imageObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    img.src = img.dataset.src || img.src;
-                    img.classList.add('loaded');
-                    observer.unobserve(img);
-                }
-            });
-        });
-        
-        document.querySelectorAll('.product-image img').forEach(img => {
-            imageObserver.observe(img);
-        });
-        
-        document.querySelectorAll('.product-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const productId = card.dataset.id;
-                if (productId) {
-                    openProductModal(parseInt(productId));
-                }
-            });
-        });
-    }
 
-    function generateStars(rating) {
-        const fullStars = Math.floor(rating);
-        const halfStar = rating % 1 >= 0.5;
-        const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-        
-        let stars = '';
-        for (let i = 0; i < fullStars; i++) {
-            stars += '<i class="fas fa-star"></i>';
-        }
-        if (halfStar) {
-            stars += '<i class="fas fa-star-half-alt"></i>';
-        }
-        for (let i = 0; i < emptyStars; i++) {
-            stars += '<i class="far fa-star"></i>';
-        }
-        
-        return stars;
-    }
+            DOM.productDetail.innerHTML = productHtml;
+            ProductModal.setupEvents(product);
+        },
 
-    function formatDate(dateString, timeString) {
-        if (!dateString) return 'Tanpa batas waktu';
-        try {
-            const date = new Date(dateString + 'T' + (timeString || '00:00'));
-            return date.toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+        setupEvents: (product) => {
+            // Variant selection
+            document.querySelectorAll('.variant-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
             });
-        } catch (e) {
-            return dateString;
-        }
-    }
 
-    function getDummyProducts() {
-        return [
-            {
-                id: 1,
-                name: 'Paket Premium 1 Bulan',
-                description: 'Akses penuh semua fitur premium',
-                price: 150000,
-                original_price: 200000,
-                image: 'https://via.placeholder.com/300x200/40a7e3/ffffff?text=Premium',
-                rating: 4.8,
-                sold: 156,
-                stock: 50
-            },
-            {
-                id: 2,
-                name: 'Top Up Diamond Game',
-                description: 'Diamond murah dan cepat',
-                price: 50000,
-                original_price: 65000,
-                image: 'https://via.placeholder.com/300x200/10b981/ffffff?text=Diamond',
-                rating: 4.9,
-                sold: 324,
-                stock: 200
-            },
-            {
-                id: 3,
-                name: 'Voucher Diskon 50%',
-                description: 'Untuk pembelian pertama',
-                price: 25000,
-                original_price: 50000,
-                image: 'https://via.placeholder.com/300x200/f59e0b/ffffff?text=Voucher',
-                rating: 4.7,
-                sold: 89,
-                stock: 25
-            },
-            {
-                id: 4,
-                name: 'Membership VIP',
-                description: 'Akses eksklusif konten VIP',
-                price: 300000,
-                original_price: 400000,
-                image: 'https://via.placeholder.com/300x200/8b5cf6/ffffff?text=VIP',
-                rating: 4.9,
-                sold: 67,
-                stock: 15
+            // Quantity controls
+            const qtyInput = document.getElementById('detailQty');
+            const qtyMinus = document.getElementById('detailQtyMinus');
+            const qtyPlus = document.getElementById('detailQtyPlus');
+
+            if (qtyMinus && qtyInput) {
+                qtyMinus.addEventListener('click', () => {
+                    let val = parseInt(qtyInput.value) || 1;
+                    if (val > 1) {
+                        qtyInput.value = val - 1;
+                    }
+                });
             }
-        ];
-    }
 
-    // ==================== FUNGSI CART ====================
-    function loadCart() {
-        if (!currentEndpoint) return;
-        try {
-            const savedCart = localStorage.getItem(`cart_${currentEndpoint}`);
+            if (qtyPlus && qtyInput) {
+                qtyPlus.addEventListener('click', () => {
+                    let val = parseInt(qtyInput.value) || 1;
+                    if (val < (product.stock || 999)) {
+                        qtyInput.value = val + 1;
+                    }
+                });
+            }
+
+            // Add to cart
+            const addToCartBtn = document.getElementById('detailAddToCart');
+            if (addToCartBtn) {
+                addToCartBtn.addEventListener('click', () => {
+                    const qty = parseInt(qtyInput?.value) || 1;
+                    const activeVariant = document.querySelector('.variant-btn.active');
+                    let variant = null;
+
+                    if (activeVariant && activeVariant.dataset.variant) {
+                        try {
+                            variant = JSON.parse(activeVariant.dataset.variant);
+                        } catch (e) {
+                            console.error('Error parsing variant', e);
+                        }
+                    }
+
+                    Cart.add(product.id, variant, qty);
+                });
+            }
+
+            // Buy now
+            const buyNowBtn = document.getElementById('detailBuyNow');
+            if (buyNowBtn) {
+                buyNowBtn.addEventListener('click', () => {
+                    const qty = parseInt(qtyInput?.value) || 1;
+                    const activeVariant = document.querySelector('.variant-btn.active');
+                    let variant = null;
+
+                    if (activeVariant && activeVariant.dataset.variant) {
+                        try {
+                            variant = JSON.parse(activeVariant.dataset.variant);
+                        } catch (e) {
+                            console.error('Error parsing variant', e);
+                        }
+                    }
+
+                    Cart.add(product.id, variant, qty);
+                    ProductModal.close();
+                    Cart.open();
+                });
+            }
+        },
+
+        close: () => {
+            DOM.productModal.classList.remove('active');
+            document.body.style.overflow = '';
+            State.currentProduct = null;
+        },
+
+        setMainImage: (src, element) => {
+            const mainImage = document.getElementById('mainProductImage');
+            if (mainImage) {
+                mainImage.src = src;
+                document.querySelectorAll('.thumbnail-images img').forEach(img => {
+                    img.classList.remove('active');
+                });
+                element.classList.add('active');
+            }
+        }
+    };
+
+    // ===== CART MANAGEMENT =====
+    const Cart = {
+        init: () => {
+            const savedCart = Utils.loadFromStorage('cart');
             if (savedCart) {
-                cart = JSON.parse(savedCart);
-            } else {
-                cart = [];
+                State.cart = savedCart;
             }
-        } catch (e) {
-            console.error('Error loading cart:', e);
-            cart = [];
-        }
-        
-        updateCartUI();
-    }
+            Cart.updateUI();
+        },
 
-    function saveCart() {
-        if (!currentEndpoint) return;
-        try {
-            localStorage.setItem(`cart_${currentEndpoint}`, JSON.stringify(cart));
-        } catch (e) {
-            console.error('Error saving cart:', e);
-        }
-    }
+        add: (productId, variant = null, quantity = 1) => {
+            const product = State.products.find(p => p.id === productId) || 
+                           PopularProducts.getDummyProduct(productId);
+            
+            if (!product) return;
 
-    function addToCart(productId, variant = null, quantity = 1) {
-        const product = products.find(p => p.id === productId) || getDummyProducts().find(p => p.id === productId);
-        if (!product) return;
-        
-        if (product.stock <= 0) {
-            showToast('Stok habis', 'error');
-            return;
-        }
-        
-        const cartItem = {
-            id: productId,
-            name: product.name,
-            price: variant ? variant.price : product.price,
-            variant: variant ? variant.name : null,
-            quantity: quantity,
-            image: product.image,
-            maxStock: product.stock
-        };
-        
-        const existingIndex = cart.findIndex(item => 
-            item.id === productId && item.variant === cartItem.variant
-        );
-        
-        if (existingIndex >= 0) {
-            const newQty = cart[existingIndex].quantity + quantity;
-            if (newQty > product.stock) {
-                showToast('Stok tidak mencukupi', 'error');
+            if (product.stock <= 0) {
+                Toast.error('Stok habis');
                 return;
             }
-            cart[existingIndex].quantity = newQty;
-        } else {
-            cart.push(cartItem);
-        }
-        
-        saveCart();
-        updateCartUI();
-        showToast('Produk ditambahkan ke keranjang', 'success');
-        vibrate(10);
-        
-        if (elements.cartBtn) {
-            elements.cartBtn.classList.add('pulse');
-            setTimeout(() => {
-                elements.cartBtn.classList.remove('pulse');
-            }, 300);
-        }
-    }
 
-    function removeFromCart(index) {
-        cart.splice(index, 1);
-        saveCart();
-        updateCartUI();
-        showToast('Produk dihapus dari keranjang', 'info');
-        vibrate(10);
-    }
+            const cartItem = {
+                id: productId,
+                name: product.name,
+                price: variant ? variant.price : product.price,
+                variant: variant ? variant.name : null,
+                quantity: quantity,
+                image: product.image,
+                maxStock: product.stock
+            };
 
-    function updateCartQuantity(index, newQuantity) {
-        if (newQuantity <= 0) {
-            removeFromCart(index);
-            return;
-        }
-        
-        const product = products.find(p => p.id === cart[index].id);
-        if (product && newQuantity <= product.stock) {
-            cart[index].quantity = newQuantity;
-            saveCart();
-            updateCartUI();
-        } else {
-            showToast('Stok tidak mencukupi', 'error');
-        }
-    }
+            const existingIndex = State.cart.findIndex(item => 
+                item.id === productId && item.variant === cartItem.variant
+            );
 
-    function updateCartUI() {
-        const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-        if (elements.cartBadge) {
-            elements.cartBadge.textContent = totalItems;
-            elements.cartBadge.style.display = totalItems > 0 ? 'flex' : 'none';
-        }
-        
-        if (elements.orderBadge) {
-            elements.orderBadge.textContent = totalItems;
-            elements.orderBadge.style.display = totalItems > 0 ? 'flex' : 'none';
-        }
-        
-        if (!elements.cartItems || !elements.cartEmpty || !elements.cartFooter) return;
-        
-        if (cart.length === 0) {
-            elements.cartItems.style.display = 'none';
-            elements.cartEmpty.style.display = 'flex';
-            elements.cartFooter.style.display = 'none';
-        } else {
-            elements.cartItems.style.display = 'block';
-            elements.cartEmpty.style.display = 'none';
-            elements.cartFooter.style.display = 'block';
-            
-            let cartHtml = '';
-            let total = 0;
-            
-            cart.forEach((item, index) => {
-                const itemTotal = item.price * item.quantity;
-                total += itemTotal;
-                
-                cartHtml += `
-                    <div class="cart-item" data-index="${index}" style="animation-delay: ${index * 0.1}s">
-                        <img src="${item.image || 'https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product'}" 
-                             alt="${escapeHtml(item.name)}" 
-                             onerror="this.src='https://via.placeholder.com/60x60/40a7e3/ffffff?text=Product';">
-                        <div class="cart-item-details">
-                            <h4>${escapeHtml(item.name)}</h4>
-                            ${item.variant ? `<p class="cart-item-variant">${escapeHtml(item.variant)}</p>` : ''}
-                            <div class="cart-item-price">${formatPrice(item.price)}</div>
-                            <div class="cart-item-quantity">
-                                <button class="qty-btn minus" onclick="window.website.updateCartQuantity(${index}, ${item.quantity - 1})">
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                                <span>${item.quantity}</span>
-                                <button class="qty-btn plus" onclick="window.website.updateCartQuantity(${index}, ${item.quantity + 1})">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <button class="cart-item-remove" onclick="window.website.removeFromCart(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
-            });
-            
-            elements.cartItems.innerHTML = cartHtml;
-            if (elements.cartTotal) {
-                elements.cartTotal.textContent = formatPrice(total);
+            if (existingIndex >= 0) {
+                const newQty = State.cart[existingIndex].quantity + quantity;
+                if (newQty > product.stock) {
+                    Toast.error('Stok tidak mencukupi');
+                    return;
+                }
+                State.cart[existingIndex].quantity = newQty;
+            } else {
+                State.cart.push(cartItem);
             }
-        }
-    }
 
-    // ==================== FUNGSI PRODUCT MODAL ====================
-    function openProductModal(productId) {
-        const product = products.find(p => p.id === productId) || getDummyProducts().find(p => p.id === productId);
-        if (!product) return;
-        
-        currentProduct = product;
-        
-        let variantsHtml = '';
-        if (product.variants && product.variants.length > 0) {
-            variantsHtml = `
-                <div class="product-variants">
-                    <h4>Pilih Varian</h4>
-                    <div class="variant-list">
-            `;
-            
-            product.variants.forEach((variant, index) => {
-                variantsHtml += `
-                    <button class="variant-btn ${index === 0 ? 'active' : ''}" data-variant='${JSON.stringify(variant)}'>
-                        <span class="variant-name">${escapeHtml(variant.name)}</span>
-                        <span class="variant-price">${formatPrice(variant.price)}</span>
-                    </button>
-                `;
-            });
-            
-            variantsHtml += `
-                    </div>
-                </div>
-            `;
-        }
-        
-        const stars = generateStars(product.rating || 4.5);
-        
-        const productHtml = `
-            <div class="product-detail-images">
-                <div class="main-image">
-                    <img src="${product.image || 'https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'}" 
-                         alt="${escapeHtml(product.name)}" 
-                         id="mainProductImage"
-                         onload="this.style.opacity='1'"
-                         style="opacity:0; transition:opacity 0.3s"
-                         onerror="this.src='https://via.placeholder.com/400x400/40a7e3/ffffff?text=Product'; this.onload=null;">
-                </div>
-                <div class="thumbnail-images">
-                    ${product.images ? product.images.map(img => 
-                        `<img src="${img}" alt="Thumb" onclick="document.getElementById('mainProductImage').src='${img}'; document.querySelectorAll('.thumbnail-images img').forEach(i => i.classList.remove('active')); this.classList.add('active');" 
-                              onerror="this.style.display='none';">`
-                    ).join('') : ''}
-                </div>
-            </div>
-            <div class="product-detail-info">
-                <h2>${escapeHtml(product.name)}</h2>
-                <div class="product-rating">
-                    <div class="stars">
-                        ${stars}
-                    </div>
-                    <span>${product.rating || 4.5} (${product.reviews || 0} ulasan)</span>
-                </div>
-                <div class="product-price-detail">
-                    <span class="current-price">${formatPrice(product.price)}</span>
-                    ${product.original_price ? 
-                        `<span class="old-price">${formatPrice(product.original_price)}</span>
-                         <span class="discount-badge">-${Math.round(((product.original_price - product.price) / product.original_price) * 100)}%</span>` 
-                        : ''}
-                </div>
-                <div class="product-stock">
-                    <i class="fas fa-cubes"></i>
-                    <span>Stok: <strong>${product.stock || 0}</strong></span>
-                    <span class="sold-count"><i class="fas fa-shopping-bag"></i> ${product.sold || 0} terjual</span>
-                </div>
-                <div class="product-description">
-                    <h4>Deskripsi</h4>
-                    <p>${escapeHtml(product.description || 'Produk berkualitas dengan harga terbaik. Dapatkan sekarang juga!')}</p>
-                </div>
-                ${variantsHtml}
-                <div class="product-notes">
-                    <h4>Catatan</h4>
-                    <p>${escapeHtml(product.notes || 'Pastikan data yang dimasukkan benar.')}</p>
-                </div>
-                <div class="product-actions-detail">
-                    <div class="quantity-selector">
-                        <button class="qty-btn" id="detailQtyMinus">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <input type="number" id="detailQty" value="1" min="1" max="${product.stock || 999}">
-                        <button class="qty-btn" id="detailQtyPlus">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <button class="btn-add-to-cart" id="detailAddToCart">
-                        <i class="fas fa-cart-plus"></i>
-                        <span>Tambah ke Keranjang</span>
-                    </button>
-                    <button class="btn-buy-now" id="detailBuyNow">
-                        <i class="fas fa-bolt"></i>
-                        Beli Sekarang
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        if (elements.productDetail) {
-            elements.productDetail.innerHTML = productHtml;
-        }
-        
-        elements.productModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-        
-        document.querySelectorAll('.variant-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
-        });
-        
-        const qtyInput = document.getElementById('detailQty');
-        const qtyMinus = document.getElementById('detailQtyMinus');
-        const qtyPlus = document.getElementById('detailQtyPlus');
-        
-        if (qtyMinus && qtyInput) {
-            qtyMinus.addEventListener('click', () => {
-                let val = parseInt(qtyInput.value) || 1;
-                if (val > 1) {
-                    qtyInput.value = val - 1;
-                }
-            });
-        }
-        
-        if (qtyPlus && qtyInput) {
-            qtyPlus.addEventListener('click', () => {
-                let val = parseInt(qtyInput.value) || 1;
-                if (val < (product.stock || 999)) {
-                    qtyInput.value = val + 1;
-                }
-            });
-        }
-        
-        const addToCartBtn = document.getElementById('detailAddToCart');
-        if (addToCartBtn) {
-            addToCartBtn.addEventListener('click', () => {
-                const qty = parseInt(qtyInput?.value) || 1;
-                const activeVariant = document.querySelector('.variant-btn.active');
-                let variant = null;
-                
-                if (activeVariant && activeVariant.dataset.variant) {
-                    try {
-                        variant = JSON.parse(activeVariant.dataset.variant);
-                    } catch (e) {
-                        console.error('Error parsing variant', e);
-                    }
-                }
-                
-                addToCart(product.id, variant, qty);
-                vibrate(10);
-            });
-        }
-        
-        const buyNowBtn = document.getElementById('detailBuyNow');
-        if (buyNowBtn) {
-            buyNowBtn.addEventListener('click', () => {
-                const qty = parseInt(qtyInput?.value) || 1;
-                const activeVariant = document.querySelector('.variant-btn.active');
-                let variant = null;
-                
-                if (activeVariant && activeVariant.dataset.variant) {
-                    try {
-                        variant = JSON.parse(activeVariant.dataset.variant);
-                    } catch (e) {
-                        console.error('Error parsing variant', e);
-                    }
-                }
-                
-                addToCart(product.id, variant, qty);
-                closeProductModal();
-                openCart();
-                vibrate(10);
-            });
-        }
-        
-        vibrate(10);
-    }
+            Utils.saveToStorage('cart', State.cart);
+            Cart.updateUI();
+            Toast.success('Produk ditambahkan ke keranjang');
+            Utils.vibrate();
 
-    function closeProductModal() {
-        if (elements.productModal) {
-            elements.productModal.classList.remove('active');
+            // Animate cart button
+            if (DOM.cartBtn) {
+                DOM.cartBtn.classList.add('pulse');
+                setTimeout(() => {
+                    DOM.cartBtn.classList.remove('pulse');
+                }, 300);
+            }
+        },
+
+        remove: (index) => {
+            State.cart.splice(index, 1);
+            Utils.saveToStorage('cart', State.cart);
+            Cart.updateUI();
+            Toast.info('Produk dihapus dari keranjang');
+            Utils.vibrate();
+        },
+
+        updateQuantity: (index, newQuantity) => {
+            if (newQuantity <= 0) {
+                Cart.remove(index);
+                return;
+            }
+
+            const product = State.products.find(p => p.id === State.cart[index].id);
+            if (product && newQuantity <= product.stock) {
+                State.cart[index].quantity = newQuantity;
+                Utils.saveToStorage('cart', State.cart);
+                Cart.updateUI();
+            } else {
+                Toast.error('Stok tidak mencukupi');
+            }
+        },
+
+        clear: () => {
+            State.cart = [];
+            Utils.saveToStorage('cart', State.cart);
+            Cart.updateUI();
+        },
+
+        updateUI: () => {
+            const totalItems = State.cart.reduce((sum, item) => sum + item.quantity, 0);
+            
+            if (DOM.cartBadge) {
+                DOM.cartBadge.textContent = totalItems;
+                DOM.cartBadge.style.display = totalItems > 0 ? 'flex' : 'none';
+            }
+
+            if (DOM.orderBadge) {
+                DOM.orderBadge.textContent = totalItems;
+                DOM.orderBadge.style.display = totalItems > 0 ? 'flex' : 'none';
+            }
+
+            if (!DOM.cartItems || !DOM.cartEmpty || !DOM.cartFooter) return;
+
+            if (State.cart.length === 0) {
+                DOM.cartItems.style.display = 'none';
+                DOM.cartEmpty.style.display = 'flex';
+                DOM.cartFooter.style.display = 'none';
+            } else {
+                DOM.cartItems.style.display = 'block';
+                DOM.cartEmpty.style.display = 'none';
+                DOM.cartFooter.style.display = 'block';
+
+                let cartHtml = '';
+                let total = 0;
+
+                State.cart.forEach((item, index) => {
+                    const itemTotal = item.price * item.quantity;
+                    total += itemTotal;
+
+                    cartHtml += `
+                        <div class="cart-item glow-effect" data-index="${index}" style="animation-delay: ${index * 0.1}s">
+                            <img src="${item.image || 'https://via.placeholder.com/80x80/40a7e3/ffffff?text=Product'}" 
+                                 alt="${Utils.escapeHtml(item.name)}" 
+                                 onerror="this.src='https://via.placeholder.com/80x80/40a7e3/ffffff?text=Product';">
+                            <div class="cart-item-details">
+                                <h4>${Utils.escapeHtml(item.name)}</h4>
+                                ${item.variant ? `<p class="cart-item-variant">${Utils.escapeHtml(item.variant)}</p>` : ''}
+                                <div class="cart-item-price">${Utils.formatRupiah(item.price)}</div>
+                                <div class="cart-item-quantity">
+                                    <button class="qty-btn minus" onclick="window.website.cartUpdateQuantity(${index}, ${item.quantity - 1})">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <span>${item.quantity}</span>
+                                    <button class="qty-btn plus" onclick="window.website.cartUpdateQuantity(${index}, ${item.quantity + 1})">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="cart-item-remove" onclick="window.website.cartRemove(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+
+                DOM.cartItems.innerHTML = cartHtml;
+                State.cartTotal = total;
+                if (DOM.cartTotal) {
+                    DOM.cartTotal.textContent = Utils.formatRupiah(total);
+                }
+            }
+        },
+
+        open: () => {
+            DOM.cartSidebar.classList.add('active');
+            DOM.sidebar.classList.remove('active');
+            document.body.style.overflow = 'hidden';
+            Utils.vibrate();
+        },
+
+        close: () => {
+            DOM.cartSidebar.classList.remove('active');
             document.body.style.overflow = '';
         }
-        currentProduct = null;
-    }
+    };
 
-    // ==================== FUNGSI CART SIDEBAR ====================
-    function openCart() {
-        if (elements.cartSidebar) {
-            elements.cartSidebar.classList.add('active');
-        }
-        if (elements.sidebar) {
-            elements.sidebar.classList.remove('active');
-        }
-        document.body.style.overflow = 'hidden';
-        vibrate(10);
-    }
-
-    function closeCart() {
-        if (elements.cartSidebar) {
-            elements.cartSidebar.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    }
-
-    // ==================== FUNGSI SIDEBAR ====================
-    function toggleSidebar() {
-        if (elements.sidebar) {
-            elements.sidebar.classList.toggle('active');
-            if (elements.sidebar.classList.contains('active')) {
+    // ===== SIDEBAR MANAGEMENT =====
+    const Sidebar = {
+        toggle: () => {
+            DOM.sidebar.classList.toggle('active');
+            if (DOM.sidebar.classList.contains('active')) {
                 document.body.style.overflow = 'hidden';
             } else {
                 document.body.style.overflow = '';
             }
-            vibrate(10);
-        }
-    }
+            Utils.vibrate();
+        },
 
-    function closeSidebar() {
-        if (elements.sidebar) {
-            elements.sidebar.classList.remove('active');
+        close: () => {
+            DOM.sidebar.classList.remove('active');
             document.body.style.overflow = '';
         }
-    }
+    };
 
-    // ==================== FUNGSI LOGIN ====================
-    function openLoginModal() {
-        if (elements.loginModal) {
-            elements.loginModal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-        vibrate(10);
-    }
-
-    function closeLoginModal() {
-        if (elements.loginModal) {
-            elements.loginModal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    }
-
-    function loginWithTelegram() {
-        if (window.Telegram?.WebApp) {
-            const tg = window.Telegram.WebApp;
-            if (tg.initDataUnsafe?.user) {
-                const user = tg.initDataUnsafe.user;
-                setUser(user);
-                showToast(`Selamat datang, ${user.first_name}!`, 'success');
-                closeLoginModal();
-            } else {
-                showToast('Silakan buka melalui Telegram', 'warning');
+    // ===== SEARCH MANAGEMENT =====
+    const Search = {
+        toggle: () => {
+            DOM.searchBar.classList.toggle('active');
+            if (DOM.searchBar.classList.contains('active')) {
+                DOM.searchInput.focus();
             }
-        } else {
+        },
+
+        close: () => {
+            DOM.searchBar.classList.remove('active');
+        },
+
+        init: () => {
+            const debouncedSearch = Utils.debounce((query) => {
+                if (query.length > 2) {
+                    Toast.info(`Mencari: ${query}`);
+                    // Implement search logic here
+                }
+            }, 500);
+
+            DOM.searchInput.addEventListener('input', (e) => {
+                debouncedSearch(e.target.value);
+            });
+
+            DOM.searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const query = e.target.value;
+                    if (query.length > 0) {
+                        Toast.info(`Mencari: ${query}`);
+                    }
+                }
+            });
+        }
+    };
+
+    // ===== USER MANAGEMENT =====
+    const User = {
+        init: () => {
+            const savedUser = Utils.loadFromStorage('user');
+            if (savedUser) {
+                User.setUser(savedUser);
+            }
+
+            if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+                const tgUser = window.Telegram.WebApp.initDataUnsafe.user;
+                User.setUser(tgUser);
+            }
+        },
+
+        setUser: (user) => {
+            State.currentUser = user;
+            State.isLoggedIn = true;
+
+            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
+            const username = user.username ? `@${user.username}` : '(no username)';
+
+            if (DOM.sidebarName) {
+                DOM.sidebarName.textContent = fullName;
+            }
+            if (DOM.sidebarUsername) {
+                DOM.sidebarUsername.textContent = username;
+            }
+            if (DOM.sidebarAvatar) {
+                const img = DOM.sidebarAvatar.querySelector('img');
+                if (img) {
+                    img.src = Utils.generateAvatarUrl(fullName);
+                }
+            }
+            if (DOM.profileVerified && user.is_premium) {
+                DOM.profileVerified.style.display = 'flex';
+            }
+            if (DOM.loginBtn) {
+                DOM.loginBtn.innerHTML = '<i class="fas fa-user"></i> Profile';
+            }
+
+            Utils.saveToStorage('user', user);
+        },
+
+        loginWithTelegram: () => {
+            if (window.Telegram?.WebApp) {
+                const tg = window.Telegram.WebApp;
+                if (tg.initDataUnsafe?.user) {
+                    const user = tg.initDataUnsafe.user;
+                    User.setUser(user);
+                    Toast.success(`Selamat datang, ${user.first_name}!`);
+                    LoginModal.close();
+                } else {
+                    Toast.warning('Silakan buka melalui Telegram');
+                }
+            } else {
+                const guestUser = {
+                    id: Date.now(),
+                    first_name: 'Guest',
+                    username: 'guest_user',
+                    is_premium: false
+                };
+                User.setUser(guestUser);
+                Toast.info('Login sebagai Guest');
+                LoginModal.close();
+            }
+        },
+
+        loginAsGuest: () => {
             const guestUser = {
                 id: Date.now(),
                 first_name: 'Guest',
-                username: 'guest_user',
+                username: `guest_${Math.floor(Math.random() * 1000)}`,
                 is_premium: false
             };
-            setUser(guestUser);
-            showToast('Login sebagai Guest', 'info');
-            closeLoginModal();
+            User.setUser(guestUser);
+            Toast.info('Lanjut sebagai Tamu');
+            LoginModal.close();
         }
-    }
+    };
 
-    function loginAsGuest() {
-        const guestUser = {
-            id: Date.now(),
-            first_name: 'Guest',
-            username: `guest_${Math.floor(Math.random() * 1000)}`,
-            is_premium: false
-        };
-        setUser(guestUser);
-        showToast('Lanjut sebagai Tamu', 'info');
-        closeLoginModal();
-    }
+    // ===== LOGIN MODAL =====
+    const LoginModal = {
+        open: () => {
+            DOM.loginModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            Utils.vibrate();
+        },
 
-    function setUser(user) {
-        currentUser = user;
-        
-        const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || 'User';
-        const username = user.username ? `@${user.username}` : '(no username)';
-        
-        if (elements.sidebarName) {
-            elements.sidebarName.textContent = fullName;
+        close: () => {
+            DOM.loginModal.classList.remove('active');
+            document.body.style.overflow = '';
         }
-        if (elements.sidebarUsername) {
-            elements.sidebarUsername.textContent = username;
+    };
+
+    // ===== CHECKOUT =====
+    const Checkout = {
+        open: () => {
+            if (State.cart.length === 0) {
+                Toast.warning('Keranjang belanja kosong');
+                return;
+            }
+
+            if (!State.isLoggedIn) {
+                LoginModal.open();
+                return;
+            }
+
+            Checkout.render();
+            DOM.checkoutModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        },
+
+        render: () => {
+            if (!DOM.checkoutBody) return;
+
+            let checkoutHtml = `
+                <div class="checkout-items">
+                    <h3><i class="fas fa-shopping-bag crystal-icon"></i> Ringkasan Belanja</h3>
+            `;
+
+            let total = 0;
+            State.cart.forEach(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+
+                checkoutHtml += `
+                    <div class="checkout-item">
+                        <span>${Utils.escapeHtml(item.name)} ${item.variant ? `(${Utils.escapeHtml(item.variant)})` : ''} x${item.quantity}</span>
+                        <span>${Utils.formatRupiah(itemTotal)}</span>
+                    </div>
+                `;
+            });
+
+            checkoutHtml += `
+                    <div class="checkout-total">
+                        <strong>Total</strong>
+                        <strong class="holographic-text">${Utils.formatRupiah(total)}</strong>
+                    </div>
+                </div>
+                <div class="checkout-payment">
+                    <h3><i class="fas fa-credit-card crystal-icon"></i> Metode Pembayaran</h3>
+                    <div class="payment-options">
+                        <label class="payment-option glow-effect">
+                            <input type="radio" name="payment" value="bank" checked>
+                            <i class="fas fa-university"></i>
+                            <span>Transfer Bank</span>
+                        </label>
+                        <label class="payment-option glow-effect">
+                            <input type="radio" name="payment" value="ewallet">
+                            <i class="fas fa-wallet"></i>
+                            <span>E-Wallet</span>
+                        </label>
+                        <label class="payment-option glow-effect">
+                            <input type="radio" name="payment" value="qris">
+                            <i class="fas fa-qrcode"></i>
+                            <span>QRIS</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn-secondary" id="cancelCheckoutBtn">Batal</button>
+                    <button class="btn-primary" id="processCheckoutBtn">
+                        <i class="fas fa-check"></i> Proses Pembayaran
+                    </button>
+                </div>
+            `;
+
+            DOM.checkoutBody.innerHTML = checkoutHtml;
+
+            document.getElementById('cancelCheckoutBtn')?.addEventListener('click', Checkout.close);
+            document.getElementById('processCheckoutBtn')?.addEventListener('click', Checkout.process);
+        },
+
+        process: () => {
+            const selectedPayment = document.querySelector('input[name="payment"]:checked');
+            if (!selectedPayment) {
+                Toast.warning('Pilih metode pembayaran');
+                return;
+            }
+
+            Toast.info('Memproses pesanan...');
+            
+            setTimeout(() => {
+                Checkout.close();
+                Cart.clear();
+                Cart.updateUI();
+                Toast.success('✅ Pesanan berhasil! Terima kasih telah berbelanja');
+                Utils.vibrate(30);
+            }, 2000);
+        },
+
+        close: () => {
+            DOM.checkoutModal.classList.remove('active');
+            document.body.style.overflow = '';
         }
-        if (elements.sidebarAvatar) {
-            const img = elements.sidebarAvatar.querySelector('img');
-            if (img) {
-                img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=80&background=40a7e3&color=fff`;
+    };
+
+    // ===== THEME MANAGEMENT =====
+    const Theme = {
+        apply: (tampilan) => {
+            if (!tampilan) return;
+
+            const root = document.documentElement;
+
+            // Colors
+            if (tampilan.colors) {
+                if (tampilan.colors.primary) root.style.setProperty('--primary-color', tampilan.colors.primary);
+                if (tampilan.colors.secondary) root.style.setProperty('--secondary-color', tampilan.colors.secondary);
+                if (tampilan.colors.background) root.style.setProperty('--bg-deep-space', tampilan.colors.background);
+                if (tampilan.colors.text) root.style.setProperty('--text-primary', tampilan.colors.text);
+                if (tampilan.colors.card) root.style.setProperty('--glass-bg', tampilan.colors.card);
+                if (tampilan.colors.accent) root.style.setProperty('--success-color', tampilan.colors.accent);
+            }
+
+            // Font
+            if (tampilan.font_family) {
+                root.style.setProperty('--font-family', tampilan.font_family);
+            }
+            if (tampilan.font_size) {
+                root.style.setProperty('--font-size', `${tampilan.font_size}px`);
+            }
+
+            // Logo
+            if (tampilan.logo && DOM.headerLogo) {
+                DOM.headerLogo.innerHTML = `
+                    <div class="logo-3d-small">
+                        <img src="${tampilan.logo}" alt="Logo" style="width: 100%; height: 100%; object-fit: contain; transform: rotate(-45deg);">
+                    </div>
+                    <span id="storeName">${tampilan.store_display_name || State.websiteData?.username || 'Toko Online'}</span>
+                `;
+            }
+
+            // Store name
+            if (tampilan.store_display_name) {
+                if (DOM.storeName) DOM.storeName.textContent = tampilan.store_display_name;
+                if (DOM.sidebarStoreName) DOM.sidebarStoreName.textContent = tampilan.store_display_name;
+                if (DOM.footerStoreName) DOM.footerStoreName.textContent = tampilan.store_display_name;
+                if (DOM.footerStoreName2) DOM.footerStoreName2.textContent = tampilan.store_display_name;
+            }
+
+            // Description
+            if (tampilan.description && DOM.footerDescription) {
+                DOM.footerDescription.textContent = tampilan.description;
+            }
+
+            // Contacts
+            if (tampilan.contact_whatsapp && DOM.contactWhatsApp) {
+                DOM.contactWhatsApp.textContent = tampilan.contact_whatsapp;
+            }
+            if (tampilan.contact_telegram && DOM.contactTelegram) {
+                DOM.contactTelegram.textContent = tampilan.contact_telegram;
             }
         }
-        if (elements.profileVerified && user.is_premium) {
-            elements.profileVerified.style.display = 'flex';
-        }
-        if (elements.loginBtn) {
-            elements.loginBtn.innerHTML = '<i class="fas fa-user"></i> Profile';
-        }
-        
+    };
+
+    // ===== INITIALIZATION =====
+    const init = async () => {
+        console.log('🏪 Crystal Store 3D - Initializing...');
+
+        // Initialize DOM cache
+        initializeDOMCache();
+
+        // Show loading
+        Loading.show('Memuat kristal 3D...');
+
         try {
-            localStorage.setItem(`user_${currentEndpoint}`, JSON.stringify(user));
-        } catch (e) {
-            console.error('Error saving user:', e);
-        }
-    }
-
-    function loadUser() {
-        if (!currentEndpoint) return;
-        try {
-            const savedUser = localStorage.getItem(`user_${currentEndpoint}`);
-            if (savedUser) {
-                const user = JSON.parse(savedUser);
-                setUser(user);
+            // Get endpoint
+            State.currentEndpoint = Utils.getEndpointFromUrl();
+            if (!State.currentEndpoint) {
+                Toast.error('Endpoint tidak valid. Gunakan ?store=nama-endpoint');
+                Loading.hide();
+                return;
             }
-        } catch (e) {
-            console.error('Error loading user', e);
-        }
-    }
 
-    // ==================== FUNGSI SEARCH ====================
-    function toggleSearch() {
-        if (elements.searchBar) {
-            elements.searchBar.classList.toggle('active');
-            if (elements.searchBar.classList.contains('active')) {
-                elements.searchInput.focus();
+            // Test connection
+            const isConnected = await API.testConnection();
+            if (!isConnected) {
+                Toast.warning('Mode offline - menggunakan data dummy');
             }
-        }
-    }
 
-    function setupSearch() {
-        if (!elements.searchInput) return;
-        
-        const debouncedSearch = debounce((query) => {
-            if (query.length > 2) {
-                showToast(`Mencari: ${query}`, 'info');
+            // Load website data
+            Loading.progress(20);
+            State.websiteData = await API.getWebsite(State.currentEndpoint);
+            
+            if (!State.websiteData) {
+                throw new Error('Website tidak ditemukan');
             }
-        }, 500);
-        
-        elements.searchInput.addEventListener('input', (e) => {
-            debouncedSearch(e.target.value);
+
+            // Load tampilan data
+            Loading.progress(40);
+            State.tampilanData = await API.getTampilan(State.websiteData.id);
+
+            // Load products
+            Loading.progress(60);
+            State.structuredProducts = await API.getStructuredProducts(State.websiteData.id);
+            
+            // Flatten products for easy access
+            if (State.structuredProducts) {
+                State.structuredProducts.forEach(layanan => {
+                    layanan.aplikasi?.forEach(aplikasi => {
+                        aplikasi.items?.forEach(item => {
+                            State.products.push({
+                                ...item,
+                                category: layanan.layanan_nama,
+                                aplikasi: aplikasi.aplikasi_nama,
+                                name: item.item_nama,
+                                price: item.item_harga,
+                                image: aplikasi.aplikasi_gambar || layanan.layanan_gambar,
+                                stock: item.item_stok?.length || 0,
+                                sold: item.terjual || 0
+                            });
+                        });
+                    });
+                });
+            }
+
+            // Load promos
+            Loading.progress(80);
+            State.promos = await API.getPromos(State.websiteData.id);
+
+            // Update UI
+            Loading.progress(90);
+            updateUI();
+            
+            // Render all components
+            renderAll();
+
+            // Initialize features
+            initFeatures();
+
+            // Hide loading with delay
+            setTimeout(() => {
+                Loading.hide();
+                Toast.success('Selamat datang di Toko 3D!');
+            }, 1000);
+
+        } catch (error) {
+            console.error('❌ Init error:', error);
+            Toast.error(error.message || 'Gagal memuat data');
+            Loading.hide();
+        }
+    };
+
+    // Initialize DOM cache
+    const initializeDOMCache = () => {
+        const elements = [
+            'loadingOverlay', 'dynamicTitle', 'dynamicDescription', 'dynamicKeywords',
+            'sidebar', 'sidebarClose', 'menuToggle', 'sidebarStoreName', 'sidebarAvatar',
+            'sidebarName', 'sidebarUsername', 'profileVerified', 'loginBtn', 'orderBadge',
+            'storeName', 'headerLogo', 'searchToggle', 'cartBtn', 'cartBadge',
+            'searchBar', 'searchInput', 'searchClose',
+            'bannerSlider', 'sliderContainer', 'sliderPrev', 'sliderNext',
+            'sliderPagination', 'sliderDots',
+            'categoriesGrid', 'popularProducts',
+            'promoSliderContainer', 'promoSliderTrack', 'promoSliderPrev', 'promoSliderNext', 'promoSliderDots',
+            'paymentIcons',
+            'footerDescription', 'contactWhatsApp', 'contactTelegram', 'contactEmail',
+            'footerStoreName', 'footerStoreName2', 'sidebarYear',
+            'cartSidebar', 'cartClose', 'cartItems', 'cartEmpty', 'cartFooter', 'cartTotal',
+            'shopNowBtn', 'checkoutBtn',
+            'productModal', 'checkoutModal', 'loginModal', 'closeProductModal',
+            'closeCheckoutModal', 'closeLoginModal', 'productDetail', 'checkoutBody',
+            'telegramLogin', 'guestLogin', 'toastContainer'
+        ];
+
+        elements.forEach(id => {
+            DOM[id] = document.getElementById(id);
         });
-        
-        elements.searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = e.target.value;
-                if (query.length > 0) {
-                    showToast(`Mencari: ${query}`, 'info');
-                }
-            }
-        });
-    }
+    };
 
-    // ==================== FUNGSI INIT ====================
-    async function init() {
-        console.log('🏪 Initializing Modern Website Store...');
-        
-        currentEndpoint = getEndpointFromUrl();
-        console.log('📍 Endpoint:', currentEndpoint);
-        
-        if (!currentEndpoint) {
-            showToast('Endpoint tidak valid. Gunakan ?store=nama-endpoint', 'error');
-            return;
+    // Update UI with data
+    const updateUI = () => {
+        // Title & Meta
+        if (DOM.dynamicTitle) {
+            DOM.dynamicTitle.textContent = State.tampilanData?.seo_title || 
+                                          State.websiteData?.settings?.title || 
+                                          'Toko Online 3D';
         }
+        if (DOM.dynamicDescription) {
+            DOM.dynamicDescription.content = State.tampilanData?.seo_description || 
+                                            State.websiteData?.settings?.description || 
+                                            'Toko online terpercaya dengan produk digital berkualitas';
+        }
+
+        // Store name
+        const storeName = State.tampilanData?.store_display_name || 
+                         State.websiteData?.username || 
+                         'Toko Online';
         
-        setupKeyboardHandler();
-        
-        await loadWebsiteData(currentEndpoint);
-        
-        loadCart();
-        loadUser();
-        
-        setupEventListeners();
-        setupSearch();
-        
+        if (DOM.storeName) DOM.storeName.textContent = storeName;
+        if (DOM.sidebarStoreName) DOM.sidebarStoreName.textContent = storeName;
+        if (DOM.footerStoreName) DOM.footerStoreName.textContent = storeName;
+        if (DOM.footerStoreName2) DOM.footerStoreName2.textContent = storeName;
+
+        // Footer
+        if (DOM.footerDescription) {
+            DOM.footerDescription.textContent = State.tampilanData?.description || 
+                                                State.websiteData?.settings?.description || 
+                                                'Toko online terpercaya sejak 2024 dengan ribuan produk digital berkualitas.';
+        }
+
+        // Contacts
+        if (DOM.contactWhatsApp) {
+            DOM.contactWhatsApp.textContent = State.tampilanData?.contact_whatsapp || 
+                                              State.websiteData?.settings?.contact?.whatsapp || 
+                                              '-';
+        }
+        if (DOM.contactTelegram) {
+            DOM.contactTelegram.textContent = State.tampilanData?.contact_telegram || 
+                                              State.websiteData?.settings?.contact?.telegram || 
+                                              '-';
+        }
+        if (DOM.contactEmail) {
+            DOM.contactEmail.textContent = State.websiteData?.email || 'support@example.com';
+        }
+
+        // Year
+        if (DOM.sidebarYear) {
+            DOM.sidebarYear.textContent = new Date().getFullYear();
+        }
+    };
+
+    // Render all components
+    const renderAll = () => {
+        // Apply theme
+        Theme.apply(State.tampilanData);
+
+        // Banners
+        if (State.tampilanData?.banners && State.tampilanData.banners.length > 0) {
+            BannerSlider.init(State.tampilanData.banners);
+        } else {
+            if (DOM.bannerSlider) DOM.bannerSlider.style.display = 'none';
+        }
+
+        // Categories
+        if (State.structuredProducts && State.structuredProducts.length > 0) {
+            const categories = State.structuredProducts.map(l => ({
+                id: l.layanan_id,
+                name: l.layanan_nama,
+                icon: l.layanan_gambar,
+                count: l.aplikasi?.length || 0
+            }));
+            Categories.render(categories);
+        } else {
+            Categories.renderDummy();
+        }
+
+        // Popular Products
+        if (State.products.length > 0) {
+            const popular = [...State.products]
+                .sort((a, b) => (b.sold || 0) - (a.sold || 0))
+                .slice(0, 6);
+            PopularProducts.render(popular);
+        } else {
+            PopularProducts.renderDummy();
+        }
+
+        // Promos
+        PromoSlider.init(State.promos);
+
+        // Payment Methods
+        PaymentMethods.render(State.tampilanData);
+
+        // Cart
+        Cart.init();
+
+        // User
+        User.init();
+    };
+
+    // Initialize features
+    const initFeatures = () => {
+        // Mouse effects
+        MouseEffects.init();
+
+        // Search
+        Search.init();
+
+        // Telegram WebApp
         if (window.Telegram?.WebApp) {
             const tg = window.Telegram.WebApp;
             tg.expand();
             tg.ready();
             tg.enableClosingConfirmation();
-            
-            if (tg.initDataUnsafe?.user && !currentUser) {
-                setUser(tg.initDataUnsafe.user);
-            }
-            
+
             if (tg.themeParams) {
                 const theme = tg.themeParams;
                 if (theme.bg_color) {
-                    document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
+                    document.documentElement.style.setProperty('--bg-deep-space', theme.bg_color);
                 }
                 if (theme.text_color) {
-                    document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
+                    document.documentElement.style.setProperty('--text-primary', theme.text_color);
                 }
                 if (theme.button_color) {
-                    document.documentElement.style.setProperty('--tg-button-color', theme.button_color);
+                    document.documentElement.style.setProperty('--primary-color', theme.button_color);
                 }
             }
         }
-        
-        console.log('✅ Modern Website initialized');
-    }
 
-    // ==================== SETUP KEYBOARD HANDLER ====================
-    function setupKeyboardHandler() {
-        function scrollToInput(input) {
-            const rect = input.getBoundingClientRect();
-            const windowHeight = window.innerHeight;
-            const keyboardHeight = windowHeight * 0.4;
-            
-            if (rect.bottom > windowHeight - keyboardHeight) {
-                const scrollY = window.scrollY + rect.bottom - (windowHeight - keyboardHeight) + 20;
-                window.scrollTo({ top: scrollY, behavior: 'smooth' });
-            }
-        }
-        
-        const modalInputs = document.querySelectorAll('.modal input, .modal textarea, .modal select');
-        
-        modalInputs.forEach(input => {
-            input.addEventListener('focus', () => {
-                setTimeout(() => {
-                    scrollToInput(input);
-                    
-                    const modal = input.closest('.modal');
-                    if (modal) {
-                        modal.classList.add('modal-with-input');
-                        const modalContent = modal.querySelector('.modal-content');
-                        if (modalContent) {
-                            modalContent.style.maxHeight = '70vh';
-                            modalContent.style.overflowY = 'auto';
-                        }
-                    }
-                }, 300);
-            });
-            
-            input.addEventListener('blur', () => {
-                const modal = input.closest('.modal');
-                if (modal) {
-                    modal.classList.remove('modal-with-input');
-                }
-            });
-        });
-        
-        document.addEventListener('touchstart', (e) => {
-            const activeElement = document.activeElement;
-            if (!activeElement) return;
-            
-            const isInput = e.target.tagName === 'INPUT' || 
-                           e.target.tagName === 'TEXTAREA' || 
-                           e.target.tagName === 'SELECT' ||
-                           e.target.closest('.modal-content');
-            
-            if (!isInput && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                activeElement.blur();
-            }
-        });
-        
-        document.querySelectorAll('form').forEach(form => {
-            form.addEventListener('submit', () => {
-                const activeElement = document.activeElement;
-                if (activeElement && activeElement.tagName.match(/INPUT|TEXTAREA|SELECT/i)) {
-                    activeElement.blur();
-                }
-            });
-        });
-        
-        let viewportHeight = window.innerHeight;
-        window.addEventListener('resize', () => {
-            const newHeight = window.innerHeight;
-            
-            if (newHeight < viewportHeight * 0.7) {
-                document.body.classList.add('keyboard-visible');
-            } else if (newHeight > viewportHeight * 0.8) {
-                document.body.classList.remove('keyboard-visible');
-            }
-            
-            viewportHeight = newHeight;
-        });
-    }
-
-    // ==================== SETUP EVENT LISTENERS ====================
-    function setupEventListeners() {
-        if (elements.menuToggle) {
-            elements.menuToggle.addEventListener('click', toggleSidebar);
-        }
-        
-        if (elements.sidebarClose) {
-            elements.sidebarClose.addEventListener('click', closeSidebar);
-        }
-        
-        if (elements.cartBtn) {
-            elements.cartBtn.addEventListener('click', openCart);
-        }
-        
-        if (elements.cartClose) {
-            elements.cartClose.addEventListener('click', closeCart);
-        }
-        
-        if (elements.searchToggle) {
-            elements.searchToggle.addEventListener('click', toggleSearch);
-        }
-        
-        if (elements.searchClose) {
-            elements.searchClose.addEventListener('click', toggleSearch);
-        }
-        
-        if (elements.shopNowBtn) {
-            elements.shopNowBtn.addEventListener('click', () => {
-                closeCart();
-                document.querySelector('.featured-products')?.scrollIntoView({ behavior: 'smooth' });
-            });
-        }
-        
-        if (elements.closeProductModal) {
-            elements.closeProductModal.addEventListener('click', closeProductModal);
-        }
-        
-        if (elements.closeCheckoutModal) {
-            elements.closeCheckoutModal.addEventListener('click', () => {
-                elements.checkoutModal.classList.remove('active');
-                document.body.style.overflow = '';
-            });
-        }
-        
-        if (elements.closeLoginModal) {
-            elements.closeLoginModal.addEventListener('click', closeLoginModal);
-        }
-        
-        if (elements.loginBtn) {
-            elements.loginBtn.addEventListener('click', openLoginModal);
-        }
-        
-        if (elements.telegramLogin) {
-            elements.telegramLogin.addEventListener('click', loginWithTelegram);
-        }
-        
-        if (elements.guestLogin) {
-            elements.guestLogin.addEventListener('click', loginAsGuest);
-        }
-        
-        if (elements.checkoutBtn) {
-            elements.checkoutBtn.addEventListener('click', () => {
-                if (cart.length === 0) {
-                    showToast('Keranjang belanja kosong', 'warning');
-                    return;
-                }
-                
-                if (!currentUser) {
-                    openLoginModal();
-                    return;
-                }
-                
-                if (elements.checkoutModal) {
-                    let checkoutHtml = `
-                        <div class="checkout-items">
-                            <h3>Ringkasan Belanja</h3>
-                    `;
-                    
-                    let total = 0;
-                    cart.forEach(item => {
-                        const itemTotal = item.price * item.quantity;
-                        total += itemTotal;
-                        
-                        checkoutHtml += `
-                            <div class="checkout-item">
-                                <span>${escapeHtml(item.name)} ${item.variant ? `(${escapeHtml(item.variant)})` : ''} x${item.quantity}</span>
-                                <span>${formatPrice(itemTotal)}</span>
-                            </div>
-                        `;
-                    });
-                    
-                    checkoutHtml += `
-                            <div class="checkout-total">
-                                <strong>Total</strong>
-                                <strong>${formatPrice(total)}</strong>
-                            </div>
-                        </div>
-                        <div class="checkout-payment">
-                            <h3>Metode Pembayaran</h3>
-                            <div class="payment-options">
-                                <label class="payment-option">
-                                    <input type="radio" name="payment" value="bank" checked>
-                                    <i class="fas fa-university"></i>
-                                    <span>Transfer Bank</span>
-                                </label>
-                                <label class="payment-option">
-                                    <input type="radio" name="payment" value="ewallet">
-                                    <i class="fas fa-wallet"></i>
-                                    <span>E-Wallet</span>
-                                </label>
-                                <label class="payment-option">
-                                    <input type="radio" name="payment" value="qris">
-                                    <i class="fas fa-qrcode"></i>
-                                    <span>QRIS</span>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button class="btn-secondary" onclick="window.website.closeCheckoutModal()">Batal</button>
-                            <button class="btn-primary" onclick="window.website.processCheckout()">
-                                <i class="fas fa-check"></i> Proses Pembayaran
-                            </button>
-                        </div>
-                    `;
-                    
-                    elements.checkoutBody.innerHTML = checkoutHtml;
-                    elements.checkoutModal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                }
-            });
-        }
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === elements.productModal) {
-                closeProductModal();
-            }
-            if (e.target === elements.checkoutModal) {
-                elements.checkoutModal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-            if (e.target === elements.loginModal) {
-                closeLoginModal();
-            }
-            if (e.target === elements.cartSidebar) {
-                closeCart();
-            }
-            if (e.target === elements.sidebar) {
-                closeSidebar();
-            }
-        });
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeSidebar();
-                closeCart();
-                closeProductModal();
-                elements.checkoutModal?.classList.remove('active');
-                closeLoginModal();
-                document.body.style.overflow = '';
-            }
-        });
-    }
-
-    // ==================== EXPOSE FUNCTIONS FOR GLOBAL ACCESS ====================
-    window.website = {
-        addToCart,
-        removeFromCart,
-        updateCartQuantity,
-        closeCheckoutModal: () => {
-            if (elements.checkoutModal) {
-                elements.checkoutModal.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        },
-        processCheckout: () => {
-            const selectedPayment = document.querySelector('input[name="payment"]:checked');
-            if (!selectedPayment) {
-                showToast('Pilih metode pembayaran', 'warning');
-                return;
-            }
-            
-            showToast('Memproses pesanan...', 'info');
-            
-            setTimeout(() => {
-                elements.checkoutModal.classList.remove('active');
-                document.body.style.overflow = '';
-                cart = [];
-                saveCart();
-                updateCartUI();
-                showToast('✅ Pesanan berhasil! Terima kasih telah berbelanja', 'success');
-                vibrate(30);
-            }, 2000);
-        }
+        // Keyboard handler
+        initKeyboardHandler();
     };
 
-    // ==================== START ====================
-    init();
+    // Keyboard handler
+    const initKeyboardHandler = () => {
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                Sidebar.close();
+                Cart.close();
+                ProductModal.close();
+                Checkout.close();
+                LoginModal.close();
+                Search.close();
+                document.body.style.overflow = '';
+            }
+
+            // Ctrl+K for search
+            if (e.ctrlKey && e.key === 'k') {
+                e.preventDefault();
+                Search.toggle();
+            }
+        });
+
+        // Handle input focus for mobile
+        const inputs = document.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            });
+        });
+    };
+
+    // Setup event listeners
+    const setupEventListeners = () => {
+        // Sidebar
+        DOM.menuToggle?.addEventListener('click', Sidebar.toggle);
+        DOM.sidebarClose?.addEventListener('click', Sidebar.close);
+
+        // Cart
+        DOM.cartBtn?.addEventListener('click', Cart.open);
+        DOM.cartClose?.addEventListener('click', Cart.close);
+        DOM.shopNowBtn?.addEventListener('click', () => {
+            Cart.close();
+            document.querySelector('.popular-products')?.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        // Search
+        DOM.searchToggle?.addEventListener('click', Search.toggle);
+        DOM.searchClose?.addEventListener('click', Search.close);
+
+        // Modals
+        DOM.closeProductModal?.addEventListener('click', ProductModal.close);
+        DOM.closeCheckoutModal?.addEventListener('click', Checkout.close);
+        DOM.closeLoginModal?.addEventListener('click', LoginModal.close);
+
+        // Login
+        DOM.loginBtn?.addEventListener('click', LoginModal.open);
+        DOM.telegramLogin?.addEventListener('click', User.loginWithTelegram);
+        DOM.guestLogin?.addEventListener('click', User.loginAsGuest);
+
+        // Checkout
+        DOM.checkoutBtn?.addEventListener('click', Checkout.open);
+
+        // Close modals on overlay click
+        window.addEventListener('click', (e) => {
+            if (e.target === DOM.productModal) ProductModal.close();
+            if (e.target === DOM.checkoutModal) Checkout.close();
+            if (e.target === DOM.loginModal) LoginModal.close();
+            if (e.target === DOM.cartSidebar) Cart.close();
+            if (e.target === DOM.sidebar) Sidebar.close();
+        });
+
+        // Window resize
+        window.addEventListener('resize', Utils.throttle(() => {
+            if (!Utils.isMobile()) {
+                Sidebar.close();
+            }
+        }, 200));
+    };
+
+    // ===== EXPOSE GLOBAL FUNCTIONS =====
+    window.website = {
+        // Cart
+        cartAdd: Cart.add,
+        cartRemove: Cart.remove,
+        cartUpdateQuantity: Cart.updateQuantity,
+        cartClear: Cart.clear,
+        
+        // Modal
+        setMainImage: ProductModal.setMainImage,
+        
+        // Utility
+        vibrate: Utils.vibrate,
+        formatRupiah: Utils.formatRupiah
+    };
+
+    // ===== START =====
+    document.addEventListener('DOMContentLoaded', () => {
+        setupEventListeners();
+        init();
+    });
+
 })();
