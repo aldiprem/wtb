@@ -890,6 +890,72 @@ def migrate_database():
         if conn:
             conn.close()
 
+# ==================== FUNGSI UNTUK TEMPLATE PER WEBSITE ====================
+
+def save_website_template(website_id, template_code, template_name, template_data):
+    """Menyimpan template untuk website tertentu"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah tabel website_templates sudah ada, jika belum buat
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS website_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        website_id INTEGER NOT NULL,
+        template_code TEXT NOT NULL,
+        template_name TEXT NOT NULL,
+        template_data TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+        UNIQUE(website_id, template_code)
+    )
+    ''')
+    
+    # Simpan data template
+    cursor.execute('''
+    INSERT OR REPLACE INTO website_templates 
+    (website_id, template_code, template_name, template_data)
+    VALUES (?, ?, ?, ?)
+    ''', (website_id, template_code, template_name, json.dumps(template_data)))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_website_templates(website_id):
+    """Mendapatkan semua template untuk website tertentu"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    SELECT * FROM website_templates 
+    WHERE website_id = ? 
+    ORDER BY created_at DESC
+    ''', (website_id,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    templates = []
+    for row in rows:
+        template = dict(row)
+        template['template_data'] = json.loads(template['template_data'])
+        templates.append(template)
+    
+    return templates
+
+def delete_website_template(template_id):
+    """Menghapus template dari website"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM website_templates WHERE id = ?', (template_id,))
+    deleted = cursor.rowcount > 0
+    
+    conn.commit()
+    conn.close()
+    return deleted
+
 # Jalankan migrasi
 try:
     migrate_database()
