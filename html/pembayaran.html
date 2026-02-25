@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Pengaturan Pembayaran - Website Panel</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/wtb/css/pembayaran.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="pembayaran-container">
+        <!-- Header -->
+        <header class="pembayaran-header">
+            <div class="header-left">
+                <a href="/wtb/html/panel.html" class="back-btn" id="backToPanel">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon">
+                    <i class="fas fa-credit-card"></i>
+                </div>
+                <div class="header-title">
+                    <h1>Pengaturan Pembayaran</h1>
+                    <span class="website-badge" id="websiteBadge">/endpoint</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="pembayaran-tabs">
+            <button class="tab-btn active" data-tab="rekening">
+                <i class="fas fa-university"></i>
+                <span>Rekening Bank/E-Wallet</span>
+            </button>
+            <button class="tab-btn" data-tab="gateway">
+                <i class="fas fa-globe"></i>
+                <span>Payment Gateway</span>
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="pembayaran-content">
+            <!-- Tab: Rekening (Bank/E-Wallet) -->
+            <div id="tab-rekening" class="tab-content active">
+                <div class="section-header">
+                    <h2><i class="fas fa-university"></i> Daftar Rekening</h2>
+                    <button class="btn-add" id="addRekeningBtn">
+                        <i class="fas fa-plus-circle"></i> Tambah Rekening
+                    </button>
+                </div>
+
+                <!-- Rekening Container -->
+                <div class="rekening-container" id="rekeningContainer">
+                    <!-- Akan diisi JavaScript -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyRekening" style="display: none;">
+                    <i class="fas fa-university"></i>
+                    <h3>Belum Ada Rekening</h3>
+                    <p>Tambahkan rekening bank atau e-wallet untuk metode pembayaran</p>
+                    <button class="btn-primary" id="emptyAddRekeningBtn">
+                        <i class="fas fa-plus"></i> Tambah Rekening
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Payment Gateway (Cashify) -->
+            <div id="tab-gateway" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-globe"></i> Payment Gateway</h2>
+                    <button class="btn-add" id="addGatewayBtn">
+                        <i class="fas fa-plus-circle"></i> Tambah Gateway
+                    </button>
+                </div>
+
+                <div class="gateway-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Integrasi dengan <a href="https://cashify.my.id/docs" target="_blank">Cashify.my.id</a>. Dapatkan License Key dari dashboard Cashify.</span>
+                </div>
+
+                <!-- Gateway Container -->
+                <div class="gateway-container" id="gatewayContainer">
+                    <!-- Akan diisi JavaScript -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyGateway" style="display: none;">
+                    <i class="fas fa-globe"></i>
+                    <h3>Belum Ada Gateway</h3>
+                    <p>Tambahkan payment gateway Cashify untuk pembayaran otomatis</p>
+                    <button class="btn-primary" id="emptyAddGatewayBtn">
+                        <i class="fas fa-plus"></i> Tambah Gateway
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Rekening (Bank/E-Wallet) -->
+    <div class="modal" id="rekeningModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-university"></i> <span id="rekeningModalTitle">Tambah Rekening</span></h2>
+                <button class="modal-close" id="closeRekeningModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="rekeningForm">
+                    <input type="hidden" id="rekeningId">
+                    
+                    <!-- URL Logo -->
+                    <div class="form-group">
+                        <label><i class="fas fa-image"></i> URL Logo (Wajib 420x420)</label>
+                        <div class="logo-preview-small" id="rekeningLogoPreview">
+                            <img src="https://via.placeholder.com/420x420/40a7e3/ffffff?text=Logo" alt="Logo Preview" id="rekeningLogoImage">
+                        </div>
+                        <div class="input-with-icon">
+                            <i class="fas fa-link input-icon"></i>
+                            <input type="url" id="rekeningLogo" class="input-with-icon-field" placeholder="https://i.imgur.com/xxxxxxx.png" required>
+                        </div>
+                        <small class="hint">Gunakan link gambar (Imgur, Postimages, dll). Ukuran harus 420x420 pixel.</small>
+                        <div id="rekeningLogoValidation" class="validation-message info">
+                            <i class="fas fa-info-circle"></i> Masukkan URL logo
+                        </div>
+                    </div>
+                    
+                    <!-- Nama Aplikasi/Rekening -->
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Nama Aplikasi/Rekening</label>
+                        <input type="text" id="rekeningNama" placeholder="Contoh: BCA, Mandiri, DANA, OVO" required>
+                    </div>
+                    
+                    <!-- Nomor Rekening -->
+                    <div class="form-group">
+                        <label><i class="fas fa-hashtag"></i> Nomor Rekening</label>
+                        <input type="text" id="rekeningNomor" placeholder="Contoh: 1234567890" required>
+                    </div>
+                    
+                    <!-- Nama Pemilik -->
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Nama Pemilik</label>
+                        <input type="text" id="rekeningPemilik" placeholder="Contoh: PT Maju Jaya / John Doe" required>
+                    </div>
+                    
+                    <!-- Deskripsi -->
+                    <div class="form-group">
+                        <label><i class="fas fa-align-left"></i> Deskripsi (Opsional)</label>
+                        <textarea id="rekeningDeskripsi" rows="2" placeholder="Contoh: Pembayaran via transfer BCA"></textarea>
+                    </div>
+                    
+                    <!-- Status Active -->
+                    <div class="form-group">
+                        <label><i class="fas fa-toggle-on"></i> Status</label>
+                        <div class="status-toggle">
+                            <label class="toggle">
+                                <input type="checkbox" id="rekeningActive" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Aktifkan Rekening</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelRekeningBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Simpan Rekening
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Gateway (Cashify) -->
+    <div class="modal" id="gatewayModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-globe"></i> <span id="gatewayModalTitle">Tambah Gateway Cashify</span></h2>
+                <button class="modal-close" id="closeGatewayModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="gatewayForm">
+                    <input type="hidden" id="gatewayId">
+                    
+                    <!-- Nama Gateway (fixed) -->
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Nama Gateway</label>
+                        <input type="text" id="gatewayNama" value="Cashify" readonly class="readonly-input">
+                        <small>Nama gateway tidak dapat diubah</small>
+                    </div>
+                    
+                    <!-- License Key -->
+                    <div class="form-group">
+                        <label><i class="fas fa-key"></i> License Key</label>
+                        <div class="password-wrapper">
+                            <input type="text" id="gatewayLicenseKey" placeholder="CASHIFY-XXXX-XXXX-XXXX" required>
+                        </div>
+                        <small class="hint">Dapatkan dari dashboard Cashify</small>
+                    </div>
+                    
+                    <!-- Webhook Secret -->
+                    <div class="form-group">
+                        <label><i class="fas fa-lock"></i> Webhook Secret</label>
+                        <div class="password-wrapper">
+                            <input type="text" id="gatewayWebhookSecret" placeholder="whsec_xxxxxxxxxxxxxxxx" required>
+                        </div>
+                        <small class="hint">Secret key untuk webhook notifikasi</small>
+                    </div>
+                    
+                    <!-- QRIS ID -->
+                    <div class="form-group">
+                        <label><i class="fas fa-qrcode"></i> QRIS ID</label>
+                        <input type="text" id="gatewayQrisId" placeholder="QRIS-12345678">
+                        <small class="hint">ID QRIS (opsional, kosongkan jika tidak menggunakan QRIS)</small>
+                    </div>
+                    
+                    <!-- Expired (menit) -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><i class="fas fa-clock"></i> Expired (menit)</label>
+                            <input type="number" id="gatewayExpired" min="1" max="1440" value="30" required>
+                        </div>
+                    </div>
+                    
+                    <!-- QR Settings -->
+                    <div class="form-section">
+                        <h4 class="section-subtitle"><i class="fas fa-palette"></i> Pengaturan QR Code</h4>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-paint-brush"></i> Warna QR</label>
+                                <div class="color-picker-wrapper">
+                                    <input type="color" id="gatewayWarna" value="#000000">
+                                    <input type="text" id="gatewayWarnaHex" value="#000000" maxlength="7">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-arrows-alt"></i> Ukuran QR</label>
+                                <select id="gatewayUkuran">
+                                    <option value="420">420x420</option>
+                                    <option value="560">560x560</option>
+                                    <option value="720">720x720</option>
+                                    <option value="1024">1024x1024</option>
+                                </select>
+                                <small class="hint">Ukuran harus sama (persegi)</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Active -->
+                    <div class="form-group">
+                        <label><i class="fas fa-toggle-on"></i> Status</label>
+                        <div class="status-toggle">
+                            <label class="toggle">
+                                <input type="checkbox" id="gatewayActive" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Aktifkan Gateway</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelGatewayBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Simpan Gateway
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Konfirmasi Hapus -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header danger">
+                <h2><i class="fas fa-exclamation-triangle"></i> Hapus</h2>
+                <button class="modal-close" id="closeDeleteModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-text" id="deleteMessage">Apakah Anda yakin ingin menghapus ini?</p>
+                <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
+                <div class="delete-info" id="deleteInfo"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelDeleteBtn">Batal</button>
+                    <button type="button" class="btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/wtb/js/pembayaran.js"></script>
+</body>
+</html>
