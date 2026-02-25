@@ -1731,6 +1731,91 @@ def increment_template_usage(template_code):
         print(f"❌ Error incrementing usage count: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK TEMPLATE PER WEBSITE ====================
+
+@app.route('/api/tampilan/<int:website_id>/templates', methods=['GET'])
+def get_website_templates(website_id):
+    """Mendapatkan semua template yang tersimpan untuk website"""
+    try:
+        templates = tmp.get_website_templates(website_id)
+        return jsonify({'success': True, 'templates': templates})
+    except Exception as e:
+        print(f"❌ Error getting website templates: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/templates', methods=['POST'])
+def save_website_template(website_id):
+    """Menyimpan template untuk website"""
+    try:
+        data = request.json
+        print(f"📥 Saving template for website {website_id}: {data.get('template_name')}")
+        
+        template_code = data.get('template_code')
+        template_name = data.get('template_name')
+        template_data = data.get('template_data')
+        
+        if not template_code or not template_name or not template_data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        success = tmp.save_website_template(website_id, template_code, template_name, template_data)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Template saved successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save template'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error saving website template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/templates/<int:template_id>', methods=['DELETE'])
+def delete_website_template(website_id, template_id):
+    """Menghapus template dari website"""
+    try:
+        success = tmp.delete_website_template(template_id)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Template deleted successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error deleting website template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/apply-template', methods=['POST'])
+def apply_template(website_id):
+    """Menerapkan template ke website"""
+    try:
+        data = request.json
+        template_code = data.get('template_code')
+        
+        # Ambil data template dari database font_templates
+        template_data = tmp_font.get_template(template_code)
+        
+        if not template_data:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+        
+        # Update tampilan dengan data template
+        # Sesuaikan dengan struktur data tampilan Anda
+        tampilan_update = {
+            'font_family': template_data['font_family'],
+            'font_size': template_data['font_size'],
+            'store_display_name': template_data['preview_text'],
+            'font_animation': template_data['animation_type'],
+            'animation_duration': template_data['animation_duration'],
+            'animation_delay': template_data['animation_delay'],
+            'animation_iteration': template_data['animation_iteration']
+        }
+        
+        tmp.update_tampilan(website_id, tampilan_update)
+        
+        return jsonify({'success': True, 'message': 'Template applied successfully'})
+        
+    except Exception as e:
+        print(f"❌ Error applying template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
