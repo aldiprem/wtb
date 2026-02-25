@@ -518,142 +518,164 @@
     }
     
     // ==================== TEMPLATE FUNCTIONS ====================
-    function saveTemplate() {
-        const name = elements.templateName?.value.trim();
-        
-        if (!name) {
-            showToast('Nama template wajib diisi', 'warning');
-            return;
-        }
-        
-        // Generate kode 35 karakter
-        const code = generateTemplateCode();
-        
-        // Tampilkan kode
-        if (elements.generatedCode) {
-            elements.generatedCode.textContent = code;
-        }
-        if (elements.savedCodeDisplay) {
-            elements.savedCodeDisplay.style.display = 'block';
-        }
-        
-        // Simpan data font (untuk demo, kita simpan nama font saja)
-        // Dalam implementasi nyata, Anda perlu menyimpan file font juga
+    async function saveTemplate() {
+      const name = elements.templateName?.value.trim();
+    
+      if (!name) {
+        showToast('Nama template wajib diisi', 'warning');
+        return;
+      }
+    
+      showLoading(true);
+    
+      try {
         const templateData = {
-            name: name,
-            fontFamily: elements.fontFamily?.value || 'MyCustomFont',
-            fontFile: currentFontDataUrl, // Data URL file font (base64)
-            fontWeight: elements.fontWeight?.value,
-            fontStyle: elements.fontStyle?.value,
-            fontSize: elements.fontSize?.value,
-            textColor: elements.textColor?.value,
-            animationType: elements.animationType?.value,
-            animDuration: elements.animDuration?.value,
-            animDelay: elements.animDelay?.value,
-            animIteration: elements.animIteration?.value,
-            previewText: elements.previewText?.value,
-            previewSubtext: elements.previewSubtext?.value,
-            createdAt: new Date().toISOString()
+          template_name: name,
+          font_family: elements.fontFamily?.value || 'MyCustomFont',
+          font_file_data: currentFontDataUrl,
+          font_file_name: currentFontFile?.name,
+          font_weight: parseInt(elements.fontWeight?.value) || 400,
+          font_style: elements.fontStyle?.value || 'normal',
+          font_size: parseInt(elements.fontSize?.value) || 48,
+          text_color: elements.textColor?.value || '#ffffff',
+          animation_type: elements.animationType?.value || 'none',
+          animation_duration: parseFloat(elements.animDuration?.value) || 2,
+          animation_delay: parseFloat(elements.animDelay?.value) || 0,
+          animation_iteration: elements.animIteration?.value || 'infinite',
+          preview_text: elements.previewText?.value || 'Toko Online Premium',
+          preview_subtext: elements.previewSubtext?.value || 'dengan Layanan Terbaik 24/7',
+          website_id: null, // Bisa diisi dari session
+          user_id: null, // Bisa diisi dari Telegram
+          is_public: false
         };
-        
-        try {
-            localStorage.setItem(`font_template_${code}`, JSON.stringify(templateData));
-            showToast(`✅ Template "${name}" disimpan!`, 'success');
-            vibrate();
-        } catch (error) {
-            console.error('Error saving template:', error);
-            showToast('Gagal menyimpan template', 'error');
+    
+        const response = await fetch('/api/font-templates/save', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(templateData)
+        });
+    
+        const result = await response.json();
+    
+        if (result.success) {
+          // Tampilkan kode
+          if (elements.generatedCode) {
+            elements.generatedCode.textContent = result.template_code;
+          }
+          if (elements.savedCodeDisplay) {
+            elements.savedCodeDisplay.style.display = 'block';
+          }
+    
+          showToast(`✅ Template "${name}" disimpan!`, 'success');
+          vibrate();
+        } else {
+          throw new Error(result.error || 'Gagal menyimpan template');
         }
+    
+      } catch (error) {
+        console.error('Error saving template:', error);
+        showToast(error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
     }
     
-    function loadTemplate() {
-        const code = elements.loadTemplateCode?.value.trim();
-        
-        if (!code || code.length !== 35) {
-            showToast('Kode template harus 35 karakter', 'warning');
-            return;
+    async function loadTemplate() {
+      const code = elements.loadTemplateCode?.value.trim();
+    
+      if (!code || code.length !== 35) {
+        showToast('Kode template harus 35 karakter', 'warning');
+        return;
+      }
+    
+      showLoading(true);
+    
+      try {
+        const response = await fetch(`/api/font-templates/${code}`);
+        const result = await response.json();
+    
+        if (result.success) {
+          const data = result.template;
+    
+          // Load font file jika ada
+          if (data.font_file_data) {
+            currentFontDataUrl = data.font_file_data;
+            currentFontFile = { name: data.font_file_name || 'font.ttf' };
+    
+            // Buat @font-face
+            const family = data.font_family;
+            const fontFace = `
+                        @font-face {
+                            font-family: '${family}';
+                            src: url('${data.font_file_data}') format('truetype');
+                            font-weight: normal;
+                            font-style: normal;
+                            font-display: swap;
+                        }
+                    `;
+    
+            const oldStyle = document.getElementById(`font-${family}`);
+            if (oldStyle) oldStyle.remove();
+    
+            const style = document.createElement('style');
+            style.id = `font-${family}`;
+            style.textContent = fontFace;
+            document.head.appendChild(style);
+    
+            currentFontFamily = `'${family}', sans-serif`;
+    
+            // Update UI upload
+            if (elements.uploadedFileName) {
+              elements.uploadedFileName.textContent = data.font_file_name || `${family}.ttf`;
+            }
+            if (elements.uploadedFileInfo) {
+              elements.uploadedFileInfo.style.display = 'flex';
+            }
+            if (elements.fontUploadArea) {
+              elements.fontUploadArea.style.display = 'none';
+            }
+          }
+    
+          // Apply template data
+          if (elements.fontFamily) elements.fontFamily.value = data.font_family || 'MyCustomFont';
+          if (elements.fontWeight) elements.fontWeight.value = data.font_weight || 400;
+          if (elements.fontStyle) elements.fontStyle.value = data.font_style || 'normal';
+          if (elements.fontSize) elements.fontSize.value = data.font_size || 48;
+          if (elements.textColor) elements.textColor.value = data.text_color || '#ffffff';
+          if (elements.textColorHex) elements.textColorHex.value = data.text_color || '#ffffff';
+          if (elements.animationType) elements.animationType.value = data.animation_type || 'none';
+          if (elements.animDuration) elements.animDuration.value = data.animation_duration || 2;
+          if (elements.animDelay) elements.animDelay.value = data.animation_delay || 0;
+          if (elements.animIteration) elements.animIteration.value = data.animation_iteration || 'infinite';
+          if (elements.previewText) elements.previewText.value = data.preview_text || 'Toko Online Premium';
+          if (elements.previewSubtext) elements.previewSubtext.value = data.preview_subtext || 'dengan Layanan Terbaik 24/7';
+    
+          // Update range displays
+          if (elements.animDurationValue) {
+            elements.animDurationValue.textContent = `${data.animation_duration || 2}s`;
+          }
+          if (elements.animDelayValue) {
+            elements.animDelayValue.textContent = `${data.animation_delay || 0}s`;
+          }
+    
+          // Update preview
+          updatePreview();
+    
+          showToast(`✅ Template "${data.template_name}" dimuat!`, 'success');
+          vibrate();
+    
+        } else {
+          throw new Error(result.error || 'Template tidak ditemukan');
         }
-        
-        try {
-            const dataStr = localStorage.getItem(`font_template_${code}`);
-            
-            if (!dataStr) {
-                showToast('Template tidak ditemukan', 'error');
-                return;
-            }
-            
-            const data = JSON.parse(dataStr);
-            
-            // Load font file jika ada
-            if (data.fontFile) {
-                currentFontDataUrl = data.fontFile;
-                
-                // Buat @font-face
-                const family = data.fontFamily || 'MyCustomFont';
-                const fontFace = `
-                    @font-face {
-                        font-family: '${family}';
-                        src: url('${data.fontFile}') format('truetype');
-                        font-weight: normal;
-                        font-style: normal;
-                        font-display: swap;
-                    }
-                `;
-                
-                const oldStyle = document.getElementById(`font-${family}`);
-                if (oldStyle) oldStyle.remove();
-                
-                const style = document.createElement('style');
-                style.id = `font-${family}`;
-                style.textContent = fontFace;
-                document.head.appendChild(style);
-                
-                currentFontFamily = `'${family}', sans-serif`;
-                
-                // Update UI upload
-                if (elements.uploadedFileName) {
-                    elements.uploadedFileName.textContent = `${family}.ttf`;
-                }
-                if (elements.uploadedFileInfo) {
-                    elements.uploadedFileInfo.style.display = 'flex';
-                }
-                if (elements.fontUploadArea) {
-                    elements.fontUploadArea.style.display = 'none';
-                }
-            }
-            
-            // Apply template data
-            if (elements.fontFamily) elements.fontFamily.value = data.fontFamily || 'MyCustomFont';
-            if (elements.fontWeight) elements.fontWeight.value = data.fontWeight || 400;
-            if (elements.fontStyle) elements.fontStyle.value = data.fontStyle || 'normal';
-            if (elements.fontSize) elements.fontSize.value = data.fontSize || 48;
-            if (elements.textColor) elements.textColor.value = data.textColor || '#ffffff';
-            if (elements.textColorHex) elements.textColorHex.value = data.textColor || '#ffffff';
-            if (elements.animationType) elements.animationType.value = data.animationType || 'none';
-            if (elements.animDuration) elements.animDuration.value = data.animDuration || 2;
-            if (elements.animDelay) elements.animDelay.value = data.animDelay || 0;
-            if (elements.animIteration) elements.animIteration.value = data.animIteration || 'infinite';
-            if (elements.previewText) elements.previewText.value = data.previewText || 'Toko Online Premium';
-            if (elements.previewSubtext) elements.previewSubtext.value = data.previewSubtext || 'dengan Layanan Terbaik 24/7';
-            
-            // Update range displays
-            if (elements.animDurationValue) {
-                elements.animDurationValue.textContent = `${data.animDuration || 2}s`;
-            }
-            if (elements.animDelayValue) {
-                elements.animDelayValue.textContent = `${data.animDelay || 0}s`;
-            }
-            
-            // Update preview
-            updatePreview();
-            
-            showToast(`✅ Template "${data.name}" dimuat!`, 'success');
-            vibrate();
-            
-        } catch (error) {
-            console.error('Error loading template:', error);
-            showToast('Gagal memuat template', 'error');
-        }
+    
+      } catch (error) {
+        console.error('Error loading template:', error);
+        showToast(error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
     }
     
     function copyTemplateCode() {
