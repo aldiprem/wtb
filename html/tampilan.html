@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>Pengaturan Tampilan - Website Panel</title>
+    <title>Font Studio - Pengaturan Font & Animasi</title>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="/wtb/css/tampilan.css">
+    <link rel="stylesheet" href="/wtb/css/tampilan/font.css">
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -21,538 +21,361 @@
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Memuat...</div>
+        <div class="loading-text">Memuat Studio Font...</div>
     </div>
 
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
-
     <!-- Main Container -->
-    <div class="tampilan-container">
+    <div class="font-studio-container">
         <!-- Header -->
-        <header class="tampilan-header">
+        <div class="studio-header">
             <div class="header-left">
-                <a href="/wtb/html/panel.html" class="back-btn" id="backToPanel">
+                <button class="back-btn" id="backToPanel">
                     <i class="fas fa-arrow-left"></i>
-                </a>
+                </button>
                 <div class="header-icon">
                     <i class="fas fa-paint-brush"></i>
                 </div>
                 <div class="header-title">
-                    <h1>Pengaturan Tampilan</h1>
-                    <span class="website-badge" id="websiteBadge">/endpoint</span>
+                    <h1>Font & Animation Studio</h1>
                 </div>
             </div>
             <div class="header-right">
-                <button class="btn-primary" id="saveAllBtn">
-                    <i class="fas fa-save"></i> Simpan Semua
+                <button class="btn-save-all" id="saveAllBtn">
+                    <i class="fas fa-save"></i> Simpan
                 </button>
             </div>
-        </header>
-
-        <!-- Tabs Navigation -->
-        <div class="tampilan-tabs">
-            <button class="tab-btn active" data-tab="logo">
-                <i class="fas fa-image"></i>
-                <span>Logo</span>
-            </button>
-            <button class="tab-btn" data-tab="banner">
-                <i class="fas fa-images"></i>
-                <span>Banner Slider</span>
-            </button>
-            <button class="tab-btn" data-tab="promo">
-                <i class="fas fa-bullhorn"></i>
-                <span>Promosi</span>
-            </button>
-            <button class="tab-btn" data-tab="warna">
-                <i class="fas fa-palette"></i>
-                <span>Warna</span>
-            </button>
-            <button class="tab-btn" data-tab="font-template">
-                <i class="fas fa-font"></i>
-                <span>Font Template</span>
-            </button>
         </div>
 
-        <!-- Tab Content -->
-        <div class="tampilan-content">
-            <!-- Tab: Logo -->
-            <div id="tab-logo" class="tab-content active">
-                <div class="settings-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-image"></i> Logo Website (PNG Only)</h3>
+        <!-- Main Layout -->
+        <div class="studio-layout">
+            <!-- Left Panel - Controls -->
+            <div class="studio-sidebar">
+                <!-- Font Manager -->
+                <div class="control-section">
+                    <div class="section-header" data-toggle="fontSection">
+                        <h2><i class="fas fa-font"></i> Font Manager</h2>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="card-body">
-                        <div class="logo-preview" id="logoPreview">
-                            <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
-                            <div class="logo-overlay">
-                                <button class="btn-upload" id="uploadLogoBtn">
-                                    <i class="fas fa-cloud-upload-alt"></i> Ganti Logo (PNG)
-                                </button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="logoUrl">
-                                <i class="fas fa-link"></i> URL Logo (PNG)
+                    <div class="section-content" id="fontSection">
+                        <!-- Upload Font File -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-upload"></i>
+                                Upload Font File (.ttf)
                             </label>
-                            <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
-                            <small>Format PNG hanya, upload atau masukkan URL</small>
-                        </div>
-                        
-                        <!-- Nama Store (untuk disamping logo) -->
-                        <div class="form-group" style="margin-top: 20px;">
-                            <label for="storeDisplayName">
-                                <i class="fas fa-store"></i> Nama Store (disamping logo)
-                            </label>
-                            <input type="text" id="storeDisplayName" placeholder="Contoh: Toko Online" value="Toko Online">
-                            <small>Nama yang akan tampil di samping logo website</small>
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button class="btn-primary" id="saveLogoBtn">
-                                <i class="fas fa-save"></i> Simpan Logo & Nama Store
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab: Banner Slider -->
-            <div id="tab-banner" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-images"></i> Banner Slider (Wajib 1280x760)</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="banner-info-message">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Gunakan link gambar (contoh: dari Imgur, Postimages, dll). Ukuran wajib <strong>1280x760 pixel</strong>.</span>
-                        </div>
-
-                        <div class="banner-slider-container" id="bannerSliderContainer">
-                            <div class="banner-track" id="bannerTrack">
-                                <!-- Banner items will be added here dynamically -->
+                            <div class="upload-area" id="fontUploadArea">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Klik atau drag & drop file font</p>
+                                <small>Format: TTF (TrueType Font) - Max 5MB</small>
+                                <input type="file" id="fontFileInput" accept=".ttf" style="display: none;">
                             </div>
-                        </div>
-                        
-                        <div class="empty-banner-message" id="emptyBannerMessage">
-                            <i class="fas fa-link"></i>
-                            <p>Belum ada banner. Klik tombol "Add Banner" untuk menambahkan link gambar.</p>
-                        </div>
-
-                        <div class="banner-button-container">
-                            <button class="banner-action-btn banner-add-btn" id="addBannerBtn">
-                                <i class="fas fa-plus-circle"></i> Add Banner
-                            </button>
-                            <button class="banner-action-btn banner-save-btn" id="saveBannersBtn">
-                                <i class="fas fa-save"></i> Simpan Banner
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab: Promosi -->
-            <div id="tab-promo" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3><i class="fas fa-bullhorn"></i> Pengaturan Promosi</h3>
-                        <button class="btn-add-promo" id="addPromoBtn">
-                            <i class="fas fa-plus-circle"></i> Tambah Promosi
-                        </button>
-                    </div>
-                    <div class="card-body" style="padding-top: 12px;">
-                        <!-- Promo Container -->
-                        <div class="promo-container" id="promoContainer">
-                            <!-- Promo items will be added here dynamically -->
-                        </div>
-                        
-                        <!-- Empty State -->
-                        <div class="empty-promo-message" id="emptyPromoMessage">
-                            <i class="fas fa-bullhorn"></i>
-                            <p>Belum ada promosi. Klik tombol "Tambah Promosi" untuk membuat promosi baru.</p>
-                        </div>
-
-                        <!-- Save All Promo Button -->
-                        <div class="promo-save-container">
-                            <button class="btn-primary" id="saveAllPromoBtn">
-                                <i class="fas fa-save"></i> Simpan Semua Promosi
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab: Warna -->
-            <div id="tab-warna" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-palette"></i> Warna Website</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="color-grid-2col">
-                            <div class="color-item">
-                                <label>Primary Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="primaryColor" value="#40a7e3">
-                                    <input type="text" id="primaryColorHex" value="#40a7e3" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Secondary Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="secondaryColor" value="#FFD700">
-                                    <input type="text" id="secondaryColorHex" value="#FFD700" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Background Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="bgColor" value="#0f0f0f">
-                                    <input type="text" id="bgColorHex" value="#0f0f0f" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Text Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="textColor" value="#ffffff">
-                                    <input type="text" id="textColorHex" value="#ffffff" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Card Background</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="cardColor" value="#1a1a1a">
-                                    <input type="text" id="cardColorHex" value="#1a1a1a" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Accent Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="accentColor" value="#10b981">
-                                    <input type="text" id="accentColorHex" value="#10b981" maxlength="7">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button class="btn-primary" id="saveColorsBtn">
-                                <i class="fas fa-save"></i> Simpan Warna
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tab: Font Template (REVISED) -->
-            <div id="tab-font-template" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3><i class="fas fa-font"></i> Template Font & Animasi</h3>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn-view-templates" id="viewAllTemplatesBtn">
-                                <i class="fas fa-folder-open"></i> Lihat Semua Template
-                            </button>
-                            <a href="/wtb/html/tampilan/font.html?website={{website_endpoint}}" class="btn-create-template" id="createFontTemplateBtn">
-                                <i class="fas fa-plus-circle"></i> Buat Template Baru
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <!-- Info Message -->
-                        <div class="banner-info-message" style="margin-bottom: 20px;">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Buat template font dan animasi di halaman <strong>Font Studio</strong>, kemudian masukkan kode template atau cari berdasarkan nama di sini.</span>
-                        </div>
-
-                        <!-- Template Preview Card -->
-                        <div class="template-preview-card" id="templatePreviewCard" style="display: none;">
-                            <div class="template-preview-header">
-                                <h4><i class="fas fa-eye"></i> Preview Template</h4>
-                                <button class="template-preview-clear" id="clearTemplatePreview" title="Hapus preview">
+                            <div class="uploaded-file-info" id="uploadedFileInfo" style="display: none;">
+                                <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                                <span id="uploadedFileName">font.ttf</span>
+                                <button class="btn-icon-small" id="removeFontBtn" title="Hapus font">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
-                            <div class="template-preview-content">
-                                <div class="template-preview-box" id="templatePreviewBox">
-                                    <span class="template-preview-text" id="templatePreviewText">Toko Online</span>
-                                    <div class="template-preview-info" id="templatePreviewInfo">
-                                        <span class="template-preview-font">Font: <span id="previewFontName">Inter</span></span>
-                                        <span class="template-preview-anim">Animasi: <span id="previewAnimName">None</span></span>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-
-                        <!-- Template Search / Input Section -->
-                        <div class="template-search-section">
-                            <div class="template-input-tabs">
-                                <button class="template-input-tab active" data-input-type="code">
-                                    <i class="fas fa-key"></i> Input Kode
-                                </button>
-                                <button class="template-input-tab" data-input-type="search">
-                                    <i class="fas fa-search"></i> Cari Nama
-                                </button>
-                            </div>
-
-                            <!-- Input by Code -->
-                            <div class="template-input-panel active" id="inputByCodePanel">
-                                <div class="form-group">
-                                    <label for="fontTemplateCode">
-                                        <i class="fas fa-key"></i> Kode Template (35 karakter)
-                                    </label>
-                                    <div class="template-code-input-group">
-                                        <input type="text" 
-                                               id="fontTemplateCode" 
-                                               class="template-code-input" 
-                                               placeholder="Contoh: aB3dE5fG7hIj9kL1mN2oP4qR6sT8uV0wX"
-                                               maxlength="35"
-                                               pattern="[A-Za-z0-9]{35}"
-                                               title="Kode template harus 35 karakter alfanumerik">
-                                        <button class="template-code-verify" id="verifyTemplateCode" title="Verifikasi kode">
-                                            <i class="fas fa-search"></i>
-                                        </button>
-                                    </div>
-                                    <small class="input-hint">Masukkan kode template yang didapat dari halaman Font Studio</small>
-                                </div>
-                            </div>
-
-                            <!-- Input by Search -->
-                            <div class="template-input-panel" id="inputBySearchPanel">
-                                <div class="form-group">
-                                    <label for="templateSearchInput">
-                                        <i class="fas fa-search"></i> Cari Template
-                                    </label>
-                                    <div class="template-search-input-group">
-                                        <i class="fas fa-search search-icon"></i>
-                                        <input type="text" 
-                                               id="templateSearchInput" 
-                                               class="template-search-field" 
-                                               placeholder="Ketik nama template...">
-                                        <button class="template-search-clear" id="clearSearchBtn" style="display: none;">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                    <small class="input-hint">Ketik minimal 2 karakter untuk mencari template</small>
-                                </div>
-
-                                <!-- Search Results -->
-                                <div class="template-search-results" id="templateSearchResults">
-                                    <!-- Results will be displayed here -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Selected Template Info -->
-                        <div class="selected-template-info" id="selectedTemplateInfo" style="display: none;">
-                            <div class="selected-template-badge">
-                                <i class="fas fa-check-circle"></i>
-                                <span>Template Terpilih: <strong id="selectedTemplateName">-</strong></span>
-                                <button class="btn-change-template" id="changeTemplateBtn">
-                                    <i class="fas fa-sync-alt"></i> Ganti
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Quick Actions -->
-                        <div class="template-quick-actions">
-                            <button class="btn-secondary" id="applyTemplateBtn" disabled>
-                                <i class="fas fa-check"></i> Terapkan Template
-                            </button>
-                            <button class="btn-secondary" id="testTemplateBtn" disabled>
-                                <i class="fas fa-play"></i> Test Preview
-                            </button>
-                        </div>
-
-                        <!-- Save Button -->
-                        <div class="form-actions" style="margin-top: 24px;">
-                            <button class="btn-primary" id="saveTemplateCodeBtn">
-                                <i class="fas fa-save"></i> Simpan Kode Template
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Lihat Semua Template -->
-    <div class="modal" id="allTemplatesModal">
-        <div class="modal-content modal-lg">
-            <div class="modal-header">
-                <h2><i class="fas fa-folder-open"></i> Semua Template Font</h2>
-                <button class="modal-close" id="closeAllTemplatesModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <!-- Search Bar -->
-                <div class="modal-search-bar">
-                    <div class="search-input-wrapper">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="modalTemplateSearch" placeholder="Cari template...">
-                    </div>
-                    <select id="modalTemplateFilter" class="template-filter">
-                        <option value="all">Semua</option>
-                        <option value="popular">Populer</option>
-                        <option value="recent">Terbaru</option>
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
-                    </select>
-                </div>
-
-                <!-- Templates Grid -->
-                <div class="templates-grid" id="allTemplatesGrid">
-                    <div class="template-loading">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <span>Memuat template...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Upload Gambar -->
-    <div class="modal" id="uploadModal">
-        <div class="modal-content upload-modal">
-            <div class="modal-header">
-                <h2><i class="fas fa-cloud-upload-alt"></i> Upload Gambar</h2>
-                <button class="modal-close" id="closeUploadModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="upload-area" id="uploadArea">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <p>Drag & drop atau klik untuk upload</p>
-                    <small>Format: JPG, PNG, GIF (Max 5MB)</small>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
-                </div>
-                <div class="upload-preview" id="uploadPreview" style="display: none;">
-                    <img src="" alt="Preview">
-                    <button class="btn-change" id="changeImageBtn">
-                        <i class="fas fa-sync-alt"></i> Ganti
-                    </button>
-                </div>
-                <div class="form-actions">
-                    <button class="btn-primary" id="confirmUploadBtn" disabled>
-                        <i class="fas fa-check"></i> Gunakan Gambar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Promo -->
-    <div class="modal" id="promoModal">
-        <div class="modal-content modal-lg">
-            <div class="modal-header">
-                <h2><i class="fas fa-bullhorn"></i> <span id="promoModalTitle">Tambah Promosi</span></h2>
-                <button class="modal-close" id="closePromoModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="promoForm">
-                    <input type="hidden" id="promoId">
-                    
-                    <!-- Judul Promo -->
-                    <div class="form-group">
-                        <label><i class="fas fa-heading"></i> Judul Promosi</label>
-                        <input type="text" id="promoTitle" placeholder="Contoh: Promo Akhir Bulan, Diskon Spesial" required>
-                    </div>
-                    
-                    <!-- Banner Promosi -->
-                    <div class="form-group">
-                        <label><i class="fas fa-image"></i> Banner Promosi (Wajib 1280x760)</label>
-                        <div class="promo-banner-preview-small" id="promoBannerPreviewSmall">
-                            <img src="https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner" alt="Promo Banner Preview" id="promoBannerImageSmall">
-                        </div>
-                        <div class="banner-url-input-wrapper" style="margin-top: 8px;">
-                            <i class="fas fa-link input-icon"></i>
-                            <input type="url" id="promoBannerUrl" class="banner-url-input" placeholder="https://i.imgur.com/xxxxxxx.jpg" required>
-                        </div>
-                        <small class="hint">Gunakan link gambar (Imgur, Postimages, dll). Ukuran harus 1280x760 pixel.</small>
-                        <div id="promoBannerValidation" class="banner-validation-message info" style="margin-top: 4px;">
-                            <i class="fas fa-info-circle"></i> Masukkan URL banner
-                        </div>
-                    </div>
-                    
-                    <!-- Deskripsi Promosi -->
-                    <div class="form-group">
-                        <label><i class="fas fa-align-left"></i> Deskripsi Promosi</label>
-                        <textarea id="promoDescription" rows="2" placeholder="Contoh: Promo spesial akhir bulan! Diskon hingga 50% untuk semua produk."></textarea>
-                    </div>
-                    
-                    <!-- Waktu Berakhir -->
-                    <div class="form-group">
-                        <label><i class="fas fa-clock"></i> Waktu Berakhir</label>
-                        <div class="form-row" style="margin-bottom: 8px;">
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <input type="date" id="promoEndDate">
-                            </div>
-                            <div class="form-group" style="margin-bottom: 0;">
-                                <input type="time" id="promoEndTime">
-                            </div>
-                        </div>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="promoNeverEnd">
-                            <span class="checkbox-text">Tidak ada batas waktu</span>
-                        </label>
-                    </div>
-                    
-                    <!-- Catatan Penting -->
-                    <div class="form-group">
-                        <label><i class="fas fa-sticky-note"></i> Catatan Penting</label>
-                        <textarea id="promoNotes" rows="2" placeholder="Contoh: Promo tidak berlaku kelipatan, minimal pembelian Rp 50.000"></textarea>
-                    </div>
-                    
-                    <!-- Status Promo -->
-                    <div class="form-group">
-                        <label><i class="fas fa-toggle-on"></i> Status Promo</label>
-                        <div class="status-toggle" style="margin-top: 4px;">
-                            <label class="toggle">
-                                <input type="checkbox" id="promoActive" checked>
-                                <span class="toggle-slider"></span>
-                                <span class="toggle-label">Aktifkan Promo</span>
+                        
+                        <!-- Font Family Name -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-font"></i>
+                                Font Family Name
                             </label>
+                            <input type="text" 
+                                   id="fontFamily" 
+                                   class="styled-input" 
+                                   placeholder="Nama font (contoh: Squeaky)"
+                                   value="MyCustomFont">
+                            <small class="input-hint">
+                                Nama yang akan digunakan di CSS
+                            </small>
+                        </div>
+                        
+                        <!-- Alternative: URL Font -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-link"></i>
+                                Atau URL Font (.ttf)
+                            </label>
+                            <input type="url" 
+                                   id="fontUrl" 
+                                   class="styled-input" 
+                                   placeholder="https://example.com/font.ttf">
+                            <small class="input-hint">
+                                URL langsung ke file .ttf (jika sudah dihosting)
+                            </small>
+                        </div>
+                        
+                        <!-- Load Font Button -->
+                        <button class="btn-apply-font full-width" id="loadFontBtn">
+                            <i class="fas fa-download"></i>
+                            Load & Preview Font
+                        </button>
+                        
+                        <!-- Font Style Controls -->
+                        <div class="control-group" style="margin-top: 20px;">
+                            <label class="control-label">
+                                <i class="fas fa-sliders-h"></i>
+                                Font Style
+                            </label>
+                            <div class="font-style-controls">
+                                <select id="fontWeight" class="style-select">
+                                    <option value="100">Thin (100)</option>
+                                    <option value="200">Extra Light (200)</option>
+                                    <option value="300">Light (300)</option>
+                                    <option value="400" selected>Regular (400)</option>
+                                    <option value="500">Medium (500)</option>
+                                    <option value="600">Semi Bold (600)</option>
+                                    <option value="700">Bold (700)</option>
+                                    <option value="800">Extra Bold (800)</option>
+                                    <option value="900">Black (900)</option>
+                                </select>
+                                
+                                <select id="fontStyle" class="style-select">
+                                    <option value="normal" selected>Normal</option>
+                                    <option value="italic">Italic</option>
+                                    <option value="oblique">Oblique</option>
+                                </select>
+                                
+                                <select id="fontSize" class="style-select">
+                                    <option value="24">24px</option>
+                                    <option value="32">32px</option>
+                                    <option value="40">40px</option>
+                                    <option value="48" selected>48px</option>
+                                    <option value="56">56px</option>
+                                    <option value="64">64px</option>
+                                    <option value="72">72px</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Text Color -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-palette"></i>
+                                Text Color
+                            </label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="textColor" value="#ffffff">
+                                <input type="text" id="textColorHex" value="#ffffff">
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" id="cancelPromoBtn">Batal</button>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-save"></i> Simpan Promosi
+                </div>
+                
+                <!-- Animation Manager -->
+                <div class="control-section">
+                    <div class="section-header" data-toggle="animationSection">
+                        <h2><i class="fas fa-film"></i> Animation Studio</h2>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="section-content" id="animationSection">
+                        <!-- Animation Type -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-magic"></i>
+                                Pilih Animasi
+                            </label>
+                            <select id="animationType" class="style-select">
+                                <option value="none">Tidak Ada</option>
+                                <option value="fade" selected>Fade</option>
+                                <option value="bounce">Bounce</option>
+                                <option value="pulse">Pulse</option>
+                                <option value="shake">Shake</option>
+                                <option value="float">Float</option>
+                                <option value="rotate">Rotate</option>
+                                <option value="wave">Wave</option>
+                                <option value="glitch">Glitch</option>
+                                <option value="rainbow">Rainbow</option>
+                                <option value="heartbeat">Heartbeat</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Duration -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-clock"></i>
+                                Durasi (detik)
+                            </label>
+                            <div class="range-control">
+                                <input type="range" id="animDuration" min="0.5" max="5" value="2" step="0.5">
+                                <span class="range-value" id="animDurationValue">2s</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Delay -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-hourglass-half"></i>
+                                Delay (detik)
+                            </label>
+                            <div class="range-control">
+                                <input type="range" id="animDelay" min="0" max="2" value="0" step="0.1">
+                                <span class="range-value" id="animDelayValue">0s</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Iteration -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-redo-alt"></i>
+                                Perulangan
+                            </label>
+                            <select id="animIteration" class="style-select">
+                                <option value="1">1x</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="infinite" selected>Tak Terbatas</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Template Manager -->
+                <div class="control-section">
+                    <div class="section-header" data-toggle="templateSection">
+                        <h2><i class="fas fa-save"></i> Template Manager</h2>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="section-content" id="templateSection">
+                        <!-- Save Template -->
+                        <div class="control-group">
+                            <label class="control-label">
+                                <i class="fas fa-tag"></i>
+                                Nama Template
+                            </label>
+                            <input type="text" id="templateName" class="styled-input" placeholder="Contoh: My Custom Font Bounce">
+                        </div>
+                        
+                        <button class="btn-apply-font full-width" id="saveTemplateBtn">
+                            <i class="fas fa-save"></i>
+                            Simpan Template
+                        </button>
+                        
+                        <div class="template-code-display" id="savedCodeDisplay" style="display: none; margin-top: 16px; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
+                            <small>Kode Template:</small>
+                            <div style="font-family: monospace; font-size: 16px; color: #40a7e3; letter-spacing: 2px; margin: 8px 0;" id="generatedCode">ABCDEFGHIJKLMNOPQRSTUVWXYZ12345</div>
+                            <button class="btn-icon" id="copyCodeBtn" style="width: auto; padding: 8px 16px;">
+                                <i class="fas fa-copy"></i> Salin Kode
+                            </button>
+                        </div>
+                        
+                        <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                            <label class="control-label">
+                                <i class="fas fa-key"></i>
+                                Load Template
+                            </label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="loadTemplateCode" class="styled-input" placeholder="Masukkan kode 35 karakter" maxlength="35">
+                                <button class="btn-apply-font" id="loadTemplateBtn" style="width: auto;">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preview Text Editor -->
+                <div class="control-section">
+                    <div class="section-header" data-toggle="textSection">
+                        <h2><i class="fas fa-edit"></i> Preview Text</h2>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="section-content" id="textSection">
+                        <div class="control-group">
+                            <textarea id="previewText" class="code-textarea" rows="2">Toko Online Premium</textarea>
+                        </div>
+                        <div class="control-group">
+                            <input type="text" id="previewSubtext" class="styled-input" value="dengan Layanan Terbaik 24/7">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center Preview Area -->
+            <div class="preview-area">
+                <div class="preview-header">
+                    <h3><i class="fas fa-eye"></i> Live Preview</h3>
+                    <div class="preview-controls">
+                        <button class="preview-fullscreen" id="fullscreenPreview">
+                            <i class="fas fa-expand"></i>
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: Konfirmasi Hapus -->
-    <div class="modal" id="deleteModal">
-        <div class="modal-content modal-sm">
-            <div class="modal-header danger">
-                <h2><i class="fas fa-exclamation-triangle"></i> Hapus Promosi</h2>
-                <button class="modal-close" id="closeDeleteModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p class="delete-text" id="deleteMessage">Apakah Anda yakin ingin menghapus promosi ini?</p>
-                <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
-                <div class="delete-info" id="deleteInfo"></div>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" id="cancelDeleteBtn">Batal</button>
-                    <button type="button" class="btn-danger" id="confirmDeleteBtn">
-                        <i class="fas fa-trash"></i> Hapus
+                </div>
+                
+                <!-- Preview Canvas -->
+                <div class="preview-canvas" id="previewCanvas">
+                    <div class="preview-text-display" id="previewTextDisplay">
+                        Toko Online Premium
+                    </div>
+                    <div class="preview-subtext-display" id="previewSubtextDisplay">
+                        dengan Layanan Terbaik 24/7
+                    </div>
+                </div>
+                
+                <!-- Animation Timeline Controls -->
+                <div class="timeline-controls" style="padding: 16px 20px;">
+                    <button class="timeline-btn" id="playAnimation">
+                        <i class="fas fa-play"></i>
                     </button>
+                    <button class="timeline-btn" id="pauseAnimation">
+                        <i class="fas fa-pause"></i>
+                    </button>
+                    <button class="timeline-btn" id="restartAnimation">
+                        <i class="fas fa-redo-alt"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Right Panel - Info -->
+            <div class="properties-panel">
+                <!-- Font Info -->
+                <div class="properties-section">
+                    <h3 class="properties-title">
+                        <i class="fas fa-info-circle"></i>
+                        Font Info
+                    </h3>
+                    <div class="font-info-panel">
+                        <div class="info-row">
+                            <span class="info-label">Font:</span>
+                            <span class="info-value" id="infoFont">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Weight:</span>
+                            <span class="info-value" id="infoWeight">400</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Size:</span>
+                            <span class="info-value" id="infoSize">48px</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Animasi:</span>
+                            <span class="info-value" id="infoAnimasi">Fade</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- CSS Output -->
+                <div class="properties-section">
+                    <h3 class="properties-title">
+                        <i class="fas fa-code"></i>
+                        CSS Output
+                    </h3>
+                    <div class="css-output">
+                        <pre><code class="language-css" id="cssCode">/* Font akan muncul setelah load */</code></pre>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
+    <!-- Toast Notifications -->
+    <div class="toast-container" id="toastContainer"></div>
+    
     <!-- JavaScript -->
-    <script src="/wtb/js/tampilan.js"></script>
+    <script src="/wtb/js/tampilan/font.js"></script>
 </body>
 </html>
