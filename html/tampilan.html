@@ -50,33 +50,28 @@
             </div>
         </header>
 
-        <!-- Tabs Navigation - Tambahkan tab baru -->
+        <!-- Tabs Navigation -->
         <div class="tampilan-tabs">
-          <button class="tab-btn active" data-tab="logo">
-            <i class="fas fa-image"></i>
-            <span>Logo</span>
-          </button>
-          <button class="tab-btn" data-tab="banner">
-            <i class="fas fa-images"></i>
-            <span>Banner Slider</span>
-          </button>
-          <button class="tab-btn" data-tab="promo">
-            <i class="fas fa-bullhorn"></i>
-            <span>Promosi</span>
-          </button>
-          <button class="tab-btn" data-tab="warna">
-            <i class="fas fa-palette"></i>
-            <span>Warna</span>
-          </button>
-          <button class="tab-btn" data-tab="font">
-            <i class="fas fa-font"></i>
-            <span>Font</span>
-          </button>
-          <!-- TAB BARU: Font & Animasi -->
-          <button class="tab-btn" data-tab="font-anim">
-            <i class="fas fa-magic"></i>
-            <span>Font + Animasi</span>
-          </button>
+            <button class="tab-btn active" data-tab="logo">
+                <i class="fas fa-image"></i>
+                <span>Logo</span>
+            </button>
+            <button class="tab-btn" data-tab="banner">
+                <i class="fas fa-images"></i>
+                <span>Banner Slider</span>
+            </button>
+            <button class="tab-btn" data-tab="promo">
+                <i class="fas fa-bullhorn"></i>
+                <span>Promosi</span>
+            </button>
+            <button class="tab-btn" data-tab="warna">
+                <i class="fas fa-palette"></i>
+                <span>Warna</span>
+            </button>
+            <button class="tab-btn" data-tab="font-template">
+                <i class="fas fa-font"></i>
+                <span>Font Template</span>
+            </button>
         </div>
 
         <!-- Tab Content -->
@@ -103,9 +98,19 @@
                             <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
                             <small>Format PNG hanya, upload atau masukkan URL</small>
                         </div>
+                        
+                        <!-- Nama Store (untuk disamping logo) -->
+                        <div class="form-group" style="margin-top: 20px;">
+                            <label for="storeDisplayName">
+                                <i class="fas fa-store"></i> Nama Store (disamping logo)
+                            </label>
+                            <input type="text" id="storeDisplayName" placeholder="Contoh: Toko Online" value="Toko Online">
+                            <small>Nama yang akan tampil di samping logo website</small>
+                        </div>
+                        
                         <div class="form-actions">
                             <button class="btn-primary" id="saveLogoBtn">
-                                <i class="fas fa-save"></i> Simpan Logo
+                                <i class="fas fa-save"></i> Simpan Logo & Nama Store
                             </button>
                         </div>
                     </div>
@@ -147,7 +152,7 @@
                 </div>
             </div>
 
-            <!-- Tab: Promosi (REVISED) -->
+            <!-- Tab: Promosi -->
             <div id="tab-promo" class="tab-content">
                 <div class="settings-card">
                     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -238,67 +243,170 @@
                 </div>
             </div>
 
-            <!-- Tab Content - Tambahkan konten baru -->
-            <!-- Tab: Font & Animasi (NEW) -->
-            <div id="tab-font-anim" class="tab-content">
-              <div class="settings-card">
-                <div class="card-header">
-                  <h3><i class="fas fa-magic"></i> Font & Animasi Teks</h3>
+            <!-- Tab: Font Template (REVISED) -->
+            <div id="tab-font-template" class="tab-content">
+                <div class="settings-card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3><i class="fas fa-font"></i> Template Font & Animasi</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-view-templates" id="viewAllTemplatesBtn">
+                                <i class="fas fa-folder-open"></i> Lihat Semua Template
+                            </button>
+                            <a href="/wtb/html/tampilan/font.html?website={{website_endpoint}}" class="btn-create-template" id="createFontTemplateBtn">
+                                <i class="fas fa-plus-circle"></i> Buat Template Baru
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Info Message -->
+                        <div class="banner-info-message" style="margin-bottom: 20px;">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Buat template font dan animasi di halaman <strong>Font Studio</strong>, kemudian masukkan kode template atau cari berdasarkan nama di sini.</span>
+                        </div>
+
+                        <!-- Template Preview Card -->
+                        <div class="template-preview-card" id="templatePreviewCard" style="display: none;">
+                            <div class="template-preview-header">
+                                <h4><i class="fas fa-eye"></i> Preview Template</h4>
+                                <button class="template-preview-clear" id="clearTemplatePreview" title="Hapus preview">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="template-preview-content">
+                                <div class="template-preview-box" id="templatePreviewBox">
+                                    <span class="template-preview-text" id="templatePreviewText">Toko Online</span>
+                                    <div class="template-preview-info" id="templatePreviewInfo">
+                                        <span class="template-preview-font">Font: <span id="previewFontName">Inter</span></span>
+                                        <span class="template-preview-anim">Animasi: <span id="previewAnimName">None</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Template Search / Input Section -->
+                        <div class="template-search-section">
+                            <div class="template-input-tabs">
+                                <button class="template-input-tab active" data-input-type="code">
+                                    <i class="fas fa-key"></i> Input Kode
+                                </button>
+                                <button class="template-input-tab" data-input-type="search">
+                                    <i class="fas fa-search"></i> Cari Nama
+                                </button>
+                            </div>
+
+                            <!-- Input by Code -->
+                            <div class="template-input-panel active" id="inputByCodePanel">
+                                <div class="form-group">
+                                    <label for="fontTemplateCode">
+                                        <i class="fas fa-key"></i> Kode Template (35 karakter)
+                                    </label>
+                                    <div class="template-code-input-group">
+                                        <input type="text" 
+                                               id="fontTemplateCode" 
+                                               class="template-code-input" 
+                                               placeholder="Contoh: aB3dE5fG7hIj9kL1mN2oP4qR6sT8uV0wX"
+                                               maxlength="35"
+                                               pattern="[A-Za-z0-9]{35}"
+                                               title="Kode template harus 35 karakter alfanumerik">
+                                        <button class="template-code-verify" id="verifyTemplateCode" title="Verifikasi kode">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                    <small class="input-hint">Masukkan kode template yang didapat dari halaman Font Studio</small>
+                                </div>
+                            </div>
+
+                            <!-- Input by Search -->
+                            <div class="template-input-panel" id="inputBySearchPanel">
+                                <div class="form-group">
+                                    <label for="templateSearchInput">
+                                        <i class="fas fa-search"></i> Cari Template
+                                    </label>
+                                    <div class="template-search-input-group">
+                                        <i class="fas fa-search search-icon"></i>
+                                        <input type="text" 
+                                               id="templateSearchInput" 
+                                               class="template-search-field" 
+                                               placeholder="Ketik nama template...">
+                                        <button class="template-search-clear" id="clearSearchBtn" style="display: none;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <small class="input-hint">Ketik minimal 2 karakter untuk mencari template</small>
+                                </div>
+
+                                <!-- Search Results -->
+                                <div class="template-search-results" id="templateSearchResults">
+                                    <!-- Results will be displayed here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selected Template Info -->
+                        <div class="selected-template-info" id="selectedTemplateInfo" style="display: none;">
+                            <div class="selected-template-badge">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Template Terpilih: <strong id="selectedTemplateName">-</strong></span>
+                                <button class="btn-change-template" id="changeTemplateBtn">
+                                    <i class="fas fa-sync-alt"></i> Ganti
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="template-quick-actions">
+                            <button class="btn-secondary" id="applyTemplateBtn" disabled>
+                                <i class="fas fa-check"></i> Terapkan Template
+                            </button>
+                            <button class="btn-secondary" id="testTemplateBtn" disabled>
+                                <i class="fas fa-play"></i> Test Preview
+                            </button>
+                        </div>
+
+                        <!-- Save Button -->
+                        <div class="form-actions" style="margin-top: 24px;">
+                            <button class="btn-primary" id="saveTemplateCodeBtn">
+                                <i class="fas fa-save"></i> Simpan Kode Template
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                  <!-- Nama Store -->
-                  <div class="form-section">
-                    <h4 class="section-title">
-                      <i class="fas fa-store"></i> Nama Store
-                    </h4>
-                    <div class="form-group">
-                      <label>Nama Toko (untuk disamping logo)</label>
-                      <input type="text" id="storeDisplayName" placeholder="Contoh: Toko Online" value="Toko Online">
-                      <small class="hint">Nama yang tampil di samping logo</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Lihat Semua Template -->
+    <div class="modal" id="allTemplatesModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-folder-open"></i> Semua Template Font</h2>
+                <button class="modal-close" id="closeAllTemplatesModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Search Bar -->
+                <div class="modal-search-bar">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="modalTemplateSearch" placeholder="Cari template...">
                     </div>
-                  </div>
-            
-                  <!-- Font Preview Grid -->
-                  <div class="form-section">
-                    <h4 class="section-title">
-                      <i class="fas fa-font"></i> Pilih Font
-                    </h4>
-                    <div class="font-grid" id="fontGrid">
-                      <!-- Akan diisi JavaScript -->
-                    </div>
-                  </div>
-            
-                  <!-- Animation Preview -->
-                  <div class="form-section">
-                    <h4 class="section-title">
-                      <i class="fas fa-film"></i> Animasi Teks
-                    </h4>
-            
-                    <!-- Live Preview -->
-                    <div class="animation-live-preview" id="animationLivePreview">
-                      <div class="preview-label">Preview Langsung:</div>
-                      <div class="preview-box" id="animPreviewBox">
-                        <span id="animPreviewText">Toko Online</span>
-                      </div>
-                    </div>
-            
-                    <!-- Animation Grid -->
-                    <div class="animation-grid" id="animationGrid">
-                      <!-- Akan diisi JavaScript -->
-                    </div>
-            
-                    <!-- Animation Controls -->
-                    <div id="animationControlsContainer"></div>
-                  </div>
-            
-                  <!-- Save Button -->
-                  <div class="form-actions">
-                    <button class="btn-primary" id="saveFontAnimBtn">
-                      <i class="fas fa-save"></i> Simpan Pengaturan Font & Animasi
-                    </button>
-                  </div>
+                    <select id="modalTemplateFilter" class="template-filter">
+                        <option value="all">Semua</option>
+                        <option value="popular">Populer</option>
+                        <option value="recent">Terbaru</option>
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                    </select>
                 </div>
-              </div>
+
+                <!-- Templates Grid -->
+                <div class="templates-grid" id="allTemplatesGrid">
+                    <div class="template-loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Memuat template...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -334,7 +442,7 @@
         </div>
     </div>
 
-    <!-- MODAL: Promo (NEW) -->
+    <!-- MODAL: Promo -->
     <div class="modal" id="promoModal">
         <div class="modal-content modal-lg">
             <div class="modal-header">
@@ -444,8 +552,7 @@
         </div>
     </div>
 
-    <!-- JavaScript - URUTAN PENTING! -->
-    <script src="/wtb/js/font-animations.js"></script>
+    <!-- JavaScript -->
     <script src="/wtb/js/tampilan.js"></script>
 </body>
 </html>
