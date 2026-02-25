@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Pengaturan Sosial - Website Panel</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/css/sosial.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="sosial-container">
+        <!-- Header -->
+        <header class="sosial-header">
+            <div class="header-left">
+                <a href="/wtb/html/panel.html" class="back-btn" id="backToPanel">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon">
+                    <i class="fas fa-share-alt"></i>
+                </div>
+                <div class="header-title">
+                    <h1>Pengaturan Sosial</h1>
+                    <span class="website-badge" id="websiteBadge">/endpoint</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-primary" id="saveAllBtn">
+                    <i class="fas fa-save"></i> Simpan Semua
+                </button>
+            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="sosial-tabs">
+            <button class="tab-btn active" data-tab="telegram">
+                <i class="fab fa-telegram"></i>
+                <span>Telegram</span>
+            </button>
+            <button class="tab-btn" data-tab="links">
+                <i class="fas fa-link"></i>
+                <span>Link & Rnk</span>
+            </button>
+            <button class="tab-btn" data-tab="force">
+                <i class="fas fa-bell"></i>
+                <span>Force Subscribe</span>
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="sosial-content">
+            <!-- Tab: Telegram -->
+            <div id="tab-telegram" class="tab-content active">
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fab fa-telegram"></i> Channel & Kontak Telegram</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Channel Telegram -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fab fa-telegram-plane"></i> Channel Telegram
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-link"></i>
+                                    Link Channel
+                                </label>
+                                <input type="url" id="channelLink" placeholder="https://t.me/nama_channel">
+                                <small class="hint">Link channel Telegram untuk promosi dan informasi</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-hashtag"></i>
+                                    Username Channel
+                                </label>
+                                <div class="input-prefix-wrapper">
+                                    <span class="input-prefix">@</span>
+                                    <input type="text" id="channelUsername" placeholder="nama_channel">
+                                </div>
+                                <small class="hint">Username channel tanpa @ (contoh: channel_promo)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-id-card"></i>
+                                    Channel ID
+                                </label>
+                                <input type="text" id="channelId" placeholder="-1001234567890">
+                                <small class="hint">ID numerik channel (biasanya -100 diikuti angka)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-align-left"></i>
+                                    Deskripsi Channel
+                                </label>
+                                <textarea id="channelDesc" rows="2" placeholder="Deskripsi singkat tentang channel"></textarea>
+                            </div>
+                            
+                            <div class="status-toggle-group">
+                                <label class="toggle">
+                                    <input type="checkbox" id="channelActive">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktifkan Tampilan Channel</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Channel Testimoni -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-star"></i> Channel Testimoni
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-link"></i>
+                                    Link Channel Testi
+                                </label>
+                                <input type="url" id="testiLink" placeholder="https://t.me/testi_channel">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-hashtag"></i>
+                                    Username Channel Testi
+                                </label>
+                                <div class="input-prefix-wrapper">
+                                    <span class="input-prefix">@</span>
+                                    <input type="text" id="testiUsername" placeholder="testi_channel">
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-id-card"></i>
+                                    Channel Testi ID
+                                </label>
+                                <input type="text" id="testiId" placeholder="-1001234567890">
+                            </div>
+                            
+                            <div class="status-toggle-group">
+                                <label class="toggle">
+                                    <input type="checkbox" id="testiActive">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktifkan Tampilan Testimoni</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Contact Telegram -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-headset"></i> Contact Telegram
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-user"></i>
+                                    Username Contact
+                                </label>
+                                <div class="input-prefix-wrapper">
+                                    <span class="input-prefix">@</span>
+                                    <input type="text" id="contactUsername" placeholder="admin_toko">
+                                </div>
+                                <small class="hint">Username admin/pemilik toko</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-id-card"></i>
+                                    User ID Contact
+                                </label>
+                                <input type="number" id="contactUserId" placeholder="123456789">
+                                <small class="hint">ID numerik user Telegram</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-link"></i>
+                                    Link Direct Message
+                                </label>
+                                <input type="url" id="contactLink" placeholder="https://t.me/admin_toko">
+                                <small class="hint">Link direct message ke admin</small>
+                            </div>
+                            
+                            <div class="status-toggle-group">
+                                <label class="toggle">
+                                    <input type="checkbox" id="contactActive" checked>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktifkan Contact</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Bot Contact -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-robot"></i> Bot Contact
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-user"></i>
+                                    Username Bot
+                                </label>
+                                <div class="input-prefix-wrapper">
+                                    <span class="input-prefix">@</span>
+                                    <input type="text" id="botUsername" placeholder="nama_bot">
+                                </div>
+                                <small class="hint">Username bot (tanpa @)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-link"></i>
+                                    Link Bot
+                                </label>
+                                <input type="url" id="botLink" placeholder="https://t.me/nama_bot">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-id-card"></i>
+                                    Bot ID
+                                </label>
+                                <input type="number" id="botId" placeholder="123456789">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-comment"></i>
+                                    Start Command
+                                </label>
+                                <input type="text" id="botCommand" value="/start" placeholder="/start">
+                                <small class="hint">Command untuk memulai bot</small>
+                            </div>
+                            
+                            <div class="status-toggle-group">
+                                <label class="toggle">
+                                    <input type="checkbox" id="botActive">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktifkan Bot Contact</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Link & Rnk -->
+            <div id="tab-links" class="tab-content">
+                <div class="settings-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-link"></i> Link & Referral</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Rnk Link -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-chart-line"></i> Rnk Link (Referral)
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-link"></i>
+                                    Rnk Link URL
+                                </label>
+                                <input type="url" id="rnkLink" placeholder="https://example.com/ref">
+                                <small class="hint">Link referral/rnk untuk tracking</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-tag"></i>
+                                    Rnk Code
+                                </label>
+                                <input type="text" id="rnkCode" placeholder="REF123">
+                                <small class="hint">Kode referral (opsional)</small>
+                            </div>
+                            
+                            <div class="status-toggle-group">
+                                <label class="toggle">
+                                    <input type="checkbox" id="rnkActive">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktifkan Rnk Link</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Social Links -->
+                        <div class="form-section">
+                            <h4 class="section-title">
+                                <i class="fas fa-share-alt"></i> Social Media Links
+                            </h4>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fab fa-instagram"></i>
+                                    Instagram
+                                </label>
+                                <input type="url" id="instagramLink" placeholder="https://instagram.com/username">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fab fa-facebook"></i>
+                                    Facebook
+                                </label>
+                                <input type="url" id="facebookLink" placeholder="https://facebook.com/username">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fab fa-tiktok"></i>
+                                    TikTok
+                                </label>
+                                <input type="url" id="tiktokLink" placeholder="https://tiktok.com/@username">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fab fa-youtube"></i>
+                                    YouTube
+                                </label>
+                                <input type="url" id="youtubeLink" placeholder="https://youtube.com/@channel">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fab fa-whatsapp"></i>
+                                    WhatsApp
+                                </label>
+                                <input type="url" id="whatsappLink" placeholder="https://wa.me/628123456789">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-envelope"></i>
+                                    Email Contact
+                                </label>
+                                <input type="email" id="emailContact" placeholder="support@example.com">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Force Subscribe -->
+            <div id="tab-force" class="tab-content">
+                <div class="settings-card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3><i class="fas fa-bell"></i> Force Subscribe</h3>
+                        <button class="btn-add" id="addForceChannelBtn">
+                            <i class="fas fa-plus-circle"></i> Tambah Channel/Group
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <!-- Info -->
+                        <div class="info-message">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Pengguna wajib subscribe channel/group sebelum dapat mengakses fitur tertentu.</span>
+                        </div>
+
+                        <!-- Force Subscribe Container -->
+                        <div class="force-container" id="forceContainer">
+                            <!-- Akan diisi JavaScript -->
+                        </div>
+
+                        <!-- Empty State -->
+                        <div class="empty-state" id="emptyForce" style="display: none;">
+                            <i class="fas fa-bell-slash"></i>
+                            <h3>Belum Ada Channel/Group</h3>
+                            <p>Tambah channel atau group yang wajib di-subscribe</p>
+                            <button class="btn-primary" id="emptyAddForceBtn">
+                                <i class="fas fa-plus"></i> Tambah Channel/Group
+                            </button>
+                        </div>
+
+                        <!-- Global Force Subscribe Settings -->
+                        <div class="form-section" style="margin-top: 24px;">
+                            <h4 class="section-title">
+                                <i class="fas fa-cog"></i> Pengaturan Global
+                            </h4>
+                            
+                            <div class="status-toggle-group">
+                                <label class="toggle">
+                                    <input type="checkbox" id="forceGlobalActive">
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktifkan Force Subscribe Global</span>
+                                </label>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-clock"></i>
+                                    Cek Interval (detik)
+                                </label>
+                                <input type="number" id="forceInterval" min="5" max="3600" value="30">
+                                <small class="hint">Interval pengecekan keanggotaan (default: 30 detik)</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Pesan Peringatan
+                                </label>
+                                <textarea id="forceMessage" rows="2">⚠️ Anda harus subscribe channel berikut terlebih dahulu:</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Force Subscribe Channel/Group -->
+    <div class="modal" id="forceModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-bell"></i> <span id="forceModalTitle">Tambah Channel/Group</span></h2>
+                <button class="modal-close" id="closeForceModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="forceForm">
+                    <input type="hidden" id="forceId">
+                    
+                    <!-- Tipe -->
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Tipe</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="forceType" value="channel" checked>
+                                <span class="radio-label">Channel</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="forceType" value="group">
+                                <span class="radio-label">Group</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="forceType" value="supergroup">
+                                <span class="radio-label">Supergroup</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Nama -->
+                    <div class="form-group">
+                        <label><i class="fas fa-heading"></i> Nama Channel/Group</label>
+                        <input type="text" id="forceNama" placeholder="Contoh: Channel Promo, Group Diskusi" required>
+                    </div>
+                    
+                    <!-- Username -->
+                    <div class="form-group">
+                        <label><i class="fas fa-at"></i> Username</label>
+                        <div class="input-prefix-wrapper">
+                            <span class="input-prefix">@</span>
+                            <input type="text" id="forceUsername" placeholder="username_channel" required>
+                        </div>
+                        <small class="hint">Username tanpa @</small>
+                    </div>
+                    
+                    <!-- Link -->
+                    <div class="form-group">
+                        <label><i class="fas fa-link"></i> Link Invite</label>
+                        <input type="url" id="forceLink" placeholder="https://t.me/username_channel" required>
+                        <small class="hint">Link channel/group (https://t.me/...)</small>
+                    </div>
+                    
+                    <!-- ID -->
+                    <div class="form-group">
+                        <label><i class="fas fa-id-card"></i> Chat ID</label>
+                        <input type="text" id="forceChatId" placeholder="-1001234567890" required>
+                        <small class="hint">ID numerik channel/group (bisa dicek dengan @getidsbot)</small>
+                    </div>
+                    
+                    <!-- Deskripsi -->
+                    <div class="form-group">
+                        <label><i class="fas fa-align-left"></i> Deskripsi (Opsional)</label>
+                        <textarea id="forceDesc" rows="2" placeholder="Deskripsi singkat tentang channel/group ini"></textarea>
+                    </div>
+                    
+                    <!-- Status -->
+                    <div class="form-group">
+                        <label><i class="fas fa-toggle-on"></i> Status</label>
+                        <div class="status-toggle-group">
+                            <label class="toggle">
+                                <input type="checkbox" id="forceActive" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Aktifkan</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelForceBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Simpan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Konfirmasi Hapus -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header danger">
+                <h2><i class="fas fa-exclamation-triangle"></i> Hapus</h2>
+                <button class="modal-close" id="closeDeleteModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-text" id="deleteMessage">Apakah Anda yakin ingin menghapus ini?</p>
+                <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
+                <div class="delete-info" id="deleteInfo"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelDeleteBtn">Batal</button>
+                    <button type="button" class="btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/wtb/js/sosial.js"></script>
+</body>
+</html>
