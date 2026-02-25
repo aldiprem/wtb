@@ -1637,3 +1637,237 @@ input:checked + .toggle-slider:before {
         height: 100px;
     }
 }
+
+/* Tambahkan di akhir file tampilan.css */
+
+/* ===== FONT & ANIMATIONS SECTION ===== */
+
+/* Font Grid */
+.font-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.font-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.font-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary-color);
+  box-shadow: 0 8px 24px rgba(64, 167, 227, 0.2);
+}
+
+.font-card.selected {
+  border-color: var(--success-color);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.font-preview {
+  font-size: 18px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  word-break: break-word;
+}
+
+.font-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.font-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.font-category {
+  font-size: 11px;
+  color: var(--tg-hint-color);
+}
+
+.font-note {
+  font-size: 10px;
+  color: var(--warning-color);
+  background: rgba(245, 158, 11, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.selected-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: var(--success-color);
+  font-size: 20px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Animation Live Preview */
+.animation-live-preview {
+  margin-bottom: 24px;
+}
+
+.preview-label {
+  font-size: 13px;
+  color: var(--tg-hint-color);
+  margin-bottom: 8px;
+}
+
+.preview-box {
+  background: linear-gradient(135deg, var(--card-bg), #252525);
+  border: 2px dashed var(--border-color);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#animPreviewText {
+  font-size: 24px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* Animation Grid */
+.animation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.animation-card {
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  text-align: center;
+}
+
+.animation-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary-color);
+}
+
+.animation-card.selected {
+  border-color: var(--success-color);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.animation-preview {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  padding: 12px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+
+.animation-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.animation-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.animation-desc {
+  font-size: 10px;
+  color: var(--tg-hint-color);
+}
+
+/* Animation Controls */
+.animation-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group label {
+  font-size: 12px;
+  color: var(--tg-hint-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.control-group select {
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--tg-text-color);
+  font-size: 13px;
+  outline: none;
+}
+
+.control-group select:focus {
+  border-color: var(--primary-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .font-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .animation-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .animation-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .font-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .animation-grid {
+    grid-template-columns: 1fr;
+  }
+}
