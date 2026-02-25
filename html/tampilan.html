@@ -50,28 +50,33 @@
             </div>
         </header>
 
-        <!-- Tabs Navigation -->
+        <!-- Tabs Navigation - Tambahkan tab baru -->
         <div class="tampilan-tabs">
-            <button class="tab-btn active" data-tab="logo">
-                <i class="fas fa-image"></i>
-                <span>Logo</span>
-            </button>
-            <button class="tab-btn" data-tab="banner">
-                <i class="fas fa-images"></i>
-                <span>Banner Slider</span>
-            </button>
-            <button class="tab-btn" data-tab="promo">
-                <i class="fas fa-bullhorn"></i>
-                <span>Promosi</span>
-            </button>
-            <button class="tab-btn" data-tab="warna">
-                <i class="fas fa-palette"></i>
-                <span>Warna</span>
-            </button>
-            <button class="tab-btn" data-tab="font">
-                <i class="fas fa-font"></i>
-                <span>Font</span>
-            </button>
+          <button class="tab-btn active" data-tab="logo">
+            <i class="fas fa-image"></i>
+            <span>Logo</span>
+          </button>
+          <button class="tab-btn" data-tab="banner">
+            <i class="fas fa-images"></i>
+            <span>Banner Slider</span>
+          </button>
+          <button class="tab-btn" data-tab="promo">
+            <i class="fas fa-bullhorn"></i>
+            <span>Promosi</span>
+          </button>
+          <button class="tab-btn" data-tab="warna">
+            <i class="fas fa-palette"></i>
+            <span>Warna</span>
+          </button>
+          <button class="tab-btn" data-tab="font">
+            <i class="fas fa-font"></i>
+            <span>Font</span>
+          </button>
+          <!-- TAB BARU: Font & Animasi -->
+          <button class="tab-btn" data-tab="font-anim">
+            <i class="fas fa-magic"></i>
+            <span>Font + Animasi</span>
+          </button>
         </div>
 
         <!-- Tab Content -->
@@ -233,37 +238,67 @@
                 </div>
             </div>
 
-            <!-- Tab: Font -->
-            <div id="tab-font" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-font"></i> Font & Tipografi</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="fontFamily">Font Family</label>
-                                <select id="fontFamily">
-                                    <option value="Inter">Inter (Modern)</option>
-                                    <option value="Poppins">Poppins (Bulat)</option>
-                                    <option value="Roboto">Roboto (Standar)</option>
-                                    <option value="Open Sans">Open Sans</option>
-                                    <option value="Montserrat">Montserrat</option>
-                                    <option value="Lato">Lato</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="fontSize">Font Size (px)</label>
-                                <input type="number" id="fontSize" min="12" max="24" value="14">
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button class="btn-primary" id="saveFontBtn">
-                                <i class="fas fa-save"></i> Simpan Font
-                            </button>
-                        </div>
-                    </div>
+            <!-- Tab Content - Tambahkan konten baru -->
+            <!-- Tab: Font & Animasi (NEW) -->
+            <div id="tab-font-anim" class="tab-content">
+              <div class="settings-card">
+                <div class="card-header">
+                  <h3><i class="fas fa-magic"></i> Font & Animasi Teks</h3>
                 </div>
+                <div class="card-body">
+                  <!-- Nama Store -->
+                  <div class="form-section">
+                    <h4 class="section-title">
+                      <i class="fas fa-store"></i> Nama Store
+                    </h4>
+                    <div class="form-group">
+                      <label>Nama Toko (untuk disamping logo)</label>
+                      <input type="text" id="storeDisplayName" placeholder="Contoh: Toko Online" value="Toko Online">
+                      <small class="hint">Nama yang tampil di samping logo</small>
+                    </div>
+                  </div>
+            
+                  <!-- Font Preview Grid -->
+                  <div class="form-section">
+                    <h4 class="section-title">
+                      <i class="fas fa-font"></i> Pilih Font
+                    </h4>
+                    <div class="font-grid" id="fontGrid">
+                      <!-- Akan diisi JavaScript -->
+                    </div>
+                  </div>
+            
+                  <!-- Animation Preview -->
+                  <div class="form-section">
+                    <h4 class="section-title">
+                      <i class="fas fa-film"></i> Animasi Teks
+                    </h4>
+            
+                    <!-- Live Preview -->
+                    <div class="animation-live-preview" id="animationLivePreview">
+                      <div class="preview-label">Preview Langsung:</div>
+                      <div class="preview-box" id="animPreviewBox">
+                        <span id="animPreviewText">Toko Online</span>
+                      </div>
+                    </div>
+            
+                    <!-- Animation Grid -->
+                    <div class="animation-grid" id="animationGrid">
+                      <!-- Akan diisi JavaScript -->
+                    </div>
+            
+                    <!-- Animation Controls -->
+                    <div id="animationControlsContainer"></div>
+                  </div>
+            
+                  <!-- Save Button -->
+                  <div class="form-actions">
+                    <button class="btn-primary" id="saveFontAnimBtn">
+                      <i class="fas fa-save"></i> Simpan Pengaturan Font & Animasi
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
         </div>
     </div>
