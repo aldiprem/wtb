@@ -955,12 +955,17 @@ def save_font_template():
     try:
         data = request.json
         print(f"📥 Saving font template: {data.get('template_name')}")
+        print(f"📦 Data lengkap: {data.keys()}")
         
         if not data.get('template_name'):
             return jsonify({'success': False, 'error': 'Template name required'}), 400
         
         if not data.get('font_family'):
             return jsonify({'success': False, 'error': 'Font family required'}), 400
+        
+        # Log ukuran file font
+        if data.get('font_file_data'):
+            print(f"📏 Font file size: {len(data['font_file_data'])} characters")
         
         template_code = tmp_font.save_template(
             template_name=data['template_name'],
@@ -983,16 +988,29 @@ def save_font_template():
         )
         
         if template_code:
-            return jsonify({
-                'success': True,
-                'template_code': template_code,
-                'message': f'Template "{data["template_name"]}" saved successfully'
-            })
+            # Verifikasi template benar-benar tersimpan
+            verify = tmp_font.get_template(template_code)
+            if verify:
+                print(f"✅ Verifikasi sukses: Template {template_code} ditemukan di database")
+                return jsonify({
+                    'success': True,
+                    'template_code': template_code,
+                    'message': f'Template "{data["template_name"]}" saved successfully'
+                })
+            else:
+                print(f"⚠️ Verifikasi gagal: Template {template_code} tidak ditemukan setelah simpan")
+                return jsonify({
+                    'success': False, 
+                    'error': 'Template saved but verification failed'
+                }), 500
         else:
+            print("❌ save_template returned None")
             return jsonify({'success': False, 'error': 'Failed to save template'}), 500
             
     except Exception as e:
         print(f"❌ Error saving template: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/font-templates/<template_code>', methods=['GET'])
