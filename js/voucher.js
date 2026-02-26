@@ -14,10 +14,10 @@
     let filteredVouchers = [];
     let activities = [];
     let statistics = {
-        total: 0,
-        active: 0,
-        claimed: 0,
-        used: 0,
+        total_vouchers: 0,
+        active_vouchers: 0,
+        total_claims: 0,
+        total_used: 0,
         unique_users: 0,
         total_reward: 0
     };
@@ -57,6 +57,9 @@
     // Chart instances
     let claimChart = null;
     let miniChart = null;
+
+    // Mode dummy data (aktif jika endpoint tidak ditemukan)
+    let useDummyData = false;
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -227,7 +230,7 @@
     }
 
     function formatRupiah(angka) {
-        if (!angka) return 'Rp 0';
+        if (!angka && angka !== 0) return 'Rp 0';
         return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
@@ -300,7 +303,7 @@
             
             return await response.json();
         } catch (error) {
-            if (retries > 0) {
+            if (retries > 0 && !useDummyData) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 return fetchWithRetry(url, options, retries - 1);
             }
@@ -313,11 +316,17 @@
         const endpoint = urlParams.get('website');
         
         if (!endpoint) {
-            showToast('Website tidak ditemukan', 'error');
-            setTimeout(() => {
-                window.location.href = '/wtb/html/panel.html';
-            }, 2000);
-            return null;
+            // Tidak ada parameter endpoint - gunakan dummy mode
+            useDummyData = true;
+            if (elements.websiteBadge) {
+                elements.websiteBadge.textContent = '/endpoint';
+            }
+            showToast('Mode Demo: Menampilkan data contoh', 'info', 4000);
+            return {
+                id: 0,
+                endpoint: 'demo',
+                name: 'Demo Website'
+            };
         }
         
         try {
@@ -329,19 +338,35 @@
                 if (elements.websiteBadge) {
                     elements.websiteBadge.textContent = '/' + data.website.endpoint;
                 }
+                useDummyData = false;
                 return data.website;
             } else {
                 throw new Error('Website not found');
             }
         } catch (error) {
             console.error('❌ Error loading website:', error);
-            showToast('Gagal memuat data website', 'error');
-            return null;
+            
+            // Endpoint tidak ditemukan - gunakan dummy mode
+            useDummyData = true;
+            if (elements.websiteBadge) {
+                elements.websiteBadge.textContent = '/endpoint';
+            }
+            showToast('Website tidak ditemukan. Menampilkan data contoh.', 'warning', 5000);
+            
+            return {
+                id: 0,
+                endpoint: 'demo',
+                name: 'Demo Website'
+            };
         }
     }
 
     async function loadProducts() {
-        if (!currentWebsite) return;
+        if (!currentWebsite || useDummyData) {
+            // Load dummy products untuk demo
+            loadDummyProducts();
+            return;
+        }
         
         try {
             const response = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
@@ -374,7 +399,80 @@
             }
         } catch (error) {
             console.error('❌ Error loading products:', error);
+            loadDummyProducts();
         }
+    }
+
+    function loadDummyProducts() {
+        productsData = {
+            layanan: [
+                {
+                    layanan_nama: 'Social Media',
+                    aplikasi: [
+                        {
+                            aplikasi_nama: 'Instagram',
+                            items: [
+                                { id: 1, item_nama: 'Followers Indonesia' },
+                                { id: 2, item_nama: 'Likes Instagram' },
+                                { id: 3, item_nama: 'Views Story' }
+                            ]
+                        },
+                        {
+                            aplikasi_nama: 'TikTok',
+                            items: [
+                                { id: 4, item_nama: 'Followers TikTok' },
+                                { id: 5, item_nama: 'Likes TikTok' },
+                                { id: 6, item_nama: 'Views Video' }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    layanan_nama: 'Game',
+                    aplikasi: [
+                        {
+                            aplikasi_nama: 'Mobile Legends',
+                            items: [
+                                { id: 7, item_nama: 'Diamond 86' },
+                                { id: 8, item_nama: 'Diamond 172' },
+                                { id: 9, item_nama: 'Starlight Member' }
+                            ]
+                        },
+                        {
+                            aplikasi_nama: 'Free Fire',
+                            items: [
+                                { id: 10, item_nama: 'Diamond 100' },
+                                { id: 11, item_nama: 'Diamond 310' },
+                                { id: 12, item_nama: 'Membership' }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            aplikasi: {},
+            items: {}
+        };
+        
+        // Build maps
+        productsData.layanan.forEach(layanan => {
+            if (layanan.aplikasi) {
+                layanan.aplikasi.forEach(aplikasi => {
+                    if (!productsData.aplikasi[layanan.layanan_nama]) {
+                        productsData.aplikasi[layanan.layanan_nama] = [];
+                    }
+                    productsData.aplikasi[layanan.layanan_nama].push(aplikasi);
+                    
+                    if (aplikasi.items) {
+                        if (!productsData.items[aplikasi.aplikasi_nama]) {
+                            productsData.items[aplikasi.aplikasi_nama] = [];
+                        }
+                        productsData.items[aplikasi.aplikasi_nama] = aplikasi.items;
+                    }
+                });
+            }
+        });
+        
+        populateLayananSelect();
     }
 
     function populateLayananSelect() {
@@ -435,11 +533,22 @@
         showLoading(true);
         
         try {
-            // Simulasi data voucher (akan diganti dengan API real)
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Dummy data for testing
-            vouchers = generateDummyVouchers(25);
+            if (useDummyData) {
+                // Generate dummy data untuk demo
+                await new Promise(resolve => setTimeout(resolve, 800));
+                vouchers = generateDummyVouchers(25);
+            } else {
+                // Ambil dari API
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}`, {
+                    method: 'GET'
+                });
+                
+                if (response.success) {
+                    vouchers = response.vouchers || [];
+                } else {
+                    throw new Error(response.error || 'Gagal memuat voucher');
+                }
+            }
             
             applyFilters();
             calculateStatistics();
@@ -449,6 +558,17 @@
         } catch (error) {
             console.error('❌ Error loading vouchers:', error);
             showToast('Gagal memuat data voucher', 'error');
+            
+            // Fallback ke dummy data jika error
+            if (!useDummyData) {
+                useDummyData = true;
+                vouchers = generateDummyVouchers(25);
+                applyFilters();
+                calculateStatistics();
+                renderVouchers();
+                renderTopVouchers();
+                showToast('Menampilkan data contoh', 'info');
+            }
         } finally {
             showLoading(false);
         }
@@ -485,11 +605,11 @@
                 start_time: '00:00',
                 end_time: '23:59',
                 no_expiry: false,
-                target: 'all',
+                target: ['all', 'subscriber', 'new_member', 'manual'][Math.floor(Math.random() * 4)],
                 limit: limit,
-                claimed: claimed,
-                used: used,
-                reward: type === 'saldo' ? 50000 :
+                total_claimed: claimed,
+                total_used: used,
+                reward_data: type === 'saldo' ? 50000 :
                         type === 'deposit' ? { min: 10000, max: 100000, percent: 10 } :
                         { jenis: 'percent', nilai: 20, layanan: null, aplikasi: null, item: null, semua_produk: true },
                 created_at: new Date(now - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -504,8 +624,8 @@
             // Search filter
             if (currentFilter.search) {
                 const searchLower = currentFilter.search.toLowerCase();
-                const match = voucher.nama.toLowerCase().includes(searchLower) ||
-                             voucher.kode.toLowerCase().includes(searchLower);
+                const match = (voucher.nama || '').toLowerCase().includes(searchLower) ||
+                             (voucher.kode || '').toLowerCase().includes(searchLower);
                 if (!match) return false;
             }
             
@@ -557,7 +677,11 @@
                 'diskon': 'fa-tag'
             }[voucher.type] || 'fa-gift';
             
-            const progressPercent = voucher.limit > 0 ? (voucher.claimed / voucher.limit) * 100 : 0;
+            const claimed = voucher.total_claimed || 0;
+            const used = voucher.total_used || 0;
+            const limit = voucher.limit || 1;
+            
+            const progressPercent = limit > 0 ? (claimed / limit) * 100 : 0;
             
             html += `
                 <div class="voucher-card ${statusClass}" data-id="${voucher.id}">
@@ -567,8 +691,8 @@
                         </div>
                         <div class="voucher-info">
                             <div class="voucher-name">
-                                ${escapeHtml(voucher.nama)}
-                                <span class="voucher-code">${escapeHtml(voucher.kode)}</span>
+                                ${escapeHtml(voucher.nama || '')}
+                                <span class="voucher-code">${escapeHtml(voucher.kode || '')}</span>
                             </div>
                             <div>
                                 <span class="voucher-badge ${statusClass}">${statusText}</span>
@@ -588,11 +712,11 @@
                             </div>
                             <div class="meta-item">
                                 <i class="fas fa-users"></i>
-                                <span>Klaim: <strong>${voucher.claimed}</strong> / ${voucher.limit}</span>
+                                <span>Klaim: <strong>${claimed}</strong> / ${limit}</span>
                             </div>
                             <div class="meta-item">
                                 <i class="fas fa-check-double"></i>
-                                <span>Digunakan: <strong>${voucher.used}</strong> / ${voucher.claimed}</span>
+                                <span>Digunakan: <strong>${used}</strong> / ${claimed}</span>
                             </div>
                             <div class="meta-item">
                                 <i class="fas fa-gift"></i>
@@ -636,19 +760,22 @@
     }
 
     function formatReward(voucher) {
-        if (voucher.type === 'saldo') {
-            return formatRupiah(voucher.reward);
-        } else if (voucher.type === 'deposit') {
-            return `${voucher.reward.percent}% bonus (Min ${formatRupiah(voucher.reward.min)} - Max ${formatRupiah(voucher.reward.max)})`;
-        } else if (voucher.type === 'diskon') {
-            if (voucher.reward.semua_produk) {
-                return voucher.reward.jenis === 'percent' ? 
-                    `Diskon ${voucher.reward.nilai}% semua produk` : 
-                    `Diskon ${formatRupiah(voucher.reward.nilai)} semua produk`;
+        const type = voucher.type;
+        const reward = voucher.reward_data || voucher.reward;
+        
+        if (type === 'saldo') {
+            return formatRupiah(reward);
+        } else if (type === 'deposit') {
+            return `${reward.percent || 0}% bonus (Min ${formatRupiah(reward.min || 0)} - Max ${formatRupiah(reward.max || 0)})`;
+        } else if (type === 'diskon') {
+            if (reward.semua_produk) {
+                return reward.jenis === 'percent' ? 
+                    `Diskon ${reward.nilai || 0}% semua produk` : 
+                    `Diskon ${formatRupiah(reward.nilai || 0)} semua produk`;
             } else {
-                return voucher.reward.jenis === 'percent' ? 
-                    `Diskon ${voucher.reward.nilai}%` : 
-                    `Diskon ${formatRupiah(voucher.reward.nilai)}`;
+                return reward.jenis === 'percent' ? 
+                    `Diskon ${reward.nilai || 0}%` : 
+                    `Diskon ${formatRupiah(reward.nilai || 0)}`;
             }
         }
         return '-';
@@ -669,32 +796,46 @@
     }
 
     function calculateStatistics() {
-        statistics.total = vouchers.length;
-        statistics.active = vouchers.filter(v => v.active && !v.expired).length;
-        statistics.claimed = vouchers.reduce((sum, v) => sum + v.claimed, 0);
-        statistics.used = vouchers.reduce((sum, v) => sum + v.used, 0);
-        statistics.unique_users = Math.floor(statistics.claimed * 0.7); // Dummy
-        statistics.total_reward = vouchers.reduce((sum, v) => {
-            if (v.type === 'saldo') return sum + (v.reward * v.used);
-            if (v.type === 'deposit') return sum + (v.used * 5000); // Dummy
-            return sum + (v.used * 10000); // Dummy
-        }, 0);
+        if (useDummyData) {
+            statistics = {
+                total_vouchers: vouchers.length,
+                active_vouchers: vouchers.filter(v => v.active && !v.expired).length,
+                total_claims: vouchers.reduce((sum, v) => sum + (v.total_claimed || 0), 0),
+                total_used: vouchers.reduce((sum, v) => sum + (v.total_used || 0), 0),
+                unique_users: Math.floor(vouchers.reduce((sum, v) => sum + (v.total_claimed || 0), 0) * 0.7),
+                total_reward: vouchers.reduce((sum, v) => {
+                    if (v.type === 'saldo') return sum + ((v.reward_data || v.reward || 0) * (v.total_used || 0));
+                    return sum + ((v.total_used || 0) * 10000);
+                }, 0)
+            };
+        } else {
+            statistics.total_vouchers = vouchers.length;
+            statistics.active_vouchers = vouchers.filter(v => v.active && !v.expired).length;
+            statistics.total_claims = vouchers.reduce((sum, v) => sum + (v.total_claimed || 0), 0);
+            statistics.total_used = vouchers.reduce((sum, v) => sum + (v.total_used || 0), 0);
+            statistics.unique_users = Math.floor(statistics.total_claims * 0.7); // Sementara
+            statistics.total_reward = vouchers.reduce((sum, v) => {
+                if (v.type === 'saldo') return sum + ((v.reward_data || 0) * (v.total_used || 0));
+                if (v.type === 'deposit') return sum + ((v.total_used || 0) * 5000);
+                return sum + ((v.total_used || 0) * 10000);
+            }, 0);
+        }
         
         updateStatistics();
     }
 
     function updateStatistics() {
         if (elements.statTotalVoucher) {
-            elements.statTotalVoucher.textContent = statistics.total;
+            elements.statTotalVoucher.textContent = statistics.total_vouchers;
         }
         if (elements.statActiveVoucher) {
-            elements.statActiveVoucher.textContent = statistics.active;
+            elements.statActiveVoucher.textContent = statistics.active_vouchers;
         }
         if (elements.statTotalClaimed) {
-            elements.statTotalClaimed.textContent = statistics.claimed;
+            elements.statTotalClaimed.textContent = statistics.total_claims;
         }
         if (elements.statUsedVoucher) {
-            elements.statUsedVoucher.textContent = statistics.used;
+            elements.statUsedVoucher.textContent = statistics.total_used;
         }
         if (elements.statUniqueUsers) {
             elements.statUniqueUsers.textContent = statistics.unique_users;
@@ -708,7 +849,7 @@
         if (!elements.topVouchersList) return;
         
         const topVouchers = [...vouchers]
-            .sort((a, b) => b.claimed - a.claimed)
+            .sort((a, b) => (b.total_claimed || 0) - (a.total_claimed || 0))
             .slice(0, 5);
         
         if (topVouchers.length === 0) {
@@ -718,15 +859,19 @@
         
         let html = '';
         topVouchers.forEach((voucher, index) => {
+            const claimed = voucher.total_claimed || 0;
+            const used = voucher.total_used || 0;
+            const usageRate = claimed > 0 ? Math.round((used / claimed) * 100) : 0;
+            
             html += `
                 <div class="top-voucher-item">
                     <div class="top-voucher-rank">${index + 1}</div>
                     <div class="top-voucher-info">
-                        <div class="top-voucher-name">${escapeHtml(voucher.nama)}</div>
+                        <div class="top-voucher-name">${escapeHtml(voucher.nama || '')}</div>
                         <div class="top-voucher-stats">
-                            <span><i class="fas fa-hand-holding-heart"></i> ${voucher.claimed} klaim</span>
-                            <span><i class="fas fa-check-double"></i> ${voucher.used} digunakan</span>
-                            <span><i class="fas fa-percent"></i> ${Math.round((voucher.used / voucher.claimed) * 100 || 0)}%</span>
+                            <span><i class="fas fa-hand-holding-heart"></i> ${claimed} klaim</span>
+                            <span><i class="fas fa-check-double"></i> ${used} digunakan</span>
+                            <span><i class="fas fa-percent"></i> ${usageRate}%</span>
                         </div>
                     </div>
                 </div>
@@ -741,12 +886,32 @@
         if (!currentWebsite) return;
         
         try {
-            // Simulasi data aktivitas
-            activities = generateDummyActivities(30);
+            if (useDummyData) {
+                // Generate dummy activities untuk demo
+                activities = generateDummyActivities(30);
+            } else {
+                // Ambil dari API
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}/activities`, {
+                    method: 'GET'
+                });
+                
+                if (response.success) {
+                    activities = response.activities || [];
+                } else {
+                    throw new Error(response.error || 'Gagal memuat aktivitas');
+                }
+            }
+            
             renderActivities();
             
         } catch (error) {
             console.error('❌ Error loading activities:', error);
+            
+            // Fallback ke dummy data
+            if (!useDummyData) {
+                activities = generateDummyActivities(30);
+                renderActivities();
+            }
         }
     }
 
@@ -782,13 +947,13 @@
             activities.push({
                 id: i,
                 type: type,
-                timestamp: date.toISOString(),
+                created_at: date.toISOString(),
                 description: desc,
-                meta: meta
+                meta_data: meta
             });
         }
         
-        return activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        return activities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
 
     function renderActivities() {
@@ -822,6 +987,8 @@
                 'broadcast': 'Broadcast'
             }[activity.type] || activity.type;
             
+            const meta = activity.meta_data || activity.meta || {};
+            
             html += `
                 <div class="timeline-item">
                     <div class="timeline-icon ${activity.type}">
@@ -830,14 +997,14 @@
                     <div class="timeline-content">
                         <div class="timeline-header">
                             <div class="timeline-title">
-                                ${escapeHtml(activity.description)}
+                                ${escapeHtml(activity.description || '')}
                                 <span class="timeline-badge">${typeText}</span>
                             </div>
-                            <div class="timeline-time">${formatDateTime(activity.timestamp)}</div>
+                            <div class="timeline-time">${formatDateTime(activity.created_at)}</div>
                         </div>
-                        ${activity.meta ? `
+                        ${Object.keys(meta).length > 0 ? `
                             <div class="timeline-meta">
-                                ${Object.entries(activity.meta).map(([key, value]) => 
+                                ${Object.entries(meta).map(([key, value]) => 
                                     `<span><i class="fas fa-info-circle"></i> ${key}: ${value}</span>`
                                 ).join('')}
                             </div>
@@ -855,7 +1022,7 @@
             // Search filter
             if (activityFilter.search) {
                 const searchLower = activityFilter.search.toLowerCase();
-                if (!activity.description.toLowerCase().includes(searchLower)) {
+                if (!(activity.description || '').toLowerCase().includes(searchLower)) {
                     return false;
                 }
             }
@@ -867,7 +1034,7 @@
             
             // Date filter
             if (activityFilter.date !== 'all') {
-                const activityDate = new Date(activity.timestamp);
+                const activityDate = new Date(activity.created_at);
                 const now = new Date();
                 
                 if (activityFilter.date === 'today') {
@@ -913,29 +1080,31 @@
             showRewardPanel(voucher.type);
             
             // Fill reward data
+            const reward = voucher.reward_data || voucher.reward;
+            
             if (voucher.type === 'saldo') {
-                elements.rewardSaldo.value = voucher.reward || '';
+                elements.rewardSaldo.value = reward || '';
             } else if (voucher.type === 'deposit') {
-                elements.depositMin.value = voucher.reward.min || '';
-                elements.depositMax.value = voucher.reward.max || '';
-                elements.depositPercent.value = voucher.reward.percent || 10;
+                elements.depositMin.value = reward?.min || '';
+                elements.depositMax.value = reward?.max || '';
+                elements.depositPercent.value = reward?.percent || 10;
             } else if (voucher.type === 'diskon') {
-                elements.diskonJenis.value = voucher.reward.jenis || 'percent';
-                elements.diskonNilai.value = voucher.reward.nilai || '';
-                elements.diskonSemuaProduk.checked = voucher.reward.semua_produk || false;
+                elements.diskonJenis.value = reward?.jenis || 'percent';
+                elements.diskonNilai.value = reward?.nilai || '';
+                elements.diskonSemuaProduk.checked = reward?.semua_produk || false;
                 
-                if (voucher.reward.layanan) {
-                    elements.diskonLayanan.value = voucher.reward.layanan;
-                    populateAplikasiSelect(voucher.reward.layanan);
+                if (reward?.layanan) {
+                    elements.diskonLayanan.value = reward.layanan;
+                    populateAplikasiSelect(reward.layanan);
                     
-                    if (voucher.reward.aplikasi) {
+                    if (reward?.aplikasi) {
                         setTimeout(() => {
-                            elements.diskonAplikasi.value = voucher.reward.aplikasi;
-                            populateItemSelect(voucher.reward.aplikasi);
+                            elements.diskonAplikasi.value = reward.aplikasi;
+                            populateItemSelect(reward.aplikasi);
                             
-                            if (voucher.reward.item) {
+                            if (reward?.item) {
                                 setTimeout(() => {
-                                    elements.diskonItem.value = voucher.reward.item;
+                                    elements.diskonItem.value = reward.item;
                                 }, 100);
                             }
                         }, 100);
@@ -1079,8 +1248,8 @@
                 return;
             }
         } else if (rewardType === 'deposit') {
-            const min = parseInt(elements.depositMin.value);
-            const max = parseInt(elements.depositMax.value);
+            const min = parseInt(elements.depositMin.value) || 0;
+            const max = parseInt(elements.depositMax.value) || 0;
             const percent = parseInt(elements.depositPercent.value);
             
             if (max && min && max <= min) {
@@ -1155,14 +1324,53 @@
         showLoading(true);
         
         try {
-            // Simulasi penyimpanan (akan diganti dengan API real)
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            showToast(`✅ Voucher berhasil ${voucherData.id ? 'diperbarui' : 'ditambahkan'}!`, 'success');
-            closeVoucherModal();
-            
-            // Refresh data
-            await loadVouchers();
+            if (useDummyData) {
+                // Simulasi penyimpanan untuk dummy mode
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                if (voucherData.id) {
+                    // Update existing
+                    const index = vouchers.findIndex(v => v.id === voucherData.id);
+                    if (index !== -1) {
+                        vouchers[index] = { ...vouchers[index], ...voucherData };
+                    }
+                } else {
+                    // Create new
+                    voucherData.id = Math.max(...vouchers.map(v => v.id), 0) + 1;
+                    voucherData.total_claimed = 0;
+                    voucherData.total_used = 0;
+                    voucherData.created_at = new Date().toISOString();
+                    vouchers.push(voucherData);
+                }
+                
+                showToast(`✅ Voucher berhasil ${voucherData.id ? 'diperbarui' : 'ditambahkan'}!`, 'success');
+                closeVoucherModal();
+                
+                // Refresh data
+                applyFilters();
+                calculateStatistics();
+                renderVouchers();
+                renderTopVouchers();
+                
+            } else {
+                // Kirim ke API
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(voucherData)
+                });
+                
+                if (response.success) {
+                    showToast(`✅ Voucher berhasil ${voucherData.id ? 'diperbarui' : 'ditambahkan'}!`, 'success');
+                    closeVoucherModal();
+                    
+                    // Refresh data
+                    await loadVouchers();
+                    await loadActivities();
+                } else {
+                    throw new Error(response.error || 'Gagal menyimpan voucher');
+                }
+            }
             
         } catch (error) {
             console.error('❌ Error saving voucher:', error);
@@ -1182,16 +1390,16 @@
         
         if (elements.broadcastVoucherInfo) {
             elements.broadcastVoucherInfo.innerHTML = `
-                <strong>${escapeHtml(voucher.nama)}</strong><br>
-                <small>Kode: ${escapeHtml(voucher.kode)}</small>
+                <strong>${escapeHtml(voucher.nama || '')}</strong><br>
+                <small>Kode: ${escapeHtml(voucher.kode || '')}</small>
             `;
         }
         
         if (elements.previewVoucherName) {
-            elements.previewVoucherName.textContent = voucher.nama;
+            elements.previewVoucherName.textContent = voucher.nama || '';
         }
         if (elements.previewVoucherCode) {
-            elements.previewVoucherCode.textContent = voucher.kode;
+            elements.previewVoucherCode.textContent = voucher.kode || '';
         }
         
         updateBroadcastPreview();
@@ -1228,22 +1436,47 @@
         showLoading(true);
         
         try {
-            // Simulasi broadcast
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            showToast(`✅ Broadcast berhasil dikirim!`, 'success');
-            closeBroadcastModal();
-            
-            // Log activity
-            activities.unshift({
-                id: activities.length + 1,
-                type: 'broadcast',
-                timestamp: new Date().toISOString(),
-                description: `Broadcast voucher ${selectedVoucherForBroadcast.kode} ke ${target === 'all' ? 'semua user' : target === 'subscriber' ? 'pelanggan' : target === 'new_member' ? 'member baru' : `${broadcastSelectedUsers.size} user terpilih`}`,
-                meta: { target: target, count: target === 'manual' ? broadcastSelectedUsers.size : 'semua' }
-            });
-            
-            renderActivities();
+            if (useDummyData) {
+                // Simulasi broadcast untuk dummy mode
+                await new Promise(resolve => setTimeout(resolve, 1200));
+                
+                showToast(`✅ Broadcast berhasil dikirim!`, 'success');
+                closeBroadcastModal();
+                
+                // Log activity
+                activities.unshift({
+                    id: activities.length + 1,
+                    type: 'broadcast',
+                    created_at: new Date().toISOString(),
+                    description: `Broadcast voucher ${selectedVoucherForBroadcast.kode} ke ${target === 'all' ? 'semua user' : target === 'subscriber' ? 'pelanggan' : target === 'new_member' ? 'member baru' : `${broadcastSelectedUsers.size} user terpilih`}`,
+                    meta_data: { target: target, count: target === 'manual' ? broadcastSelectedUsers.size : 'semua' }
+                });
+                
+                renderActivities();
+                
+            } else {
+                // Kirim ke API
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}/broadcast`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        voucher_id: selectedVoucherForBroadcast.id,
+                        target: target,
+                        selected_users: target === 'manual' ? Array.from(broadcastSelectedUsers) : [],
+                        message: elements.broadcastMessage.value
+                    })
+                });
+                
+                if (response.success) {
+                    showToast(`✅ Broadcast berhasil dikirim!`, 'success');
+                    closeBroadcastModal();
+                    
+                    // Refresh activities
+                    await loadActivities();
+                } else {
+                    throw new Error(response.error || 'Gagal mengirim broadcast');
+                }
+            }
             
         } catch (error) {
             console.error('❌ Error sending broadcast:', error);
@@ -1267,10 +1500,10 @@
             
             elements.detailHeader.innerHTML = `
                 <div class="voucher-detail-title">
-                    <h3>${escapeHtml(voucher.nama)}</h3>
+                    <h3>${escapeHtml(voucher.nama || '')}</h3>
                     <span class="voucher-badge ${statusClass}">${statusText}</span>
                 </div>
-                <div class="voucher-detail-code">${escapeHtml(voucher.kode)}</div>
+                <div class="voucher-detail-code">${escapeHtml(voucher.kode || '')}</div>
             `;
         }
         
@@ -1308,11 +1541,11 @@
         elements.detailInfo.innerHTML = `
             <div class="info-item">
                 <div class="info-label">Nama Voucher</div>
-                <div class="info-value">${escapeHtml(voucher.nama)}</div>
+                <div class="info-value">${escapeHtml(voucher.nama || '')}</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Kode Voucher</div>
-                <div class="info-value">${escapeHtml(voucher.kode)}</div>
+                <div class="info-value">${escapeHtml(voucher.kode || '')}</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Deskripsi</div>
@@ -1328,11 +1561,11 @@
             </div>
             <div class="info-item">
                 <div class="info-label">Limit Klaim</div>
-                <div class="info-value">${voucher.limit}</div>
+                <div class="info-value">${voucher.limit || 0}</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Jenis Reward</div>
-                <div class="info-value">${voucher.type}</div>
+                <div class="info-value">${voucher.type || '-'}</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Detail Reward</div>
@@ -1341,22 +1574,37 @@
         `;
     }
 
-    function renderDetailClaims(voucher) {
+    async function renderDetailClaims(voucher) {
         if (!elements.claimsList || !elements.emptyClaims) return;
         
-        // Dummy claims data
-        const claims = [];
-        for (let i = 0; i < voucher.claimed; i++) {
-            claims.push({
-                user: {
-                    id: Math.floor(Math.random() * 1000),
-                    name: `User ${Math.random().toString(36).substring(2, 8)}`,
-                    username: `@user${Math.floor(Math.random() * 100)}`
-                },
-                claimed_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-                used: Math.random() > 0.3,
-                used_at: new Date(Date.now() - Math.random() * 15 * 24 * 60 * 60 * 1000).toISOString()
-            });
+        let claims = [];
+        
+        if (useDummyData) {
+            // Dummy claims data
+            for (let i = 0; i < (voucher.total_claimed || 0); i++) {
+                claims.push({
+                    user: {
+                        id: Math.floor(Math.random() * 1000),
+                        name: `User ${Math.random().toString(36).substring(2, 8)}`,
+                        username: `@user${Math.floor(Math.random() * 100)}`
+                    },
+                    claimed_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
+                    used: Math.random() > 0.3,
+                    used_at: new Date(Date.now() - Math.random() * 15 * 24 * 60 * 60 * 1000).toISOString()
+                });
+            }
+        } else {
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}/claims/${voucher.id}`, {
+                    method: 'GET'
+                });
+                
+                if (response.success) {
+                    claims = response.claims || [];
+                }
+            } catch (error) {
+                console.error('Error loading claims:', error);
+            }
         }
         
         if (claims.length === 0) {
@@ -1370,6 +1618,7 @@
         let html = '';
         claims.sort((a, b) => new Date(b.claimed_at) - new Date(a.claimed_at))
               .forEach(claim => {
+            const user = claim.user || {};
             html += `
                 <div class="claim-item">
                     <div class="claim-user">
@@ -1377,8 +1626,8 @@
                             <i class="fas fa-user"></i>
                         </div>
                         <div class="user-details">
-                            <h4>${escapeHtml(claim.user.name)}</h4>
-                            <span>${escapeHtml(claim.user.username)}</span>
+                            <h4>${escapeHtml(user.name || user.user_name || `User ${user.id || ''}`)}</h4>
+                            <span>${escapeHtml(user.username || claim.user_username || '')}</span>
                         </div>
                     </div>
                     <div class="claim-info">
@@ -1397,21 +1646,25 @@
     function renderDetailStats(voucher) {
         if (!elements.detailStats) return;
         
-        const usageRate = voucher.claimed > 0 ? (voucher.used / voucher.claimed) * 100 : 0;
-        const claimRate = voucher.limit > 0 ? (voucher.claimed / voucher.limit) * 100 : 0;
+        const claimed = voucher.total_claimed || 0;
+        const used = voucher.total_used || 0;
+        const limit = voucher.limit || 1;
+        
+        const usageRate = claimed > 0 ? (used / claimed) * 100 : 0;
+        const claimRate = limit > 0 ? (claimed / limit) * 100 : 0;
         
         elements.detailStats.innerHTML = `
             <div class="stat-mini-item">
                 <div class="stat-mini-label">Total Klaim</div>
-                <div class="stat-mini-value">${voucher.claimed}</div>
+                <div class="stat-mini-value">${claimed}</div>
             </div>
             <div class="stat-mini-item">
                 <div class="stat-mini-label">Digunakan</div>
-                <div class="stat-mini-value">${voucher.used}</div>
+                <div class="stat-mini-value">${used}</div>
             </div>
             <div class="stat-mini-item">
                 <div class="stat-mini-label">Tersisa</div>
-                <div class="stat-mini-value">${voucher.claimed - voucher.used}</div>
+                <div class="stat-mini-value">${claimed - used}</div>
             </div>
             <div class="stat-mini-item">
                 <div class="stat-mini-label">Usage Rate</div>
@@ -1423,7 +1676,7 @@
             </div>
             <div class="stat-mini-item">
                 <div class="stat-mini-label">Sisa Kuota</div>
-                <div class="stat-mini-value">${voucher.limit - voucher.claimed}</div>
+                <div class="stat-mini-value">${limit - claimed}</div>
             </div>
         `;
         
@@ -1436,7 +1689,7 @@
                 data: {
                     labels: ['Digunakan', 'Belum Digunakan', 'Sisa Kuota'],
                     datasets: [{
-                        data: [voucher.used, voucher.claimed - voucher.used, voucher.limit - voucher.claimed],
+                        data: [used, claimed - used, limit - claimed],
                         backgroundColor: [
                             '#10b981',
                             '#f59e0b',
@@ -1484,20 +1737,46 @@
         }
     }
 
-    function toggleVoucher(id) {
+    async function toggleVoucher(id) {
         const voucher = vouchers.find(v => v.id === id);
         if (!voucher) return;
         
         const newStatus = !voucher.active;
         const action = newStatus ? 'mengaktifkan' : 'menonaktifkan';
         
-        if (confirm(`Yakin ingin ${action} voucher "${voucher.nama}"?`)) {
-            voucher.active = newStatus;
+        if (!confirm(`Yakin ingin ${action} voucher "${voucher.nama}"?`)) return;
+        
+        showLoading(true);
+        
+        try {
+            if (useDummyData) {
+                // Simulasi untuk dummy mode
+                await new Promise(resolve => setTimeout(resolve, 500));
+                voucher.active = newStatus;
+            } else {
+                // Kirim ke API
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}/${voucher.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: newStatus })
+                });
+                
+                if (!response.success) {
+                    throw new Error(response.error || 'Gagal mengubah status');
+                }
+            }
+            
             applyFilters();
             renderVouchers();
             calculateStatistics();
             
             showToast(`✅ Voucher berhasil ${action}`, 'success');
+            
+        } catch (error) {
+            console.error('Error toggling voucher:', error);
+            showToast('Gagal mengubah status voucher', 'error');
+        } finally {
+            showLoading(false);
         }
     }
 
@@ -1507,8 +1786,8 @@
         
         elements.deleteMessage.textContent = `Hapus voucher "${voucher.nama}"?`;
         elements.deleteInfo.innerHTML = `
-            <strong>${escapeHtml(voucher.nama)}</strong><br>
-            <small>Kode: ${escapeHtml(voucher.kode)}</small>
+            <strong>${escapeHtml(voucher.nama || '')}</strong><br>
+            <small>Kode: ${escapeHtml(voucher.kode || '')}</small>
         `;
         
         elements.deleteModal.classList.add('active');
@@ -1526,16 +1805,31 @@
         showLoading(true);
         
         try {
-            // Simulasi hapus
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (useDummyData) {
+                // Simulasi hapus untuk dummy mode
+                await new Promise(resolve => setTimeout(resolve, 800));
+                vouchers = vouchers.filter(v => v.id !== id);
+            } else {
+                // Kirim ke API
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.success) {
+                    throw new Error(response.error || 'Gagal menghapus voucher');
+                }
+            }
             
-            vouchers = vouchers.filter(v => v.id !== id);
             applyFilters();
             renderVouchers();
             calculateStatistics();
+            renderTopVouchers();
             
             showToast(`✅ Voucher "${voucher.nama}" dihapus`, 'success');
             closeDeleteModal();
+            
+            // Refresh activities
+            await loadActivities();
             
         } catch (error) {
             console.error('❌ Error deleting voucher:', error);
@@ -1617,7 +1911,6 @@
         
         try {
             currentWebsite = await loadWebsite();
-            if (!currentWebsite) return;
             
             await Promise.all([
                 loadProducts(),
