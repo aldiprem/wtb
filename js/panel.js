@@ -98,7 +98,7 @@
         socialSettings: document.getElementById('socialSettings'),
         paymentSettings: document.getElementById('paymentSettings'),
         notificationSettings: document.getElementById('notificationSettings'),
-        seoSettings: document.getElementById('seoSettings'),
+        voucherSettings: document.getElementById('voucherSettings'),
         integrationSettings: document.getElementById('integrationSettings')
     };
 
@@ -912,11 +912,8 @@
             });
         }
         
-        if (elements.seoSettings) {
-            elements.seoSettings.addEventListener('click', (e) => {
-                e.preventDefault();
-                showToast('Fitur ini akan segera tersedia', 'info');
-            });
+        if (elements.voucherSettings && userWebsites.length > 0) {
+          elements.voucherSettings.href = `/wtb/html/voucher.html?website=${userWebsites[0].endpoint}`;
         }
         
         if (elements.integrationSettings) {
