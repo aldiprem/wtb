@@ -37,85 +37,85 @@
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
-        loadingOverlay: document.getElementById('loadingOverlay'),
-        toastContainer: document.getElementById('toastContainer'),
-        websiteBadge: document.getElementById('websiteBadge'),
-        
-        // Header
-        menuToggle: document.getElementById('menuToggle'),
-        refreshBtn: document.getElementById('refreshBtn'),
-        userProfile: document.getElementById('userProfile'),
-        userAvatar: document.getElementById('userAvatar'),
-        
-        // Sidebar
-        sidebar: document.getElementById('sidebar'),
-        sidebarClose: document.getElementById('sidebarClose'),
-        sidebarName: document.getElementById('sidebarName'),
-        sidebarUsername: document.getElementById('sidebarUsername'),
-        sidebarAvatar: document.getElementById('sidebarAvatar'),
-        sidebarTotalWebsites: document.getElementById('sidebarTotalWebsites'),
-        sidebarTotalProducts: document.getElementById('sidebarTotalProducts'),
-        menuWebsitesBadge: document.getElementById('menuWebsitesBadge'),
-        menuOrdersBadge: document.getElementById('menuOrdersBadge'),
-        logoutBtn: document.getElementById('logoutBtn'),
-        
-        // Navigation
-        menuItems: document.querySelectorAll('.menu-item'),
-        pages: document.querySelectorAll('.page'),
-        
-        // Dashboard Stats
-        statTotalWebsites: document.getElementById('statTotalWebsites'),
-        statTotalProducts: document.getElementById('statTotalProducts'),
-        statTotalOrders: document.getElementById('statTotalOrders'),
-        statTotalRevenue: document.getElementById('statTotalRevenue'),
-        statTotalCustomers: document.getElementById('statTotalCustomers'),
-        statActiveWebsites: document.getElementById('statActiveWebsites'),
-        
-        // Quick Actions
-        quickActions: document.getElementById('quickActions'),
-        
-        // Recent Orders
-        recentOrders: document.getElementById('recentOrders'),
-        
-        // Top Products
-        topProducts: document.getElementById('topProducts'),
-        
-        // Websites
-        websitesGrid: document.getElementById('websitesGrid'),
-        websitesEmptyState: document.getElementById('websitesEmptyState'),
-        createWebsiteBtn: document.getElementById('createWebsiteBtn'),
-        
-        // Products
-        productWebsiteSelector: document.getElementById('productWebsiteSelector'),
-        manageProductsBtn: document.getElementById('manageProductsBtn'),
-        productsSummary: document.getElementById('productsSummary'),
-        productsListContainer: document.getElementById('productsListContainer'),
-            productsEmptyState: document.getElementById('productsEmptyState'),
-            
-            // Orders
-            orderStatusFilter: document.getElementById('orderStatusFilter'),
-            ordersTableBody: document.getElementById('ordersTableBody'),
-            ordersEmptyState: document.getElementById('ordersEmptyState'),
-            
-            // Transactions
-            transactionPeriod: document.getElementById('transactionPeriod'),
-            transactionTotal: document.getElementById('transactionTotal'),
-            transactionCount: document.getElementById('transactionCount'),
-            transactionAverage: document.getElementById('transactionAverage'),
-            transactionsList: document.getElementById('transactionsList'),
-            
-            // Customers
-            customerSearch: document.getElementById('customerSearch'),
-            customersGrid: document.getElementById('customersGrid'),
-            
-            // Settings Links
-            appearanceSettings: document.getElementById('appearanceSettings'),
-            socialSettings: document.getElementById('socialSettings'),
-            paymentSettings: document.getElementById('paymentSettings'),
-            notificationSettings: document.getElementById('notificationSettings'),
-            voucherSettings: document.getElementById('voucherSettings'),
-            integrationSettings: document.getElementById('integrationSettings')
-        };
+      loadingOverlay: document.getElementById('loadingOverlay'),
+      toastContainer: document.getElementById('toastContainer'),
+      websiteBadge: document.getElementById('websiteBadge'),
+    
+      // Header
+      menuToggle: document.getElementById('menuToggle'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      userProfile: document.getElementById('userProfile'),
+      userAvatar: document.getElementById('userAvatar'),
+    
+      // Sidebar
+      sidebar: document.getElementById('sidebar'),
+      sidebarClose: document.getElementById('sidebarClose'),
+      sidebarName: document.getElementById('sidebarName'),
+      sidebarUsername: document.getElementById('sidebarUsername'),
+      sidebarAvatar: document.getElementById('sidebarAvatar'),
+      sidebarTotalWebsites: document.getElementById('sidebarTotalWebsites'),
+      sidebarTotalProducts: document.getElementById('sidebarTotalProducts'),
+      menuWebsitesBadge: document.getElementById('menuWebsitesBadge'),
+      menuOrdersBadge: document.getElementById('menuOrdersBadge'),
+      logoutBtn: document.getElementById('logoutBtn'),
+    
+      // Navigation
+      menuItems: document.querySelectorAll('.menu-item'),
+      pages: document.querySelectorAll('.page'),
+    
+      // Dashboard Stats
+      statTotalWebsites: document.getElementById('statTotalWebsites'),
+      statTotalProducts: document.getElementById('statTotalProducts'),
+      statTotalOrders: document.getElementById('statTotalOrders'),
+      statTotalRevenue: document.getElementById('statTotalRevenue'),
+      statTotalCustomers: document.getElementById('statTotalCustomers'),
+      statActiveWebsites: document.getElementById('statActiveWebsites'),
+    
+      // Quick Actions
+      quickActions: document.getElementById('quickActions'),
+    
+      // Recent Orders
+      recentOrders: document.getElementById('recentOrders'),
+    
+      // Top Products
+      topProducts: document.getElementById('topProducts'),
+    
+      // Websites
+      websitesGrid: document.getElementById('websitesGrid'),
+      websitesEmptyState: document.getElementById('websitesEmptyState'),
+      createWebsiteBtn: document.getElementById('createWebsiteBtn'),
+    
+      // Products
+      productWebsiteSelector: document.getElementById('productWebsiteSelector'),
+      manageProductsBtn: document.getElementById('manageProductsBtn'),
+      productsSummary: document.getElementById('productsSummary'),
+      productsListContainer: document.getElementById('productsListContainer'),
+      productsEmptyState: document.getElementById('productsEmptyState'),
+    
+      // Orders
+      orderStatusFilter: document.getElementById('orderStatusFilter'),
+      ordersTableBody: document.getElementById('ordersTableBody'),
+      ordersEmptyState: document.getElementById('ordersEmptyState'),
+    
+      // Transactions
+      transactionPeriod: document.getElementById('transactionPeriod'),
+      transactionTotal: document.getElementById('transactionTotal'),
+      transactionCount: document.getElementById('transactionCount'),
+      transactionAverage: document.getElementById('transactionAverage'),
+      transactionsList: document.getElementById('transactionsList'),
+    
+      // Customers
+      customerSearch: document.getElementById('customerSearch'),
+      customersGrid: document.getElementById('customersGrid'),
+    
+      // Settings Links
+      appearanceSettings: document.getElementById('appearanceSettings'),
+      socialSettings: document.getElementById('socialSettings'),
+      paymentSettings: document.getElementById('paymentSettings'),
+      notificationSettings: document.getElementById('notificationSettings'),
+      voucherSettings: document.getElementById('voucherSettings'),
+      integrationSettings: document.getElementById('integrationSettings')
+    };
     
         // ==================== SESSION STORAGE FUNCTIONS ====================
         
@@ -339,50 +339,7 @@
             
             return userId;
         }
-    
-        async function loadUserWebsites(userId) {
-            try {
-                showLoading(true);
-                
-                const response = await fetchWithRetry(`${API_BASE_URL}/api/websites`, {
-                    method: 'GET'
-                });
-                
-                if (response.success && response.websites) {
-                    userWebsites = response.websites.filter(w => w.owner_id === userId);
-                    
-                    if (elements.menuWebsitesBadge) {
-                        elements.menuWebsitesBadge.textContent = userWebsites.length;
-                    }
-                    if (elements.sidebarTotalWebsites) {
-                        elements.sidebarTotalWebsites.textContent = userWebsites.length;
-                    }
-                    
-                    const activeCount = userWebsites.filter(w => w.status === 'active').length;
-                    if (elements.statActiveWebsites) {
-                        elements.statActiveWebsites.textContent = activeCount;
-                    }
-                    
-                    // Simpan endpoint website pertama ke session jika ada
-                    if (userWebsites.length > 0) {
-                        saveWebsiteEndpoint(userWebsites[0].endpoint);
-                    }
-                    
-                    return userWebsites;
-                } else {
-                    userWebsites = [];
-                    return [];
-                }
-            } catch (error) {
-                console.error('❌ Error loading websites:', error);
-                showToast('Gagal memuat data website', 'error');
-                userWebsites = [];
-                return [];
-            } finally {
-                showLoading(false);
-            }
-        }
-    
+
         // ==================== UPDATE FUNGSI LOADPRODUCTSANDORDERS ====================
         async function loadProductsAndOrders() {
           if (!userWebsites || userWebsites.length === 0) return;
@@ -1558,60 +1515,6 @@
       elements.quickActions.innerHTML = html;
     }
     
-    async function reloadForWebsite(endpoint) {
-      showLoading(true);
-    
-      try {
-        // Filter products untuk website yang dipilih
-        const website = userWebsites.find(w => w.endpoint === endpoint);
-        if (!website) return;
-    
-        // Load products untuk website tersebut
-        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
-          method: 'GET'
-        }).catch(() => ({ success: false, data: [] }));
-    
-        if (productsResponse.success && productsResponse.data) {
-          // Update allProducts dengan data dari website yang dipilih
-          allProducts = [];
-          productsResponse.data.forEach(layanan => {
-            if (layanan.aplikasi) {
-              layanan.aplikasi.forEach(aplikasi => {
-                if (aplikasi.items) {
-                  aplikasi.items.forEach(item => {
-                    allProducts.push({
-                      ...item,
-                      website_name: website.endpoint,
-                      website_id: website.id,
-                      layanan_nama: layanan.layanan_nama,
-                      layanan_gambar: layanan.layanan_gambar,
-                      layanan_desc: layanan.layanan_desc,
-                      aplikasi_nama: aplikasi.aplikasi_nama,
-                      aplikasi_gambar: aplikasi.aplikasi_gambar,
-                      aplikasi_desc: aplikasi.aplikasi_desc
-                    });
-                  });
-                }
-              });
-            }
-          });
-        }
-    
-        // Render ulang produk
-        renderProductsList();
-    
-        // Update badge di sidebar
-        if (elements.sidebarTotalProducts) {
-          elements.sidebarTotalProducts.textContent = allProducts.length;
-        }
-    
-      } catch (error) {
-        console.error('❌ Error reloading for website:', error);
-      } finally {
-        showLoading(false);
-      }
-    }
-    
     // Update fungsi loadUserWebsites untuk memanggil setupWebsiteSelector
     async function loadUserWebsites(userId) {
       try {
@@ -1773,12 +1676,10 @@
         setupEventListeners();
         setupProductFilters();
         setupProductSearch();
-        initPullToRefresh(); // Pull-to-refresh
+        initPullToRefresh();
     
-        // Setup website selector setelah data websites dimuat
         setupWebsiteSelector();
     
-        // Set initial website endpoint
         const savedEndpoint = getLastWebsiteEndpoint();
         if (savedEndpoint && userWebsites.length > 0) {
           currentWebsiteEndpoint = savedEndpoint;
@@ -1791,55 +1692,12 @@
           document.getElementById('selectedWebsiteEndpoint').textContent = '/' + firstEndpoint;
         }
     
-        // Pulihkan halaman terakhir
         restoreLastPage();
     
         if (window.Telegram?.WebApp) {
           const tg = window.Telegram.WebApp;
           tg.expand();
           tg.ready();
-        }
-    
-        console.log('✅ Panel initialized with session storage');
-    
-      } catch (error) {
-        console.error('❌ Init error:', error);
-        showToast('Gagal memuat dashboard', 'error');
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    async function init() {
-      showLoading(true);
-    
-      try {
-        const userId = await loadUserData();
-        await loadUserWebsites(userId);
-        await loadProductsAndOrders();
-    
-        setupSettingsLinks();
-        setupEventListeners();
-        setupProductFilters(); // Tambahkan ini
-        setupProductSearch(); // Tambahkan ini
-    
-        // Pulihkan halaman terakhir dari session storage
-        restoreLastPage();
-    
-        if (window.Telegram?.WebApp) {
-          const tg = window.Telegram.WebApp;
-          tg.expand();
-          tg.ready();
-    
-          if (tg.themeParams) {
-            const theme = tg.themeParams;
-            if (theme.bg_color) {
-              document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
-            }
-            if (theme.text_color) {
-              document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
-            }
-          }
         }
     
         console.log('✅ Panel initialized with session storage');
