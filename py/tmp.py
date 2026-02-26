@@ -1,605 +1,1012 @@
-# tmp_font.py - Database handler untuk template font & animasi
+# tmp.py - Database handler untuk tampilan website (VERSI DENGAN MULTIPLE BANNER, MULTIPLE PROMO, DAN FONT ANIMASI)
 import sqlite3
 import json
-import random
-import string
-from datetime import datetime
 
-DATABASE = 'tmp_font.db'
+DATABASE = 'tmp.db'
 
 # ==================== FUNGSI DASAR ====================
 def get_db():
     """Mendapatkan koneksi database"""
-    conn = sqlite3.connect(DATABASE, timeout=30)
+    conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
-    """Inisialisasi database template font"""
+    """Inisialisasi database dengan struktur baru"""
     conn = get_db()
     cursor = conn.cursor()
-    
-    # Tabel untuk template font & animasi
+
+    # Create tampilan table with new structure including font animation columns
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS font_templates (
+    CREATE TABLE IF NOT EXISTS tampilan (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        template_code TEXT UNIQUE NOT NULL,
-        template_name TEXT NOT NULL,
-        website_id INTEGER,
-        user_id INTEGER,
+        website_id INTEGER UNIQUE NOT NULL,
+        logo TEXT,
+        banners TEXT DEFAULT '[]',  -- JSON array untuk multiple banner
+        promos TEXT DEFAULT '[]',    -- JSON array untuk multiple promo
+        colors TEXT DEFAULT '{}',
+        font_family TEXT DEFAULT 'Inter',
+        font_size INTEGER DEFAULT 14,
+        title TEXT,
+        description TEXT,
+        contact_whatsapp TEXT,
+        contact_telegram TEXT,
+        banner_positions TEXT DEFAULT '[]',  -- JSON array untuk posisi banner
+        payment_notes TEXT DEFAULT '{}',
+        banks TEXT DEFAULT '[]',
+        ewallets TEXT DEFAULT '[]',
+        qris TEXT DEFAULT '{}',
+        crypto TEXT DEFAULT '{}',
+        maintenance_message TEXT,
         
-        -- Data Font
-        font_family TEXT NOT NULL,
-        font_file_data TEXT,  -- Base64 data URL file TTF
-        font_file_name TEXT,  -- Nama file asli
-        font_weight INTEGER DEFAULT 400,
-        font_style TEXT DEFAULT 'normal',
-        font_size INTEGER DEFAULT 48,
-        text_color TEXT DEFAULT '#ffffff',
-        
-        -- Data Animasi
-        animation_type TEXT DEFAULT 'none',
+        -- KOLOM BARU UNTUK FONT & ANIMASI
+        store_display_name TEXT DEFAULT 'Toko Online',
+        font_animation TEXT DEFAULT 'none',
         animation_duration REAL DEFAULT 2,
         animation_delay REAL DEFAULT 0,
         animation_iteration TEXT DEFAULT 'infinite',
         
-        -- Preview Text
-        preview_text TEXT DEFAULT 'Toko Online Premium',
-        preview_subtext TEXT DEFAULT 'dengan Layanan Terbaik 24/7',
-        
-        -- Metadata
-        is_public BOOLEAN DEFAULT 0,
-        usage_count INTEGER DEFAULT 0,
-        last_used TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
+
+    # Create promo table (OLD - untuk backward compatibility)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS promo (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        website_id INTEGER UNIQUE NOT NULL,
+        banner TEXT,
+        description TEXT,
+        end_date TEXT,
+        end_time TEXT,
+        never_end BOOLEAN DEFAULT 0,
+        notes TEXT,
+        active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE
+    )
+    ''')
     
-    # Index untuk pencarian
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_template_code ON font_templates(template_code)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_template_name ON font_templates(template_name)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_id ON font_templates(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON font_templates(user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_animation ON font_templates(animation_type)')
+    # Create website_templates table for saving templates per website
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS website_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        website_id INTEGER NOT NULL,
+        template_code TEXT NOT NULL,
+        template_name TEXT NOT NULL,
+        template_data TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+        UNIQUE(website_id, template_code)
+    )
+    ''')
     
+    # Create index for website_templates
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_code ON website_templates(template_code)')
+
     conn.commit()
     conn.close()
-    print("✅ Font templates database initialized successfully")
+    print("✅ Database tmp initialized with new structure (tables: tampilan, promo, website_templates)")
 
 # Inisialisasi database
 init_db()
 
-# ==================== FUNGSI GENERATE KODE ====================
-def generate_template_code(length=35):
-    """Generate random template code dengan panjang 35 karakter"""
-    characters = string.ascii_letters + string.digits
-    while True:
-        code = ''.join(random.choice(characters) for _ in range(length))
-        # Cek apakah kode sudah ada
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('SELECT id FROM font_templates WHERE template_code = ?', (code,))
-        existing = cursor.fetchone()
-        conn.close()
-        
-        if not existing:
-            return code
+# ==================== FUNGSI UNTUK TAMPILAN ====================
 
-# ==================== FUNGSI CRUD TEMPLATE ====================
+def get_tampilan(website_id):
+    """Ambil data tampilan berdasarkan website_id"""
+    conn = get_db()
+    cursor = conn.cursor()
 
-def save_template(template_name, font_family, font_file_data=None, font_file_name=None, 
-                  font_weight=400, font_style='normal', font_size=48, text_color='#ffffff',
-                  animation_type='none', animation_duration=2, animation_delay=0, 
-                  animation_iteration='infinite', preview_text='Toko Online Premium',
-                  preview_subtext='dengan Layanan Terbaik 24/7',
-                  website_id=None, user_id=None, is_public=False):
-    """
-    Menyimpan template baru
-    Returns: template_code jika sukses, None jika gagal
-    """
-    conn = None
-    try:
-        # Validasi data
-        if not template_name or not font_family:
-            return None
+    cursor.execute('SELECT * FROM tampilan WHERE website_id = ?', (website_id,))
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row:
+        data = dict(row)
+        # Parse JSON fields
+        if data['banners']:
+            try:
+                data['banners'] = json.loads(data['banners'])
+            except:
+                data['banners'] = []
+        else:
+            data['banners'] = []
         
-        # Generate kode unik
-        template_code = generate_template_code()
+        # Parse promos
+        if data['promos']:
+            try:
+                promos_data = json.loads(data['promos'])
+                if isinstance(promos_data, list):
+                    data['promos'] = promos_data
+                else:
+                    data['promos'] = []
+            except:
+                data['promos'] = []
+        else:
+            data['promos'] = []
         
-        conn = get_db()
-        cursor = conn.cursor()
+        if data['colors']:
+            try:
+                data['colors'] = json.loads(data['colors'])
+            except:
+                data['colors'] = {}
+        else:
+            data['colors'] = {}
+            
+        if data['banner_positions']:
+            try:
+                data['banner_positions'] = json.loads(data['banner_positions'])
+            except:
+                data['banner_positions'] = []
+        else:
+            data['banner_positions'] = []
+            
+        if data['payment_notes']:
+            try:
+                data['payment_notes'] = json.loads(data['payment_notes'])
+            except:
+                data['payment_notes'] = {}
+        else:
+            data['payment_notes'] = {}
+            
+        if data['banks']:
+            try:
+                data['banks'] = json.loads(data['banks'])
+            except:
+                data['banks'] = []
+        else:
+            data['banks'] = []
+            
+        if data['ewallets']:
+            try:
+                data['ewallets'] = json.loads(data['ewallets'])
+            except:
+                data['ewallets'] = []
+        else:
+            data['ewallets'] = []
+            
+        if data['qris']:
+            try:
+                data['qris'] = json.loads(data['qris'])
+            except:
+                data['qris'] = {}
+        else:
+            data['qris'] = {}
+            
+        if data['crypto']:
+            try:
+                data['crypto'] = json.loads(data['crypto'])
+            except:
+                data['crypto'] = {}
+        else:
+            data['crypto'] = {}
         
+        # Kolom font animasi sudah langsung tersedia sebagai field biasa
+        # Tidak perlu di-parse karena bukan JSON
+        
+        return data
+    return None
+
+def save_tampilan(website_id, data):
+    """Simpan atau update data tampilan"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+
+    # Siapkan data dengan nilai default
+    colors = json.dumps(data.get('colors', {}))
+    banners = json.dumps(data.get('banners', []))
+    promos = json.dumps(data.get('promos', []))
+    banner_positions = json.dumps(data.get('banner_positions', []))
+    payment_notes = json.dumps(data.get('payment_notes', {}))
+    banks = json.dumps(data.get('banks', []))
+    ewallets = json.dumps(data.get('ewallets', []))
+    qris = json.dumps(data.get('qris', {}))
+    crypto = json.dumps(data.get('crypto', {}))
+    
+    logo = data.get('logo', '')
+    font_family = data.get('font_family', 'Inter')
+    font_size = data.get('font_size', 14)
+    title = data.get('title')
+    description = data.get('description')
+    contact_whatsapp = data.get('contact_whatsapp')
+    contact_telegram = data.get('contact_telegram')
+    maintenance_message = data.get('maintenance_message')
+    
+    # Data font animasi
+    store_display_name = data.get('store_display_name', 'Toko Online')
+    font_animation = data.get('font_animation', 'none')
+    animation_duration = data.get('animation_duration', 2)
+    animation_delay = data.get('animation_delay', 0)
+    animation_iteration = data.get('animation_iteration', 'infinite')
+
+    if existing:
+        # Update
         cursor.execute('''
-            INSERT INTO font_templates (
-                template_code, template_name, website_id, user_id,
-                font_family, font_file_data, font_file_name,
-                font_weight, font_style, font_size, text_color,
-                animation_type, animation_duration, animation_delay, animation_iteration,
-                preview_text, preview_subtext, is_public
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        UPDATE tampilan SET
+            logo = COALESCE(?, logo),
+            banners = COALESCE(?, banners),
+            promos = COALESCE(?, promos),
+            colors = COALESCE(?, colors),
+            font_family = COALESCE(?, font_family),
+            font_size = COALESCE(?, font_size),
+            title = COALESCE(?, title),
+            description = COALESCE(?, description),
+            contact_whatsapp = COALESCE(?, contact_whatsapp),
+            contact_telegram = COALESCE(?, contact_telegram),
+            banner_positions = COALESCE(?, banner_positions),
+            payment_notes = COALESCE(?, payment_notes),
+            banks = COALESCE(?, banks),
+            ewallets = COALESCE(?, ewallets),
+            qris = COALESCE(?, qris),
+            crypto = COALESCE(?, crypto),
+            maintenance_message = COALESCE(?, maintenance_message),
+            
+            -- Update kolom font animasi
+            store_display_name = COALESCE(?, store_display_name),
+            font_animation = COALESCE(?, font_animation),
+            animation_duration = COALESCE(?, animation_duration),
+            animation_delay = COALESCE(?, animation_delay),
+            animation_iteration = COALESCE(?, animation_iteration),
+            
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
         ''', (
-            template_code,
-            template_name,
-            website_id,
-            user_id,
+            logo,
+            banners,
+            promos,
+            colors,
             font_family,
-            font_file_data,
-            font_file_name,
-            font_weight,
-            font_style,
             font_size,
-            text_color,
-            animation_type,
+            title,
+            description,
+            contact_whatsapp,
+            contact_telegram,
+            banner_positions,
+            payment_notes,
+            banks,
+            ewallets,
+            qris,
+            crypto,
+            maintenance_message,
+            
+            store_display_name,
+            font_animation,
             animation_duration,
             animation_delay,
             animation_iteration,
-            preview_text,
-            preview_subtext,
-            1 if is_public else 0
-        ))
-        
-        conn.commit()
-        print(f"✅ Template saved with code: {template_code}")
-        return template_code
-        
-    except Exception as e:
-        print(f"❌ Error saving template: {e}")
-        if conn:
-            conn.rollback()
-        return None
-    finally:
-        if conn:
-            conn.close()
-
-def update_template(template_code, template_name=None, font_family=None, font_file_data=None,
-                    font_file_name=None, font_weight=None, font_style=None, font_size=None,
-                    text_color=None, animation_type=None, animation_duration=None,
-                    animation_delay=None, animation_iteration=None, preview_text=None,
-                    preview_subtext=None, is_public=None):
-    """
-    Update template yang sudah ada
-    Returns: True jika sukses, False jika gagal
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        # Cek apakah template ada
-        cursor.execute('SELECT id FROM font_templates WHERE template_code = ?', (template_code,))
-        if not cursor.fetchone():
-            return False
-        
-        updates = []
-        params = []
-        
-        if template_name is not None:
-            updates.append("template_name = ?")
-            params.append(template_name)
-        
-        if font_family is not None:
-            updates.append("font_family = ?")
-            params.append(font_family)
-        
-        if font_file_data is not None:
-            updates.append("font_file_data = ?")
-            params.append(font_file_data)
-        
-        if font_file_name is not None:
-            updates.append("font_file_name = ?")
-            params.append(font_file_name)
-        
-        if font_weight is not None:
-            updates.append("font_weight = ?")
-            params.append(font_weight)
-        
-        if font_style is not None:
-            updates.append("font_style = ?")
-            params.append(font_style)
-        
-        if font_size is not None:
-            updates.append("font_size = ?")
-            params.append(font_size)
-        
-        if text_color is not None:
-            updates.append("text_color = ?")
-            params.append(text_color)
-        
-        if animation_type is not None:
-            updates.append("animation_type = ?")
-            params.append(animation_type)
-        
-        if animation_duration is not None:
-            updates.append("animation_duration = ?")
-            params.append(animation_duration)
-        
-        if animation_delay is not None:
-            updates.append("animation_delay = ?")
-            params.append(animation_delay)
-        
-        if animation_iteration is not None:
-            updates.append("animation_iteration = ?")
-            params.append(animation_iteration)
-        
-        if preview_text is not None:
-            updates.append("preview_text = ?")
-            params.append(preview_text)
-        
-        if preview_subtext is not None:
-            updates.append("preview_subtext = ?")
-            params.append(preview_subtext)
-        
-        if is_public is not None:
-            updates.append("is_public = ?")
-            params.append(1 if is_public else 0)
-        
-        updates.append("updated_at = CURRENT_TIMESTAMP")
-        
-        if updates:
-            query = f"UPDATE font_templates SET {', '.join(updates)} WHERE template_code = ?"
-            params.append(template_code)
-            cursor.execute(query, params)
-            conn.commit()
-            print(f"✅ Template {template_code} updated")
-            return True
-        
-        return False
-        
-    except Exception as e:
-        print(f"❌ Error updating template: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
-
-def get_template(template_code):
-    """
-    Mendapatkan template berdasarkan kode
-    Returns: dict template atau None
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT * FROM font_templates 
-            WHERE template_code = ?
-        ''', (template_code,))
-        
-        row = cursor.fetchone()
-        
-        if row:
-            # Update usage count
-            cursor.execute('''
-                UPDATE font_templates 
-                SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP
-                WHERE template_code = ?
-            ''', (template_code,))
-            conn.commit()
             
-            return dict(row)
-        
-        return None
-        
-    except Exception as e:
-        print(f"❌ Error getting template: {e}")
-        return None
-    finally:
-        if conn:
-            conn.close()
+            website_id
+        ))
+        result_id = existing['id']
+    else:
+        # Insert
+        cursor.execute('''
+        INSERT INTO tampilan (
+            website_id, logo, banners, promos, colors, font_family, font_size,
+            title, description, contact_whatsapp, contact_telegram, 
+            banner_positions, payment_notes, banks, ewallets, qris, crypto,
+            maintenance_message,
+            
+            -- Kolom font animasi
+            store_display_name, font_animation, animation_duration, 
+            animation_delay, animation_iteration
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            website_id,
+            logo,
+            banners,
+            promos,
+            colors,
+            font_family,
+            font_size,
+            title,
+            description,
+            contact_whatsapp,
+            contact_telegram,
+            banner_positions,
+            payment_notes,
+            banks,
+            ewallets,
+            qris,
+            crypto,
+            maintenance_message,
+            
+            store_display_name,
+            font_animation,
+            animation_duration,
+            animation_delay,
+            animation_iteration
+        ))
+        result_id = cursor.lastrowid
 
-def delete_template(template_code):
-    """
-    Menghapus template berdasarkan kode
-    Returns: True jika sukses, False jika gagal
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('DELETE FROM font_templates WHERE template_code = ?', (template_code,))
-        deleted = cursor.rowcount > 0
-        
-        conn.commit()
-        
-        if deleted:
-            print(f"✅ Template {template_code} deleted")
-        return deleted
-        
-    except Exception as e:
-        print(f"❌ Error deleting template: {e}")
-        if conn:
-            conn.rollback()
-        return False
-    finally:
-        if conn:
-            conn.close()
+    conn.commit()
+    conn.close()
+    return result_id
 
-def get_all_templates(limit=50, offset=0):
-    """
-    Mendapatkan semua template
-    """
-    conn = None
+def save_colors(website_id, colors_data):
+    """Khusus menyimpan warna"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    colors = json.dumps(colors_data)
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            colors = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (colors, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, colors, font_family, font_size, 
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, colors, 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def save_banners(website_id, banners_data):
+    """Khusus menyimpan multiple banner dengan posisi"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    banners_json = json.dumps(banners_data)
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            banners = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (banners_json, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, banners, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, banners_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def save_logo(website_id, logo_url):
+    """Khusus menyimpan logo"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            logo = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (logo_url, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, logo, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, logo_url, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def save_font_anim(website_id, data):
+    """Save font and animation settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            store_display_name = ?,
+            font_family = ?,
+            font_animation = ?,
+            animation_duration = ?,
+            animation_delay = ?,
+            animation_iteration = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (
+            data.get('store_display_name', 'Toko Online'),
+            data.get('font_family', 'Inter'),
+            data.get('animation', 'none'),
+            data.get('animation_duration', 2),
+            data.get('animation_delay', 0),
+            data.get('animation_iteration', 'infinite'),
+            website_id
+        ))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (
+            website_id, 
+            store_display_name, font_family, font_animation, 
+            animation_duration, animation_delay, animation_iteration,
+            colors, font_family, font_size
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            website_id,
+            data.get('store_display_name', 'Toko Online'),
+            data.get('font_family', 'Inter'),
+            data.get('animation', 'none'),
+            data.get('animation_duration', 2),
+            data.get('animation_delay', 0),
+            data.get('animation_iteration', 'infinite'),
+            '{}', 'Inter', 14
+        ))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def update_tampilan(website_id, data):
+    """Update existing tampilan data dengan preserve semua field"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # First, get current data to preserve fields not being updated
+    cursor.execute('SELECT * FROM tampilan WHERE website_id = ?', (website_id,))
+    current = cursor.fetchone()
+
+    if not current:
+        # Jika tidak ada data, buat baru
+        conn.close()
+        return save_tampilan(website_id, data)
+
+    current_dict = dict(current)
+
+    # Parse JSON fields untuk mendapatkan nilai saat ini
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        current_banners = json.loads(current_dict['banners']) if current_dict['banners'] else []
+    except:
+        current_banners = []
+    
+    try:
+        current_promos = json.loads(current_dict['promos']) if current_dict['promos'] else []
+    except:
+        current_promos = []
         
-        # Cek apakah tabel ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='font_templates'")
-        if not cursor.fetchone():
-            print("⚠️ Table font_templates tidak ditemukan!")
+    try:
+        current_colors = json.loads(current_dict['colors']) if current_dict['colors'] else {}
+    except:
+        current_colors = {}
+        
+    try:
+        current_banner_positions = json.loads(current_dict['banner_positions']) if current_dict['banner_positions'] else []
+    except:
+        current_banner_positions = []
+        
+    try:
+        current_payment_notes = json.loads(current_dict['payment_notes']) if current_dict['payment_notes'] else {}
+    except:
+        current_payment_notes = {}
+        
+    try:
+        current_banks = json.loads(current_dict['banks']) if current_dict['banks'] else []
+    except:
+        current_banks = []
+        
+    try:
+        current_ewallets = json.loads(current_dict['ewallets']) if current_dict['ewallets'] else []
+    except:
+        current_ewallets = []
+        
+    try:
+        current_qris = json.loads(current_dict['qris']) if current_dict['qris'] else {}
+    except:
+        current_qris = {}
+        
+    try:
+        current_crypto = json.loads(current_dict['crypto']) if current_dict['crypto'] else {}
+    except:
+        current_crypto = {}
+
+    # Siapkan nilai baru (gunakan data baru jika ada,否则 pakai yang lama)
+    new_logo = data.get('logo', current_dict['logo'])
+    new_banners = json.dumps(data.get('banners', current_banners))
+    new_promos = json.dumps(data.get('promos', current_promos))
+    new_colors = json.dumps(data.get('colors', current_colors))
+    new_banner_positions = json.dumps(data.get('banner_positions', current_banner_positions))
+    new_font_family = data.get('font_family', current_dict['font_family'])
+    new_font_size = data.get('font_size', current_dict['font_size'])
+    new_title = data.get('title', current_dict['title'])
+    new_description = data.get('description', current_dict['description'])
+    new_contact_whatsapp = data.get('contact_whatsapp', current_dict['contact_whatsapp'])
+    new_contact_telegram = data.get('contact_telegram', current_dict['contact_telegram'])
+    new_payment_notes = json.dumps(data.get('payment_notes', current_payment_notes))
+    new_banks = json.dumps(data.get('banks', current_banks))
+    new_ewallets = json.dumps(data.get('ewallets', current_ewallets))
+    new_qris = json.dumps(data.get('qris', current_qris))
+    new_crypto = json.dumps(data.get('crypto', current_crypto))
+    new_maintenance_message = data.get('maintenance_message', current_dict['maintenance_message'])
+    
+    # Data font animasi
+    new_store_display_name = data.get('store_display_name', current_dict.get('store_display_name', 'Toko Online'))
+    new_font_animation = data.get('font_animation', current_dict.get('font_animation', 'none'))
+    new_animation_duration = data.get('animation_duration', current_dict.get('animation_duration', 2))
+    new_animation_delay = data.get('animation_delay', current_dict.get('animation_delay', 0))
+    new_animation_iteration = data.get('animation_iteration', current_dict.get('animation_iteration', 'infinite'))
+
+    # Update database
+    cursor.execute('''
+    UPDATE tampilan SET
+        logo = ?,
+        banners = ?,
+        promos = ?,
+        colors = ?,
+        font_family = ?,
+        font_size = ?,
+        title = ?,
+        description = ?,
+        contact_whatsapp = ?,
+        contact_telegram = ?,
+        banner_positions = ?,
+        payment_notes = ?,
+        banks = ?,
+        ewallets = ?,
+        qris = ?,
+        crypto = ?,
+        maintenance_message = ?,
+        
+        -- Update kolom font animasi
+        store_display_name = ?,
+        font_animation = ?,
+        animation_duration = ?,
+        animation_delay = ?,
+        animation_iteration = ?,
+        
+        updated_at = CURRENT_TIMESTAMP
+    WHERE website_id = ?
+    ''', (
+        new_logo,
+        new_banners,
+        new_promos,
+        new_colors,
+        new_font_family,
+        new_font_size,
+        new_title,
+        new_description,
+        new_contact_whatsapp,
+        new_contact_telegram,
+        new_banner_positions,
+        new_payment_notes,
+        new_banks,
+        new_ewallets,
+        new_qris,
+        new_crypto,
+        new_maintenance_message,
+        
+        new_store_display_name,
+        new_font_animation,
+        new_animation_duration,
+        new_animation_delay,
+        new_animation_iteration,
+        
+        website_id
+    ))
+
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan payment notes
+def save_payment_notes(website_id, notes_data):
+    """Khusus menyimpan payment notes"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    notes_json = json.dumps(notes_data)
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            payment_notes = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (notes_json, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, payment_notes, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, notes_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan payment methods
+def save_payment_methods(website_id, banks_data, ewallets_data, qris_data, crypto_data):
+    """Khusus menyimpan payment methods"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    banks_json = json.dumps(banks_data)
+    ewallets_json = json.dumps(ewallets_data)
+    qris_json = json.dumps(qris_data)
+    crypto_json = json.dumps(crypto_data)
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            banks = ?,
+            ewallets = ?,
+            qris = ?,
+            crypto = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (banks_json, ewallets_json, qris_json, crypto_json, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, banks, ewallets, qris, crypto, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, banks_json, ewallets_json, qris_json, crypto_json, '{}', 'Inter', 14, 
+              'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan maintenance message
+def save_maintenance(website_id, enabled, message):
+    """Khusus menyimpan maintenance settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            maintenance_message = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (message if enabled else None, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, maintenance_message, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, message if enabled else None, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan font (lama)
+def save_font(website_id, font_family, font_size):
+    """Khusus menyimpan font settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            font_family = ?,
+            font_size = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (font_family, font_size, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, font_family, font_size, colors,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, font_family, font_size, '{}', 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# Fungsi khusus untuk menyimpan general settings
+def save_general(website_id, title, description, contact_whatsapp, contact_telegram):
+    """Khusus menyimpan general settings"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
+        cursor.execute('''
+        UPDATE tampilan SET
+            title = ?,
+            description = ?,
+            contact_whatsapp = ?,
+            contact_telegram = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (title, description, contact_whatsapp, contact_telegram, website_id))
+    else:
+        cursor.execute('''
+        INSERT INTO tampilan (website_id, title, description, contact_whatsapp, contact_telegram, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, title, description, contact_whatsapp, contact_telegram, '{}', 'Inter', 14,
+              'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+# ==================== FUNGSI UNTUK PROMO (MULTIPLE) ====================
+
+def get_promos(website_id):
+    """Ambil semua data promo berdasarkan website_id"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT promos FROM tampilan WHERE website_id = ?', (website_id,))
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row and row['promos']:
+        try:
+            promos = json.loads(row['promos'])
+            return promos
+        except:
             return []
-        
-        # Hitung total data
-        cursor.execute("SELECT COUNT(*) as count FROM font_templates")
-        count = cursor.fetchone()['count']
-        print(f"📊 Total templates in database: {count}")
-        
-        cursor.execute('''
-            SELECT * FROM font_templates 
-            ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
-        ''', (limit, offset))
-        
-        rows = cursor.fetchall()
-        print(f"📊 Retrieved {len(rows)} templates from database")
-        
-        templates = []
-        for row in rows:
-            template = dict(row)
-            # Parse JSON if needed (tidak ada JSON di tabel ini)
-            templates.append(template)
-        
-        return templates
-        
-    except Exception as e:
-        print(f"❌ Error getting templates: {e}")
-        import traceback
-        traceback.print_exc()  # Tambahkan stack trace untuk debugging
-        return []
-    finally:
-        if conn:
-            conn.close()
+    return []
 
-def search_templates(query, limit=20):
-    """
-    Mencari template berdasarkan nama atau kode
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
+def save_promos(website_id, promos_data):
+    """Simpan semua data promo"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    promos_json = json.dumps(promos_data)
+    
+    # Cek apakah sudah ada
+    cursor.execute('SELECT id FROM tampilan WHERE website_id = ?', (website_id,))
+    existing = cursor.fetchone()
+    
+    if existing:
         cursor.execute('''
-            SELECT id, template_code, template_name, website_id, user_id,
-                   font_family, font_file_name, font_weight, font_size, text_color,
-                   animation_type, animation_duration, animation_delay, animation_iteration,
-                   preview_text, preview_subtext, is_public, usage_count,
-                   created_at, updated_at, last_used
-            FROM font_templates 
-            WHERE template_name LIKE ? OR template_code LIKE ?
-            ORDER BY usage_count DESC, created_at DESC
-            LIMIT ?
-        ''', (f'%{query}%', f'%{query}%', limit))
-        
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-        
-    except Exception as e:
-        print(f"❌ Error searching templates: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
-def get_popular_templates(limit=10):
-    """
-    Mendapatkan template paling populer berdasarkan usage_count
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
+        UPDATE tampilan SET
+            promos = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE website_id = ?
+        ''', (promos_json, website_id))
+    else:
         cursor.execute('''
-            SELECT id, template_code, template_name, website_id, user_id,
-                   font_family, font_file_name, font_weight, font_size, text_color,
-                   animation_type, animation_duration, animation_delay, animation_iteration,
-                   preview_text, preview_subtext, is_public, usage_count,
-                   created_at, updated_at, last_used
-            FROM font_templates 
-            WHERE is_public = 1
-            ORDER BY usage_count DESC, created_at DESC
-            LIMIT ?
-        ''', (limit,))
-        
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-        
-    except Exception as e:
-        print(f"❌ Error getting popular templates: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
+        INSERT INTO tampilan (website_id, promos, colors, font_family, font_size,
+            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (website_id, promos_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+    
+    conn.commit()
+    conn.close()
+    return len(promos_data)
 
-def get_user_templates(user_id, limit=50):
-    """
-    Mendapatkan semua template milik user tertentu
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
+# ==================== FUNGSI UNTUK PROMO LAMA (BACKWARD COMPATIBILITY) ====================
+
+def get_promo(website_id):
+    """Ambil data promo berdasarkan website_id (old single format)"""
+    promos = get_promos(website_id)
+    if promos and len(promos) > 0:
+        return promos[0]
+    return None
+
+def save_promo(website_id, data):
+    """Simpan atau update data promo (old single format)"""
+    promos = get_promos(website_id)
+    
+    if promos and len(promos) > 0:
+        promos[0] = data
+    else:
+        promos = [data]
+    
+    return save_promos(website_id, promos)
+
+def delete_promo(website_id):
+    """Hapus data promo (old single format)"""
+    return save_promos(website_id, [])
+
+# ==================== FUNGSI UNTUK TEMPLATE PER WEBSITE ====================
+
+def save_website_template(website_id, template_code, template_name, template_data):
+    """Menyimpan template untuk website tertentu"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah tabel website_templates sudah ada (seharusnya sudah dibuat di init_db)
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_templates'")
+    if not cursor.fetchone():
+        # Jika belum ada (fallback), buat tabel
         cursor.execute('''
-            SELECT id, template_code, template_name, website_id, user_id,
-                   font_family, font_file_name, font_weight, font_size, text_color,
-                   animation_type, animation_duration, animation_delay, animation_iteration,
-                   preview_text, preview_subtext, is_public, usage_count,
-                   created_at, updated_at, last_used
-            FROM font_templates 
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            LIMIT ?
-        ''', (user_id, limit))
-        
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-        
-    except Exception as e:
-        print(f"❌ Error getting user templates: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
+        CREATE TABLE IF NOT EXISTS website_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            website_id INTEGER NOT NULL,
+            template_code TEXT NOT NULL,
+            template_name TEXT NOT NULL,
+            template_data TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+            UNIQUE(website_id, template_code)
+        )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
+    
+    # Simpan data template
+    cursor.execute('''
+    INSERT OR REPLACE INTO website_templates 
+    (website_id, template_code, template_name, template_data)
+    VALUES (?, ?, ?, ?)
+    ''', (website_id, template_code, template_name, json.dumps(template_data)))
+    
+    conn.commit()
+    conn.close()
+    return True
 
-def get_website_templates(website_id, limit=50):
-    """
-    Mendapatkan semua template yang terkait dengan website tertentu
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT id, template_code, template_name, website_id, user_id,
-                   font_family, font_file_name, font_weight, font_size, text_color,
-                   animation_type, animation_duration, animation_delay, animation_iteration,
-                   preview_text, preview_subtext, is_public, usage_count,
-                   created_at, updated_at, last_used
-            FROM font_templates 
-            WHERE website_id = ? OR is_public = 1
-            ORDER BY is_public DESC, usage_count DESC, created_at DESC
-            LIMIT ?
-        ''', (website_id, limit))
-        
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-        
-    except Exception as e:
-        print(f"❌ Error getting website templates: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
+def get_website_templates(website_id):
+    """Mendapatkan semua template untuk website tertentu"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah tabel ada
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_templates'")
+    if not cursor.fetchone():
+        conn.close()
+        return []  # Return empty list if table doesn't exist
+    
+    cursor.execute('''
+    SELECT * FROM website_templates 
+    WHERE website_id = ? 
+    ORDER BY created_at DESC
+    ''', (website_id,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    templates = []
+    for row in rows:
+        template = dict(row)
+        try:
+            template['template_data'] = json.loads(template['template_data'])
+        except:
+            template['template_data'] = {}
+        templates.append(template)
+    
+    return templates
 
-def check_template_exists(template_code):
-    """
-    Mengecek apakah template dengan kode tertentu ada
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('SELECT id FROM font_templates WHERE template_code = ?', (template_code,))
-        return cursor.fetchone() is not None
-        
-    except Exception as e:
-        print(f"❌ Error checking template: {e}")
+def delete_website_template(template_id):
+    """Menghapus template dari website"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah tabel ada
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_templates'")
+    if not cursor.fetchone():
+        conn.close()
         return False
-    finally:
-        if conn:
-            conn.close()
-
-def increment_usage_count(template_code):
-    """
-    Menambah usage count template
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            UPDATE font_templates 
-            SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP
-            WHERE template_code = ?
-        ''', (template_code,))
-        
-        conn.commit()
-        return cursor.rowcount > 0
-        
-    except Exception as e:
-        print(f"❌ Error incrementing usage count: {e}")
-        return False
-    finally:
-        if conn:
-            conn.close()
+    
+    cursor.execute('DELETE FROM website_templates WHERE id = ?', (template_id,))
+    deleted = cursor.rowcount > 0
+    
+    conn.commit()
+    conn.close()
+    return deleted
 
 # ==================== FUNGSI MIGRASI ====================
 
 def migrate_database():
-    """Migrasi database jika ada perubahan struktur"""
+    """Migrasi database dengan menambahkan kolom baru jika belum ada"""
     conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
         
-        # Cek apakah tabel sudah ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='font_templates'")
+        # Cek apakah tabel tampilan ada
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='tampilan'")
         if not cursor.fetchone():
-            print("⚠️ Table font_templates not found, creating...")
+            print("⚠️ Tabel tampilan belum ada, inisialisasi dulu...")
             conn.close()
             init_db()
             return
         
-        # Dapatkan daftar kolom yang sudah ada
-        cursor.execute("PRAGMA table_info(font_templates)")
+        # Dapatkan daftar kolom yang sudah ada di tabel tampilan
+        cursor.execute("PRAGMA table_info(tampilan)")
         existing_columns = [col[1] for col in cursor.fetchall()]
         
-        print("📊 Existing columns in font_templates:", existing_columns)
+        print("📊 Existing columns in tampilan:", existing_columns)
         
-        # Kolom yang harus ada
-        required_columns = {
-            'font_family': 'TEXT NOT NULL',
-            'font_file_data': 'TEXT',
-            'font_file_name': 'TEXT',
-            'font_weight': 'INTEGER DEFAULT 400',
-            'font_style': 'TEXT DEFAULT "normal"',
-            'font_size': 'INTEGER DEFAULT 48',
-            'text_color': 'TEXT DEFAULT "#ffffff"',
-            'animation_type': 'TEXT DEFAULT "none"',
-            'animation_duration': 'REAL DEFAULT 2',
-            'animation_delay': 'REAL DEFAULT 0',
-            'animation_iteration': 'TEXT DEFAULT "infinite"',
-            'preview_text': 'TEXT DEFAULT "Toko Online Premium"',
-            'preview_subtext': 'TEXT DEFAULT "dengan Layanan Terbaik 24/7"',
-            'website_id': 'INTEGER',
-            'user_id': 'INTEGER',
-            'is_public': 'BOOLEAN DEFAULT 0',
-            'usage_count': 'INTEGER DEFAULT 0',
-            'last_used': 'TIMESTAMP'
-        }
+        # Kolom baru untuk font animasi di tabel tampilan
+        new_columns = [
+            ('store_display_name', 'TEXT DEFAULT "Toko Online"'),
+            ('font_animation', 'TEXT DEFAULT "none"'),
+            ('animation_duration', 'REAL DEFAULT 2'),
+            ('animation_delay', 'REAL DEFAULT 0'),
+            ('animation_iteration', 'TEXT DEFAULT "infinite"')
+        ]
         
         columns_added = []
-        for col_name, col_type in required_columns.items():
+        for col_name, col_type in new_columns:
             if col_name not in existing_columns:
                 try:
-                    alter_sql = f"ALTER TABLE font_templates ADD COLUMN {col_name} {col_type}"
+                    alter_sql = f"ALTER TABLE tampilan ADD COLUMN {col_name} {col_type}"
                     cursor.execute(alter_sql)
                     columns_added.append(col_name)
-                    print(f"✅ Column '{col_name}' added to font_templates")
+                    print(f"✅ Column '{col_name}' added to tampilan table")
                 except Exception as e:
-                    print(f"⚠️ Failed to add column '{col_name}': {e}")
+                    print(f"❌ Failed to add column '{col_name}': {e}")
         
         if columns_added:
             print(f"✅ Added columns: {', '.join(columns_added)}")
         else:
-            print("✅ All columns already exist")
+            print("✅ All font animation columns already exist")
+        
+        # Pastikan tabel website_templates ada
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS website_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            website_id INTEGER NOT NULL,
+            template_code TEXT NOT NULL,
+            template_name TEXT NOT NULL,
+            template_data TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+            UNIQUE(website_id, template_code)
+        )
+        ''')
+        
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_code ON website_templates(template_code)')
+        print("✅ Table 'website_templates' created/verified")
         
         conn.commit()
-        print("✅ Font templates database migration completed")
+        print("✅ Database migration completed successfully")
         
     except Exception as e:
         print(f"⚠️ Migration error: {e}")
+        import traceback
+        traceback.print_exc()
         if conn:
             conn.rollback()
     finally:
