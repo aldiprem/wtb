@@ -1033,6 +1033,8 @@ def get_all_font_templates():
         popular = request.args.get('popular', default=False, type=bool)
         search = request.args.get('search', default=None, type=str)
         
+        print(f"📥 Getting templates - search: {search}, popular: {popular}, limit: {limit}")
+        
         if search:
             templates = tmp_font.search_templates(search, limit)
         elif popular:
@@ -1044,10 +1046,22 @@ def get_all_font_templates():
         else:
             templates = tmp_font.get_all_templates(limit=limit, offset=offset)
         
-        return jsonify({'success': True, 'templates': templates, 'count': len(templates)})
+        print(f"📤 Returning {len(templates)} templates")
+        
+        return jsonify({
+            'success': True, 
+            'templates': templates, 
+            'count': len(templates)
+        })
+        
     except Exception as e:
         print(f"❌ Error getting templates: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'error': str(e)
+        }), 500
 
 @app.route('/api/font-templates/verify/<template_code>', methods=['GET'])
 def verify_font_template(template_code):
