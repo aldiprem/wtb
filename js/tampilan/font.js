@@ -401,31 +401,43 @@
         }
     }
     
-    // ==================== ALL TEMPLATES MODAL ====================
     async function loadAllTemplates(search = '') {
-        if (!elements.allTemplatesGrid) return;
-        
-        elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
-        
-        try {
-            let url = `${API_BASE_URL}/api/font-templates?limit=50`;
-            if (search) {
-                url += `&search=${encodeURIComponent(search)}`;
-            }
-            
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data.success) {
-                savedTemplates = data.templates || [];
-                renderAllTemplates(savedTemplates);
-            } else {
-                throw new Error(data.error || 'Gagal memuat template');
-            }
-        } catch (error) {
-            console.error('Error loading templates:', error);
-            elements.allTemplatesGrid.innerHTML = `<div class="template-loading error"><i class="fas fa-exclamation-circle"></i><span>Gagal memuat template. Pastikan server berjalan.</span></div>`;
+      if (!elements.allTemplatesGrid) return;
+    
+      elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
+    
+      try {
+        let url = `${API_BASE_URL}/api/font-templates?limit=50`;
+        if (search) {
+          url += `&search=${encodeURIComponent(search)}`;
         }
+    
+        console.log('📡 Fetching templates from:', url);
+    
+        const response = await fetch(url);
+        console.log('📥 Response status:', response.status);
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        console.log('📥 Response data:', data);
+    
+        if (data.success) {
+          savedTemplates = data.templates || [];
+          console.log(`✅ Loaded ${savedTemplates.length} templates`);
+          renderAllTemplates(savedTemplates);
+        } else {
+          throw new Error(data.error || 'Gagal memuat template');
+        }
+      } catch (error) {
+        console.error('❌ Error loading templates:', error);
+        elements.allTemplatesGrid.innerHTML = `<div class="template-loading error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>Gagal memuat template: ${error.message}</span>
+            </div>`;
+      }
     }
     
     function renderAllTemplates(templates) {
