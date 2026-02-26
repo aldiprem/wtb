@@ -5,9 +5,28 @@
     console.log('🎨 Font Studio - Initializing...');
     
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = window.location.origin; // Gunakan URL yang sama dengan halaman
+    // Deteksi environment
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isGitHubPages = window.location.hostname.includes('github.io');
     
-    // ANIMASI PRESETS
+    // Tentukan API Base URL
+    let API_BASE_URL;
+    
+    if (isGitHubPages) {
+        // Di GitHub Pages, gunakan URL tunnel
+        API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
+    } else if (isLocalhost) {
+        // Di localhost, gunakan port 5050
+        API_BASE_URL = 'http://localhost:5050';
+    } else {
+        // Di server dengan domain, gunakan origin
+        API_BASE_URL = window.location.origin;
+    }
+    
+    console.log('🌍 Environment:', isGitHubPages ? 'GitHub Pages' : (isLocalhost ? 'Localhost' : 'Server'));
+    console.log('🔗 API Base URL:', API_BASE_URL);
+    
+    // ANIMASI PRESETS (tetap sama)
     const ANIMATIONS = {
         none: { name: 'Tidak Ada' },
         fade: { name: 'Fade', keyframes: '@keyframes fadeAnim { 0%{opacity:0.5} 50%{opacity:1} 100%{opacity:0.5} }' },
@@ -332,13 +351,23 @@
                 is_public: false
             };
             
+            console.log('📤 Saving template to:', `${API_BASE_URL}/api/font-templates/save`);
+            
             const response = await fetch(`${API_BASE_URL}/api/font-templates/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(templateData)
+                body: JSON.stringify(templateData),
+                mode: 'cors'
             });
             
+            console.log('📥 Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             const result = await response.json();
+            console.log('📥 Response data:', result);
             
             if (result.success) {
                 if (elements.generatedCode) {
@@ -402,42 +431,76 @@
     }
     
     async function loadAllTemplates(search = '') {
-      if (!elements.allTemplatesGrid) return;
-    
-      elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
-    
-      try {
-        let url = `${API_BASE_URL}/api/font-templates?limit=50`;
-        if (search) {
-          url += `&search=${encodeURIComponent(search)}`;
-        }
-    
-        console.log('📡 Fetching templates from:', url);
-    
-        const response = await fetch(url);
-        console.log('📥 Response status:', response.status);
-    
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    
-        const data = await response.json();
-        console.log('📥 Response data:', data);
-    
-        if (data.success) {
-          savedTemplates = data.templates || [];
-          console.log(`✅ Loaded ${savedTemplates.length} templates`);
-          renderAllTemplates(savedTemplates);
-        } else {
-          throw new Error(data.error || 'Gagal memuat template');
-        }
-      } catch (error) {
-        console.error('❌ Error loading templates:', error);
-        elements.allTemplatesGrid.innerHTML = `<div class="template-loading error">
+        if (!elements.allTemplatesGrid) return;
+        
+        elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
+        
+        try {
+            let url = `${API_BASE_URL}/api/font-templates?limit=50`;
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+            
+            console.log('📡 Fetching templates from:', url);
+            
+            // Test koneksi ke API health check dulu
+            const healthCheck = await fetch(`${API_BASE_URL}/api/health`).catch(err => {
+                console.error('❌ Health check failed:', err);
+                return null;
+            });
+            
+            if (!healthCheck) {
+                throw new Error('Tidak dapat terhubung ke server. Pastikan Flask berjalan di port 5050');
+            }
+            
+            if (!healthCheck.ok) {
+                console.warn('⚠️ Health check response:', healthCheck.status);
+            }
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            console.log('📥 Response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error(`Endpoint tidak ditemukan: ${url}`);
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('📥 Response data:', data);
+            
+            if (data.success) {
+                savedTemplates = data.templates || [];
+                console.log(`✅ Loaded ${savedTemplates.length} templates`);
+                renderAllTemplates(savedTemplates);
+            } else {
+                throw new Error(data.error || 'Gagal memuat template');
+            }
+        } catch (error) {
+            console.error('❌ Error loading templates:', error);
+            
+            let errorMessage = error.message;
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Tidak dapat terhubung ke server. Pastikan Flask berjalan di http://localhost:5050';
+            }
+            
+            elements.allTemplatesGrid.innerHTML = `<div class="template-loading error">
                 <i class="fas fa-exclamation-circle"></i>
-                <span>Gagal memuat template: ${error.message}</span>
+                <span>Gagal memuat template: ${errorMessage}</span>
+                <button onclick="window.location.reload()" style="margin-top:10px; padding:8px 16px; background:#40a7e3; border:none; border-radius:8px; color:white; cursor:pointer;">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
             </div>`;
-      }
+        }
     }
     
     function renderAllTemplates(templates) {
@@ -673,10 +736,12 @@
                 .then(data => {
                     if (data.status === 'healthy') {
                         console.log('✅ API Connected');
+                        showToast('Terhubung ke server', 'success');
                     }
                 })
                 .catch(err => {
                     console.warn('⚠️ API not available, using localStorage only');
+                    showToast('Menggunakan mode offline', 'warning');
                 });
             
             showToast('Font Studio siap!', 'success');
