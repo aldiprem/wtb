@@ -1360,8 +1360,7 @@ body {
 /* ===== FORM ELEMENTS ===== */
 .website-selector,
 .status-filter,
-.period-selector,
-.search-box {
+.period-selector {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 30px;
@@ -1370,30 +1369,6 @@ body {
     font-size: 13px;
     outline: none;
     min-width: 150px;
-}
-
-.search-box {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-}
-
-.search-box input {
-    background: transparent;
-    border: none;
-    color: var(--tg-text-color);
-    font-size: 13px;
-    outline: none;
-    width: 150px;
-}
-
-.search-box input::placeholder {
-    color: var(--tg-hint-color);
-}
-
-.search-box i {
-    color: var(--tg-hint-color);
 }
 
 .btn-primary {
@@ -1531,58 +1506,147 @@ body {
     animation: fadeIn 0.3s ease;
 }
 
-/* ===== FILTER BUTTONS ===== */
-.filter-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-right: 12px;
+/* ===== FILTER DROPDOWN (FIX) ===== */
+.filter-dropdown {
+    position: relative;
+    display: inline-block;
 }
 
-.filter-btn {
-    background: rgba(255, 255, 255, 0.05);
+.filter-dropdown-btn {
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 30px;
-    padding: 8px 16px;
-    font-size: 12px;
-    font-weight: 500;
+    padding: 10px 20px;
     color: var(--tg-text-color);
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     transition: all 0.2s;
+    min-width: 160px;
+    justify-content: space-between;
 }
 
-.filter-btn i {
-    font-size: 12px;
-    color: var(--tg-hint-color);
-}
-
-.filter-btn:hover {
+.filter-dropdown-btn:hover {
     background: rgba(64, 167, 227, 0.1);
     border-color: var(--primary-color);
 }
 
-.filter-btn.active {
+.filter-dropdown-btn i:first-child {
+    color: var(--primary-color);
+}
+
+.filter-dropdown-btn i:last-child {
+    font-size: 11px;
+    color: var(--tg-hint-color);
+    transition: transform 0.2s;
+}
+
+.filter-dropdown.active .filter-dropdown-btn i:last-child {
+    transform: rotate(180deg);
+}
+
+.filter-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 240px;
+    background: var(--tg-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    display: none;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.filter-dropdown.active .filter-dropdown-menu {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+
+.filter-option {
+    width: 100%;
+    padding: 12px 20px;
+    background: transparent;
+    border: none;
+    color: var(--tg-text-color);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.filter-option:last-child {
+    border-bottom: none;
+}
+
+.filter-option i {
+    width: 18px;
+    color: var(--tg-hint-color);
+    font-size: 14px;
+}
+
+.filter-option:hover {
+    background: rgba(64, 167, 227, 0.1);
+}
+
+.filter-option.active {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    border-color: var(--primary-color);
     color: white;
 }
 
-.filter-btn.active i {
+.filter-option.active i {
     color: white;
 }
 
-/* ===== PRODUCTS LIST CONTAINER ===== */
+/* ===== SEARCH BOX (FIX) ===== */
+.search-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 250px;
+    flex: 1;
+}
+
+.search-box i {
+    color: var(--tg-hint-color);
+    font-size: 14px;
+}
+
+.search-box input {
+    background: transparent;
+    border: none;
+    color: var(--tg-text-color);
+    font-size: 13px;
+    outline: none;
+    width: 100%;
+}
+
+.search-box input::placeholder {
+    color: var(--tg-hint-color);
+}
+
+/* ===== PRODUCTS LIST CONTAINER (FIX) ===== */
 .products-list-container {
     margin-top: 24px;
     max-height: 70vh;
     overflow-y: auto;
     padding-right: 8px;
+    width: 100%;
 }
 
-/* Import style dari produk.css untuk konsistensi */
 .products-list-container .layanan-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -1590,6 +1654,8 @@ body {
     overflow: hidden;
     transition: all 0.2s;
     margin-bottom: 16px;
+    width: 100%;
+    max-width: 100%;
 }
 
 .products-list-container .layanan-card:hover {
@@ -1735,6 +1801,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 8px;
+    width: 100%;
 }
 
 .products-list-container .item-preview-card {
@@ -1784,28 +1851,6 @@ body {
     color: var(--danger-color);
 }
 
-.products-list-container .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 20px;
-    font-size: 10px;
-    font-weight: 500;
-    white-space: nowrap;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-}
-
-.products-list-container .badge i {
-    font-size: 9px;
-}
-
-.products-list-container .stok-badge {
-    background: rgba(64, 167, 227, 0.1);
-    color: var(--primary-color);
-}
-
 .products-list-container .more-items {
     padding: 8px 12px;
     text-align: center;
@@ -1816,69 +1861,27 @@ body {
     border-radius: 8px;
 }
 
-.products-list-container .btn-view-more {
-    width: 100%;
-    padding: 8px;
-    margin-top: 8px;
-    background: rgba(64, 167, 227, 0.05);
-    border: 1px dashed var(--border-color);
-    border-radius: 8px;
-    color: var(--primary-color);
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.2s;
-}
-
-.products-list-container .btn-view-more:hover {
-    background: rgba(64, 167, 227, 0.1);
-    border-color: var(--primary-color);
-}
-
-/* Search Box Style */
-.search-box {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 30px;
-    padding: 8px 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 250px;
-}
-
-.search-box i {
-    color: var(--tg-hint-color);
-    font-size: 14px;
-}
-
-.search-box input {
-    background: transparent;
-    border: none;
-    color: var(--tg-text-color);
-    font-size: 13px;
-    outline: none;
-    width: 100%;
-}
-
-.search-box input::placeholder {
-    color: var(--tg-hint-color);
-}
-
-/* Responsive */
+/* ===== RESPONSIVE UNTUK HEADER ACTIONS ===== */
 @media (max-width: 1024px) {
-    .filter-buttons {
-        order: 2;
-        width: 100%;
+    .header-actions {
+        flex-wrap: wrap;
     }
-    
-    .search-box {
+
+    .filter-dropdown {
         order: 1;
+        flex: 0 0 auto;
+    }
+
+    .search-box {
+        order: 2;
         flex: 1;
         min-width: 200px;
+    }
+
+    .btn-primary {
+        order: 3;
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -1887,246 +1890,42 @@ body {
         flex-direction: column;
         align-items: stretch;
     }
-    
-    .filter-buttons {
-        overflow-x: auto;
-        padding-bottom: 8px;
-        flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch;
+
+    .filter-dropdown {
+        width: 100%;
     }
-    
-    .filter-btn {
-        white-space: nowrap;
+
+    .filter-dropdown-btn {
+        width: 100%;
+        justify-content: space-between;
     }
-    
+
+    .filter-dropdown-menu {
+        width: 100%;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
     .search-box {
         width: 100%;
     }
-    
+}
+
+/* ===== RESPONSIVE UNTUK ITEMS PREVIEW ===== */
+@media (max-width: 640px) {
     .products-list-container .items-preview {
         grid-template-columns: 1fr;
     }
 }
 
-/* ===== FILTER DROPDOWN ===== */
-.filter-dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.filter-dropdown-btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 30px;
-  padding: 10px 20px;
-  color: var(--tg-text-color);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s;
-  min-width: 160px;
-  justify-content: space-between;
-}
-
-.filter-dropdown-btn:hover {
-  background: rgba(64, 167, 227, 0.1);
-  border-color: var(--primary-color);
-}
-
-.filter-dropdown-btn i:first-child {
-  color: var(--primary-color);
-}
-
-.filter-dropdown-btn i:last-child {
-  font-size: 11px;
-  color: var(--tg-hint-color);
-  transition: transform 0.2s;
-}
-
-.filter-dropdown.active .filter-dropdown-btn i:last-child {
-  transform: rotate(180deg);
-}
-
-.filter-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 240px;
-  background: var(--tg-bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  display: none;
-  overflow: hidden;
-  backdrop-filter: blur(10px);
-}
-
-.filter-dropdown.active .filter-dropdown-menu {
-  display: block;
-  animation: fadeIn 0.2s ease;
-}
-
-.filter-option {
-  width: 100%;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  color: var(--tg-text-color);
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: all 0.2s;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.filter-option:last-child {
-  border-bottom: none;
-}
-
-.filter-option i {
-  width: 18px;
-  color: var(--tg-hint-color);
-  font-size: 14px;
-}
-
-.filter-option:hover {
-  background: rgba(64, 167, 227, 0.1);
-}
-
-.filter-option.active {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  color: white;
-}
-
-.filter-option.active i {
-  color: white;
-}
-
-/* Search Box Style - Update */
-.search-box {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 30px;
-  padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 250px;
-  flex: 1;
-}
-
-.search-box i {
-  color: var(--tg-hint-color);
-  font-size: 14px;
-}
-
-.search-box input {
-  background: transparent;
-  border: none;
-  color: var(--tg-text-color);
-  font-size: 13px;
-  outline: none;
-  width: 100%;
-}
-
-.search-box input::placeholder {
-  color: var(--tg-hint-color);
-}
-
-/* Responsive untuk header actions */
-@media (max-width: 1024px) {
-  .header-actions {
-    flex-wrap: wrap;
-  }
-
-  .filter-dropdown {
-    order: 1;
-    flex: 0 0 auto;
-  }
-
-  .search-box {
-    order: 2;
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .btn-primary {
-    order: 3;
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 768px) {
-  .header-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .filter-dropdown {
-    width: 100%;
-  }
-
-  .filter-dropdown-btn {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .filter-dropdown-menu {
-    width: 100%;
-    max-height: 300px;
-    overflow-y: auto;
-  }
-
-  .search-box {
-    width: 100%;
-  }
-}
-
-/* Update Products List Container */
-.products-list-container {
-  margin-top: 24px;
-  max-height: 70vh;
-  overflow-y: auto;
-  padding-right: 8px;
-  width: 100%;
-}
-
-/* Pastikan card tidak overflow */
-.products-list-container .layanan-card {
-  width: 100%;
-  max-width: 100%;
-}
-
-.products-list-container .items-preview {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 8px;
-  width: 100%;
-}
-
-/* Responsive untuk items preview */
-@media (max-width: 640px) {
-  .products-list-container .items-preview {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (min-width: 641px) and (max-width: 1024px) {
-  .products-list-container .items-preview {
-    grid-template-columns: repeat(2, 1fr);
-  }
+    .products-list-container .items-preview {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 @media (min-width: 1025px) {
-  .products-list-container .items-preview {
-    grid-template-columns: repeat(3, 1fr);
-  }
+    .products-list-container .items-preview {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
