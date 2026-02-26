@@ -67,10 +67,29 @@ def init_db():
         FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE
     )
     ''')
+    
+    # Create website_templates table for saving templates per website
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS website_templates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        website_id INTEGER NOT NULL,
+        template_code TEXT NOT NULL,
+        template_name TEXT NOT NULL,
+        template_data TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+        UNIQUE(website_id, template_code)
+    )
+    ''')
+    
+    # Create index for website_templates
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_code ON website_templates(template_code)')
 
     conn.commit()
     conn.close()
-    print("✅ Database tmp initialized with new structure (tables: tampilan, promo)")
+    print("✅ Database tmp initialized with new structure (tables: tampilan, promo, website_templates)")
 
 # Inisialisasi database
 init_db()
@@ -829,6 +848,91 @@ def delete_promo(website_id):
     """Hapus data promo (old single format)"""
     return save_promos(website_id, [])
 
+# ==================== FUNGSI UNTUK TEMPLATE PER WEBSITE ====================
+
+def save_website_template(website_id, template_code, template_name, template_data):
+    """Menyimpan template untuk website tertentu"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah tabel website_templates sudah ada (seharusnya sudah dibuat di init_db)
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_templates'")
+    if not cursor.fetchone():
+        # Jika belum ada (fallback), buat tabel
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS website_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            website_id INTEGER NOT NULL,
+            template_code TEXT NOT NULL,
+            template_name TEXT NOT NULL,
+            template_data TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+            UNIQUE(website_id, template_code)
+        )
+        ''')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
+    
+    # Simpan data template
+    cursor.execute('''
+    INSERT OR REPLACE INTO website_templates 
+    (website_id, template_code, template_name, template_data)
+    VALUES (?, ?, ?, ?)
+    ''', (website_id, template_code, template_name, json.dumps(template_data)))
+    
+    conn.commit()
+    conn.close()
+    return True
+
+def get_website_templates(website_id):
+    """Mendapatkan semua template untuk website tertentu"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah tabel ada
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_templates'")
+    if not cursor.fetchone():
+        conn.close()
+        return []  # Return empty list if table doesn't exist
+    
+    cursor.execute('''
+    SELECT * FROM website_templates 
+    WHERE website_id = ? 
+    ORDER BY created_at DESC
+    ''', (website_id,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    templates = []
+    for row in rows:
+        template = dict(row)
+        try:
+            template['template_data'] = json.loads(template['template_data'])
+        except:
+            template['template_data'] = {}
+        templates.append(template)
+    
+    return templates
+
+def delete_website_template(template_id):
+    """Menghapus template dari website"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Cek apakah tabel ada
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='website_templates'")
+    if not cursor.fetchone():
+        conn.close()
+        return False
+    
+    cursor.execute('DELETE FROM website_templates WHERE id = ?', (template_id,))
+    deleted = cursor.rowcount > 0
+    
+    conn.commit()
+    conn.close()
+    return deleted
+
 # ==================== FUNGSI MIGRASI ====================
 
 def migrate_database():
@@ -846,13 +950,13 @@ def migrate_database():
             init_db()
             return
         
-        # Dapatkan daftar kolom yang sudah ada
+        # Dapatkan daftar kolom yang sudah ada di tabel tampilan
         cursor.execute("PRAGMA table_info(tampilan)")
         existing_columns = [col[1] for col in cursor.fetchall()]
         
         print("📊 Existing columns in tampilan:", existing_columns)
         
-        # Kolom baru untuk font animasi
+        # Kolom baru untuk font animasi di tabel tampilan
         new_columns = [
             ('store_display_name', 'TEXT DEFAULT "Toko Online"'),
             ('font_animation', 'TEXT DEFAULT "none"'),
@@ -877,6 +981,25 @@ def migrate_database():
         else:
             print("✅ All font animation columns already exist")
         
+        # Pastikan tabel website_templates ada
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS website_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            website_id INTEGER NOT NULL,
+            template_code TEXT NOT NULL,
+            template_name TEXT NOT NULL,
+            template_data TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+            UNIQUE(website_id, template_code)
+        )
+        ''')
+        
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_code ON website_templates(template_code)')
+        print("✅ Table 'website_templates' created/verified")
+        
         conn.commit()
         print("✅ Database migration completed successfully")
         
@@ -889,72 +1012,6 @@ def migrate_database():
     finally:
         if conn:
             conn.close()
-
-# ==================== FUNGSI UNTUK TEMPLATE PER WEBSITE ====================
-
-def save_website_template(website_id, template_code, template_name, template_data):
-    """Menyimpan template untuk website tertentu"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    # Cek apakah tabel website_templates sudah ada, jika belum buat
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS website_templates (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        website_id INTEGER NOT NULL,
-        template_code TEXT NOT NULL,
-        template_name TEXT NOT NULL,
-        template_data TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
-        UNIQUE(website_id, template_code)
-    )
-    ''')
-    
-    # Simpan data template
-    cursor.execute('''
-    INSERT OR REPLACE INTO website_templates 
-    (website_id, template_code, template_name, template_data)
-    VALUES (?, ?, ?, ?)
-    ''', (website_id, template_code, template_name, json.dumps(template_data)))
-    
-    conn.commit()
-    conn.close()
-    return True
-
-def get_website_templates(website_id):
-    """Mendapatkan semua template untuk website tertentu"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-    SELECT * FROM website_templates 
-    WHERE website_id = ? 
-    ORDER BY created_at DESC
-    ''', (website_id,))
-    
-    rows = cursor.fetchall()
-    conn.close()
-    
-    templates = []
-    for row in rows:
-        template = dict(row)
-        template['template_data'] = json.loads(template['template_data'])
-        templates.append(template)
-    
-    return templates
-
-def delete_website_template(template_id):
-    """Menghapus template dari website"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    cursor.execute('DELETE FROM website_templates WHERE id = ?', (template_id,))
-    deleted = cursor.rowcount > 0
-    
-    conn.commit()
-    conn.close()
-    return deleted
 
 # Jalankan migrasi
 try:
