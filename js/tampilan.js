@@ -23,13 +23,18 @@
     let currentPromoId = null;
     let promoToDelete = null;
     
-    // Font Template state - Baru untuk menyimpan template per website
+    // Font Template state
     let savedTemplates = [];
     let currentTemplateCode = null;
     let currentTemplateData = null;
     let storeDisplayName = 'Toko Online';
     let allTemplates = [];
     let searchTimeout = null;
+    let injectedFonts = new Set(); // Untuk melacak font yang sudah di-inject
+    
+    // Font Application state
+    let selectedTemplateForApply = null;
+    let currentPreviewTarget = 'store_name';
     
     // Current upload callback
     let currentUploadCallback = null;
@@ -54,6 +59,7 @@
         
         // Store Display Name
         storeDisplayNameInput: document.getElementById('storeDisplayName'),
+        applyFontToStoreBtn: document.getElementById('applyFontToStoreBtn'),
         
         // Banner
         bannerTrack: document.getElementById('bannerTrack'),
@@ -82,7 +88,7 @@
         accentColorHex: document.getElementById('accentColorHex'),
         saveColorsBtn: document.getElementById('saveColorsBtn'),
         
-        // Font Template - New Elements
+        // Font Template
         createFontTemplateBtn: document.getElementById('createFontTemplateBtn'),
         viewAllTemplatesBtn: document.getElementById('viewAllTemplatesBtn'),
         
@@ -91,11 +97,22 @@
         templateCodeInput: document.getElementById('templateCodeInput'),
         saveTemplateToWebsiteBtn: document.getElementById('saveTemplateToWebsiteBtn'),
         
+        // Font Style Application
+        applyFontTemplateSelect: document.getElementById('applyFontTemplateSelect'),
+        applyFontTargetSelect: document.getElementById('applyFontTargetSelect'),
+        applyFontStyleBtn: document.getElementById('applyFontStyleBtn'),
+        previewFontStyleBtn: document.getElementById('previewFontStyleBtn'),
+        fontPreviewPanel: document.getElementById('fontPreviewPanel'),
+        closePreviewBtn: document.getElementById('closePreviewBtn'),
+        previewStoreName: document.getElementById('previewStoreName'),
+        previewHeading: document.getElementById('previewHeading'),
+        previewBody: document.getElementById('previewBody'),
+        
         // Saved Templates Grid
         savedTemplatesGrid: document.getElementById('savedTemplatesGrid'),
         emptySavedTemplates: document.getElementById('emptySavedTemplates'),
         
-        // Template Input Tabs (untuk fitur lama, dipertahankan)
+        // Template Input Tabs (untuk fitur lama)
         templateInputTabs: document.querySelectorAll('.template-input-tab'),
         templateInputPanels: document.querySelectorAll('.template-input-panel'),
         fontTemplateCode: document.getElementById('fontTemplateCode'),
@@ -122,6 +139,15 @@
         modalTemplateSearch: document.getElementById('modalTemplateSearch'),
         modalTemplateFilter: document.getElementById('modalTemplateFilter'),
         allTemplatesGrid: document.getElementById('allTemplatesGrid'),
+        
+        // Font Preview Modal
+        fontPreviewModal: document.getElementById('fontPreviewModal'),
+        closeFontPreviewModal: document.getElementById('closeFontPreviewModal'),
+        modalPreviewStoreName: document.getElementById('modalPreviewStoreName'),
+        modalPreviewHeading: document.getElementById('modalPreviewHeading'),
+        modalPreviewBody: document.getElementById('modalPreviewBody'),
+        modalPreviewFontName: document.getElementById('modalPreviewFontName'),
+        modalPreviewAnimName: document.getElementById('modalPreviewAnimName'),
         
         // Save All
         saveAllBtn: document.getElementById('saveAllBtn'),
@@ -225,6 +251,34 @@
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    }
+
+    /**
+     * Inject font ke halaman untuk preview
+     */
+    function injectFontForPreview(fontFamily, fontData) {
+        if (!fontData || injectedFonts.has(fontFamily)) return;
+        
+        const fontFace = `
+            @font-face {
+                font-family: '${fontFamily}';
+                src: url('${fontData}') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+        `;
+        
+        const oldStyle = document.getElementById(`preview-font-${fontFamily}`);
+        if (oldStyle) oldStyle.remove();
+        
+        const style = document.createElement('style');
+        style.id = `preview-font-${fontFamily}`;
+        style.textContent = fontFace;
+        document.head.appendChild(style);
+        
+        injectedFonts.add(fontFamily);
+        console.log(`✅ Font injected for preview: ${fontFamily}`);
     }
 
     // ==================== KEYBOARD HANDLER ====================
@@ -1221,7 +1275,7 @@
         }
     }
 
-    // ==================== FUNGSI UNTUK TEMPLATE TERSIMPAN (BARU) ====================
+    // ==================== FUNGSI UNTUK TEMPLATE TERSIMPAN ====================
     
     async function loadSavedTemplates() {
         if (!currentWebsite) return;
@@ -1234,15 +1288,32 @@
             if (response.success && response.templates) {
                 savedTemplates = response.templates;
                 renderSavedTemplates();
+                populateTemplateSelect();
             } else {
                 savedTemplates = [];
                 renderSavedTemplates();
+                populateTemplateSelect();
             }
         } catch (error) {
             console.error('❌ Error loading saved templates:', error);
             savedTemplates = [];
             renderSavedTemplates();
+            populateTemplateSelect();
         }
+    }
+
+    function populateTemplateSelect() {
+        if (!elements.applyFontTemplateSelect) return;
+        
+        let options = '<option value="">-- Pilih Template Tersimpan --</option>';
+        
+        savedTemplates.forEach(template => {
+            const templateData = template.template_data || {};
+            const fontFamily = templateData.font_family || 'Inter';
+            options += `<option value="${template.template_code}" data-font="${fontFamily}" data-anim="${templateData.animation_type || 'none'}">${escapeHtml(template.template_name)} (${fontFamily})</option>`;
+        });
+        
+        elements.applyFontTemplateSelect.innerHTML = options;
     }
 
     function renderSavedTemplates() {
@@ -1269,7 +1340,7 @@
             
             // Inject font jika ada file font
             if (templateData.font_file_data) {
-                injectTemplateFont(templateData.font_family, templateData.font_file_data);
+                injectFontForPreview(templateData.font_family, templateData.font_file_data);
             }
             
             html += `
@@ -1408,6 +1479,244 @@
         }
     }
 
+    // ==================== FONT STYLE APPLICATION FUNCTIONS ====================
+    
+    async function applyFontStyleToTarget() {
+        if (!currentWebsite) {
+            showToast('Website tidak ditemukan', 'error');
+            return;
+        }
+        
+        const selectedCode = elements.applyFontTemplateSelect?.value;
+        const target = elements.applyFontTargetSelect?.value;
+        
+        if (!selectedCode) {
+            showToast('Pilih template terlebih dahulu', 'warning');
+            return;
+        }
+        
+        // Cari template yang dipilih
+        const selectedTemplate = savedTemplates.find(t => t.template_code === selectedCode);
+        if (!selectedTemplate) {
+            showToast('Template tidak ditemukan', 'error');
+            return;
+        }
+        
+        const templateData = selectedTemplate.template_data || {};
+        
+        showLoading(true);
+        
+        try {
+            // Siapkan data update berdasarkan target
+            let updateData = {};
+            
+            if (target === 'store_name' || target === 'all_text') {
+                updateData = {
+                    font_family: templateData.font_family,
+                    font_size: templateData.font_size,
+                    font_animation: templateData.animation_type,
+                    animation_duration: templateData.animation_duration,
+                    animation_delay: templateData.animation_delay,
+                    animation_iteration: templateData.animation_iteration
+                };
+            } else if (target === 'headings') {
+                // Untuk headings, kita simpan di settings
+                updateData = {
+                    heading_font_family: templateData.font_family,
+                    heading_font_size: templateData.font_size,
+                    heading_font_animation: templateData.animation_type
+                };
+            } else if (target === 'body') {
+                // Untuk body text
+                updateData = {
+                    body_font_family: templateData.font_family,
+                    body_font_size: templateData.font_size,
+                    body_font_animation: templateData.animation_type
+                };
+            }
+            
+            // Simpan ke server melalui endpoint font-anim
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-anim`, {
+                method: 'POST',
+                body: JSON.stringify(updateData)
+            });
+            
+            if (response.success) {
+                showToast(`✅ Font style diterapkan ke ${getTargetName(target)}`, 'success');
+                
+                // Update tampilanData lokal
+                Object.assign(tampilanData, updateData);
+                
+                // Update preview jika sedang aktif
+                if (elements.fontPreviewPanel.style.display === 'block') {
+                    updatePreviewWithTemplate(templateData, target);
+                }
+                
+                vibrate();
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error applying font style:', error);
+            showToast(error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    function getTargetName(target) {
+        const names = {
+            'store_name': 'Nama Store',
+            'all_text': 'Semua Text',
+            'headings': 'Heading',
+            'body': 'Body Text'
+        };
+        return names[target] || target;
+    }
+    
+    function showFontPreview() {
+        const selectedCode = elements.applyFontTemplateSelect?.value;
+        const target = elements.applyFontTargetSelect?.value || 'store_name';
+        
+        if (!selectedCode) {
+            showToast('Pilih template terlebih dahulu', 'warning');
+            return;
+        }
+        
+        // Cari template yang dipilih
+        const selectedTemplate = savedTemplates.find(t => t.template_code === selectedCode);
+        if (!selectedTemplate) {
+            showToast('Template tidak ditemukan', 'error');
+            return;
+        }
+        
+        const templateData = selectedTemplate.template_data || {};
+        const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
+        
+        // Inject font jika perlu
+        if (templateData.font_file_data) {
+            injectFontForPreview(templateData.font_family, templateData.font_file_data);
+        }
+        
+        // Update preview panel
+        if (elements.fontPreviewPanel) {
+            updatePreviewWithTemplate(templateData, target, storeName);
+            elements.fontPreviewPanel.style.display = 'block';
+        }
+        
+        vibrate();
+    }
+    
+    function updatePreviewWithTemplate(templateData, target, storeName) {
+        const fontFamily = templateData.font_family || 'Inter';
+        const fontSize = templateData.font_size || 16;
+        const animationType = templateData.animation_type || 'none';
+        const animDuration = templateData.animation_duration || 2;
+        const animDelay = templateData.animation_delay || 0;
+        const animIteration = templateData.animation_iteration || 'infinite';
+        
+        // Base style
+        const baseStyle = `font-family: '${fontFamily}', sans-serif;`;
+        const animStyle = animationType !== 'none' ? `animation: ${animationType}Anim ${animDuration}s ${animDelay}s ${animIteration};` : '';
+        
+        // Apply ke preview berdasarkan target
+        if (target === 'store_name' || target === 'all_text') {
+            if (elements.previewStoreName) {
+                elements.previewStoreName.style.cssText = `${baseStyle} font-size: 24px; font-weight: 700; ${animStyle}`;
+                elements.previewStoreName.textContent = storeName || 'Nama Store Example';
+            }
+            if (elements.previewHeading) {
+                elements.previewHeading.style.cssText = `${baseStyle} font-size: 20px; font-weight: 600; ${animStyle}`;
+            }
+            if (elements.previewBody) {
+                elements.previewBody.style.cssText = `${baseStyle} font-size: 14px; ${animStyle}`;
+            }
+        } else if (target === 'headings') {
+            if (elements.previewHeading) {
+                elements.previewHeading.style.cssText = `${baseStyle} font-size: 20px; font-weight: 600; ${animStyle}`;
+            }
+        } else if (target === 'body') {
+            if (elements.previewBody) {
+                elements.previewBody.style.cssText = `${baseStyle} font-size: 14px; ${animStyle}`;
+            }
+        }
+        
+        // Update selected template info
+        selectedTemplateForApply = templateData;
+        currentPreviewTarget = target;
+    }
+    
+    function closePreviewPanel() {
+        if (elements.fontPreviewPanel) {
+            elements.fontPreviewPanel.style.display = 'none';
+        }
+    }
+    
+    function openFontPreviewModal() {
+        const selectedCode = elements.applyFontTemplateSelect?.value;
+        
+        if (!selectedCode) {
+            showToast('Pilih template terlebih dahulu', 'warning');
+            return;
+        }
+        
+        const selectedTemplate = savedTemplates.find(t => t.template_code === selectedCode);
+        if (!selectedTemplate) {
+            showToast('Template tidak ditemukan', 'error');
+            return;
+        }
+        
+        const templateData = selectedTemplate.template_data || {};
+        const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
+        
+        // Inject font jika perlu
+        if (templateData.font_file_data) {
+            injectFontForPreview(templateData.font_family, templateData.font_file_data);
+        }
+        
+        // Update modal preview
+        const fontFamily = templateData.font_family || 'Inter';
+        const fontSize = templateData.font_size || 24;
+        const animationType = templateData.animation_type || 'none';
+        const animDuration = templateData.animation_duration || 2;
+        const animDelay = templateData.animation_delay || 0;
+        const animIteration = templateData.animation_iteration || 'infinite';
+        
+        const baseStyle = `font-family: '${fontFamily}', sans-serif;`;
+        const animStyle = animationType !== 'none' ? `animation: ${animationType}Anim ${animDuration}s ${animDelay}s ${animIteration};` : '';
+        
+        if (elements.modalPreviewStoreName) {
+            elements.modalPreviewStoreName.style.cssText = `${baseStyle} font-size: 32px; font-weight: 700; ${animStyle}`;
+            elements.modalPreviewStoreName.textContent = storeName;
+        }
+        if (elements.modalPreviewHeading) {
+            elements.modalPreviewHeading.style.cssText = `${baseStyle} font-size: 24px; font-weight: 600; ${animStyle}`;
+        }
+        if (elements.modalPreviewBody) {
+            elements.modalPreviewBody.style.cssText = `${baseStyle} font-size: 16px; ${animStyle}`;
+        }
+        if (elements.modalPreviewFontName) {
+            elements.modalPreviewFontName.textContent = fontFamily;
+        }
+        if (elements.modalPreviewAnimName) {
+            elements.modalPreviewAnimName.textContent = animationType === 'none' ? 'None' : animationType;
+        }
+        
+        // Tampilkan modal
+        if (elements.fontPreviewModal) {
+            elements.fontPreviewModal.classList.add('active');
+        }
+        
+        vibrate();
+    }
+    
+    function closeFontPreviewModal() {
+        if (elements.fontPreviewModal) {
+            elements.fontPreviewModal.classList.remove('active');
+        }
+    }
+
     async function applyTemplate(templateCode) {
         if (!currentWebsite) return;
         
@@ -1474,7 +1783,7 @@
         });
     }
 
-    // ==================== FONT TEMPLATE FUNCTIONS LAMA (dipertahankan) ====================
+    // ==================== FONT TEMPLATE FUNCTIONS LAMA ====================
     async function loadAllTemplates(filter = 'all', search = '') {
         if (!elements.allTemplatesGrid) return;
         
@@ -2156,11 +2465,43 @@
             elements.saveLogoBtn.addEventListener('click', saveLogo);
         }
         
+        // Apply font to store button
+        if (elements.applyFontToStoreBtn) {
+            elements.applyFontToStoreBtn.addEventListener('click', () => {
+                // Set target ke store_name dan buka preview
+                if (elements.applyFontTargetSelect) {
+                    elements.applyFontTargetSelect.value = 'store_name';
+                }
+                showFontPreview();
+            });
+        }
+        
         // Store display name input
         if (elements.storeDisplayNameInput) {
             elements.storeDisplayNameInput.addEventListener('input', (e) => {
                 storeDisplayName = e.target.value || 'Toko Online';
+                // Update preview if active
+                if (elements.fontPreviewPanel.style.display === 'block' && selectedTemplateForApply) {
+                    updatePreviewWithTemplate(selectedTemplateForApply, currentPreviewTarget, storeDisplayName);
+                }
             });
+        }
+        
+        // Font Style Application
+        if (elements.applyFontStyleBtn) {
+            elements.applyFontStyleBtn.addEventListener('click', applyFontStyleToTarget);
+        }
+        
+        if (elements.previewFontStyleBtn) {
+            elements.previewFontStyleBtn.addEventListener('click', openFontPreviewModal);
+        }
+        
+        if (elements.closePreviewBtn) {
+            elements.closePreviewBtn.addEventListener('click', closePreviewPanel);
+        }
+        
+        if (elements.closeFontPreviewModal) {
+            elements.closeFontPreviewModal.addEventListener('click', closeFontPreviewModal);
         }
         
         // Banner
@@ -2408,6 +2749,9 @@
             }
             if (e.target === elements.allTemplatesModal) {
                 closeAllTemplatesModal();
+            }
+            if (e.target === elements.fontPreviewModal) {
+                closeFontPreviewModal();
             }
         });
     }
