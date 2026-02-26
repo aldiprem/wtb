@@ -8,11 +8,11 @@
     const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
     const MAX_RETRIES = 3;
     
-    // KEY untuk session storage
     const SESSION_KEYS = {
-        CURRENT_PAGE: 'panel_current_page',
-        WEBSITE_ENDPOINT: 'panel_website_endpoint',
-        LAST_VISIT: 'panel_last_visit'
+      CURRENT_PAGE: 'panel_current_page',
+      WEBSITE_ENDPOINT: 'panel_website_endpoint',
+      LAST_VISIT: 'panel_last_visit',
+      WEBSITE_DATA: 'panel_website_data' // Tambahkan untuk cache data website
     };
 
     // ==================== STATE ====================
@@ -24,6 +24,16 @@
     let filteredProducts = [];
     let currentProductFilter = 'all';
     let productSearchTerm = '';
+    let currentWebsiteEndpoint = null;
+    let ptrState = {
+      enabled: true,
+      pulling: false,
+      startY: 0,
+      currentY: 0,
+      threshold: 80,
+      spinner: null,
+      container: null
+    };
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -1217,13 +1227,16 @@
         }
         
         if (elements.refreshBtn) {
-            elements.refreshBtn.addEventListener('click', async () => {
-                vibrate(10);
-                showToast('Menyegarkan data...', 'info');
-                await loadUserWebsites(currentUser?.id);
-                await loadProductsAndOrders();
-                showToast('Data diperbarui', 'success');
-            });
+          elements.refreshBtn.addEventListener('click', async () => {
+            vibrate(10);
+            const currentEndpoint = getLastWebsiteEndpoint() || (userWebsites[0]?.endpoint);
+            if (currentEndpoint) {
+              showToast(`Memuat ulang data untuk /${currentEndpoint}...`, 'info');
+              await reloadForWebsite(currentEndpoint);
+            } else {
+              showToast('Tidak ada website yang dipilih', 'warning');
+            }
+          });
         }
         
         elements.menuItems.forEach(item => {
@@ -1281,6 +1294,520 @@
         window.addEventListener('beforeunload', () => {
             // Tidak perlu melakukan apa-apa, session storage sudah tersimpan
         });
+    }
+
+    // ==================== PULL TO REFRESH ====================
+    function initPullToRefresh() {
+      // Buat elemen spinner
+      ptrState.container = document.createElement('div');
+      ptrState.container.className = 'ptr-container';
+    
+      ptrState.spinner = document.createElement('div');
+      ptrState.spinner.className = 'ptr-spinner';
+      ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
+    
+      ptrState.container.appendChild(ptrState.spinner);
+      document.body.appendChild(ptrState.container);
+    
+      // Event listeners
+      const content = document.querySelector('.panel-content');
+      if (!content) return;
+    
+      content.addEventListener('touchstart', handleTouchStart, { passive: false });
+      content.addEventListener('touchmove', handleTouchMove, { passive: false });
+      content.addEventListener('touchend', handleTouchEnd);
+      content.addEventListener('touchcancel', handleTouchEnd);
+    }
+    
+    function handleTouchStart(e) {
+      if (!ptrState.enabled) return;
+    
+      const content = document.querySelector('.panel-content');
+      if (content.scrollTop > 0) return; // Hanya aktif jika di paling atas
+    
+      ptrState.pulling = true;
+      ptrState.startY = e.touches[0].clientY;
+      ptrState.currentY = ptrState.startY;
+    
+      ptrState.spinner.style.top = '20px';
+      ptrState.spinner.classList.add('pull-down');
+      ptrState.spinner.classList.remove('loading');
+      ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
+    }
+    
+    function handleTouchMove(e) {
+      if (!ptrState.pulling) return;
+    
+      ptrState.currentY = e.touches[0].clientY;
+      const diff = ptrState.currentY - ptrState.startY;
+    
+      if (diff > 0) {
+        e.preventDefault();
+    
+        // Limit pull distance
+        const pullDistance = Math.min(diff, 120);
+    
+        // Update spinner position
+        ptrState.spinner.style.top = `${20 + pullDistance}px`;
+    
+        // Rotate icon based on pull distance
+        const rotation = Math.min(pullDistance / ptrState.threshold * 180, 180);
+        ptrState.spinner.querySelector('i').style.transform = `rotate(${rotation}deg)`;
+    
+        // Change icon when threshold reached
+        if (pullDistance >= ptrState.threshold) {
+          ptrState.spinner.classList.add('active');
+          ptrState.spinner.innerHTML = '<i class="fas fa-check"></i>';
+        } else {
+          ptrState.spinner.classList.remove('active');
+          ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
+        }
+      }
+    }
+    
+    async function handleTouchEnd() {
+      if (!ptrState.pulling) return;
+    
+      const diff = ptrState.currentY - ptrState.startY;
+    
+      if (diff >= ptrState.threshold) {
+        // Trigger refresh
+        ptrState.spinner.classList.remove('pull-down', 'active');
+        ptrState.spinner.classList.add('loading');
+        ptrState.spinner.innerHTML = '<i class="fas fa-sync-alt"></i>';
+    
+        // Perform refresh
+        await refreshPage();
+    
+        // Reset spinner
+        ptrState.spinner.style.top = '-60px';
+        ptrState.spinner.classList.remove('loading');
+      } else {
+        // Reset tanpa refresh
+        ptrState.spinner.style.top = '-60px';
+      }
+    
+      ptrState.pulling = false;
+    }
+    
+    async function refreshPage() {
+      showToast('Menyegarkan halaman...', 'info');
+    
+      // Simpan halaman saat ini sebelum refresh
+      const currentPage = getLastPage() || 'dashboard';
+    
+      try {
+        // Reload data
+        const userId = await loadUserData();
+        await loadUserWebsites(userId);
+        await loadProductsAndOrders();
+    
+        showToast('Halaman berhasil disegarkan', 'success');
+    
+        // Kembalikan ke halaman sebelumnya
+        showPage(currentPage);
+    
+      } catch (error) {
+        console.error('❌ Refresh error:', error);
+        showToast('Gagal menyegarkan halaman', 'error');
+      }
+    }
+
+    function setupWebsiteSelector() {
+      const dropdown = document.querySelector('.website-selector-dropdown');
+      const btn = document.getElementById('websiteSelectorBtn');
+      const menu = document.getElementById('websiteSelectorMenu');
+      const selectedText = document.getElementById('selectedWebsiteEndpoint');
+    
+      if (!btn || !menu || !dropdown) return;
+    
+      // Render menu options
+      renderWebsiteOptions();
+    
+      // Toggle dropdown
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdown.classList.toggle('active');
+      });
+    
+      // Pilih website
+      menu.addEventListener('click', (e) => {
+        const option = e.target.closest('.website-option');
+        if (!option) return;
+    
+        const endpoint = option.dataset.endpoint;
+        if (!endpoint) return;
+    
+        // Update selected
+        document.querySelectorAll('.website-option').forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+    
+        // Update text
+        selectedText.textContent = '/' + endpoint;
+    
+        // Save to session
+        saveWebsiteEndpoint(endpoint);
+        currentWebsiteEndpoint = endpoint;
+    
+        // Update all settings links
+        updateAllSettingsLinks(endpoint);
+    
+        // Close dropdown
+        dropdown.classList.remove('active');
+    
+        // Reload data for selected website
+        reloadForWebsite(endpoint);
+    
+        showToast(`Website: /${endpoint}`, 'success');
+      });
+    
+      // Tutup dropdown saat klik di luar
+      document.addEventListener('click', (e) => {
+        if (!btn.contains(e.target) && !menu.contains(e.target)) {
+          dropdown.classList.remove('active');
+        }
+      });
+    
+      // Load saved endpoint
+      const savedEndpoint = getLastWebsiteEndpoint();
+      if (savedEndpoint) {
+        currentWebsiteEndpoint = savedEndpoint;
+        selectedText.textContent = '/' + savedEndpoint;
+      }
+    }
+    
+    function renderWebsiteOptions() {
+      const menu = document.getElementById('websiteSelectorMenu');
+      if (!menu) return;
+    
+      if (userWebsites.length === 0) {
+        menu.innerHTML = `
+                <button class="website-option" data-endpoint="">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Tidak ada website</span>
+                </button>
+            `;
+        return;
+      }
+    
+      let html = '';
+      const currentEndpoint = getLastWebsiteEndpoint() || (userWebsites[0]?.endpoint);
+    
+      userWebsites.forEach(website => {
+        const isActive = website.endpoint === currentEndpoint;
+        html += `
+                <button class="website-option ${isActive ? 'active' : ''}" data-endpoint="${website.endpoint}">
+                    <i class="fas fa-globe"></i>
+                    <span>/${website.endpoint}</span>
+                </button>
+            `;
+      });
+    
+      menu.innerHTML = html;
+    }
+    
+    function updateAllSettingsLinks(endpoint) {
+      // Update semua link settings dengan endpoint yang dipilih
+      const settingLinks = {
+        appearanceSettings: '/wtb/html/tampilan.html?website=' + endpoint,
+        socialSettings: '/wtb/html/sosial.html?website=' + endpoint,
+        paymentSettings: '/wtb/html/pembayaran.html?website=' + endpoint,
+        voucherSettings: '/wtb/html/voucher.html?website=' + endpoint,
+        manageProductsBtn: '/wtb/html/produk.html?website=' + endpoint,
+        emptyStateManageBtn: '/wtb/html/produk.html?website=' + endpoint
+      };
+    
+      for (const [id, url] of Object.entries(settingLinks)) {
+        const element = document.getElementById(id);
+        if (element) {
+          element.href = url;
+        }
+      }
+    
+      // Update juga quick actions
+      updateQuickActions(endpoint);
+    }
+    
+    function updateQuickActions(endpoint) {
+      if (!elements.quickActions) return;
+    
+      let html = '';
+    
+      if (userWebsites.length > 0) {
+        html += `
+                <a href="/wtb/html/produk.html?website=${endpoint}" class="quick-action-card">
+                    <i class="fas fa-box"></i>
+                    <span>Kelola Produk</span>
+                    <small>/${endpoint}</small>
+                </a>
+                <a href="/wtb/html/tampilan.html?website=${endpoint}" class="quick-action-card">
+                    <i class="fas fa-paint-brush"></i>
+                    <span>Atur Tampilan</span>
+                    <small>/${endpoint}</small>
+                </a>
+            `;
+      } else {
+        html = `
+                <a href="/wtb/html/format.html" class="quick-action-card">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Buat Website Baru</span>
+                </a>
+            `;
+      }
+    
+      elements.quickActions.innerHTML = html;
+    }
+    
+    async function reloadForWebsite(endpoint) {
+      showLoading(true);
+    
+      try {
+        // Filter products untuk website yang dipilih
+        const website = userWebsites.find(w => w.endpoint === endpoint);
+        if (!website) return;
+    
+        // Load products untuk website tersebut
+        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, data: [] }));
+    
+        if (productsResponse.success && productsResponse.data) {
+          // Update allProducts dengan data dari website yang dipilih
+          allProducts = [];
+          productsResponse.data.forEach(layanan => {
+            if (layanan.aplikasi) {
+              layanan.aplikasi.forEach(aplikasi => {
+                if (aplikasi.items) {
+                  aplikasi.items.forEach(item => {
+                    allProducts.push({
+                      ...item,
+                      website_name: website.endpoint,
+                      website_id: website.id,
+                      layanan_nama: layanan.layanan_nama,
+                      layanan_gambar: layanan.layanan_gambar,
+                      layanan_desc: layanan.layanan_desc,
+                      aplikasi_nama: aplikasi.aplikasi_nama,
+                      aplikasi_gambar: aplikasi.aplikasi_gambar,
+                      aplikasi_desc: aplikasi.aplikasi_desc
+                    });
+                  });
+                }
+              });
+            }
+          });
+        }
+    
+        // Render ulang produk
+        renderProductsList();
+    
+        // Update badge di sidebar
+        if (elements.sidebarTotalProducts) {
+          elements.sidebarTotalProducts.textContent = allProducts.length;
+        }
+    
+      } catch (error) {
+        console.error('❌ Error reloading for website:', error);
+      } finally {
+        showLoading(false);
+      }
+    }
+    
+    // Update fungsi loadUserWebsites untuk memanggil setupWebsiteSelector
+    async function loadUserWebsites(userId) {
+      try {
+        showLoading(true);
+    
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/websites`, {
+          method: 'GET'
+        });
+    
+        if (response.success && response.websites) {
+          userWebsites = response.websites.filter(w => w.owner_id === userId);
+    
+          if (elements.menuWebsitesBadge) {
+            elements.menuWebsitesBadge.textContent = userWebsites.length;
+          }
+          if (elements.sidebarTotalWebsites) {
+            elements.sidebarTotalWebsites.textContent = userWebsites.length;
+          }
+    
+          const activeCount = userWebsites.filter(w => w.status === 'active').length;
+          if (elements.statActiveWebsites) {
+            elements.statActiveWebsites.textContent = activeCount;
+          }
+    
+          // Setup website selector setelah data websites dimuat
+          setupWebsiteSelector();
+    
+          // Simpan endpoint pertama jika belum ada
+          if (userWebsites.length > 0 && !getLastWebsiteEndpoint()) {
+            saveWebsiteEndpoint(userWebsites[0].endpoint);
+            currentWebsiteEndpoint = userWebsites[0].endpoint;
+          }
+    
+          return userWebsites;
+        } else {
+          userWebsites = [];
+          return [];
+        }
+      } catch (error) {
+        console.error('❌ Error loading websites:', error);
+        showToast('Gagal memuat data website', 'error');
+        userWebsites = [];
+        return [];
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // Fungsi untuk menyimpan data website ke session
+    function cacheWebsiteData(websiteId, data) {
+      try {
+        const cacheKey = `website_${websiteId}_data`;
+        const cacheData = {
+          timestamp: Date.now(),
+          data: data
+        };
+        sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      } catch (e) {
+        console.warn('⚠️ Failed to cache website data:', e);
+      }
+    }
+    
+    // Fungsi untuk mengambil data website dari cache
+    function getCachedWebsiteData(websiteId, maxAge = 5 * 60 * 1000) { // 5 menit default
+      try {
+        const cacheKey = `website_${websiteId}_data`;
+        const cached = sessionStorage.getItem(cacheKey);
+        if (!cached) return null;
+    
+        const { timestamp, data } = JSON.parse(cached);
+        if (Date.now() - timestamp > maxAge) {
+          sessionStorage.removeItem(cacheKey);
+          return null;
+        }
+    
+        return data;
+      } catch (e) {
+        return null;
+      }
+    }
+    
+    // Update fungsi reloadForWebsite untuk menggunakan cache
+    async function reloadForWebsite(endpoint, useCache = true) {
+      showLoading(true);
+    
+      try {
+        const website = userWebsites.find(w => w.endpoint === endpoint);
+        if (!website) return;
+    
+        // Cek cache jika diizinkan
+        if (useCache) {
+          const cached = getCachedWebsiteData(website.id);
+          if (cached) {
+            allProducts = cached;
+            renderProductsList();
+            if (elements.sidebarTotalProducts) {
+              elements.sidebarTotalProducts.textContent = allProducts.length;
+            }
+            showLoading(false);
+            return;
+          }
+        }
+    
+        // Load dari API jika tidak ada cache
+        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, data: [] }));
+    
+        if (productsResponse.success && productsResponse.data) {
+          allProducts = [];
+          productsResponse.data.forEach(layanan => {
+            if (layanan.aplikasi) {
+              layanan.aplikasi.forEach(aplikasi => {
+                if (aplikasi.items) {
+                  aplikasi.items.forEach(item => {
+                    allProducts.push({
+                      ...item,
+                      website_name: website.endpoint,
+                      website_id: website.id,
+                      layanan_nama: layanan.layanan_nama,
+                      layanan_gambar: layanan.layanan_gambar,
+                      layanan_desc: layanan.layanan_desc,
+                      aplikasi_nama: aplikasi.aplikasi_nama,
+                      aplikasi_gambar: aplikasi.aplikasi_gambar,
+                      aplikasi_desc: aplikasi.aplikasi_desc
+                    });
+                  });
+                }
+              });
+            }
+          });
+    
+          // Cache data
+          cacheWebsiteData(website.id, allProducts);
+        }
+    
+        renderProductsList();
+    
+        if (elements.sidebarTotalProducts) {
+          elements.sidebarTotalProducts.textContent = allProducts.length;
+        }
+    
+      } catch (error) {
+        console.error('❌ Error reloading for website:', error);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function init() {
+      showLoading(true);
+    
+      try {
+        const userId = await loadUserData();
+        await loadUserWebsites(userId);
+        await loadProductsAndOrders();
+    
+        setupSettingsLinks();
+        setupEventListeners();
+        setupProductFilters();
+        setupProductSearch();
+        initPullToRefresh(); // Pull-to-refresh
+    
+        // Setup website selector setelah data websites dimuat
+        setupWebsiteSelector();
+    
+        // Set initial website endpoint
+        const savedEndpoint = getLastWebsiteEndpoint();
+        if (savedEndpoint && userWebsites.length > 0) {
+          currentWebsiteEndpoint = savedEndpoint;
+          document.getElementById('selectedWebsiteEndpoint').textContent = '/' + savedEndpoint;
+          await reloadForWebsite(savedEndpoint, true);
+        } else if (userWebsites.length > 0) {
+          const firstEndpoint = userWebsites[0].endpoint;
+          saveWebsiteEndpoint(firstEndpoint);
+          currentWebsiteEndpoint = firstEndpoint;
+          document.getElementById('selectedWebsiteEndpoint').textContent = '/' + firstEndpoint;
+        }
+    
+        // Pulihkan halaman terakhir
+        restoreLastPage();
+    
+        if (window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp;
+          tg.expand();
+          tg.ready();
+        }
+    
+        console.log('✅ Panel initialized with session storage');
+    
+      } catch (error) {
+        console.error('❌ Init error:', error);
+        showToast('Gagal memuat dashboard', 'error');
+      } finally {
+        showLoading(false);
+      }
     }
 
     async function init() {
