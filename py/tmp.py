@@ -935,6 +935,8 @@ def delete_website_template(template_id):
 
 # ==================== FUNGSI MIGRASI ====================
 
+# Di dalam fungsi migrate_database() di tmp.py, tambahkan:
+
 def migrate_database():
     """Migrasi database dengan menambahkan kolom baru jika belum ada"""
     conn = None
@@ -956,7 +958,7 @@ def migrate_database():
         
         print("📊 Existing columns in tampilan:", existing_columns)
         
-        # Kolom baru untuk font animasi di tabel tampilan
+        # Kolom baru untuk font animasi
         new_columns = [
             ('store_display_name', 'TEXT DEFAULT "Toko Online"'),
             ('font_animation', 'TEXT DEFAULT "none"'),
@@ -965,6 +967,15 @@ def migrate_database():
             ('animation_iteration', 'TEXT DEFAULT "infinite"')
         ]
         
+        # PERIKSA DAN TAMBAHKAN KOLOM settings JIKA BELUM ADA
+        if 'settings' not in existing_columns:
+            try:
+                cursor.execute("ALTER TABLE tampilan ADD COLUMN settings TEXT DEFAULT '{}'")
+                print("✅ Column 'settings' added to tampilan table")
+            except Exception as e:
+                print(f"❌ Failed to add column 'settings': {e}")
+        
+        # Tambahkan kolom font animasi
         columns_added = []
         for col_name, col_type in new_columns:
             if col_name not in existing_columns:
@@ -1009,6 +1020,174 @@ def migrate_database():
         traceback.print_exc()
         if conn:
             conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+# tmp.py - Tambahkan fungsi baru untuk menyimpan font style per target
+
+def save_font_style(website_id, data, target=None):
+    """
+    Menyimpan font style untuk website
+    Args:
+        website_id: ID website
+        data: Dictionary berisi data font yang akan disimpan
+        target: Target aplikasi (store_name, headings, body, dll)
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Cek apakah data sudah ada
+        cursor.execute('SELECT * FROM tampilan WHERE website_id = ?', (website_id,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Data existing, lakukan update
+            current = dict(existing)
+            
+            # Siapkan nilai update
+            updates = []
+            params = []
+            
+            # Update kolom font utama
+            if 'font_family' in data:
+                updates.append("font_family = ?")
+                params.append(data['font_family'])
+            if 'font_size' in data:
+                updates.append("font_size = ?")
+                params.append(data['font_size'])
+            if 'font_animation' in data:
+                updates.append("font_animation = ?")
+                params.append(data['font_animation'])
+            if 'animation_duration' in data:
+                updates.append("animation_duration = ?")
+                params.append(data['animation_duration'])
+            if 'animation_delay' in data:
+                updates.append("animation_delay = ?")
+                params.append(data['animation_delay'])
+            if 'animation_iteration' in data:
+                updates.append("animation_iteration = ?")
+                params.append(data['animation_iteration'])
+            
+            # Update store display name jika ada
+            if 'store_display_name' in data:
+                updates.append("store_display_name = ?")
+                params.append(data['store_display_name'])
+            
+            # Update settings JSON jika ada (untuk headings/body)
+            if 'settings' in data:
+                # Parse settings saat ini
+                try:
+                    current_settings = json.loads(current['settings']) if current['settings'] else {}
+                except:
+                    current_settings = {}
+                
+                # Update dengan settings baru
+                current_settings.update(data['settings'])
+                updates.append("settings = ?")
+                params.append(json.dumps(current_settings))
+            
+            if updates:
+                updates.append("updated_at = CURRENT_TIMESTAMP")
+                query = f"UPDATE tampilan SET {', '.join(updates)} WHERE website_id = ?"
+                params.append(website_id)
+                cursor.execute(query, params)
+        else:
+            # Data belum ada, insert baru
+            # Siapkan data default
+            colors = json.dumps({})
+            banners = json.dumps([])
+            promos = json.dumps([])
+            banner_positions = json.dumps([])
+            payment_notes = json.dumps({})
+            banks = json.dumps([])
+            ewallets = json.dumps([])
+            qris = json.dumps({})
+            crypto = json.dumps({})
+            
+            # Ambil nilai dari data
+            font_family = data.get('font_family', 'Inter')
+            font_size = data.get('font_size', 14)
+            font_animation = data.get('font_animation', 'none')
+            animation_duration = data.get('animation_duration', 2)
+            animation_delay = data.get('animation_delay', 0)
+            animation_iteration = data.get('animation_iteration', 'infinite')
+            store_display_name = data.get('store_display_name', 'Toko Online')
+            
+            # Settings
+            settings = data.get('settings', {})
+            settings_json = json.dumps(settings)
+            
+            cursor.execute('''
+            INSERT INTO tampilan (
+                website_id, logo, banners, promos, colors, font_family, font_size,
+                title, description, contact_whatsapp, contact_telegram, 
+                banner_positions, payment_notes, banks, ewallets, qris, crypto,
+                maintenance_message, store_display_name, font_animation, 
+                animation_duration, animation_delay, animation_iteration, settings
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                website_id, '', banners, promos, colors, font_family, font_size,
+                None, None, None, None, banner_positions, payment_notes, 
+                banks, ewallets, qris, crypto, None, store_display_name,
+                font_animation, animation_duration, animation_delay, animation_iteration,
+                settings_json
+            ))
+        
+        conn.commit()
+        print(f"✅ Font style saved for website {website_id}" + (f" (target: {target})" if target else ""))
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error in save_font_style: {e}")
+        import traceback
+        traceback.print_exc()
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+def get_font_settings(website_id):
+    """
+    Mendapatkan semua pengaturan font untuk website
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+        SELECT 
+            font_family, font_size, font_animation, 
+            animation_duration, animation_delay, animation_iteration,
+            store_display_name, settings
+        FROM tampilan 
+        WHERE website_id = ?
+        ''', (website_id,))
+        
+        row = cursor.fetchone()
+        
+        if row:
+            data = dict(row)
+            # Parse settings JSON
+            if data['settings']:
+                try:
+                    data['settings'] = json.loads(data['settings'])
+                except:
+                    data['settings'] = {}
+            else:
+                data['settings'] = {}
+            
+            return data
+        return None
+        
+    except Exception as e:
+        print(f"❌ Error in get_font_settings: {e}")
+        return None
     finally:
         if conn:
             conn.close()
