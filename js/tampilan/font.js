@@ -1,8 +1,11 @@
-// Font Studio - Versi Ringkas dengan Perbaikan
+// Font Studio - Versi Final untuk Flask/Database
 (function() {
     'use strict';
     
     console.log('🎨 Font Studio - Initializing...');
+    
+    // ==================== KONFIGURASI ====================
+    const API_BASE_URL = window.location.origin; // Gunakan URL yang sama dengan halaman
     
     // ANIMASI PRESETS
     const ANIMATIONS = {
@@ -16,10 +19,7 @@
         wave: { name: 'Wave', keyframes: '@keyframes waveAnim { 0%{transform:skew(0deg)} 25%{transform:skew(5deg)} 75%{transform:skew(-5deg)} 100%{transform:skew(0deg)} }' }
     };
     
-    // KONFIGURASI API
-    const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.apiBaseUrl : 'https://supports-lease-honest-potter.trycloudflare.com';
-    
-    // DOM ELEMENTS
+    // ==================== DOM ELEMENTS ====================
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
         backToPanel: document.getElementById('backToPanel'),
@@ -31,7 +31,6 @@
         uploadedFileName: document.getElementById('uploadedFileName'),
         removeFontBtn: document.getElementById('removeFontBtn'),
         fontFamily: document.getElementById('fontFamily'),
-        fontUrl: document.getElementById('fontUrl'),
         loadFontBtn: document.getElementById('loadFontBtn'),
         fontWeight: document.getElementById('fontWeight'),
         fontStyle: document.getElementById('fontStyle'),
@@ -72,34 +71,46 @@
         sectionHeaders: document.querySelectorAll('.section-header')
     };
     
-    // STATE
+    // ==================== STATE ====================
     let currentFontFamily = 'Inter, sans-serif';
     let currentFontFile = null;
     let currentFontDataUrl = null;
     let animationStyleElement = null;
     let isAnimating = false;
+    let savedTemplates = [];
     
-    // UTILITY FUNCTIONS
+    // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i><span>${message}</span>`;
         elements.toastContainer.appendChild(toast);
-        setTimeout(() => { toast.style.animation = 'fadeOut 0.3s ease'; setTimeout(() => toast.remove(), 300); }, duration);
+        setTimeout(() => { 
+            toast.style.animation = 'fadeOut 0.3s ease'; 
+            setTimeout(() => toast.remove(), 300); 
+        }, duration);
     }
     
     function showLoading(show = true) {
-        if (elements.loadingOverlay) elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+        if (elements.loadingOverlay) {
+            elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
     }
     
     function vibrate(duration = 20) {
-        if (window.navigator?.vibrate) window.navigator.vibrate(duration);
+        if (window.navigator && window.navigator.vibrate) {
+            window.navigator.vibrate(duration);
+        }
     }
     
     function generateTemplateCode() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        return Array.from({ length: 35 }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+        let code = '';
+        for (let i = 0; i < 35; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
     }
     
     function debounce(func, wait) {
@@ -110,17 +121,19 @@
         };
     }
     
-    // ANIMATION FUNCTIONS
+    // ==================== ANIMATION FUNCTIONS ====================
     function injectAnimationStyles() {
         if (animationStyleElement) animationStyleElement.remove();
         animationStyleElement = document.createElement('style');
         let css = '';
-        Object.values(ANIMATIONS).forEach(anim => { if (anim.keyframes) css += anim.keyframes + '\n'; });
+        Object.values(ANIMATIONS).forEach(anim => { 
+            if (anim.keyframes) css += anim.keyframes + '\n'; 
+        });
         animationStyleElement.textContent = css;
         document.head.appendChild(animationStyleElement);
     }
     
-    // FONT FUNCTIONS
+    // ==================== FONT FUNCTIONS ====================
     function setupFontUpload() {
         if (!elements.fontUploadArea || !elements.fontFileInput) return;
         
@@ -128,18 +141,18 @@
         
         elements.fontUploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
-            elements.fontUploadArea.style.borderColor = 'var(--primary-color)';
+            elements.fontUploadArea.style.borderColor = '#40a7e3';
             elements.fontUploadArea.style.background = 'rgba(64,167,227,0.1)';
         });
         
         elements.fontUploadArea.addEventListener('dragleave', () => {
-            elements.fontUploadArea.style.borderColor = 'var(--border-color)';
+            elements.fontUploadArea.style.borderColor = 'rgba(255,255,255,0.1)';
             elements.fontUploadArea.style.background = 'rgba(255,255,255,0.02)';
         });
         
         elements.fontUploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
-            elements.fontUploadArea.style.borderColor = 'var(--border-color)';
+            elements.fontUploadArea.style.borderColor = 'rgba(255,255,255,0.1)';
             elements.fontUploadArea.style.background = 'rgba(255,255,255,0.02)';
             if (e.dataTransfer.files.length > 0) handleFontFile(e.dataTransfer.files[0]);
         });
@@ -148,7 +161,9 @@
             if (e.target.files.length > 0) handleFontFile(e.target.files[0]);
         });
         
-        if (elements.removeFontBtn) elements.removeFontBtn.addEventListener('click', removeFontFile);
+        if (elements.removeFontBtn) {
+            elements.removeFontBtn.addEventListener('click', removeFontFile);
+        }
     }
     
     function handleFontFile(file) {
@@ -177,7 +192,10 @@
             showLoading(false);
             showToast(`File ${file.name} siap dimuat`, 'success');
         };
-        reader.onerror = () => { showLoading(false); showToast('Gagal membaca file', 'error'); };
+        reader.onerror = () => { 
+            showLoading(false); 
+            showToast('Gagal membaca file', 'error'); 
+        };
         reader.readAsDataURL(file);
     }
     
@@ -214,17 +232,15 @@
             let fontFace = '';
             
             if (currentFontDataUrl) {
-                fontFace = `@font-face { font-family: '${family}'; src: url('${currentFontDataUrl}') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }`;
-            } else if (elements.fontUrl?.value.trim()) {
-                const fontUrl = elements.fontUrl.value.trim();
-                if (!fontUrl.toLowerCase().endsWith('.ttf')) {
-                    showToast('URL harus mengarah ke file .ttf', 'warning');
-                    showLoading(false);
-                    return;
-                }
-                fontFace = `@font-face { font-family: '${family}'; src: url('${fontUrl}') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }`;
+                fontFace = `@font-face { 
+                    font-family: '${family}'; 
+                    src: url('${currentFontDataUrl}') format('truetype'); 
+                    font-weight: normal; 
+                    font-style: normal; 
+                    font-display: swap; 
+                }`;
             } else {
-                showToast('Upload file font atau masukkan URL font terlebih dahulu', 'warning');
+                showToast('Upload file font terlebih dahulu', 'warning');
                 showLoading(false);
                 return;
             }
@@ -247,7 +263,7 @@
         }
     }
     
-    // UPDATE PREVIEW
+    // ==================== UPDATE PREVIEW ====================
     function updatePreview() {
         const text = elements.previewText?.value || 'Toko Online';
         const weight = elements.fontWeight?.value || 400;
@@ -259,8 +275,12 @@
         const delay = elements.animDelay?.value || 0;
         const iteration = elements.animIteration?.value || 'infinite';
         
-        if (elements.animDurationValue) elements.animDurationValue.textContent = `${duration}s`;
-        if (elements.animDelayValue) elements.animDelayValue.textContent = `${delay}s`;
+        if (elements.animDurationValue) {
+            elements.animDurationValue.textContent = `${duration}s`;
+        }
+        if (elements.animDelayValue) {
+            elements.animDelayValue.textContent = `${delay}s`;
+        }
         
         if (elements.previewTextDisplay) {
             elements.previewTextDisplay.textContent = text;
@@ -278,11 +298,17 @@
         }
     }
     
-    // TEMPLATE FUNCTIONS
+    // ==================== TEMPLATE FUNCTIONS ====================
     async function saveTemplate() {
         const name = elements.templateName?.value.trim();
         if (!name) {
             showToast('Nama template wajib diisi', 'warning');
+            return;
+        }
+        
+        // Validasi font harus sudah dimuat
+        if (!currentFontDataUrl) {
+            showToast('Upload dan load font terlebih dahulu', 'warning');
             return;
         }
         
@@ -315,16 +341,23 @@
             const result = await response.json();
             
             if (result.success) {
-                if (elements.generatedCode) elements.generatedCode.textContent = result.template_code;
-                if (elements.savedCodeDisplay) elements.savedCodeDisplay.style.display = 'block';
+                if (elements.generatedCode) {
+                    elements.generatedCode.textContent = result.template_code;
+                }
+                if (elements.savedCodeDisplay) {
+                    elements.savedCodeDisplay.style.display = 'block';
+                }
                 showToast(`✅ Template "${name}" disimpan!`, 'success');
                 vibrate();
+                
+                // Reset form setelah sukses
+                elements.templateName.value = '';
             } else {
                 throw new Error(result.error || 'Gagal menyimpan template');
             }
         } catch (error) {
             console.error('Error saving template:', error);
-            showToast(error.message, 'error');
+            showToast(error.message || 'Gagal menyimpan template', 'error');
         } finally {
             showLoading(false);
         }
@@ -333,10 +366,12 @@
     function copyTemplateCode() {
         const code = elements.generatedCode?.textContent;
         if (!code) return;
-        navigator.clipboard.writeText(code).then(() => showToast('Kode template disalin!', 'success')).catch(() => showToast('Gagal menyalin', 'error'));
+        navigator.clipboard.writeText(code)
+            .then(() => showToast('Kode template disalin!', 'success'))
+            .catch(() => showToast('Gagal menyalin', 'error'));
     }
     
-    // ANIMATION CONTROLS
+    // ==================== ANIMATION CONTROLS ====================
     function playPreviewAnimation() {
         if (isAnimating) return;
         const animType = elements.animationType?.value || 'none';
@@ -345,24 +380,28 @@
             return;
         }
         isAnimating = true;
-        if (elements.previewTextDisplay) elements.previewTextDisplay.style.animationPlayState = 'running';
+        if (elements.previewTextDisplay) {
+            elements.previewTextDisplay.style.animationPlayState = 'running';
+        }
     }
     
     function pausePreviewAnimation() {
         isAnimating = false;
-        if (elements.previewTextDisplay) elements.previewTextDisplay.style.animationPlayState = 'paused';
+        if (elements.previewTextDisplay) {
+            elements.previewTextDisplay.style.animationPlayState = 'paused';
+        }
     }
     
     function restartPreviewAnimation() {
         if (elements.previewTextDisplay) {
             elements.previewTextDisplay.style.animation = 'none';
-            elements.previewTextDisplay.offsetHeight;
+            elements.previewTextDisplay.offsetHeight; // Trigger reflow
             updatePreview();
             isAnimating = true;
         }
     }
     
-    // ALL TEMPLATES MODAL
+    // ==================== ALL TEMPLATES MODAL ====================
     async function loadAllTemplates(search = '') {
         if (!elements.allTemplatesGrid) return;
         
@@ -370,19 +409,22 @@
         
         try {
             let url = `${API_BASE_URL}/api/font-templates?limit=50`;
-            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
             
             const response = await fetch(url);
             const data = await response.json();
             
             if (data.success) {
-                renderAllTemplates(data.templates);
+                savedTemplates = data.templates || [];
+                renderAllTemplates(savedTemplates);
             } else {
                 throw new Error(data.error || 'Gagal memuat template');
             }
         } catch (error) {
             console.error('Error loading templates:', error);
-            elements.allTemplatesGrid.innerHTML = `<div class="template-loading error"><i class="fas fa-exclamation-circle"></i><span>Gagal memuat template</span></div>`;
+            elements.allTemplatesGrid.innerHTML = `<div class="template-loading error"><i class="fas fa-exclamation-circle"></i><span>Gagal memuat template. Pastikan server berjalan.</span></div>`;
         }
     }
     
@@ -398,22 +440,24 @@
         templates.forEach(template => {
             const shortCode = template.template_code.substring(0, 10) + '...';
             const previewText = template.preview_text || 'Aa';
+            const fontFamily = template.font_family || 'Inter';
+            const animType = template.animation_type || 'pulse';
             
             html += `
                 <div class="template-card" data-code="${template.template_code}">
                     <div class="template-preview">
-                        <div class="template-preview-text" style="font-family: '${template.font_family}', sans-serif; animation: ${template.animation_type || 'pulse'}Anim 2s infinite;">
+                        <div class="template-preview-text" style="font-family: '${fontFamily}', sans-serif; animation: ${animType}Anim 2s infinite;">
                             ${previewText}
                         </div>
                     </div>
                     <div class="template-info">
                         <div class="template-name">${template.template_name}</div>
-                        <div class="template-code" onclick="window.fontStudio.copyTemplateCodeFromList('${template.template_code}')">
+                        <div class="template-code" onclick="window.fontStudio.copyTemplateCode('${template.template_code}')">
                             <code>${shortCode}</code>
                             <i class="fas fa-copy"></i>
                         </div>
                         <div class="template-actions">
-                            <button class="template-btn load" onclick="window.fontStudio.loadTemplateFromList('${template.template_code}')">
+                            <button class="template-btn load" onclick="window.fontStudio.loadTemplate('${template.template_code}')">
                                 <i class="fas fa-download"></i> Load
                             </button>
                         </div>
@@ -433,13 +477,19 @@
             if (result.success) {
                 const data = result.template;
                 
-                // Load font
+                // Load font dari data yang disimpan
                 if (data.font_file_data) {
                     currentFontDataUrl = data.font_file_data;
                     currentFontFile = { name: data.font_file_name || 'font.ttf' };
                     
                     const family = data.font_family;
-                    const fontFace = `@font-face { font-family: '${family}'; src: url('${data.font_file_data}') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }`;
+                    const fontFace = `@font-face { 
+                        font-family: '${family}'; 
+                        src: url('${data.font_file_data}') format('truetype'); 
+                        font-weight: normal; 
+                        font-style: normal; 
+                        font-display: swap; 
+                    }`;
                     
                     const oldStyle = document.getElementById(`font-${family}`);
                     if (oldStyle) oldStyle.remove();
@@ -451,12 +501,18 @@
                     
                     currentFontFamily = `'${family}', sans-serif`;
                     
-                    if (elements.uploadedFileName) elements.uploadedFileName.textContent = data.font_file_name || `${family}.ttf`;
-                    if (elements.uploadedFileInfo) elements.uploadedFileInfo.style.display = 'flex';
-                    if (elements.fontUploadArea) elements.fontUploadArea.style.display = 'none';
+                    if (elements.uploadedFileName) {
+                        elements.uploadedFileName.textContent = data.font_file_name || `${family}.ttf`;
+                    }
+                    if (elements.uploadedFileInfo) {
+                        elements.uploadedFileInfo.style.display = 'flex';
+                    }
+                    if (elements.fontUploadArea) {
+                        elements.fontUploadArea.style.display = 'none';
+                    }
                 }
                 
-                // Apply data
+                // Apply data ke form
                 if (elements.fontFamily) elements.fontFamily.value = data.font_family || 'MyCustomFont';
                 if (elements.fontWeight) elements.fontWeight.value = data.font_weight || 400;
                 if (elements.fontStyle) elements.fontStyle.value = data.font_style || 'normal';
@@ -469,13 +525,19 @@
                 if (elements.animIteration) elements.animIteration.value = data.animation_iteration || 'infinite';
                 if (elements.previewText) elements.previewText.value = data.preview_text || 'Toko Online';
                 
-                if (elements.animDurationValue) elements.animDurationValue.textContent = `${data.animation_duration || 2}s`;
-                if (elements.animDelayValue) elements.animDelayValue.textContent = `${data.animation_delay || 0}s`;
+                if (elements.animDurationValue) {
+                    elements.animDurationValue.textContent = `${data.animation_duration || 2}s`;
+                }
+                if (elements.animDelayValue) {
+                    elements.animDelayValue.textContent = `${data.animation_delay || 0}s`;
+                }
                 
                 updatePreview();
                 
                 // Close modal
-                if (elements.allTemplatesModal) elements.allTemplatesModal.classList.remove('active');
+                if (elements.allTemplatesModal) {
+                    elements.allTemplatesModal.classList.remove('active');
+                }
                 
                 showToast(`✅ Template "${data.template_name}" dimuat!`, 'success');
             }
@@ -486,20 +548,37 @@
     }
     
     function copyTemplateCodeFromList(code) {
-        navigator.clipboard.writeText(code).then(() => showToast('Kode template disalin!', 'success')).catch(() => showToast('Gagal menyalin', 'error'));
+        navigator.clipboard.writeText(code)
+            .then(() => showToast('Kode template disalin!', 'success'))
+            .catch(() => showToast('Gagal menyalin', 'error'));
     }
     
-    // SAVE ALL (simulasi)
+    // ==================== SAVE ALL ====================
     function saveAll() {
-        showLoading(true);
-        setTimeout(() => {
-            showLoading(false);
-            showToast('✅ Pengaturan disimpan!', 'success');
+        // Simpan pengaturan ke localStorage sebagai backup
+        const settings = {
+            fontFamily: elements.fontFamily?.value,
+            fontWeight: elements.fontWeight?.value,
+            fontStyle: elements.fontStyle?.value,
+            fontSize: elements.fontSize?.value,
+            textColor: elements.textColor?.value,
+            animationType: elements.animationType?.value,
+            animationDuration: elements.animDuration?.value,
+            animationDelay: elements.animDelay?.value,
+            animationIteration: elements.animIteration?.value,
+            previewText: elements.previewText?.value
+        };
+        
+        try {
+            localStorage.setItem('fontStudioSettings', JSON.stringify(settings));
+            showToast('✅ Pengaturan disimpan di browser!', 'success');
             vibrate();
-        }, 500);
+        } catch (e) {
+            showToast('Gagal menyimpan', 'error');
+        }
     }
     
-    // SECTION TOGGLES
+    // ==================== SECTION TOGGLES ====================
     function initSectionToggles() {
         elements.sectionHeaders?.forEach(header => {
             header.addEventListener('click', () => {
@@ -507,35 +586,60 @@
                 const isExpanded = header.getAttribute('data-expanded') === 'true';
                 
                 header.setAttribute('data-expanded', !isExpanded);
-                content.classList.toggle('hidden', !isExpanded);
+                if (content) {
+                    if (isExpanded) {
+                        content.classList.add('hidden');
+                    } else {
+                        content.classList.remove('hidden');
+                    }
+                }
             });
         });
     }
     
-    // NAVIGATION (DIPERBAIKI)
+    // ==================== NAVIGATION ====================
     function goBack() {
-        // Gunakan history.back() untuk kembali ke halaman sebelumnya
         if (document.referrer) {
             window.history.back();
         } else {
-            // Fallback: cari endpoint dari URL atau redirect ke panel
-            const urlParams = new URLSearchParams(window.location.search);
-            const website = urlParams.get('website');
-            if (website) {
-                window.location.href = `panel.html?website=${website}`;
-            } else {
-                window.location.href = 'panel.html';
-            }
+            window.location.href = '/';
         }
     }
     
-    // INIT
+    // ==================== LOAD SAVED SETTINGS ====================
+    function loadSavedSettings() {
+        try {
+            const saved = localStorage.getItem('fontStudioSettings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                if (elements.fontFamily) elements.fontFamily.value = settings.fontFamily || 'MyCustomFont';
+                if (elements.fontWeight) elements.fontWeight.value = settings.fontWeight || 400;
+                if (elements.fontStyle) elements.fontStyle.value = settings.fontStyle || 'normal';
+                if (elements.fontSize) elements.fontSize.value = settings.fontSize || 48;
+                if (elements.textColor) elements.textColor.value = settings.textColor || '#ffffff';
+                if (elements.textColorHex) elements.textColorHex.value = settings.textColor || '#ffffff';
+                if (elements.animationType) elements.animationType.value = settings.animationType || 'none';
+                if (elements.animDuration) elements.animDuration.value = settings.animationDuration || 2;
+                if (elements.animDelay) elements.animDelay.value = settings.animationDelay || 0;
+                if (elements.animIteration) elements.animIteration.value = settings.animationIteration || 'infinite';
+                if (elements.previewText) elements.previewText.value = settings.previewText || 'Toko Online';
+                
+                updatePreview();
+                console.log('📂 Loaded saved settings from localStorage');
+            }
+        } catch (e) {
+            console.warn('Failed to load saved settings:', e);
+        }
+    }
+    
+    // ==================== INIT ====================
     function init() {
         showLoading(true);
         
         try {
             injectAnimationStyles();
             setupFontUpload();
+            loadSavedSettings();
             
             if (elements.fontSize) elements.fontSize.value = 48;
             if (elements.animDuration) elements.animDuration.value = 2;
@@ -545,11 +649,23 @@
             setupEventListeners();
             initSectionToggles();
             
-            if (window.Telegram?.WebApp) {
+            if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
                 tg.expand();
                 tg.ready();
             }
+            
+            // Test koneksi ke API
+            fetch(`${API_BASE_URL}/api/health`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'healthy') {
+                        console.log('✅ API Connected');
+                    }
+                })
+                .catch(err => {
+                    console.warn('⚠️ API not available, using localStorage only');
+                });
             
             showToast('Font Studio siap!', 'success');
         } catch (error) {
@@ -560,16 +676,30 @@
         }
     }
     
-    // EVENT LISTENERS
+    // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', goBack);
         }
         
-        if (elements.saveAllBtn) elements.saveAllBtn.addEventListener('click', saveAll);
-        if (elements.loadFontBtn) elements.loadFontBtn.addEventListener('click', loadFont);
+        if (elements.saveAllBtn) {
+            elements.saveAllBtn.addEventListener('click', saveAll);
+        }
         
-        const fontControls = [elements.fontWeight, elements.fontStyle, elements.fontSize, elements.animationType, elements.animDuration, elements.animDelay, elements.animIteration];
+        if (elements.loadFontBtn) {
+            elements.loadFontBtn.addEventListener('click', loadFont);
+        }
+        
+        const fontControls = [
+            elements.fontWeight, 
+            elements.fontStyle, 
+            elements.fontSize, 
+            elements.animationType, 
+            elements.animDuration, 
+            elements.animDelay, 
+            elements.animIteration
+        ];
+        
         fontControls.forEach(control => {
             if (control) {
                 control.addEventListener('input', updatePreview);
@@ -594,14 +724,29 @@
         }
         
         const debouncedUpdate = debounce(updatePreview, 300);
-        if (elements.previewText) elements.previewText.addEventListener('input', debouncedUpdate);
+        if (elements.previewText) {
+            elements.previewText.addEventListener('input', debouncedUpdate);
+        }
         
-        if (elements.saveTemplateBtn) elements.saveTemplateBtn.addEventListener('click', saveTemplate);
-        if (elements.copyCodeBtn) elements.copyCodeBtn.addEventListener('click', copyTemplateCode);
+        if (elements.saveTemplateBtn) {
+            elements.saveTemplateBtn.addEventListener('click', saveTemplate);
+        }
         
-        if (elements.playAnimation) elements.playAnimation.addEventListener('click', playPreviewAnimation);
-        if (elements.pauseAnimation) elements.pauseAnimation.addEventListener('click', pausePreviewAnimation);
-        if (elements.restartAnimation) elements.restartAnimation.addEventListener('click', restartPreviewAnimation);
+        if (elements.copyCodeBtn) {
+            elements.copyCodeBtn.addEventListener('click', copyTemplateCode);
+        }
+        
+        if (elements.playAnimation) {
+            elements.playAnimation.addEventListener('click', playPreviewAnimation);
+        }
+        
+        if (elements.pauseAnimation) {
+            elements.pauseAnimation.addEventListener('click', pausePreviewAnimation);
+        }
+        
+        if (elements.restartAnimation) {
+            elements.restartAnimation.addEventListener('click', restartPreviewAnimation);
+        }
         
         if (elements.fullscreenPreview && elements.previewCanvas) {
             elements.fullscreenPreview.addEventListener('click', () => {
@@ -635,18 +780,24 @@
         }
         
         if (elements.modalTemplateFilter) {
-            elements.modalTemplateFilter.addEventListener('change', (e) => loadAllTemplates());
+            elements.modalTemplateFilter.addEventListener('change', () => loadAllTemplates());
         }
         
         window.addEventListener('click', (e) => {
-            if (e.target === elements.allTemplatesModal) elements.allTemplatesModal.classList.remove('active');
+            if (e.target === elements.allTemplatesModal) {
+                elements.allTemplatesModal.classList.remove('active');
+            }
         });
         
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            if (e.key === ' ' && !e.target.matches('input, textarea')) {
+            if (e.key === ' ' && !e.target.matches('input, textarea, button')) {
                 e.preventDefault();
-                if (isAnimating) pausePreviewAnimation(); else playPreviewAnimation();
+                if (isAnimating) {
+                    pausePreviewAnimation();
+                } else {
+                    playPreviewAnimation();
+                }
             }
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
@@ -655,11 +806,16 @@
         });
     }
     
-    // Expose functions
+    // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.fontStudio = {
-        loadTemplateFromList,
-        copyTemplateCodeFromList
+        loadTemplate: loadTemplateFromList,
+        copyTemplateCode: copyTemplateCodeFromList
     };
     
-    document.addEventListener('DOMContentLoaded', init);
+    // ==================== START ====================
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
