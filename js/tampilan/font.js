@@ -97,6 +97,7 @@
     let animationStyleElement = null;
     let isAnimating = false;
     let savedTemplates = [];
+    let injectedFonts = new Set(); // Untuk melacak font yang sudah di-inject
     
     // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
@@ -138,6 +139,35 @@
             clearTimeout(timeout);
             timeout = setTimeout(() => func.apply(this, args), wait);
         };
+    }
+    
+    /**
+     * Inject font ke halaman untuk preview
+     */
+    function injectFontForPreview(fontFamily, fontData) {
+        if (!fontData || injectedFonts.has(fontFamily)) return;
+        
+        const fontFace = `
+            @font-face {
+                font-family: '${fontFamily}';
+                src: url('${fontData}') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+            }
+        `;
+        
+        // Hapus style lama jika ada
+        const oldStyle = document.getElementById(`preview-font-${fontFamily}`);
+        if (oldStyle) oldStyle.remove();
+        
+        const style = document.createElement('style');
+        style.id = `preview-font-${fontFamily}`;
+        style.textContent = fontFace;
+        document.head.appendChild(style);
+        
+        injectedFonts.add(fontFamily);
+        console.log(`✅ Font injected for preview: ${fontFamily}`);
     }
     
     // ==================== ANIMATION FUNCTIONS ====================
@@ -430,6 +460,7 @@
         }
     }
     
+    // ==================== LOAD ALL TEMPLATES ====================
     async function loadAllTemplates(search = '') {
         if (!elements.allTemplatesGrid) return;
         
@@ -481,6 +512,14 @@
             if (data.success) {
                 savedTemplates = data.templates || [];
                 console.log(`✅ Loaded ${savedTemplates.length} templates`);
+                
+                // Inject font untuk setiap template sebelum render
+                for (const template of savedTemplates) {
+                    if (template.font_file_data) {
+                        injectFontForPreview(template.font_family, template.font_file_data);
+                    }
+                }
+                
                 renderAllTemplates(savedTemplates);
             } else {
                 throw new Error(data.error || 'Gagal memuat template');
@@ -503,6 +542,9 @@
         }
     }
     
+    /**
+     * Render template dengan font yang sudah di-inject
+     */
     function renderAllTemplates(templates) {
         if (!elements.allTemplatesGrid) return;
         
@@ -514,14 +556,14 @@
         let html = '';
         templates.forEach(template => {
             const shortCode = template.template_code.substring(0, 10) + '...';
-            const previewText = template.preview_text || 'Aa';
+            const previewText = template.preview_text || template.template_name || 'Aa';
             const fontFamily = template.font_family || 'Inter';
             const animType = template.animation_type || 'pulse';
             
             html += `
-                <div class="template-card" data-code="${template.template_code}">
-                    <div class="template-preview">
-                        <div class="template-preview-text" style="font-family: '${fontFamily}', sans-serif; animation: ${animType}Anim 2s infinite;">
+                <div class="template-card" data-code="${template.template_code}" data-font="${fontFamily}">
+                    <div class="template-preview" style="background: linear-gradient(135deg, #1a1a1a, #2a2a2a);">
+                        <div class="template-preview-text" style="font-family: '${fontFamily}', sans-serif; animation: ${animType}Anim 2s infinite; font-size: 24px; color: ${template.text_color || '#ffffff'};">
                             ${previewText}
                         </div>
                     </div>
@@ -542,6 +584,15 @@
         });
         
         elements.allTemplatesGrid.innerHTML = html;
+        
+        // Verifikasi font untuk setiap card
+        document.querySelectorAll('.template-card').forEach(card => {
+            const fontFamily = card.dataset.font;
+            const previewDiv = card.querySelector('.template-preview-text');
+            if (previewDiv) {
+                previewDiv.style.fontFamily = `'${fontFamily}', sans-serif`;
+            }
+        });
     }
     
     async function loadTemplateFromList(code) {
@@ -558,6 +609,8 @@
                     currentFontFile = { name: data.font_file_name || 'font.ttf' };
                     
                     const family = data.font_family;
+                    
+                    // Inject font ke halaman utama
                     const fontFace = `@font-face { 
                         font-family: '${family}'; 
                         src: url('${data.font_file_data}') format('truetype'); 
@@ -585,6 +638,9 @@
                     if (elements.fontUploadArea) {
                         elements.fontUploadArea.style.display = 'none';
                     }
+                    
+                    // Tambahkan ke injectedFonts
+                    injectedFonts.add(family);
                 }
                 
                 // Apply data ke form
