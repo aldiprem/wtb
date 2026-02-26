@@ -1932,7 +1932,9 @@ body {
 
 /* ===== PULL TO REFRESH ===== */
 .ptr-container {
-    position: relative;
+    position: fixed; /* Ubah dari relative ke fixed */
+    top: 0;
+    left: 0;
     width: 100%;
     height: 0;
     overflow: visible;
@@ -1944,6 +1946,7 @@ body {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
+    top: -60px; /* Tersembunyi di atas */
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -1954,13 +1957,17 @@ body {
     justify-content: center;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
-    transition: top 0.2s ease;
+    transition: top 0.1s ease-out; /* Transisi lebih cepat */
     pointer-events: none;
 }
 
 .ptr-spinner i {
     color: var(--primary-color);
     font-size: 20px;
+    transition: transform 0.2s ease;
+}
+
+.ptr-spinner.loading i {
     animation: ptr-rotate 1s linear infinite;
 }
 
@@ -1971,16 +1978,10 @@ body {
 
 .ptr-spinner.pull-down i {
     animation: none;
-    transform: rotate(0deg);
-    transition: transform 0.2s ease;
 }
 
 .ptr-spinner.pull-down.active i {
     color: var(--success-color);
-}
-
-.ptr-spinner.loading i {
-    animation: ptr-rotate 1s linear infinite;
 }
 
 /* ===== WEBSITE SELECTOR DROPDOWN ===== */
