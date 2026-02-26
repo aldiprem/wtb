@@ -1266,98 +1266,159 @@
       ptrState.container.appendChild(ptrState.spinner);
       document.body.appendChild(ptrState.container);
     
-      // Event listeners
+      // Event listeners - Gunakan passive: true untuk scroll biasa
       const content = document.querySelector('.panel-content');
       if (!content) return;
     
-      content.addEventListener('touchstart', handleTouchStart, { passive: false });
+      // Gunakan passive: true untuk scroll normal agar tidak mengganggu
+      content.addEventListener('scroll', handleScroll, { passive: true });
+      content.addEventListener('touchstart', handleTouchStart, { passive: true });
       content.addEventListener('touchmove', handleTouchMove, { passive: false });
       content.addEventListener('touchend', handleTouchEnd);
       content.addEventListener('touchcancel', handleTouchEnd);
     }
     
-    function handleTouchStart(e) {
-      if (!ptrState.enabled) return;
+    // Tambahkan fungsi untuk track scroll position
+    let lastScrollTop = 0;
     
+    function handleScroll() {
       const content = document.querySelector('.panel-content');
-      if (content.scrollTop > 0) return; // Hanya aktif jika di paling atas
+      if (!content) return;
     
-      ptrState.pulling = true;
-      ptrState.startY = e.touches[0].clientY;
-      ptrState.currentY = ptrState.startY;
+      lastScrollTop = content.scrollTop;
     
-      ptrState.spinner.style.top = '20px';
-      ptrState.spinner.classList.add('pull-down');
-      ptrState.spinner.classList.remove('loading');
-      ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
-    }
-    
-    function handleTouchMove(e) {
-      if (!ptrState.pulling) return;
-    
-      ptrState.currentY = e.touches[0].clientY;
-      const diff = ptrState.currentY - ptrState.startY;
-    
-      if (diff > 0) {
-        e.preventDefault();
-    
-        // Limit pull distance
-        const pullDistance = Math.min(diff, 120);
-    
-        // Update spinner position
-        ptrState.spinner.style.top = `${20 + pullDistance}px`;
-    
-        // Rotate icon based on pull distance
-        const rotation = Math.min(pullDistance / ptrState.threshold * 180, 180);
-        ptrState.spinner.querySelector('i').style.transform = `rotate(${rotation}deg)`;
-    
-        // Change icon when threshold reached
-        if (pullDistance >= ptrState.threshold) {
-          ptrState.spinner.classList.add('active');
-          ptrState.spinner.innerHTML = '<i class="fas fa-check"></i>';
-        } else {
-          ptrState.spinner.classList.remove('active');
-          ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
-        }
+      // Reset pull state jika user scroll ke bawah
+      if (content.scrollTop > 0 && ptrState.pulling) {
+        ptrState.pulling = false;
+        ptrState.spinner.style.top = '-60px';
+        ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
       }
     }
     
-    async function handleTouchEnd() {
+    function handleTouchStart(e) {
+      const content = document.querySelector('.panel-content');
+      if (!content) return;
+    
+      // Hanya aktif jika benar-benar di paling atas (scrollTop <= 0)
+      // Dan pastikan tidak sedang dalam mode pull
+      if (content.scrollTop > 5) {
+        ptrState.pulling = false;
+        return;
+      }
+    
+      // Reset state
+      ptrState.pulling = true;
+      ptrState.startY = e.touches[0].clientY;
+      ptrState.currentY = ptrState.startY;
+      ptrState.pullDistance = 0;
+    
+      // Sembunyikan spinner dulu
+      ptrState.spinner.style.top = '-60px';
+      ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
+    }
+    
+    function handleTouchMove(e) {
+      const content = document.querySelector('.panel-content');
+      if (!content) return;
+    
+      // Hitung jarak tarikan
+      ptrState.currentY = e.touches[0].clientY;
+      const diff = ptrState.currentY - ptrState.startY;
+    
+      // Hanya proses jika user menarik ke BAWAH (diff > 0) DAN di paling atas
+      // Gunakan threshold yang lebih kecil untuk deteksi "paling atas"
+      if (diff > 0 && content.scrollTop <= 5 && ptrState.pulling) {
+        e.preventDefault();
+    
+        // Limit pull distance - lebih pendek untuk UX lebih baik
+        const pullDistance = Math.min(diff, 100);
+        ptrState.pullDistance = pullDistance;
+    
+        // Tampilkan spinner hanya jika sudah menarik cukup jauh
+        if (pullDistance > 10) {
+          ptrState.spinner.style.top = `${10 + pullDistance}px`;
+          ptrState.spinner.classList.add('pull-down');
+    
+          // Rotate icon berdasarkan jarak
+          const rotation = Math.min(pullDistance / ptrState.threshold * 180, 180);
+          const icon = ptrState.spinner.querySelector('i');
+          if (icon) {
+            icon.style.transform = `rotate(${rotation}deg)`;
+          }
+    
+          // Ganti icon ketika mencapai threshold
+          if (pullDistance >= ptrState.threshold) {
+            ptrState.spinner.classList.add('active');
+            ptrState.spinner.innerHTML = '<i class="fas fa-check"></i>';
+          } else {
+            ptrState.spinner.classList.remove('active');
+            ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
+          }
+        }
+      } else {
+        // Jika tidak memenuhi syarat, reset pulling state
+        ptrState.pulling = false;
+        ptrState.spinner.style.top = '-60px';
+        ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
+      }
+    }
+    
+    async function handleTouchEnd(e) {
       if (!ptrState.pulling) return;
     
       const diff = ptrState.currentY - ptrState.startY;
     
-      if (diff >= ptrState.threshold) {
+      // Refresh hanya jika:
+      // 1. Jarak tarikan mencapai threshold
+      // 2. Benar-benar di paling atas (cek sekali lagi)
+      // 3. Ada jarak yang signifikan
+      const content = document.querySelector('.panel-content');
+      const isAtTop = content ? content.scrollTop <= 5 : false;
+    
+      if (diff >= ptrState.threshold && isAtTop && ptrState.pullDistance >= ptrState.threshold) {
         // Trigger refresh
         ptrState.spinner.classList.remove('pull-down', 'active');
         ptrState.spinner.classList.add('loading');
         ptrState.spinner.innerHTML = '<i class="fas fa-sync-alt"></i>';
     
+        // Tahan spinner di posisi
+        ptrState.spinner.style.top = '60px';
+    
         // Perform refresh
         await refreshPage();
     
-        // Reset spinner
-        ptrState.spinner.style.top = '-60px';
-        ptrState.spinner.classList.remove('loading');
+        // Sembunyikan spinner setelah refresh
+        setTimeout(() => {
+          ptrState.spinner.style.top = '-60px';
+          ptrState.spinner.classList.remove('loading');
+        }, 500);
       } else {
-        // Reset tanpa refresh
+        // Reset tanpa refresh - animasi kembali
         ptrState.spinner.style.top = '-60px';
+        ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
       }
     
       ptrState.pulling = false;
+      ptrState.pullDistance = 0;
     }
     
     async function refreshPage() {
       showToast('Menyegarkan halaman...', 'info');
     
-      // Simpan halaman saat ini sebelum refresh
+      // Simpan halaman saat ini
       const currentPage = getLastPage() || 'dashboard';
+      const currentEndpoint = getLastWebsiteEndpoint();
     
       try {
-        // Reload data
-        const userId = await loadUserData();
-        await loadUserWebsites(userId);
-        await loadProductsAndOrders();
+        // Reload data tanpa reload user websites (cukup refresh produk)
+        if (currentEndpoint) {
+          await reloadForWebsite(currentEndpoint, false); // false = force refresh dari API
+        } else {
+          // Fallback ke load semua
+          const userId = await loadUserData();
+          await loadUserWebsites(userId);
+          await loadProductsAndOrders();
+        }
     
         showToast('Halaman berhasil disegarkan', 'success');
     
