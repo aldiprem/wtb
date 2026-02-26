@@ -16,6 +16,9 @@
         wave: { name: 'Wave', keyframes: '@keyframes waveAnim { 0%{transform:skew(0deg)} 25%{transform:skew(5deg)} 75%{transform:skew(-5deg)} 100%{transform:skew(0deg)} }' }
     };
     
+    // KONFIGURASI API
+    const API_BASE_URL = window.APP_CONFIG ? window.APP_CONFIG.apiBaseUrl : 'https://supports-lease-honest-potter.trycloudflare.com';
+    
     // DOM ELEMENTS
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
@@ -83,7 +86,7 @@
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i><span>${message}</span>`;
         elements.toastContainer.appendChild(toast);
-        setTimeout(() => { toast.style.animation = 'fadeOutToast 0.3s ease'; setTimeout(() => toast.remove(), 300); }, duration);
+        setTimeout(() => { toast.style.animation = 'fadeOut 0.3s ease'; setTimeout(() => toast.remove(), 300); }, duration);
     }
     
     function showLoading(show = true) {
@@ -303,7 +306,7 @@
                 is_public: false
             };
             
-            const response = await fetch('/api/font-templates/save', {
+            const response = await fetch(`${API_BASE_URL}/api/font-templates/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(templateData)
@@ -366,7 +369,7 @@
         elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
         
         try {
-            let url = '/api/font-templates?limit=50';
+            let url = `${API_BASE_URL}/api/font-templates?limit=50`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             
             const response = await fetch(url);
@@ -424,7 +427,7 @@
     
     async function loadTemplateFromList(code) {
         try {
-            const response = await fetch(`/api/font-templates/${code}`);
+            const response = await fetch(`${API_BASE_URL}/api/font-templates/${code}`);
             const result = await response.json();
             
             if (result.success) {
@@ -509,6 +512,23 @@
         });
     }
     
+    // NAVIGATION (DIPERBAIKI)
+    function goBack() {
+        // Gunakan history.back() untuk kembali ke halaman sebelumnya
+        if (document.referrer) {
+            window.history.back();
+        } else {
+            // Fallback: cari endpoint dari URL atau redirect ke panel
+            const urlParams = new URLSearchParams(window.location.search);
+            const website = urlParams.get('website');
+            if (website) {
+                window.location.href = `panel.html?website=${website}`;
+            } else {
+                window.location.href = 'panel.html';
+            }
+        }
+    }
+    
     // INIT
     function init() {
         showLoading(true);
@@ -543,9 +563,7 @@
     // EVENT LISTENERS
     function setupEventListeners() {
         if (elements.backToPanel) {
-            elements.backToPanel.addEventListener('click', () => {
-                window.location.href = '/wtb/html/panel.html';
-            });
+            elements.backToPanel.addEventListener('click', goBack);
         }
         
         if (elements.saveAllBtn) elements.saveAllBtn.addEventListener('click', saveAll);
