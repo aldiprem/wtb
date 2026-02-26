@@ -9,270 +9,270 @@
     
     <!-- CSS -->
     <link rel="stylesheet" href="/wtb/css/panel.css">
-    <link rel="stylesheet" href="/wtb/css/product.css">
-
-    <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-</head>
-<body>
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Memuat dashboard...</div>
-    </div>
-
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
-
-    <!-- Main Container -->
-    <div class="panel-container">
-        <!-- Header with Menu Toggle -->
-        <header class="panel-header">
-            <div class="header-left">
-                <button class="menu-toggle" id="menuToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <div class="header-icon">
-                    <i class="fas fa-chart-pie"></i>
-                </div>
-                <div class="header-title">
-                    <h1>Panel Dashboard</h1>
-                    <span class="website-badge" id="websiteBadge">/endpoint</span>
-                </div>
-            </div>
-            <div class="header-right">
-                <button class="btn-icon" id="refreshBtn" title="Refresh Data">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-                <div class="user-profile" id="userProfile">
-                    <img src="https://ui-avatars.com/api/?name=User&size=40&background=40a7e3&color=fff" alt="User" id="userAvatar">
-                </div>
-            </div>
-        </header>
-
-        <!-- Sidebar Navigation -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">
-                    <i class="fas fa-crown"></i>
-                    <span>Panel Owner</span>
-                </div>
-                <button class="sidebar-close" id="sidebarClose">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
+                <link rel="stylesheet" href="/wtb/css/product.css">
             
-            <div class="sidebar-profile">
-                <div class="profile-avatar" id="sidebarAvatar">
-                    <img src="https://ui-avatars.com/api/?name=User&size=80&background=40a7e3&color=fff" alt="Profile">
+                <!-- Fonts & Icons -->
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+                
+                <!-- Telegram Web App SDK -->
+                <script src="https://telegram.org/js/telegram-web-app.js"></script>
+            </head>
+            <body>
+                <!-- Loading Overlay -->
+                <div id="loadingOverlay" class="loading-overlay">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Memuat dashboard...</div>
                 </div>
-                <div class="profile-info">
-                    <div class="profile-name" id="sidebarName">Loading...</div>
-                    <div class="profile-username" id="sidebarUsername">@loading</div>
-                </div>
-                <div class="profile-stats">
-                    <div class="stat-item">
-                        <span class="stat-value" id="sidebarTotalWebsites">0</span>
-                        <span class="stat-label">Websites</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-value" id="sidebarTotalProducts">0</span>
-                        <span class="stat-label">Products</span>
-                    </div>
-                </div>
-            </div>
             
-            <nav class="sidebar-menu">
-                <a href="#" class="menu-item active" data-page="dashboard">
-                    <i class="fas fa-chart-pie"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="#" class="menu-item" data-page="websites">
-                    <i class="fas fa-globe"></i>
-                    <span>Website Saya</span>
-                    <span class="menu-badge" id="menuWebsitesBadge">0</span>
-                </a>
-                <a href="#" class="menu-item" data-page="products">
-                    <i class="fas fa-box"></i>
-                    <span>Produk</span>
-                </a>
-                <a href="#" class="menu-item" data-page="orders">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Pesanan</span>
-                    <span class="menu-badge" id="menuOrdersBadge">0</span>
-                </a>
-                <a href="#" class="menu-item" data-page="transactions">
-                    <i class="fas fa-credit-card"></i>
-                    <span>Transaksi</span>
-                </a>
-                <a href="#" class="menu-item" data-page="customers">
-                    <i class="fas fa-users"></i>
-                    <span>Pelanggan</span>
-                </a>
-                <a href="#" class="menu-item" data-page="settings">
-                    <i class="fas fa-cog"></i>
-                    <span>Pengaturan</span>
-                </a>
-            </nav>
+                <!-- Toast Container -->
+                <div class="toast-container" id="toastContainer"></div>
             
-            <div class="sidebar-footer">
-                <a href="#" class="menu-item" data-page="help">
-                    <i class="fas fa-question-circle"></i>
-                    <span>Bantuan</span>
-                </a>
-                <a href="#" class="menu-item" data-page="logout" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Keluar</span>
-                </a>
-                <div class="sidebar-copyright">
-                    © 2024 Panel Dashboard
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Content Area -->
-        <main class="panel-content" id="panelContent">
-            <!-- Dashboard Page -->
-            <div class="page active" id="page-dashboard">
-                <!-- Stats Cards -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon total-websites">
-                            <i class="fas fa-globe"></i>
+                <!-- Main Container -->
+                <div class="panel-container">
+                    <!-- Header with Menu Toggle -->
+                    <header class="panel-header">
+                        <div class="header-left">
+                            <button class="menu-toggle" id="menuToggle">
+                                <i class="fas fa-bars"></i>
+                            </button>
+                            <div class="header-icon">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <div class="header-title">
+                                <h1>Panel Dashboard</h1>
+                                <span class="website-badge" id="websiteBadge">/endpoint</span>
+                            </div>
                         </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Total Websites</span>
-                            <span class="stat-value" id="statTotalWebsites">0</span>
+                        <div class="header-right">
+                            <button class="btn-icon" id="refreshBtn" title="Refresh Data">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <div class="user-profile" id="userProfile">
+                                <img src="https://ui-avatars.com/api/?name=User&size=40&background=40a7e3&color=fff" alt="User" id="userAvatar">
+                            </div>
+                        </div>
+                    </header>
+            
+                    <!-- Sidebar Navigation -->
+                    <div class="sidebar" id="sidebar">
+                        <div class="sidebar-header">
+                            <div class="sidebar-logo">
+                                <i class="fas fa-crown"></i>
+                                <span>Panel Owner</span>
+                            </div>
+                            <button class="sidebar-close" id="sidebarClose">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="sidebar-profile">
+                            <div class="profile-avatar" id="sidebarAvatar">
+                                <img src="https://ui-avatars.com/api/?name=User&size=80&background=40a7e3&color=fff" alt="Profile">
+                            </div>
+                            <div class="profile-info">
+                                <div class="profile-name" id="sidebarName">Loading...</div>
+                                <div class="profile-username" id="sidebarUsername">@loading</div>
+                            </div>
+                            <div class="profile-stats">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="sidebarTotalWebsites">0</span>
+                                    <span class="stat-label">Websites</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="sidebarTotalProducts">0</span>
+                                    <span class="stat-label">Products</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <nav class="sidebar-menu">
+                            <a href="#" class="menu-item active" data-page="dashboard">
+                                <i class="fas fa-chart-pie"></i>
+                                <span>Dashboard</span>
+                            </a>
+                            <a href="#" class="menu-item" data-page="websites">
+                                <i class="fas fa-globe"></i>
+                                <span>Website Saya</span>
+                                <span class="menu-badge" id="menuWebsitesBadge">0</span>
+                            </a>
+                            <a href="#" class="menu-item" data-page="products">
+                                <i class="fas fa-box"></i>
+                                <span>Produk</span>
+                            </a>
+                            <a href="#" class="menu-item" data-page="orders">
+                                <i class="fas fa-shopping-cart"></i>
+                                <span>Pesanan</span>
+                                <span class="menu-badge" id="menuOrdersBadge">0</span>
+                            </a>
+                            <a href="#" class="menu-item" data-page="transactions">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Transaksi</span>
+                            </a>
+                            <a href="#" class="menu-item" data-page="customers">
+                                <i class="fas fa-users"></i>
+                                <span>Pelanggan</span>
+                            </a>
+                            <a href="#" class="menu-item" data-page="settings">
+                                <i class="fas fa-cog"></i>
+                                <span>Pengaturan</span>
+                            </a>
+                        </nav>
+                        
+                        <div class="sidebar-footer">
+                            <a href="#" class="menu-item" data-page="help">
+                                <i class="fas fa-question-circle"></i>
+                                <span>Bantuan</span>
+                            </a>
+                            <a href="#" class="menu-item" data-page="logout" id="logoutBtn">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Keluar</span>
+                            </a>
+                            <div class="sidebar-copyright">
+                                © 2024 Panel Dashboard
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon total-products">
-                            <i class="fas fa-box"></i>
+            
+                    <!-- Main Content Area -->
+                    <main class="panel-content" id="panelContent">
+                        <!-- Dashboard Page -->
+                        <div class="page active" id="page-dashboard">
+                            <!-- Stats Cards -->
+                            <div class="stats-grid">
+                                <div class="stat-card">
+                                    <div class="stat-icon total-websites">
+                                        <i class="fas fa-globe"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-label">Total Websites</span>
+                                        <span class="stat-value" id="statTotalWebsites">0</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon total-products">
+                                        <i class="fas fa-box"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-label">Total Produk</span>
+                                        <span class="stat-value" id="statTotalProducts">0</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon total-orders">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-label">Total Pesanan</span>
+                                        <span class="stat-value" id="statTotalOrders">0</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon total-revenue">
+                                        <i class="fas fa-credit-card"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-label">Pendapatan</span>
+                                        <span class="stat-value" id="statTotalRevenue">Rp 0</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon total-customers">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-label">Pelanggan</span>
+                                        <span class="stat-value" id="statTotalCustomers">0</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="stat-card">
+                                    <div class="stat-icon active-websites">
+                                        <i class="fas fa-check-circle"></i>
+                                    </div>
+                                    <div class="stat-info">
+                                        <span class="stat-label">Website Aktif</span>
+                                        <span class="stat-value" id="statActiveWebsites">0</span>
+                                    </div>
+                                </div>
+                            </div>
+            
+                            <!-- Quick Actions -->
+                            <div class="quick-actions-section">
+                                <h2 class="section-title">
+                                    <i class="fas fa-bolt"></i>
+                                    Quick Actions
+                                </h2>
+                                <div class="quick-actions-grid" id="quickActions">
+                                    <!-- Akan diisi oleh JavaScript -->
+                                </div>
+                            </div>
+            
+                            <!-- Recent Orders -->
+                            <div class="recent-orders-section">
+                                <div class="section-header">
+                                    <h2 class="section-title">
+                                        <i class="fas fa-history"></i>
+                                        Pesanan Terbaru
+                                    </h2>
+                                    <a href="#" class="view-all-link" data-page="orders">
+                                        Lihat Semua <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                                <div class="recent-orders-list" id="recentOrders">
+                                    <!-- Akan diisi oleh JavaScript -->
+                                </div>
+                            </div>
+            
+                            <!-- Top Products -->
+                            <div class="top-products-section">
+                                <div class="section-header">
+                                    <h2 class="section-title">
+                                        <i class="fas fa-star"></i>
+                                        Produk Terlaris
+                                    </h2>
+                                    <a href="#" class="view-all-link" data-page="products">
+                                        Lihat Semua <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                                <div class="top-products-grid" id="topProducts">
+                                    <!-- Akan diisi oleh JavaScript -->
+                                </div>
+                            </div>
                         </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Total Produk</span>
-                            <span class="stat-value" id="statTotalProducts">0</span>
+            
+                        <!-- Websites Page -->
+                        <div class="page" id="page-websites">
+                            <div class="page-header">
+                                <h2 class="page-title">
+                                    <i class="fas fa-globe"></i>
+                                    Website Saya
+                                </h2>
+                                <a href="/format?from=panel" class="btn-primary" id="createWebsiteBtn">
+                                    <i class="fas fa-plus-circle"></i>
+                                    Buat Website Baru
+                                </a>
+                            </div>
+            
+                            <div class="websites-grid" id="websitesGrid">
+                                <!-- Akan diisi oleh JavaScript -->
+                            </div>
+            
+                            <div class="empty-state" id="websitesEmptyState" style="display: none;">
+                                <i class="fas fa-globe"></i>
+                                <h3>Belum Ada Website</h3>
+                                <p>Mulai dengan membuat website pertamamu</p>
+                                <a href="/format?from=panel" class="btn-primary">
+                                    <i class="fas fa-plus-circle"></i>
+                                    Buat Website Baru
+                                </a>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon total-orders">
-                            <i class="fas fa-shopping-cart"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Total Pesanan</span>
-                            <span class="stat-value" id="statTotalOrders">0</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon total-revenue">
-                            <i class="fas fa-credit-card"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Pendapatan</span>
-                            <span class="stat-value" id="statTotalRevenue">Rp 0</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon total-customers">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Pelanggan</span>
-                            <span class="stat-value" id="statTotalCustomers">0</span>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon active-websites">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="stat-info">
-                            <span class="stat-label">Website Aktif</span>
-                            <span class="stat-value" id="statActiveWebsites">0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="quick-actions-section">
-                    <h2 class="section-title">
-                        <i class="fas fa-bolt"></i>
-                        Quick Actions
-                    </h2>
-                    <div class="quick-actions-grid" id="quickActions">
-                        <!-- Akan diisi oleh JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Recent Orders -->
-                <div class="recent-orders-section">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            <i class="fas fa-history"></i>
-                            Pesanan Terbaru
-                        </h2>
-                        <a href="#" class="view-all-link" data-page="orders">
-                            Lihat Semua <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                    <div class="recent-orders-list" id="recentOrders">
-                        <!-- Akan diisi oleh JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Top Products -->
-                <div class="top-products-section">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            <i class="fas fa-star"></i>
-                            Produk Terlaris
-                        </h2>
-                        <a href="#" class="view-all-link" data-page="products">
-                            Lihat Semua <i class="fas fa-arrow-right"></i>
-                        </a>
-                    </div>
-                    <div class="top-products-grid" id="topProducts">
-                        <!-- Akan diisi oleh JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Websites Page -->
-            <div class="page" id="page-websites">
-                <div class="page-header">
-                    <h2 class="page-title">
-                        <i class="fas fa-globe"></i>
-                        Website Saya
-                    </h2>
-                    <a href="/format?from=panel" class="btn-primary" id="createWebsiteBtn">
-                        <i class="fas fa-plus-circle"></i>
-                        Buat Website Baru
-                    </a>
-                </div>
-
-                <div class="websites-grid" id="websitesGrid">
-                    <!-- Akan diisi oleh JavaScript -->
-                </div>
-
-                <div class="empty-state" id="websitesEmptyState" style="display: none;">
-                    <i class="fas fa-globe"></i>
-                    <h3>Belum Ada Website</h3>
-                    <p>Mulai dengan membuat website pertamamu</p>
-                    <a href="/format?from=panel" class="btn-primary">
-                        <i class="fas fa-plus-circle"></i>
-                        Buat Website Baru
-                    </a>
-                </div>
-            </div>
-
+            
             <!-- Products Page -->
             <div class="page" id="page-products">
               <div class="page-header">
@@ -281,26 +281,33 @@
                   Produk
                 </h2>
                 <div class="header-actions">
-                  <!-- Filter Buttons -->
-                  <div class="filter-buttons">
-                    <button class="filter-btn active" data-filter="all">
-                      <i class="fas fa-th-large"></i> Semua Produk
+                  <!-- Filter Dropdown Button -->
+                  <div class="filter-dropdown">
+                    <button class="filter-dropdown-btn" id="filterDropdownBtn">
+                      <i class="fas fa-filter"></i>
+                      <span id="selectedFilterText">Semua Produk</span>
+                      <i class="fas fa-chevron-down"></i>
                     </button>
-                    <button class="filter-btn" data-filter="tersedia">
-                      <i class="fas fa-check-circle"></i> Tersedia
-                    </button>
-                    <button class="filter-btn" data-filter="stok-terbanyak">
-                      <i class="fas fa-cubes"></i> Stok Terbanyak
-                    </button>
-                    <button class="filter-btn" data-filter="item-terbanyak">
-                      <i class="fas fa-layer-group"></i> Item Terbanyak
-                    </button>
-                    <button class="filter-btn" data-filter="layanan-aplikasi">
-                      <i class="fas fa-apps"></i> Layanan/Aplikasi
-                    </button>
-                    <button class="filter-btn" data-filter="selengkapnya">
-                      <i class="fas fa-ellipsis-h"></i> Selengkapnya
-                    </button>
+                    <div class="filter-dropdown-menu" id="filterDropdownMenu">
+                      <button class="filter-option active" data-filter="all">
+                        <i class="fas fa-th-large"></i> Semua Produk
+                      </button>
+                      <button class="filter-option" data-filter="tersedia">
+                        <i class="fas fa-check-circle"></i> Tersedia
+                      </button>
+                      <button class="filter-option" data-filter="stok-terbanyak">
+                        <i class="fas fa-cubes"></i> Stok Terbanyak
+                      </button>
+                      <button class="filter-option" data-filter="item-terbanyak">
+                        <i class="fas fa-layer-group"></i> Item Terbanyak
+                      </button>
+                      <button class="filter-option" data-filter="layanan-aplikasi">
+                        <i class="fas fa-apps"></i> Layanan/Aplikasi
+                      </button>
+                      <button class="filter-option" data-filter="selengkapnya">
+                        <i class="fas fa-ellipsis-h"></i> Selengkapnya
+                      </button>
+                    </div>
                   </div>
             
                   <!-- Search Box -->
@@ -316,9 +323,9 @@
                 </div>
               </div>
             
-              <!-- Products List Container (akan diisi oleh JS dengan style dari produk.css) -->
+              <!-- Products List Container -->
               <div class="products-list-container" id="productsListContainer">
-                <!-- Products akan dirender di sini dengan style seperti produk.css -->
+                <!-- Products akan dirender di sini -->
               </div>
             
               <!-- Empty State -->
