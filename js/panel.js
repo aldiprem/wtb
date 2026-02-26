@@ -21,6 +21,9 @@
     let allProducts = [];
     let allOrders = [];
     let allCustomers = [];
+    let filteredProducts = [];
+    let currentProductFilter = 'all';
+    let productSearchTerm = '';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -368,138 +371,147 @@
         }
     }
 
+    // ==================== UPDATE FUNGSI LOADPRODUCTSANDORDERS ====================
     async function loadProductsAndOrders() {
-        if (!userWebsites || userWebsites.length === 0) return;
-        
-        showLoading(true);
-        
-        try {
-            let totalProducts = 0;
-            let totalOrders = 0;
-            let totalRevenue = 0;
-            let allOrdersList = [];
-            let allProductsList = [];
-            let customersSet = new Map();
-            
-            const batchSize = 2;
-            for (let i = 0; i < userWebsites.length; i += batchSize) {
-                const batch = userWebsites.slice(i, i + batchSize);
-                
-                await Promise.all(batch.map(async (website) => {
-                    try {
-                        console.log(`📦 Loading products for website ${website.id}...`);
-                        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
-                            method: 'GET'
-                        }).catch(err => {
-                            console.log(`⚠️ No products for website ${website.id}:`, err.message);
-                            return { success: false, data: [] };
+      if (!userWebsites || userWebsites.length === 0) return;
+    
+      showLoading(true);
+    
+      try {
+        let totalProducts = 0;
+        let totalOrders = 0;
+        let totalRevenue = 0;
+        let allOrdersList = [];
+        let allProductsList = [];
+        let customersSet = new Map();
+    
+        const batchSize = 2;
+        for (let i = 0; i < userWebsites.length; i += batchSize) {
+          const batch = userWebsites.slice(i, i + batchSize);
+    
+          await Promise.all(batch.map(async (website) => {
+            try {
+              console.log(`📦 Loading products for website ${website.id}...`);
+              const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+                method: 'GET'
+              }).catch(err => {
+                console.log(`⚠️ No products for website ${website.id}:`, err.message);
+                return { success: false, data: [] };
+              });
+    
+              if (productsResponse.success && productsResponse.data) {
+                totalProducts += productsResponse.data.length || 0;
+    
+                productsResponse.data.forEach(layanan => {
+                  if (layanan.aplikasi) {
+                    layanan.aplikasi.forEach(aplikasi => {
+                      if (aplikasi.items) {
+                        aplikasi.items.forEach(item => {
+                          allProductsList.push({
+                            ...item,
+                            website_name: website.endpoint,
+                            website_id: website.id,
+                            layanan_nama: layanan.layanan_nama,
+                            layanan_gambar: layanan.layanan_gambar,
+                            layanan_desc: layanan.layanan_desc,
+                            aplikasi_nama: aplikasi.aplikasi_nama,
+                            aplikasi_gambar: aplikasi.aplikasi_gambar,
+                            aplikasi_desc: aplikasi.aplikasi_desc
+                          });
                         });
-                        
-                        if (productsResponse.success && productsResponse.data) {
-                            totalProducts += productsResponse.data.length || 0;
-                            
-                            productsResponse.data.forEach(layanan => {
-                                if (layanan.aplikasi) {
-                                    layanan.aplikasi.forEach(aplikasi => {
-                                        if (aplikasi.items) {
-                                            aplikasi.items.forEach(item => {
-                                                allProductsList.push({
-                                                    ...item,
-                                                    website_name: website.endpoint,
-                                                    layanan_nama: layanan.layanan_nama,
-                                                    aplikasi_nama: aplikasi.aplikasi_nama
-                                                });
-                                            });
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                        
-                        console.log(`📦 Loading orders for website ${website.id}...`);
-                        try {
-                            const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
-                                method: 'GET'
-                            });
-                            
-                            if (ordersResponse.success && ordersResponse.orders) {
-                                totalOrders += ordersResponse.orders.length;
-                                
-                                ordersResponse.orders.forEach(order => {
-                                    totalRevenue += order.total || 0;
-                                    allOrdersList.push({
-                                        ...order,
-                                        website_endpoint: website.endpoint
-                                    });
-                                    
-                                    if (order.customer_id && !customersSet.has(order.customer_id)) {
-                                        customersSet.set(order.customer_id, {
-                                            id: order.customer_id,
-                                            name: order.customer_name || 'Customer',
-                                            orders: 1,
-                                            total_spent: order.total || 0
-                                        });
-                                    } else if (order.customer_id) {
-                                        const customer = customersSet.get(order.customer_id);
-                                        customer.orders += 1;
-                                        customer.total_spent += order.total || 0;
-                                    }
-                                });
-                            }
-                        } catch (orderError) {
-                            console.log(`ℹ️ Orders endpoint not available for website ${website.id} (coming soon)`);
-                        }
-                        
-                    } catch (websiteError) {
-                        console.error(`❌ Error loading data for website:`, website.endpoint, websiteError);
+                      }
+                    });
+                  }
+                });
+              }
+    
+              console.log(`📦 Loading orders for website ${website.id}...`);
+              try {
+                const ordersResponse = await fetchWithRetry(`${API_BASE_URL}/api/orders/website/${website.id}`, {
+                  method: 'GET'
+                });
+    
+                if (ordersResponse.success && ordersResponse.orders) {
+                  totalOrders += ordersResponse.orders.length;
+    
+                  ordersResponse.orders.forEach(order => {
+                    totalRevenue += order.total || 0;
+                    allOrdersList.push({
+                      ...order,
+                      website_endpoint: website.endpoint
+                    });
+    
+                    if (order.customer_id && !customersSet.has(order.customer_id)) {
+                      customersSet.set(order.customer_id, {
+                        id: order.customer_id,
+                        name: order.customer_name || 'Customer',
+                        orders: 1,
+                        total_spent: order.total || 0
+                      });
+                    } else if (order.customer_id) {
+                      const customer = customersSet.get(order.customer_id);
+                      customer.orders += 1;
+                      customer.total_spent += order.total || 0;
                     }
-                }));
-                
-                if (i + batchSize < userWebsites.length) {
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                  });
                 }
+              } catch (orderError) {
+                console.log(`ℹ️ Orders endpoint not available for website ${website.id} (coming soon)`);
+              }
+    
+            } catch (websiteError) {
+              console.error(`❌ Error loading data for website:`, website.endpoint, websiteError);
             }
-            
-            allProducts = allProductsList;
-            allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            allCustomers = Array.from(customersSet.values());
-            
-            if (elements.statTotalWebsites) {
-                elements.statTotalWebsites.textContent = userWebsites.length;
-            }
-            if (elements.statTotalProducts) {
-                elements.statTotalProducts.textContent = totalProducts;
-            }
-            if (elements.sidebarTotalProducts) {
-                elements.sidebarTotalProducts.textContent = totalProducts;
-            }
-            if (elements.statTotalOrders) {
-                elements.statTotalOrders.textContent = totalOrders;
-            }
-            if (elements.statTotalRevenue) {
-                elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
-            }
-            if (elements.statTotalCustomers) {
-                elements.statTotalCustomers.textContent = allCustomers.length;
-            }
-            if (elements.menuOrdersBadge) {
-                elements.menuOrdersBadge.textContent = totalOrders;
-            }
-            
-            renderQuickActions();
-            renderRecentOrders();
-            renderTopProducts();
-            renderWebsitesGrid();
-            renderProductSelector();
-            renderOrdersTable();
-            renderTransactions(totalRevenue, allOrdersList.length);
-            renderCustomersGrid();
-            
-        } catch (error) {
-            console.error('❌ Error loading products and orders:', error);
-        } finally {
-            showLoading(false);
+          }));
+    
+          if (i + batchSize < userWebsites.length) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
+    
+        allProducts = allProductsList;
+        allOrders = allOrdersList.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        allCustomers = Array.from(customersSet.values());
+    
+        if (elements.statTotalWebsites) {
+          elements.statTotalWebsites.textContent = userWebsites.length;
+        }
+        if (elements.statTotalProducts) {
+          elements.statTotalProducts.textContent = totalProducts;
+        }
+        if (elements.sidebarTotalProducts) {
+          elements.sidebarTotalProducts.textContent = totalProducts;
+        }
+        if (elements.statTotalOrders) {
+          elements.statTotalOrders.textContent = totalOrders;
+        }
+        if (elements.statTotalRevenue) {
+          elements.statTotalRevenue.textContent = formatRupiah(totalRevenue);
+        }
+        if (elements.statTotalCustomers) {
+          elements.statTotalCustomers.textContent = allCustomers.length;
+        }
+        if (elements.menuOrdersBadge) {
+          elements.menuOrdersBadge.textContent = totalOrders;
+        }
+    
+        renderQuickActions();
+        renderRecentOrders();
+        renderTopProducts();
+        renderWebsitesGrid();
+        renderProductSelector();
+        renderOrdersTable();
+        renderTransactions(totalRevenue, allOrdersList.length);
+        renderCustomersGrid();
+    
+        // RENDER PRODUK LIST UNTUK HALAMAN PRODUK
+        renderProductsList();
+    
+      } catch (error) {
+        console.error('❌ Error loading products and orders:', error);
+      } finally {
+        showLoading(false);
+      }
     }
 
     function renderQuickActions() {
@@ -887,7 +899,233 @@
         }
     }
 
-    // ==================== SETTINGS NAVIGATION ====================
+    // ==================== FUNGSI RENDER PRODUK ====================
+    function renderProductsList() {
+      if (!elements.productsListContainer || !elements.productsEmptyState) return;
+    
+      if (!allProducts || allProducts.length === 0) {
+        elements.productsListContainer.innerHTML = '';
+        elements.productsEmptyState.style.display = 'block';
+        return;
+      }
+    
+      elements.productsEmptyState.style.display = 'none';
+    
+      // Filter products berdasarkan pencarian dan filter aktif
+      let filtered = filterProductsBySearch(allProducts);
+      filtered = filterProductsByType(filtered);
+    
+      // Group by layanan
+      const groupedByLayanan = {};
+      filtered.forEach(product => {
+        const key = product.layanan_nama || 'Lainnya';
+        if (!groupedByLayanan[key]) {
+          groupedByLayanan[key] = {
+            layanan_nama: key,
+            layanan_gambar: product.layanan_gambar,
+            layanan_desc: product.layanan_desc,
+            aplikasi: {}
+          };
+        }
+    
+        const appKey = product.aplikasi_nama || 'Lainnya';
+        if (!groupedByLayanan[key].aplikasi[appKey]) {
+          groupedByLayanan[key].aplikasi[appKey] = {
+            aplikasi_nama: appKey,
+            aplikasi_gambar: product.aplikasi_gambar,
+            aplikasi_desc: product.aplikasi_desc,
+            items: []
+          };
+        }
+    
+        groupedByLayanan[key].aplikasi[appKey].items.push(product);
+      });
+    
+      let html = '';
+    
+      Object.values(groupedByLayanan).forEach(layanan => {
+        const totalAplikasi = Object.keys(layanan.aplikasi).length;
+        const totalItems = Object.values(layanan.aplikasi).reduce((sum, app) => sum + app.items.length, 0);
+    
+        html += `
+                <div class="layanan-card">
+                    <div class="layanan-header">
+                        <div class="layanan-icon">
+                            ${layanan.layanan_gambar ? 
+                                `<img src="${escapeHtml(layanan.layanan_gambar)}" alt="${escapeHtml(layanan.layanan_nama)}">` : 
+                                `<i class="fas fa-layer-group"></i>`
+                            }
+                        </div>
+                        <div class="layanan-info">
+                            <div class="layanan-nama">${escapeHtml(layanan.layanan_nama)}</div>
+                            ${layanan.layanan_desc ? `<div class="layanan-desc">${escapeHtml(layanan.layanan_desc)}</div>` : ''}
+                        </div>
+                        <div class="layanan-stats">
+                            <span><i class="fas fa-mobile-alt"></i> ${totalAplikasi}</span>
+                            <span><i class="fas fa-box"></i> ${totalItems}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="aplikasi-container">
+            `;
+    
+        Object.values(layanan.aplikasi).forEach(aplikasi => {
+          const itemsToShow = aplikasi.items.slice(0, 3);
+          const remainingItems = aplikasi.items.length - 3;
+    
+          html += `
+                    <div class="aplikasi-card">
+                        <div class="aplikasi-header">
+                            <div class="aplikasi-logo">
+                                ${aplikasi.aplikasi_gambar ? 
+                                    `<img src="${escapeHtml(aplikasi.aplikasi_gambar)}" alt="${escapeHtml(aplikasi.aplikasi_nama)}">` : 
+                                    `<i class="fas fa-mobile-alt"></i>`
+                                }
+                            </div>
+                            <div class="aplikasi-info">
+                                <div class="aplikasi-nama">${escapeHtml(aplikasi.aplikasi_nama)}</div>
+                                ${aplikasi.aplikasi_desc ? `<div class="aplikasi-desc">${escapeHtml(aplikasi.aplikasi_desc)}</div>` : ''}
+                            </div>
+                            <div class="aplikasi-stats">
+                                <span><i class="fas fa-box"></i> ${aplikasi.items.length}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="items-preview">
+                `;
+    
+          itemsToShow.forEach(item => {
+            const readyClass = item.item_ready ? 'ready' : 'sold';
+            const stokCount = item.item_stok?.length || 0;
+    
+            html += `
+                        <div class="item-preview-card">
+                            <div class="item-preview-info">
+                                <span class="item-preview-name">${escapeHtml(item.item_nama || 'Item')}</span>
+                                <span class="item-preview-price">${formatRupiah(item.item_harga || 0)}</span>
+                            </div>
+                            <span class="item-preview-badge ${readyClass}">
+                                <i class="fas fa-${item.item_ready ? 'check-circle' : 'times-circle'}"></i>
+                                ${item.item_ready ? 'Ready' : 'Sold'}
+                            </span>
+                        </div>
+                    `;
+          });
+    
+          if (remainingItems > 0) {
+            html += `
+                        <div class="more-items">
+                            +${remainingItems} item lainnya...
+                        </div>
+                    `;
+          }
+    
+          html += `
+                        </div>
+                    </div>
+                `;
+        });
+    
+        html += `
+                    </div>
+                </div>
+            `;
+      });
+    
+      elements.productsListContainer.innerHTML = html;
+    }
+    
+    function filterProductsBySearch(products) {
+      if (!productSearchTerm) return products;
+    
+      const term = productSearchTerm.toLowerCase();
+      return products.filter(product => {
+        return (product.layanan_nama && product.layanan_nama.toLowerCase().includes(term)) ||
+          (product.aplikasi_nama && product.aplikasi_nama.toLowerCase().includes(term)) ||
+          (product.item_nama && product.item_nama.toLowerCase().includes(term));
+      });
+    }
+    
+    function filterProductsByType(products) {
+      switch (currentProductFilter) {
+        case 'tersedia':
+          return products.filter(p => p.item_ready === true);
+    
+        case 'stok-terbanyak':
+          return [...products].sort((a, b) => {
+            const stokA = a.item_stok?.length || 0;
+            const stokB = b.item_stok?.length || 0;
+            return stokB - stokA;
+          });
+    
+        case 'item-terbanyak':
+          // Group by layanan dan hitung total items per layanan
+          const layananItemCount = {};
+          products.forEach(p => {
+            const key = p.layanan_nama || 'Lainnya';
+            if (!layananItemCount[key]) layananItemCount[key] = 0;
+            layananItemCount[key]++;
+          });
+    
+          // Sort by count descending
+          return [...products].sort((a, b) => {
+            const countA = layananItemCount[a.layanan_nama || 'Lainnya'] || 0;
+            const countB = layananItemCount[b.layanan_nama || 'Lainnya'] || 0;
+            return countB - countA;
+          });
+    
+        case 'layanan-aplikasi':
+          // Prioritaskan item yang merupakan layanan atau aplikasi (tanpa item)
+          return [...products].sort((a, b) => {
+            const aIsCategory = !a.item_nama && (a.layanan_nama || a.aplikasi_nama);
+            const bIsCategory = !b.item_nama && (b.layanan_nama || b.aplikasi_nama);
+            return (bIsCategory ? 1 : 0) - (aIsCategory ? 1 : 0);
+          });
+    
+        case 'selengkapnya':
+          // Tampilkan semua produk dengan urutan default
+          return products;
+    
+        default:
+          return products;
+      }
+    }
+    
+    // ==================== SETUP FILTER BUTTONS ====================
+    function setupProductFilters() {
+      const filterButtons = document.querySelectorAll('.filter-btn');
+    
+      filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Update active state
+          filterButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+    
+          // Update filter
+          currentProductFilter = btn.dataset.filter;
+    
+          // Render ulang produk
+          renderProductsList();
+        });
+      });
+    }
+    
+    // ==================== SETUP SEARCH ====================
+    function setupProductSearch() {
+      const searchInput = document.getElementById('productSearch');
+      if (!searchInput) return;
+    
+      let searchTimeout;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          productSearchTerm = e.target.value;
+          renderProductsList();
+        }, 300);
+      });
+    }
+    
+    // ==================== UPDATE SETUP SETTINGS LINKS ====================
     function setupSettingsLinks() {
         if (elements.appearanceSettings && userWebsites.length > 0) {
             elements.appearanceSettings.href = `/wtb/html/tampilan.html?website=${userWebsites[0].endpoint}`;
@@ -895,6 +1133,12 @@
         
         if (elements.manageProductsBtn && userWebsites.length > 0) {
             elements.manageProductsBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
+        }
+        
+        // Tambahkan juga untuk empty state manage button
+        const emptyStateManageBtn = document.getElementById('emptyStateManageBtn');
+        if (emptyStateManageBtn && userWebsites.length > 0) {
+            emptyStateManageBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
         }
         
         if (elements.socialSettings && userWebsites.length > 0) {
@@ -1001,45 +1245,46 @@
         });
     }
 
-    // ==================== INITIALIZATION ====================
     async function init() {
-        showLoading(true);
-        
-        try {
-            const userId = await loadUserData();
-            await loadUserWebsites(userId);
-            await loadProductsAndOrders();
-            
-            setupSettingsLinks();
-            setupEventListeners();
-            
-            // Pulihkan halaman terakhir dari session storage
-            restoreLastPage();
-            
-            if (window.Telegram?.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.expand();
-                tg.ready();
-                
-                if (tg.themeParams) {
-                    const theme = tg.themeParams;
-                    if (theme.bg_color) {
-                        document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
-                    }
-                    if (theme.text_color) {
-                        document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
-                    }
-                }
+      showLoading(true);
+    
+      try {
+        const userId = await loadUserData();
+        await loadUserWebsites(userId);
+        await loadProductsAndOrders();
+    
+        setupSettingsLinks();
+        setupEventListeners();
+        setupProductFilters(); // Tambahkan ini
+        setupProductSearch(); // Tambahkan ini
+    
+        // Pulihkan halaman terakhir dari session storage
+        restoreLastPage();
+    
+        if (window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp;
+          tg.expand();
+          tg.ready();
+    
+          if (tg.themeParams) {
+            const theme = tg.themeParams;
+            if (theme.bg_color) {
+              document.documentElement.style.setProperty('--tg-bg-color', theme.bg_color);
             }
-            
-            console.log('✅ Panel initialized with session storage');
-            
-        } catch (error) {
-            console.error('❌ Init error:', error);
-            showToast('Gagal memuat dashboard', 'error');
-        } finally {
-            showLoading(false);
+            if (theme.text_color) {
+              document.documentElement.style.setProperty('--tg-text-color', theme.text_color);
+            }
+          }
         }
+    
+        console.log('✅ Panel initialized with session storage');
+    
+      } catch (error) {
+        console.error('❌ Init error:', error);
+        showToast('Gagal memuat dashboard', 'error');
+      } finally {
+        showLoading(false);
+      }
     }
 
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
