@@ -79,6 +79,8 @@
         productWebsiteSelector: document.getElementById('productWebsiteSelector'),
         manageProductsBtn: document.getElementById('manageProductsBtn'),
         productsSummary: document.getElementById('productsSummary'),
+        productsListContainer: document.getElementById('productsListContainer'),
+        productsEmptyState: document.getElementById('productsEmptyState'),
         
         // Orders
         orderStatusFilter: document.getElementById('orderStatusFilter'),
