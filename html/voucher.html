@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Voucher Website - Panel Manager</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/wtb/css/voucher.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        /* Fallback style */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f0f0f;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(64,167,227,0.3);
+            border-top-color: #40a7e3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: white; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat Voucher...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="voucher-container">
+        <!-- Header -->
+        <header class="voucher-header">
+            <div class="header-left">
+                <a href="/wtb/html/panel.html" class="back-btn" id="backToPanel">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="header-icon">
+                    <i class="fas fa-ticket-alt"></i>
+                </div>
+                <div class="header-title">
+                    <h1>Voucher Website</h1>
+                    <span class="website-badge" id="websiteBadge">/endpoint</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button class="btn-primary" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="voucher-tabs">
+            <button class="tab-btn active" data-tab="voucher">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Voucher</span>
+            </button>
+            <button class="tab-btn" data-tab="statistik">
+                <i class="fas fa-chart-bar"></i>
+                <span>Statistik</span>
+            </button>
+            <button class="tab-btn" data-tab="aktivitas">
+                <i class="fas fa-history"></i>
+                <span>Aktivitas</span>
+            </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="voucher-content">
+            <!-- TAB: VOUCHER -->
+            <div id="tab-voucher" class="tab-content active">
+                <!-- Header with Create Button -->
+                <div class="section-header">
+                    <h2><i class="fas fa-ticket-alt"></i> Daftar Voucher</h2>
+                    <button class="btn-primary" id="createVoucherBtn">
+                        <i class="fas fa-plus-circle"></i> Buat Voucher Baru
+                    </button>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="voucherSearch" placeholder="Cari kode atau nama voucher...">
+                    </div>
+                    <select id="voucherStatusFilter" class="filter-select">
+                        <option value="all">Semua Status</option>
+                        <option value="active">Aktif</option>
+                        <option value="inactive">Tidak Aktif</option>
+                        <option value="expired">Kadaluarsa</option>
+                    </select>
+                    <select id="voucherTypeFilter" class="filter-select">
+                        <option value="all">Semua Jenis</option>
+                        <option value="saldo">Saldo</option>
+                        <option value="deposit">Bonus Deposit</option>
+                        <option value="diskon">Diskon Produk</option>
+                    </select>
+                </div>
+
+                <!-- Voucher Grid -->
+                <div class="voucher-grid" id="voucherGrid">
+                    <!-- Voucher cards akan diisi oleh JavaScript -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyVoucher" style="display: none;">
+                    <i class="fas fa-ticket-alt"></i>
+                    <h3>Belum Ada Voucher</h3>
+                    <p>Buat voucher pertama Anda untuk menarik pelanggan</p>
+                    <button class="btn-primary" id="emptyCreateVoucherBtn">
+                        <i class="fas fa-plus-circle"></i> Buat Voucher
+                    </button>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="voucherPagination" style="display: none;">
+                    <button class="page-btn" id="prevPage" disabled><i class="fas fa-chevron-left"></i></button>
+                    <span class="page-info" id="pageInfo">Halaman 1 dari 1</span>
+                    <button class="page-btn" id="nextPage" disabled><i class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <!-- TAB: STATISTIK -->
+            <div id="tab-statistik" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-chart-bar"></i> Statistik Voucher</h2>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon total">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Voucher</span>
+                            <span class="stat-value" id="statTotalVoucher">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon active">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Voucher Aktif</span>
+                            <span class="stat-value" id="statActiveVoucher">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon claimed">
+                            <i class="fas fa-hand-holding-heart"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Klaim</span>
+                            <span class="stat-value" id="statTotalClaimed">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon used">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Voucher Digunakan</span>
+                            <span class="stat-value" id="statUsedVoucher">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon users">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Pengguna Terlibat</span>
+                            <span class="stat-value" id="statUniqueUsers">0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon revenue">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Reward</span>
+                            <span class="stat-value" id="statTotalReward">Rp 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="chart-section">
+                    <h3><i class="fas fa-chart-line"></i> Klaim Voucher per Hari</h3>
+                    <div class="chart-container" id="claimChart">
+                        <canvas id="claimChartCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Top Vouchers -->
+                <div class="top-vouchers-section">
+                    <h3><i class="fas fa-star"></i> Voucher Terpopuler</h3>
+                    <div class="top-vouchers-list" id="topVouchersList">
+                        <!-- Akan diisi JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: AKTIVITAS -->
+            <div id="tab-aktivitas" class="tab-content">
+                <div class="section-header">
+                    <h2><i class="fas fa-history"></i> Aktivitas Voucher</h2>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="activitySearch" placeholder="Cari aktivitas...">
+                    </div>
+                    <select id="activityTypeFilter" class="filter-select">
+                        <option value="all">Semua Aktivitas</option>
+                        <option value="create">Pembuatan</option>
+                        <option value="claim">Klaim</option>
+                        <option value="use">Penggunaan</option>
+                        <option value="expire">Kadaluarsa</option>
+                        <option value="broadcast">Broadcast</option>
+                    </select>
+                    <select id="activityDateFilter" class="filter-select">
+                        <option value="all">Semua Waktu</option>
+                        <option value="today">Hari Ini</option>
+                        <option value="week">Minggu Ini</option>
+                        <option value="month">Bulan Ini</option>
+                    </select>
+                </div>
+
+                <!-- Activity Timeline -->
+                <div class="activity-timeline" id="activityTimeline">
+                    <!-- Akan diisi JavaScript -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" id="emptyActivity" style="display: none;">
+                    <i class="fas fa-history"></i>
+                    <p>Belum ada aktivitas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Buat/Edit Voucher -->
+    <div class="modal" id="voucherModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-ticket-alt"></i> <span id="voucherModalTitle">Buat Voucher Baru</span></h2>
+                <button class="modal-close" id="closeVoucherModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="voucherForm">
+                    <input type="hidden" id="voucherId">
+                    
+                    <!-- Informasi Dasar -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-info-circle"></i> Informasi Dasar</h4>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-heading"></i> Nama Voucher</label>
+                                <input type="text" id="voucherNama" placeholder="Contoh: Promo Spesial Akhir Bulan" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-tag"></i> Kode Voucher</label>
+                                <div class="input-with-button">
+                                    <input type="text" id="voucherKode" placeholder="Contoh: DISKON50" required>
+                                    <button type="button" class="btn-icon-square" id="generateKodeBtn" title="Generate Kode Acak">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                                <small class="hint">Kode unik yang akan dimasukkan user</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-align-left"></i> Deskripsi</label>
+                            <textarea id="voucherDeskripsi" rows="2" placeholder="Deskripsi singkat tentang voucher ini"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Masa Berlaku -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-clock"></i> Masa Berlaku</h4>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-calendar-alt"></i> Tanggal Mulai</label>
+                                <input type="date" id="voucherStartDate">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-calendar-times"></i> Tanggal Berakhir</label>
+                                <input type="date" id="voucherEndDate">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-clock"></i> Waktu Mulai</label>
+                                <input type="time" id="voucherStartTime">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-hourglass-end"></i> Waktu Berakhir</label>
+                                <input type="time" id="voucherEndTime">
+                            </div>
+                        </div>
+                        
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="voucherNoExpiry">
+                                <span class="checkbox-text">Tidak ada batas waktu</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Pengaturan Klaim -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-hand-holding-heart"></i> Pengaturan Klaim</h4>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-users"></i> Target Pengguna</label>
+                                <select id="voucherTarget" class="styled-select">
+                                    <option value="all">Semua User</option>
+                                    <option value="subscriber">Langganan (Pernah Order)</option>
+                                    <option value="new_member">New Member (Belum Order)</option>
+                                    <option value="manual">Pilih Manual</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-redo-alt"></i> Limit Klaim</label>
+                                <input type="number" id="voucherLimit" min="1" value="1" placeholder="Maksimal klaim">
+                            </div>
+                        </div>
+                        
+                        <!-- Manual User Selection -->
+                        <div class="manual-user-section" id="manualUserSection" style="display: none;">
+                            <label><i class="fas fa-user-check"></i> Pilih User</label>
+                            <div class="user-selector">
+                                <div class="search-mini">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="userSearch" placeholder="Cari user...">
+                                </div>
+                                <div class="user-list" id="userList">
+                                    <!-- Akan diisi JavaScript -->
+                                </div>
+                                <div class="selected-users-info">
+                                    <span>Terpilih: <span id="selectedUserCount">0</span></span>
+                                    <button type="button" class="btn-link" id="clearSelectedUsers">Clear</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label><i class="fas fa-toggle-on"></i> Status</label>
+                            <div class="status-toggle">
+                                <label class="toggle">
+                                    <input type="checkbox" id="voucherActive" checked>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Aktif</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Jenis Reward -->
+                    <div class="form-section">
+                        <h4><i class="fas fa-gift"></i> Jenis Reward</h4>
+                        
+                        <div class="reward-type-selector">
+                            <label class="reward-option">
+                                <input type="radio" name="rewardType" value="saldo" checked>
+                                <span class="reward-label">Saldo</span>
+                            </label>
+                            <label class="reward-option">
+                                <input type="radio" name="rewardType" value="deposit">
+                                <span class="reward-label">Bonus Deposit</span>
+                            </label>
+                            <label class="reward-option">
+                                <input type="radio" name="rewardType" value="diskon">
+                                <span class="reward-label">Diskon Produk</span>
+                            </label>
+                        </div>
+                        
+                        <!-- Reward: Saldo -->
+                        <div class="reward-panel" id="rewardSaldoPanel">
+                            <div class="form-group">
+                                <label><i class="fas fa-credit-card"></i> Jumlah Saldo</label>
+                                <input type="number" id="rewardSaldo" min="1000" step="1000" placeholder="Contoh: 50000">
+                                <small class="hint">Saldo yang akan diterima user setelah klaim</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Reward: Bonus Deposit -->
+                        <div class="reward-panel" id="rewardDepositPanel" style="display: none;">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label><i class="fas fa-money-bill-wave"></i> Minimal Deposit</label>
+                                    <input type="number" id="depositMin" min="0" placeholder="0">
+                                </div>
+                                <div class="form-group">
+                                    <label><i class="fas fa-money-bill-wave"></i> Maksimal Deposit</label>
+                                    <input type="number" id="depositMax" min="0" placeholder="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-percent"></i> Persen Bonus</label>
+                                <input type="number" id="depositPercent" min="1" max="100" value="10">
+                                <small class="hint">Persen bonus dari nominal deposit</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Reward: Diskon Produk -->
+                        <div class="reward-panel" id="rewardDiskonPanel" style="display: none;">
+                            <div class="form-group">
+                                <label><i class="fas fa-tag"></i> Jenis Diskon</label>
+                                <select id="diskonJenis" class="styled-select">
+                                    <option value="percent">Persen (%)</option>
+                                    <option value="nominal">Nominal (Rp)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-percent"></i> Nilai Diskon</label>
+                                <input type="number" id="diskonNilai" min="0" placeholder="Contoh: 20 atau 50000">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-layer-group"></i> Pilih Layanan</label>
+                                <select id="diskonLayanan" class="styled-select">
+                                    <option value="">-- Pilih Layanan --</option>
+                                    <!-- Akan diisi dari database prd -->
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-mobile-alt"></i> Pilih Aplikasi</label>
+                                <select id="diskonAplikasi" class="styled-select" disabled>
+                                    <option value="">-- Pilih Layanan Dulu --</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label><i class="fas fa-box"></i> Pilih Item</label>
+                                <select id="diskonItem" class="styled-select" disabled>
+                                    <option value="">-- Pilih Aplikasi Dulu --</option>
+                                </select>
+                            </div>
+                            
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="diskonSemuaProduk">
+                                    <span class="checkbox-text">Berlaku untuk semua produk</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelVoucherBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i> Simpan Voucher
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Broadcast Voucher -->
+    <div class="modal" id="broadcastModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-bullhorn"></i> Broadcast Voucher</h2>
+                <button class="modal-close" id="closeBroadcastModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="broadcast-info" id="broadcastVoucherInfo"></div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-users"></i> Target Broadcast</label>
+                    <select id="broadcastTarget" class="styled-select">
+                        <option value="all">Semua User</option>
+                        <option value="subscriber">Langganan (Pernah Order)</option>
+                        <option value="new_member">New Member (Belum Order)</option>
+                        <option value="manual">Pilih Manual</option>
+                    </select>
+                </div>
+                
+                <!-- Manual User Selection for Broadcast -->
+                <div class="manual-user-section" id="broadcastManualSection" style="display: none;">
+                    <label><i class="fas fa-user-check"></i> Pilih User</label>
+                    <div class="user-selector">
+                        <div class="search-mini">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="broadcastUserSearch" placeholder="Cari user...">
+                        </div>
+                        <div class="user-list" id="broadcastUserList">
+                            <!-- Akan diisi JavaScript -->
+                        </div>
+                        <div class="selected-users-info">
+                            <span>Terpilih: <span id="broadcastSelectedCount">0</span></span>
+                            <button type="button" class="btn-link" id="clearBroadcastUsers">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-envelope"></i> Pesan Broadcast (Opsional)</label>
+                    <textarea id="broadcastMessage" rows="3" placeholder="Tambahkan pesan khusus untuk broadcast..."></textarea>
+                </div>
+                
+                <div class="broadcast-preview" id="broadcastPreview">
+                    <h4>Preview</h4>
+                    <div class="preview-message">
+                        <p><strong>🎉 Voucher Baru!</strong></p>
+                        <p>Dapatkan voucher <span id="previewVoucherName">[Nama Voucher]</span> dengan kode <span id="previewVoucherCode">[KODE]</span></p>
+                        <p id="previewCustomMessage"></p>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelBroadcastBtn">Batal</button>
+                    <button type="button" class="btn-primary" id="confirmBroadcastBtn">
+                        <i class="fas fa-bullhorn"></i> Kirim Broadcast
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Lihat Detail Voucher -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content modal-lg">
+            <div class="modal-header">
+                <h2><i class="fas fa-ticket-alt"></i> Detail Voucher</h2>
+                <button class="modal-close" id="closeDetailModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="voucher-detail-header" id="detailHeader"></div>
+                
+                <!-- Tabs di dalam modal -->
+                <div class="detail-tabs">
+                    <button class="detail-tab active" data-detail-tab="info">Informasi</button>
+                    <button class="detail-tab" data-detail-tab="claims">Klaim & Penggunaan</button>
+                    <button class="detail-tab" data-detail-tab="stats">Statistik</button>
+                </div>
+                
+                <div class="detail-content">
+                    <!-- Tab: Informasi -->
+                    <div class="detail-panel active" id="detailInfoPanel">
+                        <div class="info-grid" id="detailInfo"></div>
+                    </div>
+                    
+                    <!-- Tab: Klaim & Penggunaan -->
+                    <div class="detail-panel" id="detailClaimsPanel">
+                        <div class="claims-list" id="claimsList">
+                            <!-- Akan diisi JavaScript -->
+                        </div>
+                        <div class="empty-state" id="emptyClaims" style="display: none;">
+                            <i class="fas fa-hand-holding-heart"></i>
+                            <p>Belum ada klaim untuk voucher ini</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab: Statistik -->
+                    <div class="detail-panel" id="detailStatsPanel">
+                        <div class="stats-mini-grid" id="detailStats"></div>
+                        <div class="chart-mini" id="miniChart">
+                            <canvas id="miniChartCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Konfirmasi Hapus -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header danger">
+                <h2><i class="fas fa-exclamation-triangle"></i> Hapus Voucher</h2>
+                <button class="modal-close" id="closeDeleteModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-text" id="deleteMessage">Apakah Anda yakin ingin menghapus voucher ini?</p>
+                <p class="delete-warning">Tindakan ini tidak dapat dibatalkan!</p>
+                <div class="delete-info" id="deleteInfo"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="cancelDeleteBtn">Batal</button>
+                    <button type="button" class="btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/wtb/js/voucher.js"></script>
+</body>
+</html>
