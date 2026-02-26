@@ -102,13 +102,22 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
     try:
         # Validasi data
         if not template_name or not font_family:
+            print("❌ Validasi gagal: template_name atau font_family kosong")
             return None
         
         # Generate kode unik
         template_code = generate_template_code()
+        print(f"📝 Generated template code: {template_code}")
         
         conn = get_db()
         cursor = conn.cursor()
+        
+        # Log data yang akan disimpan
+        print(f"📦 Menyimpan template: {template_name}")
+        print(f"  - Font family: {font_family}")
+        print(f"  - Font file: {font_file_name}")
+        print(f"  - Font size: {font_size}")
+        print(f"  - Animation: {animation_type}")
         
         cursor.execute('''
             INSERT INTO font_templates (
@@ -140,11 +149,24 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
         ))
         
         conn.commit()
+        
+        # Verifikasi data tersimpan
+        cursor.execute("SELECT COUNT(*) as count FROM font_templates WHERE template_code = ?", (template_code,))
+        count = cursor.fetchone()['count']
+        print(f"✅ Verifikasi: {count} record tersimpan dengan code {template_code}")
+        
         print(f"✅ Template saved with code: {template_code}")
         return template_code
         
+    except sqlite3.IntegrityError as e:
+        print(f"❌ Integrity error saving template: {e}")
+        if conn:
+            conn.rollback()
+        return None
     except Exception as e:
         print(f"❌ Error saving template: {e}")
+        import traceback
+        traceback.print_exc()
         if conn:
             conn.rollback()
         return None
@@ -329,22 +351,38 @@ def get_all_templates(limit=50, offset=0):
         conn = get_db()
         cursor = conn.cursor()
         
+        # Cek apakah tabel ada
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='font_templates'")
+        if not cursor.fetchone():
+            print("⚠️ Table font_templates tidak ditemukan!")
+            return []
+        
+        # Hitung total data
+        cursor.execute("SELECT COUNT(*) as count FROM font_templates")
+        count = cursor.fetchone()['count']
+        print(f"📊 Total templates in database: {count}")
+        
         cursor.execute('''
-            SELECT id, template_code, template_name, website_id, user_id,
-                   font_family, font_file_name, font_weight, font_size, text_color,
-                   animation_type, animation_duration, animation_delay, animation_iteration,
-                   preview_text, preview_subtext, is_public, usage_count,
-                   created_at, updated_at, last_used
-            FROM font_templates 
+            SELECT * FROM font_templates 
             ORDER BY created_at DESC
             LIMIT ? OFFSET ?
         ''', (limit, offset))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        print(f"📊 Retrieved {len(rows)} templates from database")
+        
+        templates = []
+        for row in rows:
+            template = dict(row)
+            # Parse JSON if needed (tidak ada JSON di tabel ini)
+            templates.append(template)
+        
+        return templates
         
     except Exception as e:
         print(f"❌ Error getting templates: {e}")
+        import traceback
+        traceback.print_exc()  # Tambahkan stack trace untuk debugging
         return []
     finally:
         if conn:
