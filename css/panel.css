@@ -1530,3 +1530,380 @@ body {
 .page.active {
     animation: fadeIn 0.3s ease;
 }
+
+/* ===== FILTER BUTTONS ===== */
+.filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-right: 12px;
+}
+
+.filter-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--tg-text-color);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.filter-btn i {
+    font-size: 12px;
+    color: var(--tg-hint-color);
+}
+
+.filter-btn:hover {
+    background: rgba(64, 167, 227, 0.1);
+    border-color: var(--primary-color);
+}
+
+.filter-btn.active {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.filter-btn.active i {
+    color: white;
+}
+
+/* ===== PRODUCTS LIST CONTAINER ===== */
+.products-list-container {
+    margin-top: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+/* Import style dari produk.css untuk konsistensi */
+.products-list-container .layanan-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+}
+
+.products-list-container .layanan-card:hover {
+    border-color: var(--primary-color);
+}
+
+.products-list-container .layanan-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(64, 167, 227, 0.1), transparent);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.products-list-container .layanan-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(64, 167, 227, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.products-list-container .layanan-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.products-list-container .layanan-icon i {
+    font-size: 24px;
+    color: var(--primary-color);
+}
+
+.products-list-container .layanan-info {
+    flex: 1;
+}
+
+.products-list-container .layanan-nama {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.products-list-container .layanan-desc {
+    font-size: 13px;
+    color: var(--tg-hint-color);
+}
+
+.products-list-container .layanan-stats {
+    display: flex;
+    gap: 12px;
+    margin-left: auto;
+    color: var(--tg-hint-color);
+    font-size: 12px;
+}
+
+.products-list-container .layanan-stats span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.products-list-container .layanan-stats i {
+    color: var(--primary-color);
+}
+
+.products-list-container .aplikasi-container {
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.products-list-container .aplikasi-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.products-list-container .aplikasi-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.products-list-container .aplikasi-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.products-list-container .aplikasi-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.products-list-container .aplikasi-logo i {
+    font-size: 16px;
+    color: var(--tg-hint-color);
+}
+
+.products-list-container .aplikasi-info {
+    flex: 1;
+}
+
+.products-list-container .aplikasi-nama {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.products-list-container .aplikasi-desc {
+    font-size: 11px;
+    color: var(--tg-hint-color);
+}
+
+.products-list-container .aplikasi-stats {
+    display: flex;
+    gap: 8px;
+    margin-left: auto;
+    color: var(--tg-hint-color);
+    font-size: 11px;
+}
+
+.products-list-container .items-preview {
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+
+.products-list-container .item-preview-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color-light);
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.products-list-container .item-preview-info {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.products-list-container .item-preview-name {
+    font-weight: 500;
+}
+
+.products-list-container .item-preview-price {
+    color: var(--success-color);
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.products-list-container .item-preview-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-left: 8px;
+    white-space: nowrap;
+}
+
+.products-list-container .item-preview-badge.ready {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-color);
+}
+
+.products-list-container .item-preview-badge.sold {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+}
+
+.products-list-container .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+}
+
+.products-list-container .badge i {
+    font-size: 9px;
+}
+
+.products-list-container .stok-badge {
+    background: rgba(64, 167, 227, 0.1);
+    color: var(--primary-color);
+}
+
+.products-list-container .more-items {
+    padding: 8px 12px;
+    text-align: center;
+    color: var(--tg-hint-color);
+    font-size: 11px;
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.01);
+    border-radius: 8px;
+}
+
+.products-list-container .btn-view-more {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+    background: rgba(64, 167, 227, 0.05);
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+    color: var(--primary-color);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.products-list-container .btn-view-more:hover {
+    background: rgba(64, 167, 227, 0.1);
+    border-color: var(--primary-color);
+}
+
+/* Search Box Style */
+.search-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 250px;
+}
+
+.search-box i {
+    color: var(--tg-hint-color);
+    font-size: 14px;
+}
+
+.search-box input {
+    background: transparent;
+    border: none;
+    color: var(--tg-text-color);
+    font-size: 13px;
+    outline: none;
+    width: 100%;
+}
+
+.search-box input::placeholder {
+    color: var(--tg-hint-color);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .filter-buttons {
+        order: 2;
+        width: 100%;
+    }
+    
+    .search-box {
+        order: 1;
+        flex: 1;
+        min-width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filter-buttons {
+        overflow-x: auto;
+        padding-bottom: 8px;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .filter-btn {
+        white-space: nowrap;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .products-list-container .items-preview {
+        grid-template-columns: 1fr;
+    }
+}
