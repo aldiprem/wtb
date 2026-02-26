@@ -486,7 +486,36 @@ def save_font_anim(website_id):
         if not website:
             return jsonify({'success': False, 'error': 'Website not found'}), 404
         
-        success = tmp.save_font_anim(website_id, data)
+        # Deteksi apakah ini request dari fitur baru (dengan target)
+        if 'target' in data and 'template_code' in data:
+            # Redirect ke endpoint font-style
+            return save_font_style(website_id)
+        
+        # Format data yang kompatibel dengan kedua versi
+        font_data = {}
+        
+        # Ambil data dari request
+        if 'store_display_name' in data:
+            font_data['store_display_name'] = data['store_display_name']
+        if 'font_family' in data:
+            font_data['font_family'] = data['font_family']
+        if 'font_size' in data:
+            font_data['font_size'] = data['font_size']
+        if 'font_animation' in data or 'animation' in data:
+            font_data['font_animation'] = data.get('font_animation') or data.get('animation', 'none')
+        if 'animation_duration' in data:
+            font_data['animation_duration'] = data['animation_duration']
+        if 'animation_delay' in data:
+            font_data['animation_delay'] = data['animation_delay']
+        if 'animation_iteration' in data:
+            font_data['animation_iteration'] = data['animation_iteration']
+        
+        # Jika ada data settings (untuk headings/body)
+        if 'settings' in data:
+            font_data['settings'] = data['settings']
+        
+        success = tmp.save_font_style(website_id, font_data)
+        
         if success:
             return jsonify({'success': True, 'message': 'Font animation saved'})
         else:
@@ -1165,6 +1194,123 @@ def apply_template(website_id):
         
     except Exception as e:
         print(f"❌ Error applying template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== ROUTES UNTUK TAMPILAN (TAMBAHKAN ENDPOINT BARU) ====================
+
+@app.route('/api/tampilan/<int:website_id>/font-style', methods=['POST'])
+def save_font_style(website_id):
+    """
+    Menyimpan font style untuk target tertentu (store_name, headings, body, all_text)
+    """
+    try:
+        data = request.json
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Validasi data
+        target = data.get('target')
+        template_code = data.get('template_code')
+        
+        if not target or not template_code:
+            return jsonify({'success': False, 'error': 'Target dan template code diperlukan'}), 400
+        
+        # Ambil data template dari database font
+        template_data = tmp_font.get_template(template_code)
+        if not template_data:
+            return jsonify({'success': False, 'error': 'Template tidak ditemukan'}), 404
+        
+        # Siapkan data update berdasarkan target
+        update_data = {}
+        
+        if target == 'store_name' or target == 'all_text':
+            update_data = {
+                'font_family': template_data['font_family'],
+                'font_size': template_data['font_size'],
+                'font_animation': template_data['animation_type'],
+                'animation_duration': template_data['animation_duration'],
+                'animation_delay': template_data['animation_delay'],
+                'animation_iteration': template_data['animation_iteration']
+            }
+        elif target == 'headings':
+            # Untuk headings, kita simpan di settings (JSON) karena tidak ada kolom khusus
+            # Ambil settings saat ini
+            current = tmp.get_tampilan(website_id)
+            settings = current.get('settings', {}) if current else {}
+            
+            # Update settings
+            settings['heading_font_family'] = template_data['font_family']
+            settings['heading_font_size'] = template_data['font_size']
+            settings['heading_font_animation'] = template_data['animation_type']
+            
+            update_data = {'settings': settings}
+            
+        elif target == 'body':
+            # Untuk body text
+            current = tmp.get_tampilan(website_id)
+            settings = current.get('settings', {}) if current else {}
+            
+            settings['body_font_family'] = template_data['font_family']
+            settings['body_font_size'] = template_data['font_size']
+            settings['body_font_animation'] = template_data['animation_type']
+            
+            update_data = {'settings': settings}
+        else:
+            return jsonify({'success': False, 'error': 'Target tidak valid'}), 400
+        
+        # Simpan ke database
+        success = tmp.save_font_style(website_id, update_data, target)
+        
+        if success:
+            return jsonify({'success': True, 'message': f'Font style diterapkan ke {target}'})
+        else:
+            return jsonify({'success': False, 'error': 'Gagal menyimpan font style'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error saving font style: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/tampilan/<int:website_id>/font-preview', methods=['POST'])
+def get_font_preview(website_id):
+    """
+    Mendapatkan data template untuk preview (tanpa menyimpan)
+    """
+    try:
+        data = request.json
+        template_code = data.get('template_code')
+        
+        if not template_code:
+            return jsonify({'success': False, 'error': 'Template code diperlukan'}), 400
+        
+        template_data = tmp_font.get_template(template_code)
+        if not template_data:
+            return jsonify({'success': False, 'error': 'Template tidak ditemukan'}), 404
+        
+        # Kembalikan data template (tanpa file font jika terlalu besar)
+        preview_data = {
+            'font_family': template_data['font_family'],
+            'font_size': template_data['font_size'],
+            'font_weight': template_data['font_weight'],
+            'font_style': template_data['font_style'],
+            'text_color': template_data['text_color'],
+            'animation_type': template_data['animation_type'],
+            'animation_duration': template_data['animation_duration'],
+            'animation_delay': template_data['animation_delay'],
+            'animation_iteration': template_data['animation_iteration'],
+            'preview_text': template_data['preview_text']
+        }
+        
+        # Sertakan font file data jika ada (untuk preview)
+        if template_data.get('font_file_data'):
+            preview_data['font_file_data'] = template_data['font_file_data']
+        
+        return jsonify({'success': True, 'template': preview_data})
+        
+    except Exception as e:
+        print(f"❌ Error getting font preview: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== MAIN ====================
