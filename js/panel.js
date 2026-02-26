@@ -1095,17 +1095,18 @@
         
     // ==================== SETUP FILTER DROPDOWN ====================
     function setupProductFilters() {
+      const filterDropdown = document.querySelector('.filter-dropdown');
       const filterBtn = document.getElementById('filterDropdownBtn');
       const filterMenu = document.getElementById('filterDropdownMenu');
       const filterOptions = document.querySelectorAll('.filter-option');
       const selectedFilterText = document.getElementById('selectedFilterText');
     
-      if (!filterBtn || !filterMenu) return;
+      if (!filterBtn || !filterMenu || !filterDropdown) return;
     
-      // Toggle dropdown
+      // Toggle dropdown saat tombol diklik
       filterBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        filterMenu.parentElement.classList.toggle('active');
+        filterDropdown.classList.toggle('active');
       });
     
       // Pilih filter option
@@ -1117,7 +1118,9 @@
     
           // Update filter text
           const filterText = option.textContent.trim();
-          selectedFilterText.textContent = filterText;
+          if (selectedFilterText) {
+            selectedFilterText.textContent = filterText;
+          }
     
           // Update filter value
           currentProductFilter = option.dataset.filter;
@@ -1126,21 +1129,21 @@
           renderProductsList();
     
           // Tutup dropdown
-          filterMenu.parentElement.classList.remove('active');
+          filterDropdown.classList.remove('active');
         });
       });
     
       // Tutup dropdown saat klik di luar
       document.addEventListener('click', (e) => {
         if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
-          filterMenu.parentElement.classList.remove('active');
+          filterDropdown.classList.remove('active');
         }
       });
     
       // Tutup dropdown dengan tombol Escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-          filterMenu.parentElement.classList.remove('active');
+          filterDropdown.classList.remove('active');
         }
       });
     }
