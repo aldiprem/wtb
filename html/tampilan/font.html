@@ -8,7 +8,7 @@
     <title>Font Studio - Pengaturan Font & Animasi</title>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="/wtb/css/tampilan/font.css">
+    <link rel="stylesheet" href="/css/tampilan/font.css">
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -16,6 +16,36 @@
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        /* Fallback style jika CSS gagal dimuat */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f0f0f;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(64,167,227,0.3);
+            border-top-color: #40a7e3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { color: white; font-size: 16px; }
+        .hidden { display: none !important; }
+        .modal.active { display: flex !important; }
+    </style>
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -48,15 +78,15 @@
 
         <!-- Main Layout - 2 Kolom -->
         <div class="studio-layout">
-            <!-- Left Panel - Controls (Lebih kecil) -->
+            <!-- Left Panel - Controls -->
             <div class="studio-sidebar">
-                <!-- Section yang semuanya di-close saat awal -->
+                <!-- Font Manager Section -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="fontSection" data-expanded="false">
+                    <div class="section-header" data-expanded="true">
                         <h2><i class="fas fa-font"></i> Font Manager</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
-                    <div class="section-content hidden" id="fontSection">
+                    <div class="section-content" id="fontSection">
                         <!-- Upload Font File -->
                         <div class="control-group">
                             <label class="control-label">
@@ -141,9 +171,9 @@
                     </div>
                 </div>
                 
-                <!-- Animation Manager -->
+                <!-- Animation Studio -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="animationSection" data-expanded="false">
+                    <div class="section-header" data-expanded="false">
                         <h2><i class="fas fa-film"></i> Animation Studio</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
@@ -208,12 +238,12 @@
                 
                 <!-- Template Manager -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="templateSection" data-expanded="false">
+                    <div class="section-header" data-expanded="false">
                         <h2><i class="fas fa-save"></i> Template Manager</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
                     <div class="section-content hidden" id="templateSection">
-                        <!-- Save Template - Tanpa input string manual -->
+                        <!-- Save Template -->
                         <div class="control-group">
                             <label class="control-label">
                                 <i class="fas fa-tag"></i>
@@ -239,7 +269,7 @@
                 
                 <!-- Preview Text Editor -->
                 <div class="control-section">
-                    <div class="section-header" data-toggle="textSection" data-expanded="false">
+                    <div class="section-header" data-expanded="false">
                         <h2><i class="fas fa-edit"></i> Preview Text</h2>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </div>
@@ -258,7 +288,7 @@
                 </div>
             </div>
             
-            <!-- Right Panel - Preview Area (Lebih besar) -->
+            <!-- Right Panel - Preview Area -->
             <div class="preview-area">
                 <div class="preview-header">
                     <h3><i class="fas fa-eye"></i> Live Preview</h3>
@@ -269,7 +299,7 @@
                     </div>
                 </div>
                 
-                <!-- Preview Canvas - Tanpa subtext -->
+                <!-- Preview Canvas -->
                 <div class="preview-canvas" id="previewCanvas">
                     <div class="preview-text-display" id="previewTextDisplay">
                         Toko Online
@@ -330,6 +360,6 @@
     <div class="toast-container" id="toastContainer"></div>
     
     <!-- JavaScript -->
-    <script src="/wtb/tampilan/font.js"></script>
+    <script src="/js/tampilan/font.js"></script>
 </body>
 </html>
