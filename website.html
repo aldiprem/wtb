@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title id="dynamicTitle">Crystal Store 3D</title>
-    <meta name="description" id="dynamicDescription" content="Toko online dengan tampilan crystal 3D">
-    <meta name="keywords" id="dynamicKeywords" content="toko online, crystal, 3d, store">
+    <title>Website Store</title>
     
     <!-- CSS -->
     <link rel="stylesheet" href="/wtb/css/website.css">
@@ -18,552 +16,343 @@
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- Config -->
-    <script src="/wtb/js/config.js"></script>
-    
-    <!-- Font Animations -->
-    <script src="/wtb/js/font-animations.js"></script>
 </head>
 <body>
-    <!-- Crystal Background -->
-    <div class="crystal-background">
-        <div class="crystal-layer layer-1"></div>
-        <div class="crystal-layer layer-2"></div>
-        <div class="crystal-layer layer-3"></div>
-    </div>
-
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
-        <div class="crystal-loader">
-            <div class="crystal-face front"></div>
-            <div class="crystal-face back"></div>
-            <div class="crystal-face right"></div>
-            <div class="crystal-face left"></div>
-            <div class="crystal-face top"></div>
-            <div class="crystal-face bottom"></div>
-        </div>
-        <div class="loading-text">Memuat Data dari Database...</div>
-        <div class="loading-progress">
-            <div class="loading-bar"></div>
-        </div>
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat toko...</div>
     </div>
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
 
     <!-- Main Container -->
-    <div class="main-container">
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-logo">
-                    <div class="logo-3d">
-                        <i class="fas fa-crown"></i>
-                    </div>
-                    <span id="sidebarStoreName">Toko Online</span>
+    <div class="website-container">
+        <!-- Header dengan Logo & Nama Store -->
+        <header class="store-header">
+            <div class="store-info-card" style="border-color: var(--primary-color);" id="storeInfoCard">
+                <div class="store-logo" id="storeLogo">
+                    <img src="" alt="Logo" id="logoImage" style="display: none;">
+                    <i class="fas fa-store" id="logoIcon"></i>
                 </div>
-                <button class="sidebar-close" id="sidebarClose">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div class="sidebar-profile">
-                <div class="profile-avatar" id="sidebarAvatar">
-                    <img src="https://ui-avatars.com/api/?name=User&size=80&background=40a7e3&color=fff" alt="Profile">
-                </div>
-                <div class="profile-info">
-                    <div class="profile-name" id="sidebarName">Guest</div>
-                    <div class="profile-username" id="sidebarUsername">@guest</div>
-                </div>
-                <div class="profile-verified" id="profileVerified" style="display: none;">
-                    <i class="fas fa-check-circle"></i>
+                <div class="store-name-container" id="storeNameContainer">
+                    <h1 class="store-name" id="storeName">Toko Online</h1>
                 </div>
             </div>
-            
-            <nav class="sidebar-menu">
-                <a href="#" class="menu-item active" data-section="home">
-                    <i class="fas fa-home"></i>
-                    <span>Beranda</span>
-                    <div class="menu-glow"></div>
-                </a>
-                <a href="#" class="menu-item" data-section="categories">
-                    <i class="fas fa-layer-group"></i>
-                    <span>Layanan</span>
-                    <div class="menu-glow"></div>
-                </a>
-                <a href="#" class="menu-item" data-section="apps">
-                    <i class="fas fa-mobile-alt"></i>
-                    <span>Aplikasi</span>
-                    <div class="menu-glow"></div>
-                </a>
-                <a href="#" class="menu-item" data-section="products">
-                    <i class="fas fa-box"></i>
-                    <span>Produk</span>
-                    <div class="menu-glow"></div>
-                </a>
-                <a href="#" class="menu-item" data-section="promos">
-                    <i class="fas fa-bullhorn"></i>
-                    <span>Promo</span>
-                    <div class="menu-glow"></div>
-                </a>
-                <a href="#" class="menu-item" data-section="orders">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span>Pesanan Saya</span>
-                    <span class="menu-badge" id="orderBadge">0</span>
-                    <div class="menu-glow"></div>
-                </a>
-            </nav>
-            
-            <div class="sidebar-footer">
-                <a href="#" class="menu-item" data-section="help">
-                    <i class="fas fa-question-circle"></i>
-                    <span>Bantuan</span>
-                    <div class="menu-glow"></div>
-                </a>
-                <a href="#" class="menu-item" id="loginBtn">
-                    <i class="fas fa-sign-in-alt"></i>
-                    <span>Login</span>
-                    <div class="menu-glow"></div>
-                </a>
-                <div class="sidebar-copyright">
-                    © <span id="sidebarYear">2024</span> Crystal Store 3D
-                </div>
+        </header>
+
+        <!-- Banner Slider -->
+        <div class="banner-slider-container" id="bannerSlider">
+            <div class="banner-slider" id="bannerSliderTrack">
+                <!-- Banner akan diisi oleh JavaScript -->
             </div>
+            <div class="banner-dots" id="bannerDots"></div>
+            <button class="banner-nav banner-prev" id="bannerPrev"><i class="fas fa-chevron-left"></i></button>
+            <button class="banner-nav banner-next" id="bannerNext"><i class="fas fa-chevron-right"></i></button>
         </div>
 
-        <!-- Main Content -->
-        <div class="main-content">
-            <!-- Header -->
-            <header class="main-header">
-                <div class="header-logo">
-                    <button class="menu-toggle" id="menuToggle">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <div class="logo-3d-small" id="headerLogo">
-                        <i class="fas fa-crown"></i>
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-page="utama">
+                <i class="fas fa-home"></i>
+                <span>Utama</span>
+            </button>
+            <button class="nav-tab" data-page="aktivitas">
+                <i class="fas fa-history"></i>
+                <span>Aktivitas</span>
+            </button>
+            <button class="nav-tab" data-page="promo">
+                <i class="fas fa-tags"></i>
+                <span>Promo</span>
+            </button>
+            <button class="nav-tab" data-page="bank">
+                <i class="fas fa-university"></i>
+                <span>Bank</span>
+            </button>
+            <button class="nav-tab" data-page="profil">
+                <i class="fas fa-user"></i>
+                <span>Profil</span>
+            </button>
+        </div>
+
+        <!-- Pages Container -->
+        <div class="pages-container">
+            <!-- Page: Utama -->
+            <div class="page active" id="page-utama">
+                <!-- Layanan Section -->
+                <div class="layanan-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-layer-group"></i>
+                            Produk Layanan
+                        </h2>
+                        <a href="#" class="view-all-link" id="viewAllLayanan">
+                            Lihat semua <i class="fas fa-arrow-right"></i>
+                        </a>
                     </div>
-                    <span id="storeName">Toko Online</span>
+                    
+                    <div class="layanan-grid" id="layananGrid">
+                        <!-- Layanan akan diisi oleh JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Produk Tersedia Section -->
+                <div class="produk-section">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <i class="fas fa-box"></i>
+                            Produk Tersedia
+                        </h2>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="filter-bar">
+                        <div class="filter-dropdown">
+                            <button class="filter-btn" id="filterLayananBtn">
+                                <i class="fas fa-layer-group"></i>
+                                <span id="selectedLayanan">Layanan</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="filter-menu" id="filterLayananMenu">
+                                <!-- Akan diisi oleh JavaScript -->
+                            </div>
+                        </div>
+
+                        <div class="filter-dropdown">
+                            <button class="filter-btn" id="filterAplikasiBtn">
+                                <i class="fas fa-mobile-alt"></i>
+                                <span id="selectedAplikasi">Aplikasi</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="filter-menu" id="filterAplikasiMenu">
+                                <!-- Akan diisi oleh JavaScript -->
+                            </div>
+                        </div>
+
+                        <div class="filter-dropdown">
+                            <button class="filter-btn" id="filterItemBtn">
+                                <i class="fas fa-box"></i>
+                                <span id="selectedItem">Item</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="filter-menu" id="filterItemMenu">
+                                <!-- Akan diisi oleh JavaScript -->
+                            </div>
+                        </div>
+
+                        <div class="filter-dropdown sort-dropdown">
+                            <button class="filter-btn" id="sortBtn">
+                                <i class="fas fa-sort-amount-down"></i>
+                                <span id="selectedSort">Sort By</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="filter-menu" id="sortMenu">
+                                <button class="filter-option" data-sort="terlaris">
+                                    <i class="fas fa-fire"></i> Terlaris
+                                </button>
+                                <button class="filter-option" data-sort="terbaru">
+                                    <i class="fas fa-clock"></i> Terbaru
+                                </button>
+                                <button class="filter-option" data-sort="harga-rendah">
+                                    <i class="fas fa-arrow-up"></i> Termurah
+                                </button>
+                                <button class="filter-option" data-sort="harga-tinggi">
+                                    <i class="fas fa-arrow-down"></i> Termahal
+                                </button>
+                                <button class="filter-option" data-sort="stok-banyak">
+                                    <i class="fas fa-cubes"></i> Stok Terbanyak
+                                </button>
+                                <button class="filter-option" data-sort="stok-sedikit">
+                                    <i class="fas fa-cubes"></i> Stok Tersedikit
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div class="products-grid" id="productsGrid">
+                        <!-- Produk akan diisi oleh JavaScript -->
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="pagination" id="pagination">
+                        <!-- Akan diisi oleh JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Aktivitas -->
+            <div class="page" id="page-aktivitas">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-history"></i>
+                        Aktivitas
+                    </h2>
                 </div>
                 
-                <div class="header-actions">
-                    <button class="header-btn" id="searchToggle">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <button class="header-btn" id="cartBtn">
-                        <i class="fas fa-shopping-bag"></i>
-                        <span class="cart-badge" id="cartBadge">0</span>
-                    </button>
-                </div>
-            </header>
-
-            <!-- Search Bar -->
-            <div class="search-bar" id="searchBar">
-                <div class="search-container">
-                    <i class="fas fa-search search-icon-3d"></i>
-                    <input type="text" id="searchInput" placeholder="Cari produk, layanan, aplikasi...">
-                    <button class="search-close" id="searchClose">
-                        <i class="fas fa-times"></i>
-                    </button>
-                    <div class="search-glow"></div>
+                <div class="aktivitas-list" id="aktivitasList">
+                    <!-- Aktivitas akan diisi oleh JavaScript -->
                 </div>
             </div>
 
-            <!-- Content Sections -->
-            <div class="content-sections">
-                <!-- Banner Slider Section -->
-                <section class="banner-slider" id="bannerSlider">
-                    <div class="slider-container" id="sliderContainer">
-                        <!-- Banners akan dirender di sini -->
+            <!-- Page: Promo -->
+            <div class="page" id="page-promo">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-tags"></i>
+                        Promo
+                    </h2>
+                    <div class="promo-actions">
+                        <button class="btn-outline" id="lihatVoucherBtn">
+                            <i class="fas fa-ticket-alt"></i> Voucher Saya
+                        </button>
                     </div>
-                    <button class="slider-nav prev" id="sliderPrev">
-                        <i class="fas fa-chevron-left"></i>
+                </div>
+
+                <!-- Promo Banners -->
+                <div class="promo-banners" id="promoBanners">
+                    <!-- Promo akan diisi oleh JavaScript -->
+                </div>
+
+                <!-- Voucher Section -->
+                <div class="voucher-section" id="voucherSection" style="display: none;">
+                    <h3 class="section-subtitle">
+                        <i class="fas fa-ticket-alt"></i>
+                        Voucher Saya
+                    </h3>
+                    <div class="voucher-grid" id="voucherGrid">
+                        <!-- Voucher akan diisi oleh JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page: Bank -->
+            <div class="page" id="page-bank">
+                <div class="page-header">
+                    <h2 class="page-title">
+                        <i class="fas fa-university"></i>
+                        Bank
+                    </h2>
+                    <div class="bank-balance" id="bankBalance">
+                        <span class="balance-label">Saldo</span>
+                        <span class="balance-value" id="userBalance">Rp 0</span>
+                    </div>
+                </div>
+
+                <!-- Bank Actions -->
+                <div class="bank-actions">
+                    <button class="bank-action-btn" id="depositBtn">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>Deposit</span>
                     </button>
-                    <button class="slider-nav next" id="sliderNext">
-                        <i class="fas fa-chevron-right"></i>
+                    <button class="bank-action-btn" id="withdrawBtn">
+                        <i class="fas fa-arrow-up"></i>
+                        <span>Withdraw</span>
                     </button>
-                    <div class="slider-pagination" id="sliderPagination"></div>
-                    <div class="banner-glow" id="bannerGlow"></div>
-                </section>
-
-                <!-- Home Section -->
-                <section id="home-section" class="content-section active">
-                    <!-- Layanan Section -->
-                    <div class="section-header crystal-section">
-                        <div>
-                            <h2 class="text-gradient-3d">Layanan Kami</h2>
-                            <p class="section-subtitle">Pilih layanan yang Anda butuhkan</p>
-                        </div>
-                        <a href="#" class="view-all" data-section="categories">
-                            Lihat Semua <i class="fas fa-arrow-right"></i>
-                            <div class="link-glow"></div>
-                        </a>
-                    </div>
-                    
-                    <div class="categories-grid" id="categoriesGrid">
-                        <!-- Layanan akan dirender di sini -->
-                    </div>
-
-                    <!-- Aplikasi Section -->
-                    <div class="section-header crystal-section" style="margin-top: 40px;">
-                        <div>
-                            <h2 class="text-gradient-3d">Aplikasi Populer</h2>
-                            <p class="section-subtitle">Aplikasi terlaris bulan ini</p>
-                        </div>
-                        <a href="#" class="view-all" data-section="apps">
-                            Lihat Semua <i class="fas fa-arrow-right"></i>
-                            <div class="link-glow"></div>
-                        </a>
-                    </div>
-                    
-                    <div class="categories-grid" id="aplikasiGrid">
-                        <!-- Aplikasi akan dirender di sini -->
-                    </div>
-
-                    <!-- Produk Terlaris -->
-                    <div class="section-header crystal-section" style="margin-top: 40px;">
-                        <div>
-                            <h2 class="text-gradient-3d">Produk Terlaris</h2>
-                            <p class="section-subtitle">Paling laris minggu ini</p>
-                        </div>
-                        <a href="#" class="view-all" data-section="products">
-                            Lihat Semua <i class="fas fa-arrow-right"></i>
-                            <div class="link-glow"></div>
-                        </a>
-                    </div>
-                    
-                    <div class="popular-products-grid" id="produkGrid">
-                        <!-- Produk akan dirender di sini -->
-                    </div>
-                </section>
-
-                <!-- Categories Section -->
-                <section id="categories-section" class="content-section">
-                    <div class="section-header crystal-section">
-                        <div>
-                            <h2 class="text-gradient-3d">Semua Layanan</h2>
-                            <p class="section-subtitle">Jelajahi semua layanan yang tersedia</p>
-                        </div>
-                    </div>
-                    
-                    <div class="categories-grid full-grid" id="allCategoriesGrid"></div>
-                </section>
-
-                <!-- Apps Section -->
-                <section id="apps-section" class="content-section">
-                    <div class="section-header crystal-section">
-                        <div>
-                            <h2 class="text-gradient-3d">Semua Aplikasi</h2>
-                            <p class="section-subtitle">Jelajahi semua aplikasi</p>
-                        </div>
-                    </div>
-                    
-                    <div class="categories-grid full-grid" id="allAppsGrid"></div>
-                </section>
-
-                <!-- Products Section -->
-                <section id="products-section" class="content-section">
-                    <div class="section-header crystal-section">
-                        <div>
-                            <h2 class="text-gradient-3d">Semua Produk</h2>
-                            <p class="section-subtitle">Jelajahi semua produk</p>
-                        </div>
-                    </div>
-                    
-                    <div class="popular-products-grid full-grid" id="allProductsGrid"></div>
-                </section>
-
-                <!-- Promos Section -->
-                <section id="promos-section" class="content-section">
-                    <div class="section-header crystal-section">
-                        <div>
-                            <h2 class="text-gradient-3d">Semua Promo</h2>
-                            <p class="section-subtitle">Jangan lewatkan penawaran spesial</p>
-                        </div>
-                    </div>
-                    
-                    <div class="promo-slider-section" id="promoSliderSection">
-                        <div class="promo-slider-container" id="promoSliderContainer">
-                            <div class="promo-slider-track" id="promoSliderTrack"></div>
-                            <button class="promo-slider-nav prev" id="promoSliderPrev">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <button class="promo-slider-nav next" id="promoSliderNext">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                            <div class="slider-hologram"></div>
-                        </div>
-                        <div class="promo-slider-dots" id="promoSliderDots"></div>
-                    </div>
-                    
-                    <div class="promo-grid" id="allPromosGrid" style="margin-top: 30px;"></div>
-                </section>
-
-                <!-- Orders Section -->
-                <section id="orders-section" class="content-section">
-                    <div class="section-header crystal-section">
-                        <div>
-                            <h2 class="text-gradient-3d">Pesanan Saya</h2>
-                            <p class="section-subtitle">Riwayat pesanan Anda</p>
-                        </div>
-                    </div>
-                    
-                    <div class="orders-list" id="ordersList">
-                        <div class="empty-message">
-                            <i class="fas fa-shopping-bag"></i>
-                            <p>Belum ada pesanan</p>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Help Section -->
-                <section id="help-section" class="content-section">
-                    <div class="section-header crystal-section">
-                        <div>
-                            <h2 class="text-gradient-3d">Bantuan</h2>
-                            <p class="section-subtitle">Pusat bantuan dan informasi</p>
-                        </div>
-                    </div>
-                    
-                    <div class="help-grid">
-                        <div class="help-card glow-effect">
-                            <i class="fas fa-question-circle"></i>
-                            <h3>Cara Berbelanja</h3>
-                            <p>Panduan lengkap cara berbelanja di toko kami</p>
-                            <a href="#" class="help-link">Baca Selengkapnya</a>
-                        </div>
-                        <div class="help-card glow-effect">
-                            <i class="fas fa-credit-card"></i>
-                            <h3>Metode Pembayaran</h3>
-                            <p>Informasi tentang metode pembayaran yang tersedia</p>
-                            <a href="#" class="help-link">Baca Selengkapnya</a>
-                        </div>
-                        <div class="help-card glow-effect">
-                            <i class="fas fa-truck"></i>
-                            <h3>Pengiriman</h3>
-                            <p>Informasi tentang proses pengiriman produk</p>
-                            <a href="#" class="help-link">Baca Selengkapnya</a>
-                        </div>
-                        <div class="help-card glow-effect">
-                            <i class="fas fa-headset"></i>
-                            <h3>Hubungi Kami</h3>
-                            <p>Butuh bantuan? Hubungi customer service kami</p>
-                            <a href="#" class="help-link">Hubungi Sekarang</a>
-                        </div>
-                    </div>
-                    
-                    <div class="faq-section" style="margin-top: 40px;">
-                        <h3 class="text-gradient-3d" style="margin-bottom: 20px;">Pertanyaan Umum</h3>
-                        <div class="faq-item glow-effect">
-                            <div class="faq-question">
-                                <span>Bagaimana cara membeli produk?</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
-                            <div class="faq-answer">
-                                Anda dapat memilih produk, klik "Tambah ke Keranjang", lalu lanjutkan ke checkout.
-                            </div>
-                        </div>
-                        <div class="faq-item glow-effect">
-                            <div class="faq-question">
-                                <span>Metode pembayaran apa saja yang tersedia?</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </div>
-                            <div class="faq-answer">
-                                Kami menerima transfer bank, e-wallet, dan pembayaran via QRIS.
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <!-- Payment Methods Section -->
-            <div class="payment-methods crystal-panel">
-                <div class="payment-glow"></div>
-                <div class="payment-header">
-                    <h3><i class="fas fa-credit-card crystal-icon"></i> Metode Pembayaran</h3>
-                    <span class="crystal-badge">Aman & Terpercaya</span>
+                    <button class="bank-action-btn" id="transferBtn">
+                        <i class="fas fa-exchange-alt"></i>
+                        <span>Transfer</span>
+                    </button>
                 </div>
-                <div class="payment-icons" id="paymentIcons">
-                    <!-- Akan diisi dari database -->
+
+                <!-- Rekening Tersedia -->
+                <div class="rekening-section">
+                    <h3 class="section-subtitle">
+                        <i class="fas fa-credit-card"></i>
+                        Rekening Tersedia
+                    </h3>
+                    <div class="rekening-grid" id="rekeningGrid">
+                        <!-- Rekening akan diisi oleh JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Payment Gateway -->
+                <div class="gateway-section" id="gatewaySection" style="display: none;">
+                    <h3 class="section-subtitle">
+                        <i class="fas fa-qrcode"></i>
+                        Payment Gateway
+                    </h3>
+                    <div class="gateway-card" id="gatewayCard">
+                        <!-- Gateway akan diisi oleh JavaScript -->
+                    </div>
                 </div>
             </div>
 
-            <!-- Footer -->
-            <footer class="main-footer">
-                <div class="footer-wave-3d">
-                    <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
-                        <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" class="wave-fill-3d"></path>
-                    </svg>
-                </div>
-                <div class="footer-content">
-                    <div class="footer-section">
-                        <div class="footer-logo">
-                            <div class="logo-3d-footer">
-                                <i class="fas fa-crown"></i>
-                            </div>
-                            <span id="footerStoreName">Toko Online</span>
-                        </div>
-                        <p id="footerDescription">Toko online terpercaya dengan produk digital berkualitas</p>
-                        <div class="footer-social">
-                            <a href="#" class="social-icon">
-                                <i class="fab fa-telegram"></i>
-                                <div class="social-glow"></div>
-                            </a>
-                            <a href="#" class="social-icon">
-                                <i class="fab fa-instagram"></i>
-                                <div class="social-glow"></div>
-                            </a>
-                            <a href="#" class="social-icon">
-                                <i class="fab fa-whatsapp"></i>
-                                <div class="social-glow"></div>
-                            </a>
-                        </div>
+            <!-- Page: Profil -->
+            <div class="page" id="page-profil">
+                <div class="profile-header">
+                    <div class="profile-avatar" id="profileAvatar">
+                        <img src="" alt="Profile" id="profileImage">
                     </div>
-                    
-                    <div class="footer-section">
-                        <h4><i class="fas fa-link crystal-icon"></i> Tautan Cepat</h4>
-                        <ul class="footer-links">
-                            <li><a href="#" data-section="home"><i class="fas fa-chevron-right"></i> Beranda</a></li>
-                            <li><a href="#" data-section="products"><i class="fas fa-chevron-right"></i> Produk</a></li>
-                            <li><a href="#" data-section="promos"><i class="fas fa-chevron-right"></i> Promo</a></li>
-                            <li><a href="#" data-section="help"><i class="fas fa-chevron-right"></i> Bantuan</a></li>
-                        </ul>
-                    </div>
-                    
-                    <div class="footer-section">
-                        <h4><i class="fas fa-headset crystal-icon"></i> Kontak</h4>
-                        <ul class="footer-contact">
-                            <li>
-                                <i class="fab fa-telegram"></i>
-                                <span id="contactTelegram">-</span>
-                                <div class="contact-glow"></div>
-                            </li>
-                            <li>
-                                <i class="fab fa-whatsapp"></i>
-                                <span id="contactWhatsApp">-</span>
-                                <div class="contact-glow"></div>
-                            </li>
-                            <li>
-                                <i class="fas fa-envelope"></i>
-                                <span id="contactEmail">-</span>
-                                <div class="contact-glow"></div>
-                            </li>
-                        </ul>
+                    <div class="profile-info">
+                        <h2 id="profileName">Loading...</h2>
+                        <p id="profileUsername">@loading</p>
                     </div>
                 </div>
-                <div class="footer-bottom">
-                    <div class="footer-bottom-content">
-                        <span>© <span id="footerYear">2024</span> <span id="footerStoreName2">Toko Online</span>. All rights reserved.</span>
-                        <span class="footer-version">Versi 3D Crystal</span>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    </div>
 
-    <!-- Cart Sidebar -->
-    <div class="cart-sidebar" id="cartSidebar">
-        <div class="sidebar-hologram"></div>
-        <div class="cart-header">
-            <h3><i class="fas fa-shopping-bag crystal-icon"></i> Keranjang</h3>
-            <button class="cart-close" id="cartClose">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        
-        <div class="cart-items" id="cartItems"></div>
-        
-        <div class="cart-empty" id="cartEmpty">
-            <div class="empty-animation-3d">
-                <i class="fas fa-shopping-bag"></i>
-                <div class="empty-cubes">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+                <div class="profile-stats">
+                    <div class="stat-card">
+                        <span class="stat-value" id="profileOrders">0</span>
+                        <span class="stat-label">Pesanan</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="profileSpent">Rp 0</span>
+                        <span class="stat-label">Total Belanja</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="profileVouchers">0</span>
+                        <span class="stat-label">Voucher</span>
+                    </div>
                 </div>
-            </div>
-            <p>Keranjang belanja masih kosong</p>
-            <button class="crystal-3d-btn" id="shopNowBtn">
-                <i class="fas fa-store"></i>
-                <span>Belanja Sekarang</span>
-                <div class="btn-glow"></div>
-            </button>
-        </div>
-        
-        <div class="cart-footer" id="cartFooter">
-            <div class="cart-total">
-                <span>Total:</span>
-                <span class="total-price" id="cartTotal">Rp 0</span>
-            </div>
-            <button class="crystal-3d-btn" id="checkoutBtn">
-                <i class="fas fa-credit-card"></i>
-                <span>Checkout</span>
-                <div class="btn-glow"></div>
-            </button>
-        </div>
-    </div>
 
-    <!-- Product Modal -->
-    <div class="modal" id="productModal">
-        <div class="modal-overlay" id="closeProductModal"></div>
-        <div class="modal-content">
-            <div class="modal-hologram"></div>
-            <div class="modal-header">
-                <h2><i class="fas fa-box crystal-icon"></i> Detail Produk</h2>
-                <button class="modal-close-btn" id="closeProductModalBtn">
-                    <i class="fas fa-times"></i>
+                <div class="profile-details">
+                    <div class="detail-item">
+                        <i class="fas fa-id-card"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">User ID</span>
+                            <span class="detail-value" id="profileUserId">-</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-calendar"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Bergabung</span>
+                            <span class="detail-value" id="profileJoined">-</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-envelope"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Email</span>
+                            <span class="detail-value" id="profileEmail">-</span>
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-phone"></i>
+                        <div class="detail-content">
+                            <span class="detail-label">Telepon</span>
+                            <span class="detail-value" id="profilePhone">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Force Subscribe Section -->
+                <div class="force-subscribe-section" id="forceSubscribeSection" style="display: none;">
+                    <h3 class="section-subtitle">
+                        <i class="fas fa-bell"></i>
+                        Subscribe Channel
+                    </h3>
+                    <div class="force-list" id="forceList">
+                        <!-- Force subscribe akan diisi oleh JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Logout Button -->
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Keluar
                 </button>
-            </div>
-            <div class="modal-body" id="productDetail"></div>
-        </div>
-    </div>
-
-    <!-- Checkout Modal -->
-    <div class="modal" id="checkoutModal">
-        <div class="modal-overlay" id="closeCheckoutModal"></div>
-        <div class="modal-content">
-            <div class="modal-hologram"></div>
-            <div class="modal-header">
-                <h2><i class="fas fa-credit-card crystal-icon"></i> Checkout</h2>
-                <button class="modal-close-btn" id="closeCheckoutModalBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body" id="checkoutBody"></div>
-        </div>
-    </div>
-
-    <!-- Login Modal -->
-    <div class="modal" id="loginModal">
-        <div class="modal-overlay" id="closeLoginModal"></div>
-        <div class="modal-content">
-            <div class="modal-hologram"></div>
-            <div class="modal-header">
-                <h2><i class="fas fa-sign-in-alt crystal-icon"></i> Login</h2>
-                <button class="modal-close-btn" id="closeLoginModalBtn">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body login-body">
-                <div class="login-illustration">
-                    <div class="crystal-avatar-large">
-                        <i class="fas fa-user"></i>
-                    </div>
-                </div>
-                <div class="login-options">
-                    <button class="btn-telegram" id="telegramLogin">
-                        <i class="fab fa-telegram"></i>
-                        <span>Login dengan Telegram</span>
-                    </button>
-                    <div class="divider">
-                        <div class="holographic-divider"></div>
-                        <span>atau</span>
-                    </div>
-                    <button class="btn-guest" id="guestLogin">
-                        <i class="fas fa-user"></i>
-                        <span>Lanjut sebagai Tamu</span>
-                    </button>
-                </div>
             </div>
         </div>
     </div>
