@@ -50,8 +50,8 @@ def create_deposit():
         
         if not deposit_id:
             return jsonify({'success': False, 'error': 'Gagal membuat deposit'}), 500
-        
-        # Jika metode QRIS, generate QRIS dari Cashify
+                
+        # Di bagian generate QRIS
         if payment_method == 'qris':
             # Ambil gateway aktif untuk mendapatkan license key dan package_ids
             gateway = pmb.get_active_gateway(website_id)
@@ -75,12 +75,24 @@ def create_deposit():
             cashify = CashifyHandler(gateway.get('license_key'), gateway.get('webhook_secret'))
             
             # Generate QRIS dengan qr_id dan package_ids dari database
+            # PASTIKAN PARAMETER SESUAI DENGAN DEFINISI FUNGSI
             qris_result = cashify.generate_qris_v2(
-                amount, 
-                qr_id=qris_id,
-                package_ids=package_ids,  # <-- TAMBAHKAN INI
-                expired_minutes=gateway.get('expired_menit', 30)
+                amount=amount,                          # parameter named
+                qr_id=qris_id,                           # parameter named
+                package_ids=package_ids,                  # parameter named
+                expired_minutes=gateway.get('expired_menit', 30)  # parameter named
             )
+            
+            # CEK HASIL
+            if not qris_result.get('success'):
+                trx.update_deposit_status(deposit_id, 'failed', qris_result.get('error'))
+                return jsonify({'success': False, 'error': qris_result.get('error')}), 500
+            
+            # Format response
+            formatted = cashify.format_response(qris_result)
+            
+            # Update deposit dengan data Cashify
+            trx.update_deposit_cashify(deposit_id, formatted)
             
             return jsonify({
                 'success': True,
