@@ -12,6 +12,7 @@ from services.prd_service import prd_bp
 from services.ssl_service import ssl_bp
 from services.tmp_service import tmp_bp
 from services.tmp_font_service import tmp_font_bp
+from services.trx_service import trx_bp
 
 app = Flask(__name__, static_folder='.')
 
