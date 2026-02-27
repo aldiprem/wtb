@@ -29,8 +29,8 @@
 
     <!-- Main Container -->
     <div class="website-container">
-        <!-- Header dengan Logo & Nama Store -->
-        <header class="store-header">
+        <!-- Header dengan Logo & Nama Store (hanya di halaman utama) -->
+        <header class="store-header" id="storeHeader">
             <div class="store-info-card" style="border-color: var(--primary-color);" id="storeInfoCard">
                 <div class="store-logo" id="storeLogo">
                     <img src="" alt="Logo" id="logoImage" style="display: none;">
@@ -42,7 +42,7 @@
             </div>
         </header>
 
-        <!-- Banner Slider -->
+        <!-- Banner Slider (hanya di halaman utama) -->
         <div class="banner-slider-container" id="bannerSlider">
             <div class="banner-slider" id="bannerSliderTrack">
                 <!-- Banner akan diisi oleh JavaScript -->
@@ -71,7 +71,7 @@
                 <span>Bank</span>
             </button>
             <button class="nav-tab" data-page="profil">
-                <i class="fas fa-user"></i>
+                <i class="fas fa-user-circle"></i>
                 <span>Profil</span>
             </button>
         </div>
@@ -130,7 +130,7 @@
                             </div>
                         </div>
 
-                        <div class="filter-dropdown">
+                        <div class="filter-dropdown filter-item-sort">
                             <button class="filter-btn" id="filterItemBtn">
                                 <i class="fas fa-box"></i>
                                 <span id="selectedItem">Item</span>
@@ -175,9 +175,11 @@
                         <!-- Produk akan diisi oleh JavaScript -->
                     </div>
 
-                    <!-- Pagination -->
-                    <div class="pagination" id="pagination">
-                        <!-- Akan diisi oleh JavaScript -->
+                    <!-- Pagination (fixed di bawah) -->
+                    <div class="pagination-container" id="paginationContainer">
+                        <div class="pagination" id="pagination">
+                            <!-- Akan diisi oleh JavaScript -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -192,7 +194,7 @@
                 </div>
                 
                 <div class="aktivitas-list" id="aktivitasList">
-                    <!-- Aktivitas akan diisi oleh JavaScript -->
+                    <!-- Akan diisi oleh JavaScript -->
                 </div>
             </div>
 
@@ -203,11 +205,9 @@
                         <i class="fas fa-tags"></i>
                         Promo
                     </h2>
-                    <div class="promo-actions">
-                        <button class="btn-outline" id="lihatVoucherBtn">
-                            <i class="fas fa-ticket-alt"></i> Voucher Saya
-                        </button>
-                    </div>
+                    <button class="voucher-btn" id="lihatVoucherBtn">
+                        <i class="fas fa-ticket-alt"></i> Voucher Saya
+                    </button>
                 </div>
 
                 <!-- Promo Banners -->
@@ -216,10 +216,10 @@
                 </div>
 
                 <!-- Voucher Section -->
-                <div class="voucher-section" id="voucherSection" style="display: none;">
+                <div class="voucher-section">
                     <h3 class="section-subtitle">
                         <i class="fas fa-ticket-alt"></i>
-                        Voucher Saya
+                        Voucher
                     </h3>
                     <div class="voucher-grid" id="voucherGrid">
                         <!-- Voucher akan diisi oleh JavaScript -->
@@ -263,18 +263,18 @@
                         Rekening Tersedia
                     </h3>
                     <div class="rekening-grid" id="rekeningGrid">
-                        <!-- Rekening akan diisi oleh JavaScript -->
+                        <!-- Akan diisi oleh JavaScript -->
                     </div>
                 </div>
 
                 <!-- Payment Gateway -->
-                <div class="gateway-section" id="gatewaySection" style="display: none;">
+                <div class="gateway-section" id="gatewaySection">
                     <h3 class="section-subtitle">
                         <i class="fas fa-qrcode"></i>
                         Payment Gateway
                     </h3>
                     <div class="gateway-card" id="gatewayCard">
-                        <!-- Gateway akan diisi oleh JavaScript -->
+                        <!-- Akan diisi oleh JavaScript -->
                     </div>
                 </div>
             </div>
@@ -282,7 +282,7 @@
             <!-- Page: Profil -->
             <div class="page" id="page-profil">
                 <div class="profile-header">
-                    <div class="profile-avatar" id="profileAvatar">
+                    <div class="profile-avatar-large" id="profileAvatarLarge">
                         <img src="" alt="Profile" id="profileImage">
                     </div>
                     <div class="profile-info">
@@ -338,13 +338,13 @@
                 </div>
 
                 <!-- Force Subscribe Section -->
-                <div class="force-subscribe-section" id="forceSubscribeSection" style="display: none;">
+                <div class="force-subscribe-section" id="forceSubscribeSection">
                     <h3 class="section-subtitle">
                         <i class="fas fa-bell"></i>
                         Subscribe Channel
                     </h3>
                     <div class="force-list" id="forceList">
-                        <!-- Force subscribe akan diisi oleh JavaScript -->
+                        <!-- Akan diisi oleh JavaScript -->
                     </div>
                 </div>
 
