@@ -248,6 +248,47 @@
       </div>
     </div>
 
+    <!-- MODAL: Detail Transaksi -->
+    <div class="modal" id="transactionDetailModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2><i class="fas fa-receipt"></i> Detail Transaksi</h2>
+          <button class="modal-close" id="closeTransactionDetailModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" id="transactionDetailBody">
+          <!-- Loading State -->
+          <div class="detail-loading" id="detailLoading" style="display: none;">
+            <i class="fas fa-spinner fa-spin"></i> Memuat detail...
+          </div>
+    
+          <!-- Error State -->
+          <div class="detail-error" id="detailError" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p>Gagal memuat detail transaksi</p>
+          </div>
+    
+          <!-- Detail Content (akan diisi JavaScript) -->
+          <div id="detailContent"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- MODAL: Detail QRIS untuk Deposit Pending -->
+    <div class="modal" id="qrisPendingModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2><i class="fas fa-qrcode"></i> Detail Pembayaran QRIS</h2>
+          <button class="modal-close" id="closeQrisPendingModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" id="qrisPendingBody">
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL: Withdraw -->
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
