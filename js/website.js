@@ -7,113 +7,91 @@
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
     const MAX_RETRIES = 3;
-    const ITEMS_PER_PAGE = 10;
+    const ITEMS_PER_PAGE = 8;
 
     // ==================== STATE ====================
     let currentWebsite = null;
     let currentUser = null;
-    let allProducts = [];
-    let filteredProducts = [];
+    let tampilanData = {};
+    let productsData = [];
+    let layananList = [];
+    let filteredItems = [];
     let currentPage = 1;
     let totalPages = 1;
-    let bannerInterval = null;
-    let currentBannerIndex = 0;
-    let paginationTimeout = null;
-    let lastScrollTop = 0;
+    
+    // Aktivitas
+    let aktivitasList = [];
+    
+    // Promo
+    let promosList = [];
+    
+    // Bank
+    let rekeningList = [];
+    let balance = 0;
+    let transactions = [];
+    
+    // Voucher
+    let userVouchers = [];
     
     // Filter state
-    let selectedLayanan = 'all';
-    let selectedAplikasi = 'all';
-    let selectedItem = 'all';
-    let currentSort = 'terlaris';
+    let currentFilters = {
+        layanan: null,
+        aplikasi: null,
+        search: '',
+        sort: 'terbaru'
+    };
     
-    // Data dari database
-    let tampilanData = null;
-    let sosialData = null;
-    let paymentData = null;
-    let voucherData = null;
-    let userClaims = [];
+    // Nav scroll state
+    let lastScrollTop = 0;
+    let scrollTimer = null;
+    
+    // Banner slider
+    let currentBannerIndex = 0;
+    let bannerInterval = null;
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
         toastContainer: document.getElementById('toastContainer'),
-        
-        // Store Info
-        storeLogo: document.getElementById('storeLogo'),
-        logoImage: document.getElementById('logoImage'),
-        logoIcon: document.getElementById('logoIcon'),
-        storeName: document.getElementById('storeName'),
-        storeNameContainer: document.getElementById('storeNameContainer'),
         storeHeader: document.getElementById('storeHeader'),
+        storeLogo: document.getElementById('storeLogo'),
+        storeName: document.getElementById('storeName'),
         
         // Banner
-        bannerSlider: document.getElementById('bannerSliderTrack'),
+        bannerSlider: document.getElementById('bannerSlider'),
+        bannerTrack: document.getElementById('bannerTrack'),
         bannerDots: document.getElementById('bannerDots'),
-        bannerPrev: document.getElementById('bannerPrev'),
-        bannerNext: document.getElementById('bannerNext'),
-        bannerSliderContainer: document.getElementById('bannerSlider'),
         
-        // Navigation
-        navTabs: document.querySelectorAll('.nav-tab'),
-        pages: document.querySelectorAll('.page'),
+        // Main Content
+        mainContent: document.getElementById('mainContent'),
         
-        // Layanan
-        layananGrid: document.getElementById('layananGrid'),
-        viewAllLayanan: document.getElementById('viewAllLayanan'),
+        // Bottom Nav
+        bottomNav: document.getElementById('bottomNav'),
+        navItems: document.querySelectorAll('.nav-item'),
         
-        // Products
-        productsGrid: document.getElementById('productsGrid'),
-        pagination: document.getElementById('pagination'),
-        paginationContainer: document.getElementById('paginationContainer'),
+        // Modal Voucher
+        voucherModal: document.getElementById('voucherModal'),
+        voucherForm: document.getElementById('voucherForm'),
+        voucherCode: document.getElementById('voucherCode'),
+        closeVoucherModal: document.getElementById('closeVoucherModal'),
+        cancelVoucherBtn: document.getElementById('cancelVoucherBtn'),
         
-        // Filter
-        filterLayananBtn: document.getElementById('filterLayananBtn'),
-        filterLayananMenu: document.getElementById('filterLayananMenu'),
-        selectedLayanan: document.getElementById('selectedLayanan'),
-        filterAplikasiBtn: document.getElementById('filterAplikasiBtn'),
-        filterAplikasiMenu: document.getElementById('filterAplikasiMenu'),
-        selectedAplikasi: document.getElementById('selectedAplikasi'),
-        filterItemBtn: document.getElementById('filterItemBtn'),
-        filterItemMenu: document.getElementById('filterItemMenu'),
-        selectedItem: document.getElementById('selectedItem'),
-        sortBtn: document.getElementById('sortBtn'),
-        sortMenu: document.getElementById('sortMenu'),
-        selectedSort: document.getElementById('selectedSort'),
+        // Modal Deposit
+        depositModal: document.getElementById('depositModal'),
+        depositForm: document.getElementById('depositForm'),
+        depositAmount: document.getElementById('depositAmount'),
+        paymentMethod: document.getElementById('paymentMethod'),
+        closeDepositModal: document.getElementById('closeDepositModal'),
+        cancelDepositBtn: document.getElementById('cancelDepositBtn'),
         
-        // Aktivitas
-        aktivitasList: document.getElementById('aktivitasList'),
-        
-        // Promo
-        promoBanners: document.getElementById('promoBanners'),
-        voucherSection: document.getElementById('voucherSection'),
-        voucherGrid: document.getElementById('voucherGrid'),
-        lihatVoucherBtn: document.getElementById('lihatVoucherBtn'),
-        
-        // Bank
-        bankBalance: document.getElementById('bankBalance'),
+        // Modal Withdraw
+        withdrawModal: document.getElementById('withdrawModal'),
+        withdrawForm: document.getElementById('withdrawForm'),
+        withdrawAmount: document.getElementById('withdrawAmount'),
         userBalance: document.getElementById('userBalance'),
-        depositBtn: document.getElementById('depositBtn'),
-        withdrawBtn: document.getElementById('withdrawBtn'),
-        transferBtn: document.getElementById('transferBtn'),
-        rekeningGrid: document.getElementById('rekeningGrid'),
-        gatewaySection: document.getElementById('gatewaySection'),
-        gatewayCard: document.getElementById('gatewayCard'),
-        
-        // Profil
-        profileImage: document.getElementById('profileImage'),
-        profileName: document.getElementById('profileName'),
-        profileUsername: document.getElementById('profileUsername'),
-        profileOrders: document.getElementById('profileOrders'),
-        profileSpent: document.getElementById('profileSpent'),
-        profileVouchers: document.getElementById('profileVouchers'),
-        profileUserId: document.getElementById('profileUserId'),
-        profileJoined: document.getElementById('profileJoined'),
-        profileEmail: document.getElementById('profileEmail'),
-        profilePhone: document.getElementById('profilePhone'),
-        forceSubscribeSection: document.getElementById('forceSubscribeSection'),
-        forceList: document.getElementById('forceList'),
-        logoutBtn: document.getElementById('logoutBtn')
+        withdrawAccount: document.getElementById('withdrawAccount'),
+        closeWithdrawModal: document.getElementById('closeWithdrawModal'),
+        cancelWithdrawBtn: document.getElementById('cancelWithdrawBtn')
     };
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -127,7 +105,7 @@
         elements.toastContainer.appendChild(toast);
         
         setTimeout(() => {
-            toast.style.animation = 'slideUp 0.3s ease reverse';
+            toast.style.animation = 'fadeOut 0.3s ease';
             setTimeout(() => {
                 toast.remove();
             }, 300);
@@ -140,33 +118,30 @@
         }
     }
 
+    function vibrate(duration = 20) {
+        if (window.navigator && window.navigator.vibrate) {
+            window.navigator.vibrate(duration);
+        }
+    }
+
     function formatRupiah(angka) {
-        if (!angka) return 'Rp 0';
+        if (!angka && angka !== 0) return 'Rp 0';
         return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function formatDate(dateString) {
+    function formatDate(dateString, withTime = true) {
         if (!dateString) return '-';
         try {
             const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMins < 1) return 'Baru saja';
-            if (diffMins < 60) return `${diffMins} menit lalu`;
-            if (diffHours < 24) return `${diffHours} jam lalu`;
-            if (diffDays < 7) return `${diffDays} hari lalu`;
-            
+            if (withTime) {
+                return date.toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
             return date.toLocaleDateString('id-ID', {
                 day: 'numeric',
                 month: 'short',
@@ -177,6 +152,22 @@
         }
     }
 
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // ==================== API FUNCTIONS ====================
     async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
         try {
             const response = await fetch(url, {
@@ -197,7 +188,6 @@
             return await response.json();
         } catch (error) {
             if (retries > 0) {
-                console.log(`🔄 Retry... ${MAX_RETRIES - retries + 1}/${MAX_RETRIES}`);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 return fetchWithRetry(url, options, retries - 1);
             }
@@ -205,7 +195,6 @@
         }
     }
 
-    // ==================== LOAD WEBSITE DATA ====================
     async function loadWebsite() {
         const urlParams = new URLSearchParams(window.location.search);
         const endpoint = urlParams.get('website');
@@ -216,897 +205,1289 @@
         }
         
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
                 method: 'GET'
             });
             
-            if (response.success && response.website) {
-                currentWebsite = response.website;
-                return currentWebsite;
+            if (data.success && data.website) {
+                return data.website;
             } else {
                 throw new Error('Website not found');
             }
         } catch (error) {
             console.error('❌ Error loading website:', error);
+            showToast('Gagal memuat data website', 'error');
             return null;
         }
     }
 
     async function loadTampilan() {
-        if (!currentWebsite) return null;
+        if (!currentWebsite) return;
         
         try {
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}`, {
                 method: 'GET'
             });
             
-            if (response.success) {
+            if (response.success && response.tampilan) {
                 tampilanData = response.tampilan;
-                return tampilanData;
+                applyTampilan();
             }
         } catch (error) {
             console.error('❌ Error loading tampilan:', error);
         }
-        return null;
     }
 
-    async function loadProducts() {
+    function applyTampilan() {
+        // Apply logo
+        if (tampilanData.logo && elements.storeLogo) {
+            elements.storeLogo.src = tampilanData.logo;
+        }
+        
+        // Apply store name with font and animation
+        const storeName = tampilanData.store_display_name || 'Toko Online';
+        if (elements.storeName) {
+            elements.storeName.textContent = storeName;
+            
+            // Apply font family
+            if (tampilanData.font_family) {
+                elements.storeName.style.fontFamily = `'${tampilanData.font_family}', sans-serif`;
+            }
+            
+            // Apply font size
+            if (tampilanData.font_size) {
+                elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
+            }
+            
+            // Apply animation
+            if (tampilanData.font_animation && tampilanData.font_animation !== 'none') {
+                const animName = tampilanData.font_animation + 'Anim';
+                const duration = tampilanData.animation_duration || 2;
+                const delay = tampilanData.animation_delay || 0;
+                const iteration = tampilanData.animation_iteration || 'infinite';
+                
+                elements.storeName.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+            }
+        }
+        
+        // Apply header border color
+        if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
+            elements.storeHeader.style.borderColor = tampilanData.colors.primary;
+        }
+    }
+
+    async function loadUserFromTelegram() {
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+            currentUser = window.Telegram.WebApp.initDataUnsafe.user;
+            console.log('📱 Telegram user:', currentUser);
+            
+            // Cek apakah user sudah memiliki data di sistem
+            await checkOrCreateUser();
+            
+            return currentUser;
+        } else {
+            // Untuk testing - buat user dummy
+            currentUser = {
+                id: Math.floor(Math.random() * 1000000),
+                first_name: 'User',
+                last_name: '',
+                username: 'user_' + Math.floor(Math.random() * 1000),
+                photo_url: null
+            };
+            return currentUser;
+        }
+    }
+
+    async function checkOrCreateUser() {
+        if (!currentWebsite || !currentUser) return;
+        
+        // Implementasi jika perlu menyimpan user ke database
+        // Untuk sekarang, kita anggap user sudah ada
+    }
+
+    async function loadAllData() {
         if (!currentWebsite) return;
         
+        showLoading(true);
+        
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
+            // Load products
+            const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
                 method: 'GET'
             });
             
-            if (response.success) {
-                allProducts = [];
-                response.data.forEach(layanan => {
-                    if (layanan.aplikasi) {
-                        layanan.aplikasi.forEach(aplikasi => {
-                            if (aplikasi.items) {
-                                aplikasi.items.forEach(item => {
-                                    allProducts.push({
-                                        ...item,
-                                        layanan_nama: layanan.layanan_nama,
-                                        layanan_gambar: layanan.layanan_gambar,
-                                        aplikasi_nama: aplikasi.aplikasi_nama,
-                                        aplikasi_gambar: aplikasi.aplikasi_gambar
-                                    });
-                                });
-                            }
+            if (productsResponse.success) {
+                productsData = productsResponse.data || [];
+                extractLayananList();
+                extractAllItems();
+            }
+            
+            // Load promos
+            const promosResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
+                method: 'GET'
+            });
+            
+            if (promosResponse.success) {
+                promosList = promosResponse.promos || [];
+            }
+            
+            // Load rekening
+            const rekeningResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
+                method: 'GET'
+            });
+            
+            if (rekeningResponse.success) {
+                rekeningList = rekeningResponse.rekening || [];
+            }
+            
+            // Load user vouchers jika user sudah login
+            if (currentUser) {
+                const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
+                    method: 'GET'
+                });
+                
+                if (vouchersResponse.success) {
+                    userVouchers = vouchersResponse.claims || [];
+                }
+            }
+            
+            // Generate dummy aktivitas
+            generateDummyAktivitas();
+            
+            // Generate dummy transactions
+            generateDummyTransactions();
+            
+            // Render halaman awal
+            renderHomePage();
+            
+        } catch (error) {
+            console.error('❌ Error loading data:', error);
+            showToast('Gagal memuat data', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function extractLayananList() {
+        const seen = new Set();
+        layananList = [];
+        
+        productsData.forEach(layanan => {
+            if (layanan.layanan_nama && !seen.has(layanan.layanan_nama)) {
+                seen.add(layanan.layanan_nama);
+                layananList.push({
+                    nama: layanan.layanan_nama,
+                    gambar: layanan.layanan_gambar,
+                    desc: layanan.layanan_desc,
+                    count: layanan.aplikasi ? layanan.aplikasi.length : 0
+                });
+            }
+        });
+        
+        // Batasi 4 layanan untuk tampilan
+        if (layananList.length > 4) {
+            layananList = layananList.slice(0, 4);
+        }
+    }
+
+    function extractAllItems() {
+        filteredItems = [];
+        
+        productsData.forEach(layanan => {
+            if (layanan.aplikasi) {
+                layanan.aplikasi.forEach(aplikasi => {
+                    if (aplikasi.items) {
+                        aplikasi.items.forEach(item => {
+                            filteredItems.push({
+                                ...item,
+                                layanan_nama: layanan.layanan_nama,
+                                layanan_gambar: layanan.layanan_gambar,
+                                aplikasi_nama: aplikasi.aplikasi_nama,
+                                aplikasi_gambar: aplikasi.aplikasi_gambar
+                            });
                         });
                     }
                 });
-                filteredProducts = [...allProducts];
-                return allProducts;
-            }
-        } catch (error) {
-            console.error('❌ Error loading products:', error);
-        }
-        return [];
-    }
-
-    async function loadSosialData() {
-        if (!currentWebsite) return;
-        
-        try {
-            const [telegram, links, force, forceSettings] = await Promise.all([
-                fetchWithRetry(`${API_BASE_URL}/api/social/telegram/${currentWebsite.id}`, { method: 'GET' }).catch(() => ({ success: false })),
-                fetchWithRetry(`${API_BASE_URL}/api/social/links/${currentWebsite.id}`, { method: 'GET' }).catch(() => ({ success: false })),
-                fetchWithRetry(`${API_BASE_URL}/api/social/force/${currentWebsite.id}`, { method: 'GET' }).catch(() => ({ success: false })),
-                fetchWithRetry(`${API_BASE_URL}/api/social/force-settings/${currentWebsite.id}`, { method: 'GET' }).catch(() => ({ success: false }))
-            ]);
-            
-            sosialData = {
-                telegram: telegram.success ? telegram.data : null,
-                links: links.success ? links.data : null,
-                force: force.success ? force.data : [],
-                forceSettings: forceSettings.success ? forceSettings.data : null
-            };
-            
-            return sosialData;
-        } catch (error) {
-            console.error('❌ Error loading sosial data:', error);
-        }
-        return null;
-    }
-
-    async function loadPaymentData() {
-        if (!currentWebsite) return;
-        
-        try {
-            const [rekening, gateway] = await Promise.all([
-                fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, { method: 'GET' }).catch(() => ({ success: false })),
-                fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${currentWebsite.id}`, { method: 'GET' }).catch(() => ({ success: false }))
-            ]);
-            
-            paymentData = {
-                rekening: rekening.success ? rekening.rekening : [],
-                gateway: gateway.success ? gateway.gateway : []
-            };
-            
-            return paymentData;
-        } catch (error) {
-            console.error('❌ Error loading payment data:', error);
-        }
-        return null;
-    }
-
-    async function loadVoucherData() {
-        if (!currentWebsite || !currentUser) return;
-        
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
-                method: 'GET'
-            });
-            
-            if (response.success) {
-                userClaims = response.claims || [];
-                return userClaims;
-            }
-        } catch (error) {
-            console.error('❌ Error loading voucher data:', error);
-        }
-        return [];
-    }
-
-    // ==================== LOAD USER DATA ====================
-    function loadUserFromTelegram() {
-        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-            currentUser = window.Telegram.WebApp.initDataUnsafe.user;
-            return currentUser;
-        }
-        
-        // Untuk testing tanpa Telegram
-        currentUser = {
-            id: 123456789,
-            first_name: 'Test',
-            last_name: 'User',
-            username: 'testuser',
-            photo_url: null
-        };
-        return currentUser;
-    }
-
-    // ==================== RENDER FUNCTIONS ====================
-    function renderStoreHeader() {
-        if (!tampilanData) return;
-        
-        // Logo
-        if (tampilanData.logo) {
-            elements.logoImage.src = tampilanData.logo;
-            elements.logoImage.style.display = 'block';
-            elements.logoIcon.style.display = 'none';
-            // Background logo sesuai warna border
-            elements.logoImage.style.backgroundColor = tampilanData.colors?.primary || 'var(--primary-color)';
-        } else {
-            elements.logoImage.style.display = 'none';
-            elements.logoIcon.style.display = 'flex';
-            elements.logoIcon.style.color = tampilanData.colors?.primary || 'var(--primary-color)';
-        }
-        
-        // Nama Store dengan animasi font
-        const storeName = tampilanData.store_display_name || tampilanData.title || 'Toko Online';
-        elements.storeName.textContent = storeName;
-        
-        // Terapkan font family
-        if (tampilanData.font_family) {
-            elements.storeName.style.fontFamily = tampilanData.font_family;
-        }
-        
-        // Terapkan font size dengan batasan agar tidak melebihi container
-        let fontSize = tampilanData.font_size || 24;
-        const containerWidth = elements.storeNameContainer.clientWidth;
-        const textWidth = elements.storeName.scrollWidth;
-        
-        if (textWidth > containerWidth && fontSize > 14) {
-            fontSize = Math.max(14, Math.floor(containerWidth * 24 / textWidth));
-        }
-        elements.storeName.style.fontSize = fontSize + 'px';
-        
-        // Terapkan animasi
-        if (tampilanData.font_animation && tampilanData.font_animation !== 'none') {
-            elements.storeNameContainer.style.animation = 
-                `${tampilanData.font_animation}Anim ${tampilanData.animation_duration || 2}s ${tampilanData.animation_delay || 0}s ${tampilanData.animation_iteration || 'infinite'}`;
-        } else {
-            elements.storeNameContainer.style.animation = 'none';
-        }
-        
-        // Warna border dari database
-        if (tampilanData.colors && tampilanData.colors.primary) {
-            document.documentElement.style.setProperty('--primary-color', tampilanData.colors.primary);
-            document.getElementById('storeInfoCard').style.borderColor = tampilanData.colors.primary;
-        }
-    }
-
-    function renderBanners() {
-        if (!tampilanData || !tampilanData.banners || tampilanData.banners.length === 0) {
-            elements.bannerSliderContainer.style.display = 'none';
-            return;
-        }
-        
-        elements.bannerSliderContainer.style.display = 'block';
-        
-        // Render slides
-        let slidesHtml = '';
-        tampilanData.banners.forEach((banner, index) => {
-            slidesHtml += `
-                <div class="banner-slide" data-index="${index}">
-                    <img src="${banner.url}" alt="Banner ${index + 1}">
-                </div>
-            `;
-        });
-        elements.bannerSlider.innerHTML = slidesHtml;
-        
-        // Render dots
-        let dotsHtml = '';
-        tampilanData.banners.forEach((_, index) => {
-            dotsHtml += `<button class="banner-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></button>`;
-        });
-        elements.bannerDots.innerHTML = dotsHtml;
-        
-        // Setup auto slide
-        startBannerAutoSlide();
-    }
-
-    function startBannerAutoSlide() {
-        if (bannerInterval) clearInterval(bannerInterval);
-        bannerInterval = setInterval(() => {
-            goToNextBanner();
-        }, 5000);
-    }
-
-    function goToBanner(index) {
-        if (!tampilanData || !tampilanData.banners) return;
-        
-        const totalSlides = tampilanData.banners.length;
-        if (index < 0) index = totalSlides - 1;
-        if (index >= totalSlides) index = 0;
-        
-        currentBannerIndex = index;
-        elements.bannerSlider.style.transform = `translateX(-${index * 100}%)`;
-        
-        // Update dots
-        document.querySelectorAll('.banner-dot').forEach((dot, i) => {
-            if (i === index) {
-                dot.classList.add('active');
-            } else {
-                dot.classList.remove('active');
             }
         });
+        
+        applySort();
+        updatePagination();
     }
 
-    function goToNextBanner() {
-        goToBanner(currentBannerIndex + 1);
-    }
-
-    function goToPrevBanner() {
-        goToBanner(currentBannerIndex - 1);
-    }
-
-    function renderLayanan() {
-        if (!allProducts || allProducts.length === 0) {
-            elements.layananGrid.innerHTML = `
-                <div class="empty-state" style="grid-column: span 2;">
-                    <i class="fas fa-box-open"></i>
-                    <p>Belum ada layanan</p>
-                </div>
-            `;
-            return;
+    function generateDummyAktivitas() {
+        aktivitasList = [];
+        const now = new Date();
+        
+        // Generate 20 aktivitas dummy
+        for (let i = 0; i < 20; i++) {
+            const date = new Date(now - Math.random() * 30 * 24 * 60 * 60 * 1000);
+            const type = Math.random() > 0.5 ? 'pembelian' : 'aktivitas_lain';
+            
+            aktivitasList.push({
+                id: i,
+                type: type,
+                title: type === 'pembelian' ? 'Pembelian Produk' : 'Aktivitas Lain',
+                description: type === 'pembelian' ? 
+                    `Membeli produk seharga ${formatRupiah(Math.floor(Math.random() * 100000) + 10000)}` :
+                    `Melakukan ${['deposit', 'withdraw', 'klaim voucher', 'ubah profil'][Math.floor(Math.random() * 4)]}`,
+                time: date.toISOString(),
+                icon: type === 'pembelian' ? 'fa-shopping-cart' : 'fa-history'
+            });
         }
         
-        // Group by layanan
-        const layananMap = new Map();
-        allProducts.forEach(product => {
-            const key = product.layanan_nama || 'Lainnya';
-            if (!layananMap.has(key)) {
-                layananMap.set(key, {
-                    nama: key,
-                    gambar: product.layanan_gambar,
-                    count: 0
-                });
+        // Sort by time descending
+        aktivitasList.sort((a, b) => new Date(b.time) - new Date(a.time));
+    }
+
+    function generateDummyTransactions() {
+        transactions = [];
+        const now = new Date();
+        const types = ['deposit', 'withdraw', 'pembelian'];
+        const statuses = ['success', 'pending', 'failed'];
+        
+        for (let i = 0; i < 15; i++) {
+            const date = new Date(now - Math.random() * 60 * 24 * 60 * 60 * 1000);
+            const type = types[Math.floor(Math.random() * types.length)];
+            const status = statuses[Math.floor(Math.random() * statuses.length)];
+            const amount = Math.floor(Math.random() * 1000000) + 10000;
+            
+            if (type === 'deposit' && status === 'success') {
+                balance += amount;
+            } else if (type === 'withdraw' && status === 'success') {
+                balance -= amount;
             }
-            layananMap.get(key).count++;
-        });
-        
-        const layananList = Array.from(layananMap.values()).slice(0, 4);
-        
-        let html = '';
-        layananList.forEach(layanan => {
-            html += `
-                <div class="layanan-card" data-layanan="${escapeHtml(layanan.nama)}">
-                    <div class="layanan-icon">
-                        ${layanan.gambar ? 
-                            `<img src="${escapeHtml(layanan.gambar)}" alt="${escapeHtml(layanan.nama)}">` : 
-                            `<i class="fas fa-layer-group"></i>`
-                        }
-                    </div>
-                    <div class="layanan-nama">${escapeHtml(layanan.nama)}</div>
-                    <div class="layanan-count">${layanan.count} produk</div>
-                </div>
-            `;
-        });
-        
-        elements.layananGrid.innerHTML = html;
-        
-        // Add click handlers
-        document.querySelectorAll('.layanan-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const layanan = card.dataset.layanan;
-                selectedLayanan = layanan;
-                elements.selectedLayanan.textContent = layanan;
-                applyFilters();
+            
+            transactions.push({
+                id: i,
+                type: type,
+                status: status,
+                amount: amount,
+                description: type === 'deposit' ? 'Deposit Saldo' : 
+                            type === 'withdraw' ? 'Withdraw Saldo' : 'Pembelian Produk',
+                time: date.toISOString()
             });
-        });
-    }
-
-    function renderFilterOptions() {
-        // Layanan filter
-        const layananSet = new Set(allProducts.map(p => p.layanan_nama || 'Lainnya'));
-        let layananHtml = '<button class="filter-option active" data-layanan="all"><i class="fas fa-th-large"></i> Semua Layanan</button>';
-        Array.from(layananSet).sort().forEach(layanan => {
-            layananHtml += `<button class="filter-option" data-layanan="${escapeHtml(layanan)}"><i class="fas fa-layer-group"></i> ${escapeHtml(layanan)}</button>`;
-        });
-        elements.filterLayananMenu.innerHTML = layananHtml;
-        
-        // Setup filter events
-        setupFilterEvents();
-    }
-
-    function setupFilterEvents() {
-        // Layanan filter
-        elements.filterLayananBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            elements.filterLayananBtn.parentElement.classList.toggle('active');
-        });
-        
-        elements.filterLayananMenu.addEventListener('click', (e) => {
-            const option = e.target.closest('.filter-option');
-            if (!option) return;
-            
-            document.querySelectorAll('#filterLayananMenu .filter-option').forEach(opt => opt.classList.remove('active'));
-            option.classList.add('active');
-            
-            selectedLayanan = option.dataset.layanan;
-            elements.selectedLayanan.textContent = option.dataset.layanan === 'all' ? 'Layanan' : option.dataset.layanan;
-            
-            // Reset aplikasi filter
-            selectedAplikasi = 'all';
-            elements.selectedAplikasi.textContent = 'Aplikasi';
-            
-            // Update aplikasi options
-            updateAplikasiFilter();
-            
-            elements.filterLayananBtn.parentElement.classList.remove('active');
-            applyFilters();
-        });
-        
-        // Aplikasi filter
-        elements.filterAplikasiBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            elements.filterAplikasiBtn.parentElement.classList.toggle('active');
-        });
-        
-        // Item filter
-        elements.filterItemBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            elements.filterItemBtn.parentElement.classList.toggle('active');
-        });
-        
-        elements.filterItemMenu.addEventListener('click', (e) => {
-            const option = e.target.closest('.filter-option');
-            if (!option) return;
-            
-            document.querySelectorAll('#filterItemMenu .filter-option').forEach(opt => opt.classList.remove('active'));
-            option.classList.add('active');
-            
-            selectedItem = option.dataset.item;
-            elements.selectedItem.textContent = option.dataset.item === 'all' ? 'Item' : option.dataset.item;
-            
-            elements.filterItemBtn.parentElement.classList.remove('active');
-            applyFilters();
-        });
-        
-        // Sort filter
-        elements.sortBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            elements.sortBtn.parentElement.classList.toggle('active');
-        });
-        
-        elements.sortMenu.addEventListener('click', (e) => {
-            const option = e.target.closest('.filter-option');
-            if (!option) return;
-            
-            document.querySelectorAll('#sortMenu .filter-option').forEach(opt => opt.classList.remove('active'));
-            option.classList.add('active');
-            
-            currentSort = option.dataset.sort;
-            elements.selectedSort.textContent = option.textContent.trim();
-            
-            elements.sortBtn.parentElement.classList.remove('active');
-            applyFilters();
-        });
-        
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
-                dropdown.classList.remove('active');
-            });
-        });
-    }
-
-    function updateAplikasiFilter() {
-        let filtered = allProducts;
-        if (selectedLayanan !== 'all') {
-            filtered = filtered.filter(p => p.layanan_nama === selectedLayanan);
         }
         
-        const aplikasiSet = new Set(filtered.map(p => p.aplikasi_nama || 'Lainnya'));
-        let aplikasiHtml = '<button class="filter-option active" data-aplikasi="all"><i class="fas fa-th-large"></i> Semua Aplikasi</button>';
-        Array.from(aplikasiSet).sort().forEach(aplikasi => {
-            aplikasiHtml += `<button class="filter-option" data-aplikasi="${escapeHtml(aplikasi)}"><i class="fas fa-mobile-alt"></i> ${escapeHtml(aplikasi)}</button>`;
-        });
-        elements.filterAplikasiMenu.innerHTML = aplikasiHtml;
-        
-        // Add click handlers
-        elements.filterAplikasiMenu.querySelectorAll('.filter-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                document.querySelectorAll('#filterAplikasiMenu .filter-option').forEach(o => o.classList.remove('active'));
-                opt.classList.add('active');
-                
-                selectedAplikasi = opt.dataset.aplikasi;
-                elements.selectedAplikasi.textContent = opt.dataset.aplikasi === 'all' ? 'Aplikasi' : opt.dataset.aplikasi;
-                
-                // Update item filter
-                updateItemFilter();
-                
-                elements.filterAplikasiBtn.parentElement.classList.remove('active');
-                applyFilters();
-            });
-        });
+        // Sort by time descending
+        transactions.sort((a, b) => new Date(b.time) - new Date(a.time));
     }
 
-    function updateItemFilter() {
-        let filtered = allProducts;
-        if (selectedLayanan !== 'all') {
-            filtered = filtered.filter(p => p.layanan_nama === selectedLayanan);
-        }
-        if (selectedAplikasi !== 'all') {
-            filtered = filtered.filter(p => p.aplikasi_nama === selectedAplikasi);
-        }
-        
-        const itemSet = new Set(filtered.map(p => p.item_nama || 'Lainnya'));
-        let itemHtml = '<button class="filter-option active" data-item="all"><i class="fas fa-th-large"></i> Semua Item</button>';
-        Array.from(itemSet).sort().forEach(item => {
-            itemHtml += `<button class="filter-option" data-item="${escapeHtml(item)}"><i class="fas fa-box"></i> ${escapeHtml(item)}</button>`;
-        });
-        elements.filterItemMenu.innerHTML = itemHtml;
-    }
-
+    // ==================== FILTER & SORT FUNCTIONS ====================
     function applyFilters() {
-        let filtered = [...allProducts];
+        let filtered = [...filteredItems];
         
         // Filter by layanan
-        if (selectedLayanan !== 'all') {
-            filtered = filtered.filter(p => p.layanan_nama === selectedLayanan);
+        if (currentFilters.layanan) {
+            filtered = filtered.filter(item => item.layanan_nama === currentFilters.layanan);
         }
         
         // Filter by aplikasi
-        if (selectedAplikasi !== 'all') {
-            filtered = filtered.filter(p => p.aplikasi_nama === selectedAplikasi);
+        if (currentFilters.aplikasi) {
+            filtered = filtered.filter(item => item.aplikasi_nama === currentFilters.aplikasi);
         }
         
-        // Filter by item
-        if (selectedItem !== 'all') {
-            filtered = filtered.filter(p => p.item_nama === selectedItem);
+        // Filter by search
+        if (currentFilters.search) {
+            const searchLower = currentFilters.search.toLowerCase();
+            filtered = filtered.filter(item => 
+                (item.item_nama && item.item_nama.toLowerCase().includes(searchLower)) ||
+                (item.layanan_nama && item.layanan_nama.toLowerCase().includes(searchLower)) ||
+                (item.aplikasi_nama && item.aplikasi_nama.toLowerCase().includes(searchLower))
+            );
         }
         
-        // Apply sorting
-        switch (currentSort) {
+        // Apply sort
+        switch (currentFilters.sort) {
             case 'terlaris':
                 filtered.sort((a, b) => (b.terjual || 0) - (a.terjual || 0));
                 break;
             case 'terbaru':
-                filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
                 break;
-            case 'harga-rendah':
+            case 'termurah':
                 filtered.sort((a, b) => (a.item_harga || 0) - (b.item_harga || 0));
                 break;
-            case 'harga-tinggi':
+            case 'termahal':
                 filtered.sort((a, b) => (b.item_harga || 0) - (a.item_harga || 0));
                 break;
-            case 'stok-banyak':
+            case 'stok-terbanyak':
                 filtered.sort((a, b) => (b.item_stok?.length || 0) - (a.item_stok?.length || 0));
                 break;
-            case 'stok-sedikit':
+            case 'stok-tersedikit':
                 filtered.sort((a, b) => (a.item_stok?.length || 0) - (b.item_stok?.length || 0));
                 break;
         }
         
-        filteredProducts = filtered;
-        currentPage = 1;
-        renderProducts();
-        renderPagination();
+        filteredItems = filtered;
+        updatePagination();
     }
 
-    function renderProducts() {
-        if (filteredProducts.length === 0) {
-            elements.productsGrid.innerHTML = `
-                <div class="empty-state" style="grid-column: span 2;">
-                    <i class="fas fa-box-open"></i>
-                    <p>Tidak ada produk</p>
-                </div>
+    function applySort() {
+        switch (currentFilters.sort) {
+            case 'terlaris':
+                filteredItems.sort((a, b) => (b.terjual || 0) - (a.terjual || 0));
+                break;
+            case 'terbaru':
+                filteredItems.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+                break;
+            case 'termurah':
+                filteredItems.sort((a, b) => (a.item_harga || 0) - (b.item_harga || 0));
+                break;
+            case 'termahal':
+                filteredItems.sort((a, b) => (b.item_harga || 0) - (a.item_harga || 0));
+                break;
+            case 'stok-terbanyak':
+                filteredItems.sort((a, b) => (b.item_stok?.length || 0) - (a.item_stok?.length || 0));
+                break;
+            case 'stok-tersedikit':
+                filteredItems.sort((a, b) => (a.item_stok?.length || 0) - (b.item_stok?.length || 0));
+                break;
+        }
+    }
+
+    function updatePagination() {
+        totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+    }
+
+    // ==================== RENDER FUNCTIONS ====================
+    function renderBanners() {
+        if (!elements.bannerTrack || !elements.bannerDots) return;
+        
+        const banners = tampilanData.banners || [];
+        
+        if (banners.length === 0) {
+            // Banner default
+            elements.bannerTrack.innerHTML = `
+                <div class="banner-slide" style="background-image: url('https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Welcome+to+Store')"></div>
             `;
+            elements.bannerDots.innerHTML = '<span class="banner-dot active"></span>';
             return;
+        }
+        
+        let trackHtml = '';
+        let dotsHtml = '';
+        
+        banners.forEach((banner, index) => {
+            const url = typeof banner === 'string' ? banner : banner.url;
+            const positionX = banner.positionX || 50;
+            const positionY = banner.positionY || 50;
+            
+            trackHtml += `
+                <div class="banner-slide" style="background-image: url('${url}'); background-position: ${positionX}% ${positionY}%;"></div>
+            `;
+            
+            dotsHtml += `<span class="banner-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`;
+        });
+        
+        elements.bannerTrack.innerHTML = trackHtml;
+        elements.bannerDots.innerHTML = dotsHtml;
+        
+        // Start auto slide
+        startBannerSlider();
+        
+        // Add click handlers for dots
+        document.querySelectorAll('.banner-dot').forEach(dot => {
+            dot.addEventListener('click', () => {
+                const index = parseInt(dot.dataset.index);
+                goToBanner(index);
+            });
+        });
+    }
+
+    function startBannerSlider() {
+        if (bannerInterval) clearInterval(bannerInterval);
+        
+        const banners = tampilanData.banners || [];
+        if (banners.length <= 1) return;
+        
+        bannerInterval = setInterval(() => {
+            currentBannerIndex = (currentBannerIndex + 1) % banners.length;
+            updateBannerPosition();
+        }, 5000);
+    }
+
+    function goToBanner(index) {
+        currentBannerIndex = index;
+        updateBannerPosition();
+        
+        // Reset interval
+        if (bannerInterval) {
+            clearInterval(bannerInterval);
+            startBannerSlider();
+        }
+    }
+
+    function updateBannerPosition() {
+        if (!elements.bannerTrack) return;
+        elements.bannerTrack.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
+        
+        // Update dots
+        document.querySelectorAll('.banner-dot').forEach((dot, idx) => {
+            dot.classList.toggle('active', idx === currentBannerIndex);
+        });
+    }
+
+    function renderHomePage() {
+        const html = `
+            <div class="page-content">
+                <!-- Produk Layanan Section -->
+                <div class="section-title">
+                    <h2><i class="fas fa-layer-group"></i> Produk Layanan</h2>
+                    <span class="view-all" onclick="window.website.showAllLayanan()">
+                        Lihat semua <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+                
+                <div class="layanan-grid" id="layananGrid">
+                    ${renderLayananGrid()}
+                </div>
+                
+                <!-- Filter Section -->
+                <div class="filter-section" id="filterSection">
+                    <div class="filter-header" onclick="window.website.toggleFilter()">
+                        <h3><i class="fas fa-filter"></i> Filter & Sortir</h3>
+                        <i class="fas fa-chevron-down" id="filterChevron"></i>
+                    </div>
+                    <div class="filter-content" id="filterContent">
+                        <div class="filter-bubbles" id="layananFilter"></div>
+                        <div class="filter-bubbles" id="aplikasiFilter"></div>
+                        <select class="sort-select" id="sortSelect">
+                            <option value="terbaru">Terbaru</option>
+                            <option value="terlaris">Terlaris</option>
+                            <option value="termurah">Termurah</option>
+                            <option value="termahal">Termahal</option>
+                            <option value="stok-terbanyak">Stok Terbanyak</option>
+                            <option value="stok-tersedikit">Stok Tersedikit</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Produk Tersedia Section -->
+                <div class="section-title">
+                    <h2><i class="fas fa-box"></i> Produk Tersedia</h2>
+                </div>
+                
+                <div class="products-grid" id="productsGrid">
+                    ${renderProductsGrid()}
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pagination" id="pagination">
+                    ${renderPagination()}
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+        
+        // Render filter bubbles
+        renderFilterBubbles();
+        
+        // Add event listener for sort
+        const sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) {
+            sortSelect.value = currentFilters.sort;
+            sortSelect.addEventListener('change', (e) => {
+                currentFilters.sort = e.target.value;
+                applySort();
+                renderHomePage();
+            });
+        }
+    }
+
+    function renderLayananGrid() {
+        if (layananList.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-layer-group"></i><p>Belum ada layanan</p></div>';
+        }
+        
+        return layananList.map(layanan => `
+            <div class="layanan-card" onclick="window.website.filterByLayanan('${escapeHtml(layanan.nama)}')">
+                <div class="layanan-icon">
+                    ${layanan.gambar ? 
+                        `<img src="${escapeHtml(layanan.gambar)}" alt="${escapeHtml(layanan.nama)}">` : 
+                        `<i class="fas fa-layer-group"></i>`
+                    }
+                </div>
+                <div class="layanan-nama">${escapeHtml(layanan.nama)}</div>
+                <div class="layanan-count">${layanan.count} aplikasi</div>
+            </div>
+        `).join('');
+    }
+
+    function renderFilterBubbles() {
+        // Layanan filter
+        const layananFilter = document.getElementById('layananFilter');
+        if (layananFilter) {
+            let html = '';
+            const uniqueLayanan = [...new Set(productsData.map(l => l.layanan_nama))];
+            
+            uniqueLayanan.forEach(layanan => {
+                if (layanan) {
+                    html += `
+                        <span class="filter-bubble ${currentFilters.layanan === layanan ? 'active' : ''}" 
+                              onclick="window.website.toggleLayananFilter('${escapeHtml(layanan)}')">
+                            ${escapeHtml(layanan)}
+                        </span>
+                    `;
+                }
+            });
+            
+            layananFilter.innerHTML = html || '<span class="filter-bubble">Tidak ada layanan</span>';
+        }
+        
+        // Aplikasi filter (ditampilkan jika layanan dipilih)
+        const aplikasiFilter = document.getElementById('aplikasiFilter');
+        if (aplikasiFilter) {
+            if (currentFilters.layanan) {
+                const layananData = productsData.find(l => l.layanan_nama === currentFilters.layanan);
+                const aplikasiList = layananData?.aplikasi || [];
+                const uniqueAplikasi = [...new Set(aplikasiList.map(a => a.aplikasi_nama))];
+                
+                let html = '';
+                uniqueAplikasi.forEach(aplikasi => {
+                    if (aplikasi) {
+                        html += `
+                            <span class="filter-bubble ${currentFilters.aplikasi === aplikasi ? 'active' : ''}" 
+                                  onclick="window.website.toggleAplikasiFilter('${escapeHtml(aplikasi)}')">
+                                ${escapeHtml(aplikasi)}
+                            </span>
+                        `;
+                    }
+                });
+                
+                aplikasiFilter.innerHTML = html || '<span class="filter-bubble">Tidak ada aplikasi</span>';
+            } else {
+                aplikasiFilter.innerHTML = '';
+            }
+        }
+    }
+
+    function renderProductsGrid() {
+        if (filteredItems.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-box-open"></i><p>Tidak ada produk</p></div>';
         }
         
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         const end = start + ITEMS_PER_PAGE;
-        const pageProducts = filteredProducts.slice(start, end);
+        const pageItems = filteredItems.slice(start, end);
         
-        let html = '';
-        pageProducts.forEach(product => {
-            const stokCount = product.item_stok?.length || 0;
-            const isReady = product.item_ready && stokCount > 0;
+        return pageItems.map(item => {
+            const readyClass = item.item_ready ? 'ready' : 'sold';
+            const logo = item.aplikasi_gambar || item.layanan_gambar;
+            const durasi = item.item_durasi_jumlah ? `${item.item_durasi_jumlah} ${item.item_durasi_satuan}` : '';
+            const stokCount = item.item_stok?.length || 0;
             
-            html += `
-                <div class="product-card" data-id="${product.id}">
-                    <div class="product-image">
-                        ${product.aplikasi_gambar ? 
-                            `<img src="${escapeHtml(product.aplikasi_gambar)}" alt="${escapeHtml(product.item_nama)}">` : 
+            return `
+                <div class="product-card ${!item.item_ready ? 'sold' : ''}" onclick="window.website.viewProduct(${item.id})">
+                    <div class="product-badge ${readyClass}">
+                        ${item.item_ready ? 'Ready' : 'Sold'}
+                    </div>
+                    <div class="product-logo">
+                        ${logo ? 
+                            `<img src="${escapeHtml(logo)}" alt="${escapeHtml(item.item_nama)}">` : 
                             `<i class="fas fa-box"></i>`
                         }
                     </div>
                     <div class="product-info">
-                        <div class="product-nama">${escapeHtml(product.item_nama || 'Produk')}</div>
-                        <div class="product-kategori">${escapeHtml(product.layanan_nama || '')} / ${escapeHtml(product.aplikasi_nama || '')}</div>
-                        <div class="product-harga">${formatRupiah(product.item_harga)}</div>
-                        <div class="product-stok">
-                            <i class="fas fa-cubes"></i>
-                            <span>Stok: ${stokCount}</span>
-                            ${!isReady ? '<span class="product-badge sold">Sold</span>' : ''}
-                        </div>
+                        <div class="product-nama">${escapeHtml(item.item_nama || 'Produk')}</div>
+                        <div class="product-category">${escapeHtml(item.aplikasi_nama || '')}</div>
                     </div>
+                    <div class="product-harga">${formatRupiah(item.item_harga)}</div>
+                    ${durasi ? `<div class="product-durasi">⏱️ ${escapeHtml(durasi)}</div>` : ''}
+                    ${item.item_metode === 'request' ? 
+                        `<div class="product-stok"><i class="fas fa-clipboard-list"></i> Request</div>` : 
+                        `<div class="product-stok"><i class="fas fa-cubes"></i> Stok: ${stokCount}</div>`
+                    }
                 </div>
             `;
-        });
-        
-        elements.productsGrid.innerHTML = html;
-        
-        // Add click handlers
-        document.querySelectorAll('.product-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const productId = card.dataset.id;
-                showProductDetail(productId);
-            });
-        });
+        }).join('');
     }
 
     function renderPagination() {
-        totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-        
-        if (totalPages <= 1) {
-            elements.pagination.innerHTML = '';
-            elements.paginationContainer.classList.add('hidden');
-            return;
-        }
+        if (totalPages <= 1) return '';
         
         let html = '';
         
         // Previous button
-        html += `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="prev"><i class="fas fa-chevron-left"></i></button>`;
-        
-        // Page numbers
-        const startPage = Math.max(1, currentPage - 2);
-        const endPage = Math.min(totalPages, startPage + 4);
-        
-        for (let i = startPage; i <= endPage; i++) {
-            html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-        }
-        
-        // Next button
-        html += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="next"><i class="fas fa-chevron-right"></i></button>`;
-        
-        elements.pagination.innerHTML = html;
-        
-        // Show pagination
-        elements.paginationContainer.classList.remove('hidden');
-        
-        // Add click handlers
-        elements.pagination.querySelectorAll('.pagination-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (btn.disabled) return;
-                
-                const page = btn.dataset.page;
-                if (page === 'prev') {
-                    currentPage--;
-                } else if (page === 'next') {
-                    currentPage++;
-                } else {
-                    currentPage = parseInt(page);
-                }
-                
-                renderProducts();
-                renderPagination();
-            });
-        });
-    }
-
-    function renderAktivitas() {
-        // Simulasi aktivitas (nanti diambil dari database)
-        const aktivitas = [
-            {
-                type: 'sold',
-                title: 'Produk Terjual',
-                desc: 'Canva Pro 1 Tahun',
-                time: new Date(Date.now() - 5 * 60000)
-            },
-            {
-                type: 'price',
-                title: 'Harga Berubah',
-                desc: 'Netflix Premium turun Rp 20.000',
-                time: new Date(Date.now() - 2 * 3600000)
-            },
-            {
-                type: 'stock',
-                title: 'Stok Ditambahkan',
-                desc: 'Spotify Family +5 stok',
-                time: new Date(Date.now() - 1 * 86400000)
-            }
-        ];
-        
-        let html = '';
-        aktivitas.forEach(act => {
-            const iconClass = act.type === 'sold' ? 'sold' : act.type === 'price' ? 'price' : '';
-            html += `
-                <div class="aktivitas-item">
-                    <div class="aktivitas-icon ${iconClass}">
-                        <i class="fas fa-${act.type === 'sold' ? 'shopping-cart' : act.type === 'price' ? 'tag' : 'cube'}"></i>
-                    </div>
-                    <div class="aktivitas-content">
-                        <div class="aktivitas-title">${act.title}</div>
-                        <div class="aktivitas-desc">${act.desc}</div>
-                    </div>
-                    <div class="aktivitas-time">
-                        <i class="far fa-clock"></i>
-                        <span>${formatDate(act.time)}</span>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.aktivitasList.innerHTML = html;
-    }
-
-    function renderPromo() {
-        if (!tampilanData || !tampilanData.promos || tampilanData.promos.length === 0) {
-            elements.promoBanners.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-tags"></i>
-                    <p>Belum ada promo</p>
-                </div>
-            `;
-            return;
-        }
-        
-        let html = '';
-        tampilanData.promos.forEach(promo => {
-            html += `
-                <div class="promo-card">
-                    <img src="${promo.banner}" alt="${promo.title}">
-                    <div class="promo-overlay">
-                        <div class="promo-title">${promo.title}</div>
-                        <div class="promo-desc">${promo.description || ''}</div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.promoBanners.innerHTML = html;
-    }
-
-    function renderVouchers() {
-        if (!userClaims || userClaims.length === 0) {
-            elements.voucherGrid.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-ticket-alt"></i>
-                    <p>Belum ada voucher</p>
-                </div>
-            `;
-            return;
-        }
-        
-        let html = '';
-        userClaims.forEach(claim => {
-            const isExpired = claim.expired_at && new Date(claim.expired_at) < new Date();
-            html += `
-                <div class="voucher-card ${isExpired ? 'expired' : ''}">
-                    <div class="voucher-icon">
-                        <i class="fas fa-ticket-alt"></i>
-                    </div>
-                    <div class="voucher-info">
-                        <div class="voucher-kode">${claim.kode}</div>
-                        <div class="voucher-nama">${claim.nama}</div>
-                        ${claim.expired_at ? `
-                            <div class="voucher-expiry">
-                                <i class="far fa-clock"></i>
-                                <span>Berlaku hingga: ${new Date(claim.expired_at).toLocaleDateString('id-ID')}</span>
-                            </div>
-                        ` : ''}
-                    </div>
-                </div>
-            `;
-        });
-        
-        elements.voucherGrid.innerHTML = html;
-    }
-
-    function renderRekening() {
-        if (!paymentData || !paymentData.rekening || paymentData.rekening.length === 0) {
-            elements.rekeningGrid.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas-credit-card"></i>
-                    <p>Belum ada rekening</p>
-                </div>
-            `;
-            return;
-        }
-        
-        let html = '';
-        paymentData.rekening.forEach(rek => {
-            html += `
-                <div class="rekening-card">
-                    <div class="rekening-logo">
-                        <img src="${rek.logo_url}" alt="${rek.nama}">
-                    </div>
-                    <div class="rekening-info">
-                        <div class="rekening-nama">${rek.nama}</div>
-                        <div class="rekening-nomor">${rek.nomor}</div>
-                        <div class="rekening-pemilik">a.n ${rek.pemilik}</div>
-                    </div>
-                    <button class="rekening-copy" data-nomor="${rek.nomor}">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-            `;
-        });
-        
-        elements.rekeningGrid.innerHTML = html;
-        
-        // Add copy handlers
-        document.querySelectorAll('.rekening-copy').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const nomor = btn.dataset.nomor;
-                navigator.clipboard.writeText(nomor).then(() => {
-                    showToast('Nomor rekening disalin', 'success');
-                });
-            });
-        });
-    }
-
-    function renderGateway() {
-        if (!paymentData || !paymentData.gateway || paymentData.gateway.length === 0) {
-            elements.gatewaySection.style.display = 'none';
-            return;
-        }
-        
-        const gateway = paymentData.gateway[0];
-        elements.gatewaySection.style.display = 'block';
-        
-        elements.gatewayCard.innerHTML = `
-            <div class="gateway-qr">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${gateway.qris_id || 'QRIS'}" alt="QRIS">
-            </div>
-            <div class="gateway-nama">${gateway.nama || 'Cashify'}</div>
-            <div class="gateway-expiry">⏱️ Kadaluarsa dalam ${gateway.expired_menit || 30} menit</div>
-            <button class="gateway-btn" id="bayarQrisBtn">
-                <i class="fas fa-qrcode"></i>
-                Bayar via QRIS
+        html += `
+            <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="window.website.goToPage(${currentPage - 1})">
+                <i class="fas fa-chevron-left"></i>
             </button>
         `;
         
-        document.getElementById('bayarQrisBtn')?.addEventListener('click', () => {
-            showToast('Fitur pembayaran akan segera tersedia', 'info');
+        // Page numbers
+        html += '<div class="page-numbers">';
+        
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        
+        if (startPage > 1) {
+            html += `<button class="page-number" onclick="window.website.goToPage(1)">1</button>`;
+            if (startPage > 2) {
+                html += `<span class="page-number" style="background: transparent;">...</span>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="page-number ${i === currentPage ? 'active' : ''}" onclick="window.website.goToPage(${i})">${i}</button>`;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += `<span class="page-number" style="background: transparent;">...</span>`;
+            }
+            html += `<button class="page-number" onclick="window.website.goToPage(${totalPages})">${totalPages}</button>`;
+        }
+        
+        html += '</div>';
+        
+        // Next button
+        html += `
+            <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="window.website.goToPage(${currentPage + 1})">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        `;
+        
+        return html;
+    }
+
+    function renderAktivitasPage() {
+        const html = `
+            <div class="page-content">
+                <div class="section-title">
+                    <h2><i class="fas fa-history"></i> Aktivitas Terkini</h2>
+                </div>
+                
+                <div class="aktivitas-timeline">
+                    ${renderAktivitasList()}
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+    }
+
+    function renderAktivitasList() {
+        if (aktivitasList.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada aktivitas</p></div>';
+        }
+        
+        return aktivitasList.slice(0, 30).map(aktivitas => `
+            <div class="aktivitas-item">
+                <div class="aktivitas-icon">
+                    <i class="fas ${aktivitas.icon}"></i>
+                </div>
+                <div class="aktivitas-content">
+                    <div class="aktivitas-title">${escapeHtml(aktivitas.title)}</div>
+                    <div class="aktivitas-meta">
+                        <span class="aktivitas-time">
+                            <i class="far fa-clock"></i> ${formatDate(aktivitas.time)}
+                        </span>
+                    </div>
+                    <div class="aktivitas-desc" style="font-size: 12px; color: var(--tg-hint-color); margin-top: 4px;">
+                        ${escapeHtml(aktivitas.description)}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderPromoPage() {
+        const html = `
+            <div class="page-content">
+                <div class="section-title">
+                    <h2><i class="fas fa-bullhorn"></i> Promo Spesial</h2>
+                </div>
+                
+                <div class="promo-actions" style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <button class="btn-primary" style="flex: 1;" onclick="window.website.openVoucherModal()">
+                        <i class="fas fa-ticket-alt"></i> Klaim Voucher
+                    </button>
+                    <button class="btn-secondary" style="flex: 1;" onclick="window.website.showMyVouchers()">
+                        <i class="fas fa-gift"></i> Voucher Saya (${userVouchers.length})
+                    </button>
+                </div>
+                
+                <div class="promo-grid">
+                    ${renderPromoList()}
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+    }
+
+    function renderPromoList() {
+        if (promosList.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-bullhorn"></i><p>Belum ada promo</p></div>';
+        }
+        
+        return promosList.map(promo => {
+            const expiryText = promo.never_end ? 
+                'Tidak ada batas waktu' : 
+                `Berakhir: ${formatDate(promo.end_date + 'T' + (promo.end_time || '23:59'), true)}`;
+            
+            return `
+                <div class="promo-card">
+                    <div class="promo-banner">
+                        <img src="${escapeHtml(promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo')}" 
+                             alt="${escapeHtml(promo.title)}"
+                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo';">
+                    </div>
+                    <div class="promo-content">
+                        <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
+                        ${promo.description ? `<p class="promo-description">${escapeHtml(promo.description)}</p>` : ''}
+                        <div class="promo-footer">
+                            <span class="promo-expiry">
+                                <i class="far fa-clock"></i> ${expiryText}
+                            </span>
+                        </div>
+                        ${promo.notes ? `
+                            <div class="promo-notes">
+                                <i class="fas fa-sticky-note"></i> ${escapeHtml(promo.notes)}
+                            </div>
+                        ` : ''}
+                        <div class="promo-actions">
+                            <button class="promo-btn" onclick="window.website.claimPromo(${promo.id})">
+                                <i class="fas fa-tag"></i> Klaim Promo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderBankPage() {
+        const html = `
+            <div class="page-content">
+                <div class="section-title">
+                    <h2><i class="fas fa-university"></i> Bank & Deposit</h2>
+                </div>
+                
+                <!-- Balance Card -->
+                <div class="balance-card">
+                    <div class="balance-label">Saldo Anda</div>
+                    <div class="balance-amount" id="balanceAmount">${formatRupiah(balance)}</div>
+                    <div class="balance-actions">
+                        <button class="balance-btn" onclick="window.website.openDepositModal()">
+                            <i class="fas fa-plus-circle"></i> Deposit
+                        </button>
+                        <button class="balance-btn" onclick="window.website.openWithdrawModal()">
+                            <i class="fas fa-minus-circle"></i> Withdraw
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Rekening Tersedia -->
+                <div class="section-title" style="margin-top: 16px;">
+                    <h3><i class="fas fa-credit-card"></i> Rekening Tersedia</h3>
+                </div>
+                
+                <div class="rekening-grid">
+                    ${renderRekeningList()}
+                </div>
+                
+                <!-- Riwayat Transaksi -->
+                <div class="transaction-history">
+                    <div class="transaction-header">
+                        <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
+                    </div>
+                    <div class="transaction-list">
+                        ${renderTransactionList()}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+        
+        // Populate payment method select
+        populatePaymentMethod();
+        
+        // Populate withdraw account select
+        populateWithdrawAccount();
+    }
+
+    function renderRekeningList() {
+        if (rekeningList.length === 0) {
+            return '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-university"></i><p>Belum ada rekening</p></div>';
+        }
+        
+        return rekeningList.map(rek => `
+            <div class="rekening-card">
+                <div class="rekening-logo">
+                    <img src="${escapeHtml(rek.logo_url)}" alt="${escapeHtml(rek.nama)}"
+                         onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=${escapeHtml(rek.nama.charAt(0))}';">
+                </div>
+                <div class="rekening-info">
+                    <div class="rekening-nama">${escapeHtml(rek.nama)}</div>
+                    <div class="rekening-nomor">${escapeHtml(rek.nomor)}</div>
+                    <div style="font-size: 9px; color: var(--tg-hint-color);">${escapeHtml(rek.pemilik)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderTransactionList() {
+        if (transactions.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada transaksi</p></div>';
+        }
+        
+        return transactions.slice(0, 10).map(trx => {
+            const amountClass = trx.type === 'deposit' ? 'positive' : (trx.type === 'withdraw' ? 'negative' : '');
+            const amountPrefix = trx.type === 'deposit' ? '+' : (trx.type === 'withdraw' ? '-' : '');
+            const iconClass = trx.type === 'deposit' ? 'fa-arrow-down' : 
+                             (trx.type === 'withdraw' ? 'fa-arrow-up' : 'fa-shopping-cart');
+            
+            return `
+                <div class="transaction-item">
+                    <div class="transaction-info">
+                        <div class="transaction-icon">
+                            <i class="fas ${iconClass}"></i>
+                        </div>
+                        <div class="transaction-details">
+                            <h4>${escapeHtml(trx.description)}</h4>
+                            <span>${formatDate(trx.time)} • ${trx.status}</span>
+                        </div>
+                    </div>
+                    <div class="transaction-amount ${amountClass}">
+                        ${amountPrefix} ${formatRupiah(trx.amount)}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function populatePaymentMethod() {
+        const select = elements.paymentMethod;
+        if (!select) return;
+        
+        let options = '<option value="">-- Pilih Metode --</option>';
+        
+        rekeningList.forEach(rek => {
+            options += `<option value="${rek.id}">${escapeHtml(rek.nama)} - ${escapeHtml(rek.nomor)}</option>`;
+        });
+        
+        select.innerHTML = options;
+    }
+
+    function populateWithdrawAccount() {
+        const select = elements.withdrawAccount;
+        if (!select) return;
+        
+        let options = '<option value="">-- Pilih Rekening --</option>';
+        
+        // Untuk demo, kita pakai rekening yang sama
+        rekeningList.forEach(rek => {
+            options += `<option value="${rek.id}">${escapeHtml(rek.nama)} - ${escapeHtml(rek.nomor)}</option>`;
+        });
+        
+        select.innerHTML = options;
+    }
+
+    function renderProfilePage() {
+        const fullName = currentUser ? [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') : 'User';
+        const username = currentUser?.username ? `@${currentUser.username}` : '@user';
+        const avatarUrl = currentUser?.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.charAt(0))}&size=80&background=40a7e3&color=fff`;
+        
+        const html = `
+            <div class="page-content">
+                <!-- Profile Header -->
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <img src="${avatarUrl}" alt="Profile">
+                    </div>
+                    <div class="profile-name">${escapeHtml(fullName)}</div>
+                    <div class="profile-username">${escapeHtml(username)}</div>
+                    <div class="profile-badge">
+                        <i class="fas fa-id-card"></i> ID: ${currentUser?.id || '-'}
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <span class="stat-value">${userVouchers.length}</span>
+                        <span class="stat-label">Voucher</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="stat-value">${transactions.filter(t => t.type === 'pembelian').length}</span>
+                        <span class="stat-label">Pembelian</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="stat-value">${formatRupiah(balance)}</span>
+                        <span class="stat-label">Saldo</span>
+                    </div>
+                </div>
+                
+                <!-- Menu -->
+                <div class="profile-menu">
+                    <div class="profile-menu-item" onclick="window.website.showMyVouchers()">
+                        <div class="menu-icon">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Voucher Saya</div>
+                            <div class="menu-subtitle">${userVouchers.length} voucher tersedia</div>
+                        </div>
+                        <div class="menu-value">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-menu-item" onclick="window.website.showTransactionHistory()">
+                        <div class="menu-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Riwayat Transaksi</div>
+                            <div class="menu-subtitle">Lihat semua transaksi</div>
+                        </div>
+                        <div class="menu-value">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-menu-item" onclick="window.website.openSettings()">
+                        <div class="menu-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Pengaturan Akun</div>
+                            <div class="menu-subtitle">Atur preferensi Anda</div>
+                        </div>
+                        <div class="menu-value">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-menu-item" onclick="window.website.logout()">
+                        <div class="menu-icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Keluar</div>
+                            <div class="menu-subtitle">Kembali ke Telegram</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+    }
+
+    // ==================== NAVIGATION FUNCTIONS ====================
+    function changePage(page) {
+        elements.navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === page) {
+                item.classList.add('active');
+            }
+        });
+        
+        switch (page) {
+            case 'home':
+                renderHomePage();
+                break;
+            case 'aktivitas':
+                renderAktivitasPage();
+                break;
+            case 'promo':
+                renderPromoPage();
+                break;
+            case 'bank':
+                renderBankPage();
+                break;
+            case 'profile':
+                renderProfilePage();
+                break;
+        }
+        
+        vibrate(10);
+    }
+
+    function initNavScroll() {
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            if (scrollTop > lastScrollTop && scrollTop > 100) {
+                // Scroll down - hide nav
+                elements.bottomNav.classList.add('hidden');
+            } else {
+                // Scroll up - show nav
+                elements.bottomNav.classList.remove('hidden');
+            }
+            
+            lastScrollTop = scrollTop;
+            
+            // Clear previous timer
+            if (scrollTimer) clearTimeout(scrollTimer);
+            
+            // Set timer to show nav when stopped scrolling
+            scrollTimer = setTimeout(() => {
+                elements.bottomNav.classList.remove('hidden');
+            }, 150);
         });
     }
 
-    function renderForceSubscribe() {
-        if (!sosialData || !sosialData.force || sosialData.force.length === 0) {
-            elements.forceSubscribeSection.style.display = 'none';
+    // ==================== FILTER ACTIONS ====================
+    function toggleFilter() {
+        const filterContent = document.getElementById('filterContent');
+        const chevron = document.getElementById('filterChevron');
+        
+        if (filterContent && chevron) {
+            filterContent.classList.toggle('open');
+            chevron.style.transform = filterContent.classList.contains('open') ? 'rotate(180deg)' : '';
+        }
+    }
+
+    function toggleLayananFilter(layanan) {
+        if (currentFilters.layanan === layanan) {
+            currentFilters.layanan = null;
+            currentFilters.aplikasi = null;
+        } else {
+            currentFilters.layanan = layanan;
+            currentFilters.aplikasi = null;
+        }
+        
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function toggleAplikasiFilter(aplikasi) {
+        if (currentFilters.aplikasi === aplikasi) {
+            currentFilters.aplikasi = null;
+        } else {
+            currentFilters.aplikasi = aplikasi;
+        }
+        
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function filterByLayanan(layanan) {
+        currentFilters.layanan = layanan;
+        currentFilters.aplikasi = null;
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function showAllLayanan() {
+        currentFilters.layanan = null;
+        currentFilters.aplikasi = null;
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        renderHomePage();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ==================== PRODUCT ACTIONS ====================
+    function viewProduct(productId) {
+        const product = filteredItems.find(p => p.id === productId);
+        if (!product) return;
+        
+        // Implementasi view product detail
+        showToast(`Melihat detail produk: ${product.item_nama}`, 'info');
+        
+        // Bisa redirect ke halaman detail produk
+        // window.location.href = `/wtb/html/produk-detail.html?website=${currentWebsite?.endpoint}&id=${productId}`;
+    }
+
+    // ==================== PROMO ACTIONS ====================
+    function openVoucherModal() {
+        elements.voucherModal.classList.add('active');
+    }
+
+    function closeVoucherModal() {
+        elements.voucherModal.classList.remove('active');
+        elements.voucherCode.value = '';
+    }
+
+    async function claimVoucher(e) {
+        e.preventDefault();
+        
+        const code = elements.voucherCode.value.trim();
+        
+        if (!code) {
+            showToast('Masukkan kode voucher', 'warning');
             return;
         }
         
-        elements.forceSubscribeSection.style.display = 'block';
-        
-        let html = '';
-        sosialData.force.forEach(force => {
-            html += `
-                <a href="${force.link}" target="_blank" class="force-item">
-                    <div class="force-icon">
-                        <i class="fas fa-${force.type === 'channel' ? 'satellite' : 'users'}"></i>
-                    </div>
-                    <div class="force-info">
-                        <div class="force-nama">${force.nama}</div>
-                        <div class="force-desc">${force.description || `@${force.username}`}</div>
-                    </div>
-                    <span class="force-status">Subscribe</span>
-                </a>
-            `;
-        });
-        
-        elements.forceList.innerHTML = html;
-    }
-
-    function renderProfile() {
-        if (!currentUser) return;
-        
-        const fullName = [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') || 'User';
-        const username = currentUser.username ? `@${currentUser.username}` : '@user';
-        
-        elements.profileName.textContent = fullName;
-        elements.profileUsername.textContent = username;
-        elements.profileUserId.textContent = currentUser.id;
-        
-        // Hanya foto profil saja
-        if (currentUser.photo_url) {
-            elements.profileImage.src = currentUser.photo_url;
-        } else {
-            elements.profileImage.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.charAt(0))}&size=70&background=40a7e3&color=fff`;
+        if (!currentUser) {
+            showToast('Silakan login terlebih dahulu', 'warning');
+            return;
         }
         
-        // Stats (simulasi)
-        elements.profileOrders.textContent = '12';
-        elements.profileSpent.textContent = formatRupiah(450000);
-        elements.profileVouchers.textContent = userClaims.length || '0';
-        elements.profileJoined.textContent = '1 Jan 2024';
-        elements.profileEmail.textContent = currentUser.email || '-';
-        elements.profilePhone.textContent = '-';
-    }
-
-    function showProductDetail(productId) {
-        showToast('Fitur detail produk akan segera tersedia', 'info');
-    }
-
-    // ==================== PAGINATION SCROLL HANDLER ====================
-    function setupPaginationScrollHandler() {
-        window.addEventListener('scroll', () => {
-            if (paginationTimeout) {
-                clearTimeout(paginationTimeout);
-            }
-            
-            const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            
-            if (currentScrollTop > lastScrollTop) {
-                // Scroll ke bawah - sembunyikan pagination
-                elements.paginationContainer.classList.add('hidden');
-            }
-            
-            lastScrollTop = currentScrollTop <= 0 ? 0 : currentScrollTop;
-            
-            // Tampilkan kembali setelah scroll berhenti
-            paginationTimeout = setTimeout(() => {
-                elements.paginationContainer.classList.remove('hidden');
-            }, 150);
-        }, { passive: true });
-    }
-
-    // ==================== NAVIGATION ====================
-    function setupNavigation() {
-        elements.navTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const pageId = tab.dataset.page;
-                
-                // Update active tab
-                elements.navTabs.forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                
-                // Show page
-                elements.pages.forEach(page => {
-                    page.classList.remove('active');
-                });
-                document.getElementById(`page-${pageId}`).classList.add('active');
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/claim`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    website_id: currentWebsite.id,
+                    kode: code,
+                    user_id: currentUser.id,
+                    username: currentUser.username,
+                    name: currentUser.first_name + (currentUser.last_name ? ' ' + currentUser.last_name : '')
+                })
             });
+            
+            if (response.success) {
+                showToast('✅ Voucher berhasil diklaim!', 'success');
+                closeVoucherModal();
+                
+                // Reload user vouchers
+                const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
+                    method: 'GET'
+                });
+                
+                if (vouchersResponse.success) {
+                    userVouchers = vouchersResponse.claims || [];
+                }
+                
+                // Tambah aktivitas
+                aktivitasList.unshift({
+                    id: aktivitasList.length + 1,
+                    type: 'aktivitas_lain',
+                    title: 'Klaim Voucher',
+                    description: `Berhasil mengklaim voucher dengan kode ${code}`,
+                    time: new Date().toISOString(),
+                    icon: 'fa-ticket-alt'
+                });
+                
+            } else {
+                showToast(response.message || 'Gagal mengklaim voucher', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error claiming voucher:', error);
+            showToast('Gagal mengklaim voucher', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function showMyVouchers() {
+        if (userVouchers.length === 0) {
+            showToast('Anda belum memiliki voucher', 'info');
+            return;
+        }
+        
+        // Implementasi tampil daftar voucher
+        let message = 'Voucher Saya:\n';
+        userVouchers.forEach(v => {
+            message += `\n• ${v.nama} (${v.kode}) - ${v.used ? 'Sudah digunakan' : 'Belum digunakan'}`;
         });
+        
+        showToast(message, 'info', 5000);
+    }
+
+    function claimPromo(promoId) {
+        const promo = promosList.find(p => p.id == promoId);
+        if (!promo) return;
+        
+        showToast(`Promo: ${promo.title}`, 'info');
+        // Implementasi klaim promo
+    }
+
+    // ==================== BANK ACTIONS ====================
+    function openDepositModal() {
+        elements.depositModal.classList.add('active');
+    }
+
+    function closeDepositModal() {
+        elements.depositModal.classList.remove('active');
+        elements.depositForm.reset();
+    }
+
+    async function deposit(e) {
+        e.preventDefault();
+        
+        const amount = parseInt(elements.depositAmount.value);
+        const method = elements.paymentMethod.value;
+        
+        if (!amount || amount < 10000) {
+            showToast('Minimal deposit Rp 10.000', 'warning');
+            return;
+        }
+        
+        if (!method) {
+            showToast('Pilih metode pembayaran', 'warning');
+            return;
+        }
+        
+        showToast('Fitur deposit akan segera tersedia', 'info');
+        closeDepositModal();
+    }
+
+    function openWithdrawModal() {
+        if (balance < 50000) {
+            showToast('Minimal withdraw Rp 50.000', 'warning');
+            return;
+        }
+        
+        elements.withdrawAmount.max = balance;
+        elements.userBalance.textContent = formatRupiah(balance);
+        elements.withdrawModal.classList.add('active');
+    }
+
+    function closeWithdrawModal() {
+        elements.withdrawModal.classList.remove('active');
+        elements.withdrawForm.reset();
+    }
+
+    async function withdraw(e) {
+        e.preventDefault();
+        
+        const amount = parseInt(elements.withdrawAmount.value);
+        const account = elements.withdrawAccount.value;
+        
+        if (!amount || amount < 50000) {
+            showToast('Minimal withdraw Rp 50.000', 'warning');
+            return;
+        }
+        
+        if (amount > balance) {
+            showToast('Saldo tidak mencukupi', 'warning');
+            return;
+        }
+        
+        if (!account) {
+            showToast('Pilih rekening tujuan', 'warning');
+            return;
+        }
+        
+        showToast('Fitur withdraw akan segera tersedia', 'info');
+        closeWithdrawModal();
+    }
+
+    function showTransactionHistory() {
+        // Bisa redirect ke halaman riwayat transaksi
+        changePage('bank');
+    }
+
+    // ==================== PROFILE ACTIONS ====================
+    function openSettings() {
+        showToast('Fitur pengaturan akan segera tersedia', 'info');
+    }
+
+    function logout() {
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.close();
+        } else {
+            window.location.href = '/';
+        }
     }
 
     // ==================== INITIALIZATION ====================
@@ -1114,99 +1495,74 @@
         showLoading(true);
         
         try {
-            // Load user from Telegram
-            loadUserFromTelegram();
-            
-            // Load website data
-            await loadWebsite();
+            currentWebsite = await loadWebsite();
             if (!currentWebsite) return;
             
-            // Load all data in parallel
-            await Promise.all([
-                loadTampilan(),
-                loadProducts(),
-                loadSosialData(),
-                loadPaymentData(),
-                loadVoucherData()
-            ]);
+            await loadUserFromTelegram();
+            await loadTampilan();
+            await loadAllData();
             
-            // Render everything
-            renderStoreHeader();
+            // Render banners
             renderBanners();
-            renderLayanan();
-            renderFilterOptions();
-            applyFilters();
-            renderAktivitas();
-            renderPromo();
-            renderVouchers();
-            renderRekening();
-            renderGateway();
-            renderForceSubscribe();
-            renderProfile();
+            
+            // Render home page
+            renderHomePage();
             
             // Setup navigation
-            setupNavigation();
-            
-            // Setup banner navigation
-            if (elements.bannerPrev) {
-                elements.bannerPrev.addEventListener('click', goToPrevBanner);
-                elements.bannerNext.addEventListener('click', goToNextBanner);
-            }
-            
-            // Setup banner dots
-            document.querySelectorAll('.banner-dot').forEach((dot, index) => {
-                dot.addEventListener('click', () => goToBanner(index));
+            elements.navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    changePage(item.dataset.page);
+                });
             });
             
-            // Setup view all layanan
-            if (elements.viewAllLayanan) {
-                elements.viewAllLayanan.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    selectedLayanan = 'all';
-                    elements.selectedLayanan.textContent = 'Layanan';
-                    applyFilters();
-                    
-                    // Switch to utama page
-                    document.querySelector('[data-page="utama"]').click();
-                });
+            // Setup scroll hide nav
+            initNavScroll();
+            
+            // Setup modal forms
+            if (elements.voucherForm) {
+                elements.voucherForm.addEventListener('submit', claimVoucher);
             }
             
-            // Setup lihat voucher
-            if (elements.lihatVoucherBtn) {
-                elements.lihatVoucherBtn.addEventListener('click', () => {
-                    elements.voucherSection.style.display = elements.voucherSection.style.display === 'none' ? 'block' : 'none';
-                });
+            if (elements.closeVoucherModal) {
+                elements.closeVoucherModal.addEventListener('click', closeVoucherModal);
             }
             
-            // Setup bank actions
-            if (elements.depositBtn) {
-                elements.depositBtn.addEventListener('click', () => showToast('Fitur deposit akan segera tersedia', 'info'));
-                elements.withdrawBtn.addEventListener('click', () => showToast('Fitur withdraw akan segera tersedia', 'info'));
-                elements.transferBtn.addEventListener('click', () => showToast('Fitur transfer akan segera tersedia', 'info'));
+            if (elements.cancelVoucherBtn) {
+                elements.cancelVoucherBtn.addEventListener('click', closeVoucherModal);
             }
             
-            // Setup logout
-            if (elements.logoutBtn) {
-                elements.logoutBtn.addEventListener('click', () => {
-                    if (window.Telegram?.WebApp) {
-                        window.Telegram.WebApp.close();
-                    } else {
-                        window.location.href = '/';
-                    }
-                });
+            if (elements.depositForm) {
+                elements.depositForm.addEventListener('submit', deposit);
             }
             
-            // Setup pagination scroll handler
-            setupPaginationScrollHandler();
-            
-            // Setup Telegram WebApp
-            if (window.Telegram?.WebApp) {
-                window.Telegram.WebApp.expand();
-                window.Telegram.WebApp.ready();
-                window.Telegram.WebApp.enableClosingConfirmation();
+            if (elements.closeDepositModal) {
+                elements.closeDepositModal.addEventListener('click', closeDepositModal);
             }
             
-            console.log('✅ Website initialized successfully');
+            if (elements.cancelDepositBtn) {
+                elements.cancelDepositBtn.addEventListener('click', closeDepositModal);
+            }
+            
+            if (elements.withdrawForm) {
+                elements.withdrawForm.addEventListener('submit', withdraw);
+            }
+            
+            if (elements.closeWithdrawModal) {
+                elements.closeWithdrawModal.addEventListener('click', closeWithdrawModal);
+            }
+            
+            if (elements.cancelWithdrawBtn) {
+                elements.cancelWithdrawBtn.addEventListener('click', closeWithdrawModal);
+            }
+            
+            // Close modals on outside click
+            window.addEventListener('click', (e) => {
+                if (e.target === elements.voucherModal) closeVoucherModal();
+                if (e.target === elements.depositModal) closeDepositModal();
+                if (e.target === elements.withdrawModal) closeWithdrawModal();
+            });
+            
+            console.log('✅ Website initialized');
             
         } catch (error) {
             console.error('❌ Init error:', error);
@@ -1215,6 +1571,39 @@
             showLoading(false);
         }
     }
+
+    // ==================== EXPOSE GLOBAL FUNCTIONS ====================
+    window.website = {
+        // Navigation
+        changePage,
+        
+        // Filter
+        toggleFilter,
+        toggleLayananFilter,
+        toggleAplikasiFilter,
+        filterByLayanan,
+        showAllLayanan,
+        
+        // Pagination
+        goToPage,
+        
+        // Products
+        viewProduct,
+        
+        // Promo
+        openVoucherModal,
+        showMyVouchers,
+        claimPromo,
+        
+        // Bank
+        openDepositModal,
+        openWithdrawModal,
+        showTransactionHistory,
+        
+        // Profile
+        openSettings,
+        logout
+    };
 
     // ==================== START ====================
     init();
