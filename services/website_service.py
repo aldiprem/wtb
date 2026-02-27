@@ -275,18 +275,24 @@ def test_bot(website_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
         
-@website_bp.route('/website/<int:website_id>/initial-data', methods=['GET'])
+@website_bp.route('/website/<int:website_id>/initial-data', methods=['GET', 'OPTIONS'])
 def get_initial_website_data(website_id):
     """
     Endpoint khusus untuk initial load website
     Menggabungkan semua data yang dibutuhkan dalam satu request
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response, 200
+    
     try:
-        from py import prd, tmp, pmb, vcr, trx
+        from py import prd, tmp, pmb, vcr, trx, users
         
         user_id = request.args.get('user_id', type=int)
         
-        # Parallel query di backend (lebih cepat)
+        # Parallel query di backend
         import concurrent.futures
         
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -299,11 +305,13 @@ def get_initial_website_data(website_id):
             future_vouchers = None
             future_activities = None
             future_transactions = None
+            future_user_preferences = None
             
             if user_id:
                 future_vouchers = executor.submit(vcr.get_user_claims, user_id, website_id, 50)
                 future_activities = executor.submit(vcr.get_activities, website_id, None, 50, 0)
                 future_transactions = executor.submit(trx.get_user_transactions, user_id, website_id, 'all', 50)
+                future_user_preferences = executor.submit(users.get_user_preferences, user_id, website_id)
             
             # Ambil hasil
             products_data = future_products.result()
@@ -314,6 +322,19 @@ def get_initial_website_data(website_id):
             user_vouchers = future_vouchers.result() if future_vouchers else []
             activities_data = future_activities.result() if future_activities else []
             transactions_data = future_transactions.result() if future_transactions else []
+            user_preferences = future_user_preferences.result() if future_user_preferences else {}
+        
+        # Hitung balance dari transactions jika preferences tidak ada
+        balance = 0
+        if user_preferences and 'balance' in user_preferences:
+            balance = user_preferences['balance']
+        else:
+            # Hitung dari transactions
+            for t in transactions_data:
+                if t.get('transaction_type') == 'deposit' and t.get('status') == 'success':
+                    balance += t.get('amount', 0)
+                elif t.get('transaction_type') == 'withdraw' and t.get('status') == 'success':
+                    balance -= t.get('amount', 0)
         
         return jsonify({
             'success': True,
@@ -324,10 +345,17 @@ def get_initial_website_data(website_id):
                 'templates': templates_data,
                 'user_vouchers': user_vouchers,
                 'activities': activities_data,
-                'transactions': transactions_data
+                'transactions': transactions_data,
+                'balance': balance,
+                'user_preferences': user_preferences
             }
         })
         
     except Exception as e:
         print(f"❌ Error getting initial data: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
