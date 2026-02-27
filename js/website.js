@@ -263,42 +263,94 @@
         }
     }
 
+    // Tambahkan fungsi baru setelah applyTampilan()
+    function applyDynamicFonts() {
+      // Terapkan font ke heading (judul section, judul produk, dll)
+      if (tampilanData.heading_font_family) {
+        const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .section-title, .product-nama, .layanan-nama, .promo-title');
+        headings.forEach(el => {
+          el.style.fontFamily = `'${tampilanData.heading_font_family}', sans-serif`;
+    
+          if (tampilanData.heading_font_size) {
+            el.style.fontSize = `${tampilanData.heading_font_size}px`;
+          }
+    
+          let animType = tampilanData.heading_font_animation;
+          if (animType && animType !== 'none') {
+            const animName = animType + 'Anim';
+            const duration = tampilanData.heading_animation_duration || 2;
+            const delay = tampilanData.heading_animation_delay || 0;
+            const iteration = tampilanData.heading_animation_iteration || 'infinite';
+            el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+          }
+        });
+      }
+    
+      // Terapkan font ke body text (deskripsi, meta, dll)
+      if (tampilanData.body_font_family) {
+        const bodyTexts = document.querySelectorAll('.product-desc, .layanan-desc, .promo-description, .aktivitas-desc, .product-category, .product-durasi, .product-stok');
+        bodyTexts.forEach(el => {
+          el.style.fontFamily = `'${tampilanData.body_font_family}', sans-serif`;
+    
+          if (tampilanData.body_font_size) {
+            el.style.fontSize = `${tampilanData.body_font_size}px`;
+          }
+    
+          let animType = tampilanData.body_font_animation;
+          if (animType && animType !== 'none') {
+            const animName = animType + 'Anim';
+            const duration = tampilanData.body_animation_duration || 2;
+            const delay = tampilanData.body_animation_delay || 0;
+            const iteration = tampilanData.body_animation_iteration || 'infinite';
+            el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+          }
+        });
+      }
+    }
+
     function applyTampilan() {
-        // Apply logo
-        if (tampilanData.logo && elements.storeLogo) {
-            elements.storeLogo.src = tampilanData.logo;
+      // Apply logo
+      if (tampilanData.logo && elements.storeLogo) {
+        elements.storeLogo.src = tampilanData.logo;
+      }
+    
+      // Apply store name with font and animation - PRIORITAS: store_font_* dulu, baru font_* umum
+      const storeName = tampilanData.store_display_name || 'Toko Online';
+      if (elements.storeName) {
+        elements.storeName.textContent = storeName;
+    
+        // Apply font family - gunakan store_font_family jika ada, baru font_family
+        if (tampilanData.store_font_family) {
+          elements.storeName.style.fontFamily = `'${tampilanData.store_font_family}', sans-serif`;
+        } else if (tampilanData.font_family) {
+          elements.storeName.style.fontFamily = `'${tampilanData.font_family}', sans-serif`;
         }
-        
-        // Apply store name with font and animation
-        const storeName = tampilanData.store_display_name || 'Toko Online';
-        if (elements.storeName) {
-            elements.storeName.textContent = storeName;
-            
-            // Apply font family
-            if (tampilanData.font_family) {
-                elements.storeName.style.fontFamily = `'${tampilanData.font_family}', sans-serif`;
-            }
-            
-            // Apply font size
-            if (tampilanData.font_size) {
-                elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
-            }
-            
-            // Apply animation
-            if (tampilanData.font_animation && tampilanData.font_animation !== 'none') {
-                const animName = tampilanData.font_animation + 'Anim';
-                const duration = tampilanData.animation_duration || 2;
-                const delay = tampilanData.animation_delay || 0;
-                const iteration = tampilanData.animation_iteration || 'infinite';
-                
-                elements.storeName.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
-            }
+    
+        // Apply font size - gunakan store_font_size jika ada, baru font_size
+        if (tampilanData.store_font_size) {
+          elements.storeName.style.fontSize = `${tampilanData.store_font_size}px`;
+        } else if (tampilanData.font_size) {
+          elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
         }
-        
-        // Apply header border color
-        if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
-            elements.storeHeader.style.borderColor = tampilanData.colors.primary;
+    
+        // Apply animation - gunakan store_font_animation jika ada, baru font_animation
+        let animType = tampilanData.store_font_animation || tampilanData.font_animation;
+        let animDuration = tampilanData.store_animation_duration || tampilanData.animation_duration || 2;
+        let animDelay = tampilanData.store_animation_delay || tampilanData.animation_delay || 0;
+        let animIteration = tampilanData.store_animation_iteration || tampilanData.animation_iteration || 'infinite';
+    
+        if (animType && animType !== 'none') {
+          const animName = animType + 'Anim';
+          elements.storeName.style.animation = `${animName} ${animDuration}s ${animDelay}s ${animIteration}`;
+        } else {
+          elements.storeName.style.animation = 'none';
         }
+      }
+    
+      // Apply header border color
+      if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
+        elements.storeHeader.style.borderColor = tampilanData.colors.primary;
+      }
     }
 
     async function loadUserFromTelegram() {
@@ -659,12 +711,12 @@
     }
 
     function renderHomePage() {
-        // Tampilkan banner
-        if (elements.bannerSlider) {
-            elements.bannerSlider.style.display = 'block';
-        }
-        
-        const html = `
+      // Tampilkan banner
+      if (elements.bannerSlider) {
+        elements.bannerSlider.style.display = 'block';
+      }
+    
+      const html = `
             <div class="page-content">
                 <!-- Produk Layanan Section -->
                 <div class="section-title">
@@ -723,23 +775,28 @@
                 </div>
             </div>
         `;
-        
-        elements.mainContent.innerHTML = html;
-        
-        // Render filter bubbles
-        renderFilterBubbles();
-        
-        // Buka filter jika sebelumnya terbuka
-        if (filterOpen) {
-            const filterContent = document.getElementById('filterContent');
-            const filterChevron = document.getElementById('filterChevron');
-            if (filterContent) {
-                filterContent.classList.add('open');
-            }
-            if (filterChevron) {
-                filterChevron.style.transform = 'rotate(180deg)';
-            }
+    
+      // ===== INI TEMPATNYA =====
+      // Set innerHTML terlebih dahulu
+      elements.mainContent.innerHTML = html;
+    
+      // Render filter bubbles
+      renderFilterBubbles();
+    
+      // Terapkan font ke elemen dinamis
+      applyDynamicFonts(); // <-- TARUH SINI
+    
+      // Buka filter jika sebelumnya terbuka
+      if (filterOpen) {
+        const filterContent = document.getElementById('filterContent');
+        const filterChevron = document.getElementById('filterChevron');
+        if (filterContent) {
+          filterContent.classList.add('open');
         }
+        if (filterChevron) {
+          filterChevron.style.transform = 'rotate(180deg)';
+        }
+      }
     }
     
     function renderFilterContent() {
@@ -1041,6 +1098,8 @@
         `;
         
         elements.mainContent.innerHTML = html;
+        
+        applyDynamicFonts();
     }
     
     function renderAktivitasList() {
@@ -1111,6 +1170,8 @@
         `;
         
         elements.mainContent.innerHTML = html;
+        
+        applyDynamicFonts();
     }
 
     function renderPromoList() {
@@ -1197,6 +1258,15 @@
         `;
         
         elements.mainContent.innerHTML = html;
+        
+        // Populate payment method select
+        populatePaymentMethod();
+        
+        // Populate withdraw account select
+        populateWithdrawAccount();
+        
+        // Terapkan font ke elemen dinamis
+        applyDynamicFonts();
         
         // Populate payment method select
         populatePaymentMethod();
@@ -1372,6 +1442,9 @@
         `;
         
         elements.mainContent.innerHTML = html;
+        
+        // Terapkan font ke elemen dinamis
+        applyDynamicFonts();
     }
 
     function changePage(page) {
