@@ -1591,6 +1591,184 @@ body {
     }
 }
 
+/* ===== TRANSACTION FILTER ===== */
+.transaction-filter-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.transaction-filter-section .filter-header {
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.transaction-filter-section .filter-header h3 {
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.transaction-filter-section .filter-header h3 i {
+  color: var(--primary-color);
+}
+
+.transaction-filter-section .filter-content {
+  padding: 0 16px 16px 16px;
+}
+
+/* ===== QRIS MODAL ===== */
+.qris-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  background: white;
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.qris-image {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.deposit-details {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
+}
+
+.deposit-details .detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.deposit-details .detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.deposit-details .detail-label {
+  color: var(--tg-hint-color);
+}
+
+.deposit-details .detail-value {
+  font-weight: 600;
+}
+
+.deposit-details .detail-value.total {
+  color: var(--success-color);
+  font-size: 18px;
+}
+
+.qris-instruction {
+  background: rgba(64, 167, 227, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-left: 3px solid var(--primary-color);
+}
+
+.qris-instruction h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.qris-instruction ol {
+  margin-left: 20px;
+  font-size: 13px;
+  color: var(--tg-text-color);
+}
+
+.qris-instruction li {
+  margin-bottom: 6px;
+}
+
+/* ===== TRANSACTION ITEM IMPROVEMENTS ===== */
+.transaction-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+
+.transaction-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.transaction-icon.deposit {
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.transaction-icon.deposit i {
+  color: var(--success-color);
+}
+
+.transaction-icon.withdraw {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.transaction-icon.withdraw i {
+  color: var(--danger-color);
+}
+
+.transaction-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--tg-hint-color);
+  margin-right: 10px;
+}
+
+.transaction-rekening {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--primary-color);
+  margin-right: 10px;
+}
+
+.transaction-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ===== QRIS OPTION IN SELECT ===== */
+.qris-option {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  font-weight: 600;
+}
+
+select option.qris-option {
+  background: var(--primary-color);
+  color: white;
+}
+
 /* ===== ANIMASI KHUSUS ===== */
 @keyframes pageFadeIn {
     from {
