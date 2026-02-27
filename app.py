@@ -2040,6 +2040,33 @@ def api_get_website_stats(website_id):
         print(f"❌ Error getting website stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/font-templates/by-font/<path:font_family>', methods=['GET'])
+def get_font_template_by_font(font_family):
+    """
+    Mendapatkan template berdasarkan font family
+    """
+    try:
+        # Decode URL encoding
+        from urllib.parse import unquote
+        font_family = unquote(font_family)
+        
+        # Cari template dengan font family yang sama
+        templates = tmp_font.get_all_templates(limit=50)
+        
+        # Filter template yang memiliki font family yang cocok
+        matching_templates = [t for t in templates if t.get('font_family') == font_family]
+        
+        if matching_templates:
+            # Ambil yang pertama (atau yang paling populer)
+            template = matching_templates[0]
+            return jsonify({'success': True, 'template': template})
+        else:
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+            
+    except Exception as e:
+        print(f"❌ Error getting font template: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
