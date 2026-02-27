@@ -39,8 +39,8 @@ def create_deposit():
         if not website_id or not user_id or not amount:
             return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
         
-        if amount < 10000:
-            return jsonify({'success': False, 'error': 'Minimal deposit Rp 10.000'}), 400
+        if amount < 100:
+            return jsonify({'success': False, 'error': 'Minimal deposit Rp 100'}), 400
         
         # Buat deposit di database
         deposit_id = trx.create_deposit(
