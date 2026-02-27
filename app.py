@@ -45,6 +45,7 @@ app.register_blueprint(prd_bp, url_prefix='/api')
 app.register_blueprint(ssl_bp, url_prefix='/api')
 app.register_blueprint(tmp_bp, url_prefix='/api')
 app.register_blueprint(tmp_font_bp, url_prefix='/api')
+app.register_blueprint(trx_bp, url_prefix='/api')
 
 # Routes untuk file statis
 @app.route('/')
