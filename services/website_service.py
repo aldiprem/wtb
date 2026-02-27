@@ -1,276 +1,2453 @@
-from flask import Blueprint, request, jsonify
-import sqlite3
-import json
-import hashlib
-import secrets
-from datetime import datetime, timedelta
+// website.js - Website Store Front (FULLY FIXED VERSION)
+(function() {
+    'use strict';
+    
+    console.log('🏪 Website Store - Initializing...');
 
-website_bp = Blueprint('website', __name__)
+    // ==================== KONFIGURASI ====================
+    // Deteksi environment secara otomatis
+    const API_BASE_URL = (function() {
+        // Jika di GitHub Pages, gunakan tunnel URL
+        if (window.location.hostname.includes('github.io')) {
+            // GANTI DENGAN URL TUNNEL CLOUDFLARE ANDA YANG SEDANG AKTIF
+            return 'https://supports-lease-honest-potter.trycloudflare.com';
+        }
+        // Jika di localhost
+        return 'http://localhost:5050';
+    })();
+    
+    const MAX_RETRIES = 3;
+    const ITEMS_PER_PAGE = 8;
 
-DATABASE = 'website.db'
+    // ==================== STATE ====================
+    let currentWebsite = null;
+    let currentUser = null;
+    let tampilanData = {};
+    let productsData = [];
+    let layananList = [];
+    let filteredItems = [];
+    let currentPage = 1;
+    let totalPages = 1;
+    
+    let transactionFilterOpen = false;
 
-def get_db():
-    db = sqlite3.connect(DATABASE)
-    db.row_factory = sqlite3.Row
-    return db
+    // Filter transaksi
+    let transactionFilter = {
+      status: 'all'
+    };
+    
+    // Deposit state
+    let currentDeposit = null;
+    let statusCheckInterval = null;
+    
+    // Lihat semua rekening
+    let showAllRekening = false;
+    let allRekeningList = [];
 
-def init_db():
-    with get_db() as db:
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS websites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                endpoint TEXT UNIQUE NOT NULL,
-                bot_token TEXT NOT NULL,
-                owner_id INTEGER NOT NULL,
-                username TEXT NOT NULL,
-                password TEXT NOT NULL,
-                email TEXT NOT NULL,
-                tunnel_url TEXT,
-                status TEXT DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                start_date DATE,
-                end_date DATE,
-                settings TEXT DEFAULT '{}',
-                products TEXT DEFAULT '[]',
-                categories TEXT DEFAULT '[]'
-            )
-        ''')
-        print("✅ Website database initialized successfully")
+    // Filter states - LENGKAPI SEMUA VARIABEL YANG DIBUTUHKAN
+    let filterOpen = false;
+    let aktivitasFilterOpen = false;
+    
+    let aktivitasFilter = {
+        type: 'all',
+        search: ''
+    };
+    
+    // Filter state - LENGKAPI dengan semua property yang dibutuhkan
+    let currentFilters = {
+        layanan: null,
+        aplikasi: null,
+        search: '',
+        sort: 'terbaru',
+        filterType: 'layanan',
+        itemStatus: 'all'
+    };
+    
+    // Aktivitas
+    let aktivitasList = [];
+    
+    // Promo
+    let promosList = [];
+    
+    // Bank
+    let rekeningList = [];
+    let balance = 0;
+    let transactions = [];
+    
+    // Voucher
+    let userVouchers = [];
+    
+    // Nav scroll state
+    let lastScrollTop = 0;
+    let scrollTimer = null;
+    
+    // Banner slider
+    let currentBannerIndex = 0;
+    let bannerInterval = null;
 
-init_db()
+    // ==================== DOM ELEMENTS ====================
+    const elements = {
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        toastContainer: document.getElementById('toastContainer'),
+        storeHeader: document.getElementById('storeHeader'),
+        storeLogo: document.getElementById('storeLogo'),
+        storeName: document.getElementById('storeName'),
+        
+        // Banner
+        bannerSlider: document.getElementById('bannerSlider'),
+        bannerTrack: document.getElementById('bannerTrack'),
+        bannerDots: document.getElementById('bannerDots'),
+        
+        // Main Content
+        mainContent: document.getElementById('mainContent'),
+        
+        // Bottom Nav
+        bottomNav: document.getElementById('bottomNav'),
+        navItems: document.querySelectorAll('.nav-item'),
+        
+        // Modal Voucher
+        voucherModal: document.getElementById('voucherModal'),
+        voucherForm: document.getElementById('voucherForm'),
+        voucherCode: document.getElementById('voucherCode'),
+        closeVoucherModal: document.getElementById('closeVoucherModal'),
+        cancelVoucherBtn: document.getElementById('cancelVoucherBtn'),
+        
+        // Modal Deposit
+        depositModal: document.getElementById('depositModal'),
+        depositForm: document.getElementById('depositForm'),
+        depositAmount: document.getElementById('depositAmount'),
+        paymentMethod: document.getElementById('paymentMethod'),
+        closeDepositModal: document.getElementById('closeDepositModal'),
+        cancelDepositBtn: document.getElementById('cancelDepositBtn'),
+        
+        // Modal Withdraw
+        withdrawModal: document.getElementById('withdrawModal'),
+        withdrawForm: document.getElementById('withdrawForm'),
+        withdrawAmount: document.getElementById('withdrawAmount'),
+        userBalance: document.getElementById('userBalance'),
+        withdrawAccount: document.getElementById('withdrawAccount'),
+        closeWithdrawModal: document.getElementById('closeWithdrawModal'),
+        cancelWithdrawBtn: document.getElementById('cancelWithdrawBtn')
+    };
 
-def hash_password(password):
-    salt = secrets.token_hex(16)
-    hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
-    return f"{salt}${hash_obj.hex()}"
+    // ==================== UTILITY FUNCTIONS ====================
+    function showToast(message, type = 'info', duration = 3000) {
+        if (!elements.toastContainer) return;
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        
+        elements.toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, duration);
+    }
 
-def verify_password(password, hashed):
-    salt, hash_str = hashed.split('$')
-    hash_obj = hashlib.pbkdf2_hmac('sha256', password.encode(), salt.encode(), 100000)
-    return hash_obj.hex() == hash_str
+    function showLoading(show = true) {
+        if (elements.loadingOverlay) {
+            elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
+    }
 
-def calculate_end_date(start_date, days):
-    if isinstance(start_date, str):
-        start_date = datetime.strptime(start_date, '%Y-%m-%d')
-    end_date = start_date + timedelta(days=int(days))
-    return end_date.strftime('%Y-%m-%d')
+    function vibrate(duration = 20) {
+        if (window.navigator && window.navigator.vibrate) {
+            window.navigator.vibrate(duration);
+        }
+    }
 
-@website_bp.route('/websites', methods=['GET', 'OPTIONS'])
-def get_websites():
-    try:
-        with get_db() as db:
-            websites = db.execute('SELECT * FROM websites ORDER BY created_at DESC').fetchall()
-            result = []
-            for w in websites:
-                website_dict = dict(w)
-                website_dict['settings'] = json.loads(website_dict['settings'] or '{}')
-                website_dict['products'] = json.loads(website_dict['products'] or '[]')
-                website_dict['categories'] = json.loads(website_dict['categories'] or '[]')
-                result.append(website_dict)
-            return jsonify({'success': True, 'websites': result})
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    function formatRupiah(angka) {
+        if (!angka && angka !== 0) return 'Rp 0';
+        return 'Rp ' + angka.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
 
-@website_bp.route('/websites/<int:website_id>', methods=['GET', 'OPTIONS'])
-def get_website(website_id):
-    try:
-        with get_db() as db:
-            website = db.execute('SELECT * FROM websites WHERE id = ?', (website_id,)).fetchone()
-            if not website:
-                return jsonify({'success': False, 'error': 'Website not found'}), 404
+    function formatDate(dateString, withTime = true) {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            if (withTime) {
+                return date.toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            return date.toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    // ==================== API FUNCTIONS ====================
+    async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
+        try {
+            console.log(`📡 Fetching: ${url}`);
+            const response = await fetch(url, {
+                ...options,
+                mode: 'cors',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                }
+            });
             
-            website_dict = dict(website)
-            website_dict['settings'] = json.loads(website_dict['settings'] or '{}')
-            website_dict['products'] = json.loads(website_dict['products'] or '[]')
-            website_dict['categories'] = json.loads(website_dict['categories'] or '[]')
+            const data = await response.json();
+            console.log(`📥 Response from ${url}:`, data);
             
-            return jsonify({'success': True, 'website': website_dict})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@website_bp.route('/websites/endpoint/<string:endpoint>', methods=['GET', 'OPTIONS'])
-def get_website_by_endpoint(endpoint):
-    try:
-        with get_db() as db:
-            website = db.execute('SELECT * FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
-            if not website:
-                return jsonify({'success': False, 'error': 'Website not found'}), 404
-            
-            website_dict = dict(website)
-            
-            safe_data = {
-                'id': website_dict['id'],
-                'endpoint': website_dict['endpoint'],
-                'name': website_dict['username'],
-                'email': website_dict['email'],
-                'tunnel_url': website_dict['tunnel_url'] or '',
-                'status': website_dict['status'],
-                'settings': json.loads(website_dict['settings'] or '{}'),
-                'products': json.loads(website_dict['products'] or '[]'),
-                'categories': json.loads(website_dict['categories'] or '[]'),
-                'created_at': website_dict['created_at']
+            if (!response.ok) {
+                throw new Error(data.error || `HTTP error ${response.status}`);
             }
             
-            return jsonify({'success': True, 'website': safe_data})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+            return data;
+        } catch (error) {
+            console.error(`❌ Fetch error for ${url}:`, error);
+            if (retries > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return fetchWithRetry(url, options, retries - 1);
+            }
+            throw error;
+        }
+    }
 
-@website_bp.route('/websites', methods=['POST'])
-def create_website():
-    try:
-        data = request.json
-        print(f"📥 Received data: {data}")
-
-        required = ['endpoint', 'bot_token', 'owner_id', 'username', 'password', 'email']
-        missing = [f for f in required if f not in data or not data[f]]
-
-        if missing:
-            return jsonify({'success': False, 'error': f'Missing: {missing}'}), 400
-
-        endpoint = data['endpoint'].strip().lower()
-        if not endpoint.replace('-', '').isalnum():
-            return jsonify({'success': False, 'error': 'Invalid endpoint'}), 400
-
-        try:
-            owner_id = int(data['owner_id'])
-        except:
-            return jsonify({'success': False, 'error': 'Owner ID must be number'}), 400
-
-        if '@' not in data['email'] or '.' not in data['email']:
-            return jsonify({'success': False, 'error': 'Invalid email'}), 400
-
-        if ':' not in data['bot_token']:
-            return jsonify({'success': False, 'error': 'Invalid bot token'}), 400
-
-        hashed_password = hash_password(data['password'])
-        start_date = data.get('start_date', datetime.now().strftime('%Y-%m-%d'))
-        end_date = data.get('end_date', calculate_end_date(start_date, 30))
+    async function loadWebsite() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const endpoint = urlParams.get('website');
         
-        tunnel_url = request.host_url.rstrip('/')
-
-        with get_db() as db:
-            existing = db.execute('SELECT id FROM websites WHERE endpoint = ?', (endpoint,)).fetchone()
-            if existing:
-                return jsonify({'success': False, 'error': 'Endpoint already exists'}), 400
-
-            cursor = db.execute('''
-                INSERT INTO websites 
-                (endpoint, bot_token, owner_id, username, password, email, tunnel_url, status, start_date, end_date, settings)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                endpoint, data['bot_token'].strip(), owner_id,
-                data['username'].strip(), hashed_password,
-                data['email'].strip().lower(), tunnel_url,
-                'active', start_date, end_date,
-                json.dumps(data.get('settings', {}))
-            ))
-
-            website_id = cursor.lastrowid
-            db.commit()
-            print(f"✅ Website created with ID: {website_id}")
-            
-            return jsonify({'success': True, 'website_id': website_id, 'message': 'Website created successfully'})
-
-    except sqlite3.IntegrityError as e:
-        print(f"❌ Database error: {str(e)}")
-        return jsonify({'success': False, 'error': 'Database error: ' + str(e)}), 400
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@website_bp.route('/websites/<int:website_id>', methods=['PUT'])
-def update_website(website_id):
-    try:
-        data = request.json
+        if (!endpoint) {
+            showToast('Website tidak ditemukan', 'error');
+            return null;
+        }
         
-        with get_db() as db:
-            current = db.execute('SELECT * FROM websites WHERE id = ?', (website_id,)).fetchone()
-            if not current:
-                return jsonify({'success': False, 'error': 'Website not found'}), 404
+        try {
+            const data = await fetchWithRetry(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`, {
+                method: 'GET'
+            });
             
-            updates = []
-            values = []
-            
-            update_fields = ['bot_token', 'owner_id', 'username', 'email', 'tunnel_url', 'status']
-            for field in update_fields:
-                if field in data:
-                    updates.append(f"{field} = ?")
-                    values.append(data[field])
-            
-            if data.get('password'):
-                updates.append("password = ?")
-                values.append(hash_password(data['password']))
-            
-            if data.get('start_date'):
-                updates.append("start_date = ?")
-                values.append(data['start_date'])
-            
-            if data.get('end_date'):
-                updates.append("end_date = ?")
-                values.append(data['end_date'])
-            
-            if data.get('settings'):
-                updates.append("settings = ?")
-                values.append(json.dumps(data['settings']))
-            
-            updates.append("updated_at = CURRENT_TIMESTAMP")
-            
-            if updates:
-                query = f"UPDATE websites SET {', '.join(updates)} WHERE id = ?"
-                values.append(website_id)
-                db.execute(query, values)
-                db.commit()
-            
-            return jsonify({'success': True, 'message': 'Website updated successfully'})
-            
-    except Exception as e:
-        print(f"❌ Error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+            if (data.success && data.website) {
+                return data.website;
+            } else {
+                throw new Error('Website not found');
+            }
+        } catch (error) {
+            console.error('❌ Error loading website:', error);
+            showToast('Gagal memuat data website', 'error');
+            return null;
+        }
+    }
 
-@website_bp.route('/websites/<int:website_id>', methods=['DELETE'])
-def delete_website(website_id):
-    try:
-        with get_db() as db:
-            db.execute('DELETE FROM websites WHERE id = ?', (website_id,))
-            db.commit()
-            return jsonify({'success': True, 'message': 'Website deleted successfully'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    async function loadWebsiteTemplates() {
+      if (!currentWebsite) return [];
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/templates`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, templates: [] }));
+    
+        if (response.success && response.templates) {
+          console.log(`📦 Loaded ${response.templates.length} templates for website`);
+    
+          // Inject font dari template yang tersimpan
+          for (const template of response.templates) {
+            const templateData = template.template_data || {};
+            if (templateData.font_file_data) {
+              const fontFamily = templateData.font_family;
+    
+              // Cek apakah sudah di-inject
+              if (document.getElementById(`website-font-${fontFamily}`)) continue;
+    
+              const fontFace = `
+                            @font-face {
+                                font-family: '${fontFamily}';
+                                src: url('${templateData.font_file_data}') format('truetype');
+                                font-weight: normal;
+                                font-style: normal;
+                                font-display: swap;
+                            }
+                        `;
+    
+              const style = document.createElement('style');
+              style.id = `website-font-${fontFamily}`;
+              style.textContent = fontFace;
+              document.head.appendChild(style);
+    
+              console.log(`✅ Font injected from saved template: ${fontFamily}`);
+            }
+          }
+    
+          return response.templates;
+        }
+      } catch (error) {
+        console.error('❌ Error loading website templates:', error);
+      }
+    
+      return [];
+    }
 
-@website_bp.route('/websites/user/<int:user_id>', methods=['GET', 'OPTIONS'])
-def get_website_by_user(user_id):
-    try:
-        with get_db() as db:
-            websites = db.execute('SELECT * FROM websites WHERE owner_id = ? ORDER BY created_at DESC', (user_id,)).fetchall()
-            result = []
-            for w in websites:
-                website_dict = dict(w)
-                website_dict['settings'] = json.loads(website_dict['settings'] or '{}')
-                website_dict['products'] = json.loads(website_dict['products'] or '[]')
-                website_dict['categories'] = json.loads(website_dict['categories'] or '[]')
-                result.append(website_dict)
-            return jsonify({'success': True, 'websites': result})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    async function loadTampilan() {
+      if (!currentWebsite) return;
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}`, {
+          method: 'GET'
+        });
+    
+        if (response.success && response.tampilan) {
+          tampilanData = response.tampilan;
+          console.log('✅ Tampilan data loaded:', tampilanData);
+          console.log('🎨 Store font:', tampilanData.store_font_family, 'animation:', tampilanData.store_font_animation);
+    
+          // Inject font terlebih dahulu
+          await injectWebsiteFonts();
+    
+          // Baru apply tampilan
+          applyTampilan();
+        }
+      } catch (error) {
+        console.error('❌ Error loading tampilan:', error);
+      }
+    }
 
-@website_bp.route('/websites/<int:website_id>/test-bot', methods=['POST'])
-def test_bot(website_id):
-    try:
-        data = request.json
-        bot_token = data.get('bot_token')
-        tunnel_url = data.get('tunnel_url')
+    function applyDynamicFonts() {
+      // Pastikan font untuk heading sudah di-inject
+      if (tampilanData.heading_font_family && tampilanData.heading_font_family !== 'Inter') {
+        // Font akan di-inject oleh injectWebsiteFonts, tapi kita perlu memastikan
+        // style diterapkan setelah font tersedia
+        setTimeout(() => {
+          const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .section-title, .product-nama, .layanan-nama, .promo-title');
+          headings.forEach(el => {
+            // Hapus animation sebelumnya
+            el.style.animation = 'none';
+    
+            el.style.fontFamily = `'${tampilanData.heading_font_family}', sans-serif`;
+    
+            if (tampilanData.heading_font_size) {
+              el.style.fontSize = `${tampilanData.heading_font_size}px`;
+            }
+    
+            // Apply text color jika ada
+            if (tampilanData.colors && tampilanData.colors.text) {
+              el.style.color = tampilanData.colors.text;
+            }
+    
+            let animType = tampilanData.heading_font_animation;
+            if (animType && animType !== 'none') {
+              const animName = animType + 'Anim';
+              const duration = tampilanData.heading_animation_duration || 2;
+              const delay = tampilanData.heading_animation_delay || 0;
+              const iteration = tampilanData.heading_animation_iteration || 'infinite';
+    
+              // Force reflow
+              void el.offsetWidth;
+    
+              el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+              el.style.animationPlayState = 'running';
+            }
+          });
+        }, 100);
+      }
+    
+      // Terapkan font ke body text (deskripsi, meta, dll)
+      if (tampilanData.body_font_family && tampilanData.body_font_family !== 'Inter') {
+        setTimeout(() => {
+          const bodyTexts = document.querySelectorAll('.product-desc, .layanan-desc, .promo-description, .aktivitas-desc, .product-category, .product-durasi, .product-stok, .product-meta, .aktivitas-meta');
+          bodyTexts.forEach(el => {
+            el.style.fontFamily = `'${tampilanData.body_font_family}', sans-serif`;
+    
+            if (tampilanData.body_font_size) {
+              el.style.fontSize = `${tampilanData.body_font_size}px`;
+            }
+    
+            // Apply text color jika ada
+            if (tampilanData.colors && tampilanData.colors.text) {
+              el.style.color = tampilanData.colors.text;
+            }
+    
+            let animType = tampilanData.body_font_animation;
+            if (animType && animType !== 'none') {
+              const animName = animType + 'Anim';
+              const duration = tampilanData.body_animation_duration || 2;
+              const delay = tampilanData.body_animation_delay || 0;
+              const iteration = tampilanData.body_animation_iteration || 'infinite';
+    
+              // Force reflow
+              void el.offsetWidth;
+    
+              el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+              el.style.animationPlayState = 'running';
+            }
+          });
+        }, 100);
+      }
+    }
+
+    function applyTampilan() {
+      // Apply logo
+      if (tampilanData.logo && elements.storeLogo) {
+        elements.storeLogo.src = tampilanData.logo;
+      }
+    
+      // Apply store name with font and animation - PRIORITAS: store_font_* dulu, baru font_* umum
+      const storeName = tampilanData.store_display_name || 'Toko Online';
+      if (elements.storeName) {
+        elements.storeName.textContent = storeName;
+    
+        // Apply font family dengan timeout untuk memastikan font sudah di-inject
+        setTimeout(() => {
+          if (tampilanData.store_font_family) {
+            elements.storeName.style.fontFamily = `'${tampilanData.store_font_family}', sans-serif`;
+          } else if (tampilanData.font_family) {
+            elements.storeName.style.fontFamily = `'${tampilanData.font_family}', sans-serif`;
+          }
+    
+          // Apply font size
+          if (tampilanData.store_font_size) {
+            elements.storeName.style.fontSize = `${tampilanData.store_font_size}px`;
+          } else if (tampilanData.font_size) {
+            elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
+          }
+    
+          // Apply text color
+          if (tampilanData.colors && tampilanData.colors.text) {
+            elements.storeName.style.color = tampilanData.colors.text;
+          }
+    
+          // Apply animation
+          let animType = tampilanData.store_font_animation || tampilanData.font_animation;
+          let animDuration = tampilanData.store_animation_duration || tampilanData.animation_duration || 2;
+          let animDelay = tampilanData.store_animation_delay || tampilanData.animation_delay || 0;
+          let animIteration = tampilanData.store_animation_iteration || tampilanData.animation_iteration || 'infinite';
+    
+          // Hapus animation sebelumnya
+          elements.storeName.style.animation = 'none';
+    
+          // Force reflow
+          void elements.storeName.offsetWidth;
+    
+          if (animType && animType !== 'none') {
+            const animName = animType + 'Anim';
+            elements.storeName.style.animation = `${animName} ${animDuration}s ${animDelay}s ${animIteration}`;
+            elements.storeName.style.animationPlayState = 'running';
+            console.log(`✅ Applied animation to store name: ${animName} ${animDuration}s ${animDelay}s ${animIteration}`);
+          } else {
+            elements.storeName.style.animation = 'none';
+          }
+        }, 200); // Beri waktu untuk font ter-inject
+      }
+    
+      // Apply header border color
+      if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
+        elements.storeHeader.style.borderColor = tampilanData.colors.primary;
+      }
+    }
+
+    async function injectWebsiteFonts() {
+      if (!tampilanData) return;
+    
+      // Kumpulkan semua font yang digunakan
+      const fontFamilies = [];
+    
+      if (tampilanData.store_font_family && tampilanData.store_font_family !== 'Inter')
+        fontFamilies.push(tampilanData.store_font_family);
+      if (tampilanData.heading_font_family && tampilanData.heading_font_family !== 'Inter')
+        fontFamilies.push(tampilanData.heading_font_family);
+      if (tampilanData.body_font_family && tampilanData.body_font_family !== 'Inter')
+        fontFamilies.push(tampilanData.body_font_family);
+      if (tampilanData.font_family && tampilanData.font_family !== 'Inter')
+        fontFamilies.push(tampilanData.font_family);
+    
+      // Hapus duplikasi
+      const uniqueFonts = [...new Set(fontFamilies)];
+    
+      // Load setiap font
+      for (const fontFamily of uniqueFonts) {
+        await loadFontForFamily(fontFamily);
+      }
+    }
+    
+    async function loadFontForFamily(fontFamily) {
+      // Cek apakah font sudah di-inject
+      if (document.getElementById(`website-font-${fontFamily}`)) return;
+    
+      try {
+        console.log(`🔍 Mencari font: ${fontFamily}`);
+    
+        // Gunakan endpoint khusus untuk mencari berdasarkan font family
+        const encodedFont = encodeURIComponent(fontFamily);
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/font-templates/by-font/${encodedFont}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false }));
+    
+        if (response.success && response.template) {
+          const template = response.template;
+    
+          if (template.font_file_data) {
+            const fontFace = `
+                        @font-face {
+                            font-family: '${fontFamily}';
+                            src: url('${template.font_file_data}') format('truetype');
+                            font-weight: normal;
+                            font-style: normal;
+                            font-display: swap;
+                        }
+                    `;
+    
+            const style = document.createElement('style');
+            style.id = `website-font-${fontFamily}`;
+            style.textContent = fontFace;
+            document.head.appendChild(style);
+    
+            console.log(`✅ Font injected for website: ${fontFamily}`);
+            return true;
+          }
+        } else {
+          // Fallback ke search biasa
+          const searchResponse = await fetchWithRetry(`${API_BASE_URL}/api/font-templates?search=${encodeURIComponent(fontFamily)}&limit=5`, {
+            method: 'GET'
+          }).catch(() => ({ success: false, templates: [] }));
+    
+          if (searchResponse.success && searchResponse.templates && searchResponse.templates.length > 0) {
+            // Cari template dengan font family yang tepat
+            const exactMatch = searchResponse.templates.find(t => t.font_family === fontFamily);
+            const template = exactMatch || searchResponse.templates[0];
+    
+            if (template.font_file_data) {
+              const fontFace = `
+                            @font-face {
+                                font-family: '${fontFamily}';
+                                src: url('${template.font_file_data}') format('truetype');
+                                font-weight: normal;
+                                font-style: normal;
+                                font-display: swap;
+                            }
+                        `;
+    
+              const style = document.createElement('style');
+              style.id = `website-font-${fontFamily}`;
+              style.textContent = fontFace;
+              document.head.appendChild(style);
+    
+              console.log(`✅ Font injected for website (fallback): ${fontFamily}`);
+              return true;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error loading font ${fontFamily}:`, error);
+      }
+    
+      return false;
+    }
+
+    async function loadUserFromTelegram() {
+        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
+            currentUser = window.Telegram.WebApp.initDataUnsafe.user;
+            console.log('📱 Telegram user:', currentUser);
+            
+            // Cek apakah user sudah memiliki data di sistem
+            await checkOrCreateUser();
+            
+            return currentUser;
+        } else {
+            // Untuk testing - buat user dummy
+            currentUser = {
+                id: Math.floor(Math.random() * 1000000),
+                first_name: 'User',
+                last_name: '',
+                username: 'user_' + Math.floor(Math.random() * 1000),
+                photo_url: null
+            };
+            return currentUser;
+        }
+    }
+
+    async function checkOrCreateUser() {
+        if (!currentWebsite || !currentUser) return;
         
-        if not bot_token or not tunnel_url:
-            return jsonify({'success': False, 'error': 'Bot token and tunnel URL required'}), 400
+        try {
+            await fetchWithRetry(`${API_BASE_URL}/api/user/check`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    user_id: currentUser.id,
+                    username: currentUser.username,
+                    first_name: currentUser.first_name,
+                    last_name: currentUser.last_name,
+                    photo_url: currentUser.photo_url
+                })
+            }).catch(() => {});
+        } catch (error) {
+            console.error('Error checking user:', error);
+        }
+    }
+
+    async function loadTransactions() {
+      if (!currentWebsite || !currentUser) {
+        transactions = [];
+        balance = 0;
+        return;
+      }
+    
+      try {
+        // Gunakan endpoint baru dengan filter status
+        const response = await fetchWithRetry(
+          `${API_BASE_URL}/api/transactions/user/${currentUser.id}?website_id=${currentWebsite.id}&status=${transactionFilter.status}&limit=50`,
+          {
+            method: 'GET'
+          }
+        ).catch(() => ({ success: false, transactions: [] }));
+    
+        if (response.success) {
+          transactions = response.transactions || [];
+    
+          // Hitung balance dari transaksi sukses
+          balance = 0;
+          transactions.forEach(t => {
+            if (t.transaction_type === 'deposit' && t.status === 'success') {
+              balance += t.amount;
+            } else if (t.transaction_type === 'withdraw' && t.status === 'success') {
+              balance -= t.amount;
+            }
+          });
+        } else {
+          transactions = [];
+          balance = 0;
+        }
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+        transactions = [];
+        balance = 0;
+      }
+    }
+
+    function filterTransactions(status) {
+      transactionFilter.status = status;
+      loadTransactions().then(() => {
+        // Jika sedang di halaman bank, render ulang
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'bank') {
+          renderBankPage();
+        }
+      });
+    }
+    
+    function toggleShowAllRekening() {
+      showAllRekening = !showAllRekening;
+      if (showAllRekening) {
+        rekeningList = [...allRekeningList];
+      } else {
+        rekeningList = allRekeningList.slice(0, 4);
+      }
+      renderBankPage();
+    }
+
+    async function loadAllData() {
+      if (!currentWebsite) return;
+    
+      showLoading(true);
+    
+      try {
+        // HANYA SATU REQUEST!
+        const response = await fetchWithRetry(
+          `${API_BASE_URL}/api/website/${currentWebsite.id}/initial-data?user_id=${currentUser?.id || 0}`,
+          { method: 'GET' }
+        );
+    
+        if (response.success && response.data) {
+          const d = response.data;
+          
+          // Process products
+          productsData = d.products || [];
+          extractLayananList();
+          extractAllItems();
+          
+          // Process promos
+          promosList = d.promos || [];
+          
+          // Process rekening
+          allRekeningList = d.rekening || [];
+          rekeningList = allRekeningList.slice(0, 4);
+          
+          // Process user data
+          userVouchers = d.user_vouchers || [];
+          aktivitasList = d.activities || [];
+          transactions = d.transactions || [];
+          
+          // Hitung balance
+          balance = 0;
+          transactions.forEach(t => {
+            if (t.transaction_type === 'deposit' && t.status === 'success') balance += t.amount;
+            else if (t.transaction_type === 'withdraw' && t.status === 'success') balance -= t.amount;
+          });
+          
+          // Inject fonts from templates
+          if (d.templates) {
+            for (const template of d.templates) {
+              const templateData = template.template_data || {};
+              if (templateData.font_file_data) {
+                injectFontStyle(templateData.font_family, templateData.font_file_data);
+              }
+            }
+          }
+        }
+    
+        renderHomePage();
+    
+      } catch (error) {
+        console.error('❌ Error loading data:', error);
+        showToast('Gagal memuat data', 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function extractLayananList() {
+        const seen = new Set();
+        layananList = [];
         
-        if ':' not in bot_token:
-            return jsonify({'success': False, 'error': 'Invalid bot token format'}), 400
+        productsData.forEach(layanan => {
+            if (layanan.layanan_nama && !seen.has(layanan.layanan_nama)) {
+                seen.add(layanan.layanan_nama);
+                layananList.push({
+                    nama: layanan.layanan_nama,
+                    gambar: layanan.layanan_gambar,
+                    desc: layanan.layanan_desc,
+                    count: layanan.aplikasi ? layanan.aplikasi.length : 0
+                });
+            }
+        });
         
-        return jsonify({'success': True, 'message': 'Bot test successful'})
+        // Batasi 4 layanan untuk tampilan
+        if (layananList.length > 4) {
+            layananList = layananList.slice(0, 4);
+        }
+    }
+
+    function extractAllItems() {
+        filteredItems = [];
         
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        productsData.forEach(layanan => {
+            if (layanan.aplikasi) {
+                layanan.aplikasi.forEach(aplikasi => {
+                    if (aplikasi.items) {
+                        aplikasi.items.forEach(item => {
+                            filteredItems.push({
+                                ...item,
+                                layanan_nama: layanan.layanan_nama,
+                                layanan_gambar: layanan.layanan_gambar,
+                                aplikasi_nama: aplikasi.aplikasi_nama,
+                                aplikasi_gambar: aplikasi.aplikasi_gambar
+                            });
+                        });
+                    }
+                });
+            }
+        });
+        
+        applySort();
+        updatePagination();
+    }
+
+    // ==================== FILTER & SORT FUNCTIONS ====================
+    function applyFilters() {
+        let filtered = [...filteredItems];
+        
+        // Filter by layanan
+        if (currentFilters.layanan) {
+            filtered = filtered.filter(item => item.layanan_nama === currentFilters.layanan);
+        }
+        
+        // Filter by aplikasi
+        if (currentFilters.aplikasi) {
+            filtered = filtered.filter(item => item.aplikasi_nama === currentFilters.aplikasi);
+        }
+        
+        // Filter by item status
+        if (currentFilters.itemStatus && currentFilters.itemStatus !== 'all') {
+            if (currentFilters.itemStatus === 'ready') {
+                filtered = filtered.filter(item => item.item_ready === true);
+            } else if (currentFilters.itemStatus === 'sold') {
+                filtered = filtered.filter(item => item.item_ready === false);
+            } else if (currentFilters.itemStatus === 'request') {
+                filtered = filtered.filter(item => item.item_metode === 'request');
+            }
+        }
+        
+        // Filter by search
+        if (currentFilters.search) {
+            const searchLower = currentFilters.search.toLowerCase();
+            filtered = filtered.filter(item => 
+                (item.item_nama && item.item_nama.toLowerCase().includes(searchLower)) ||
+                (item.layanan_nama && item.layanan_nama.toLowerCase().includes(searchLower)) ||
+                (item.aplikasi_nama && item.aplikasi_nama.toLowerCase().includes(searchLower))
+            );
+        }
+        
+        // Apply sort
+        switch (currentFilters.sort) {
+            case 'terlaris':
+                filtered.sort((a, b) => (b.terjual || 0) - (a.terjual || 0));
+                break;
+            case 'terbaru':
+                filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+                break;
+            case 'termurah':
+                filtered.sort((a, b) => (a.item_harga || 0) - (b.item_harga || 0));
+                break;
+            case 'termahal':
+                filtered.sort((a, b) => (b.item_harga || 0) - (a.item_harga || 0));
+                break;
+            case 'stok-terbanyak':
+                filtered.sort((a, b) => (b.item_stok?.length || 0) - (a.item_stok?.length || 0));
+                break;
+            case 'stok-tersedikit':
+                filtered.sort((a, b) => (a.item_stok?.length || 0) - (b.item_stok?.length || 0));
+                break;
+        }
+        
+        filteredItems = filtered;
+        updatePagination();
+    }
+
+    function applySort() {
+        switch (currentFilters.sort) {
+            case 'terlaris':
+                filteredItems.sort((a, b) => (b.terjual || 0) - (a.terjual || 0));
+                break;
+            case 'terbaru':
+                filteredItems.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+                break;
+            case 'termurah':
+                filteredItems.sort((a, b) => (a.item_harga || 0) - (b.item_harga || 0));
+                break;
+            case 'termahal':
+                filteredItems.sort((a, b) => (b.item_harga || 0) - (a.item_harga || 0));
+                break;
+            case 'stok-terbanyak':
+                filteredItems.sort((a, b) => (b.item_stok?.length || 0) - (a.item_stok?.length || 0));
+                break;
+            case 'stok-tersedikit':
+                filteredItems.sort((a, b) => (a.item_stok?.length || 0) - (b.item_stok?.length || 0));
+                break;
+        }
+    }
+
+    function updatePagination() {
+        totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+        if (currentPage > totalPages) currentPage = totalPages || 1;
+    }
+
+    // ==================== RENDER FUNCTIONS ====================
+    function renderBanners() {
+        if (!elements.bannerTrack || !elements.bannerDots) return;
+        
+        const banners = tampilanData.banners || [];
+        
+        if (banners.length === 0) {
+            // Banner default
+            elements.bannerTrack.innerHTML = `
+                <div class="banner-slide" style="background-image: url('https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Welcome+to+Store')"></div>
+            `;
+            elements.bannerDots.innerHTML = '<span class="banner-dot active"></span>';
+            return;
+        }
+        
+        let trackHtml = '';
+        let dotsHtml = '';
+        
+        banners.forEach((banner, index) => {
+            const url = typeof banner === 'string' ? banner : banner.url;
+            const positionX = banner.positionX || 50;
+            const positionY = banner.positionY || 50;
+            
+            trackHtml += `
+                <div class="banner-slide" style="background-image: url('${url}'); background-position: ${positionX}% ${positionY}%;"></div>
+            `;
+            
+            dotsHtml += `<span class="banner-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`;
+        });
+        
+        elements.bannerTrack.innerHTML = trackHtml;
+        elements.bannerDots.innerHTML = dotsHtml;
+        
+        // Start auto slide
+        startBannerSlider();
+        
+        // Add click handlers for dots
+        document.querySelectorAll('.banner-dot').forEach(dot => {
+            dot.addEventListener('click', () => {
+                const index = parseInt(dot.dataset.index);
+                goToBanner(index);
+            });
+        });
+    }
+
+    function startBannerSlider() {
+        if (bannerInterval) clearInterval(bannerInterval);
+        
+        const banners = tampilanData.banners || [];
+        if (banners.length <= 1) return;
+        
+        bannerInterval = setInterval(() => {
+            currentBannerIndex = (currentBannerIndex + 1) % banners.length;
+            updateBannerPosition();
+        }, 5000);
+    }
+
+    function goToBanner(index) {
+        currentBannerIndex = index;
+        updateBannerPosition();
+        
+        // Reset interval
+        if (bannerInterval) {
+            clearInterval(bannerInterval);
+            startBannerSlider();
+        }
+    }
+
+    function updateBannerPosition() {
+        if (!elements.bannerTrack) return;
+        elements.bannerTrack.style.transform = `translateX(-${currentBannerIndex * 100}%)`;
+        
+        // Update dots
+        document.querySelectorAll('.banner-dot').forEach((dot, idx) => {
+            dot.classList.toggle('active', idx === currentBannerIndex);
+        });
+    }
+
+    function renderHomePage() {
+      // Tampilkan banner
+      if (elements.bannerSlider) {
+        elements.bannerSlider.style.display = 'block';
+      }
+    
+      const html = `
+            <div class="page-content">
+                <!-- Produk Layanan Section -->
+                <div class="section-title">
+                    <h2><i class="fas fa-layer-group"></i> Produk Layanan</h2>
+                    <span class="view-all" onclick="window.website.showAllLayanan()">
+                        Lihat semua <i class="fas fa-arrow-right"></i>
+                    </span>
+                </div>
+                
+                <div class="layanan-grid" id="layananGrid">
+                    ${renderLayananGrid()}
+                </div>
+                
+                <!-- Filter Section -->
+                <div class="filter-section" id="filterSection">
+                    <div class="filter-header" onclick="window.website.toggleFilter()">
+                        <h3><i class="fas fa-filter"></i> Filter & Sortir</h3>
+                        <i class="fas fa-chevron-down" id="filterChevron"></i>
+                    </div>
+                    <div class="filter-content" id="filterContent">
+                        <!-- Tombol cepat 4 kolom -->
+                        <div class="filter-actions-grid">
+                            <button class="filter-action-btn ${currentFilters.filterType === 'layanan' ? 'active' : ''}" onclick="window.website.setFilterType('layanan')">
+                                <i class="fas fa-layer-group"></i> Layanan
+                            </button>
+                            <button class="filter-action-btn ${currentFilters.filterType === 'aplikasi' ? 'active' : ''}" onclick="window.website.setFilterType('aplikasi')">
+                                <i class="fas fa-mobile-alt"></i> Aplikasi
+                            </button>
+                            <button class="filter-action-btn ${currentFilters.filterType === 'item' ? 'active' : ''}" onclick="window.website.setFilterType('item')">
+                                <i class="fas fa-box"></i> Item
+                            </button>
+                            <button class="filter-action-btn ${currentFilters.filterType === 'sort' ? 'active' : ''}" onclick="window.website.setFilterType('sort')">
+                                <i class="fas fa-sort-amount-down"></i> Sort By
+                            </button>
+                        </div>
+                        
+                        <!-- Konten filter dinamis -->
+                        <div id="filterContentDynamic">
+                            ${renderFilterContent()}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Produk Tersedia Section -->
+                <div class="section-title">
+                    <h2><i class="fas fa-box"></i> Produk Tersedia</h2>
+                </div>
+                
+                <div class="products-grid" id="productsGrid">
+                    ${renderProductsGrid()}
+                </div>
+                
+                <!-- Pagination -->
+                <div class="pagination" id="pagination">
+                    ${renderPagination()}
+                </div>
+            </div>
+        `;
+    
+      // ===== INI TEMPATNYA =====
+      // Set innerHTML terlebih dahulu
+      elements.mainContent.innerHTML = html;
+    
+      // Render filter bubbles
+      renderFilterBubbles();
+    
+      // Terapkan font ke elemen dinamis
+      applyDynamicFonts(); // <-- TARUH SINI
+    
+      // Buka filter jika sebelumnya terbuka
+      if (filterOpen) {
+        const filterContent = document.getElementById('filterContent');
+        const filterChevron = document.getElementById('filterChevron');
+        if (filterContent) {
+          filterContent.classList.add('open');
+        }
+        if (filterChevron) {
+          filterChevron.style.transform = 'rotate(180deg)';
+        }
+      }
+    }
+    
+    function renderFilterContent() {
+        switch (currentFilters.filterType) {
+            case 'layanan':
+                return renderLayananFilter();
+            case 'aplikasi':
+                return renderAplikasiFilter();
+            case 'item':
+                return renderItemFilter();
+            case 'sort':
+                return renderSortFilter();
+            default:
+                return renderLayananFilter();
+        }
+    }
+    
+    function renderLayananFilter() {
+        const uniqueLayanan = [...new Set(productsData.map(l => l.layanan_nama))].filter(Boolean);
+        
+        if (uniqueLayanan.length === 0) {
+            return '<div class="empty-state" style="padding: 20px;"><p>Tidak ada layanan</p></div>';
+        }
+        
+        let html = '<div class="filter-bubbles">';
+        uniqueLayanan.forEach(layanan => {
+            html += `
+                <span class="filter-bubble ${currentFilters.layanan === layanan ? 'active' : ''}" 
+                      onclick="window.website.toggleLayananFilter('${escapeHtml(layanan)}')">
+                    ${escapeHtml(layanan)}
+                </span>
+            `;
+        });
+        html += '</div>';
+        
+        return html;
+    }
+    
+    function renderAplikasiFilter() {
+        if (!currentFilters.layanan) {
+            return '<div class="filter-bubbles"><span class="filter-bubble">Pilih layanan terlebih dahulu</span></div>';
+        }
+        
+        const layananData = productsData.find(l => l.layanan_nama === currentFilters.layanan);
+        const aplikasiList = layananData?.aplikasi || [];
+        const uniqueAplikasi = [...new Set(aplikasiList.map(a => a.aplikasi_nama))].filter(Boolean);
+        
+        if (uniqueAplikasi.length === 0) {
+            return '<div class="empty-state" style="padding: 20px;"><p>Tidak ada aplikasi</p></div>';
+        }
+        
+        let html = '<div class="filter-bubbles">';
+        uniqueAplikasi.forEach(aplikasi => {
+            html += `
+                <span class="filter-bubble ${currentFilters.aplikasi === aplikasi ? 'active' : ''}" 
+                      onclick="window.website.toggleAplikasiFilter('${escapeHtml(aplikasi)}')">
+                    ${escapeHtml(aplikasi)}
+                </span>
+            `;
+        });
+        html += '</div>';
+        
+        return html;
+    }
+    
+    function renderItemFilter() {
+        // Filter berdasarkan stok atau status
+        let html = '<div class="filter-bubbles">';
+        html += `
+            <span class="filter-bubble ${currentFilters.itemStatus === 'all' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('all')">Semua</span>
+            <span class="filter-bubble ${currentFilters.itemStatus === 'ready' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('ready')">Ready</span>
+            <span class="filter-bubble ${currentFilters.itemStatus === 'sold' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('sold')">Sold</span>
+            <span class="filter-bubble ${currentFilters.itemStatus === 'request' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('request')">Request</span>
+        `;
+        html += '</div>';
+        
+        return html;
+    }
+    
+    function renderSortFilter() {
+        return `
+            <div class="sort-section">
+                <label><i class="fas fa-sort"></i> Urutkan berdasarkan</label>
+                <select class="sort-select" id="sortSelect">
+                    <option value="terbaru" ${currentFilters.sort === 'terbaru' ? 'selected' : ''}>Terbaru</option>
+                    <option value="terlaris" ${currentFilters.sort === 'terlaris' ? 'selected' : ''}>Terlaris</option>
+                    <option value="termurah" ${currentFilters.sort === 'termurah' ? 'selected' : ''}>Termurah</option>
+                    <option value="termahal" ${currentFilters.sort === 'termahal' ? 'selected' : ''}>Termahal</option>
+                    <option value="stok-terbanyak" ${currentFilters.sort === 'stok-terbanyak' ? 'selected' : ''}>Stok Terbanyak</option>
+                    <option value="stok-tersedikit" ${currentFilters.sort === 'stok-tersedikit' ? 'selected' : ''}>Stok Tersedikit</option>
+                </select>
+            </div>
+        `;
+    }
+    
+    function setFilterType(type) {
+        currentFilters.filterType = type;
+        renderHomePage();
+    }
+    
+    function setItemFilter(status) {
+        currentFilters.itemStatus = status;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function renderLayananGrid() {
+        if (layananList.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-layer-group"></i><p>Belum ada layanan</p></div>';
+        }
+        
+        return layananList.map(layanan => `
+            <div class="layanan-card" onclick="window.website.filterByLayanan('${escapeHtml(layanan.nama)}')">
+                <div class="layanan-icon">
+                    ${layanan.gambar ? 
+                        `<img src="${escapeHtml(layanan.gambar)}" alt="${escapeHtml(layanan.nama)}">` : 
+                        `<i class="fas fa-layer-group"></i>`
+                    }
+                </div>
+                <div class="layanan-nama">${escapeHtml(layanan.nama)}</div>
+                <div class="layanan-count">${layanan.count} aplikasi</div>
+            </div>
+        `).join('');
+    }
+
+    function renderFilterBubbles() {
+        // Layanan filter
+        const layananFilter = document.getElementById('layananFilter');
+        if (layananFilter) {
+            let html = '';
+            const uniqueLayanan = [...new Set(productsData.map(l => l.layanan_nama))];
+            
+            uniqueLayanan.forEach(layanan => {
+                if (layanan) {
+                    html += `
+                        <span class="filter-bubble ${currentFilters.layanan === layanan ? 'active' : ''}" 
+                              onclick="window.website.toggleLayananFilter('${escapeHtml(layanan)}')">
+                            ${escapeHtml(layanan)}
+                        </span>
+                    `;
+                }
+            });
+            
+            layananFilter.innerHTML = html || '<span class="filter-bubble">Tidak ada layanan</span>';
+        }
+        
+        // Aplikasi filter (ditampilkan jika layanan dipilih)
+        const aplikasiFilter = document.getElementById('aplikasiFilter');
+        if (aplikasiFilter) {
+            if (currentFilters.layanan) {
+                const layananData = productsData.find(l => l.layanan_nama === currentFilters.layanan);
+                const aplikasiList = layananData?.aplikasi || [];
+                const uniqueAplikasi = [...new Set(aplikasiList.map(a => a.aplikasi_nama))];
+                
+                let html = '';
+                uniqueAplikasi.forEach(aplikasi => {
+                    if (aplikasi) {
+                        html += `
+                            <span class="filter-bubble ${currentFilters.aplikasi === aplikasi ? 'active' : ''}" 
+                                  onclick="window.website.toggleAplikasiFilter('${escapeHtml(aplikasi)}')">
+                                ${escapeHtml(aplikasi)}
+                            </span>
+                        `;
+                    }
+                });
+                
+                aplikasiFilter.innerHTML = html || '<span class="filter-bubble">Tidak ada aplikasi</span>';
+            } else {
+                aplikasiFilter.innerHTML = '';
+            }
+        }
+    }
+
+    function renderProductsGrid() {
+        if (filteredItems.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-box-open"></i><p>Tidak ada produk</p></div>';
+        }
+        
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+        const pageItems = filteredItems.slice(start, end);
+        
+        return pageItems.map(item => {
+            const readyClass = item.item_ready ? 'ready' : 'sold';
+            const logo = item.aplikasi_gambar || item.layanan_gambar;
+            const durasi = item.item_durasi_jumlah ? `${item.item_durasi_jumlah} ${item.item_durasi_satuan}` : '';
+            const stokCount = item.item_stok?.length || 0;
+            
+            return `
+                <div class="product-card ${!item.item_ready ? 'sold' : ''}" onclick="window.website.viewProduct(${item.id})">
+                    <div class="product-badge ${readyClass}">
+                        ${item.item_ready ? 'Ready' : 'Sold'}
+                    </div>
+                    <div class="product-logo">
+                        ${logo ? 
+                            `<img src="${escapeHtml(logo)}" alt="${escapeHtml(item.item_nama)}">` : 
+                            `<i class="fas fa-box"></i>`
+                        }
+                    </div>
+                    <div class="product-info">
+                        <div class="product-nama">${escapeHtml(item.item_nama || 'Produk')}</div>
+                        <div class="product-category">${escapeHtml(item.aplikasi_nama || '')}</div>
+                    </div>
+                    <div class="product-harga">${formatRupiah(item.item_harga)}</div>
+                    ${durasi ? `<div class="product-durasi">⏱️ ${escapeHtml(durasi)}</div>` : ''}
+                    ${item.item_metode === 'request' ? 
+                        `<div class="product-stok"><i class="fas fa-clipboard-list"></i> Request</div>` : 
+                        `<div class="product-stok"><i class="fas fa-cubes"></i> Stok: ${stokCount}</div>`
+                    }
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderPagination() {
+        if (totalPages <= 1) return '';
+        
+        let html = '';
+        
+        // Previous button
+        html += `
+            <button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="window.website.goToPage(${currentPage - 1})">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        `;
+        
+        // Page numbers
+        html += '<div class="page-numbers">';
+        
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        
+        if (startPage > 1) {
+            html += `<button class="page-number" onclick="window.website.goToPage(1)">1</button>`;
+            if (startPage > 2) {
+                html += `<span class="page-number" style="background: transparent;">...</span>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="page-number ${i === currentPage ? 'active' : ''}" onclick="window.website.goToPage(${i})">${i}</button>`;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += `<span class="page-number" style="background: transparent;">...</span>`;
+            }
+            html += `<button class="page-number" onclick="window.website.goToPage(${totalPages})">${totalPages}</button>`;
+        }
+        
+        html += '</div>';
+        
+        // Next button
+        html += `
+            <button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="window.website.goToPage(${currentPage + 1})">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        `;
+        
+        return html;
+    }
+
+    function renderAktivitasPage() {
+        // Sembunyikan banner
+        if (elements.bannerSlider) {
+            elements.bannerSlider.style.display = 'none';
+        }
+        
+        const html = `
+            <div class="page-content">
+                <div class="aktivitas-header">
+                    <h2><i class="fas fa-history"></i> Aktivitas Terkini</h2>
+                    <button class="aktivitas-filter-btn ${aktivitasFilterOpen ? 'active' : ''}" id="aktivitasFilterBtn" onclick="window.website.toggleAktivitasFilter()">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+                
+                <div class="aktivitas-filter-panel ${aktivitasFilterOpen ? 'open' : ''}" id="aktivitasFilterPanel">
+                    <div class="aktivitas-filter-section">
+                        <h4>Jenis Aktivitas</h4>
+                        <div class="aktivitas-filter-bubbles">
+                            <span class="filter-bubble ${aktivitasFilter.type === 'all' ? 'active' : ''}" onclick="window.website.filterAktivitas('all')">Semua</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'pembelian' ? 'active' : ''}" onclick="window.website.filterAktivitas('pembelian')">Pembelian</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'deposit' ? 'active' : ''}" onclick="window.website.filterAktivitas('deposit')">Deposit</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'withdraw' ? 'active' : ''}" onclick="window.website.filterAktivitas('withdraw')">Withdraw</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'voucher' ? 'active' : ''}" onclick="window.website.filterAktivitas('voucher')">Voucher</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="aktivitas-timeline" id="aktivitasTimeline">
+                    ${renderAktivitasList()}
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+        
+        applyDynamicFonts();
+    }
+    
+    function renderAktivitasList() {
+        if (!aktivitasList || aktivitasList.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada aktivitas</p></div>';
+        }
+        
+        // Filter aktivitas berdasarkan type
+        let filtered = [...aktivitasList];
+        if (aktivitasFilter.type !== 'all') {
+            filtered = filtered.filter(a => a.type === aktivitasFilter.type);
+        }
+        
+        if (filtered.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-history"></i><p>Tidak ada aktivitas dengan filter ini</p></div>';
+        }
+        
+        return filtered.slice(0, 30).map(aktivitas => `
+            <div class="aktivitas-item">
+                <div class="aktivitas-icon">
+                    <i class="fas ${aktivitas.icon || 'fa-history'}"></i>
+                </div>
+                <div class="aktivitas-content">
+                    <div class="aktivitas-title">${escapeHtml(aktivitas.title || 'Aktivitas')}</div>
+                    <div class="aktivitas-meta">
+                        <span class="aktivitas-time">
+                            <i class="far fa-clock"></i> ${formatDate(aktivitas.time)}
+                        </span>
+                    </div>
+                    <div class="aktivitas-desc" style="font-size: 12px; color: var(--tg-hint-color); margin-top: 4px;">
+                        ${escapeHtml(aktivitas.description || '')}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    function toggleAktivitasFilter() {
+        aktivitasFilterOpen = !aktivitasFilterOpen;
+        renderAktivitasPage();
+    }
+    
+    function filterAktivitas(type) {
+        aktivitasFilter.type = type;
+        renderAktivitasPage();
+    }
+
+    function renderPromoPage() {
+        const html = `
+            <div class="page-content">
+                <div class="section-title">
+                    <h2><i class="fas fa-bullhorn"></i> Promo Spesial</h2>
+                </div>
+                
+                <div class="promo-actions" style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <button class="btn-primary" style="flex: 1;" onclick="window.website.openVoucherModal()">
+                        <i class="fas fa-ticket-alt"></i> Klaim Voucher
+                    </button>
+                    <button class="btn-secondary" style="flex: 1;" onclick="window.website.showMyVouchers()">
+                        <i class="fas fa-gift"></i> Voucher Saya (${userVouchers.length})
+                    </button>
+                </div>
+                
+                <div class="promo-grid">
+                    ${renderPromoList()}
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+        
+        applyDynamicFonts();
+    }
+
+    function renderPromoList() {
+        if (promosList.length === 0) {
+            return '<div class="empty-state"><i class="fas fa-bullhorn"></i><p>Belum ada promo</p></div>';
+        }
+        
+        return promosList.map(promo => {
+            const expiryText = promo.never_end ? 
+                'Tidak ada batas waktu' : 
+                `Berakhir: ${formatDate(promo.end_date + 'T' + (promo.end_time || '23:59'), true)}`;
+            
+            return `
+                <div class="promo-card">
+                    <div class="promo-banner">
+                        <img src="${escapeHtml(promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo')}" 
+                             alt="${escapeHtml(promo.title)}"
+                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo';">
+                    </div>
+                    <div class="promo-content">
+                        <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
+                        ${promo.description ? `<p class="promo-description">${escapeHtml(promo.description)}</p>` : ''}
+                        <div class="promo-footer">
+                            <span class="promo-expiry">
+                                <i class="far fa-clock"></i> ${expiryText}
+                            </span>
+                        </div>
+                        ${promo.notes ? `
+                            <div class="promo-notes">
+                                <i class="fas fa-sticky-note"></i> ${escapeHtml(promo.notes)}
+                            </div>
+                        ` : ''}
+                        <div class="promo-actions">
+                            <button class="promo-btn" onclick="window.website.claimPromo(${promo.id})">
+                                <i class="fas fa-tag"></i> Klaim Promo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderBankPage() {
+      // Sembunyikan banner
+      if (elements.bannerSlider) {
+        elements.bannerSlider.style.display = 'none';
+      }
+    
+      const html = `
+                <div class="page-content">
+                    <div class="section-title">
+                        <h2><i class="fas fa-university"></i> Bank & Deposit</h2>
+                    </div>
+                    
+                    <!-- Balance Card -->
+                    <div class="balance-card">
+                        <div class="balance-label">Saldo Anda</div>
+                        <div class="balance-amount" id="balanceAmount">${formatRupiah(balance)}</div>
+                        <div class="balance-actions">
+                            <button class="balance-btn" onclick="window.website.openDepositModal()">
+                                <i class="fas fa-plus-circle"></i> Deposit
+                            </button>
+                            <button class="balance-btn" onclick="window.website.openWithdrawModal()">
+                                <i class="fas fa-minus-circle"></i> Withdraw
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Filter Status Transaksi -->
+                    <div class="transaction-filter-section">
+                        <div class="filter-header" onclick="window.website.toggleTransactionFilter()">
+                            <h3><i class="fas fa-filter"></i> Filter Status</h3>
+                            <i class="fas fa-chevron-down" id="transactionFilterChevron"></i>
+                        </div>
+                        <div class="filter-content" id="transactionFilterContent">
+                            <div class="filter-bubbles">
+                                <span class="filter-bubble ${transactionFilter.status === 'all' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('all')">Semua</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'pending' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('pending')">Pending</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'success' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('success')">Sukses</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'failed' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('failed')">Gagal</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'expired' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('expired')">Kadaluwarsa</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rekening Tersedia -->
+                    <div class="section-title" style="margin-top: 16px;">
+                        <h3><i class="fas fa-credit-card"></i> Rekening Tersedia</h3>
+                        ${allRekeningList.length > 4 ? `
+                            <span class="view-all" onclick="window.website.toggleShowAllRekening()">
+                                ${showAllRekening ? 'Tampilkan Sedikit' : 'Lihat Semua'} <i class="fas fa-arrow-right"></i>
+                            </span>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="rekening-grid" id="rekeningGrid">
+                        ${renderRekeningList()}
+                    </div>
+                    
+                    <!-- Riwayat Transaksi -->
+                    <div class="transaction-history">
+                        <div class="transaction-header">
+                            <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
+                        </div>
+                        <div class="transaction-list" id="transactionList">
+                            ${renderTransactionList()}
+                        </div>
+                    </div>
+                </div>
+            `;
+    
+      elements.mainContent.innerHTML = html;
+    
+      // Populate payment method select
+      populatePaymentMethod();
+    
+      // Populate withdraw account select
+      populateWithdrawAccount();
+    
+      // Terapkan font ke elemen dinamis
+      applyDynamicFonts();
+    
+      // Buka filter jika sebelumnya terbuka
+      const filterContent = document.getElementById('transactionFilterContent');
+      const filterChevron = document.getElementById('transactionFilterChevron');
+      if (filterContent && transactionFilterOpen) {
+        filterContent.classList.add('open');
+        filterChevron.style.transform = 'rotate(180deg)';
+      }
+    }
+    
+    function toggleTransactionFilter() {
+      const filterContent = document.getElementById('transactionFilterContent');
+      const chevron = document.getElementById('transactionFilterChevron');
+    
+      if (filterContent && chevron) {
+        filterContent.classList.toggle('open');
+        chevron.style.transform = filterContent.classList.contains('open') ? 'rotate(180deg)' : '';
+        transactionFilterOpen = filterContent.classList.contains('open');
+      }
+    }
+
+    function renderRekeningList() {
+        if (rekeningList.length === 0) {
+            return '<div class="empty-state" style="grid-column: 1/-1;"><i class="fas fa-university"></i><p>Belum ada rekening</p></div>';
+        }
+        
+        return rekeningList.map(rek => `
+            <div class="rekening-card">
+                <div class="rekening-logo">
+                    <img src="${escapeHtml(rek.logo_url)}" alt="${escapeHtml(rek.nama)}"
+                         onerror="this.src='https://via.placeholder.com/40x40/40a7e3/ffffff?text=${escapeHtml(rek.nama.charAt(0))}';">
+                </div>
+                <div class="rekening-info">
+                    <div class="rekening-nama">${escapeHtml(rek.nama)}</div>
+                    <div class="rekening-nomor">${escapeHtml(rek.nomor)}</div>
+                    <div style="font-size: 9px; color: var(--tg-hint-color);">${escapeHtml(rek.pemilik)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderTransactionList() {
+      if (transactions.length === 0) {
+        return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada transaksi</p></div>';
+      }
+    
+      return transactions.slice(0, 20).map(trx => {
+        // Tentukan warna status
+        let statusColor = '';
+        let statusIcon = '';
+    
+        switch (trx.status) {
+          case 'success':
+            statusColor = 'var(--success-color)';
+            statusIcon = 'fa-check-circle';
+            break;
+          case 'pending':
+          case 'processing':
+            statusColor = 'var(--warning-color)';
+            statusIcon = 'fa-clock';
+            break;
+          case 'failed':
+            statusColor = 'var(--danger-color)';
+            statusIcon = 'fa-times-circle';
+            break;
+          case 'expired':
+            statusColor = 'var(--tg-hint-color)';
+            statusIcon = 'fa-hourglass-end';
+            break;
+          default:
+            statusColor = 'var(--tg-hint-color)';
+            statusIcon = 'fa-question-circle';
+        }
+    
+        const amountClass = trx.transaction_type === 'deposit' ? 'positive' : 'negative';
+        const amountPrefix = trx.transaction_type === 'deposit' ? '+' : '-';
+        const iconClass = trx.type_icon || (trx.transaction_type === 'deposit' ? 'fa-arrow-down' : 'fa-arrow-up');
+    
+        const rekeningInfo = trx.rekening_nama ? `${trx.rekening_nama} - ${trx.rekening_nomor}` : '';
+    
+        return `
+                    <div class="transaction-item" data-id="${trx.id}">
+                        <div class="transaction-info">
+                            <div class="transaction-icon ${trx.transaction_type}">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div class="transaction-details">
+                                <h4>${trx.transaction_type === 'deposit' ? 'Deposit' : 'Withdraw'}</h4>
+                                <span class="transaction-meta">
+                                    <i class="far fa-clock"></i> ${formatDate(trx.created_at)}
+                                </span>
+                                ${rekeningInfo ? `<span class="transaction-rekening"><i class="fas fa-university"></i> ${rekeningInfo}</span>` : ''}
+                                <span class="transaction-status" style="color: ${statusColor};">
+                                    <i class="fas ${statusIcon}"></i> ${trx.status.toUpperCase()}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="transaction-amount ${amountClass}">
+                            ${amountPrefix} ${formatRupiah(trx.amount)}
+                        </div>
+                    </div>
+                `;
+      }).join('');
+    }
+
+    function populatePaymentMethod() {
+        const select = elements.paymentMethod;
+        if (!select) return;
+        
+        let options = '<option value="">-- Pilih Metode --</option>';
+        
+        rekeningList.forEach(rek => {
+            options += `<option value="${rek.id}">${escapeHtml(rek.nama)} - ${escapeHtml(rek.nomor)}</option>`;
+        });
+        
+        select.innerHTML = options;
+    }
+
+    function populateWithdrawAccount() {
+        const select = elements.withdrawAccount;
+        if (!select) return;
+        
+        let options = '<option value="">-- Pilih Rekening --</option>';
+        
+        // Untuk demo, kita pakai rekening yang sama
+        rekeningList.forEach(rek => {
+            options += `<option value="${rek.id}">${escapeHtml(rek.nama)} - ${escapeHtml(rek.nomor)}</option>`;
+        });
+        
+        select.innerHTML = options;
+    }
+
+    function renderProfilePage() {
+        const fullName = currentUser ? [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ') : 'User';
+        const username = currentUser?.username ? `@${currentUser.username}` : '@user';
+        const avatarUrl = currentUser?.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.charAt(0))}&size=80&background=40a7e3&color=fff`;
+        
+        const html = `
+            <div class="page-content">
+                <!-- Profile Header -->
+                <div class="profile-header">
+                    <div class="profile-avatar">
+                        <img src="${avatarUrl}" alt="Profile">
+                    </div>
+                    <div class="profile-name">${escapeHtml(fullName)}</div>
+                    <div class="profile-username">${escapeHtml(username)}</div>
+                    <div class="profile-badge">
+                        <i class="fas fa-id-card"></i> ID: ${currentUser?.id || '-'}
+                    </div>
+                </div>
+                
+                <!-- Stats -->
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <span class="stat-value">${userVouchers.length}</span>
+                        <span class="stat-label">Voucher</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="stat-value">${transactions.filter(t => t.type === 'pembelian').length}</span>
+                        <span class="stat-label">Pembelian</span>
+                    </div>
+                    <div class="profile-stat">
+                        <span class="stat-value">${formatRupiah(balance)}</span>
+                        <span class="stat-label">Saldo</span>
+                    </div>
+                </div>
+                
+                <!-- Menu -->
+                <div class="profile-menu">
+                    <div class="profile-menu-item" onclick="window.website.showMyVouchers()">
+                        <div class="menu-icon">
+                            <i class="fas fa-ticket-alt"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Voucher Saya</div>
+                            <div class="menu-subtitle">${userVouchers.length} voucher tersedia</div>
+                        </div>
+                        <div class="menu-value">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-menu-item" onclick="window.website.showTransactionHistory()">
+                        <div class="menu-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Riwayat Transaksi</div>
+                            <div class="menu-subtitle">Lihat semua transaksi</div>
+                        </div>
+                        <div class="menu-value">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-menu-item" onclick="window.website.openSettings()">
+                        <div class="menu-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Pengaturan Akun</div>
+                            <div class="menu-subtitle">Atur preferensi Anda</div>
+                        </div>
+                        <div class="menu-value">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-menu-item" onclick="window.website.logout()">
+                        <div class="menu-icon">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </div>
+                        <div class="menu-info">
+                            <div class="menu-title">Keluar</div>
+                            <div class="menu-subtitle">Kembali ke Telegram</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        elements.mainContent.innerHTML = html;
+        
+        // Terapkan font ke elemen dinamis
+        applyDynamicFonts();
+    }
+
+    function changePage(page) {
+        elements.navItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === page) {
+                item.classList.add('active');
+            }
+        });
+        
+        // Sembunyikan banner untuk semua page kecuali home
+        if (elements.bannerSlider) {
+            if (page === 'home') {
+                elements.bannerSlider.style.display = 'block';
+            } else {
+                elements.bannerSlider.style.display = 'none';
+            }
+        }
+        
+        switch (page) {
+            case 'home':
+                renderHomePage();
+                break;
+            case 'aktivitas':
+                renderAktivitasPage();
+                break;
+            case 'promo':
+                renderPromoPage();
+                break;
+            case 'bank':
+                renderBankPage();
+                break;
+            case 'profile':
+                renderProfilePage();
+                break;
+        }
+        
+        vibrate(10);
+    }
+
+    function initNavScroll() {
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            if (scrollTop > lastScrollTop && scrollTop > 100) {
+                // Scroll down - hide nav
+                elements.bottomNav.classList.add('hidden');
+            } else {
+                // Scroll up - show nav
+                elements.bottomNav.classList.remove('hidden');
+            }
+            
+            lastScrollTop = scrollTop;
+            
+            // Clear previous timer
+            if (scrollTimer) clearTimeout(scrollTimer);
+            
+            // Set timer to show nav when stopped scrolling
+            scrollTimer = setTimeout(() => {
+                elements.bottomNav.classList.remove('hidden');
+            }, 150);
+        });
+    }
+
+    // ==================== FILTER ACTIONS ====================
+    function toggleFilter() {
+        const filterContent = document.getElementById('filterContent');
+        const chevron = document.getElementById('filterChevron');
+        
+        if (filterContent && chevron) {
+            filterContent.classList.toggle('open');
+            chevron.style.transform = filterContent.classList.contains('open') ? 'rotate(180deg)' : '';
+            filterOpen = filterContent.classList.contains('open');
+        }
+    }
+
+    function toggleLayananFilter(layanan) {
+        if (currentFilters.layanan === layanan) {
+            currentFilters.layanan = null;
+            currentFilters.aplikasi = null;
+        } else {
+            currentFilters.layanan = layanan;
+            currentFilters.aplikasi = null;
+        }
+        
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function toggleAplikasiFilter(aplikasi) {
+        if (currentFilters.aplikasi === aplikasi) {
+            currentFilters.aplikasi = null;
+        } else {
+            currentFilters.aplikasi = aplikasi;
+        }
+        
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function filterByLayanan(layanan) {
+        currentFilters.layanan = layanan;
+        currentFilters.aplikasi = null;
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function showAllLayanan() {
+        currentFilters.layanan = null;
+        currentFilters.aplikasi = null;
+        currentPage = 1;
+        applyFilters();
+        renderHomePage();
+    }
+
+    function goToPage(page) {
+        currentPage = page;
+        renderHomePage();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ==================== PRODUCT ACTIONS ====================
+    function viewProduct(productId) {
+        const product = filteredItems.find(p => p.id === productId);
+        if (!product) return;
+        
+        // Implementasi view product detail
+        showToast(`Melihat detail produk: ${product.item_nama}`, 'info');
+        
+        // Bisa redirect ke halaman detail produk
+        // window.location.href = `/wtb/html/produk-detail.html?website=${currentWebsite?.endpoint}&id=${productId}`;
+    }
+
+    // ==================== PROMO ACTIONS ====================
+    function openVoucherModal() {
+        elements.voucherModal.classList.add('active');
+    }
+
+    function closeVoucherModal() {
+        elements.voucherModal.classList.remove('active');
+        elements.voucherCode.value = '';
+    }
+
+    async function claimVoucher(e) {
+        e.preventDefault();
+        
+        const code = elements.voucherCode.value.trim();
+        
+        if (!code) {
+            showToast('Masukkan kode voucher', 'warning');
+            return;
+        }
+        
+        if (!currentUser) {
+            showToast('Silakan login terlebih dahulu', 'warning');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/claim`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    website_id: currentWebsite.id,
+                    kode: code,
+                    user_id: currentUser.id,
+                    username: currentUser.username,
+                    name: currentUser.first_name + (currentUser.last_name ? ' ' + currentUser.last_name : '')
+                })
+            });
+            
+            if (response.success) {
+                showToast('✅ Voucher berhasil diklaim!', 'success');
+                closeVoucherModal();
+                
+                // Reload user vouchers
+                const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
+                    method: 'GET'
+                });
+                
+                if (vouchersResponse.success) {
+                    userVouchers = vouchersResponse.claims || [];
+                }
+                
+                // Tambah aktivitas
+                aktivitasList.unshift({
+                    id: aktivitasList.length + 1,
+                    type: 'aktivitas_lain',
+                    title: 'Klaim Voucher',
+                    description: `Berhasil mengklaim voucher dengan kode ${code}`,
+                    time: new Date().toISOString(),
+                    icon: 'fa-ticket-alt'
+                });
+                
+            } else {
+                showToast(response.message || 'Gagal mengklaim voucher', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error claiming voucher:', error);
+            showToast('Gagal mengklaim voucher', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function showMyVouchers() {
+        if (userVouchers.length === 0) {
+            showToast('Anda belum memiliki voucher', 'info');
+            return;
+        }
+        
+        // Implementasi tampil daftar voucher
+        let message = 'Voucher Saya:\n';
+        userVouchers.forEach(v => {
+            message += `\n• ${v.nama} (${v.kode}) - ${v.used ? 'Sudah digunakan' : 'Belum digunakan'}`;
+        });
+        
+        showToast(message, 'info', 5000);
+    }
+
+    function claimPromo(promoId) {
+        const promo = promosList.find(p => p.id == promoId);
+        if (!promo) return;
+        
+        showToast(`Promo: ${promo.title}`, 'info');
+        // Implementasi klaim promo
+    }
+
+    function openDepositModal() {
+      elements.depositModal.classList.add('active');
+    
+      // Tambahkan opsi QRIS ke select method
+      const select = elements.paymentMethod;
+      if (select) {
+        let options = '<option value="">-- Pilih Metode --</option>';
+    
+        // Tambahkan opsi QRIS
+        if (allRekeningList.length > 0) {
+          options += `<option value="qris" class="qris-option">🔵 QRIS (Otomatis)</option>`;
+        }
+    
+        // Tambahkan rekening
+        allRekeningList.forEach(rek => {
+          options += `<option value="${rek.id}" data-type="rekening">${escapeHtml(rek.nama)} - ${escapeHtml(rek.nomor)}</option>`;
+        });
+    
+        select.innerHTML = options;
+      }
+    }
+
+    function closeDepositModal() {
+        elements.depositModal.classList.remove('active');
+        elements.depositForm.reset();
+    }
+
+    async function deposit(e) {
+      e.preventDefault();
+    
+      const amount = parseInt(elements.depositAmount.value);
+      const methodValue = elements.paymentMethod.value;
+    
+      if (!amount || amount < 10000) {
+        showToast('Minimal deposit Rp 10.000', 'warning');
+        return;
+      }
+    
+      if (!methodValue) {
+        showToast('Pilih metode pembayaran', 'warning');
+        return;
+      }
+    
+      showLoading(true);
+    
+      try {
+        let payment_method = 'rekening';
+        let rekening_id = null;
+        let gateway_id = null;
+    
+        // Cek apakah method adalah 'qris' atau id rekening
+        if (methodValue === 'qris') {
+          payment_method = 'qris';
+          // Ambil gateway aktif
+          const gatewayResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${currentWebsite.id}`, {
+            method: 'GET'
+          });
+    
+          if (gatewayResponse.success && gatewayResponse.gateway && gatewayResponse.gateway.length > 0) {
+            const activeGateway = gatewayResponse.gateway.find(g => g.active) || gatewayResponse.gateway[0];
+            gateway_id = activeGateway.id;
+          } else {
+            showToast('Gateway pembayaran tidak tersedia', 'error');
+            showLoading(false);
+            return;
+          }
+        } else {
+          rekening_id = parseInt(methodValue);
+        }
+    
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/create`, {
+          method: 'POST',
+          body: JSON.stringify({
+            website_id: currentWebsite.id,
+            user_id: currentUser.id,
+            amount: amount,
+            payment_method: payment_method,
+            rekening_id: rekening_id,
+            gateway_id: gateway_id,
+            user_data: {
+              username: currentUser.username,
+              first_name: currentUser.first_name,
+              last_name: currentUser.last_name
+            }
+          })
+        });
+    
+        if (response.success) {
+          if (payment_method === 'qris' && response.qris_data) {
+            // Tampilkan modal QRIS
+            showQrisModal(response.qris_data, response.deposit_id);
+            closeDepositModal();
+          } else {
+            showToast('Deposit berhasil dibuat, silakan transfer', 'success');
+            closeDepositModal();
+    
+            // Reload transactions
+            await loadTransactions();
+          }
+        } else {
+          showToast(response.error || 'Gagal membuat deposit', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error creating deposit:', error);
+        showToast('Gagal membuat deposit', 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function showQrisModal(qrisData, depositId) {
+      currentDeposit = {
+        id: depositId,
+        ...qrisData
+      };
+    
+      const modal = document.getElementById('confirmDepositModal');
+      const qrisImage = document.getElementById('qrisImage');
+      const confirmAmount = document.getElementById('confirmAmount');
+      const confirmUnique = document.getElementById('confirmUnique');
+      const confirmTotal = document.getElementById('confirmTotal');
+      const confirmExpired = document.getElementById('confirmExpired');
+    
+      if (qrisImage) qrisImage.src = qrisData.qr_image_url;
+      if (confirmAmount) confirmAmount.textContent = formatRupiah(qrisData.original_amount);
+      if (confirmUnique) confirmUnique.textContent = formatRupiah(qrisData.unique_nominal);
+      if (confirmTotal) confirmTotal.textContent = formatRupiah(qrisData.total_amount);
+      if (confirmExpired) confirmExpired.textContent = formatDate(qrisData.expired_at, true);
+    
+      modal.classList.add('active');
+    
+      // Mulai interval pengecekan status
+      startStatusCheck(depositId);
+    }
+    
+    function startStatusCheck(depositId) {
+      if (statusCheckInterval) clearInterval(statusCheckInterval);
+    
+      statusCheckInterval = setInterval(async () => {
+        try {
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/status`, {
+            method: 'POST',
+            body: JSON.stringify({ deposit_id: depositId })
+          });
+    
+          if (response.success && response.deposit) {
+            const status = response.deposit.status;
+    
+            if (status === 'success') {
+              showToast('✅ Pembayaran berhasil! Saldo Anda bertambah', 'success');
+              clearInterval(statusCheckInterval);
+              statusCheckInterval = null;
+              closeConfirmDepositModal();
+    
+              // Reload transactions
+              await loadTransactions();
+    
+              // Jika di halaman bank, render ulang
+              const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+              if (activePage === 'bank') {
+                renderBankPage();
+              }
+            } else if (status === 'expired') {
+              showToast('⚠️ QRIS telah kadaluwarsa', 'warning');
+              clearInterval(statusCheckInterval);
+              statusCheckInterval = null;
+              closeConfirmDepositModal();
+            } else if (status === 'failed') {
+              showToast('❌ Pembayaran gagal', 'error');
+              clearInterval(statusCheckInterval);
+              statusCheckInterval = null;
+              closeConfirmDepositModal();
+            }
+          }
+        } catch (error) {
+          console.error('Error checking status:', error);
+        }
+      }, 5000); // Cek setiap 5 detik
+    }
+    
+    function closeConfirmDepositModal() {
+      const modal = document.getElementById('confirmDepositModal');
+      modal.classList.remove('active');
+    
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+      }
+    }
+    
+    async function checkStatusManually() {
+      if (!currentDeposit) return;
+    
+      showToast('Mengecek status pembayaran...', 'info');
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/status`, {
+          method: 'POST',
+          body: JSON.stringify({ deposit_id: currentDeposit.id })
+        });
+    
+        if (response.success && response.deposit) {
+          const status = response.deposit.status;
+    
+          if (status === 'success') {
+            showToast('✅ Pembayaran berhasil!', 'success');
+            closeConfirmDepositModal();
+            await loadTransactions();
+          } else if (status === 'expired') {
+            showToast('⚠️ QRIS telah kadaluwarsa', 'warning');
+          } else if (status === 'pending') {
+            showToast('⏳ Menunggu pembayaran...', 'info');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking status:', error);
+        showToast('Gagal mengecek status', 'error');
+      }
+    }
+
+    function openWithdrawModal() {
+        if (balance < 50000) {
+            showToast('Minimal withdraw Rp 50.000', 'warning');
+            return;
+        }
+        
+        elements.withdrawAmount.max = balance;
+        elements.userBalance.textContent = formatRupiah(balance);
+        elements.withdrawModal.classList.add('active');
+    }
+
+    function closeWithdrawModal() {
+        elements.withdrawModal.classList.remove('active');
+        elements.withdrawForm.reset();
+    }
+
+    async function withdraw(e) {
+        e.preventDefault();
+        
+        const amount = parseInt(elements.withdrawAmount.value);
+        const account = elements.withdrawAccount.value;
+        
+        if (!amount || amount < 50000) {
+            showToast('Minimal withdraw Rp 50.000', 'warning');
+            return;
+        }
+        
+        if (amount > balance) {
+            showToast('Saldo tidak mencukupi', 'warning');
+            return;
+        }
+        
+        if (!account) {
+            showToast('Pilih rekening tujuan', 'warning');
+            return;
+        }
+        
+        showToast('Fitur withdraw akan segera tersedia', 'info');
+        closeWithdrawModal();
+    }
+
+    function showTransactionHistory() {
+        // Bisa redirect ke halaman riwayat transaksi
+        changePage('bank');
+    }
+
+    // ==================== PROFILE ACTIONS ====================
+    function openSettings() {
+        showToast('Fitur pengaturan akan segera tersedia', 'info');
+    }
+
+    function logout() {
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.close();
+        } else {
+            window.location.href = '/';
+        }
+    }
+
+    async function loadAktivitas() {
+        if (!currentWebsite || !currentUser) {
+            aktivitasList = [];
+            return;
+        }
+        
+        try {
+            // Coba ambil dari API aktivitas
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}/activities?limit=50`, {
+                method: 'GET'
+            }).catch(() => ({ success: false }));
+            
+            if (response.success && response.activities) {
+                aktivitasList = response.activities.map(a => ({
+                    id: a.id,
+                    type: a.type === 'claim' ? 'voucher' : a.type,
+                    title: a.type === 'claim' ? 'Klaim Voucher' :
+                           a.type === 'use' ? 'Penggunaan Voucher' :
+                           a.type === 'create' ? 'Voucher Baru' : 'Aktivitas',
+                    description: a.description || '',
+                    time: a.created_at,
+                    icon: a.type === 'claim' ? 'fa-ticket-alt' :
+                          a.type === 'use' ? 'fa-check-circle' :
+                          a.type === 'create' ? 'fa-plus-circle' : 'fa-history'
+                }));
+            } else {
+                aktivitasList = [];
+            }
+        } catch (error) {
+            console.error('Error loading aktivitas:', error);
+            aktivitasList = [];
+        }
+    }
+
+    // ==================== INITIALIZATION ====================
+    async function init() {
+        showLoading(true);
+        
+        try {
+            currentWebsite = await loadWebsite();
+            if (!currentWebsite) return;
+            
+            await loadUserFromTelegram();
+            await loadTampilan();
+            await loadAllData();
+            
+            // Render banners
+            renderBanners();
+            
+            // Render home page
+            renderHomePage();
+            
+            // Setup navigation
+            elements.navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    changePage(item.dataset.page);
+                });
+            });
+            
+            // Setup scroll hide nav
+            initNavScroll();
+            
+            // Setup modal forms
+            if (elements.voucherForm) {
+                elements.voucherForm.addEventListener('submit', claimVoucher);
+            }
+            
+            if (elements.closeVoucherModal) {
+                elements.closeVoucherModal.addEventListener('click', closeVoucherModal);
+            }
+            
+            if (elements.cancelVoucherBtn) {
+                elements.cancelVoucherBtn.addEventListener('click', closeVoucherModal);
+            }
+            
+            if (elements.depositForm) {
+                elements.depositForm.addEventListener('submit', deposit);
+            }
+            
+            if (elements.closeDepositModal) {
+                elements.closeDepositModal.addEventListener('click', closeDepositModal);
+            }
+            
+            if (elements.cancelDepositBtn) {
+                elements.cancelDepositBtn.addEventListener('click', closeDepositModal);
+            }
+            
+            if (elements.withdrawForm) {
+                elements.withdrawForm.addEventListener('submit', withdraw);
+            }
+            
+            if (elements.closeWithdrawModal) {
+                elements.closeWithdrawModal.addEventListener('click', closeWithdrawModal);
+            }
+            
+            if (elements.cancelWithdrawBtn) {
+                elements.cancelWithdrawBtn.addEventListener('click', closeWithdrawModal);
+            }
+
+            // Modal confirm deposit
+            const closeConfirmModal = document.getElementById('closeConfirmDepositModal');
+            const closeConfirmBtn = document.getElementById('closeConfirmBtn');
+            const checkStatusBtn = document.getElementById('checkStatusBtn');
+            
+            if (closeConfirmModal) {
+              closeConfirmModal.addEventListener('click', closeConfirmDepositModal);
+            }
+            
+            if (closeConfirmBtn) {
+              closeConfirmBtn.addEventListener('click', closeConfirmDepositModal);
+            }
+            
+            if (checkStatusBtn) {
+              checkStatusBtn.addEventListener('click', checkStatusManually);
+            }
+            
+
+            // Close modals on outside click
+            window.addEventListener('click', (e) => {
+                if (e.target === elements.voucherModal) closeVoucherModal();
+                if (e.target === elements.depositModal) closeDepositModal();
+                if (e.target === elements.withdrawModal) closeWithdrawModal();
+                if (e.target === elements.voucherModal) closeVoucherModal();
+                if (e.target === elements.depositModal) closeDepositModal();
+                if (e.target === elements.withdrawModal) closeWithdrawModal();
+                if (e.target === document.getElementById('confirmDepositModal')) closeConfirmDepositModal();
+            });
+            
+            console.log('✅ Website initialized');
+            
+        } catch (error) {
+            console.error('❌ Init error:', error);
+            showToast('Gagal memuat website', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ==================== EXPOSE GLOBAL FUNCTIONS ====================
+    window.website = {
+      // Navigation
+      changePage,
+    
+      // Filter
+      toggleFilter,
+      toggleLayananFilter,
+      toggleAplikasiFilter,
+      filterByLayanan,
+      showAllLayanan,
+    
+      // Filter baru
+      setFilterType,
+      setItemFilter,
+    
+      // Aktivitas filter
+      toggleAktivitasFilter,
+      filterAktivitas,
+    
+      // Transaction filter
+      filterTransactions,
+      toggleTransactionFilter,
+      toggleShowAllRekening,
+    
+      // Pagination
+      goToPage,
+    
+      // Products
+      viewProduct,
+    
+      // Promo
+      openVoucherModal,
+      showMyVouchers,
+      claimPromo,
+    
+      // Bank
+      openDepositModal,
+      openWithdrawModal,
+      showTransactionHistory,
+    
+      // Profile
+      openSettings,
+      logout
+    };
+
+    // ==================== START ====================
+    init();
+})();
