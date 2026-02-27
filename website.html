@@ -194,6 +194,60 @@
         </div>
     </div>
 
+    <!-- MODAL: Konfirmasi Deposit QRIS -->
+    <div class="modal" id="confirmDepositModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2><i class="fas fa-qrcode"></i> Scan QRIS</h2>
+          <button class="modal-close" id="closeConfirmDepositModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body" id="confirmDepositBody">
+          <div class="qris-container" id="qrisContainer">
+            <img id="qrisImage" src="" alt="QRIS" class="qris-image">
+          </div>
+    
+          <div class="deposit-details" id="depositDetails">
+            <div class="detail-row">
+              <span class="detail-label">Nominal:</span>
+              <span class="detail-value" id="confirmAmount">Rp 0</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Kode Unik:</span>
+              <span class="detail-value" id="confirmUnique">0</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Total Bayar:</span>
+              <span class="detail-value total" id="confirmTotal">Rp 0</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Waktu Expired:</span>
+              <span class="detail-value" id="confirmExpired">-</span>
+            </div>
+          </div>
+    
+          <div class="qris-instruction">
+            <h4><i class="fas fa-info-circle"></i> Cara Pembayaran:</h4>
+            <ol>
+              <li>Buka aplikasi pembayaran yang mendukung QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja, dll)</li>
+              <li>Pilih menu Scan QR atau Bayar QRIS</li>
+              <li>Scan QR code di atas</li>
+              <li>Periksa nominal pembayaran (total termasuk kode unik)</li>
+              <li>Selesaikan pembayaran</li>
+            </ol>
+          </div>
+    
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="closeConfirmBtn">Tutup</button>
+            <button type="button" class="btn-primary" id="checkStatusBtn">
+              <i class="fas fa-sync-alt"></i> Cek Status
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL: Withdraw -->
     <div class="modal" id="withdrawModal">
         <div class="modal-content">
