@@ -211,6 +211,9 @@ body {
     color: var(--tg-text-color);
     max-width: 100%;
     line-height: 1.2;
+    transition: all 0.3s ease;
+    display: inline-block;
+    max-width: 100%;
 }
 
 /* Banner Slider - only shown on utama page */
@@ -465,8 +468,8 @@ body {
 
 /* Filter Bar */
 .filter-bar {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     margin-bottom: 20px;
 }
@@ -474,11 +477,7 @@ body {
 .filter-dropdown {
     position: relative;
     flex: 1;
-    min-width: 100px;
-}
-
-.filter-item-sort {
-    flex: 1;
+    min-width: 0;
 }
 
 .filter-btn {
@@ -486,25 +485,38 @@ body {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 30px;
-    padding: 8px 12px;
+    padding: 8px 8px;
     color: var(--tg-text-color);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     transition: all 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .filter-btn i:first-child {
     color: var(--primary-color);
+    font-size: 12px;
+    flex-shrink: 0;
 }
 
 .filter-btn i:last-child {
     margin-left: auto;
-    font-size: 10px;
+    font-size: 8px;
     color: var(--tg-hint-color);
+    flex-shrink: 0;
+}
+
+.filter-btn span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .filter-btn:hover {
@@ -808,8 +820,15 @@ body {
 }
 
 /* Promo Page */
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
 .voucher-btn {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 30px;
     padding: 8px 16px;
@@ -821,16 +840,20 @@ body {
     align-items: center;
     gap: 8px;
     transition: all 0.2s;
-    margin-left: auto;
+    white-space: nowrap;
 }
 
 .voucher-btn:hover {
-    background: rgba(64, 167, 227, 0.1);
+    background: var(--primary-color);
     border-color: var(--primary-color);
 }
 
 .voucher-btn i {
     color: var(--primary-color);
+}
+
+.voucher-btn:hover i {
+    color: white;
 }
 
 .promo-banners {
@@ -1144,8 +1167,8 @@ body {
 }
 
 .profile-avatar-large {
-    width: 80px;
-    height: 80px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     overflow: hidden;
     border: 3px solid var(--primary-color);
@@ -1159,14 +1182,14 @@ body {
 }
 
 .profile-info h2 {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     margin-bottom: 4px;
 }
 
 .profile-info p {
     color: var(--tg-hint-color);
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .profile-stats {
@@ -1185,7 +1208,7 @@ body {
 }
 
 .stat-value {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--primary-color);
     display: block;
@@ -1193,7 +1216,7 @@ body {
 }
 
 .stat-label {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--tg-hint-color);
 }
 
@@ -1383,6 +1406,20 @@ body {
         padding: 12px;
     }
     
+    .filter-bar {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+    
+    .filter-btn {
+        padding: 6px 4px;
+        font-size: 10px;
+    }
+    
+    .filter-btn i:first-child {
+        font-size: 10px;
+    }
+    
     .store-name {
         font-size: 20px;
     }
@@ -1394,18 +1431,6 @@ body {
     
     .store-logo i {
         font-size: 28px;
-    }
-    
-    .filter-bar {
-        flex-wrap: wrap;
-    }
-    
-    .filter-dropdown {
-        flex: 1 1 calc(50% - 4px);
-    }
-    
-    .sort-dropdown {
-        flex: 1 1 100%;
     }
     
     .banner-slider-container {
