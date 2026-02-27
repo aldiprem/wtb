@@ -2087,8 +2087,8 @@
       const amount = parseInt(elements.depositAmount.value);
       const methodValue = elements.paymentMethod.value;
     
-      if (!amount || amount < 10000) {
-        showToast('Minimal deposit Rp 10.000', 'warning');
+      if (!amount || amount < 100) {
+        showToast('Minimal deposit Rp 100', 'warning');
         return;
       }
     
