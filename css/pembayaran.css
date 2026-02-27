@@ -1060,3 +1060,92 @@ input:checked + .toggle-slider:before {
         text-align: center;
     }
 }
+
+/* Tambahkan di pembayaran.css */
+
+.package-ids-container {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+}
+
+.package-ids-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.package-checkbox {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.package-checkbox:hover {
+  background: rgba(64, 167, 227, 0.1);
+  border-color: var(--primary-color);
+}
+
+.package-checkbox input[type="checkbox"] {
+  display: none;
+}
+
+.package-checkbox input[type="checkbox"]:checked+.package-name {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.package-checkbox input[type="checkbox"]:checked~.package-id {
+  color: var(--primary-color);
+}
+
+.package-checkbox input[type="checkbox"]:checked+.package-name+.package-id {
+  color: var(--primary-color);
+}
+
+.package-checkbox input[type="checkbox"]:checked~* {
+  border-color: var(--primary-color);
+}
+
+.package-name {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.package-id {
+  font-size: 11px;
+  color: var(--tg-hint-color);
+  font-family: monospace;
+}
+
+.package-ids-help {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(64, 167, 227, 0.05);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--tg-hint-color);
+  border-left: 3px solid var(--primary-color);
+}
+
+.package-ids-help i {
+  color: var(--primary-color);
+  margin-right: 6px;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .package-ids-grid {
+    grid-template-columns: 1fr;
+  }
+}
