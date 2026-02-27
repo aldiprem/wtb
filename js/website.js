@@ -29,8 +29,8 @@
     let currentPage = 1;
     let totalPages = 1;
     
-    // Filter states
-    let filterOpen = false;  // <-- TAMBAHKAN INI
+    // Filter states - LENGKAPI SEMUA VARIABEL YANG DIBUTUHKAN
+    let filterOpen = false;
     let aktivitasFilterOpen = false;
     
     let aktivitasFilter = {
@@ -44,8 +44,8 @@
         aplikasi: null,
         search: '',
         sort: 'terbaru',
-        filterType: 'layanan',      // <-- TAMBAHKAN INI
-        itemStatus: 'all'            // <-- TAMBAHKAN INI
+        filterType: 'layanan',
+        itemStatus: 'all'
     };
     
     // Aktivitas
@@ -342,6 +342,37 @@
         }
     }
 
+    // ==================== FUNGSI LOAD TRANSACTIONS - TAMBAHKAN INI ====================
+    async function loadTransactions() {
+        if (!currentWebsite || !currentUser) {
+            transactions = [];
+            balance = 0;
+            return;
+        }
+        
+        try {
+            // Untuk sementara, kosongkan dulu karena fitur belum ada
+            transactions = [];
+            balance = 0;
+            
+            // Nanti bisa diisi ketika endpoint transaksi sudah tersedia
+            /*
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
+                method: 'GET'
+            }).catch(() => ({ success: false, transactions: [], balance: 0 }));
+            
+            if (response.success) {
+                transactions = response.transactions || [];
+                balance = response.balance || 0;
+            }
+            */
+        } catch (error) {
+            console.error('Error loading transactions:', error);
+            transactions = [];
+            balance = 0;
+        }
+    }
+
     async function loadAllData() {
         if (!currentWebsite) return;
         
@@ -410,37 +441,6 @@
             showToast('Gagal memuat data', 'error');
         } finally {
             showLoading(false);
-        }
-    }
-
-    // ==================== FUNGSI LOAD TRANSACTIONS - TAMBAHKAN INI ====================
-    async function loadTransactions() {
-        if (!currentWebsite || !currentUser) {
-            transactions = [];
-            balance = 0;
-            return;
-        }
-        
-        try {
-            // Untuk sementara, kosongkan dulu karena fitur belum ada
-            transactions = [];
-            balance = 0;
-            
-            // Nanti bisa diisi ketika endpoint transaksi sudah tersedia
-            /*
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
-                method: 'GET'
-            }).catch(() => ({ success: false, transactions: [], balance: 0 }));
-            
-            if (response.success) {
-                transactions = response.transactions || [];
-                balance = response.balance || 0;
-            }
-            */
-        } catch (error) {
-            console.error('Error loading transactions:', error);
-            transactions = [];
-            balance = 0;
         }
     }
 
@@ -1444,7 +1444,7 @@
         if (filterContent && chevron) {
             filterContent.classList.toggle('open');
             chevron.style.transform = filterContent.classList.contains('open') ? 'rotate(180deg)' : '';
-            filterOpen = filterContent.classList.contains('open');  // Simpan state
+            filterOpen = filterContent.classList.contains('open');
         }
     }
 
