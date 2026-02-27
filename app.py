@@ -1709,6 +1709,337 @@ def get_user_claims(user_id):
         print(f"❌ Error getting user claims: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== ROUTES UNTUK WEBSITE PUBLIK (DATA DINAMIS) ====================
+
+@app.route('/api/website/<int:website_id>/products', methods=['GET'])
+def api_get_website_products(website_id):
+    """
+    Mendapatkan semua produk untuk website tertentu (format lengkap)
+    """
+    try:
+        # Cek website
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        data = prd.get_all_data(website_id)
+        
+        return jsonify({
+            'success': True,
+            'data': data,
+            'count': len(data)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting website products: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/website/<int:website_id>/products/filtered', methods=['GET'])
+def api_get_filtered_products(website_id):
+    """
+    Mendapatkan produk yang sudah difilter (untuk performance)
+    """
+    try:
+        # Cek website
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Ambil semua data
+        all_data = prd.get_all_data(website_id)
+        
+        # Flatten items untuk response yang lebih ringan
+        items = []
+        for layanan in all_data:
+            if layanan.get('aplikasi'):
+                for aplikasi in layanan['aplikasi']:
+                    if aplikasi.get('items'):
+                        for item in aplikasi['items']:
+                            items.append({
+                                'id': item.get('id'),
+                                'item_nama': item.get('item_nama'),
+                                'item_harga': item.get('item_harga'),
+                                'item_durasi_jumlah': item.get('item_durasi_jumlah'),
+                                'item_durasi_satuan': item.get('item_durasi_satuan'),
+                                'item_tipe': item.get('item_tipe'),
+                                'item_metode': item.get('item_metode'),
+                                'item_stok': item.get('item_stok'),
+                                'item_ready': item.get('item_ready', 1),
+                                'layanan_nama': layanan.get('layanan_nama'),
+                                'layanan_gambar': layanan.get('layanan_gambar'),
+                                'aplikasi_nama': aplikasi.get('aplikasi_nama'),
+                                'aplikasi_gambar': aplikasi.get('aplikasi_gambar'),
+                                'terjual': item.get('terjual', 0),
+                                'created_at': item.get('created_at')
+                            })
+        
+        return jsonify({
+            'success': True,
+            'items': items,
+            'count': len(items)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting filtered products: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/website/<int:website_id>/promos', methods=['GET'])
+def api_get_website_promos(website_id):
+    """
+    Mendapatkan semua promo untuk website tertentu
+    """
+    try:
+        # Cek website
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Ambil dari tmp.py
+        promos = tmp.get_promos(website_id)
+        
+        # Filter promo yang aktif
+        active_promos = [p for p in promos if p.get('active', True)]
+        
+        return jsonify({
+            'success': True,
+            'promos': active_promos,
+            'count': len(active_promos)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting website promos: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/website/<int:website_id>/rekening', methods=['GET'])
+def api_get_website_rekening(website_id):
+    """
+    Mendapatkan semua rekening aktif untuk website tertentu
+    """
+    try:
+        # Cek website
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Ambil rekening aktif dari pmb.py
+        rekening = pmb.get_active_rekening(website_id)
+        
+        return jsonify({
+            'success': True,
+            'rekening': rekening,
+            'count': len(rekening)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting website rekening: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/website/<int:website_id>/tampilan', methods=['GET'])
+def api_get_website_tampilan(website_id):
+    """
+    Mendapatkan data tampilan lengkap untuk website
+    """
+    try:
+        # Cek website
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Ambil data tampilan
+        tampilan = tmp.get_tampilan(website_id)
+        
+        if not tampilan:
+            # Buat default jika belum ada
+            default_tampilan = {
+                'logo': '',
+                'banners': [],
+                'promos': [],
+                'colors': {
+                    'primary': '#40a7e3',
+                    'secondary': '#FFD700',
+                    'background': '#0f0f0f',
+                    'text': '#ffffff',
+                    'card': '#1a1a1a',
+                    'accent': '#10b981'
+                },
+                'font_family': 'Inter',
+                'font_size': 14,
+                'store_display_name': 'Toko Online',
+                'font_animation': 'none',
+                'animation_duration': 2,
+                'animation_delay': 0,
+                'animation_iteration': 'infinite'
+            }
+            return jsonify({'success': True, 'tampilan': default_tampilan})
+        
+        return jsonify({'success': True, 'tampilan': tampilan})
+        
+    except Exception as e:
+        print(f"❌ Error getting website tampilan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/website/<int:website_id>/activities', methods=['GET'])
+def api_get_website_activities(website_id):
+    """
+    Mendapatkan aktivitas website (dari voucher, orders, dll)
+    """
+    try:
+        # Cek website
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        limit = request.args.get('limit', default=50, type=int)
+        
+        # Ambil aktivitas dari voucher
+        activities = vcr.get_activities(website_id, limit=limit)
+        
+        return jsonify({
+            'success': True,
+            'activities': activities,
+            'count': len(activities)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting website activities: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== ROUTES UNTUK USER AUTH ====================
+
+@app.route('/api/user/check', methods=['POST'])
+def api_check_user():
+    """
+    Cek atau buat user baru berdasarkan data Telegram
+    """
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        username = data.get('username')
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        photo_url = data.get('photo_url')
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User ID required'}), 400
+        
+        # Di sini bisa implementasi penyimpanan user ke database
+        # Untuk sekarang, kita return sukses saja
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': user_id,
+                'username': username,
+                'first_name': first_name,
+                'last_name': last_name,
+                'photo_url': photo_url
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error checking user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== ROUTES UNTUK TRANSAKSI (DUMMY) ====================
+
+@app.route('/api/transactions/user/<int:user_id>', methods=['GET'])
+def api_get_user_transactions(user_id):
+    """
+    Mendapatkan transaksi user (dummy untuk sekarang)
+    """
+    try:
+        website_id = request.args.get('website_id', type=int)
+        
+        # Return array kosong untuk sekarang
+        return jsonify({
+            'success': True,
+            'transactions': [],
+            'balance': 0
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting user transactions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/transactions/deposit', methods=['POST'])
+def api_deposit():
+    """
+    Endpoint untuk deposit (dummy)
+    """
+    try:
+        data = request.json
+        return jsonify({
+            'success': True,
+            'message': 'Deposit feature coming soon'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error processing deposit: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/transactions/withdraw', methods=['POST'])
+def api_withdraw():
+    """
+    Endpoint untuk withdraw (dummy)
+    """
+    try:
+        data = request.json
+        return jsonify({
+            'success': True,
+            'message': 'Withdraw feature coming soon'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error processing withdraw: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== ROUTES UNTUK STATISTIK WEBSITE ====================
+
+@app.route('/api/website/<int:website_id>/stats', methods=['GET'])
+def api_get_website_stats(website_id):
+    """
+    Mendapatkan statistik website
+    """
+    try:
+        # Cek website
+        website = get_db().execute('SELECT id FROM websites WHERE id = ?', (website_id,)).fetchone()
+        if not website:
+            return jsonify({'success': False, 'error': 'Website not found'}), 404
+        
+        # Hitung produk
+        products_data = prd.get_all_data(website_id)
+        total_products = 0
+        for layanan in products_data:
+            if layanan.get('aplikasi'):
+                for aplikasi in layanan['aplikasi']:
+                    if aplikasi.get('items'):
+                        total_products += len(aplikasi['items'])
+        
+        # Hitung promo
+        promos = tmp.get_promos(website_id)
+        active_promos = len([p for p in promos if p.get('active', True)])
+        
+        # Hitung voucher (jika ada)
+        vouchers = vcr.get_vouchers(website_id)
+        active_vouchers = len([v for v in vouchers if v.get('active') and not v.get('expired')])
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_products': total_products,
+                'total_layanan': len(products_data),
+                'active_promos': active_promos,
+                'active_vouchers': active_vouchers,
+                'total_vouchers': len(vouchers)
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting website stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
