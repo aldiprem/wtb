@@ -1479,90 +1479,128 @@
         }
     }
 
-    // ==================== FONT STYLE APPLICATION FUNCTIONS ====================
-    
     async function applyFontStyleToTarget() {
-        if (!currentWebsite) {
-            showToast('Website tidak ditemukan', 'error');
-            return;
+      if (!currentWebsite) {
+        showToast('Website tidak ditemukan', 'error');
+        return;
+      }
+    
+      const selectedCode = elements.applyFontTemplateSelect?.value;
+      const target = elements.applyFontTargetSelect?.value;
+    
+      if (!selectedCode) {
+        showToast('Pilih template terlebih dahulu', 'warning');
+        return;
+      }
+    
+      // Cari template yang dipilih
+      const selectedTemplate = savedTemplates.find(t => t.template_code === selectedCode);
+      if (!selectedTemplate) {
+        showToast('Template tidak ditemukan', 'error');
+        return;
+      }
+    
+      const templateData = selectedTemplate.template_data || {};
+    
+      showLoading(true);
+    
+      try {
+        // Siapkan data update berdasarkan target
+        let updateData = {
+          target: target,
+          template_code: selectedCode
+        };
+    
+        // Data font dari template
+        const fontData = {
+          font_family: templateData.font_family,
+          font_size: templateData.font_size,
+          font_animation: templateData.animation_type,
+          animation_duration: templateData.animation_duration,
+          animation_delay: templateData.animation_delay,
+          animation_iteration: templateData.animation_iteration
+        };
+    
+        // Gabungkan data
+        Object.assign(updateData, fontData);
+    
+        // Simpan ke server melalui endpoint font-style
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-style`, {
+          method: 'POST',
+          body: JSON.stringify(updateData)
+        });
+    
+        if (response.success) {
+          showToast(`✅ Font style diterapkan ke ${getTargetName(target)}`, 'success');
+    
+          // Update tampilanData lokal
+          if (target === 'store_name') {
+            tampilanData.store_font_family = templateData.font_family;
+            tampilanData.store_font_size = templateData.font_size;
+            tampilanData.store_font_animation = templateData.animation_type;
+            tampilanData.store_animation_duration = templateData.animation_duration;
+            tampilanData.store_animation_delay = templateData.animation_delay;
+            tampilanData.store_animation_iteration = templateData.animation_iteration;
+          } else if (target === 'headings') {
+            tampilanData.heading_font_family = templateData.font_family;
+            tampilanData.heading_font_size = templateData.font_size;
+            tampilanData.heading_font_animation = templateData.animation_type;
+            tampilanData.heading_animation_duration = templateData.animation_duration;
+            tampilanData.heading_animation_delay = templateData.animation_delay;
+            tampilanData.heading_animation_iteration = templateData.animation_iteration;
+          } else if (target === 'body') {
+            tampilanData.body_font_family = templateData.font_family;
+            tampilanData.body_font_size = templateData.font_size;
+            tampilanData.body_font_animation = templateData.animation_type;
+            tampilanData.body_animation_duration = templateData.animation_duration;
+            tampilanData.body_animation_delay = templateData.animation_delay;
+            tampilanData.body_animation_iteration = templateData.animation_iteration;
+          } else if (target === 'all_text') {
+            tampilanData.font_family = templateData.font_family;
+            tampilanData.font_size = templateData.font_size;
+            tampilanData.font_animation = templateData.animation_type;
+            tampilanData.animation_duration = templateData.animation_duration;
+            tampilanData.animation_delay = templateData.animation_delay;
+            tampilanData.animation_iteration = templateData.animation_iteration;
+    
+            tampilanData.store_font_family = templateData.font_family;
+            tampilanData.store_font_size = templateData.font_size;
+            tampilanData.store_font_animation = templateData.animation_type;
+            tampilanData.store_animation_duration = templateData.animation_duration;
+            tampilanData.store_animation_delay = templateData.animation_delay;
+            tampilanData.store_animation_iteration = templateData.animation_iteration;
+    
+            tampilanData.heading_font_family = templateData.font_family;
+            tampilanData.heading_font_size = templateData.font_size;
+            tampilanData.heading_font_animation = templateData.animation_type;
+            tampilanData.heading_animation_duration = templateData.animation_duration;
+            tampilanData.heading_animation_delay = templateData.animation_delay;
+            tampilanData.heading_animation_iteration = templateData.animation_iteration;
+    
+            tampilanData.body_font_family = templateData.font_family;
+            tampilanData.body_font_size = templateData.font_size;
+            tampilanData.body_font_animation = templateData.animation_type;
+            tampilanData.body_animation_duration = templateData.animation_duration;
+            tampilanData.body_animation_delay = templateData.animation_delay;
+            tampilanData.body_animation_iteration = templateData.animation_iteration;
+          }
+    
+          // Update preview jika sedang aktif
+          if (elements.fontPreviewPanel.style.display === 'block') {
+            updatePreviewWithTemplate(templateData, target);
+          }
+    
+          vibrate();
+        } else {
+          throw new Error(response.error || 'Gagal menyimpan');
         }
-        
-        const selectedCode = elements.applyFontTemplateSelect?.value;
-        const target = elements.applyFontTargetSelect?.value;
-        
-        if (!selectedCode) {
-            showToast('Pilih template terlebih dahulu', 'warning');
-            return;
-        }
-        
-        // Cari template yang dipilih
-        const selectedTemplate = savedTemplates.find(t => t.template_code === selectedCode);
-        if (!selectedTemplate) {
-            showToast('Template tidak ditemukan', 'error');
-            return;
-        }
-        
-        const templateData = selectedTemplate.template_data || {};
-        
-        showLoading(true);
-        
-        try {
-            // Siapkan data update berdasarkan target
-            let updateData = {};
-            
-            if (target === 'store_name' || target === 'all_text') {
-                updateData = {
-                    font_family: templateData.font_family,
-                    font_size: templateData.font_size,
-                    font_animation: templateData.animation_type,
-                    animation_duration: templateData.animation_duration,
-                    animation_delay: templateData.animation_delay,
-                    animation_iteration: templateData.animation_iteration
-                };
-            } else if (target === 'headings') {
-                // Untuk headings, kita simpan di settings
-                updateData = {
-                    heading_font_family: templateData.font_family,
-                    heading_font_size: templateData.font_size,
-                    heading_font_animation: templateData.animation_type
-                };
-            } else if (target === 'body') {
-                // Untuk body text
-                updateData = {
-                    body_font_family: templateData.font_family,
-                    body_font_size: templateData.font_size,
-                    body_font_animation: templateData.animation_type
-                };
-            }
-            
-            // Simpan ke server melalui endpoint font-anim
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-anim`, {
-                method: 'POST',
-                body: JSON.stringify(updateData)
-            });
-            
-            if (response.success) {
-                showToast(`✅ Font style diterapkan ke ${getTargetName(target)}`, 'success');
-                
-                // Update tampilanData lokal
-                Object.assign(tampilanData, updateData);
-                
-                // Update preview jika sedang aktif
-                if (elements.fontPreviewPanel.style.display === 'block') {
-                    updatePreviewWithTemplate(templateData, target);
-                }
-                
-                vibrate();
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error applying font style:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
-        }
+    
+      } catch (error) {
+        console.error('❌ Error applying font style:', error);
+        showToast(error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
     }
     
     function getTargetName(target) {
