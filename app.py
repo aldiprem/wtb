@@ -5,13 +5,13 @@ from flask_cors import CORS
 from datetime import datetime
 
 # Import semua blueprint dari service folder
-from service.website_service import website_bp
-from service.vcr_service import vcr_bp
-from service.pmb_service import pmb_bp
-from service.prd_service import prd_bp
-from service.ssl_service import ssl_bp
-from service.tmp_service import tmp_bp
-from service.tmp_font_service import tmp_font_bp
+from services.website_service import website_bp
+from services.vcr_service import vcr_bp
+from services.pmb_service import pmb_bp
+from services.prd_service import prd_bp
+from services.ssl_service import ssl_bp
+from services.tmp_service import tmp_bp
+from services.tmp_font_service import tmp_font_bp
 
 app = Flask(__name__, static_folder='.')
 
