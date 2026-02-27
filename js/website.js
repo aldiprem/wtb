@@ -29,6 +29,21 @@
     let currentPage = 1;
     let totalPages = 1;
     
+    let transactionFilterOpen = false;
+
+    // Filter transaksi
+    let transactionFilter = {
+      status: 'all'
+    };
+    
+    // Deposit state
+    let currentDeposit = null;
+    let statusCheckInterval = null;
+    
+    // Lihat semua rekening
+    let showAllRekening = false;
+    let allRekeningList = [];
+
     // Filter states - LENGKAPI SEMUA VARIABEL YANG DIBUTUHKAN
     let filterOpen = false;
     let aktivitasFilterOpen = false;
@@ -590,35 +605,64 @@
         }
     }
 
-    // ==================== FUNGSI LOAD TRANSACTIONS - TAMBAHKAN INI ====================
     async function loadTransactions() {
-        if (!currentWebsite || !currentUser) {
-            transactions = [];
-            balance = 0;
-            return;
-        }
-        
-        try {
-            // Untuk sementara, kosongkan dulu karena fitur belum ada
-            transactions = [];
-            balance = 0;
-            
-            // Nanti bisa diisi ketika endpoint transaksi sudah tersedia
-            /*
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
-                method: 'GET'
-            }).catch(() => ({ success: false, transactions: [], balance: 0 }));
-            
-            if (response.success) {
-                transactions = response.transactions || [];
-                balance = response.balance || 0;
+      if (!currentWebsite || !currentUser) {
+        transactions = [];
+        balance = 0;
+        return;
+      }
+    
+      try {
+        // Gunakan endpoint baru dengan filter status
+        const response = await fetchWithRetry(
+          `${API_BASE_URL}/api/transactions/user/${currentUser.id}?website_id=${currentWebsite.id}&status=${transactionFilter.status}&limit=50`,
+          {
+            method: 'GET'
+          }
+        ).catch(() => ({ success: false, transactions: [] }));
+    
+        if (response.success) {
+          transactions = response.transactions || [];
+    
+          // Hitung balance dari transaksi sukses
+          balance = 0;
+          transactions.forEach(t => {
+            if (t.transaction_type === 'deposit' && t.status === 'success') {
+              balance += t.amount;
+            } else if (t.transaction_type === 'withdraw' && t.status === 'success') {
+              balance -= t.amount;
             }
-            */
-        } catch (error) {
-            console.error('Error loading transactions:', error);
-            transactions = [];
-            balance = 0;
+          });
+        } else {
+          transactions = [];
+          balance = 0;
         }
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+        transactions = [];
+        balance = 0;
+      }
+    }
+
+    function filterTransactions(status) {
+      transactionFilter.status = status;
+      loadTransactions().then(() => {
+        // Jika sedang di halaman bank, render ulang
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'bank') {
+          renderBankPage();
+        }
+      });
+    }
+    
+    function toggleShowAllRekening() {
+      showAllRekening = !showAllRekening;
+      if (showAllRekening) {
+        rekeningList = [...allRekeningList];
+      } else {
+        rekeningList = allRekeningList.slice(0, 4);
+      }
+      renderBankPage();
     }
 
     async function loadAllData() {
@@ -653,14 +697,17 @@
           promosList = [];
         }
     
-        // Load rekening
+        // Load rekening (semua untuk keperluan "Lihat Semua")
         const rekeningResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
           method: 'GET'
         }).catch(() => ({ success: false, rekening: [] }));
     
         if (rekeningResponse.success) {
-          rekeningList = rekeningResponse.rekening || [];
+          allRekeningList = rekeningResponse.rekening || [];
+          // Untuk tampilan awal, hanya ambil 4
+          rekeningList = allRekeningList.slice(0, 4);
         } else {
+          allRekeningList = [];
           rekeningList = [];
         }
     
@@ -1415,63 +1462,108 @@
     }
 
     function renderBankPage() {
-        const html = `
-            <div class="page-content">
-                <div class="section-title">
-                    <h2><i class="fas fa-university"></i> Bank & Deposit</h2>
-                </div>
-                
-                <!-- Balance Card -->
-                <div class="balance-card">
-                    <div class="balance-label">Saldo Anda</div>
-                    <div class="balance-amount" id="balanceAmount">${formatRupiah(balance)}</div>
-                    <div class="balance-actions">
-                        <button class="balance-btn" onclick="window.website.openDepositModal()">
-                            <i class="fas fa-plus-circle"></i> Deposit
-                        </button>
-                        <button class="balance-btn" onclick="window.website.openWithdrawModal()">
-                            <i class="fas fa-minus-circle"></i> Withdraw
-                        </button>
+      // Sembunyikan banner
+      if (elements.bannerSlider) {
+        elements.bannerSlider.style.display = 'none';
+      }
+    
+      const html = `
+                <div class="page-content">
+                    <div class="section-title">
+                        <h2><i class="fas fa-university"></i> Bank & Deposit</h2>
+                    </div>
+                    
+                    <!-- Balance Card -->
+                    <div class="balance-card">
+                        <div class="balance-label">Saldo Anda</div>
+                        <div class="balance-amount" id="balanceAmount">${formatRupiah(balance)}</div>
+                        <div class="balance-actions">
+                            <button class="balance-btn" onclick="window.website.openDepositModal()">
+                                <i class="fas fa-plus-circle"></i> Deposit
+                            </button>
+                            <button class="balance-btn" onclick="window.website.openWithdrawModal()">
+                                <i class="fas fa-minus-circle"></i> Withdraw
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Filter Status Transaksi -->
+                    <div class="transaction-filter-section">
+                        <div class="filter-header" onclick="window.website.toggleTransactionFilter()">
+                            <h3><i class="fas fa-filter"></i> Filter Status</h3>
+                            <i class="fas fa-chevron-down" id="transactionFilterChevron"></i>
+                        </div>
+                        <div class="filter-content" id="transactionFilterContent">
+                            <div class="filter-bubbles">
+                                <span class="filter-bubble ${transactionFilter.status === 'all' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('all')">Semua</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'pending' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('pending')">Pending</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'success' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('success')">Sukses</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'failed' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('failed')">Gagal</span>
+                                <span class="filter-bubble ${transactionFilter.status === 'expired' ? 'active' : ''}" 
+                                      onclick="window.website.filterTransactions('expired')">Kadaluwarsa</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rekening Tersedia -->
+                    <div class="section-title" style="margin-top: 16px;">
+                        <h3><i class="fas fa-credit-card"></i> Rekening Tersedia</h3>
+                        ${allRekeningList.length > 4 ? `
+                            <span class="view-all" onclick="window.website.toggleShowAllRekening()">
+                                ${showAllRekening ? 'Tampilkan Sedikit' : 'Lihat Semua'} <i class="fas fa-arrow-right"></i>
+                            </span>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="rekening-grid" id="rekeningGrid">
+                        ${renderRekeningList()}
+                    </div>
+                    
+                    <!-- Riwayat Transaksi -->
+                    <div class="transaction-history">
+                        <div class="transaction-header">
+                            <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
+                        </div>
+                        <div class="transaction-list" id="transactionList">
+                            ${renderTransactionList()}
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Rekening Tersedia -->
-                <div class="section-title" style="margin-top: 16px;">
-                    <h3><i class="fas fa-credit-card"></i> Rekening Tersedia</h3>
-                </div>
-                
-                <div class="rekening-grid">
-                    ${renderRekeningList()}
-                </div>
-                
-                <!-- Riwayat Transaksi -->
-                <div class="transaction-history">
-                    <div class="transaction-header">
-                        <h3><i class="fas fa-history"></i> Riwayat Transaksi</h3>
-                    </div>
-                    <div class="transaction-list">
-                        ${renderTransactionList()}
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        elements.mainContent.innerHTML = html;
-        
-        // Populate payment method select
-        populatePaymentMethod();
-        
-        // Populate withdraw account select
-        populateWithdrawAccount();
-        
-        // Terapkan font ke elemen dinamis
-        applyDynamicFonts();
-        
-        // Populate payment method select
-        populatePaymentMethod();
-        
-        // Populate withdraw account select
-        populateWithdrawAccount();
+            `;
+    
+      elements.mainContent.innerHTML = html;
+    
+      // Populate payment method select
+      populatePaymentMethod();
+    
+      // Populate withdraw account select
+      populateWithdrawAccount();
+    
+      // Terapkan font ke elemen dinamis
+      applyDynamicFonts();
+    
+      // Buka filter jika sebelumnya terbuka
+      const filterContent = document.getElementById('transactionFilterContent');
+      const filterChevron = document.getElementById('transactionFilterChevron');
+      if (filterContent && transactionFilterOpen) {
+        filterContent.classList.add('open');
+        filterChevron.style.transform = 'rotate(180deg)';
+      }
+    }
+    
+    function toggleTransactionFilter() {
+      const filterContent = document.getElementById('transactionFilterContent');
+      const chevron = document.getElementById('transactionFilterChevron');
+    
+      if (filterContent && chevron) {
+        filterContent.classList.toggle('open');
+        chevron.style.transform = filterContent.classList.contains('open') ? 'rotate(180deg)' : '';
+        transactionFilterOpen = filterContent.classList.contains('open');
+      }
     }
 
     function renderRekeningList() {
@@ -1495,33 +1587,67 @@
     }
 
     function renderTransactionList() {
-        if (transactions.length === 0) {
-            return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada transaksi</p></div>';
+      if (transactions.length === 0) {
+        return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada transaksi</p></div>';
+      }
+    
+      return transactions.slice(0, 20).map(trx => {
+        // Tentukan warna status
+        let statusColor = '';
+        let statusIcon = '';
+    
+        switch (trx.status) {
+          case 'success':
+            statusColor = 'var(--success-color)';
+            statusIcon = 'fa-check-circle';
+            break;
+          case 'pending':
+          case 'processing':
+            statusColor = 'var(--warning-color)';
+            statusIcon = 'fa-clock';
+            break;
+          case 'failed':
+            statusColor = 'var(--danger-color)';
+            statusIcon = 'fa-times-circle';
+            break;
+          case 'expired':
+            statusColor = 'var(--tg-hint-color)';
+            statusIcon = 'fa-hourglass-end';
+            break;
+          default:
+            statusColor = 'var(--tg-hint-color)';
+            statusIcon = 'fa-question-circle';
         }
-        
-        return transactions.slice(0, 10).map(trx => {
-            const amountClass = trx.type === 'deposit' ? 'positive' : (trx.type === 'withdraw' ? 'negative' : '');
-            const amountPrefix = trx.type === 'deposit' ? '+' : (trx.type === 'withdraw' ? '-' : '');
-            const iconClass = trx.type === 'deposit' ? 'fa-arrow-down' : 
-                             (trx.type === 'withdraw' ? 'fa-arrow-up' : 'fa-shopping-cart');
-            
-            return `
-                <div class="transaction-item">
-                    <div class="transaction-info">
-                        <div class="transaction-icon">
-                            <i class="fas ${iconClass}"></i>
+    
+        const amountClass = trx.transaction_type === 'deposit' ? 'positive' : 'negative';
+        const amountPrefix = trx.transaction_type === 'deposit' ? '+' : '-';
+        const iconClass = trx.type_icon || (trx.transaction_type === 'deposit' ? 'fa-arrow-down' : 'fa-arrow-up');
+    
+        const rekeningInfo = trx.rekening_nama ? `${trx.rekening_nama} - ${trx.rekening_nomor}` : '';
+    
+        return `
+                    <div class="transaction-item" data-id="${trx.id}">
+                        <div class="transaction-info">
+                            <div class="transaction-icon ${trx.transaction_type}">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div class="transaction-details">
+                                <h4>${trx.transaction_type === 'deposit' ? 'Deposit' : 'Withdraw'}</h4>
+                                <span class="transaction-meta">
+                                    <i class="far fa-clock"></i> ${formatDate(trx.created_at)}
+                                </span>
+                                ${rekeningInfo ? `<span class="transaction-rekening"><i class="fas fa-university"></i> ${rekeningInfo}</span>` : ''}
+                                <span class="transaction-status" style="color: ${statusColor};">
+                                    <i class="fas ${statusIcon}"></i> ${trx.status.toUpperCase()}
+                                </span>
+                            </div>
                         </div>
-                        <div class="transaction-details">
-                            <h4>${escapeHtml(trx.description)}</h4>
-                            <span>${formatDate(trx.time)} • ${trx.status}</span>
+                        <div class="transaction-amount ${amountClass}">
+                            ${amountPrefix} ${formatRupiah(trx.amount)}
                         </div>
                     </div>
-                    <div class="transaction-amount ${amountClass}">
-                        ${amountPrefix} ${formatRupiah(trx.amount)}
-                    </div>
-                </div>
-            `;
-        }).join('');
+                `;
+      }).join('');
     }
 
     function populatePaymentMethod() {
@@ -1876,9 +2002,26 @@
         // Implementasi klaim promo
     }
 
-    // ==================== BANK ACTIONS ====================
     function openDepositModal() {
-        elements.depositModal.classList.add('active');
+      elements.depositModal.classList.add('active');
+    
+      // Tambahkan opsi QRIS ke select method
+      const select = elements.paymentMethod;
+      if (select) {
+        let options = '<option value="">-- Pilih Metode --</option>';
+    
+        // Tambahkan opsi QRIS
+        if (allRekeningList.length > 0) {
+          options += `<option value="qris" class="qris-option">🔵 QRIS (Otomatis)</option>`;
+        }
+    
+        // Tambahkan rekening
+        allRekeningList.forEach(rek => {
+          options += `<option value="${rek.id}" data-type="rekening">${escapeHtml(rek.nama)} - ${escapeHtml(rek.nomor)}</option>`;
+        });
+    
+        select.innerHTML = options;
+      }
     }
 
     function closeDepositModal() {
@@ -1887,23 +2030,196 @@
     }
 
     async function deposit(e) {
-        e.preventDefault();
-        
-        const amount = parseInt(elements.depositAmount.value);
-        const method = elements.paymentMethod.value;
-        
-        if (!amount || amount < 10000) {
-            showToast('Minimal deposit Rp 10.000', 'warning');
+      e.preventDefault();
+    
+      const amount = parseInt(elements.depositAmount.value);
+      const methodValue = elements.paymentMethod.value;
+    
+      if (!amount || amount < 10000) {
+        showToast('Minimal deposit Rp 10.000', 'warning');
+        return;
+      }
+    
+      if (!methodValue) {
+        showToast('Pilih metode pembayaran', 'warning');
+        return;
+      }
+    
+      showLoading(true);
+    
+      try {
+        let payment_method = 'rekening';
+        let rekening_id = null;
+        let gateway_id = null;
+    
+        // Cek apakah method adalah 'qris' atau id rekening
+        if (methodValue === 'qris') {
+          payment_method = 'qris';
+          // Ambil gateway aktif
+          const gatewayResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${currentWebsite.id}`, {
+            method: 'GET'
+          });
+    
+          if (gatewayResponse.success && gatewayResponse.gateway && gatewayResponse.gateway.length > 0) {
+            const activeGateway = gatewayResponse.gateway.find(g => g.active) || gatewayResponse.gateway[0];
+            gateway_id = activeGateway.id;
+          } else {
+            showToast('Gateway pembayaran tidak tersedia', 'error');
+            showLoading(false);
             return;
+          }
+        } else {
+          rekening_id = parseInt(methodValue);
         }
-        
-        if (!method) {
-            showToast('Pilih metode pembayaran', 'warning');
-            return;
+    
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/create`, {
+          method: 'POST',
+          body: JSON.stringify({
+            website_id: currentWebsite.id,
+            user_id: currentUser.id,
+            amount: amount,
+            payment_method: payment_method,
+            rekening_id: rekening_id,
+            gateway_id: gateway_id,
+            user_data: {
+              username: currentUser.username,
+              first_name: currentUser.first_name,
+              last_name: currentUser.last_name
+            }
+          })
+        });
+    
+        if (response.success) {
+          if (payment_method === 'qris' && response.qris_data) {
+            // Tampilkan modal QRIS
+            showQrisModal(response.qris_data, response.deposit_id);
+            closeDepositModal();
+          } else {
+            showToast('Deposit berhasil dibuat, silakan transfer', 'success');
+            closeDepositModal();
+    
+            // Reload transactions
+            await loadTransactions();
+          }
+        } else {
+          showToast(response.error || 'Gagal membuat deposit', 'error');
         }
-        
-        showToast('Fitur deposit akan segera tersedia', 'info');
-        closeDepositModal();
+      } catch (error) {
+        console.error('❌ Error creating deposit:', error);
+        showToast('Gagal membuat deposit', 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function showQrisModal(qrisData, depositId) {
+      currentDeposit = {
+        id: depositId,
+        ...qrisData
+      };
+    
+      const modal = document.getElementById('confirmDepositModal');
+      const qrisImage = document.getElementById('qrisImage');
+      const confirmAmount = document.getElementById('confirmAmount');
+      const confirmUnique = document.getElementById('confirmUnique');
+      const confirmTotal = document.getElementById('confirmTotal');
+      const confirmExpired = document.getElementById('confirmExpired');
+    
+      if (qrisImage) qrisImage.src = qrisData.qr_image_url;
+      if (confirmAmount) confirmAmount.textContent = formatRupiah(qrisData.original_amount);
+      if (confirmUnique) confirmUnique.textContent = formatRupiah(qrisData.unique_nominal);
+      if (confirmTotal) confirmTotal.textContent = formatRupiah(qrisData.total_amount);
+      if (confirmExpired) confirmExpired.textContent = formatDate(qrisData.expired_at, true);
+    
+      modal.classList.add('active');
+    
+      // Mulai interval pengecekan status
+      startStatusCheck(depositId);
+    }
+    
+    function startStatusCheck(depositId) {
+      if (statusCheckInterval) clearInterval(statusCheckInterval);
+    
+      statusCheckInterval = setInterval(async () => {
+        try {
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/status`, {
+            method: 'POST',
+            body: JSON.stringify({ deposit_id: depositId })
+          });
+    
+          if (response.success && response.deposit) {
+            const status = response.deposit.status;
+    
+            if (status === 'success') {
+              showToast('✅ Pembayaran berhasil! Saldo Anda bertambah', 'success');
+              clearInterval(statusCheckInterval);
+              statusCheckInterval = null;
+              closeConfirmDepositModal();
+    
+              // Reload transactions
+              await loadTransactions();
+    
+              // Jika di halaman bank, render ulang
+              const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+              if (activePage === 'bank') {
+                renderBankPage();
+              }
+            } else if (status === 'expired') {
+              showToast('⚠️ QRIS telah kadaluwarsa', 'warning');
+              clearInterval(statusCheckInterval);
+              statusCheckInterval = null;
+              closeConfirmDepositModal();
+            } else if (status === 'failed') {
+              showToast('❌ Pembayaran gagal', 'error');
+              clearInterval(statusCheckInterval);
+              statusCheckInterval = null;
+              closeConfirmDepositModal();
+            }
+          }
+        } catch (error) {
+          console.error('Error checking status:', error);
+        }
+      }, 5000); // Cek setiap 5 detik
+    }
+    
+    function closeConfirmDepositModal() {
+      const modal = document.getElementById('confirmDepositModal');
+      modal.classList.remove('active');
+    
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        statusCheckInterval = null;
+      }
+    }
+    
+    async function checkStatusManually() {
+      if (!currentDeposit) return;
+    
+      showToast('Mengecek status pembayaran...', 'info');
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/status`, {
+          method: 'POST',
+          body: JSON.stringify({ deposit_id: currentDeposit.id })
+        });
+    
+        if (response.success && response.deposit) {
+          const status = response.deposit.status;
+    
+          if (status === 'success') {
+            showToast('✅ Pembayaran berhasil!', 'success');
+            closeConfirmDepositModal();
+            await loadTransactions();
+          } else if (status === 'expired') {
+            showToast('⚠️ QRIS telah kadaluwarsa', 'warning');
+          } else if (status === 'pending') {
+            showToast('⏳ Menunggu pembayaran...', 'info');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking status:', error);
+        showToast('Gagal mengecek status', 'error');
+      }
     }
 
     function openWithdrawModal() {
@@ -2063,12 +2379,34 @@
             if (elements.cancelWithdrawBtn) {
                 elements.cancelWithdrawBtn.addEventListener('click', closeWithdrawModal);
             }
+
+            // Modal confirm deposit
+            const closeConfirmModal = document.getElementById('closeConfirmDepositModal');
+            const closeConfirmBtn = document.getElementById('closeConfirmBtn');
+            const checkStatusBtn = document.getElementById('checkStatusBtn');
             
+            if (closeConfirmModal) {
+              closeConfirmModal.addEventListener('click', closeConfirmDepositModal);
+            }
+            
+            if (closeConfirmBtn) {
+              closeConfirmBtn.addEventListener('click', closeConfirmDepositModal);
+            }
+            
+            if (checkStatusBtn) {
+              checkStatusBtn.addEventListener('click', checkStatusManually);
+            }
+            
+
             // Close modals on outside click
             window.addEventListener('click', (e) => {
                 if (e.target === elements.voucherModal) closeVoucherModal();
                 if (e.target === elements.depositModal) closeDepositModal();
                 if (e.target === elements.withdrawModal) closeWithdrawModal();
+                if (e.target === elements.voucherModal) closeVoucherModal();
+                if (e.target === elements.depositModal) closeDepositModal();
+                if (e.target === elements.withdrawModal) closeWithdrawModal();
+                if (e.target === document.getElementById('confirmDepositModal')) closeConfirmDepositModal();
             });
             
             console.log('✅ Website initialized');
@@ -2083,43 +2421,48 @@
 
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.website = {
-        // Navigation
-        changePage,
-        
-        // Filter
-        toggleFilter,
-        toggleLayananFilter,
-        toggleAplikasiFilter,
-        filterByLayanan,
-        showAllLayanan,
-        
-        // Filter baru
-        setFilterType,
-        setItemFilter,
+      // Navigation
+      changePage,
     
-        // Aktivitas filter
-        toggleAktivitasFilter,
-        filterAktivitas,
-        
-        // Pagination
-        goToPage,
-        
-        // Products
-        viewProduct,
-        
-        // Promo
-        openVoucherModal,
-        showMyVouchers,
-        claimPromo,
-        
-        // Bank
-        openDepositModal,
-        openWithdrawModal,
-        showTransactionHistory,
-        
-        // Profile
-        openSettings,
-        logout
+      // Filter
+      toggleFilter,
+      toggleLayananFilter,
+      toggleAplikasiFilter,
+      filterByLayanan,
+      showAllLayanan,
+    
+      // Filter baru
+      setFilterType,
+      setItemFilter,
+    
+      // Aktivitas filter
+      toggleAktivitasFilter,
+      filterAktivitas,
+    
+      // Transaction filter
+      filterTransactions,
+      toggleTransactionFilter,
+      toggleShowAllRekening,
+    
+      // Pagination
+      goToPage,
+    
+      // Products
+      viewProduct,
+    
+      // Promo
+      openVoucherModal,
+      showMyVouchers,
+      claimPromo,
+    
+      // Bank
+      openDepositModal,
+      openWithdrawModal,
+      showTransactionHistory,
+    
+      // Profile
+      openSettings,
+      logout
     };
 
     // ==================== START ====================
