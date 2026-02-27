@@ -1317,39 +1317,72 @@
     }
 
     function renderSavedTemplates() {
-        if (!elements.savedTemplatesGrid || !elements.emptySavedTemplates) return;
-        
-        if (savedTemplates.length === 0) {
-            elements.savedTemplatesGrid.innerHTML = '';
-            elements.emptySavedTemplates.style.display = 'block';
-            return;
+      if (!elements.savedTemplatesGrid || !elements.emptySavedTemplates) return;
+    
+      if (savedTemplates.length === 0) {
+        elements.savedTemplatesGrid.innerHTML = '';
+        elements.emptySavedTemplates.style.display = 'block';
+        return;
+      }
+    
+      elements.emptySavedTemplates.style.display = 'none';
+    
+      let html = '';
+      savedTemplates.forEach(template => {
+        const templateData = template.template_data || {};
+        const fontFamily = templateData.font_family || 'Inter';
+        const animationType = templateData.animation_type || 'pulse';
+        const previewText = templateData.preview_text || 'Toko Online';
+        const previewSubtext = templateData.preview_subtext || 'Premium';
+        const textColor = templateData.text_color || '#ffffff';
+        const fontSize = templateData.font_size || 24;
+        const animDuration = templateData.animation_duration || 2;
+        const animDelay = templateData.animation_delay || 0;
+        const animIteration = templateData.animation_iteration || 'infinite';
+        const templateCode = template.template_code;
+        const shortCode = templateCode.substring(0, 15) + '...';
+        const createdDate = new Date(template.created_at).toLocaleDateString('id-ID');
+    
+        // Inject font jika ada file font
+        if (templateData.font_file_data) {
+          injectFontForPreview(templateData.font_family, templateData.font_file_data);
         }
-        
-        elements.emptySavedTemplates.style.display = 'none';
-        
-        let html = '';
-        savedTemplates.forEach(template => {
-            const templateData = template.template_data || {};
-            const fontFamily = templateData.font_family || 'Inter';
-            const animationType = templateData.animation_type || 'pulse';
-            const previewText = templateData.preview_text || 'Toko Online';
-            const previewSubtext = templateData.preview_subtext || 'Premium';
-            const templateCode = template.template_code;
-            const shortCode = templateCode.substring(0, 15) + '...';
-            const createdDate = new Date(template.created_at).toLocaleDateString('id-ID');
-            
-            // Inject font jika ada file font
-            if (templateData.font_file_data) {
-                injectFontForPreview(templateData.font_family, templateData.font_file_data);
-            }
-            
-            html += `
+    
+        // Definisikan animasi berdasarkan jenisnya
+        let animationCSS = '';
+        if (animationType === 'pulse') {
+          animationCSS = `animation: pulseAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        } else if (animationType === 'bounce') {
+          animationCSS = `animation: bounceAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        } else if (animationType === 'shake') {
+          animationCSS = `animation: shakeAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        } else if (animationType === 'fade') {
+          animationCSS = `animation: fadeAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        } else if (animationType === 'rotate') {
+          animationCSS = `animation: rotateAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        } else if (animationType === 'slide') {
+          animationCSS = `animation: slideAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        } else if (animationType === 'float') {
+          animationCSS = `animation: floatAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        } else if (animationType === 'wave') {
+          animationCSS = `animation: waveAnim ${animDuration}s ${animDelay}s ${animIteration};`;
+        }
+    
+        html += `
                 <div class="template-saved-card" data-id="${template.id}" data-code="${templateCode}">
                     <div class="template-preview-border">
-                        <div class="template-preview-text-animated" style="font-family: '${fontFamily}', sans-serif; animation: ${animationType}Anim 2s infinite;">
+                        <div class="template-preview-text-animated" 
+                             style="font-family: '${fontFamily}', sans-serif; 
+                                    color: ${textColor};
+                                    font-size: ${fontSize}px;
+                                    ${animationCSS}">
                             ${previewText}
                         </div>
-                        <div class="template-preview-subtext-animated" style="font-family: '${fontFamily}', sans-serif;">
+                        <div class="template-preview-subtext-animated" 
+                             style="font-family: '${fontFamily}', sans-serif; 
+                                    color: ${textColor};
+                                    opacity: 0.8;
+                                    ${animationType !== 'none' ? `animation: ${animationType}Anim ${animDuration}s ${animDelay}s ${animIteration};` : ''}">
                             ${previewSubtext}
                         </div>
                     </div>
@@ -1384,9 +1417,18 @@
                     </div>
                 </div>
             `;
-        });
-        
-        elements.savedTemplatesGrid.innerHTML = html;
+      });
+    
+      elements.savedTemplatesGrid.innerHTML = html;
+    
+      // Verifikasi animasi untuk setiap card
+      document.querySelectorAll('.template-saved-card').forEach(card => {
+        const previewDiv = card.querySelector('.template-preview-text-animated');
+        if (previewDiv) {
+          // Pastikan animasi berjalan
+          previewDiv.style.animationPlayState = 'running';
+        }
+      });
     }
 
     function injectTemplateFont(fontFamily, fontFileData) {
@@ -1523,6 +1565,8 @@
     
         // Gabungkan data
         Object.assign(updateData, fontData);
+    
+        console.log(`📤 Applying font style to ${target}:`, updateData);
     
         // Simpan ke server melalui endpoint font-style
         const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-style`, {
