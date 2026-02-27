@@ -321,6 +321,87 @@ def update_gateway_status(gateway_id, active):
     conn.close()
     return updated
 
+# Di pmb.py, tambahkan fungsi-fungsi berikut:
+
+# ==================== FUNGSI UNTUK PACKAGE IDS ====================
+
+def get_package_ids(gateway_id):
+    """
+    Mendapatkan package IDs dari gateway
+    Returns: list of package ids
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT package_ids FROM gateway WHERE id = ?', (gateway_id,))
+        row = cursor.fetchone()
+        
+        if row and row['package_ids']:
+            return json.loads(row['package_ids'])
+        return ["com.gojek.gopaymerchant"]  # default
+        
+    except Exception as e:
+        print(f"❌ Error getting package_ids: {e}")
+        return ["com.gojek.gopaymerchant"]
+    finally:
+        if conn:
+            conn.close()
+
+def update_package_ids(gateway_id, package_ids):
+    """
+    Update package IDs untuk gateway
+    Args:
+        package_ids: list of strings (contoh: ["id.dana", "com.gojek.gopaymerchant"])
+    Returns: True jika sukses
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        package_ids_json = json.dumps(package_ids)
+        
+        cursor.execute('''
+            UPDATE gateway SET
+                package_ids = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (package_ids_json, gateway_id))
+        
+        conn.commit()
+        return cursor.rowcount > 0
+        
+    except Exception as e:
+        print(f"❌ Error updating package_ids: {e}")
+        if conn:
+            conn.rollback()
+        return False
+    finally:
+        if conn:
+            conn.close()
+
+# Daftar package ID yang tersedia (untuk referensi)
+AVAILABLE_PACKAGE_IDS = [
+    {"id": "id.dana", "name": "DANA Bisnis"},
+    {"id": "id.bmri.livinmerchant", "name": "Livin Mandiri"},
+    {"id": "com.gojek.gopaymerchant", "name": "GoPay Merchant"},
+    {"id": "com.bca.msb", "name": "BCA Merchant"},
+    {"id": "id.co.bri.merchant", "name": "BRI Merchant"},
+    {"id": "com.shopeepay.merchant.id", "name": "ShopeePay"},
+    {"id": "id.co.bni.merchant", "name": "BNI Merchant"},
+    {"id": "com.cimbedc", "name": "CIMB Niaga"},
+    {"id": "com.orderkuota.app", "name": "Order Kuota"}
+]
+
+def get_available_package_ids():
+    """
+    Mendapatkan daftar semua package ID yang tersedia
+    Returns: list of dict
+    """
+    return AVAILABLE_PACKAGE_IDS
+
 # ==================== FUNGSI UNTUK MIGRASI ====================
 
 def migrate_database():
@@ -372,6 +453,18 @@ def migrate_database():
                         print(f"✅ Column '{col_name}' added to {table}")
                     except Exception as e:
                         print(f"⚠️ Failed to add column '{col_name}' to {table}: {e}")
+        
+        conn.commit()
+        print("✅ Database migration completed successfully")
+        # Tambahkan kolom package_ids di tabel gateway
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gateway'")
+        if cursor.fetchone():
+            cursor.execute("PRAGMA table_info(gateway)")
+            existing_columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'package_ids' not in existing_columns:
+                cursor.execute("ALTER TABLE gateway ADD COLUMN package_ids TEXT DEFAULT '[\"com.gojek.gopaymerchant\"]'")
+                print("✅ Column 'package_ids' added to gateway table")
         
         conn.commit()
         print("✅ Database migration completed successfully")
