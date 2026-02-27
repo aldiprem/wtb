@@ -1,4 +1,4 @@
-# trx_service.py - Flask service untuk transaksi
+# trx_service.py - Flask service untuk transaksi (VERSI DIPERBAIKI)
 from flask import Blueprint, request, jsonify
 import sys
 import os
@@ -10,11 +10,20 @@ from py.cashify import CashifyHandler
 
 trx_bp = Blueprint('trx', __name__)
 
-@trx_bp.route('/transactions/deposit/create', methods=['POST'])
+# ==================== DEPOSIT ENDPOINTS ====================
+
+@trx_bp.route('/transactions/deposit/create', methods=['POST', 'OPTIONS'])
 def create_deposit():
     """
     Membuat transaksi deposit baru
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
     try:
         data = request.json
         print(f"📥 Creating deposit: {data}")
@@ -51,7 +60,7 @@ def create_deposit():
                 return jsonify({'success': False, 'error': 'Gateway pembayaran tidak ditemukan'}), 400
             
             # Inisialisasi Cashify handler
-            cashify = CashifyHandler(gateway.get('license_key'))
+            cashify = CashifyHandler(gateway.get('license_key'), gateway.get('webhook_secret'))
             
             # Generate QRIS
             qris_result = cashify.generate_qris_v2(amount, expired_minutes=gateway.get('expired_menit', 30))
@@ -95,11 +104,18 @@ def create_deposit():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@trx_bp.route('/transactions/deposit/<int:deposit_id>', methods=['GET'])
+
+@trx_bp.route('/transactions/deposit/<int:deposit_id>', methods=['GET', 'OPTIONS'])
 def get_deposit(deposit_id):
     """
     Mendapatkan detail deposit
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response, 200
+    
     try:
         deposit = trx.get_deposit(deposit_id)
         
@@ -112,11 +128,19 @@ def get_deposit(deposit_id):
         print(f"❌ Error getting deposit: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@trx_bp.route('/transactions/deposit/status', methods=['POST'])
+
+@trx_bp.route('/transactions/deposit/status', methods=['POST', 'OPTIONS'])
 def check_deposit_status():
     """
     Cek status deposit (bisa via Cashify atau database)
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
     try:
         data = request.json
         deposit_id = data.get('deposit_id')
@@ -147,7 +171,7 @@ def check_deposit_status():
             # Ambil gateway
             gateway = pmb.get_gateway_by_id(deposit['gateway_id']) if deposit['gateway_id'] else None
             if gateway:
-                cashify = CashifyHandler(gateway.get('license_key'))
+                cashify = CashifyHandler(gateway.get('license_key'), gateway.get('webhook_secret'))
                 status_result = cashify.check_status(deposit['cashify_transaction_id'])
                 
                 if status_result.get('success'):
@@ -155,13 +179,13 @@ def check_deposit_status():
                     
                     # Mapping status Cashify ke status database
                     if cashify_status == 'paid':
-                        trx.update_deposit_status(deposit_id, 'success', 'Pembayaran berhasil')
+                        trx.update_deposit_status(deposit['id'], 'success', 'Pembayaran berhasil')
                         deposit['status'] = 'success'
                     elif cashify_status == 'expired':
-                        trx.update_deposit_status(deposit_id, 'expired', 'QRIS kadaluwarsa')
+                        trx.update_deposit_status(deposit['id'], 'expired', 'QRIS kadaluwarsa')
                         deposit['status'] = 'expired'
                     elif cashify_status == 'failed':
-                        trx.update_deposit_status(deposit_id, 'failed', 'Pembayaran gagal')
+                        trx.update_deposit_status(deposit['id'], 'failed', 'Pembayaran gagal')
                         deposit['status'] = 'failed'
         
         return jsonify({
@@ -174,33 +198,19 @@ def check_deposit_status():
         print(f"❌ Error checking deposit status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@trx_bp.route('/transactions/user/<int:user_id>', methods=['GET'])
-def get_user_transactions(user_id):
-    """
-    Mendapatkan semua transaksi user dengan filter status
-    """
-    try:
-        website_id = request.args.get('website_id', type=int)
-        status = request.args.get('status', 'all')  # all, pending, success, failed, expired
-        limit = request.args.get('limit', default=50, type=int)
-        
-        transactions = trx.get_user_transactions(user_id, website_id, status, limit)
-        
-        return jsonify({
-            'success': True,
-            'transactions': transactions,
-            'count': len(transactions)
-        })
-        
-    except Exception as e:
-        print(f"❌ Error getting user transactions: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
 
-@trx_bp.route('/transactions/deposit/confirm', methods=['POST'])
+@trx_bp.route('/transactions/deposit/confirm', methods=['POST', 'OPTIONS'])
 def confirm_manual_deposit():
     """
     Konfirmasi deposit manual (untuk transfer ke rekening)
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
     try:
         data = request.json
         deposit_id = data.get('deposit_id')
@@ -222,11 +232,21 @@ def confirm_manual_deposit():
         print(f"❌ Error confirming deposit: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@trx_bp.route('/transactions/withdraw/create', methods=['POST'])
+
+# ==================== WITHDRAW ENDPOINTS ====================
+
+@trx_bp.route('/transactions/withdraw/create', methods=['POST', 'OPTIONS'])
 def create_withdrawal():
     """
     Membuat transaksi withdraw baru
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
     try:
         data = request.json
         print(f"📥 Creating withdrawal: {data}")
@@ -266,11 +286,18 @@ def create_withdrawal():
         print(f"❌ Error creating withdrawal: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@trx_bp.route('/transactions/withdraw/<int:withdraw_id>', methods=['GET'])
+
+@trx_bp.route('/transactions/withdraw/<int:withdraw_id>', methods=['GET', 'OPTIONS'])
 def get_withdrawal(withdraw_id):
     """
     Mendapatkan detail withdraw
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response, 200
+    
     try:
         # Implementasi get withdrawal by id
         # Untuk sementara return error
@@ -280,12 +307,52 @@ def get_withdrawal(withdraw_id):
         print(f"❌ Error getting withdrawal: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# Webhook endpoint untuk Cashify
-@trx_bp.route('/webhook/cashify', methods=['POST'])
+
+# ==================== USER TRANSACTIONS ENDPOINT ====================
+
+@trx_bp.route('/transactions/user/<int:user_id>', methods=['GET', 'OPTIONS'])
+def get_user_transactions(user_id):
+    """
+    Mendapatkan semua transaksi user dengan filter status
+    """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response, 200
+    
+    try:
+        website_id = request.args.get('website_id', type=int)
+        status = request.args.get('status', 'all')  # all, pending, success, failed, expired
+        limit = request.args.get('limit', default=50, type=int)
+        
+        transactions = trx.get_user_transactions(user_id, website_id, status, limit)
+        
+        return jsonify({
+            'success': True,
+            'transactions': transactions,
+            'count': len(transactions)
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting user transactions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== WEBHOOK ENDPOINT ====================
+
+@trx_bp.route('/webhook/cashify', methods=['POST', 'OPTIONS'])
 def cashify_webhook():
     """
     Webhook endpoint untuk menerima notifikasi dari Cashify
     """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, X-Signature')
+        return response, 200
+    
     try:
         data = request.json
         signature = request.headers.get('X-Signature')
