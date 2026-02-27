@@ -76,3 +76,27 @@ def delete_gateway(gateway_id):
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+        
+@pmb_bp.route('/payments/rekening/<int:website_id>/limited', methods=['GET'])
+def get_rekening_limited(website_id):
+    """
+    Mendapatkan rekening dengan limit (untuk tampilan awal)
+    """
+    try:
+        limit = request.args.get('limit', default=4, type=int)
+        rekening = pmb.get_all_rekening(website_id)
+        
+        # Batasi hanya 4 rekening
+        limited = rekening[:limit]
+        has_more = len(rekening) > limit
+        
+        return jsonify({
+            'success': True, 
+            'rekening': limited,
+            'total': len(rekening),
+            'has_more': has_more,
+            'limit': limit
+        })
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
