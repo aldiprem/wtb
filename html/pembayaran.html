@@ -236,7 +236,18 @@
                         <input type="text" id="gatewayQrisId" placeholder="QRIS-12345678">
                         <small class="hint">ID QRIS (opsional, kosongkan jika tidak menggunakan QRIS)</small>
                     </div>
+                    <div class="form-group">
+                      <label><i class="fas fa-layer-group"></i> Package ID (Metode Pembayaran)</label>
+                      <small class="hint">Pilih aplikasi pembayaran yang akan ditampilkan</small>
                     
+                      <div class="package-ids-container" id="packageIdsContainer">
+                        <!-- Akan diisi JavaScript -->
+                      </div>
+                    
+                      <div class="package-ids-help">
+                        <p><i class="fas fa-info-circle"></i> Package ID menentukan aplikasi apa yang bisa membayar QRIS ini. Pilih beberapa jika ingin.</p>
+                      </div>
+                    </div>
                     <!-- Expired (menit) -->
                     <div class="form-row">
                         <div class="form-group">
