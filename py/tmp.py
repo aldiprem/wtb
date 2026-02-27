@@ -935,8 +935,6 @@ def delete_website_template(template_id):
 
 # ==================== FUNGSI MIGRASI ====================
 
-# Di dalam fungsi migrate_database() di tmp.py, tambahkan:
-
 def migrate_database():
     """Migrasi database dengan menambahkan kolom baru jika belum ada"""
     conn = None
@@ -958,7 +956,7 @@ def migrate_database():
         
         print("📊 Existing columns in tampilan:", existing_columns)
         
-        # Kolom baru untuk font animasi
+        # Kolom baru untuk font animasi di tabel tampilan
         new_columns = [
             ('store_display_name', 'TEXT DEFAULT "Toko Online"'),
             ('font_animation', 'TEXT DEFAULT "none"'),
@@ -967,15 +965,6 @@ def migrate_database():
             ('animation_iteration', 'TEXT DEFAULT "infinite"')
         ]
         
-        # PERIKSA DAN TAMBAHKAN KOLOM settings JIKA BELUM ADA
-        if 'settings' not in existing_columns:
-            try:
-                cursor.execute("ALTER TABLE tampilan ADD COLUMN settings TEXT DEFAULT '{}'")
-                print("✅ Column 'settings' added to tampilan table")
-            except Exception as e:
-                print(f"❌ Failed to add column 'settings': {e}")
-        
-        # Tambahkan kolom font animasi
         columns_added = []
         for col_name, col_type in new_columns:
             if col_name not in existing_columns:
@@ -991,7 +980,39 @@ def migrate_database():
             print(f"✅ Added columns: {', '.join(columns_added)}")
         else:
             print("✅ All font animation columns already exist")
+
+        # Kolom untuk font style per target
+        additional_columns = [
+            ('store_font_family', 'TEXT DEFAULT "Inter"'),
+            ('store_font_size', 'INTEGER DEFAULT 14'),
+            ('store_font_animation', 'TEXT DEFAULT "none"'),
+            ('store_animation_duration', 'REAL DEFAULT 2'),
+            ('store_animation_delay', 'REAL DEFAULT 0'),
+            ('store_animation_iteration', 'TEXT DEFAULT "infinite"'),
+            ('heading_font_family', 'TEXT DEFAULT "Inter"'),
+            ('heading_font_size', 'INTEGER DEFAULT 14'),
+            ('heading_font_animation', 'TEXT DEFAULT "none"'),
+            ('heading_animation_duration', 'REAL DEFAULT 2'),
+            ('heading_animation_delay', 'REAL DEFAULT 0'),
+            ('heading_animation_iteration', 'TEXT DEFAULT "infinite"'),
+            ('body_font_family', 'TEXT DEFAULT "Inter"'),
+            ('body_font_size', 'INTEGER DEFAULT 14'),
+            ('body_font_animation', 'TEXT DEFAULT "none"'),
+            ('body_animation_duration', 'REAL DEFAULT 2'),
+            ('body_animation_delay', 'REAL DEFAULT 0'),
+            ('body_animation_iteration', 'TEXT DEFAULT "infinite"')
+        ]
         
+        for col_name, col_type in additional_columns:
+            if col_name not in existing_columns:
+                try:
+                    alter_sql = f"ALTER TABLE tampilan ADD COLUMN {col_name} {col_type}"
+                    cursor.execute(alter_sql)
+                    columns_added.append(col_name)
+                    print(f"✅ Column '{col_name}' added to tampilan table")
+                except Exception as e:
+                    print(f"❌ Failed to add column '{col_name}': {e}")
+
         # Pastikan tabel website_templates ada
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS website_templates (
@@ -1032,7 +1053,7 @@ def save_font_style(website_id, data, target=None):
     Args:
         website_id: ID website
         data: Dictionary berisi data font yang akan disimpan
-        target: Target aplikasi (store_name, headings, body, dll)
+        target: Target aplikasi (store_name, headings, body, all_text)
     """
     conn = None
     try:
@@ -1051,43 +1072,110 @@ def save_font_style(website_id, data, target=None):
             updates = []
             params = []
             
-            # Update kolom font utama
-            if 'font_family' in data:
-                updates.append("font_family = ?")
-                params.append(data['font_family'])
-            if 'font_size' in data:
-                updates.append("font_size = ?")
-                params.append(data['font_size'])
-            if 'font_animation' in data:
-                updates.append("font_animation = ?")
-                params.append(data['font_animation'])
-            if 'animation_duration' in data:
-                updates.append("animation_duration = ?")
-                params.append(data['animation_duration'])
-            if 'animation_delay' in data:
-                updates.append("animation_delay = ?")
-                params.append(data['animation_delay'])
-            if 'animation_iteration' in data:
-                updates.append("animation_iteration = ?")
-                params.append(data['animation_iteration'])
+            # Update berdasarkan target
+            if target == 'store_name':
+                if 'font_family' in data:
+                    updates.append("store_font_family = ?")
+                    params.append(data['font_family'])
+                if 'font_size' in data:
+                    updates.append("store_font_size = ?")
+                    params.append(data['font_size'])
+                if 'font_animation' in data:
+                    updates.append("store_font_animation = ?")
+                    params.append(data['font_animation'])
+                if 'animation_duration' in data:
+                    updates.append("store_animation_duration = ?")
+                    params.append(data['animation_duration'])
+                if 'animation_delay' in data:
+                    updates.append("store_animation_delay = ?")
+                    params.append(data['animation_delay'])
+                if 'animation_iteration' in data:
+                    updates.append("store_animation_iteration = ?")
+                    params.append(data['animation_iteration'])
+            
+            elif target == 'headings':
+                if 'font_family' in data:
+                    updates.append("heading_font_family = ?")
+                    params.append(data['font_family'])
+                if 'font_size' in data:
+                    updates.append("heading_font_size = ?")
+                    params.append(data['font_size'])
+                if 'font_animation' in data:
+                    updates.append("heading_font_animation = ?")
+                    params.append(data['font_animation'])
+                if 'animation_duration' in data:
+                    updates.append("heading_animation_duration = ?")
+                    params.append(data['animation_duration'])
+                if 'animation_delay' in data:
+                    updates.append("heading_animation_delay = ?")
+                    params.append(data['animation_delay'])
+                if 'animation_iteration' in data:
+                    updates.append("heading_animation_iteration = ?")
+                    params.append(data['animation_iteration'])
+            
+            elif target == 'body':
+                if 'font_family' in data:
+                    updates.append("body_font_family = ?")
+                    params.append(data['font_family'])
+                if 'font_size' in data:
+                    updates.append("body_font_size = ?")
+                    params.append(data['font_size'])
+                if 'font_animation' in data:
+                    updates.append("body_font_animation = ?")
+                    params.append(data['font_animation'])
+                if 'animation_duration' in data:
+                    updates.append("body_animation_duration = ?")
+                    params.append(data['animation_duration'])
+                if 'animation_delay' in data:
+                    updates.append("body_animation_delay = ?")
+                    params.append(data['animation_delay'])
+                if 'animation_iteration' in data:
+                    updates.append("body_animation_iteration = ?")
+                    params.append(data['animation_iteration'])
+            
+            elif target == 'all_text':
+                # Update semua kolom
+                if 'font_family' in data:
+                    updates.append("font_family = ?")
+                    updates.append("store_font_family = ?")
+                    updates.append("heading_font_family = ?")
+                    updates.append("body_font_family = ?")
+                    params.extend([data['font_family']] * 4)
+                if 'font_size' in data:
+                    updates.append("font_size = ?")
+                    updates.append("store_font_size = ?")
+                    updates.append("heading_font_size = ?")
+                    updates.append("body_font_size = ?")
+                    params.extend([data['font_size']] * 4)
+                if 'font_animation' in data:
+                    updates.append("font_animation = ?")
+                    updates.append("store_font_animation = ?")
+                    updates.append("heading_font_animation = ?")
+                    updates.append("body_font_animation = ?")
+                    params.extend([data['font_animation']] * 4)
+                if 'animation_duration' in data:
+                    updates.append("animation_duration = ?")
+                    updates.append("store_animation_duration = ?")
+                    updates.append("heading_animation_duration = ?")
+                    updates.append("body_animation_duration = ?")
+                    params.extend([data['animation_duration']] * 4)
+                if 'animation_delay' in data:
+                    updates.append("animation_delay = ?")
+                    updates.append("store_animation_delay = ?")
+                    updates.append("heading_animation_delay = ?")
+                    updates.append("body_animation_delay = ?")
+                    params.extend([data['animation_delay']] * 4)
+                if 'animation_iteration' in data:
+                    updates.append("animation_iteration = ?")
+                    updates.append("store_animation_iteration = ?")
+                    updates.append("heading_animation_iteration = ?")
+                    updates.append("body_animation_iteration = ?")
+                    params.extend([data['animation_iteration']] * 4)
             
             # Update store display name jika ada
             if 'store_display_name' in data:
                 updates.append("store_display_name = ?")
                 params.append(data['store_display_name'])
-            
-            # Update settings JSON jika ada (untuk headings/body)
-            if 'settings' in data:
-                # Parse settings saat ini
-                try:
-                    current_settings = json.loads(current['settings']) if current['settings'] else {}
-                except:
-                    current_settings = {}
-                
-                # Update dengan settings baru
-                current_settings.update(data['settings'])
-                updates.append("settings = ?")
-                params.append(json.dumps(current_settings))
             
             if updates:
                 updates.append("updated_at = CURRENT_TIMESTAMP")
@@ -1095,8 +1183,7 @@ def save_font_style(website_id, data, target=None):
                 params.append(website_id)
                 cursor.execute(query, params)
         else:
-            # Data belum ada, insert baru
-            # Siapkan data default
+            # Data belum ada, insert baru dengan semua kolom
             colors = json.dumps({})
             banners = json.dumps([])
             promos = json.dumps([])
@@ -1116,24 +1203,31 @@ def save_font_style(website_id, data, target=None):
             animation_iteration = data.get('animation_iteration', 'infinite')
             store_display_name = data.get('store_display_name', 'Toko Online')
             
-            # Settings
-            settings = data.get('settings', {})
-            settings_json = json.dumps(settings)
-            
             cursor.execute('''
             INSERT INTO tampilan (
                 website_id, logo, banners, promos, colors, font_family, font_size,
                 title, description, contact_whatsapp, contact_telegram, 
                 banner_positions, payment_notes, banks, ewallets, qris, crypto,
                 maintenance_message, store_display_name, font_animation, 
-                animation_duration, animation_delay, animation_iteration, settings
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                animation_duration, animation_delay, animation_iteration,
+                store_font_family, store_font_size, store_font_animation,
+                store_animation_duration, store_animation_delay, store_animation_iteration,
+                heading_font_family, heading_font_size, heading_font_animation,
+                heading_animation_duration, heading_animation_delay, heading_animation_iteration,
+                body_font_family, body_font_size, body_font_animation,
+                body_animation_duration, body_animation_delay, body_animation_iteration
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 website_id, '', banners, promos, colors, font_family, font_size,
                 None, None, None, None, banner_positions, payment_notes, 
                 banks, ewallets, qris, crypto, None, store_display_name,
                 font_animation, animation_duration, animation_delay, animation_iteration,
-                settings_json
+                font_family, font_size, font_animation,
+                animation_duration, animation_delay, animation_iteration,
+                font_family, font_size, font_animation,
+                animation_duration, animation_delay, animation_iteration,
+                font_family, font_size, font_animation,
+                animation_duration, animation_delay, animation_iteration
             ))
         
         conn.commit()
