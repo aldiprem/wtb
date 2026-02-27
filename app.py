@@ -13,6 +13,7 @@ from services.ssl_service import ssl_bp
 from services.tmp_service import tmp_bp
 from services.tmp_font_service import tmp_font_bp
 from services.trx_service import trx_bp
+from services.user_service import user_bp
 
 app = Flask(__name__, static_folder='.')
 
@@ -46,6 +47,7 @@ app.register_blueprint(ssl_bp, url_prefix='/api')
 app.register_blueprint(tmp_bp, url_prefix='/api')
 app.register_blueprint(tmp_font_bp, url_prefix='/api')
 app.register_blueprint(trx_bp, url_prefix='/api')
+app.register_blueprint(user_bp, url_prefix='/api')
 
 # Routes untuk file statis
 @app.route('/')
