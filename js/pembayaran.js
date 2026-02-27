@@ -16,6 +16,10 @@
     let currentGatewayId = null;
     let deleteTarget = null;
 
+    // State untuk package IDs
+    let availablePackageIds = [];
+    let selectedPackageIds = [];
+
     // ==================== DOM ELEMENTS ====================
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
@@ -284,6 +288,61 @@
         }
     }
 
+    // Load available package IDs
+    async function loadPackageIds() {
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/package-ids`, {
+          method: 'GET'
+        });
+    
+        if (response.success) {
+          availablePackageIds = response.package_ids || [];
+          console.log('📦 Available package IDs:', availablePackageIds);
+        }
+      } catch (error) {
+        console.error('❌ Error loading package IDs:', error);
+      }
+    }
+    
+    // Render package IDs checkboxes
+    function renderPackageIds(container, selectedIds = []) {
+      if (!container) return;
+    
+      let html = '<div class="package-ids-grid">';
+    
+      availablePackageIds.forEach(pkg => {
+        const isChecked = selectedIds.includes(pkg.id);
+        html += `
+                <label class="package-checkbox">
+                    <input type="checkbox" value="${pkg.id}" ${isChecked ? 'checked' : ''}>
+                    <span class="package-name">${pkg.name}</span>
+                    <span class="package-id">${pkg.id}</span>
+                </label>
+            `;
+      });
+    
+      html += '</div>';
+      container.innerHTML = html;
+    
+      // Add event listeners
+      container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', updateSelectedPackageIds);
+      });
+    }
+    
+    // Update selected package IDs
+    function updateSelectedPackageIds() {
+      const container = document.getElementById('packageIdsContainer');
+      if (!container) return;
+    
+      selectedPackageIds = [];
+      container.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+        selectedPackageIds.push(cb.value);
+      });
+    
+      console.log('📦 Selected package IDs:', selectedPackageIds);
+    }
+    
     async function loadGateway() {
         if (!currentWebsite) return;
         
@@ -658,129 +717,181 @@
     }
 
     // ==================== GATEWAY FUNCTIONS ====================
-    function openGatewayModal(gateway = null) {
-        if (gateway) {
-            // Edit mode
-            elements.gatewayModalTitle.textContent = 'Edit Gateway Cashify';
-            elements.gatewayId.value = gateway.id || '';
-            elements.gatewayLicenseKey.value = gateway.license_key || '';
-            elements.gatewayWebhookSecret.value = gateway.webhook_secret || '';
-            elements.gatewayQrisId.value = gateway.qris_id || '';
-            elements.gatewayExpired.value = gateway.expired_menit || 30;
-            elements.gatewayWarna.value = gateway.warna_qr || '#000000';
-            elements.gatewayWarnaHex.value = gateway.warna_qr || '#000000';
-            elements.gatewayUkuran.value = gateway.ukuran_qr || 420;
-            elements.gatewayActive.checked = gateway.active !== false;
-        } else {
-            // Add mode
-            elements.gatewayModalTitle.textContent = 'Tambah Gateway Cashify';
-            elements.gatewayForm.reset();
-            elements.gatewayId.value = '';
-            elements.gatewayNama.value = 'Cashify';
-            elements.gatewayExpired.value = 30;
-            elements.gatewayWarna.value = '#000000';
-            elements.gatewayWarnaHex.value = '#000000';
-            elements.gatewayUkuran.value = 420;
-            elements.gatewayActive.checked = true;
-        }
-        
-        elements.gatewayModal.classList.add('active');
-        vibrate(10);
-        
-        setTimeout(() => {
-            elements.gatewayLicenseKey.focus();
-        }, 300);
-    }
-
-    function closeGatewayModal() {
-        elements.gatewayModal.classList.remove('active');
-        currentGatewayId = null;
-    }
-
-    async function saveGateway(e) {
-        e.preventDefault();
-        
-        if (!currentWebsite) return;
-        
-        const licenseKey = elements.gatewayLicenseKey.value.trim();
-        const webhookSecret = elements.gatewayWebhookSecret.value.trim();
-        const qrisId = elements.gatewayQrisId.value.trim();
-        const expired = parseInt(elements.gatewayExpired.value) || 30;
-        const warna = elements.gatewayWarnaHex.value.trim();
-        const ukuran = parseInt(elements.gatewayUkuran.value) || 420;
-        const active = elements.gatewayActive.checked;
-        
-        // Validasi
-        if (!licenseKey) {
-            showToast('License Key wajib diisi', 'warning');
-            elements.gatewayLicenseKey.focus();
-            return;
-        }
-        
-        if (!webhookSecret) {
-            showToast('Webhook Secret wajib diisi', 'warning');
-            elements.gatewayWebhookSecret.focus();
-            return;
-        }
-        
-        if (expired < 1 || expired > 1440) {
-            showToast('Expired harus antara 1-1440 menit', 'warning');
-            elements.gatewayExpired.focus();
-            return;
-        }
-        
-        // Validasi warna (hex format)
-        if (!/^#[0-9A-F]{6}$/i.test(warna)) {
-            showToast('Format warna tidak valid', 'warning');
-            elements.gatewayWarnaHex.focus();
-            return;
-        }
-        
-        const data = {
-            id: elements.gatewayId.value ? parseInt(elements.gatewayId.value) : null,
-            license_key: licenseKey,
-            webhook_secret: webhookSecret,
-            qris_id: qrisId,
-            expired_menit: expired,
-            warna_qr: warna,
-            ukuran_qr: ukuran,
-            active: active
-        };
-        
-        showLoading(true);
-        
+    
+    async function openGatewayModal(gateway = null) {
+      // Load available package IDs jika belum
+      if (availablePackageIds.length === 0) {
+        await loadPackageIds();
+      }
+    
+      if (gateway) {
+        // Edit mode
+        elements.gatewayModalTitle.textContent = 'Edit Gateway Cashify';
+        elements.gatewayId.value = gateway.id || '';
+        elements.gatewayLicenseKey.value = gateway.license_key || '';
+        elements.gatewayWebhookSecret.value = gateway.webhook_secret || '';
+        elements.gatewayQrisId.value = gateway.qris_id || '';
+        elements.gatewayExpired.value = gateway.expired_menit || 30;
+        elements.gatewayWarna.value = gateway.warna_qr || '#000000';
+        elements.gatewayWarnaHex.value = gateway.warna_qr || '#000000';
+        elements.gatewayUkuran.value = gateway.ukuran_qr || 420;
+        elements.gatewayActive.checked = gateway.active !== false;
+    
+        // Load package IDs untuk gateway ini
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${currentWebsite.id}`, {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
-            
-            if (response.success) {
-                showToast(`✅ Gateway ${data.id ? 'diperbarui' : 'ditambahkan'}`, 'success');
-                closeGatewayModal();
-                await loadGateway();
-            } else {
-                throw new Error(response.error || 'Gagal menyimpan');
-            }
+          console.log(`📡 Loading package IDs for gateway ${gateway.id}`);
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${gateway.id}/package-ids`, {
+            method: 'GET'
+          });
+    
+          if (response.success) {
+            selectedPackageIds = response.package_ids || [];
+            console.log('📦 Loaded package IDs:', selectedPackageIds);
+          } else {
+            selectedPackageIds = ['com.gojek.gopaymerchant']; // Default
+          }
         } catch (error) {
-            console.error('❌ Error saving gateway:', error);
-            showToast(error.message, 'error');
-        } finally {
-            showLoading(false);
+          console.error('❌ Error loading gateway package IDs:', error);
+          showToast('Gagal memuat package IDs', 'warning');
+          selectedPackageIds = ['com.gojek.gopaymerchant']; // Default
         }
+      } else {
+        // Add mode
+        elements.gatewayModalTitle.textContent = 'Tambah Gateway Cashify';
+        elements.gatewayForm.reset();
+        elements.gatewayId.value = '';
+        elements.gatewayNama.value = 'Cashify';
+        elements.gatewayExpired.value = 30;
+        elements.gatewayWarna.value = '#000000';
+        elements.gatewayWarnaHex.value = '#000000';
+        elements.gatewayUkuran.value = 420;
+        elements.gatewayActive.checked = true;
+    
+        // Default package ID (GoPay Merchant)
+        selectedPackageIds = ['com.gojek.gopaymerchant'];
+        console.log('📦 Default package IDs:', selectedPackageIds);
+      }
+    
+      // Render package IDs checkboxes
+      const packageContainer = document.getElementById('packageIdsContainer');
+      if (packageContainer && availablePackageIds.length > 0) {
+        renderPackageIds(packageContainer, selectedPackageIds);
+      } else if (packageContainer) {
+        // Jika package IDs belum loaded, tampilkan loading
+        packageContainer.innerHTML = '<div class="loading-packages"><i class="fas fa-spinner fa-spin"></i> Memuat package IDs...</div>';
+      }
+    
+      elements.gatewayModal.classList.add('active');
+      vibrate(10);
+    
+      setTimeout(() => {
+        elements.gatewayLicenseKey.focus();
+      }, 300);
     }
-
+    
+    function closeGatewayModal() {
+      elements.gatewayModal.classList.remove('active');
+      currentGatewayId = null;
+      selectedPackageIds = [];
+    }
+    
+    async function saveGateway(e) {
+      e.preventDefault();
+    
+      if (!currentWebsite) return;
+    
+      const licenseKey = elements.gatewayLicenseKey.value.trim();
+      const webhookSecret = elements.gatewayWebhookSecret.value.trim();
+      const qrisId = elements.gatewayQrisId.value.trim();
+      const expired = parseInt(elements.gatewayExpired.value) || 30;
+      const warna = elements.gatewayWarnaHex.value.trim();
+      const ukuran = parseInt(elements.gatewayUkuran.value) || 420;
+      const active = elements.gatewayActive.checked;
+    
+      // Validasi
+      if (!licenseKey) {
+        showToast('License Key wajib diisi', 'warning');
+        elements.gatewayLicenseKey.focus();
+        return;
+      }
+    
+      if (!webhookSecret) {
+        showToast('Webhook Secret wajib diisi', 'warning');
+        elements.gatewayWebhookSecret.focus();
+        return;
+      }
+    
+      if (expired < 1 || expired > 1440) {
+        showToast('Expired harus antara 1-1440 menit', 'warning');
+        elements.gatewayExpired.focus();
+        return;
+      }
+    
+      // Validasi warna (hex format)
+      if (!/^#[0-9A-F]{6}$/i.test(warna)) {
+        showToast('Format warna tidak valid', 'warning');
+        elements.gatewayWarnaHex.focus();
+        return;
+      }
+    
+      // Validasi package IDs (minimal 1 dipilih)
+      if (selectedPackageIds.length === 0) {
+        showToast('Pilih minimal 1 metode pembayaran (Package ID)', 'warning');
+        return;
+      }
+    
+      const data = {
+        id: elements.gatewayId.value ? parseInt(elements.gatewayId.value) : null,
+        license_key: licenseKey,
+        webhook_secret: webhookSecret,
+        qris_id: qrisId,
+        expired_menit: expired,
+        warna_qr: warna,
+        ukuran_qr: ukuran,
+        active: active,
+        package_ids: selectedPackageIds // Kirim package IDs yang dipilih
+      };
+    
+      console.log('📦 Saving gateway with package IDs:', selectedPackageIds);
+    
+      showLoading(true);
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/payments/gateway/${currentWebsite.id}`, {
+          method: 'POST',
+          body: JSON.stringify(data)
+        });
+    
+        if (response.success) {
+          showToast(`✅ Gateway ${data.id ? 'diperbarui' : 'ditambahkan'}`, 'success');
+          closeGatewayModal();
+          await loadGateway();
+        } else {
+          throw new Error(response.error || 'Gagal menyimpan');
+        }
+      } catch (error) {
+        console.error('❌ Error saving gateway:', error);
+        showToast(error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+    
     function deleteGateway(id) {
-        const gateway = gatewayList.find(g => g.id === id);
-        if (!gateway) return;
-        
-        deleteTarget = { type: 'gateway', id, nama: gateway.nama || 'Cashify' };
-        
-        elements.deleteMessage.textContent = `Hapus gateway "${gateway.nama || 'Cashify'}"?`;
-        elements.deleteInfo.innerHTML = `<strong>${escapeHtml(gateway.nama || 'Cashify')}</strong><br>License: ${escapeHtml(gateway.license_key.substring(0, 15))}...`;
-        
-        elements.deleteModal.classList.add('active');
-        vibrate(10);
+      const gateway = gatewayList.find(g => g.id === id);
+      if (!gateway) return;
+    
+      deleteTarget = { type: 'gateway', id, nama: gateway.nama || 'Cashify' };
+    
+      elements.deleteMessage.textContent = `Hapus gateway "${gateway.nama || 'Cashify'}"?`;
+      elements.deleteInfo.innerHTML = `
+            <strong>${escapeHtml(gateway.nama || 'Cashify')}</strong><br>
+            License: ${escapeHtml(gateway.license_key.substring(0, 15))}...<br>
+            Package IDs: ${gateway.package_ids ? JSON.parse(gateway.package_ids || '[]').length : 0} metode
+        `;
+    
+      elements.deleteModal.classList.add('active');
+      vibrate(10);
     }
 
     // ==================== DELETE FUNCTIONS ====================
@@ -834,6 +945,8 @@
         try {
             currentWebsite = await loadWebsite();
             if (!currentWebsite) return;
+            
+            await loadPackageIds();
             
             await Promise.all([
                 loadRekening(),
