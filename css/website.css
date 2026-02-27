@@ -1785,6 +1785,417 @@ select option.qris-option {
     animation: pageFadeIn 0.3s ease;
 }
 
+/* ===== DETAIL TRANSaksi MODAL ===== */
+.detail-loading,
+.detail-error {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--tg-hint-color);
+}
+
+.detail-loading i {
+    font-size: 24px;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+}
+
+.detail-error i {
+    font-size: 32px;
+    margin-bottom: 12px;
+    color: var(--danger-color);
+}
+
+.detail-error p {
+    font-size: 14px;
+}
+
+.detail-section {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row span:first-child {
+    color: var(--tg-hint-color);
+    font-size: 13px;
+}
+
+.detail-row span:last-child {
+    font-weight: 500;
+    font-size: 13px;
+    text-align: right;
+}
+
+.detail-message {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(64, 167, 227, 0.05);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--tg-hint-color);
+    border-left: 3px solid var(--primary-color);
+}
+
+.detail-message i {
+    color: var(--primary-color);
+    margin-right: 6px;
+}
+
+/* ===== QRIS PENDING MODAL ===== */
+.qris-pending-container {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.qris-pending-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    background: white;
+    padding: 20px;
+}
+
+.qris-pending-details {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.qris-pending-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+.qris-pending-row:last-child {
+    border-bottom: none;
+}
+
+.qris-pending-label {
+    color: var(--tg-hint-color);
+    font-size: 13px;
+}
+
+.qris-pending-value {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.qris-pending-value.total {
+    color: var(--success-color);
+    font-size: 16px;
+}
+
+.qris-pending-instruction {
+    background: rgba(64, 167, 227, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.qris-pending-instruction h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.qris-pending-instruction ol {
+    margin-left: 20px;
+    font-size: 13px;
+    color: var(--tg-text-color);
+}
+
+.qris-pending-instruction li {
+    margin-bottom: 6px;
+}
+
+.qris-pending-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.qris-pending-actions button {
+    flex: 1;
+}
+
+/* ===== TRANSACTION ITEM HOVER EFFECT ===== */
+.transaction-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.transaction-item:hover {
+    background: rgba(64, 167, 227, 0.1);
+    transform: translateX(4px);
+    border-left: 3px solid var(--primary-color);
+}
+
+.transaction-item:active {
+    transform: scale(0.98);
+    background: rgba(64, 167, 227, 0.15);
+}
+
+/* ===== ANIMASI UNTUK MODAL ===== */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal-content {
+    animation: modalFadeIn 0.2s ease;
+}
+
+/* ===== STATUS BADGE DI DETAIL ===== */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-badge.success {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-color);
+}
+
+.status-badge.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning-color);
+}
+
+.status-badge.failed {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+}
+
+.status-badge.expired {
+    background: rgba(125, 125, 125, 0.15);
+    color: var(--tg-hint-color);
+}
+
+/* ===== COPY BUTTON ===== */
+.copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
+}
+
+.copy-btn:hover {
+    background: rgba(64, 167, 227, 0.1);
+}
+
+.copy-btn i {
+    font-size: 12px;
+}
+
+/* ===== RESPONSIVE UNTUK MODAL DETAIL ===== */
+@media (max-width: 480px) {
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .detail-row span:last-child {
+        text-align: left;
+        width: 100%;
+    }
+    
+    .qris-pending-actions {
+        flex-direction: column;
+    }
+    
+    .qris-pending-actions button {
+        width: 100%;
+    }
+}
+
+/* ===== TIMELINE UNTUK STATUS TRANSAKSI ===== */
+.transaction-timeline {
+    margin-top: 20px;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+}
+
+.timeline-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color-light);
+    position: relative;
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(64, 167, 227, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.timeline-icon i {
+    font-size: 12px;
+    color: var(--primary-color);
+}
+
+.timeline-icon.success {
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.timeline-icon.success i {
+    color: var(--success-color);
+}
+
+.timeline-icon.pending {
+    background: rgba(245, 158, 11, 0.15);
+}
+
+.timeline-icon.pending i {
+    color: var(--warning-color);
+}
+
+.timeline-content {
+    flex: 1;
+}
+
+.timeline-title {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.timeline-time {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+}
+
+.timeline-desc {
+    font-size: 11px;
+    color: var(--tg-hint-color);
+    margin-top: 4px;
+}
+
+/* ===== QRIS DETAIL VIEW ===== */
+.qris-detail-view {
+    text-align: center;
+}
+
+.qris-detail-image {
+    max-width: 100%;
+    max-height: 280px;
+    margin: 0 auto 16px;
+    border-radius: 16px;
+    background: white;
+    padding: 16px;
+}
+
+.qris-expired-warning {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.qris-expired-warning i {
+    font-size: 14px;
+}
+
+/* ===== METODE PEMBAYARAN BADGE ===== */
+.payment-method-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: rgba(64, 167, 227, 0.1);
+    border-radius: 20px;
+    font-size: 10px;
+    color: var(--primary-color);
+}
+
+.payment-method-badge i {
+    font-size: 10px;
+}
+
+.payment-method-badge.qris {
+    background: linear-gradient(135deg, rgba(64, 167, 227, 0.15), rgba(16, 185, 129, 0.15));
+    color: var(--primary-color);
+}
+
+/* ===== ANIMASI PENDING ===== */
+@keyframes pulsePending {
+    0% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(245, 158, 11, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    }
+}
+
+.transaction-item[data-status="pending"] {
+    animation: pulsePending 2s infinite;
+    border-left: 3px solid var(--warning-color);
+}
+
 /* Font animations dari template - PASTIKAN SEMUA ANIMASI TERDEFINISI */
 @keyframes pulseAnim {
     0% { transform: scale(1); opacity: 1; }
