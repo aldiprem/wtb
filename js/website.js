@@ -28,7 +28,7 @@
     let filteredItems = [];
     let currentPage = 1;
     let totalPages = 1;
-    
+    let selectedTransaction = null;
     let transactionFilterOpen = false;
 
     // Filter transaksi
@@ -1675,31 +1675,30 @@
         const amountClass = trx.transaction_type === 'deposit' ? 'positive' : 'negative';
         const amountPrefix = trx.transaction_type === 'deposit' ? '+' : '-';
         const iconClass = trx.type_icon || (trx.transaction_type === 'deposit' ? 'fa-arrow-down' : 'fa-arrow-up');
-    
         const rekeningInfo = trx.rekening_nama ? `${trx.rekening_nama} - ${trx.rekening_nomor}` : '';
     
         return `
-                    <div class="transaction-item" data-id="${trx.id}">
-                        <div class="transaction-info">
-                            <div class="transaction-icon ${trx.transaction_type}">
-                                <i class="fas ${iconClass}"></i>
-                            </div>
-                            <div class="transaction-details">
-                                <h4>${trx.transaction_type === 'deposit' ? 'Deposit' : 'Withdraw'}</h4>
-                                <span class="transaction-meta">
-                                    <i class="far fa-clock"></i> ${formatDate(trx.created_at)}
-                                </span>
-                                ${rekeningInfo ? `<span class="transaction-rekening"><i class="fas fa-university"></i> ${rekeningInfo}</span>` : ''}
-                                <span class="transaction-status" style="color: ${statusColor};">
-                                    <i class="fas ${statusIcon}"></i> ${trx.status.toUpperCase()}
-                                </span>
-                            </div>
+                <div class="transaction-item" data-id="${trx.id}" onclick="window.website.openTransactionDetail(${trx.id})" style="cursor: pointer;">
+                    <div class="transaction-info">
+                        <div class="transaction-icon ${trx.transaction_type}">
+                            <i class="fas ${iconClass}"></i>
                         </div>
-                        <div class="transaction-amount ${amountClass}">
-                            ${amountPrefix} ${formatRupiah(trx.amount)}
+                        <div class="transaction-details">
+                            <h4>${trx.transaction_type === 'deposit' ? 'Deposit' : 'Withdraw'}</h4>
+                            <span class="transaction-meta">
+                                <i class="far fa-clock"></i> ${formatDate(trx.created_at)}
+                            </span>
+                            ${rekeningInfo ? `<span class="transaction-rekening"><i class="fas fa-university"></i> ${rekeningInfo}</span>` : ''}
+                            <span class="transaction-status" style="color: ${statusColor};">
+                                <i class="fas ${statusIcon}"></i> ${trx.status.toUpperCase()}
+                            </span>
                         </div>
                     </div>
-                `;
+                    <div class="transaction-amount ${amountClass}">
+                        ${amountPrefix} ${formatRupiah(trx.amount)}
+                    </div>
+                </div>
+            `;
       }).join('');
     }
 
@@ -2165,6 +2164,409 @@
       }
     }
 
+    // Fungsi untuk membuka detail transaksi
+    async function openTransactionDetail(transactionId) {
+        console.log(`📋 Opening transaction detail for ID: ${transactionId}`);
+        
+        // Cari transaksi dari array transactions
+        const transaction = transactions.find(t => t.id == transactionId);
+        
+        if (!transaction) {
+            showToast('Transaksi tidak ditemukan', 'error');
+            return;
+        }
+        
+        selectedTransaction = transaction;
+        
+        // Tampilkan modal
+        const modal = document.getElementById('transactionDetailModal');
+        const detailContent = document.getElementById('detailContent');
+        const detailLoading = document.getElementById('detailLoading');
+        const detailError = document.getElementById('detailError');
+        
+        // Reset tampilan
+        detailLoading.style.display = 'block';
+        detailError.style.display = 'none';
+        detailContent.innerHTML = '';
+        modal.classList.add('active');
+        
+        try {
+            // Jika deposit QRIS dan status pending, ambil data QRIS dari server
+            if (transaction.transaction_type === 'deposit' && 
+                transaction.payment_method === 'qris' && 
+                transaction.status === 'pending') {
+                
+                await loadQrisDetail(transaction.id);
+            } else {
+                // Untuk transaksi lain, render detail biasa
+                renderTransactionDetail(transaction);
+            }
+            
+            detailLoading.style.display = 'none';
+            
+        } catch (error) {
+            console.error('❌ Error loading transaction detail:', error);
+            detailLoading.style.display = 'none';
+            detailError.style.display = 'block';
+        }
+    }
+    
+    // Fungsi untuk merender detail transaksi biasa
+    function renderTransactionDetail(transaction) {
+        const detailContent = document.getElementById('detailContent');
+        
+        // Tentukan icon berdasarkan tipe
+        const typeIcon = transaction.transaction_type === 'deposit' ? 'fa-arrow-down' : 'fa-arrow-up';
+        const typeColor = transaction.transaction_type === 'deposit' ? 'var(--success-color)' : 'var(--danger-color)';
+        const typeText = transaction.transaction_type === 'deposit' ? 'DEPOSIT' : 'WITHDRAW';
+        
+        // Format status
+        let statusColor = '';
+        let statusIcon = '';
+        let statusText = transaction.status.toUpperCase();
+        
+        switch (transaction.status) {
+            case 'success':
+                statusColor = 'var(--success-color)';
+                statusIcon = 'fa-check-circle';
+                break;
+            case 'pending':
+            case 'processing':
+                statusColor = 'var(--warning-color)';
+                statusIcon = 'fa-clock';
+                break;
+            case 'failed':
+                statusColor = 'var(--danger-color)';
+                statusIcon = 'fa-times-circle';
+                break;
+            case 'expired':
+                statusColor = 'var(--tg-hint-color)';
+                statusIcon = 'fa-hourglass-end';
+                break;
+            default:
+                statusColor = 'var(--tg-hint-color)';
+                statusIcon = 'fa-question-circle';
+        }
+        
+        // Format metode pembayaran
+        let paymentMethodText = '';
+        if (transaction.payment_method === 'qris') {
+            paymentMethodText = 'QRIS (Otomatis)';
+        } else if (transaction.rekening_nama) {
+            paymentMethodText = `${transaction.rekening_nama} - ${transaction.rekening_nomor}`;
+        } else {
+            paymentMethodText = 'Transfer Manual';
+        }
+        
+        // HTML detail
+        let html = `
+            <div class="detail-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <div class="detail-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(64, 167, 227, 0.1); display: flex; align-items: center; justify-content: center;">
+                    <i class="fas ${typeIcon}" style="font-size: 24px; color: ${typeColor};"></i>
+                </div>
+                <div>
+                    <div style="font-size: 12px; color: var(--tg-hint-color);">${typeText}</div>
+                    <div style="font-size: 20px; font-weight: 700; color: ${typeColor};">${formatRupiah(transaction.amount)}</div>
+                </div>
+            </div>
+            
+            <div class="detail-section" style="background: rgba(255, 255, 255, 0.03); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">Status</span>
+                    <span style="color: ${statusColor}; font-weight: 600;">
+                        <i class="fas ${statusIcon}" style="margin-right: 4px;"></i> ${statusText}
+                    </span>
+                </div>
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">ID Transaksi</span>
+                    <span style="font-family: monospace;">#${transaction.id}</span>
+                </div>
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">Waktu</span>
+                    <span>${formatDate(transaction.created_at, true)}</span>
+                </div>
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">Metode</span>
+                    <span>${escapeHtml(paymentMethodText)}</span>
+                </div>
+        `;
+        
+        // Tambahkan informasi rekening untuk withdraw
+        if (transaction.transaction_type === 'withdraw' && transaction.rekening_nama) {
+            html += `
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">Tujuan</span>
+                    <span>${escapeHtml(transaction.rekening_nama)}</span>
+                </div>
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">Nomor</span>
+                    <span>${escapeHtml(transaction.rekening_nomor)}</span>
+                </div>
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">Pemilik</span>
+                    <span>${escapeHtml(transaction.rekening_pemilik)}</span>
+                </div>
+            `;
+        }
+        
+        // Tambahkan informasi untuk deposit QRIS yang sudah selesai
+        if (transaction.transaction_type === 'deposit' && transaction.payment_method === 'qris' && transaction.status !== 'pending') {
+            html += `
+                <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                    <span style="color: var(--tg-hint-color);">Total + Kode Unik</span>
+                    <span>${formatRupiah(transaction.amount + (transaction.unique_nominal || 0))}</span>
+                </div>
+            `;
+        }
+        
+        // Tambahkan pesan status jika ada
+        if (transaction.status_message) {
+            html += `
+                <div class="detail-message" style="margin-top: 16px; padding: 12px; background: rgba(255, 255, 255, 0.02); border-radius: 8px; font-size: 12px; color: var(--tg-hint-color);">
+                    <i class="fas fa-info-circle" style="margin-right: 6px; color: var(--primary-color);"></i>
+                    ${escapeHtml(transaction.status_message)}
+                </div>
+            `;
+        }
+        
+        html += `</div>`;
+        
+        // Tambahkan tombol aksi berdasarkan status
+        if (transaction.transaction_type === 'deposit' && 
+            transaction.payment_method === 'qris' && 
+            transaction.status === 'pending') {
+            
+            html += `
+                <button class="btn-primary" style="width: 100%; margin-top: 16px;" onclick="window.website.showQrisPending(${transaction.id})">
+                    <i class="fas fa-qrcode"></i> Lihat QRIS
+                </button>
+            `;
+        }
+        
+        html += `
+            <button class="btn-secondary" style="width: 100%; margin-top: 8px;" onclick="window.website.closeTransactionDetail()">
+                Tutup
+            </button>
+        `;
+        
+        detailContent.innerHTML = html;
+    }
+    
+    // Fungsi untuk memuat detail QRIS deposit pending
+    async function loadQrisDetail(depositId) {
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/${depositId}`, {
+                method: 'GET'
+            });
+            
+            if (response.success && response.deposit) {
+                const deposit = response.deposit;
+                
+                // Gabungkan data
+                const transaction = {
+                    ...deposit,
+                    transaction_type: 'deposit',
+                    payment_method: 'qris'
+                };
+                
+                renderTransactionDetail(transaction);
+            } else {
+                throw new Error('Gagal memuat detail QRIS');
+            }
+        } catch (error) {
+            console.error('❌ Error loading qris detail:', error);
+            throw error;
+        }
+    }
+    
+    // Fungsi untuk menampilkan QRIS pending
+    async function showQrisPending(depositId) {
+        try {
+            showLoading(true);
+            
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/${depositId}`, {
+                method: 'GET'
+            });
+            
+            if (response.success && response.deposit) {
+                const deposit = response.deposit;
+                
+                // Tutup modal detail
+                closeTransactionDetail();
+                
+                // Tampilkan modal QRIS
+                const modal = document.getElementById('qrisPendingModal');
+                const body = document.getElementById('qrisPendingBody');
+                
+                const qrisData = {
+                    qr_image_url: deposit.cashify_qr_image_url,
+                    original_amount: deposit.amount,
+                    unique_nominal: deposit.cashify_unique_nominal || 0,
+                    total_amount: deposit.amount + (deposit.cashify_unique_nominal || 0),
+                    expired_at: deposit.cashify_expired_at || deposit.expired_at
+                };
+                
+                body.innerHTML = `
+                    <div class="qris-container">
+                        <img src="${qrisData.qr_image_url}" alt="QRIS" class="qris-image" style="max-width: 100%;">
+                    </div>
+                    
+                    <div class="deposit-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Nominal:</span>
+                            <span class="detail-value">${formatRupiah(qrisData.original_amount)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Kode Unik:</span>
+                            <span class="detail-value">${formatRupiah(qrisData.unique_nominal)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Total Bayar:</span>
+                            <span class="detail-value total">${formatRupiah(qrisData.total_amount)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Waktu Expired:</span>
+                            <span class="detail-value">${formatDate(qrisData.expired_at, true)}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="qris-instruction">
+                        <h4><i class="fas fa-info-circle"></i> Cara Pembayaran:</h4>
+                        <ol>
+                            <li>Buka aplikasi pembayaran yang mendukung QRIS (GoPay, OVO, Dana, ShopeePay, LinkAja, dll)</li>
+                            <li>Pilih menu Scan QR atau Bayar QRIS</li>
+                            <li>Scan QR code di atas</li>
+                            <li>Periksa nominal pembayaran (total termasuk kode unik)</li>
+                            <li>Selesaikan pembayaran</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="window.website.closeQrisPending()">Tutup</button>
+                        <button type="button" class="btn-primary" onclick="window.website.checkPendingStatus(${depositId})">
+                            <i class="fas fa-sync-alt"></i> Cek Status
+                        </button>
+                    </div>
+                `;
+                
+                modal.classList.add('active');
+                
+                // Mulai interval pengecekan status
+                startPendingStatusCheck(depositId);
+                
+            } else {
+                showToast('Gagal memuat QRIS', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error showing qris pending:', error);
+            showToast('Gagal memuat QRIS', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+    
+    // Fungsi untuk mengecek status deposit pending
+    let pendingStatusInterval = null;
+    
+    function startPendingStatusCheck(depositId) {
+        if (pendingStatusInterval) clearInterval(pendingStatusInterval);
+        
+        pendingStatusInterval = setInterval(async () => {
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/status`, {
+                    method: 'POST',
+                    body: JSON.stringify({ deposit_id: depositId })
+                });
+                
+                if (response.success && response.deposit) {
+                    const status = response.deposit.status;
+                    
+                    if (status === 'success') {
+                        showToast('✅ Pembayaran berhasil!', 'success');
+                        clearInterval(pendingStatusInterval);
+                        pendingStatusInterval = null;
+                        closeQrisPending();
+                        
+                        // Reload transactions
+                        await loadTransactions();
+                        
+                        // Jika di halaman bank, render ulang
+                        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+                        if (activePage === 'bank') {
+                            renderBankPage();
+                        }
+                    } else if (status === 'expired') {
+                        showToast('⚠️ QRIS telah kadaluwarsa', 'warning');
+                        clearInterval(pendingStatusInterval);
+                        pendingStatusInterval = null;
+                        closeQrisPending();
+                    } else if (status === 'failed') {
+                        showToast('❌ Pembayaran gagal', 'error');
+                        clearInterval(pendingStatusInterval);
+                        pendingStatusInterval = null;
+                        closeQrisPending();
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking pending status:', error);
+            }
+        }, 5000);
+    }
+    
+    async function checkPendingStatus(depositId) {
+        showToast('Mengecek status pembayaran...', 'info');
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/status`, {
+                method: 'POST',
+                body: JSON.stringify({ deposit_id: depositId })
+            });
+            
+            if (response.success && response.deposit) {
+                const status = response.deposit.status;
+                
+                if (status === 'success') {
+                    showToast('✅ Pembayaran berhasil!', 'success');
+                    clearInterval(pendingStatusInterval);
+                    pendingStatusInterval = null;
+                    closeQrisPending();
+                    
+                    await loadTransactions();
+                    const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+                    if (activePage === 'bank') {
+                        renderBankPage();
+                    }
+                } else if (status === 'expired') {
+                    showToast('⚠️ QRIS telah kadaluwarsa', 'warning');
+                    clearInterval(pendingStatusInterval);
+                    pendingStatusInterval = null;
+                    closeQrisPending();
+                } else if (status === 'pending') {
+                    showToast('⏳ Menunggu pembayaran...', 'info');
+                }
+            }
+        } catch (error) {
+            console.error('Error checking status:', error);
+            showToast('Gagal mengecek status', 'error');
+        }
+    }
+    
+    function closeTransactionDetail() {
+        const modal = document.getElementById('transactionDetailModal');
+        modal.classList.remove('active');
+        selectedTransaction = null;
+    }
+    
+    function closeQrisPending() {
+        const modal = document.getElementById('qrisPendingModal');
+        modal.classList.remove('active');
+        
+        if (pendingStatusInterval) {
+            clearInterval(pendingStatusInterval);
+            pendingStatusInterval = null;
+        }
+    }
+
     function showQrisModal(qrisData, depositId) {
       currentDeposit = {
         id: depositId,
@@ -2450,7 +2852,28 @@
               checkStatusBtn.addEventListener('click', checkStatusManually);
             }
             
-
+            // Modal transaction detail
+            const closeTransactionModal = document.getElementById('closeTransactionDetailModal');
+            if (closeTransactionModal) {
+              closeTransactionModal.addEventListener('click', closeTransactionDetail);
+            }
+            
+            // Modal qris pending
+            const closeQrisPendingModal = document.getElementById('closeQrisPendingModal');
+            if (closeQrisPendingModal) {
+              closeQrisPendingModal.addEventListener('click', closeQrisPending);
+            }
+            
+            // Click outside untuk modal baru
+            window.addEventListener('click', (e) => {
+              if (e.target === elements.voucherModal) closeVoucherModal();
+              if (e.target === elements.depositModal) closeDepositModal();
+              if (e.target === elements.withdrawModal) closeWithdrawModal();
+              if (e.target === document.getElementById('confirmDepositModal')) closeConfirmDepositModal();
+              if (e.target === document.getElementById('transactionDetailModal')) closeTransactionDetail();
+              if (e.target === document.getElementById('qrisPendingModal')) closeQrisPending();
+            });
+            
             // Close modals on outside click
             window.addEventListener('click', (e) => {
                 if (e.target === elements.voucherModal) closeVoucherModal();
@@ -2515,7 +2938,14 @@
     
       // Profile
       openSettings,
-      logout
+      logout,
+    
+      // Transaction Detail
+      openTransactionDetail,
+      showQrisPending,
+      checkPendingStatus,
+      closeTransactionDetail,
+      closeQrisPending
     };
 
     // ==================== START ====================
