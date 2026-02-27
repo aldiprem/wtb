@@ -18,6 +18,12 @@
     let filteredItems = [];
     let currentPage = 1;
     let totalPages = 1;
+    let aktivitasFilter = {
+      type: 'all',
+      search: ''
+    };
+    
+    let aktivitasFilterOpen = false;
     
     // Aktivitas
     let aktivitasList = [];
@@ -306,66 +312,74 @@
     }
 
     async function loadAllData() {
-        if (!currentWebsite) return;
-        
-        showLoading(true);
-        
-        try {
-            // Load products
-            const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
-                method: 'GET'
-            });
-            
-            if (productsResponse.success) {
-                productsData = productsResponse.data || [];
-                extractLayananList();
-                extractAllItems();
-            }
-            
-            // Load promos
-            const promosResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
-                method: 'GET'
-            });
-            
-            if (promosResponse.success) {
-                promosList = promosResponse.promos || [];
-            }
-            
-            // Load rekening
-            const rekeningResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
-                method: 'GET'
-            });
-            
-            if (rekeningResponse.success) {
-                rekeningList = rekeningResponse.rekening || [];
-            }
-            
-            // Load user vouchers jika user sudah login
-            if (currentUser) {
-                const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
-                    method: 'GET'
-                });
-                
-                if (vouchersResponse.success) {
-                    userVouchers = vouchersResponse.claims || [];
-                }
-            }
-            
-            // Generate dummy aktivitas
-            generateDummyAktivitas();
-            
-            // Generate dummy transactions
-            generateDummyTransactions();
-            
-            // Render halaman awal
-            renderHomePage();
-            
-        } catch (error) {
-            console.error('❌ Error loading data:', error);
-            showToast('Gagal memuat data', 'error');
-        } finally {
-            showLoading(false);
+      if (!currentWebsite) return;
+    
+      showLoading(true);
+    
+      try {
+        // Load products
+        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, data: [] }));
+    
+        if (productsResponse.success && productsResponse.data) {
+          productsData = productsResponse.data || [];
+          extractLayananList();
+          extractAllItems();
+        } else {
+          productsData = [];
+          layananList = [];
+          filteredItems = [];
         }
+    
+        // Load promos
+        const promosResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, promos: [] }));
+    
+        if (promosResponse.success) {
+          promosList = promosResponse.promos || [];
+        } else {
+          promosList = [];
+        }
+    
+        // Load rekening
+        const rekeningResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, rekening: [] }));
+    
+        if (rekeningResponse.success) {
+          rekeningList = rekeningResponse.rekening || [];
+        } else {
+          rekeningList = [];
+        }
+    
+        // Load user vouchers jika user sudah login
+        if (currentUser) {
+          const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
+            method: 'GET'
+          }).catch(() => ({ success: false, claims: [] }));
+    
+          if (vouchersResponse.success) {
+            userVouchers = vouchersResponse.claims || [];
+          }
+        }
+    
+        // Load aktivitas
+        await loadAktivitas();
+    
+        // Load transactions dari database (jika ada)
+        await loadTransactions();
+    
+        // Render halaman awal
+        renderHomePage();
+    
+      } catch (error) {
+        console.error('❌ Error loading data:', error);
+        showToast('Gagal memuat data', 'error');
+      } finally {
+        showLoading(false);
+      }
     }
 
     function extractLayananList() {
@@ -630,7 +644,12 @@
     }
 
     function renderHomePage() {
-        const html = `
+      // Tampilkan banner
+      if (elements.bannerSlider) {
+        elements.bannerSlider.style.display = 'block';
+      }
+    
+      const html = `
             <div class="page-content">
                 <!-- Produk Layanan Section -->
                 <div class="section-title">
@@ -651,16 +670,26 @@
                         <i class="fas fa-chevron-down" id="filterChevron"></i>
                     </div>
                     <div class="filter-content" id="filterContent">
-                        <div class="filter-bubbles" id="layananFilter"></div>
-                        <div class="filter-bubbles" id="aplikasiFilter"></div>
-                        <select class="sort-select" id="sortSelect">
-                            <option value="terbaru">Terbaru</option>
-                            <option value="terlaris">Terlaris</option>
-                            <option value="termurah">Termurah</option>
-                            <option value="termahal">Termahal</option>
-                            <option value="stok-terbanyak">Stok Terbanyak</option>
-                            <option value="stok-tersedikit">Stok Tersedikit</option>
-                        </select>
+                        <!-- Tombol cepat 4 kolom -->
+                        <div class="filter-actions-grid">
+                            <button class="filter-action-btn ${currentFilters.filterType === 'layanan' ? 'active' : ''}" onclick="window.website.setFilterType('layanan')">
+                                <i class="fas fa-layer-group"></i> Layanan
+                            </button>
+                            <button class="filter-action-btn ${currentFilters.filterType === 'aplikasi' ? 'active' : ''}" onclick="window.website.setFilterType('aplikasi')">
+                                <i class="fas fa-mobile-alt"></i> Aplikasi
+                            </button>
+                            <button class="filter-action-btn ${currentFilters.filterType === 'item' ? 'active' : ''}" onclick="window.website.setFilterType('item')">
+                                <i class="fas fa-box"></i> Item
+                            </button>
+                            <button class="filter-action-btn ${currentFilters.filterType === 'sort' ? 'active' : ''}" onclick="window.website.setFilterType('sort')">
+                                <i class="fas fa-sort-amount-down"></i> Sort By
+                            </button>
+                        </div>
+                        
+                        <!-- Konten filter dinamis -->
+                        <div id="filterContentDynamic">
+                            ${renderFilterContent()}
+                        </div>
                     </div>
                 </div>
                 
@@ -679,22 +708,125 @@
                 </div>
             </div>
         `;
-        
-        elements.mainContent.innerHTML = html;
-        
-        // Render filter bubbles
-        renderFilterBubbles();
-        
-        // Add event listener for sort
-        const sortSelect = document.getElementById('sortSelect');
-        if (sortSelect) {
-            sortSelect.value = currentFilters.sort;
-            sortSelect.addEventListener('change', (e) => {
-                currentFilters.sort = e.target.value;
-                applySort();
-                renderHomePage();
-            });
-        }
+    
+      elements.mainContent.innerHTML = html;
+    
+      // Render filter bubbles
+      renderFilterBubbles();
+    
+      // Buka filter jika sebelumnya terbuka
+      if (filterOpen) {
+        document.getElementById('filterContent')?.classList.add('open');
+        document.getElementById('filterChevron')?.style.setProperty('transform', 'rotate(180deg)');
+      }
+    }
+    
+    function renderFilterContent() {
+      switch (currentFilters.filterType) {
+        case 'layanan':
+          return renderLayananFilter();
+        case 'aplikasi':
+          return renderAplikasiFilter();
+        case 'item':
+          return renderItemFilter();
+        case 'sort':
+          return renderSortFilter();
+        default:
+          return renderLayananFilter();
+      }
+    }
+    
+    function renderLayananFilter() {
+      const uniqueLayanan = [...new Set(productsData.map(l => l.layanan_nama))].filter(Boolean);
+    
+      if (uniqueLayanan.length === 0) {
+        return '<div class="empty-state" style="padding: 20px;"><p>Tidak ada layanan</p></div>';
+      }
+    
+      let html = '<div class="filter-bubbles">';
+      uniqueLayanan.forEach(layanan => {
+        html += `
+                <span class="filter-bubble ${currentFilters.layanan === layanan ? 'active' : ''}" 
+                      onclick="window.website.toggleLayananFilter('${escapeHtml(layanan)}')">
+                    ${escapeHtml(layanan)}
+                </span>
+            `;
+      });
+      html += '</div>';
+    
+      return html;
+    }
+    
+    function renderAplikasiFilter() {
+      if (!currentFilters.layanan) {
+        return '<div class="filter-bubbles"><span class="filter-bubble">Pilih layanan terlebih dahulu</span></div>';
+      }
+    
+      const layananData = productsData.find(l => l.layanan_nama === currentFilters.layanan);
+      const aplikasiList = layananData?.aplikasi || [];
+      const uniqueAplikasi = [...new Set(aplikasiList.map(a => a.aplikasi_nama))].filter(Boolean);
+    
+      if (uniqueAplikasi.length === 0) {
+        return '<div class="empty-state" style="padding: 20px;"><p>Tidak ada aplikasi</p></div>';
+      }
+    
+      let html = '<div class="filter-bubbles">';
+      uniqueAplikasi.forEach(aplikasi => {
+        html += `
+                <span class="filter-bubble ${currentFilters.aplikasi === aplikasi ? 'active' : ''}" 
+                      onclick="window.website.toggleAplikasiFilter('${escapeHtml(aplikasi)}')">
+                    ${escapeHtml(aplikasi)}
+                </span>
+            `;
+      });
+      html += '</div>';
+    
+      return html;
+    }
+    
+    function renderItemFilter() {
+      // Filter berdasarkan stok atau status
+      let html = '<div class="filter-bubbles">';
+      html += `
+            <span class="filter-bubble ${currentFilters.itemStatus === 'all' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('all')">Semua</span>
+            <span class="filter-bubble ${currentFilters.itemStatus === 'ready' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('ready')">Ready</span>
+            <span class="filter-bubble ${currentFilters.itemStatus === 'sold' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('sold')">Sold</span>
+            <span class="filter-bubble ${currentFilters.itemStatus === 'request' ? 'active' : ''}" 
+                  onclick="window.website.setItemFilter('request')">Request</span>
+        `;
+      html += '</div>';
+    
+      return html;
+    }
+    
+    function renderSortFilter() {
+      return `
+            <div class="sort-section">
+                <label><i class="fas fa-sort"></i> Urutkan berdasarkan</label>
+                <select class="sort-select" id="sortSelect">
+                    <option value="terbaru" ${currentFilters.sort === 'terbaru' ? 'selected' : ''}>Terbaru</option>
+                    <option value="terlaris" ${currentFilters.sort === 'terlaris' ? 'selected' : ''}>Terlaris</option>
+                    <option value="termurah" ${currentFilters.sort === 'termurah' ? 'selected' : ''}>Termurah</option>
+                    <option value="termahal" ${currentFilters.sort === 'termahal' ? 'selected' : ''}>Termahal</option>
+                    <option value="stok-terbanyak" ${currentFilters.sort === 'stok-terbanyak' ? 'selected' : ''}>Stok Terbanyak</option>
+                    <option value="stok-tersedikit" ${currentFilters.sort === 'stok-tersedikit' ? 'selected' : ''}>Stok Tersedikit</option>
+                </select>
+            </div>
+        `;
+    }
+    
+    function setFilterType(type) {
+      currentFilters.filterType = type;
+      renderHomePage();
+    }
+    
+    function setItemFilter(status) {
+      currentFilters.itemStatus = status;
+      applyFilters();
+      renderHomePage();
     }
 
     function renderLayananGrid() {
@@ -854,44 +986,85 @@
     }
 
     function renderAktivitasPage() {
-        const html = `
+      // Sembunyikan banner
+      if (elements.bannerSlider) {
+        elements.bannerSlider.style.display = 'none';
+      }
+    
+      const html = `
             <div class="page-content">
-                <div class="section-title">
+                <div class="aktivitas-header">
                     <h2><i class="fas fa-history"></i> Aktivitas Terkini</h2>
+                    <button class="aktivitas-filter-btn ${aktivitasFilterOpen ? 'active' : ''}" id="aktivitasFilterBtn" onclick="window.website.toggleAktivitasFilter()">
+                        <i class="fas fa-filter"></i>
+                    </button>
                 </div>
                 
-                <div class="aktivitas-timeline">
+                <div class="aktivitas-filter-panel ${aktivitasFilterOpen ? 'open' : ''}" id="aktivitasFilterPanel">
+                    <div class="aktivitas-filter-section">
+                        <h4>Jenis Aktivitas</h4>
+                        <div class="aktivitas-filter-bubbles">
+                            <span class="filter-bubble ${aktivitasFilter.type === 'all' ? 'active' : ''}" onclick="window.website.filterAktivitas('all')">Semua</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'pembelian' ? 'active' : ''}" onclick="window.website.filterAktivitas('pembelian')">Pembelian</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'deposit' ? 'active' : ''}" onclick="window.website.filterAktivitas('deposit')">Deposit</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'withdraw' ? 'active' : ''}" onclick="window.website.filterAktivitas('withdraw')">Withdraw</span>
+                            <span class="filter-bubble ${aktivitasFilter.type === 'voucher' ? 'active' : ''}" onclick="window.website.filterAktivitas('voucher')">Voucher</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="aktivitas-timeline" id="aktivitasTimeline">
                     ${renderAktivitasList()}
                 </div>
             </div>
         `;
-        
-        elements.mainContent.innerHTML = html;
+    
+      elements.mainContent.innerHTML = html;
     }
-
+    
     function renderAktivitasList() {
-        if (aktivitasList.length === 0) {
-            return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada aktivitas</p></div>';
-        }
-        
-        return aktivitasList.slice(0, 30).map(aktivitas => `
+      if (!aktivitasList || aktivitasList.length === 0) {
+        return '<div class="empty-state"><i class="fas fa-history"></i><p>Belum ada aktivitas</p></div>';
+      }
+    
+      // Filter aktivitas berdasarkan type
+      let filtered = [...aktivitasList];
+      if (aktivitasFilter.type !== 'all') {
+        filtered = filtered.filter(a => a.type === aktivitasFilter.type);
+      }
+    
+      if (filtered.length === 0) {
+        return '<div class="empty-state"><i class="fas fa-history"></i><p>Tidak ada aktivitas dengan filter ini</p></div>';
+      }
+    
+      return filtered.slice(0, 30).map(aktivitas => `
             <div class="aktivitas-item">
                 <div class="aktivitas-icon">
-                    <i class="fas ${aktivitas.icon}"></i>
+                    <i class="fas ${aktivitas.icon || 'fa-history'}"></i>
                 </div>
                 <div class="aktivitas-content">
-                    <div class="aktivitas-title">${escapeHtml(aktivitas.title)}</div>
+                    <div class="aktivitas-title">${escapeHtml(aktivitas.title || 'Aktivitas')}</div>
                     <div class="aktivitas-meta">
                         <span class="aktivitas-time">
                             <i class="far fa-clock"></i> ${formatDate(aktivitas.time)}
                         </span>
                     </div>
                     <div class="aktivitas-desc" style="font-size: 12px; color: var(--tg-hint-color); margin-top: 4px;">
-                        ${escapeHtml(aktivitas.description)}
+                        ${escapeHtml(aktivitas.description || '')}
                     </div>
                 </div>
             </div>
         `).join('');
+    }
+    
+    function toggleAktivitasFilter() {
+      aktivitasFilterOpen = !aktivitasFilterOpen;
+      renderAktivitasPage();
+    }
+    
+    function filterAktivitas(type) {
+      aktivitasFilter.type = type;
+      renderAktivitasPage();
     }
 
     function renderPromoPage() {
@@ -1180,34 +1353,42 @@
         elements.mainContent.innerHTML = html;
     }
 
-    // ==================== NAVIGATION FUNCTIONS ====================
     function changePage(page) {
-        elements.navItems.forEach(item => {
-            item.classList.remove('active');
-            if (item.dataset.page === page) {
-                item.classList.add('active');
-            }
-        });
-        
-        switch (page) {
-            case 'home':
-                renderHomePage();
-                break;
-            case 'aktivitas':
-                renderAktivitasPage();
-                break;
-            case 'promo':
-                renderPromoPage();
-                break;
-            case 'bank':
-                renderBankPage();
-                break;
-            case 'profile':
-                renderProfilePage();
-                break;
+      elements.navItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === page) {
+          item.classList.add('active');
         }
-        
-        vibrate(10);
+      });
+    
+      // Sembunyikan banner untuk semua page kecuali home
+      if (elements.bannerSlider) {
+        if (page === 'home') {
+          elements.bannerSlider.style.display = 'block';
+        } else {
+          elements.bannerSlider.style.display = 'none';
+        }
+      }
+    
+      switch (page) {
+        case 'home':
+          renderHomePage();
+          break;
+        case 'aktivitas':
+          renderAktivitasPage();
+          break;
+        case 'promo':
+          renderPromoPage();
+          break;
+        case 'bank':
+          renderBankPage();
+          break;
+        case 'profile':
+          renderProfilePage();
+          break;
+      }
+    
+      vibrate(10);
     }
 
     function initNavScroll() {
@@ -1490,6 +1671,40 @@
         }
     }
 
+    async function loadAktivitas() {
+        if (!currentWebsite || !currentUser) {
+            aktivitasList = [];
+            return;
+        }
+        
+        try {
+            // Coba ambil dari API aktivitas
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/voucher/${currentWebsite.id}/activities?limit=50`, {
+                method: 'GET'
+            }).catch(() => ({ success: false }));
+            
+            if (response.success && response.activities) {
+                aktivitasList = response.activities.map(a => ({
+                    id: a.id,
+                    type: a.type === 'claim' ? 'voucher' : a.type,
+                    title: a.type === 'claim' ? 'Klaim Voucher' :
+                           a.type === 'use' ? 'Penggunaan Voucher' :
+                           a.type === 'create' ? 'Voucher Baru' : 'Aktivitas',
+                    description: a.description || '',
+                    time: a.created_at,
+                    icon: a.type === 'claim' ? 'fa-ticket-alt' :
+                          a.type === 'use' ? 'fa-check-circle' :
+                          a.type === 'create' ? 'fa-plus-circle' : 'fa-history'
+                }));
+            } else {
+                aktivitasList = [];
+            }
+        } catch (error) {
+            console.error('Error loading aktivitas:', error);
+            aktivitasList = [];
+        }
+    }
+
     // ==================== INITIALIZATION ====================
     async function init() {
         showLoading(true);
@@ -1583,6 +1798,14 @@
         toggleAplikasiFilter,
         filterByLayanan,
         showAllLayanan,
+        
+        // Filter baru
+        setFilterType,
+        setItemFilter,
+    
+        // Aktivitas filter
+        toggleAktivitasFilter,
+        filterAktivitas,
         
         // Pagination
         goToPage,
