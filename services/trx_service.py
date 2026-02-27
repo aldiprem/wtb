@@ -53,27 +53,34 @@ def create_deposit():
         
         # Jika metode QRIS, generate QRIS dari Cashify
         if payment_method == 'qris':
-            # Ambil gateway aktif untuk mendapatkan license key
+            # Ambil gateway aktif untuk mendapatkan license key dan package_ids
             gateway = pmb.get_active_gateway(website_id)
             if not gateway:
                 trx.update_deposit_status(deposit_id, 'failed', 'Gateway tidak ditemukan')
                 return jsonify({'success': False, 'error': 'Gateway pembayaran tidak ditemukan'}), 400
             
+            # CEK APAKAH QRIS_ID ADA
+            qris_id = gateway.get('qris_id')
+            if not qris_id:
+                return jsonify({
+                    'success': False, 
+                    'error': 'QRIS ID belum didaftarkan. Silakan atur QRIS ID di pengaturan gateway.'
+                }), 400
+            
+            # Ambil package IDs dari gateway
+            package_ids = pmb.get_package_ids(gateway['id'])
+            print(f"📦 Using package IDs: {package_ids}")
+            
             # Inisialisasi Cashify handler
             cashify = CashifyHandler(gateway.get('license_key'), gateway.get('webhook_secret'))
             
-            # Generate QRIS
-            qris_result = cashify.generate_qris_v2(amount, expired_minutes=gateway.get('expired_menit', 30))
-            
-            if not qris_result.get('success'):
-                trx.update_deposit_status(deposit_id, 'failed', qris_result.get('error'))
-                return jsonify({'success': False, 'error': qris_result.get('error')}), 500
-            
-            # Format response
-            formatted = cashify.format_response(qris_result)
-            
-            # Update deposit dengan data Cashify
-            trx.update_deposit_cashify(deposit_id, formatted)
+            # Generate QRIS dengan qr_id dan package_ids dari database
+            qris_result = cashify.generate_qris_v2(
+                amount, 
+                qr_id=qris_id,
+                package_ids=package_ids,  # <-- TAMBAHKAN INI
+                expired_minutes=gateway.get('expired_menit', 30)
+            )
             
             return jsonify({
                 'success': True,
