@@ -18,6 +18,8 @@
     let totalPages = 1;
     let bannerInterval = null;
     let currentBannerIndex = 0;
+    let paginationTimeout = null;
+    let lastScrollTop = 0;
     
     // Filter state
     let selectedLayanan = 'all';
@@ -43,12 +45,14 @@
         logoIcon: document.getElementById('logoIcon'),
         storeName: document.getElementById('storeName'),
         storeNameContainer: document.getElementById('storeNameContainer'),
+        storeHeader: document.getElementById('storeHeader'),
         
         // Banner
         bannerSlider: document.getElementById('bannerSliderTrack'),
         bannerDots: document.getElementById('bannerDots'),
         bannerPrev: document.getElementById('bannerPrev'),
         bannerNext: document.getElementById('bannerNext'),
+        bannerSliderContainer: document.getElementById('bannerSlider'),
         
         // Navigation
         navTabs: document.querySelectorAll('.nav-tab'),
@@ -61,6 +65,7 @@
         // Products
         productsGrid: document.getElementById('productsGrid'),
         pagination: document.getElementById('pagination'),
+        paginationContainer: document.getElementById('paginationContainer'),
         
         // Filter
         filterLayananBtn: document.getElementById('filterLayananBtn'),
@@ -207,9 +212,6 @@
         
         if (!endpoint) {
             showToast('Website tidak ditemukan', 'error');
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 2000);
             return null;
         }
         
@@ -226,7 +228,6 @@
             }
         } catch (error) {
             console.error('❌ Error loading website:', error);
-            showToast('Gagal memuat website', 'error');
             return null;
         }
     }
@@ -376,9 +377,12 @@
             elements.logoImage.src = tampilanData.logo;
             elements.logoImage.style.display = 'block';
             elements.logoIcon.style.display = 'none';
+            // Background logo sesuai warna border
+            elements.logoImage.style.backgroundColor = tampilanData.colors?.primary || 'var(--primary-color)';
         } else {
             elements.logoImage.style.display = 'none';
             elements.logoIcon.style.display = 'flex';
+            elements.logoIcon.style.color = tampilanData.colors?.primary || 'var(--primary-color)';
         }
         
         // Nama Store dengan animasi font
@@ -390,15 +394,22 @@
             elements.storeName.style.fontFamily = tampilanData.font_family;
         }
         
-        // Terapkan font size
-        if (tampilanData.font_size) {
-            elements.storeName.style.fontSize = tampilanData.font_size + 'px';
+        // Terapkan font size dengan batasan agar tidak melebihi container
+        let fontSize = tampilanData.font_size || 24;
+        const containerWidth = elements.storeNameContainer.clientWidth;
+        const textWidth = elements.storeName.scrollWidth;
+        
+        if (textWidth > containerWidth && fontSize > 14) {
+            fontSize = Math.max(14, Math.floor(containerWidth * 24 / textWidth));
         }
+        elements.storeName.style.fontSize = fontSize + 'px';
         
         // Terapkan animasi
         if (tampilanData.font_animation && tampilanData.font_animation !== 'none') {
             elements.storeNameContainer.style.animation = 
-                `${tampilanData.font_animation} ${tampilanData.animation_duration || 2}s ${tampilanData.animation_delay || 0}s ${tampilanData.animation_iteration || 'infinite'}`;
+                `${tampilanData.font_animation}Anim ${tampilanData.animation_duration || 2}s ${tampilanData.animation_delay || 0}s ${tampilanData.animation_iteration || 'infinite'}`;
+        } else {
+            elements.storeNameContainer.style.animation = 'none';
         }
         
         // Warna border dari database
@@ -410,11 +421,11 @@
 
     function renderBanners() {
         if (!tampilanData || !tampilanData.banners || tampilanData.banners.length === 0) {
-            elements.bannerSlider.parentElement.style.display = 'none';
+            elements.bannerSliderContainer.style.display = 'none';
             return;
         }
         
-        elements.bannerSlider.parentElement.style.display = 'block';
+        elements.bannerSliderContainer.style.display = 'block';
         
         // Render slides
         let slidesHtml = '';
@@ -776,6 +787,7 @@
         
         if (totalPages <= 1) {
             elements.pagination.innerHTML = '';
+            elements.paginationContainer.classList.add('hidden');
             return;
         }
         
@@ -796,6 +808,9 @@
         html += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="next"><i class="fas fa-chevron-right"></i></button>`;
         
         elements.pagination.innerHTML = html;
+        
+        // Show pagination
+        elements.paginationContainer.classList.remove('hidden');
         
         // Add click handlers
         elements.pagination.querySelectorAll('.pagination-btn').forEach(btn => {
@@ -930,7 +945,7 @@
         if (!paymentData || !paymentData.rekening || paymentData.rekening.length === 0) {
             elements.rekeningGrid.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-credit-card"></i>
+                    <i class="fas-credit-card"></i>
                     <p>Belum ada rekening</p>
                 </div>
             `;
@@ -1032,10 +1047,11 @@
         elements.profileUsername.textContent = username;
         elements.profileUserId.textContent = currentUser.id;
         
+        // Hanya foto profil saja
         if (currentUser.photo_url) {
             elements.profileImage.src = currentUser.photo_url;
         } else {
-            elements.profileImage.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.charAt(0))}&size=80&background=40a7e3&color=fff`;
+            elements.profileImage.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName.charAt(0))}&size=70&background=40a7e3&color=fff`;
         }
         
         // Stats (simulasi)
@@ -1049,6 +1065,29 @@
 
     function showProductDetail(productId) {
         showToast('Fitur detail produk akan segera tersedia', 'info');
+    }
+
+    // ==================== PAGINATION SCROLL HANDLER ====================
+    function setupPaginationScrollHandler() {
+        window.addEventListener('scroll', () => {
+            if (paginationTimeout) {
+                clearTimeout(paginationTimeout);
+            }
+            
+            const currentScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            
+            if (currentScrollTop > lastScrollTop) {
+                // Scroll ke bawah - sembunyikan pagination
+                elements.paginationContainer.classList.add('hidden');
+            }
+            
+            lastScrollTop = currentScrollTop <= 0 ? 0 : currentScrollTop;
+            
+            // Tampilkan kembali setelah scroll berhenti
+            paginationTimeout = setTimeout(() => {
+                elements.paginationContainer.classList.remove('hidden');
+            }, 150);
+        }, { passive: true });
     }
 
     // ==================== NAVIGATION ====================
@@ -1156,6 +1195,9 @@
                     }
                 });
             }
+            
+            // Setup pagination scroll handler
+            setupPaginationScrollHandler();
             
             // Setup Telegram WebApp
             if (window.Telegram?.WebApp) {
