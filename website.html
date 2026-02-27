@@ -16,12 +16,69 @@
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Animasi untuk page navigation */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            to { opacity: 0; transform: translateY(100%); }
+        }
+        
+        .page-content {
+            animation: slideUp 0.3s ease;
+        }
+        
+        /* Font animations dari template */
+        @keyframes pulseAnim {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes bounceAnim {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes shakeAnim {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        @keyframes fadeAnim {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes rotateAnim {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes slideAnim {
+            0% { transform: translateX(-10px); opacity: 0; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
+    </style>
 </head>
 <body>
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Memuat toko...</div>
+        <div class="loading-text">Memuat Toko...</div>
     </div>
 
     <!-- Toast Container -->
@@ -29,330 +86,145 @@
 
     <!-- Main Container -->
     <div class="website-container">
-        <!-- Header dengan Logo & Nama Store (hanya di halaman utama) -->
+        <!-- HEADER: LOGO + NAMA STORE (CARD BORDER) -->
         <header class="store-header" id="storeHeader">
-            <div class="store-info-card" style="border-color: var(--primary-color);" id="storeInfoCard">
-                <div class="store-logo" id="storeLogo">
-                    <img src="" alt="Logo" id="logoImage" style="display: none;">
-                    <i class="fas fa-store" id="logoIcon"></i>
-                </div>
-                <div class="store-name-container" id="storeNameContainer">
-                    <h1 class="store-name" id="storeName">Toko Online</h1>
-                </div>
+            <div class="store-logo-wrapper">
+                <img id="storeLogo" src="https://via.placeholder.com/60x60/40a7e3/ffffff?text=Logo" alt="Logo" class="store-logo">
+                <span id="storeName" class="store-name">Toko Online</span>
             </div>
         </header>
 
-        <!-- Banner Slider (hanya di halaman utama) -->
+        <!-- BANNER SLIDER (LEMBARAN KERTAS) -->
         <div class="banner-slider-container" id="bannerSlider">
-            <div class="banner-slider" id="bannerSliderTrack">
-                <!-- Banner akan diisi oleh JavaScript -->
+            <div class="banner-track" id="bannerTrack">
+                <!-- Banner akan diisi JavaScript -->
             </div>
             <div class="banner-dots" id="bannerDots"></div>
-            <button class="banner-nav banner-prev" id="bannerPrev"><i class="fas fa-chevron-left"></i></button>
-            <button class="banner-nav banner-next" id="bannerNext"><i class="fas fa-chevron-right"></i></button>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="nav-tabs">
-            <button class="nav-tab active" data-page="utama">
-                <i class="fas fa-home"></i>
-                <span>Utama</span>
-            </button>
-            <button class="nav-tab" data-page="aktivitas">
-                <i class="fas fa-history"></i>
-                <span>Aktivitas</span>
-            </button>
-            <button class="nav-tab" data-page="promo">
-                <i class="fas fa-tags"></i>
-                <span>Promo</span>
-            </button>
-            <button class="nav-tab" data-page="bank">
-                <i class="fas fa-university"></i>
-                <span>Bank</span>
-            </button>
-            <button class="nav-tab" data-page="profil">
-                <i class="fas fa-user-circle"></i>
-                <span>Profil</span>
-            </button>
-        </div>
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content" id="mainContent">
+            <!-- Halaman akan diisi berdasarkan navigasi -->
+        </main>
 
-        <!-- Pages Container -->
-        <div class="pages-container">
-            <!-- Page: Utama -->
-            <div class="page active" id="page-utama">
-                <!-- Layanan Section -->
-                <div class="layanan-section">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            <i class="fas fa-layer-group"></i>
-                            Produk Layanan
-                        </h2>
-                        <a href="#" class="view-all-link" id="viewAllLayanan">
-                            Lihat semua <i class="fas fa-arrow-right"></i>
-                        </a>
+        <!-- BOTTOM NAVIGATION (BORDER PAGINATION) -->
+        <nav class="bottom-nav" id="bottomNav">
+            <div class="nav-items">
+                <button class="nav-item active" data-page="home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </button>
+                <button class="nav-item" data-page="aktivitas">
+                    <i class="fas fa-history"></i>
+                    <span>Aktivitas</span>
+                </button>
+                <button class="nav-item" data-page="promo">
+                    <i class="fas fa-bullhorn"></i>
+                    <span>Promo</span>
+                </button>
+                <button class="nav-item" data-page="bank">
+                    <i class="fas fa-university"></i>
+                    <span>Bank</span>
+                </button>
+                <button class="nav-item" data-page="profile">
+                    <i class="fas fa-user"></i>
+                    <span>Profil</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- MODAL: Voucher -->
+    <div class="modal" id="voucherModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-ticket-alt"></i> Klaim Voucher</h2>
+                <button class="modal-close" id="closeVoucherModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="voucherForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Kode Voucher</label>
+                        <input type="text" id="voucherCode" placeholder="Masukkan kode voucher" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelVoucherBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-check"></i> Klaim
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Deposit -->
+    <div class="modal" id="depositModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-credit-card"></i> Deposit Saldo</h2>
+                <button class="modal-close" id="closeDepositModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="depositForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-money-bill"></i> Jumlah Deposit</label>
+                        <input type="number" id="depositAmount" min="10000" step="1000" placeholder="Minimal Rp 10.000" required>
                     </div>
                     
-                    <div class="layanan-grid" id="layananGrid">
-                        <!-- Layanan akan diisi oleh JavaScript -->
+                    <div class="form-group">
+                        <label><i class="fas fa-university"></i> Metode Pembayaran</label>
+                        <select id="paymentMethod" class="styled-select" required>
+                            <option value="">-- Pilih Metode --</option>
+                        </select>
                     </div>
-                </div>
-
-                <!-- Produk Tersedia Section -->
-                <div class="produk-section">
-                    <div class="section-header">
-                        <h2 class="section-title">
-                            <i class="fas fa-box"></i>
-                            Produk Tersedia
-                        </h2>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelDepositBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-check"></i> Lanjutkan
+                        </button>
                     </div>
-
-                    <!-- Filter Bar -->
-                    <div class="filter-bar">
-                        <div class="filter-dropdown">
-                            <button class="filter-btn" id="filterLayananBtn">
-                                <i class="fas fa-layer-group"></i>
-                                <span id="selectedLayanan">Layanan</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="filter-menu" id="filterLayananMenu">
-                                <!-- Akan diisi oleh JavaScript -->
-                            </div>
-                        </div>
-
-                        <div class="filter-dropdown">
-                            <button class="filter-btn" id="filterAplikasiBtn">
-                                <i class="fas fa-mobile-alt"></i>
-                                <span id="selectedAplikasi">Aplikasi</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="filter-menu" id="filterAplikasiMenu">
-                                <!-- Akan diisi oleh JavaScript -->
-                            </div>
-                        </div>
-
-                        <div class="filter-dropdown filter-item-sort">
-                            <button class="filter-btn" id="filterItemBtn">
-                                <i class="fas fa-box"></i>
-                                <span id="selectedItem">Item</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="filter-menu" id="filterItemMenu">
-                                <!-- Akan diisi oleh JavaScript -->
-                            </div>
-                        </div>
-
-                        <div class="filter-dropdown sort-dropdown">
-                            <button class="filter-btn" id="sortBtn">
-                                <i class="fas fa-sort-amount-down"></i>
-                                <span id="selectedSort">Sort By</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="filter-menu" id="sortMenu">
-                                <button class="filter-option" data-sort="terlaris">
-                                    <i class="fas fa-fire"></i> Terlaris
-                                </button>
-                                <button class="filter-option" data-sort="terbaru">
-                                    <i class="fas fa-clock"></i> Terbaru
-                                </button>
-                                <button class="filter-option" data-sort="harga-rendah">
-                                    <i class="fas fa-arrow-up"></i> Termurah
-                                </button>
-                                <button class="filter-option" data-sort="harga-tinggi">
-                                    <i class="fas fa-arrow-down"></i> Termahal
-                                </button>
-                                <button class="filter-option" data-sort="stok-banyak">
-                                    <i class="fas fa-cubes"></i> Stok Terbanyak
-                                </button>
-                                <button class="filter-option" data-sort="stok-sedikit">
-                                    <i class="fas fa-cubes"></i> Stok Tersedikit
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Products Grid -->
-                    <div class="products-grid" id="productsGrid">
-                        <!-- Produk akan diisi oleh JavaScript -->
-                    </div>
-
-                    <!-- Pagination (fixed di bawah) -->
-                    <div class="pagination-container" id="paginationContainer">
-                        <div class="pagination" id="pagination">
-                            <!-- Akan diisi oleh JavaScript -->
-                        </div>
-                    </div>
-                </div>
+                </form>
             </div>
+        </div>
+    </div>
 
-            <!-- Page: Aktivitas -->
-            <div class="page" id="page-aktivitas">
-                <div class="page-header">
-                    <h2 class="page-title">
-                        <i class="fas fa-history"></i>
-                        Aktivitas
-                    </h2>
-                </div>
-                
-                <div class="aktivitas-list" id="aktivitasList">
-                    <!-- Akan diisi oleh JavaScript -->
-                </div>
-            </div>
-
-            <!-- Page: Promo -->
-            <div class="page" id="page-promo">
-                <div class="page-header">
-                    <h2 class="page-title">
-                        <i class="fas fa-tags"></i>
-                        Promo
-                    </h2>
-                    <button class="voucher-btn" id="lihatVoucherBtn">
-                        <i class="fas fa-ticket-alt"></i> Voucher Saya
-                    </button>
-                </div>
-
-                <!-- Promo Banners -->
-                <div class="promo-banners" id="promoBanners">
-                    <!-- Promo akan diisi oleh JavaScript -->
-                </div>
-
-                <!-- Voucher Section -->
-                <div class="voucher-section">
-                    <h3 class="section-subtitle">
-                        <i class="fas fa-ticket-alt"></i>
-                        Voucher Tersedia
-                    </h3>
-                    <div class="voucher-grid" id="voucherGrid">
-                        <!-- Voucher akan diisi oleh JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Page: Bank -->
-            <div class="page" id="page-bank">
-                <div class="page-header">
-                    <h2 class="page-title">
-                        <i class="fas fa-university"></i>
-                        Bank
-                    </h2>
-                    <div class="bank-balance" id="bankBalance">
-                        <span class="balance-label">Saldo</span>
-                        <span class="balance-value" id="userBalance">Rp 0</span>
-                    </div>
-                </div>
-
-                <!-- Bank Actions -->
-                <div class="bank-actions">
-                    <button class="bank-action-btn" id="depositBtn">
-                        <i class="fas fa-arrow-down"></i>
-                        <span>Deposit</span>
-                    </button>
-                    <button class="bank-action-btn" id="withdrawBtn">
-                        <i class="fas fa-arrow-up"></i>
-                        <span>Withdraw</span>
-                    </button>
-                    <button class="bank-action-btn" id="transferBtn">
-                        <i class="fas fa-exchange-alt"></i>
-                        <span>Transfer</span>
-                    </button>
-                </div>
-
-                <!-- Rekening Tersedia -->
-                <div class="rekening-section">
-                    <h3 class="section-subtitle">
-                        <i class="fas fa-credit-card"></i>
-                        Rekening Tersedia
-                    </h3>
-                    <div class="rekening-grid" id="rekeningGrid">
-                        <!-- Akan diisi oleh JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Payment Gateway -->
-                <div class="gateway-section" id="gatewaySection">
-                    <h3 class="section-subtitle">
-                        <i class="fas fa-qrcode"></i>
-                        Payment Gateway
-                    </h3>
-                    <div class="gateway-card" id="gatewayCard">
-                        <!-- Akan diisi oleh JavaScript -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Page: Profil -->
-            <div class="page" id="page-profil">
-                <div class="profile-header">
-                    <div class="profile-avatar-large" id="profileAvatarLarge">
-                        <img src="" alt="Profile" id="profileImage">
-                    </div>
-                    <div class="profile-info">
-                        <h2 id="profileName">Loading...</h2>
-                        <p id="profileUsername">@loading</p>
-                    </div>
-                </div>
-
-                <div class="profile-stats">
-                    <div class="stat-card">
-                        <span class="stat-value" id="profileOrders">0</span>
-                        <span class="stat-label">Pesanan</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="profileSpent">Rp 0</span>
-                        <span class="stat-label">Total Belanja</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-value" id="profileVouchers">0</span>
-                        <span class="stat-label">Voucher</span>
-                    </div>
-                </div>
-
-                <div class="profile-details">
-                    <div class="detail-item">
-                        <i class="fas fa-id-card"></i>
-                        <div class="detail-content">
-                            <span class="detail-label">User ID</span>
-                            <span class="detail-value" id="profileUserId">-</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <i class="fas fa-calendar"></i>
-                        <div class="detail-content">
-                            <span class="detail-label">Bergabung</span>
-                            <span class="detail-value" id="profileJoined">-</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <i class="fas fa-envelope"></i>
-                        <div class="detail-content">
-                            <span class="detail-label">Email</span>
-                            <span class="detail-value" id="profileEmail">-</span>
-                        </div>
-                    </div>
-                    <div class="detail-item">
-                        <i class="fas fa-phone"></i>
-                        <div class="detail-content">
-                            <span class="detail-label">Telepon</span>
-                            <span class="detail-value" id="profilePhone">-</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Force Subscribe Section -->
-                <div class="force-subscribe-section" id="forceSubscribeSection">
-                    <h3 class="section-subtitle">
-                        <i class="fas fa-bell"></i>
-                        Subscribe Channel
-                    </h3>
-                    <div class="force-list" id="forceList">
-                        <!-- Akan diisi oleh JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Logout Button -->
-                <button class="logout-btn" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Keluar
+    <!-- MODAL: Withdraw -->
+    <div class="modal" id="withdrawModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-money-bill-wave"></i> Withdraw</h2>
+                <button class="modal-close" id="closeWithdrawModal">
+                    <i class="fas fa-times"></i>
                 </button>
+            </div>
+            <div class="modal-body">
+                <form id="withdrawForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-money-bill"></i> Jumlah Withdraw</label>
+                        <input type="number" id="withdrawAmount" min="50000" step="1000" placeholder="Minimal Rp 50.000" required>
+                        <small class="hint">Saldo Anda: <span id="userBalance">Rp 0</span></small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label><i class="fas fa-university"></i> Tujuan Rekening</label>
+                        <select id="withdrawAccount" class="styled-select" required>
+                            <option value="">-- Pilih Rekening Tujuan --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelWithdrawBtn">Batal</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-check"></i> Withdraw
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
