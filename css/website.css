@@ -19,6 +19,9 @@
     --bg-card-hover: rgba(255, 255, 255, 0.08);
     --border-color: rgba(255, 255, 255, 0.1);
     --border-color-light: rgba(255, 255, 255, 0.05);
+    
+    --header-height: auto;
+    --banner-height: 200px;
 }
 
 * {
@@ -140,13 +143,18 @@ body {
     max-width: 600px;
     margin: 0 auto;
     padding: 16px;
-    padding-bottom: 80px;
     min-height: 100vh;
+    position: relative;
 }
 
-/* Store Header */
+/* Store Header - only shown on utama page */
 .store-header {
     margin-bottom: 16px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.page:not(#page-utama) .store-header {
+    display: none;
 }
 
 .store-info-card {
@@ -165,18 +173,20 @@ body {
     width: 60px;
     height: 60px;
     border-radius: 12px;
-    background: rgba(64, 167, 227, 0.15);
+    background: var(--bg-card);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     flex-shrink: 0;
+    border: 1px solid var(--border-color);
 }
 
 .store-logo img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background: var(--bg-card);
 }
 
 .store-logo i {
@@ -187,6 +197,8 @@ body {
 .store-name-container {
     flex: 1;
     overflow: hidden;
+    display: flex;
+    align-items: center;
 }
 
 .store-name {
@@ -197,50 +209,25 @@ body {
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--tg-text-color);
+    max-width: 100%;
+    line-height: 1.2;
 }
 
-/* Font Animations */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideIn {
-    from { transform: translateX(-20px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.7; }
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-5px); }
-    75% { transform: translateX(5px); }
-}
-
-@keyframes glow {
-    0%, 100% { text-shadow: 0 0 5px var(--primary-color); }
-    50% { text-shadow: 0 0 20px var(--primary-color); }
-}
-
-/* Banner Slider */
+/* Banner Slider - only shown on utama page */
 .banner-slider-container {
     position: relative;
     width: 100%;
-    height: 200px;
+    height: var(--banner-height);
     border-radius: 16px;
     overflow: hidden;
     margin-bottom: 20px;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.page:not(#page-utama) .banner-slider-container {
+    display: none;
 }
 
 .banner-slider {
@@ -362,6 +349,7 @@ body {
 /* Pages Container */
 .pages-container {
     min-height: 400px;
+    padding-bottom: 70px; /* Space for fixed pagination */
 }
 
 .page {
@@ -487,6 +475,10 @@ body {
     position: relative;
     flex: 1;
     min-width: 100px;
+}
+
+.filter-item-sort {
+    flex: 1;
 }
 
 .filter-btn {
@@ -686,20 +678,45 @@ body {
     color: var(--danger-color);
 }
 
-/* Pagination */
+/* Pagination - Fixed at bottom */
+.pagination-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+    background: linear-gradient(to top, var(--tg-bg-color), transparent);
+    pointer-events: none;
+    z-index: 90;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.pagination-container.hidden {
+    opacity: 0;
+    transform: translateY(100%);
+}
+
 .pagination {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin-top: 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 40px;
+    padding: 8px 16px;
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .pagination-btn {
     min-width: 36px;
     height: 36px;
-    border-radius: 8px;
-    background: var(--bg-card);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
     color: var(--tg-text-color);
     font-size: 13px;
@@ -710,7 +727,7 @@ body {
     transition: all 0.2s;
 }
 
-.pagination-btn:hover {
+.pagination-btn:hover:not(:disabled) {
     background: rgba(64, 167, 227, 0.1);
     border-color: var(--primary-color);
 }
@@ -722,7 +739,7 @@ body {
 }
 
 .pagination-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.3;
     cursor: not-allowed;
 }
 
@@ -790,7 +807,32 @@ body {
     gap: 4px;
 }
 
-/* Promo Banners */
+/* Promo Page */
+.voucher-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    padding: 8px 16px;
+    color: var(--tg-text-color);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.voucher-btn:hover {
+    background: rgba(64, 167, 227, 0.1);
+    border-color: var(--primary-color);
+}
+
+.voucher-btn i {
+    color: var(--primary-color);
+}
+
 .promo-banners {
     display: flex;
     flex-direction: column;
@@ -852,6 +894,11 @@ body {
     border-left: 4px solid var(--primary-color);
 }
 
+.voucher-card.expired {
+    opacity: 0.5;
+    border-left-color: var(--danger-color);
+}
+
 .voucher-icon {
     width: 48px;
     height: 48px;
@@ -901,6 +948,7 @@ body {
     border-radius: 16px;
     padding: 16px 20px;
     color: white;
+    min-width: 150px;
 }
 
 .balance-label {
@@ -911,7 +959,7 @@ body {
 }
 
 .balance-value {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
 }
 
@@ -1028,6 +1076,10 @@ body {
 }
 
 /* Gateway Card */
+.gateway-section {
+    margin-top: 20px;
+}
+
 .gateway-card {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -1091,15 +1143,16 @@ body {
     margin-bottom: 24px;
 }
 
-.profile-avatar {
+.profile-avatar-large {
     width: 80px;
     height: 80px;
     border-radius: 50%;
     overflow: hidden;
     border: 3px solid var(--primary-color);
+    background: var(--bg-card);
 }
 
-.profile-avatar img {
+.profile-avatar-large img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -1187,6 +1240,10 @@ body {
 }
 
 /* Force Subscribe List */
+.force-subscribe-section {
+    margin-top: 20px;
+}
+
 .force-list {
     display: flex;
     flex-direction: column;
@@ -1204,6 +1261,12 @@ body {
     border-radius: 12px;
     text-decoration: none;
     color: var(--tg-text-color);
+    transition: all 0.2s;
+}
+
+.force-item:hover {
+    border-color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.05);
 }
 
 .force-icon {
@@ -1238,10 +1301,11 @@ body {
 
 .force-status {
     font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
     background: rgba(16, 185, 129, 0.15);
     color: var(--success-color);
+    white-space: nowrap;
 }
 
 /* Logout Button */
@@ -1317,11 +1381,19 @@ body {
 @media (max-width: 480px) {
     .website-container {
         padding: 12px;
-        padding-bottom: 70px;
     }
     
     .store-name {
         font-size: 20px;
+    }
+    
+    .store-logo {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .store-logo i {
+        font-size: 28px;
     }
     
     .filter-bar {
@@ -1339,6 +1411,16 @@ body {
     .banner-slider-container {
         height: 160px;
     }
+    
+    .pagination {
+        padding: 6px 12px;
+    }
+    
+    .pagination-btn {
+        min-width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
 }
 
 /* Animations */
@@ -1355,4 +1437,36 @@ body {
 
 .page.active {
     animation: fadeIn 0.3s ease;
+}
+
+/* Font Animations */
+@keyframes fadeInAnim {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideInAnim {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes bounceAnim {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+@keyframes pulseAnim {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes shakeAnim {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes glowAnim {
+    0%, 100% { text-shadow: 0 0 5px var(--primary-color); }
+    50% { text-shadow: 0 0 20px var(--primary-color); }
 }
