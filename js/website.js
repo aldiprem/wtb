@@ -247,20 +247,22 @@
     }
 
     async function loadTampilan() {
-        if (!currentWebsite) return;
-        
-        try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}`, {
-                method: 'GET'
-            });
-            
-            if (response.success && response.tampilan) {
-                tampilanData = response.tampilan;
-                applyTampilan();
-            }
-        } catch (error) {
-            console.error('❌ Error loading tampilan:', error);
+      if (!currentWebsite) return;
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}`, {
+          method: 'GET'
+        });
+    
+        if (response.success && response.tampilan) {
+          tampilanData = response.tampilan;
+          console.log('✅ Tampilan data loaded:', tampilanData);
+          console.log('🎨 Store font:', tampilanData.store_font_family, 'animation:', tampilanData.store_font_animation);
+          applyTampilan();
         }
+      } catch (error) {
+        console.error('❌ Error loading tampilan:', error);
+      }
     }
 
     // Tambahkan fungsi baru setelah applyTampilan()
@@ -269,10 +271,18 @@
       if (tampilanData.heading_font_family) {
         const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .section-title, .product-nama, .layanan-nama, .promo-title');
         headings.forEach(el => {
+          // Hapus animation sebelumnya
+          el.style.animation = 'none';
+    
           el.style.fontFamily = `'${tampilanData.heading_font_family}', sans-serif`;
     
           if (tampilanData.heading_font_size) {
             el.style.fontSize = `${tampilanData.heading_font_size}px`;
+          }
+    
+          // Apply text color jika ada
+          if (tampilanData.colors && tampilanData.colors.text) {
+            el.style.color = tampilanData.colors.text;
           }
     
           let animType = tampilanData.heading_font_animation;
@@ -281,19 +291,29 @@
             const duration = tampilanData.heading_animation_duration || 2;
             const delay = tampilanData.heading_animation_delay || 0;
             const iteration = tampilanData.heading_animation_iteration || 'infinite';
+    
+            // Force reflow
+            void el.offsetWidth;
+    
             el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+            el.style.animationPlayState = 'running';
           }
         });
       }
     
       // Terapkan font ke body text (deskripsi, meta, dll)
       if (tampilanData.body_font_family) {
-        const bodyTexts = document.querySelectorAll('.product-desc, .layanan-desc, .promo-description, .aktivitas-desc, .product-category, .product-durasi, .product-stok');
+        const bodyTexts = document.querySelectorAll('.product-desc, .layanan-desc, .promo-description, .aktivitas-desc, .product-category, .product-durasi, .product-stok, .product-meta, .aktivitas-meta');
         bodyTexts.forEach(el => {
           el.style.fontFamily = `'${tampilanData.body_font_family}', sans-serif`;
     
           if (tampilanData.body_font_size) {
             el.style.fontSize = `${tampilanData.body_font_size}px`;
+          }
+    
+          // Apply text color jika ada
+          if (tampilanData.colors && tampilanData.colors.text) {
+            el.style.color = tampilanData.colors.text;
           }
     
           let animType = tampilanData.body_font_animation;
@@ -302,7 +322,12 @@
             const duration = tampilanData.body_animation_duration || 2;
             const delay = tampilanData.body_animation_delay || 0;
             const iteration = tampilanData.body_animation_iteration || 'infinite';
+    
+            // Force reflow
+            void el.offsetWidth;
+    
             el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+            el.style.animationPlayState = 'running';
           }
         });
       }
@@ -333,15 +358,28 @@
           elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
         }
     
+        // Apply text color - jika ada
+        if (tampilanData.colors && tampilanData.colors.text) {
+          elements.storeName.style.color = tampilanData.colors.text;
+        }
+    
         // Apply animation - gunakan store_font_animation jika ada, baru font_animation
         let animType = tampilanData.store_font_animation || tampilanData.font_animation;
         let animDuration = tampilanData.store_animation_duration || tampilanData.animation_duration || 2;
         let animDelay = tampilanData.store_animation_delay || tampilanData.animation_delay || 0;
         let animIteration = tampilanData.store_animation_iteration || tampilanData.animation_iteration || 'infinite';
     
+        // Hapus animation sebelumnya
+        elements.storeName.style.animation = 'none';
+    
+        // Force reflow untuk memastikan animation baru berjalan
+        void elements.storeName.offsetWidth;
+    
         if (animType && animType !== 'none') {
           const animName = animType + 'Anim';
           elements.storeName.style.animation = `${animName} ${animDuration}s ${animDelay}s ${animIteration}`;
+          elements.storeName.style.animationPlayState = 'running';
+          console.log(`✅ Applied animation to store name: ${animName} ${animDuration}s ${animDelay}s ${animIteration}`);
         } else {
           elements.storeName.style.animation = 'none';
         }
