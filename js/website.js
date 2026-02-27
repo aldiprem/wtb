@@ -246,6 +246,54 @@
         }
     }
 
+    async function loadWebsiteTemplates() {
+      if (!currentWebsite) return [];
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/templates`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, templates: [] }));
+    
+        if (response.success && response.templates) {
+          console.log(`📦 Loaded ${response.templates.length} templates for website`);
+    
+          // Inject font dari template yang tersimpan
+          for (const template of response.templates) {
+            const templateData = template.template_data || {};
+            if (templateData.font_file_data) {
+              const fontFamily = templateData.font_family;
+    
+              // Cek apakah sudah di-inject
+              if (document.getElementById(`website-font-${fontFamily}`)) continue;
+    
+              const fontFace = `
+                            @font-face {
+                                font-family: '${fontFamily}';
+                                src: url('${templateData.font_file_data}') format('truetype');
+                                font-weight: normal;
+                                font-style: normal;
+                                font-display: swap;
+                            }
+                        `;
+    
+              const style = document.createElement('style');
+              style.id = `website-font-${fontFamily}`;
+              style.textContent = fontFace;
+              document.head.appendChild(style);
+    
+              console.log(`✅ Font injected from saved template: ${fontFamily}`);
+            }
+          }
+    
+          return response.templates;
+        }
+      } catch (error) {
+        console.error('❌ Error loading website templates:', error);
+      }
+    
+      return [];
+    }
+
     async function loadTampilan() {
       if (!currentWebsite) return;
     
@@ -258,6 +306,11 @@
           tampilanData = response.tampilan;
           console.log('✅ Tampilan data loaded:', tampilanData);
           console.log('🎨 Store font:', tampilanData.store_font_family, 'animation:', tampilanData.store_font_animation);
+    
+          // Inject font terlebih dahulu
+          await injectWebsiteFonts();
+    
+          // Baru apply tampilan
           applyTampilan();
         }
       } catch (error) {
@@ -265,71 +318,76 @@
       }
     }
 
-    // Tambahkan fungsi baru setelah applyTampilan()
     function applyDynamicFonts() {
-      // Terapkan font ke heading (judul section, judul produk, dll)
-      if (tampilanData.heading_font_family) {
-        const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .section-title, .product-nama, .layanan-nama, .promo-title');
-        headings.forEach(el => {
-          // Hapus animation sebelumnya
-          el.style.animation = 'none';
+      // Pastikan font untuk heading sudah di-inject
+      if (tampilanData.heading_font_family && tampilanData.heading_font_family !== 'Inter') {
+        // Font akan di-inject oleh injectWebsiteFonts, tapi kita perlu memastikan
+        // style diterapkan setelah font tersedia
+        setTimeout(() => {
+          const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .section-title, .product-nama, .layanan-nama, .promo-title');
+          headings.forEach(el => {
+            // Hapus animation sebelumnya
+            el.style.animation = 'none';
     
-          el.style.fontFamily = `'${tampilanData.heading_font_family}', sans-serif`;
+            el.style.fontFamily = `'${tampilanData.heading_font_family}', sans-serif`;
     
-          if (tampilanData.heading_font_size) {
-            el.style.fontSize = `${tampilanData.heading_font_size}px`;
-          }
+            if (tampilanData.heading_font_size) {
+              el.style.fontSize = `${tampilanData.heading_font_size}px`;
+            }
     
-          // Apply text color jika ada
-          if (tampilanData.colors && tampilanData.colors.text) {
-            el.style.color = tampilanData.colors.text;
-          }
+            // Apply text color jika ada
+            if (tampilanData.colors && tampilanData.colors.text) {
+              el.style.color = tampilanData.colors.text;
+            }
     
-          let animType = tampilanData.heading_font_animation;
-          if (animType && animType !== 'none') {
-            const animName = animType + 'Anim';
-            const duration = tampilanData.heading_animation_duration || 2;
-            const delay = tampilanData.heading_animation_delay || 0;
-            const iteration = tampilanData.heading_animation_iteration || 'infinite';
+            let animType = tampilanData.heading_font_animation;
+            if (animType && animType !== 'none') {
+              const animName = animType + 'Anim';
+              const duration = tampilanData.heading_animation_duration || 2;
+              const delay = tampilanData.heading_animation_delay || 0;
+              const iteration = tampilanData.heading_animation_iteration || 'infinite';
     
-            // Force reflow
-            void el.offsetWidth;
+              // Force reflow
+              void el.offsetWidth;
     
-            el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
-            el.style.animationPlayState = 'running';
-          }
-        });
+              el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+              el.style.animationPlayState = 'running';
+            }
+          });
+        }, 100);
       }
     
       // Terapkan font ke body text (deskripsi, meta, dll)
-      if (tampilanData.body_font_family) {
-        const bodyTexts = document.querySelectorAll('.product-desc, .layanan-desc, .promo-description, .aktivitas-desc, .product-category, .product-durasi, .product-stok, .product-meta, .aktivitas-meta');
-        bodyTexts.forEach(el => {
-          el.style.fontFamily = `'${tampilanData.body_font_family}', sans-serif`;
+      if (tampilanData.body_font_family && tampilanData.body_font_family !== 'Inter') {
+        setTimeout(() => {
+          const bodyTexts = document.querySelectorAll('.product-desc, .layanan-desc, .promo-description, .aktivitas-desc, .product-category, .product-durasi, .product-stok, .product-meta, .aktivitas-meta');
+          bodyTexts.forEach(el => {
+            el.style.fontFamily = `'${tampilanData.body_font_family}', sans-serif`;
     
-          if (tampilanData.body_font_size) {
-            el.style.fontSize = `${tampilanData.body_font_size}px`;
-          }
+            if (tampilanData.body_font_size) {
+              el.style.fontSize = `${tampilanData.body_font_size}px`;
+            }
     
-          // Apply text color jika ada
-          if (tampilanData.colors && tampilanData.colors.text) {
-            el.style.color = tampilanData.colors.text;
-          }
+            // Apply text color jika ada
+            if (tampilanData.colors && tampilanData.colors.text) {
+              el.style.color = tampilanData.colors.text;
+            }
     
-          let animType = tampilanData.body_font_animation;
-          if (animType && animType !== 'none') {
-            const animName = animType + 'Anim';
-            const duration = tampilanData.body_animation_duration || 2;
-            const delay = tampilanData.body_animation_delay || 0;
-            const iteration = tampilanData.body_animation_iteration || 'infinite';
+            let animType = tampilanData.body_font_animation;
+            if (animType && animType !== 'none') {
+              const animName = animType + 'Anim';
+              const duration = tampilanData.body_animation_duration || 2;
+              const delay = tampilanData.body_animation_delay || 0;
+              const iteration = tampilanData.body_animation_iteration || 'infinite';
     
-            // Force reflow
-            void el.offsetWidth;
+              // Force reflow
+              void el.offsetWidth;
     
-            el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
-            el.style.animationPlayState = 'running';
-          }
-        });
+              el.style.animation = `${animName} ${duration}s ${delay}s ${iteration}`;
+              el.style.animationPlayState = 'running';
+            }
+          });
+        }, 100);
       }
     }
 
@@ -344,51 +402,151 @@
       if (elements.storeName) {
         elements.storeName.textContent = storeName;
     
-        // Apply font family - gunakan store_font_family jika ada, baru font_family
-        if (tampilanData.store_font_family) {
-          elements.storeName.style.fontFamily = `'${tampilanData.store_font_family}', sans-serif`;
-        } else if (tampilanData.font_family) {
-          elements.storeName.style.fontFamily = `'${tampilanData.font_family}', sans-serif`;
-        }
+        // Apply font family dengan timeout untuk memastikan font sudah di-inject
+        setTimeout(() => {
+          if (tampilanData.store_font_family) {
+            elements.storeName.style.fontFamily = `'${tampilanData.store_font_family}', sans-serif`;
+          } else if (tampilanData.font_family) {
+            elements.storeName.style.fontFamily = `'${tampilanData.font_family}', sans-serif`;
+          }
     
-        // Apply font size - gunakan store_font_size jika ada, baru font_size
-        if (tampilanData.store_font_size) {
-          elements.storeName.style.fontSize = `${tampilanData.store_font_size}px`;
-        } else if (tampilanData.font_size) {
-          elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
-        }
+          // Apply font size
+          if (tampilanData.store_font_size) {
+            elements.storeName.style.fontSize = `${tampilanData.store_font_size}px`;
+          } else if (tampilanData.font_size) {
+            elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
+          }
     
-        // Apply text color - jika ada
-        if (tampilanData.colors && tampilanData.colors.text) {
-          elements.storeName.style.color = tampilanData.colors.text;
-        }
+          // Apply text color
+          if (tampilanData.colors && tampilanData.colors.text) {
+            elements.storeName.style.color = tampilanData.colors.text;
+          }
     
-        // Apply animation - gunakan store_font_animation jika ada, baru font_animation
-        let animType = tampilanData.store_font_animation || tampilanData.font_animation;
-        let animDuration = tampilanData.store_animation_duration || tampilanData.animation_duration || 2;
-        let animDelay = tampilanData.store_animation_delay || tampilanData.animation_delay || 0;
-        let animIteration = tampilanData.store_animation_iteration || tampilanData.animation_iteration || 'infinite';
+          // Apply animation
+          let animType = tampilanData.store_font_animation || tampilanData.font_animation;
+          let animDuration = tampilanData.store_animation_duration || tampilanData.animation_duration || 2;
+          let animDelay = tampilanData.store_animation_delay || tampilanData.animation_delay || 0;
+          let animIteration = tampilanData.store_animation_iteration || tampilanData.animation_iteration || 'infinite';
     
-        // Hapus animation sebelumnya
-        elements.storeName.style.animation = 'none';
-    
-        // Force reflow untuk memastikan animation baru berjalan
-        void elements.storeName.offsetWidth;
-    
-        if (animType && animType !== 'none') {
-          const animName = animType + 'Anim';
-          elements.storeName.style.animation = `${animName} ${animDuration}s ${animDelay}s ${animIteration}`;
-          elements.storeName.style.animationPlayState = 'running';
-          console.log(`✅ Applied animation to store name: ${animName} ${animDuration}s ${animDelay}s ${animIteration}`);
-        } else {
+          // Hapus animation sebelumnya
           elements.storeName.style.animation = 'none';
-        }
+    
+          // Force reflow
+          void elements.storeName.offsetWidth;
+    
+          if (animType && animType !== 'none') {
+            const animName = animType + 'Anim';
+            elements.storeName.style.animation = `${animName} ${animDuration}s ${animDelay}s ${animIteration}`;
+            elements.storeName.style.animationPlayState = 'running';
+            console.log(`✅ Applied animation to store name: ${animName} ${animDuration}s ${animDelay}s ${animIteration}`);
+          } else {
+            elements.storeName.style.animation = 'none';
+          }
+        }, 200); // Beri waktu untuk font ter-inject
       }
     
       // Apply header border color
       if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
         elements.storeHeader.style.borderColor = tampilanData.colors.primary;
       }
+    }
+
+    async function injectWebsiteFonts() {
+      if (!tampilanData) return;
+    
+      // Kumpulkan semua font yang digunakan
+      const fontFamilies = [];
+    
+      if (tampilanData.store_font_family && tampilanData.store_font_family !== 'Inter')
+        fontFamilies.push(tampilanData.store_font_family);
+      if (tampilanData.heading_font_family && tampilanData.heading_font_family !== 'Inter')
+        fontFamilies.push(tampilanData.heading_font_family);
+      if (tampilanData.body_font_family && tampilanData.body_font_family !== 'Inter')
+        fontFamilies.push(tampilanData.body_font_family);
+      if (tampilanData.font_family && tampilanData.font_family !== 'Inter')
+        fontFamilies.push(tampilanData.font_family);
+    
+      // Hapus duplikasi
+      const uniqueFonts = [...new Set(fontFamilies)];
+    
+      // Load setiap font
+      for (const fontFamily of uniqueFonts) {
+        await loadFontForFamily(fontFamily);
+      }
+    }
+    
+    async function loadFontForFamily(fontFamily) {
+      // Cek apakah font sudah di-inject
+      if (document.getElementById(`website-font-${fontFamily}`)) return;
+    
+      try {
+        console.log(`🔍 Mencari font: ${fontFamily}`);
+    
+        // Gunakan endpoint khusus untuk mencari berdasarkan font family
+        const encodedFont = encodeURIComponent(fontFamily);
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/font-templates/by-font/${encodedFont}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false }));
+    
+        if (response.success && response.template) {
+          const template = response.template;
+    
+          if (template.font_file_data) {
+            const fontFace = `
+                        @font-face {
+                            font-family: '${fontFamily}';
+                            src: url('${template.font_file_data}') format('truetype');
+                            font-weight: normal;
+                            font-style: normal;
+                            font-display: swap;
+                        }
+                    `;
+    
+            const style = document.createElement('style');
+            style.id = `website-font-${fontFamily}`;
+            style.textContent = fontFace;
+            document.head.appendChild(style);
+    
+            console.log(`✅ Font injected for website: ${fontFamily}`);
+            return true;
+          }
+        } else {
+          // Fallback ke search biasa
+          const searchResponse = await fetchWithRetry(`${API_BASE_URL}/api/font-templates?search=${encodeURIComponent(fontFamily)}&limit=5`, {
+            method: 'GET'
+          }).catch(() => ({ success: false, templates: [] }));
+    
+          if (searchResponse.success && searchResponse.templates && searchResponse.templates.length > 0) {
+            // Cari template dengan font family yang tepat
+            const exactMatch = searchResponse.templates.find(t => t.font_family === fontFamily);
+            const template = exactMatch || searchResponse.templates[0];
+    
+            if (template.font_file_data) {
+              const fontFace = `
+                            @font-face {
+                                font-family: '${fontFamily}';
+                                src: url('${template.font_file_data}') format('truetype');
+                                font-weight: normal;
+                                font-style: normal;
+                                font-display: swap;
+                            }
+                        `;
+    
+              const style = document.createElement('style');
+              style.id = `website-font-${fontFamily}`;
+              style.textContent = fontFace;
+              document.head.appendChild(style);
+    
+              console.log(`✅ Font injected for website (fallback): ${fontFamily}`);
+              return true;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error loading font ${fontFamily}:`, error);
+      }
+    
+      return false;
     }
 
     async function loadUserFromTelegram() {
@@ -464,74 +622,77 @@
     }
 
     async function loadAllData() {
-        if (!currentWebsite) return;
-        
-        showLoading(true);
-        
-        try {
-            // Load products
-            const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
-                method: 'GET'
-            }).catch(() => ({ success: false, data: [] }));
-            
-            if (productsResponse.success && productsResponse.data) {
-                productsData = productsResponse.data || [];
-                extractLayananList();
-                extractAllItems();
-            } else {
-                productsData = [];
-                layananList = [];
-                filteredItems = [];
-            }
-            
-            // Load promos
-            const promosResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
-                method: 'GET'
-            }).catch(() => ({ success: false, promos: [] }));
-            
-            if (promosResponse.success) {
-                promosList = promosResponse.promos || [];
-            } else {
-                promosList = [];
-            }
-            
-            // Load rekening
-            const rekeningResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
-                method: 'GET'
-            }).catch(() => ({ success: false, rekening: [] }));
-            
-            if (rekeningResponse.success) {
-                rekeningList = rekeningResponse.rekening || [];
-            } else {
-                rekeningList = [];
-            }
-            
-            // Load user vouchers jika user sudah login
-            if (currentUser) {
-                const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
-                    method: 'GET'
-                }).catch(() => ({ success: false, claims: [] }));
-                
-                if (vouchersResponse.success) {
-                    userVouchers = vouchersResponse.claims || [];
-                }
-            }
-            
-            // Load aktivitas
-            await loadAktivitas();
-            
-            // Load transactions
-            await loadTransactions();
-            
-            // Render halaman awal
-            renderHomePage();
-            
-        } catch (error) {
-            console.error('❌ Error loading data:', error);
-            showToast('Gagal memuat data', 'error');
-        } finally {
-            showLoading(false);
+      if (!currentWebsite) return;
+    
+      showLoading(true);
+    
+      try {
+        // Load products
+        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, data: [] }));
+    
+        if (productsResponse.success && productsResponse.data) {
+          productsData = productsResponse.data || [];
+          extractLayananList();
+          extractAllItems();
+        } else {
+          productsData = [];
+          layananList = [];
+          filteredItems = [];
         }
+    
+        // Load promos
+        const promosResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, promos: [] }));
+    
+        if (promosResponse.success) {
+          promosList = promosResponse.promos || [];
+        } else {
+          promosList = [];
+        }
+    
+        // Load rekening
+        const rekeningResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
+          method: 'GET'
+        }).catch(() => ({ success: false, rekening: [] }));
+    
+        if (rekeningResponse.success) {
+          rekeningList = rekeningResponse.rekening || [];
+        } else {
+          rekeningList = [];
+        }
+    
+        // Load user vouchers jika user sudah login
+        if (currentUser) {
+          const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
+            method: 'GET'
+          }).catch(() => ({ success: false, claims: [] }));
+    
+          if (vouchersResponse.success) {
+            userVouchers = vouchersResponse.claims || [];
+          }
+        }
+    
+        // Load aktivitas
+        await loadAktivitas();
+    
+        // Load transactions
+        await loadTransactions();
+    
+        // Load website templates untuk inject font
+        await loadWebsiteTemplates();
+    
+        // Render halaman awal
+        renderHomePage();
+    
+      } catch (error) {
+        console.error('❌ Error loading data:', error);
+        showToast('Gagal memuat data', 'error');
+      } finally {
+        showLoading(false);
+      }
     }
 
     function extractLayananList() {
