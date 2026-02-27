@@ -671,67 +671,50 @@
       showLoading(true);
     
       try {
-        // Load products
-        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${currentWebsite.id}`, {
-          method: 'GET'
-        }).catch(() => ({ success: false, data: [] }));
+        // HANYA SATU REQUEST!
+        const response = await fetchWithRetry(
+          `${API_BASE_URL}/api/website/${currentWebsite.id}/initial-data?user_id=${currentUser?.id || 0}`,
+          { method: 'GET' }
+        );
     
-        if (productsResponse.success && productsResponse.data) {
-          productsData = productsResponse.data || [];
+        if (response.success && response.data) {
+          const d = response.data;
+          
+          // Process products
+          productsData = d.products || [];
           extractLayananList();
           extractAllItems();
-        } else {
-          productsData = [];
-          layananList = [];
-          filteredItems = [];
-        }
-    
-        // Load promos
-        const promosResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
-          method: 'GET'
-        }).catch(() => ({ success: false, promos: [] }));
-    
-        if (promosResponse.success) {
-          promosList = promosResponse.promos || [];
-        } else {
-          promosList = [];
-        }
-    
-        // Load rekening (semua untuk keperluan "Lihat Semua")
-        const rekeningResponse = await fetchWithRetry(`${API_BASE_URL}/api/payments/rekening/${currentWebsite.id}`, {
-          method: 'GET'
-        }).catch(() => ({ success: false, rekening: [] }));
-    
-        if (rekeningResponse.success) {
-          allRekeningList = rekeningResponse.rekening || [];
-          // Untuk tampilan awal, hanya ambil 4
+          
+          // Process promos
+          promosList = d.promos || [];
+          
+          // Process rekening
+          allRekeningList = d.rekening || [];
           rekeningList = allRekeningList.slice(0, 4);
-        } else {
-          allRekeningList = [];
-          rekeningList = [];
-        }
-    
-        // Load user vouchers jika user sudah login
-        if (currentUser) {
-          const vouchersResponse = await fetchWithRetry(`${API_BASE_URL}/api/voucher/user/${currentUser.id}?website_id=${currentWebsite.id}`, {
-            method: 'GET'
-          }).catch(() => ({ success: false, claims: [] }));
-    
-          if (vouchersResponse.success) {
-            userVouchers = vouchersResponse.claims || [];
+          
+          // Process user data
+          userVouchers = d.user_vouchers || [];
+          aktivitasList = d.activities || [];
+          transactions = d.transactions || [];
+          
+          // Hitung balance
+          balance = 0;
+          transactions.forEach(t => {
+            if (t.transaction_type === 'deposit' && t.status === 'success') balance += t.amount;
+            else if (t.transaction_type === 'withdraw' && t.status === 'success') balance -= t.amount;
+          });
+          
+          // Inject fonts from templates
+          if (d.templates) {
+            for (const template of d.templates) {
+              const templateData = template.template_data || {};
+              if (templateData.font_file_data) {
+                injectFontStyle(templateData.font_family, templateData.font_file_data);
+              }
+            }
           }
         }
     
-        // Load aktivitas
-        await loadAktivitas();
-    
-        // Load transactions
-        await loadTransactions();
-    
-        // Load website templates untuk inject font
-        await loadWebsiteTemplates();
-    
-        // Render halaman awal
         renderHomePage();
     
       } catch (error) {
