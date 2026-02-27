@@ -203,36 +203,39 @@
         };
     }
 
-    // ==================== API FUNCTIONS ====================
     async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
-        try {
-            console.log(`📡 Fetching: ${url}`);
-            const response = await fetch(url, {
-                ...options,
-                mode: 'cors',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                }
-            });
-            
-            const data = await response.json();
-            console.log(`📥 Response from ${url}:`, data);
-            
-            if (!response.ok) {
-                throw new Error(data.error || `HTTP error ${response.status}`);
-            }
-            
-            return data;
-        } catch (error) {
-            console.error(`❌ Fetch error for ${url}:`, error);
-            if (retries > 0) {
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                return fetchWithRetry(url, options, retries - 1);
-            }
-            throw error;
+      try {
+        console.log(`📡 Fetching: ${url}`);
+        const response = await fetch(url, {
+          ...options,
+          mode: 'cors',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            ...options.headers
+          }
+        });
+    
+        // Cek apakah response OK
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`❌ HTTP error ${response.status}:`, errorText);
+          throw new Error(`HTTP error ${response.status}: ${errorText.substring(0, 100)}`);
         }
+    
+        const data = await response.json();
+        console.log(`📥 Response from ${url}:`, data);
+    
+        return data;
+      } catch (error) {
+        console.error(`❌ Fetch error for ${url}:`, error);
+        if (retries > 0) {
+          console.log(`🔄 Retrying... (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * (MAX_RETRIES - retries + 1))); // Exponential backoff
+          return fetchWithRetry(url, options, retries - 1);
+        }
+        throw error;
+      }
     }
 
     async function loadWebsite() {
@@ -313,23 +316,50 @@
       if (!currentWebsite) return;
     
       try {
+        console.log(`📡 Fetching tampilan for website ${currentWebsite.id}`);
         const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}`, {
           method: 'GET'
+        }).catch(err => {
+          console.warn('⚠️ Tampilan fetch failed, using default:', err);
+          return { success: false };
         });
     
         if (response.success && response.tampilan) {
           tampilanData = response.tampilan;
           console.log('✅ Tampilan data loaded:', tampilanData);
-          console.log('🎨 Store font:', tampilanData.store_font_family, 'animation:', tampilanData.store_font_animation);
     
           // Inject font terlebih dahulu
           await injectWebsiteFonts();
     
           // Baru apply tampilan
           applyTampilan();
+        } else {
+          // Gunakan default tampilan
+          tampilanData = {
+            logo: '',
+            banners: [],
+            colors: {
+              primary: '#40a7e3',
+              secondary: '#FFD700',
+              background: '#0f0f0f',
+              text: '#ffffff',
+              card: '#1a1a1a'
+            },
+            font_family: 'Inter',
+            font_size: 14,
+            store_display_name: currentWebsite.name || 'Toko Online',
+            font_animation: 'none'
+          };
+          console.log('✅ Using default tampilan');
         }
       } catch (error) {
         console.error('❌ Error loading tampilan:', error);
+        // Set default
+        tampilanData = {
+          store_display_name: currentWebsite.name || 'Toko Online',
+          font_family: 'Inter',
+          font_size: 14
+        };
       }
     }
 
@@ -672,10 +702,14 @@
     
       try {
         // HANYA SATU REQUEST!
+        console.log(`📡 Fetching initial data for website ${currentWebsite.id}, user: ${currentUser?.id || 0}`);
+        
         const response = await fetchWithRetry(
           `${API_BASE_URL}/api/website/${currentWebsite.id}/initial-data?user_id=${currentUser?.id || 0}`,
           { method: 'GET' }
         );
+    
+        console.log('📥 Initial data response:', response);
     
         if (response.success && response.data) {
           const d = response.data;
@@ -697,12 +731,17 @@
           aktivitasList = d.activities || [];
           transactions = d.transactions || [];
           
-          // Hitung balance
-          balance = 0;
-          transactions.forEach(t => {
-            if (t.transaction_type === 'deposit' && t.status === 'success') balance += t.amount;
-            else if (t.transaction_type === 'withdraw' && t.status === 'success') balance -= t.amount;
-          });
+          // Set balance (prioritas dari response)
+          if (d.balance !== undefined) {
+            balance = d.balance;
+          } else {
+            // Hitung balance dari transaksi sukses
+            balance = 0;
+            transactions.forEach(t => {
+              if (t.transaction_type === 'deposit' && t.status === 'success') balance += t.amount;
+              else if (t.transaction_type === 'withdraw' && t.status === 'success') balance -= t.amount;
+            });
+          }
           
           // Inject fonts from templates
           if (d.templates) {
@@ -713,16 +752,47 @@
               }
             }
           }
+          
+          console.log('✅ Data loaded successfully:', {
+            products: productsData.length,
+            promos: promosList.length,
+            rekening: allRekeningList.length,
+            transactions: transactions.length,
+            balance: balance
+          });
+          
+          // Render halaman
+          renderHomePage();
+          
+        } else {
+          console.error('❌ Invalid response structure:', response);
+          showToast('Gagal memuat data: Response tidak valid', 'error');
         }
-    
-        renderHomePage();
     
       } catch (error) {
         console.error('❌ Error loading data:', error);
-        showToast('Gagal memuat data', 'error');
+        showToast('Gagal memuat data: ' + (error.message || 'Unknown error'), 'error');
       } finally {
         showLoading(false);
       }
+    }
+    
+    // Helper function untuk inject font
+    function injectFontStyle(fontFamily, fontData) {
+      if (document.getElementById(`website-font-${fontFamily}`)) return;
+      
+      const style = document.createElement('style');
+      style.id = `website-font-${fontFamily}`;
+      style.textContent = `
+        @font-face {
+          font-family: '${fontFamily}';
+          src: url('${fontData}') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+          font-display: swap;
+        }
+      `;
+      document.head.appendChild(style);
     }
 
     function extractLayananList() {
