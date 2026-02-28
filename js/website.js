@@ -691,6 +691,143 @@
         });
     }
 
+    // ==================== BALANCE & TRANSACTION FUNCTIONS ====================
+    
+    // Fungsi untuk filter transaksi berdasarkan status
+    function filterTransactions(status) {
+        console.log(`🔍 Filtering transactions by status: ${status}`);
+        transactionFilter.status = status;
+        
+        // Reload transactions dengan filter baru
+        loadUserBalance().then(() => {
+            const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+            if (activePage === 'bank') {
+                renderBankPage();
+            }
+        });
+    }
+    
+    // Fungsi untuk toggle filter transaksi
+    function toggleTransactionFilter() {
+        const filterContent = document.getElementById('transactionFilterContent');
+        const chevron = document.getElementById('transactionFilterChevron');
+        
+        if (filterContent && chevron) {
+            filterContent.classList.toggle('open');
+            chevron.style.transform = filterContent.classList.contains('open') ? 'rotate(180deg)' : '';
+            transactionFilterOpen = filterContent.classList.contains('open');
+        }
+    }
+    
+    // Fungsi untuk toggle tampilkan semua rekening
+    function toggleShowAllRekening() {
+        if (!isDataLoaded('rekening')) return;
+        showAllRekening = !showAllRekening;
+        rekeningList = showAllRekening ? allRekeningList : allRekeningList.slice(0, 4);
+        
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'bank') {
+            renderBankPage();
+        }
+    }
+    
+    // ==================== BALANCE FUNCTIONS ====================
+    
+    async function loadUserBalance() {
+        if (!currentWebsite || !currentUser) {
+            balance = 0;
+            updateLoadingState('transactions', 'loaded');
+            return;
+        }
+        
+        try {
+            console.log(`📡 Fetching balance for user ${currentUser.id} on website ${currentWebsite.id}`);
+            
+            // Gunakan endpoint yang benar
+            const response = await fetchWithRetry(
+                `${API_BASE_URL}/api/transactions/user/${currentUser.id}?website_id=${currentWebsite.id}&status=all&limit=100`,
+                { method: 'GET' }
+            );
+    
+            if (response.success && response.transactions) {
+                transactions = response.transactions || [];
+                
+                // Hitung balance dari transaksi sukses
+                let calculatedBalance = 0;
+                transactions.forEach(t => {
+                    if (t.transaction_type === 'deposit' && t.status === 'success') {
+                        calculatedBalance += t.amount;
+                        console.log(`✅ Deposit success: +${t.amount}, total: ${calculatedBalance}`);
+                    } else if (t.transaction_type === 'withdraw' && t.status === 'success') {
+                        calculatedBalance -= t.amount;
+                        console.log(`✅ Withdraw success: -${t.amount}, total: ${calculatedBalance}`);
+                    }
+                });
+                
+                balance = calculatedBalance;
+                console.log(`💰 Final balance: ${balance}`);
+                updateLoadingState('transactions', 'loaded');
+                
+                // Update tampilan
+                updateAllBalanceDisplays();
+            } else {
+                console.warn('⚠️ Failed to fetch transactions, using cached balance:', balance);
+            }
+        } catch (error) {
+            console.error('❌ Error loading balance:', error);
+            updateLoadingState('transactions', 'error');
+        }
+    }
+    
+    async function loadTransactions() {
+        await loadUserBalance();
+    }
+    
+    async function handleDepositSuccess(depositId) {
+        showToast('✅ Deposit berhasil!', 'success');
+        
+        // Tunggu sebentar
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Reload balance
+        await loadUserBalance();
+        
+        // Update semua tampilan
+        updateAllBalanceDisplays();
+        
+        // Render ulang halaman yang aktif
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'bank') {
+            renderBankPage();
+        } else if (activePage === 'profile') {
+            renderProfilePage();
+        }
+    }
+    
+    function updateAllBalanceDisplays() {
+        // Update balance di bank page
+        const balanceElement = document.getElementById('balanceAmount');
+        if (balanceElement) {
+            balanceElement.textContent = formatRupiah(balance);
+        }
+        
+        // Update userBalance di withdraw modal
+        if (elements.userBalance) {
+            elements.userBalance.textContent = formatRupiah(balance);
+        }
+        
+        // Update max withdraw amount
+        if (elements.withdrawAmount) {
+            elements.withdrawAmount.max = balance;
+        }
+        
+        // Update profile stats
+        const statValues = document.querySelectorAll('.stat-value');
+        if (statValues.length >= 3) {
+            statValues[2].textContent = formatRupiah(balance);
+        }
+    }
+
     async function loadAllData() {
         if (!currentWebsite) return;
         
@@ -913,54 +1050,54 @@
 
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.website = {
-        // Navigation
-        changePage,
-        
-        // Filter
-        toggleFilter,
-        toggleLayananFilter,
-        toggleAplikasiFilter,
-        filterByLayanan,
-        showAllLayanan,
-        setFilterType,
-        setItemFilter,
-        changeSort,
-        
-        // Aktivitas filter
-        toggleAktivitasFilter,
-        filterAktivitas,
-        
-        // Transaction filter
-        filterTransactions,
-        toggleTransactionFilter,
-        toggleShowAllRekening,
-        
-        // Pagination
-        goToPage,
-        
-        // Products
-        viewProduct,
-        
-        // Promo
-        openVoucherModal,
-        showMyVouchers,
-        claimPromo,
-        
-        // Bank
-        openDepositModal,
-        openWithdrawModal,
-        showTransactionHistory,
-        
-        // Profile
-        openSettings,
-        logout,
-        
-        // Transaction Detail
-        openTransactionDetail,
-        showQrisPending,
-        checkPendingStatus,
-        closeTransactionDetail,
-        closeQrisPending
+      // Navigation
+      changePage,
+    
+      // Filter
+      toggleFilter,
+      toggleLayananFilter,
+      toggleAplikasiFilter,
+      filterByLayanan,
+      showAllLayanan,
+      setFilterType,
+      setItemFilter,
+      changeSort,
+    
+      // Aktivitas filter
+      toggleAktivitasFilter,
+      filterAktivitas,
+    
+      // Transaction filter - PASTIKAN INI ADA
+      filterTransactions,
+      toggleTransactionFilter,
+      toggleShowAllRekening,
+    
+      // Pagination
+      goToPage,
+    
+      // Products
+      viewProduct,
+    
+      // Promo
+      openVoucherModal,
+      showMyVouchers,
+      claimPromo,
+    
+      // Bank
+      openDepositModal,
+      openWithdrawModal,
+      showTransactionHistory,
+    
+      // Profile
+      openSettings,
+      logout,
+    
+      // Transaction Detail
+      openTransactionDetail,
+      showQrisPending,
+      checkPendingStatus,
+      closeTransactionDetail,
+      closeQrisPending
     };
 
     // ==================== START ====================
