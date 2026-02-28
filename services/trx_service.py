@@ -31,9 +31,11 @@ def create_deposit():
         website_id = data.get('website_id')
         user_id = data.get('user_id')
         amount = data.get('amount')
-        payment_method = data.get('payment_method')  # 'rekening' atau 'qris'
+        payment_method = data.get('payment_method')
         rekening_id = data.get('rekening_id')
         gateway_id = data.get('gateway_id')
+        voucher_id = data.get('voucher_id')
+        proof_url = data.get('proof_url')
         user_data = data.get('user_data', {})
         
         if not website_id or not user_id or not amount:
@@ -45,12 +47,12 @@ def create_deposit():
         # Buat deposit di database
         deposit_id = trx.create_deposit(
             website_id, user_id, amount, payment_method,
-            rekening_id, gateway_id, user_data
+            rekening_id, gateway_id, voucher_id, proof_url, user_data
         )
         
         if not deposit_id:
             return jsonify({'success': False, 'error': 'Gagal membuat deposit'}), 500
-                
+
         # Di bagian generate QRIS
         if payment_method == 'qris':
             # Ambil gateway aktif untuk mendapatkan license key dan package_ids
