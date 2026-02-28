@@ -160,38 +160,123 @@
         </div>
     </div>
 
-    <!-- MODAL: Deposit -->
+    <!-- MODAL: Deposit (DIPERBARUI) -->
     <div class="modal" id="depositModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-credit-card"></i> Deposit Saldo</h2>
-                <button class="modal-close" id="closeDepositModal">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="depositForm">
-                    <div class="form-group">
-                        <label><i class="fas fa-money-bill"></i> Jumlah Deposit</label>
-                        <input type="number" id="depositAmount" min="100" step="100" placeholder="Minimal Rp 100" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label><i class="fas fa-university"></i> Metode Pembayaran</label>
-                        <select id="paymentMethod" class="styled-select" required>
-                            <option value="">-- Pilih Metode --</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" id="cancelDepositBtn">Batal</button>
-                        <button type="submit" class="btn-primary">
-                            <i class="fas fa-check"></i> Lanjutkan
-                        </button>
-                    </div>
-                </form>
-            </div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2><i class="fas fa-credit-card"></i> Deposit Saldo</h2>
+          <button class="modal-close" id="closeDepositModal">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
+        <div class="modal-body">
+          <!-- Preview Rekening Terpilih (hanya muncul jika metode rekening dipilih) -->
+          <div class="rekening-preview" id="rekeningPreview" style="display: none;">
+            <div class="preview-header">
+              <i class="fas fa-info-circle"></i>
+              <span>Tujuan Transfer</span>
+            </div>
+            <div class="preview-content">
+              <div class="preview-logo">
+                <img id="previewLogo" src="" alt="Logo">
+              </div>
+              <div class="preview-details">
+                <div class="preview-bank" id="previewBank">-</div>
+                <div class="preview-account">
+                  <span id="previewAccountNumber">-</span>
+                  <button class="copy-btn" id="copyAccountBtn" onclick="window.website.copyToClipboard('previewAccountNumber')">
+                    <i class="fas fa-copy"></i>
+                  </button>
+                </div>
+                <div class="preview-owner" id="previewOwner">-</div>
+              </div>
+            </div>
+          </div>
+    
+          <form id="depositForm">
+            <!-- Jumlah Deposit -->
+            <div class="form-group">
+              <label><i class="fas fa-money-bill"></i> Jumlah Deposit</label>
+              <input type="number" id="depositAmount" min="100" step="100" placeholder="Minimal Rp 100" required>
+            </div>
+    
+            <!-- Voucher Section -->
+            <div class="voucher-section">
+              <div class="voucher-input-group">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                  <label><i class="fas fa-ticket-alt"></i> Kode Voucher (Opsional)</label>
+                  <input type="text" id="voucherCodeInput" placeholder="Masukkan kode voucher">
+                </div>
+                <button type="button" class="voucher-select-btn" id="selectVoucherBtn" onclick="window.website.showVoucherSelection()">
+                  <i class="fas fa-gift"></i>
+                  <span>Pilih</span>
+                </button>
+              </div>
+              <div class="voucher-applied" id="voucherApplied" style="display: none;">
+                <span><i class="fas fa-check-circle"></i> Voucher diterapkan: <span id="appliedVoucherName"></span></span>
+                <button type="button" class="voucher-remove" onclick="window.website.removeVoucher()">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+    
+            <!-- Metode Pembayaran -->
+            <div class="form-group">
+              <label><i class="fas fa-university"></i> Metode Pembayaran</label>
+              <select id="paymentMethod" class="styled-select" required onchange="window.website.onPaymentMethodChange()">
+                <option value="">-- Pilih Metode --</option>
+              </select>
+            </div>
+    
+            <!-- Upload Bukti Transfer (hanya untuk rekening manual) -->
+            <div class="upload-section" id="uploadSection" style="display: none;">
+              <div class="form-group">
+                <label><i class="fas fa-cloud-upload-alt"></i> Upload Bukti Transfer</label>
+                <div class="upload-area" id="uploadArea">
+                  <input type="file" id="proofFile" accept="image/*" style="display: none;">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <p>Klik atau seret file ke sini</p>
+                  <span class="upload-hint">Format: JPG, PNG (Max 2MB)</span>
+                </div>
+                <div class="upload-preview" id="uploadPreview" style="display: none;">
+                  <img id="previewImage" src="" alt="Preview">
+                  <button type="button" class="upload-remove" onclick="window.website.removeUpload()">
+                    <i class="fas fa-times"></i>
+                  </button>
+                </div>
+                <input type="hidden" id="proofUrl" value="">
+              </div>
+            </div>
+    
+            <div class="form-actions">
+              <button type="button" class="btn-secondary" id="cancelDepositBtn">Batal</button>
+              <button type="submit" class="btn-primary">
+                <i class="fas fa-check"></i> Lanjutkan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <!-- MODAL: Pilih Voucher -->
+    <div class="modal" id="voucherSelectionModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2><i class="fas fa-gift"></i> Pilih Voucher</h2>
+          <button class="modal-close" id="closeVoucherSelectionModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="voucher-list" id="voucherList">
+            <!-- Akan diisi JavaScript -->
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="window.website.closeVoucherSelection()">Tutup</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- MODAL: Konfirmasi Deposit QRIS -->
