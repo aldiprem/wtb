@@ -2371,3 +2371,343 @@ select option.qris-option {
 .aktivitas-item:not(.skeleton-item) {
     animation: fadeInContent 0.3s ease;
 }
+
+/* Tambahkan CSS berikut di akhir file website.css */
+
+/* ===== REKENING PREVIEW ===== */
+.rekening-preview {
+    background: linear-gradient(135deg, rgba(64, 167, 227, 0.1), rgba(16, 185, 129, 0.1));
+    border: 1px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.preview-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.preview-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+    padding: 4px;
+}
+
+.preview-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.preview-details {
+    flex: 1;
+}
+
+.preview-bank {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--primary-color);
+}
+
+.preview-account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.preview-owner {
+    font-size: 12px;
+    color: var(--tg-hint-color);
+}
+
+/* ===== VOUCHER SECTION ===== */
+.voucher-section {
+    margin-bottom: 16px;
+}
+
+.voucher-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.voucher-select-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.voucher-select-btn:hover {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    transform: translateY(-1px);
+}
+
+.voucher-select-btn i {
+    font-size: 14px;
+}
+
+.voucher-applied {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    animation: slideDown 0.3s ease;
+}
+
+.voucher-applied span {
+    color: var(--success-color);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.voucher-remove {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.voucher-remove:hover {
+    transform: scale(1.1);
+}
+
+/* ===== UPLOAD SECTION ===== */
+.upload-section {
+    margin: 20px 0;
+    animation: slideDown 0.3s ease;
+}
+
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.05);
+}
+
+.upload-area.dragover {
+    border-color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-area i {
+    font-size: 40px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.upload-area p {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.upload-hint {
+    font-size: 11px;
+    color: var(--tg-hint-color);
+}
+
+.upload-preview {
+    position: relative;
+    margin-top: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.upload-preview img {
+    width: 100%;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.upload-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.upload-remove:hover {
+    background: var(--danger-color);
+    transform: scale(1.1);
+}
+
+/* ===== VOUCHER LIST MODAL ===== */
+.voucher-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.voucher-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.voucher-item:hover {
+    background: rgba(64, 167, 227, 0.1);
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+}
+
+.voucher-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(64, 167, 227, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.voucher-icon i {
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+.voucher-info {
+    flex: 1;
+}
+
+.voucher-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.voucher-code {
+    font-size: 11px;
+    color: var(--primary-color);
+    font-family: monospace;
+    margin-bottom: 2px;
+}
+
+.voucher-desc {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+}
+
+.voucher-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--success-color);
+    padding: 0 8px;
+}
+
+/* ===== COPY BUTTON SMALL ===== */
+.copy-btn-small {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 12px;
+    transition: all 0.2s;
+    opacity: 0.7;
+}
+
+.copy-btn-small:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* ===== REKENING DETAIL PREVIEW ===== */
+.rekening-detail-preview {
+    margin: 16px 0;
+    padding: 16px;
+    background: rgba(64, 167, 227, 0.05);
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-color);
+    animation: slideDown 0.3s ease;
+}
+
+/* ===== ANIMASI HALAMAN (TANPA SLIDE) ===== */
+.page-content {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0.5;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
