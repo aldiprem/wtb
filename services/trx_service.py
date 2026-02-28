@@ -357,6 +357,53 @@ def get_user_transactions(user_id):
         print(f"❌ Error getting user transactions: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# trx_service.py - Tambahkan endpoint khusus untuk balance
+
+@trx_bp.route('/transactions/user/<int:user_id>/balance', methods=['GET', 'OPTIONS'])
+def get_user_balance_only(user_id):
+    """
+    Endpoint khusus untuk mendapatkan balance user
+    """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response, 200
+    
+    try:
+        website_id = request.args.get('website_id', type=int)
+        if not website_id:
+            return jsonify({'success': False, 'error': 'Website ID required'}), 400
+        
+        # Ambil semua transaksi user
+        from py import trx
+        from py import users
+        
+        # Coba ambil dari user preferences dulu
+        preferences = users.get_user_preferences(user_id, website_id)
+        
+        if preferences and 'balance' in preferences:
+            balance = preferences['balance']
+        else:
+            # Hitung dari transaksi
+            transactions = trx.get_user_transactions(user_id, website_id, 'all', 500)
+            balance = 0
+            for t in transactions:
+                if t.get('transaction_type') == 'deposit' and t.get('status') == 'success':
+                    balance += t.get('amount', 0)
+                elif t.get('transaction_type') == 'withdraw' and t.get('status') == 'success':
+                    balance -= t.get('amount', 0)
+        
+        return jsonify({
+            'success': True,
+            'balance': balance,
+            'user_id': user_id,
+            'website_id': website_id
+        })
+        
+    except Exception as e:
+        print(f"❌ Error getting user balance: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 # ==================== WEBHOOK ENDPOINT ====================
 
