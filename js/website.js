@@ -691,6 +691,100 @@
         });
     }
 
+    async function loadAllData() {
+        if (!currentWebsite) return;
+        
+        try {
+            console.log(`📡 Fetching initial data for website ${currentWebsite.id}, user: ${currentUser?.id || 0}`);
+            
+            // Gunakan endpoint yang benar - website-service sudah menyediakan /api/website/{id}/initial-data
+            const response = await fetchWithRetry(
+                `${API_BASE_URL}/api/website/${currentWebsite.id}/initial-data?user_id=${currentUser?.id || 0}`,
+                { method: 'GET' }
+            );
+    
+            console.log('📥 Initial data response:', response);
+    
+            if (response.success && response.data) {
+                const d = response.data;
+                
+                // Update data
+                if (d.products) {
+                    productsData = d.products;
+                    extractLayananList();
+                    extractAllItems();
+                    updateLoadingState('products', 'loaded');
+                }
+                
+                if (d.promos) {
+                    promosList = d.promos;
+                    updateLoadingState('promos', 'loaded');
+                }
+                
+                if (d.rekening) {
+                    allRekeningList = d.rekening;
+                    rekeningList = allRekeningList.slice(0, 4);
+                    updateLoadingState('rekening', 'loaded');
+                }
+                
+                if (d.user_vouchers) {
+                    userVouchers = d.user_vouchers;
+                    updateLoadingState('vouchers', 'loaded');
+                }
+                
+                if (d.activities) {
+                    aktivitasList = d.activities;
+                    updateLoadingState('activities', 'loaded');
+                }
+                
+                if (d.transactions) {
+                    transactions = d.transactions || [];
+                    
+                    // Hitung balance
+                    let calculatedBalance = 0;
+                    transactions.forEach(t => {
+                        if (t.transaction_type === 'deposit' && t.status === 'success') {
+                            calculatedBalance += t.amount;
+                        } else if (t.transaction_type === 'withdraw' && t.status === 'success') {
+                            calculatedBalance -= t.amount;
+                        }
+                    });
+                    
+                    balance = (d.balance !== undefined) ? d.balance : calculatedBalance;
+                    updateLoadingState('transactions', 'loaded');
+                }
+                
+                // Inject fonts
+                if (d.templates) {
+                    for (const template of d.templates) {
+                        const templateData = template.template_data || {};
+                        if (templateData.font_file_data) {
+                            injectFontStyle(templateData.font_family, templateData.font_file_data);
+                        }
+                    }
+                }
+                
+                console.log('✅ Data loaded successfully');
+            } else {
+                console.warn('⚠️ Failed to load initial data, using dummy data');
+                // Set loading states to error but don't break
+                updateLoadingState('products', 'error');
+                updateLoadingState('promos', 'error');
+                updateLoadingState('rekening', 'error');
+                updateLoadingState('transactions', 'error');
+            }
+        } catch (error) {
+            console.error('❌ Error loading data:', error);
+            showToast('Gagal memuat beberapa data', 'warning');
+            
+            // Set error states but continue
+            updateLoadingState('products', 'error');
+            updateLoadingState('promos', 'error');
+            updateLoadingState('rekening', 'error');
+            updateLoadingState('transactions', 'error');
+        }
+    }
+
     // ==================== INITIALIZATION ====================
     async function init() {
         showLoading(true);
