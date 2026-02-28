@@ -110,7 +110,7 @@ init_db()
 
 # ==================== FUNGSI UNTUK DEPOSIT ====================
 
-def create_deposit(website_id, user_id, amount, payment_method, rekening_id=None, gateway_id=None, user_data=None):
+def create_deposit(website_id, user_id, amount, payment_method, rekening_id=None, gateway_id=None, voucher_id=None, proof_url=None, user_data=None):
     """
     Membuat transaksi deposit baru
     Returns: id deposit jika sukses, None jika gagal
@@ -120,33 +120,86 @@ def create_deposit(website_id, user_id, amount, payment_method, rekening_id=None
         conn = get_db()
         cursor = conn.cursor()
         
-        # Hitung waktu expired (default 30 menit untuk qris, 24 jam untuk manual)
+        # Hitung waktu expired (30 menit untuk qris, 1 jam untuk manual)
         expired_at = None
         if payment_method == 'qris':
             expired_at = (datetime.now() + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')
         else:
-            expired_at = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
+            expired_at = (datetime.now() + timedelta(hours=1)).strftime('%Y-%m-%d %H:%M:%S')
         
         username = user_data.get('username') if user_data else None
         first_name = user_data.get('first_name') if user_data else None
         last_name = user_data.get('last_name') if user_data else None
         
-        cursor.execute('''
-            INSERT INTO deposits (
-                website_id, user_id, user_username, user_first_name, user_last_name,
-                amount, payment_method, rekening_id, gateway_id, status, expired_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
+        # Ambil data rekening jika ada
+        rekening_logo = None
+        rekening_nama = None
+        rekening_nomor = None
+        rekening_pemilik = None
+        
+        if rekening_id and payment_method != 'qris':
+            from py import pmb
+            rekening = pmb.get_rekening_by_id(rekening_id)
+            if rekening:
+                rekening_logo = rekening.get('logo_url')
+                rekening_nama = rekening.get('nama')
+                rekening_nomor = rekening.get('nomor')
+                rekening_pemilik = rekening.get('pemilik')
+        
+        # Cek apakah kolom baru sudah ada
+        cursor.execute("PRAGMA table_info(deposits)")
+        existing_columns = [col[1] for col in cursor.fetchall()]
+        
+        # Siapkan query dinamis berdasarkan kolom yang ada
+        base_columns = [
+            'website_id', 'user_id', 'user_username', 'user_first_name', 'user_last_name',
+            'amount', 'payment_method', 'rekening_id', 'gateway_id', 'status', 'expired_at'
+        ]
+        base_values = [
             website_id, user_id, username, first_name, last_name,
             amount, payment_method, rekening_id, gateway_id, 'pending', expired_at
-        ))
+        ]
         
+        # Tambahkan kolom baru jika ada
+        if 'voucher_id' in existing_columns:
+            base_columns.append('voucher_id')
+            base_values.append(voucher_id)
+        
+        if 'proof_url' in existing_columns:
+            base_columns.append('proof_url')
+            base_values.append(proof_url)
+        
+        if 'rekening_logo' in existing_columns:
+            base_columns.append('rekening_logo')
+            base_values.append(rekening_logo)
+        
+        if 'rekening_nama' in existing_columns:
+            base_columns.append('rekening_nama')
+            base_values.append(rekening_nama)
+        
+        if 'rekening_nomor' in existing_columns:
+            base_columns.append('rekening_nomor')
+            base_values.append(rekening_nomor)
+        
+        if 'rekening_pemilik' in existing_columns:
+            base_columns.append('rekening_pemilik')
+            base_values.append(rekening_pemilik)
+        
+        # Buat query dinamis
+        placeholders = ','.join(['?'] * len(base_columns))
+        columns_str = ','.join(base_columns)
+        
+        query = f"INSERT INTO deposits ({columns_str}) VALUES ({placeholders})"
+        
+        cursor.execute(query, base_values)
         deposit_id = cursor.lastrowid
         conn.commit()
         return deposit_id
         
     except Exception as e:
         print(f"❌ Error creating deposit: {e}")
+        import traceback
+        traceback.print_exc()
         if conn:
             conn.rollback()
         return None
@@ -284,7 +337,9 @@ def get_deposit(deposit_id):
         cursor.execute('SELECT * FROM deposits WHERE id = ?', (deposit_id,))
         row = cursor.fetchone()
         
-        return dict(row) if row else None
+        if row:
+            return dict(row)
+        return None
         
     except Exception as e:
         print(f"❌ Error getting deposit: {e}")
@@ -542,8 +597,94 @@ def run_scheduled_checks():
     except Exception as e:
         print(f"❌ Error in scheduled check: {e}")
 
+# trx.py - Tambahkan fungsi migrasi database
+
+def migrate_database():
+    """
+    Migrasi database dengan menambahkan kolom baru jika belum ada
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Cek apakah tabel deposits ada
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='deposits'")
+        if not cursor.fetchone():
+            print("⚠️ Tabel deposits belum ada, inisialisasi dulu...")
+            conn.close()
+            init_db()
+            return
+        
+        # Dapatkan daftar kolom yang sudah ada di tabel deposits
+        cursor.execute("PRAGMA table_info(deposits)")
+        existing_columns = [col[1] for col in cursor.fetchall()]
+        
+        print("📊 Existing columns in deposits:", existing_columns)
+        
+        # Kolom baru yang perlu ditambahkan
+        new_columns = {
+            'voucher_id': 'INTEGER',
+            'proof_url': 'TEXT',
+            'rekening_logo': 'TEXT',
+            'rekening_nama': 'TEXT',
+            'rekening_nomor': 'TEXT',
+            'rekening_pemilik': 'TEXT'
+        }
+        
+        columns_added = []
+        for col_name, col_type in new_columns.items():
+            if col_name not in existing_columns:
+                try:
+                    alter_sql = f"ALTER TABLE deposits ADD COLUMN {col_name} {col_type}"
+                    cursor.execute(alter_sql)
+                    columns_added.append(col_name)
+                    print(f"✅ Column '{col_name}' added to deposits table")
+                except Exception as e:
+                    print(f"❌ Failed to add column '{col_name}': {e}")
+        
+        if columns_added:
+            print(f"✅ Added columns: {', '.join(columns_added)}")
+        else:
+            print("✅ All columns already exist")
+        
+        # Cek apakah tabel withdrawals ada
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='withdrawals'")
+        if cursor.fetchone():
+            cursor.execute("PRAGMA table_info(withdrawals)")
+            existing_withdraw_columns = [col[1] for col in cursor.fetchall()]
+            
+            new_withdraw_columns = {
+                'rekening_logo': 'TEXT',
+                'processed_by': 'INTEGER',
+                'processed_notes': 'TEXT'
+            }
+            
+            for col_name, col_type in new_withdraw_columns.items():
+                if col_name not in existing_withdraw_columns:
+                    try:
+                        alter_sql = f"ALTER TABLE withdrawals ADD COLUMN {col_name} {col_type}"
+                        cursor.execute(alter_sql)
+                        print(f"✅ Column '{col_name}' added to withdrawals table")
+                    except Exception as e:
+                        print(f"❌ Failed to add column '{col_name}': {e}")
+        
+        conn.commit()
+        print("✅ Database migration completed successfully")
+        
+    except Exception as e:
+        print(f"⚠️ Migration error: {e}")
+        import traceback
+        traceback.print_exc()
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
 # Jalankan pengecekan expired saat startup
 try:
+    migrate_database()
     check_expired_deposits()
 except Exception as e:
     print(f"⚠️ Initial expiry check warning: {e}")
