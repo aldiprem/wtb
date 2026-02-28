@@ -1,4 +1,4 @@
-/* website.css - Website Store Front */
+/* website.css - Website Store Front - FINAL VERSION */
 
 :root {
     --tg-bg-color: #0f0f0f;
@@ -127,6 +127,17 @@ body {
 .toast-info {
     background: var(--info-color);
     border-color: var(--info-color);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ===== MAIN CONTAINER ===== */
@@ -928,13 +939,6 @@ body {
 }
 
 /* ===== BANK PAGE ===== */
-.bank-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-
 .balance-card {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border-radius: 16px;
@@ -981,6 +985,7 @@ body {
     background: rgba(255, 255, 255, 0.3);
 }
 
+/* Rekening Grid */
 .rekening-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -996,6 +1001,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    position: relative;
 }
 
 .rekening-logo {
@@ -1028,6 +1034,12 @@ body {
     color: var(--tg-hint-color);
 }
 
+.rekening-owner {
+    font-size: 9px;
+    color: var(--tg-hint-color);
+}
+
+/* Transaction History */
 .transaction-history {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -1057,12 +1069,23 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border-color-light);
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+    transition: all 0.2s;
+    cursor: pointer;
+    border-left: 3px solid transparent;
 }
 
-.transaction-item:last-child {
-    border-bottom: none;
+.transaction-item:hover {
+    background: rgba(64, 167, 227, 0.1);
+    transform: translateX(4px);
+    border-left-color: var(--primary-color);
+}
+
+.transaction-item[data-status="pending"] {
+    animation: pulsePending 2s infinite;
+    border-left-color: var(--warning-color);
 }
 
 .transaction-info {
@@ -1075,15 +1098,29 @@ body {
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    background: rgba(64, 167, 227, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.transaction-icon i {
-    font-size: 14px;
-    color: var(--primary-color);
+.transaction-icon.deposit {
+    background: rgba(16, 185, 129, 0.15);
+}
+
+.transaction-icon.deposit i {
+    color: var(--success-color);
+}
+
+.transaction-icon.withdraw {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.transaction-icon.withdraw i {
+    color: var(--danger-color);
+}
+
+.transaction-details {
+    flex: 1;
 }
 
 .transaction-details h4 {
@@ -1092,9 +1129,30 @@ body {
     margin-bottom: 2px;
 }
 
-.transaction-details span {
+.transaction-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 10px;
     color: var(--tg-hint-color);
+    margin-right: 10px;
+}
+
+.transaction-rekening {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--primary-color);
+    margin-right: 10px;
+}
+
+.transaction-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
 }
 
 .transaction-amount {
@@ -1108,6 +1166,39 @@ body {
 
 .transaction-amount.negative {
     color: var(--danger-color);
+}
+
+/* Transaction Filter */
+.transaction-filter-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.transaction-filter-section .filter-header {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.transaction-filter-section .filter-header h3 {
+    font-size: 15px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.transaction-filter-section .filter-header h3 i {
+    color: var(--primary-color);
+}
+
+.transaction-filter-section .filter-content {
+    padding: 0 16px 16px 16px;
 }
 
 /* ===== PROFILE PAGE ===== */
@@ -1333,17 +1424,17 @@ body {
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    animation: modalSlideUp 0.3s ease;
+    animation: modalFadeIn 0.2s ease;
 }
 
-@keyframes modalSlideUp {
+@keyframes modalFadeIn {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: scale(0.95);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: scale(1);
     }
 }
 
@@ -1366,6 +1457,10 @@ body {
 
 .modal-header h2 i {
     color: var(--primary-color);
+}
+
+.modal-header.danger h2 i {
+    color: var(--danger-color);
 }
 
 .modal-close {
@@ -1429,6 +1524,13 @@ body {
 .form-group textarea:focus {
     border-color: var(--primary-color);
     background: rgba(64, 167, 227, 0.1);
+}
+
+.form-group input.readonly-input,
+.form-group input[readonly] {
+    background: rgba(255, 255, 255, 0.02);
+    cursor: not-allowed;
+    opacity: 0.7;
 }
 
 .hint {
@@ -1517,275 +1619,420 @@ body {
 }
 
 .form-actions .btn-primary,
-.form-actions .btn-secondary {
+.form-actions .btn-secondary,
+.form-actions .btn-danger {
     flex: 1;
-}
-
-/* ===== SCROLLBAR ===== */
-::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 480px) {
-    .website-container {
-        padding: 12px 12px calc(var(--nav-height) + 12px) 12px;
-    }
-    
-    .store-name {
-        font-size: 18px;
-    }
-    
-    .banner-slider-container {
-        height: 160px;
-    }
-    
-    .layanan-grid,
-    .products-grid {
-        gap: 8px;
-    }
-    
-    .filter-actions-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .profile-stats {
-        gap: 8px;
-        padding: 12px;
-    }
-    
-    .stat-value {
-        font-size: 18px;
-    }
-    
-    .rekening-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .nav-item {
-        min-width: 50px;
-        padding: 6px 8px;
-    }
-    
-    .nav-item i {
-        font-size: 18px;
-    }
-    
-    .nav-item span {
-        font-size: 9px;
-    }
-}
-
-/* ===== TRANSACTION FILTER ===== */
-.transaction-filter-section {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.transaction-filter-section .filter-header {
-  padding: 12px 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.transaction-filter-section .filter-header h3 {
-  font-size: 15px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.transaction-filter-section .filter-header h3 i {
-  color: var(--primary-color);
-}
-
-.transaction-filter-section .filter-content {
-  padding: 0 16px 16px 16px;
 }
 
 /* ===== QRIS MODAL ===== */
 .qris-container {
-  display: flex;
-  justify-content: center;
-  padding: 20px;
-  background: white;
-  border-radius: 16px;
-  margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    background: white;
+    border-radius: 16px;
+    margin-bottom: 20px;
 }
 
 .qris-image {
-  max-width: 100%;
-  max-height: 300px;
-  object-fit: contain;
-  border-radius: 12px;
+    max-width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    border-radius: 12px;
 }
 
 .deposit-details {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-  border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
 }
 
 .deposit-details .detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 14px;
 }
 
 .deposit-details .detail-row:last-child {
-  margin-bottom: 0;
+    margin-bottom: 0;
 }
 
 .deposit-details .detail-label {
-  color: var(--tg-hint-color);
+    color: var(--tg-hint-color);
 }
 
 .deposit-details .detail-value {
-  font-weight: 600;
+    font-weight: 600;
 }
 
 .deposit-details .detail-value.total {
-  color: var(--success-color);
-  font-size: 18px;
+    color: var(--success-color);
+    font-size: 18px;
 }
 
 .qris-instruction {
-  background: rgba(64, 167, 227, 0.05);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-  border-left: 3px solid var(--primary-color);
+    background: rgba(64, 167, 227, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border-left: 3px solid var(--primary-color);
 }
 
 .qris-instruction h4 {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--primary-color);
-  display: flex;
-  align-items: center;
-  gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .qris-instruction ol {
-  margin-left: 20px;
-  font-size: 13px;
-  color: var(--tg-text-color);
+    margin-left: 20px;
+    font-size: 13px;
+    color: var(--tg-text-color);
 }
 
 .qris-instruction li {
-  margin-bottom: 6px;
+    margin-bottom: 6px;
 }
 
-/* ===== TRANSACTION ITEM IMPROVEMENTS ===== */
-.transaction-item {
-  padding: 12px;
-  margin-bottom: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 10px;
-  transition: all 0.2s;
-}
-
-.transaction-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.transaction-icon.deposit {
-  background: rgba(16, 185, 129, 0.15);
-}
-
-.transaction-icon.deposit i {
-  color: var(--success-color);
-}
-
-.transaction-icon.withdraw {
-  background: rgba(239, 68, 68, 0.15);
-}
-
-.transaction-icon.withdraw i {
-  color: var(--danger-color);
-}
-
-.transaction-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--tg-hint-color);
-  margin-right: 10px;
-}
-
-.transaction-rekening {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--primary-color);
-  margin-right: 10px;
-}
-
-.transaction-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-/* ===== QRIS OPTION IN SELECT ===== */
+/* QRIS Option in Select */
 .qris-option {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  color: white;
-  font-weight: 600;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    font-weight: 600;
 }
 
 select option.qris-option {
-  background: var(--primary-color);
-  color: white;
+    background: var(--primary-color);
+    color: white;
 }
 
-/* ===== ANIMASI KHUSUS ===== */
-@keyframes pageFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* QRIS Expired Warning */
+.qris-expired-warning {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
 }
 
-.page-content {
-    animation: pageFadeIn 0.3s ease;
+/* ===== REKENING PREVIEW ===== */
+.rekening-preview {
+    background: linear-gradient(135deg, rgba(64, 167, 227, 0.1), rgba(16, 185, 129, 0.1));
+    border: 1px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.3s ease;
 }
 
-/* ===== DETAIL TRANSaksi MODAL ===== */
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--primary-color);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.preview-content {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.preview-logo {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+    padding: 4px;
+}
+
+.preview-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.preview-details {
+    flex: 1;
+}
+
+.preview-bank {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--primary-color);
+}
+
+.preview-account {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.preview-owner {
+    font-size: 12px;
+    color: var(--tg-hint-color);
+}
+
+/* ===== REKENING DETAIL PREVIEW ===== */
+.rekening-detail-preview {
+    margin: 16px 0;
+    padding: 16px;
+    background: rgba(64, 167, 227, 0.05);
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-color);
+    animation: slideDown 0.3s ease;
+}
+
+.rekening-detail-preview.withdraw {
+    background: rgba(239, 68, 68, 0.05);
+    border-left-color: var(--danger-color);
+}
+
+/* ===== VOUCHER SECTION ===== */
+.voucher-section {
+    margin-bottom: 16px;
+}
+
+.voucher-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.voucher-select-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.voucher-select-btn:hover {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    transform: translateY(-1px);
+}
+
+.voucher-select-btn i {
+    font-size: 14px;
+}
+
+.voucher-applied {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid var(--success-color);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    animation: slideDown 0.3s ease;
+}
+
+.voucher-applied span {
+    color: var(--success-color);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.voucher-applied span i {
+    font-size: 14px;
+}
+
+.voucher-remove {
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.voucher-remove:hover {
+    transform: scale(1.1);
+}
+
+/* ===== VOUCHER LIST MODAL ===== */
+.voucher-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.voucher-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.voucher-item:hover {
+    background: rgba(64, 167, 227, 0.1);
+    border-color: var(--primary-color);
+    transform: translateX(4px);
+}
+
+.voucher-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(64, 167, 227, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.voucher-icon i {
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+.voucher-info {
+    flex: 1;
+}
+
+.voucher-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.voucher-code {
+    font-size: 11px;
+    color: var(--primary-color);
+    font-family: monospace;
+    margin-bottom: 2px;
+}
+
+.voucher-desc {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+}
+
+.voucher-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--success-color);
+    padding: 0 8px;
+}
+
+/* ===== UPLOAD SECTION ===== */
+.upload-section {
+    margin: 20px 0;
+    animation: slideDown 0.3s ease;
+}
+
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.05);
+}
+
+.upload-area.dragover {
+    border-color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-area i {
+    font-size: 40px;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.upload-area p {
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.upload-hint {
+    font-size: 11px;
+    color: var(--tg-hint-color);
+}
+
+.upload-preview {
+    position: relative;
+    margin-top: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.upload-preview img {
+    width: 100%;
+    max-height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.upload-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.upload-remove:hover {
+    background: var(--danger-color);
+    transform: scale(1.1);
+}
+
+/* ===== DETAIL TRANSACTION MODAL ===== */
 .detail-loading,
 .detail-error {
     text-align: center;
@@ -1854,131 +2101,50 @@ select option.qris-option {
     margin-right: 6px;
 }
 
-/* ===== QRIS PENDING MODAL ===== */
-.qris-pending-container {
-    text-align: center;
-    padding: 20px 0;
-}
-
-.qris-pending-image {
-    max-width: 100%;
-    max-height: 300px;
-    border-radius: 16px;
-    margin-bottom: 20px;
-    background: white;
-    padding: 20px;
-}
-
-.qris-pending-details {
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 20px;
-}
-
-.qris-pending-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-color-light);
-}
-
-.qris-pending-row:last-child {
-    border-bottom: none;
-}
-
-.qris-pending-label {
-    color: var(--tg-hint-color);
-    font-size: 13px;
-}
-
-.qris-pending-value {
-    font-weight: 600;
-    font-size: 13px;
-}
-
-.qris-pending-value.total {
-    color: var(--success-color);
-    font-size: 16px;
-}
-
-.qris-pending-instruction {
-    background: rgba(64, 167, 227, 0.05);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 20px;
-    border-left: 3px solid var(--primary-color);
-}
-
-.qris-pending-instruction h4 {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 12px;
+/* ===== COPY BUTTON ===== */
+.copy-btn {
+    background: transparent;
+    border: none;
     color: var(--primary-color);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.qris-pending-instruction ol {
-    margin-left: 20px;
-    font-size: 13px;
-    color: var(--tg-text-color);
-}
-
-.qris-pending-instruction li {
-    margin-bottom: 6px;
-}
-
-.qris-pending-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-}
-
-.qris-pending-actions button {
-    flex: 1;
-}
-
-/* ===== TRANSACTION ITEM HOVER EFFECT ===== */
-.transaction-item {
-    transition: all 0.2s ease;
     cursor: pointer;
-    border-radius: 12px;
-    margin-bottom: 8px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.02);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s;
 }
 
-.transaction-item:hover {
+.copy-btn:hover {
     background: rgba(64, 167, 227, 0.1);
-    transform: translateX(4px);
-    border-left: 3px solid var(--primary-color);
 }
 
-.transaction-item:active {
-    transform: scale(0.98);
-    background: rgba(64, 167, 227, 0.15);
+.copy-btn i {
+    font-size: 12px;
 }
 
-/* ===== ANIMASI UNTUK MODAL ===== */
-@keyframes modalFadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+.copy-btn-small {
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    cursor: pointer;
+    padding: 4px;
+    font-size: 12px;
+    transition: all 0.2s;
+    opacity: 0.7;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
-.modal-content {
-    animation: modalFadeIn 0.2s ease;
+.copy-btn-small:hover {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.1);
 }
 
-/* ===== STATUS BADGE DI DETAIL ===== */
+/* ===== STATUS BADGE ===== */
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -2009,176 +2175,27 @@ select option.qris-option {
     color: var(--tg-hint-color);
 }
 
-/* ===== COPY BUTTON ===== */
-.copy-btn {
-    background: transparent;
-    border: none;
-    color: var(--primary-color);
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.2s;
-}
-
-.copy-btn:hover {
-    background: rgba(64, 167, 227, 0.1);
-}
-
-.copy-btn i {
-    font-size: 12px;
-}
-
-/* ===== RESPONSIVE UNTUK MODAL DETAIL ===== */
-@media (max-width: 480px) {
-    .detail-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
     }
-    
-    .detail-row span:last-child {
-        text-align: left;
-        width: 100%;
-    }
-    
-    .qris-pending-actions {
-        flex-direction: column;
-    }
-    
-    .qris-pending-actions button {
-        width: 100%;
+    to {
+        opacity: 1;
     }
 }
 
-/* ===== TIMELINE UNTUK STATUS TRANSAKSI ===== */
-.transaction-timeline {
-    margin-top: 20px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 12px;
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.timeline-item {
-    display: flex;
-    gap: 12px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border-color-light);
-    position: relative;
-}
-
-.timeline-item:last-child {
-    border-bottom: none;
-}
-
-.timeline-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: rgba(64, 167, 227, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.timeline-icon i {
-    font-size: 12px;
-    color: var(--primary-color);
-}
-
-.timeline-icon.success {
-    background: rgba(16, 185, 129, 0.15);
-}
-
-.timeline-icon.success i {
-    color: var(--success-color);
-}
-
-.timeline-icon.pending {
-    background: rgba(245, 158, 11, 0.15);
-}
-
-.timeline-icon.pending i {
-    color: var(--warning-color);
-}
-
-.timeline-content {
-    flex: 1;
-}
-
-.timeline-title {
-    font-size: 13px;
-    font-weight: 500;
-    margin-bottom: 2px;
-}
-
-.timeline-time {
-    font-size: 10px;
-    color: var(--tg-hint-color);
-}
-
-.timeline-desc {
-    font-size: 11px;
-    color: var(--tg-hint-color);
-    margin-top: 4px;
-}
-
-/* ===== QRIS DETAIL VIEW ===== */
-.qris-detail-view {
-    text-align: center;
-}
-
-.qris-detail-image {
-    max-width: 100%;
-    max-height: 280px;
-    margin: 0 auto 16px;
-    border-radius: 16px;
-    background: white;
-    padding: 16px;
-}
-
-.qris-expired-warning {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger-color);
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 12px;
-}
-
-.qris-expired-warning i {
-    font-size: 14px;
-}
-
-/* ===== METODE PEMBAYARAN BADGE ===== */
-.payment-method-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    background: rgba(64, 167, 227, 0.1);
-    border-radius: 20px;
-    font-size: 10px;
-    color: var(--primary-color);
-}
-
-.payment-method-badge i {
-    font-size: 10px;
-}
-
-.payment-method-badge.qris {
-    background: linear-gradient(135deg, rgba(64, 167, 227, 0.15), rgba(16, 185, 129, 0.15));
-    color: var(--primary-color);
-}
-
-/* ===== ANIMASI PENDING ===== */
 @keyframes pulsePending {
     0% {
         box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
@@ -2191,12 +2208,7 @@ select option.qris-option {
     }
 }
 
-.transaction-item[data-status="pending"] {
-    animation: pulsePending 2s infinite;
-    border-left: 3px solid var(--warning-color);
-}
-
-/* Font animations dari template - PASTIKAN SEMUA ANIMASI TERDEFINISI */
+/* Font animations dari template */
 @keyframes pulseAnim {
     0% { transform: scale(1); opacity: 1; }
     50% { transform: scale(1.05); opacity: 0.9; }
@@ -2372,342 +2384,230 @@ select option.qris-option {
     animation: fadeInContent 0.3s ease;
 }
 
-/* Tambahkan CSS berikut di akhir file website.css */
-
-/* ===== REKENING PREVIEW ===== */
-.rekening-preview {
-    background: linear-gradient(135deg, rgba(64, 167, 227, 0.1), rgba(16, 185, 129, 0.1));
-    border: 1px solid var(--primary-color);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 20px;
-    animation: fadeIn 0.3s ease;
-}
-
-.preview-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    color: var(--primary-color);
-    font-size: 13px;
-    font-weight: 500;
-}
-
-.preview-content {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.preview-logo {
-    width: 60px;
-    height: 60px;
-    border-radius: 12px;
-    overflow: hidden;
-    background: white;
-    padding: 4px;
-}
-
-.preview-logo img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-}
-
-.preview-details {
-    flex: 1;
-}
-
-.preview-bank {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    color: var(--primary-color);
-}
-
-.preview-account {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 4px;
-}
-
-.preview-owner {
-    font-size: 12px;
-    color: var(--tg-hint-color);
-}
-
-/* ===== VOUCHER SECTION ===== */
-.voucher-section {
-    margin-bottom: 16px;
-}
-
-.voucher-input-group {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-}
-
-.voucher-select-btn {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-    border: none;
-    padding: 12px 16px;
-    border-radius: 10px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    transition: all 0.2s;
-}
-
-.voucher-select-btn:hover {
-    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
-    transform: translateY(-1px);
-}
-
-.voucher-select-btn i {
-    font-size: 14px;
-}
-
-.voucher-applied {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid var(--success-color);
-    border-radius: 8px;
-    padding: 10px 12px;
-    margin-top: 8px;
-    animation: slideDown 0.3s ease;
-}
-
-.voucher-applied span {
-    color: var(--success-color);
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.voucher-remove {
-    background: none;
-    border: none;
-    color: var(--danger-color);
-    cursor: pointer;
-    padding: 4px 8px;
-    font-size: 14px;
-    transition: all 0.2s;
-}
-
-.voucher-remove:hover {
-    transform: scale(1.1);
-}
-
-/* ===== UPLOAD SECTION ===== */
-.upload-section {
-    margin: 20px 0;
-    animation: slideDown 0.3s ease;
-}
-
-.upload-area {
-    border: 2px dashed var(--border-color);
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: rgba(255, 255, 255, 0.02);
-}
-
-.upload-area:hover {
-    border-color: var(--primary-color);
-    background: rgba(64, 167, 227, 0.05);
-}
-
-.upload-area.dragover {
-    border-color: var(--primary-color);
-    background: rgba(64, 167, 227, 0.1);
-    transform: scale(1.02);
-}
-
-.upload-area i {
-    font-size: 40px;
-    color: var(--primary-color);
-    margin-bottom: 10px;
-}
-
-.upload-area p {
-    font-size: 14px;
-    margin-bottom: 5px;
-}
-
-.upload-hint {
-    font-size: 11px;
-    color: var(--tg-hint-color);
-}
-
-.upload-preview {
-    position: relative;
-    margin-top: 10px;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.upload-preview img {
-    width: 100%;
-    max-height: 150px;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-.upload-remove {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.9);
-    border: none;
-    color: white;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.upload-remove:hover {
-    background: var(--danger-color);
-    transform: scale(1.1);
-}
-
-/* ===== VOUCHER LIST MODAL ===== */
-.voucher-list {
-    max-height: 400px;
-    overflow-y: auto;
-    margin-bottom: 16px;
-}
-
-.voucher-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.voucher-item:hover {
-    background: rgba(64, 167, 227, 0.1);
-    border-color: var(--primary-color);
-    transform: translateX(4px);
-}
-
-.voucher-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: rgba(64, 167, 227, 0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.voucher-icon i {
-    font-size: 20px;
-    color: var(--primary-color);
-}
-
-.voucher-info {
-    flex: 1;
-}
-
-.voucher-name {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-
-.voucher-code {
-    font-size: 11px;
-    color: var(--primary-color);
-    font-family: monospace;
-    margin-bottom: 2px;
-}
-
-.voucher-desc {
-    font-size: 10px;
-    color: var(--tg-hint-color);
-}
-
-.voucher-value {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--success-color);
-    padding: 0 8px;
-}
-
-/* ===== COPY BUTTON SMALL ===== */
-.copy-btn-small {
-    background: none;
-    border: none;
-    color: var(--primary-color);
-    cursor: pointer;
-    padding: 4px;
-    font-size: 12px;
-    transition: all 0.2s;
-    opacity: 0.7;
-}
-
-.copy-btn-small:hover {
-    opacity: 1;
-    transform: scale(1.1);
-}
-
-/* ===== REKENING DETAIL PREVIEW ===== */
-.rekening-detail-preview {
-    margin: 16px 0;
-    padding: 16px;
-    background: rgba(64, 167, 227, 0.05);
-    border-radius: 12px;
-    border-left: 4px solid var(--primary-color);
-    animation: slideDown 0.3s ease;
-}
-
-/* ===== ANIMASI HALAMAN (TANPA SLIDE) ===== */
+/* ===== PAGE CONTENT ANIMATION (TANPA SLIDE) ===== */
 .page-content {
     animation: fadeIn 0.3s ease;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0.5;
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 480px) {
+    .website-container {
+        padding: 12px 12px calc(var(--nav-height) + 12px) 12px;
     }
-    to {
-        opacity: 1;
+    
+    .store-name {
+        font-size: 18px;
+    }
+    
+    .banner-slider-container {
+        height: 160px;
+    }
+    
+    .layanan-grid,
+    .products-grid,
+    .rekening-grid {
+        gap: 8px;
+    }
+    
+    .filter-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .profile-stats {
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    .stat-value {
+        font-size: 18px;
+    }
+    
+    .nav-item {
+        min-width: 50px;
+        padding: 6px 8px;
+    }
+    
+    .nav-item i {
+        font-size: 18px;
+    }
+    
+    .nav-item span {
+        font-size: 9px;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .detail-row span:last-child {
+        text-align: left;
+        width: 100%;
+    }
+    
+    .qris-pending-actions {
+        flex-direction: column;
+    }
+    
+    .qris-pending-actions button {
+        width: 100%;
+    }
+    
+    .preview-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .preview-logo {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .voucher-input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .voucher-select-btn {
+        width: 100%;
+        justify-content: center;
     }
 }
 
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* ===== MODAL KUSTOM ===== */
+.modal-lg {
+    max-width: 500px !important;
+}
+
+.modal-sm {
+    max-width: 320px !important;
+}
+
+/* ===== DELETE MODAL ===== */
+.delete-text {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.delete-warning {
+    font-size: 13px;
+    color: var(--danger-color);
+    margin-bottom: 16px;
+    text-align: center;
+}
+
+.delete-info {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* ===== PAYMENT GATEWAY INFO ===== */
+.gateway-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(64, 167, 227, 0.1);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.gateway-info i {
+    color: var(--primary-color);
+    font-size: 16px;
+}
+
+.gateway-info a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.gateway-info a:hover {
+    text-decoration: underline;
+}
+
+/* ===== PACKAGE IDS ===== */
+.package-ids-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.package-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.package-checkbox:hover {
+    background: rgba(64, 167, 227, 0.1);
+    border-color: var(--primary-color);
+}
+
+.package-checkbox input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+}
+
+.package-name {
+    font-size: 12px;
+    font-weight: 500;
+    flex: 1;
+}
+
+.package-id {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+}
+
+.package-ids-help {
+    margin-top: 8px;
+    padding: 8px;
+    background: rgba(64, 167, 227, 0.05);
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--tg-hint-color);
+}
+
+.package-ids-help i {
+    color: var(--primary-color);
+    margin-right: 4px;
 }
