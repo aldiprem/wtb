@@ -387,35 +387,14 @@ def create_user_preferences(user_id, website_id):
         if conn:
             conn.close()
 
-def get_user_balance(user_id, website_id):
-    """
-    Mendapatkan balance user untuk website tertentu
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT balance FROM user_preferences
-            WHERE user_id = ? AND website_id = ?
-        ''', (user_id, website_id))
-        
-        row = cursor.fetchone()
-        return row['balance'] if row else 0
-        
-    except Exception as e:
-        print(f"❌ Error getting user balance: {e}")
-        return 0
-    finally:
-        if conn:
-            conn.close()
+# users.py - Perbaiki fungsi update_user_balance
 
-def update_user_balance(user_id, website_id, amount, operation='add'):
+def update_user_balance(user_id, website_id, amount, operation='add', transaction_type=None):
     """
     Update balance user
     Args:
         operation: 'add' untuk menambah, 'subtract' untuk mengurangi
+        transaction_type: 'deposit', 'withdraw', atau None
     Returns: balance baru atau None jika gagal
     """
     conn = None
@@ -437,7 +416,7 @@ def update_user_balance(user_id, website_id, amount, operation='add'):
             
             if operation == 'add':
                 new_balance = current_balance + amount
-                # Update total_deposit
+                # Update balance dan total_deposit
                 cursor.execute('''
                     UPDATE user_preferences SET
                         balance = ?,
@@ -445,6 +424,8 @@ def update_user_balance(user_id, website_id, amount, operation='add'):
                         updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ? AND website_id = ?
                 ''', (new_balance, amount, user_id, website_id))
+                print(f"💰 Balance added: +{amount}, new balance: {new_balance}")
+                
             else:  # subtract
                 new_balance = max(0, current_balance - amount)
                 cursor.execute('''
@@ -454,6 +435,7 @@ def update_user_balance(user_id, website_id, amount, operation='add'):
                         updated_at = CURRENT_TIMESTAMP
                     WHERE user_id = ? AND website_id = ?
                 ''', (new_balance, amount, user_id, website_id))
+                print(f"💰 Balance subtracted: -{amount}, new balance: {new_balance}")
         else:
             # Insert baru
             if operation == 'add':
@@ -463,6 +445,7 @@ def update_user_balance(user_id, website_id, amount, operation='add'):
                     (user_id, website_id, balance, total_deposit)
                     VALUES (?, ?, ?, ?)
                 ''', (user_id, website_id, new_balance, amount))
+                print(f"💰 New user, balance set to: {new_balance}")
             else:
                 new_balance = 0
                 cursor.execute('''
@@ -470,21 +453,66 @@ def update_user_balance(user_id, website_id, amount, operation='add'):
                     (user_id, website_id, balance)
                     VALUES (?, ?, ?)
                 ''', (user_id, website_id, new_balance))
+                print(f"💰 New user, balance set to: {new_balance}")
         
         conn.commit()
         
         # Log activity
+        action_desc = f'Balance {operation}: {amount}'
+        if transaction_type:
+            action_desc = f'{transaction_type}: {amount}'
+        
         log_user_activity(conn, user_id, website_id, 'balance_update', 
-                         f'Balance {operation}: {amount}', 
+                         action_desc, 
                          {'new_balance': new_balance, 'operation': operation})
+        
+        # Verifikasi balance tersimpan
+        cursor.execute('''
+            SELECT balance FROM user_preferences
+            WHERE user_id = ? AND website_id = ?
+        ''', (user_id, website_id))
+        verified = cursor.fetchone()
+        if verified and verified['balance'] == new_balance:
+            print(f"✅ Balance verified in database: {verified['balance']}")
+        else:
+            print(f"⚠️ Balance verification failed: expected {new_balance}, got {verified['balance'] if verified else 'None'}")
         
         return new_balance
         
     except Exception as e:
         print(f"❌ Error updating user balance: {e}")
+        import traceback
+        traceback.print_exc()
         if conn:
             conn.rollback()
         return None
+    finally:
+        if conn:
+            conn.close()
+
+def get_user_balance(user_id, website_id):
+    """
+    Mendapatkan balance user untuk website tertentu
+    Langsung dari database
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT balance FROM user_preferences
+            WHERE user_id = ? AND website_id = ?
+        ''', (user_id, website_id))
+        
+        row = cursor.fetchone()
+        balance = row['balance'] if row else 0
+        print(f"💰 Retrieved balance from DB for user {user_id}: {balance}")
+        return balance
+        
+    except Exception as e:
+        print(f"❌ Error getting user balance: {e}")
+        return 0
     finally:
         if conn:
             conn.close()
