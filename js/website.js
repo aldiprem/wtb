@@ -1919,42 +1919,71 @@
 
     async function openTransactionDetail(transactionId) {
       console.log(`📋 Opening transaction detail for ID: ${transactionId}`);
-    
+
       const transaction = transactions.find(t => t.id == transactionId);
       if (!transaction) {
         showToast('Transaksi tidak ditemukan', 'error');
         return;
       }
-    
+
       selectedTransaction = transaction;
-    
+
       const modal = document.getElementById('transactionDetailModal');
       const detailContent = document.getElementById('detailContent');
       const detailLoading = document.getElementById('detailLoading');
       const detailError = document.getElementById('detailError');
-    
+
       if (detailLoading) detailLoading.style.display = 'block';
       if (detailError) detailError.style.display = 'none';
       if (detailContent) detailContent.innerHTML = '';
       if (modal) modal.classList.add('active');
-    
+
       try {
         // Jika deposit QRIS dan status pending, ambil data QRIS dari server
         if (transaction.transaction_type === 'deposit' &&
           transaction.payment_method === 'qris' &&
           transaction.status === 'pending') {
-          await loadQrisDetail(transaction.id);
+
+          // Ambil data deposit terbaru dari server
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/${transaction.id}`, {
+            method: 'GET'
+          });
+
+          if (response.success && response.deposit) {
+            const deposit = response.deposit;
+            // Gabungkan data deposit dengan data transaksi yang sudah ada
+            const updatedTransaction = {
+              ...transaction,
+              ...deposit,
+              cashify_qr_image_url: deposit.cashify_qr_image_url || transaction.cashify_qr_image_url,
+              cashify_unique_nominal: deposit.cashify_unique_nominal || transaction.cashify_unique_nominal,
+              cashify_expired_at: deposit.cashify_expired_at || transaction.cashify_expired_at,
+              cashify_transaction_id: deposit.cashify_transaction_id || transaction.cashify_transaction_id
+            };
+            renderTransactionDetail(updatedTransaction);
+          } else {
+            // Jika gagal ambil data terbaru, tetap gunakan data yang ada
+            renderTransactionDetail(transaction);
+          }
         } else {
           // Untuk transaksi lain, render detail biasa
           renderTransactionDetail(transaction);
         }
-    
+
         if (detailLoading) detailLoading.style.display = 'none';
-    
+
       } catch (error) {
         console.error('❌ Error loading transaction detail:', error);
         if (detailLoading) detailLoading.style.display = 'none';
         if (detailError) detailError.style.display = 'block';
+
+        // Tampilkan pesan error yang lebih informatif
+        if (detailError) {
+          detailError.innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Gagal memuat detail transaksi: ${error.message || 'Terjadi kesalahan'}</p>
+                `;
+        }
       }
     }
 
@@ -2052,21 +2081,23 @@
                 </div>
             `;
 
-        if (transaction.cashify_unique_nominal) {
+        // Gunakan cashify_unique_nominal dari deposit
+        const uniqueNominal = transaction.cashify_unique_nominal || 0;
+        if (uniqueNominal > 0) {
           html += `
                     <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                         <span style="color: var(--tg-hint-color);">Kode Unik</span>
-                        <span>${formatRupiah(transaction.cashify_unique_nominal)}</span>
+                        <span>${formatRupiah(uniqueNominal)}</span>
                     </div>
                     <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                         <span style="color: var(--tg-hint-color);">Total Bayar</span>
-                        <span style="color: var(--success-color); font-weight: 600;">${formatRupiah(transaction.amount + (transaction.cashify_unique_nominal || 0))}</span>
+                        <span style="color: var(--success-color); font-weight: 600;">${formatRupiah(transaction.amount + uniqueNominal)}</span>
                     </div>
                 `;
         }
 
-        if (transaction.cashify_expired_at || transaction.expired_at) {
-          const expiredAt = transaction.cashify_expired_at || transaction.expired_at;
+        const expiredAt = transaction.cashify_expired_at || transaction.expired_at;
+        if (expiredAt) {
           html += `
                     <div class="detail-row" style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                         <span style="color: var(--tg-hint-color);">Waktu Expired</span>
@@ -2248,17 +2279,17 @@
 
     async function showQrisPendingModalFromDetail(depositId) {
       console.log(`📋 Opening QRIS modal for deposit ID: ${depositId}`);
-
+    
       // Tutup modal detail transaksi terlebih dahulu
       closeTransactionDetail();
-
+    
       // Ambil data deposit terbaru
       try {
         showLoading(true);
         const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/${depositId}`, {
           method: 'GET'
         });
-
+    
         if (response.success && response.deposit) {
           const deposit = response.deposit;
           showQrisPendingModal(deposit);
@@ -2267,7 +2298,7 @@
         }
       } catch (error) {
         console.error('❌ Error loading deposit for QRIS modal:', error);
-        showToast('Gagal memuat data QRIS', 'error');
+        showToast('Gagal memuat data QRIS: ' + (error.message || 'Terjadi kesalahan'), 'error');
       } finally {
         showLoading(false);
       }
