@@ -1809,6 +1809,44 @@
         startStatusCheck(depositId);
     }
 
+    async function checkStatusManually() {
+      if (!currentDeposit) {
+        showToast('Tidak ada transaksi aktif', 'warning');
+        return;
+      }
+    
+      showToast('Mengecek status pembayaran...', 'info');
+    
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/status`, {
+          method: 'POST',
+          body: JSON.stringify({ deposit_id: currentDeposit.id })
+        });
+    
+        if (response.success && response.deposit) {
+          const status = response.deposit.status;
+    
+          if (status === 'success') {
+            showToast('✅ Pembayaran berhasil!', 'success');
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+            closeConfirmDepositModal();
+            await handleDepositSuccess(currentDeposit.id);
+          } else if (status === 'expired') {
+            showToast('⚠️ QRIS telah kadaluwarsa', 'warning');
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+            closeConfirmDepositModal();
+          } else if (status === 'pending') {
+            showToast('⏳ Menunggu pembayaran...', 'info');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking status:', error);
+        showToast('Gagal mengecek status', 'error');
+      }
+    }
+
     function closeConfirmDepositModal() {
         const modal = document.getElementById('confirmDepositModal');
         if (modal) modal.classList.remove('active');
@@ -2365,6 +2403,7 @@
     window.website = {
         changePage,
         toggleFilter,
+        checkStatusManually,
         toggleLayananFilter,
         toggleAplikasiFilter,
         filterByLayanan,
