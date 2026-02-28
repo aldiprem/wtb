@@ -208,14 +208,23 @@ def update_deposit_cashify(deposit_id, cashify_data):
         if conn:
             conn.close()
 
+# trx.py - Pastikan balance terupdate saat deposit sukses
+
 def update_deposit_status(deposit_id, status, status_message=None):
     """
-    Update status deposit
+    Update status deposit dan update balance jika success
     """
     conn = None
     try:
         conn = get_db()
         cursor = conn.cursor()
+        
+        # Ambil data deposit dulu
+        cursor.execute('SELECT * FROM deposits WHERE id = ?', (deposit_id,))
+        deposit = cursor.fetchone()
+        
+        if not deposit:
+            return False
         
         processed_at = None
         if status in ['success', 'failed', 'expired']:
@@ -230,11 +239,32 @@ def update_deposit_status(deposit_id, status, status_message=None):
             WHERE id = ?
         ''', (status, status_message, processed_at, deposit_id))
         
+        # Jika status success, update balance user
+        if status == 'success':
+            from py import users
+            deposit_dict = dict(deposit)
+            print(f"💰 Updating balance for user {deposit_dict['user_id']} on website {deposit_dict['website_id']} with amount {deposit_dict['amount']}")
+            
+            new_balance = users.update_user_balance(
+                user_id=deposit_dict['user_id'],
+                website_id=deposit_dict['website_id'],
+                amount=deposit_dict['amount'],
+                operation='add',
+                transaction_type='deposit'
+            )
+            
+            if new_balance is not None:
+                print(f"✅ Balance updated successfully: {new_balance}")
+            else:
+                print(f"❌ Failed to update balance")
+        
         conn.commit()
         return cursor.rowcount > 0
         
     except Exception as e:
         print(f"❌ Error updating deposit status: {e}")
+        import traceback
+        traceback.print_exc()
         if conn:
             conn.rollback()
         return False
