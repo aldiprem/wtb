@@ -800,1094 +800,1094 @@
           item.classList.add('active');
         }
       });
-    
-      saveCurrentPage(pageId);
-    
-      // Jika halaman transaksi, load data
-      if (pageId === 'transactions') {
-        loadTransactions();
-      }
-    
-      vibrate(10);
-    }
-
-    /**
-     * Memulihkan halaman terakhir dari session storage
-     * Jika tidak ada, default ke dashboard
-     */
-    function restoreLastPage() {
-        const lastPage = getLastPage();
         
-        // Validasi apakah pageId valid
-        const validPages = ['dashboard', 'websites', 'products', 'orders', 'transactions', 'customers', 'settings', 'help'];
+          saveCurrentPage(pageId);
         
-        if (lastPage && validPages.includes(lastPage)) {
-            console.log(`🔄 Restoring last page: ${lastPage}`);
-            showPage(lastPage);
-        } else {
-            console.log('🔄 No saved page, showing dashboard');
-            showPage('dashboard');
-        }
-    }
-
-    function toggleSidebar() {
-        if (elements.sidebar) {
-            elements.sidebar.classList.toggle('active');
-        }
-    }
-
-    function closeSidebar() {
-        if (elements.sidebar) {
-            elements.sidebar.classList.remove('active');
-        }
-    }
-
-    // ==================== FUNGSI RENDER PRODUK ====================
-    function renderProductsList() {
-      if (!elements.productsListContainer || !elements.productsEmptyState) return;
-    
-      if (!allProducts || allProducts.length === 0) {
-        elements.productsListContainer.innerHTML = '';
-        elements.productsEmptyState.style.display = 'block';
-        return;
-      }
-    
-      elements.productsEmptyState.style.display = 'none';
-    
-      // Filter products berdasarkan pencarian dan filter aktif
-      let filtered = filterProductsBySearch(allProducts);
-      filtered = filterProductsByType(filtered);
-    
-      // Group by layanan
-      const groupedByLayanan = {};
-      filtered.forEach(product => {
-        const key = product.layanan_nama || 'Lainnya';
-        if (!groupedByLayanan[key]) {
-          groupedByLayanan[key] = {
-            layanan_nama: key,
-            layanan_gambar: product.layanan_gambar,
-            layanan_desc: product.layanan_desc,
-            aplikasi: {}
-          };
+          // Jika halaman transaksi, load data
+          if (pageId === 'transactions') {
+            loadTransactions();
+          }
+        
+          vibrate(10);
         }
     
-        const appKey = product.aplikasi_nama || 'Lainnya';
-        if (!groupedByLayanan[key].aplikasi[appKey]) {
-          groupedByLayanan[key].aplikasi[appKey] = {
-            aplikasi_nama: appKey,
-            aplikasi_gambar: product.aplikasi_gambar,
-            aplikasi_desc: product.aplikasi_desc,
-            items: []
-          };
+        /**
+         * Memulihkan halaman terakhir dari session storage
+         * Jika tidak ada, default ke dashboard
+         */
+        function restoreLastPage() {
+            const lastPage = getLastPage();
+            
+            // Validasi apakah pageId valid
+            const validPages = ['dashboard', 'websites', 'products', 'orders', 'transactions', 'customers', 'settings', 'help'];
+            
+            if (lastPage && validPages.includes(lastPage)) {
+                console.log(`🔄 Restoring last page: ${lastPage}`);
+                showPage(lastPage);
+            } else {
+                console.log('🔄 No saved page, showing dashboard');
+                showPage('dashboard');
+            }
         }
     
-        groupedByLayanan[key].aplikasi[appKey].items.push(product);
-      });
+        function toggleSidebar() {
+            if (elements.sidebar) {
+                elements.sidebar.classList.toggle('active');
+            }
+        }
     
-      let html = '';
+        function closeSidebar() {
+            if (elements.sidebar) {
+                elements.sidebar.classList.remove('active');
+            }
+        }
     
-      Object.values(groupedByLayanan).forEach(layanan => {
-        const totalAplikasi = Object.keys(layanan.aplikasi).length;
-        const totalItems = Object.values(layanan.aplikasi).reduce((sum, app) => sum + app.items.length, 0);
-    
-        html += `
-                <div class="layanan-card">
-                    <div class="layanan-header">
-                        <div class="layanan-icon">
-                            ${layanan.layanan_gambar ? 
-                                `<img src="${escapeHtml(layanan.layanan_gambar)}" alt="${escapeHtml(layanan.layanan_nama)}">` : 
-                                `<i class="fas fa-layer-group"></i>`
-                            }
-                        </div>
-                        <div class="layanan-info">
-                            <div class="layanan-nama">${escapeHtml(layanan.layanan_nama)}</div>
-                            ${layanan.layanan_desc ? `<div class="layanan-desc">${escapeHtml(layanan.layanan_desc)}</div>` : ''}
-                        </div>
-                        <div class="layanan-stats">
-                            <span><i class="fas fa-mobile-alt"></i> ${totalAplikasi}</span>
-                            <span><i class="fas fa-box"></i> ${totalItems}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="aplikasi-container">
-            `;
-    
-        Object.values(layanan.aplikasi).forEach(aplikasi => {
-          const itemsToShow = aplikasi.items.slice(0, 3);
-          const remainingItems = aplikasi.items.length - 3;
-    
-          html += `
-                    <div class="aplikasi-card">
-                        <div class="aplikasi-header">
-                            <div class="aplikasi-logo">
-                                ${aplikasi.aplikasi_gambar ? 
-                                    `<img src="${escapeHtml(aplikasi.aplikasi_gambar)}" alt="${escapeHtml(aplikasi.aplikasi_nama)}">` : 
-                                    `<i class="fas fa-mobile-alt"></i>`
+        // ==================== FUNGSI RENDER PRODUK ====================
+        function renderProductsList() {
+          if (!elements.productsListContainer || !elements.productsEmptyState) return;
+        
+          if (!allProducts || allProducts.length === 0) {
+            elements.productsListContainer.innerHTML = '';
+            elements.productsEmptyState.style.display = 'block';
+            return;
+          }
+        
+          elements.productsEmptyState.style.display = 'none';
+        
+          // Filter products berdasarkan pencarian dan filter aktif
+          let filtered = filterProductsBySearch(allProducts);
+          filtered = filterProductsByType(filtered);
+        
+          // Group by layanan
+          const groupedByLayanan = {};
+          filtered.forEach(product => {
+            const key = product.layanan_nama || 'Lainnya';
+            if (!groupedByLayanan[key]) {
+              groupedByLayanan[key] = {
+                layanan_nama: key,
+                layanan_gambar: product.layanan_gambar,
+                layanan_desc: product.layanan_desc,
+                aplikasi: {}
+              };
+            }
+        
+            const appKey = product.aplikasi_nama || 'Lainnya';
+            if (!groupedByLayanan[key].aplikasi[appKey]) {
+              groupedByLayanan[key].aplikasi[appKey] = {
+                aplikasi_nama: appKey,
+                aplikasi_gambar: product.aplikasi_gambar,
+                aplikasi_desc: product.aplikasi_desc,
+                items: []
+              };
+            }
+        
+            groupedByLayanan[key].aplikasi[appKey].items.push(product);
+          });
+        
+          let html = '';
+        
+          Object.values(groupedByLayanan).forEach(layanan => {
+            const totalAplikasi = Object.keys(layanan.aplikasi).length;
+            const totalItems = Object.values(layanan.aplikasi).reduce((sum, app) => sum + app.items.length, 0);
+        
+            html += `
+                    <div class="layanan-card">
+                        <div class="layanan-header">
+                            <div class="layanan-icon">
+                                ${layanan.layanan_gambar ? 
+                                    `<img src="${escapeHtml(layanan.layanan_gambar)}" alt="${escapeHtml(layanan.layanan_nama)}">` : 
+                                    `<i class="fas fa-layer-group"></i>`
                                 }
                             </div>
-                            <div class="aplikasi-info">
-                                <div class="aplikasi-nama">${escapeHtml(aplikasi.aplikasi_nama)}</div>
-                                ${aplikasi.aplikasi_desc ? `<div class="aplikasi-desc">${escapeHtml(aplikasi.aplikasi_desc)}</div>` : ''}
+                            <div class="layanan-info">
+                                <div class="layanan-nama">${escapeHtml(layanan.layanan_nama)}</div>
+                                ${layanan.layanan_desc ? `<div class="layanan-desc">${escapeHtml(layanan.layanan_desc)}</div>` : ''}
                             </div>
-                            <div class="aplikasi-stats">
-                                <span><i class="fas fa-box"></i> ${aplikasi.items.length}</span>
+                            <div class="layanan-stats">
+                                <span><i class="fas fa-mobile-alt"></i> ${totalAplikasi}</span>
+                                <span><i class="fas fa-box"></i> ${totalItems}</span>
                             </div>
                         </div>
                         
-                        <div class="items-preview">
+                        <div class="aplikasi-container">
                 `;
-    
-          itemsToShow.forEach(item => {
-            const readyClass = item.item_ready ? 'ready' : 'sold';
-            const stokCount = item.item_stok?.length || 0;
-    
-            html += `
-                        <div class="item-preview-card">
-                            <div class="item-preview-info">
-                                <span class="item-preview-name">${escapeHtml(item.item_nama || 'Item')}</span>
-                                <span class="item-preview-price">${formatRupiah(item.item_harga || 0)}</span>
+        
+            Object.values(layanan.aplikasi).forEach(aplikasi => {
+              const itemsToShow = aplikasi.items.slice(0, 3);
+              const remainingItems = aplikasi.items.length - 3;
+        
+              html += `
+                        <div class="aplikasi-card">
+                            <div class="aplikasi-header">
+                                <div class="aplikasi-logo">
+                                    ${aplikasi.aplikasi_gambar ? 
+                                        `<img src="${escapeHtml(aplikasi.aplikasi_gambar)}" alt="${escapeHtml(aplikasi.aplikasi_nama)}">` : 
+                                        `<i class="fas fa-mobile-alt"></i>`
+                                    }
+                                </div>
+                                <div class="aplikasi-info">
+                                    <div class="aplikasi-nama">${escapeHtml(aplikasi.aplikasi_nama)}</div>
+                                    ${aplikasi.aplikasi_desc ? `<div class="aplikasi-desc">${escapeHtml(aplikasi.aplikasi_desc)}</div>` : ''}
+                                </div>
+                                <div class="aplikasi-stats">
+                                    <span><i class="fas fa-box"></i> ${aplikasi.items.length}</span>
+                                </div>
                             </div>
-                            <span class="item-preview-badge ${readyClass}">
-                                <i class="fas fa-${item.item_ready ? 'check-circle' : 'times-circle'}"></i>
-                                ${item.item_ready ? 'Ready' : 'Sold'}
-                            </span>
+                            
+                            <div class="items-preview">
+                    `;
+        
+              itemsToShow.forEach(item => {
+                const readyClass = item.item_ready ? 'ready' : 'sold';
+                const stokCount = item.item_stok?.length || 0;
+        
+                html += `
+                            <div class="item-preview-card">
+                                <div class="item-preview-info">
+                                    <span class="item-preview-name">${escapeHtml(item.item_nama || 'Item')}</span>
+                                    <span class="item-preview-price">${formatRupiah(item.item_harga || 0)}</span>
+                                </div>
+                                <span class="item-preview-badge ${readyClass}">
+                                    <i class="fas fa-${item.item_ready ? 'check-circle' : 'times-circle'}"></i>
+                                    ${item.item_ready ? 'Ready' : 'Sold'}
+                                </span>
+                            </div>
+                        `;
+              });
+        
+              if (remainingItems > 0) {
+                html += `
+                            <div class="more-items">
+                                +${remainingItems} item lainnya...
+                            </div>
+                        `;
+              }
+        
+              html += `
+                            </div>
                         </div>
                     `;
-          });
-    
-          if (remainingItems > 0) {
+            });
+        
             html += `
-                        <div class="more-items">
-                            +${remainingItems} item lainnya...
-                        </div>
-                    `;
-          }
-    
-          html += `
                         </div>
                     </div>
                 `;
-        });
-    
-        html += `
-                    </div>
-                </div>
-            `;
-      });
-    
-      elements.productsListContainer.innerHTML = html;
-    }
-    
-    function filterProductsBySearch(products) {
-      if (!productSearchTerm) return products;
-    
-      const term = productSearchTerm.toLowerCase();
-      return products.filter(product => {
-        return (product.layanan_nama && product.layanan_nama.toLowerCase().includes(term)) ||
-          (product.aplikasi_nama && product.aplikasi_nama.toLowerCase().includes(term)) ||
-          (product.item_nama && product.item_nama.toLowerCase().includes(term));
-      });
-    }
-    
-    function filterProductsByType(products) {
-      switch (currentProductFilter) {
-        case 'tersedia':
-          return products.filter(p => p.item_ready === true);
-    
-        case 'stok-terbanyak':
-          return [...products].sort((a, b) => {
-            const stokA = a.item_stok?.length || 0;
-            const stokB = b.item_stok?.length || 0;
-            return stokB - stokA;
           });
-    
-        case 'item-terbanyak':
-          // Group by layanan dan hitung total items per layanan
-          const layananItemCount = {};
-          products.forEach(p => {
-            const key = p.layanan_nama || 'Lainnya';
-            if (!layananItemCount[key]) layananItemCount[key] = 0;
-            layananItemCount[key]++;
+        
+          elements.productsListContainer.innerHTML = html;
+        }
+        
+        function filterProductsBySearch(products) {
+          if (!productSearchTerm) return products;
+        
+          const term = productSearchTerm.toLowerCase();
+          return products.filter(product => {
+            return (product.layanan_nama && product.layanan_nama.toLowerCase().includes(term)) ||
+              (product.aplikasi_nama && product.aplikasi_nama.toLowerCase().includes(term)) ||
+              (product.item_nama && product.item_nama.toLowerCase().includes(term));
           });
-    
-          // Sort by count descending
-          return [...products].sort((a, b) => {
-            const countA = layananItemCount[a.layanan_nama || 'Lainnya'] || 0;
-            const countB = layananItemCount[b.layanan_nama || 'Lainnya'] || 0;
-            return countB - countA;
-          });
-    
-        case 'layanan-aplikasi':
-          // Prioritaskan item yang merupakan layanan atau aplikasi (tanpa item)
-          return [...products].sort((a, b) => {
-            const aIsCategory = !a.item_nama && (a.layanan_nama || a.aplikasi_nama);
-            const bIsCategory = !b.item_nama && (b.layanan_nama || b.aplikasi_nama);
-            return (bIsCategory ? 1 : 0) - (aIsCategory ? 1 : 0);
-          });
-    
-        case 'selengkapnya':
-          // Tampilkan semua produk dengan urutan default
-          return products;
-    
-        default:
-          return products;
-      }
-    }
-    
-    // ==================== SETUP FILTER DROPDOWN ====================
-    function setupProductFilters() {
-      const filterDropdown = document.querySelector('.filter-dropdown');
-      const filterBtn = document.getElementById('filterDropdownBtn');
-      const filterMenu = document.getElementById('filterDropdownMenu');
-      const filterOptions = document.querySelectorAll('.filter-option');
-      const selectedFilterText = document.getElementById('selectedFilterText');
-    
-      if (!filterBtn || !filterMenu || !filterDropdown) return;
-    
-      // Toggle dropdown saat tombol diklik
-      filterBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        filterDropdown.classList.toggle('active');
-      });
-    
-      // Pilih filter option
-      filterOptions.forEach(option => {
-        option.addEventListener('click', () => {
-          // Update active state
-          filterOptions.forEach(opt => opt.classList.remove('active'));
-          option.classList.add('active');
-    
-          // Update filter text
-          const filterText = option.textContent.trim();
-          if (selectedFilterText) {
-            selectedFilterText.textContent = filterText;
+        }
+        
+        function filterProductsByType(products) {
+          switch (currentProductFilter) {
+            case 'tersedia':
+              return products.filter(p => p.item_ready === true);
+        
+            case 'stok-terbanyak':
+              return [...products].sort((a, b) => {
+                const stokA = a.item_stok?.length || 0;
+                const stokB = b.item_stok?.length || 0;
+                return stokB - stokA;
+              });
+        
+            case 'item-terbanyak':
+              // Group by layanan dan hitung total items per layanan
+              const layananItemCount = {};
+              products.forEach(p => {
+                const key = p.layanan_nama || 'Lainnya';
+                if (!layananItemCount[key]) layananItemCount[key] = 0;
+                layananItemCount[key]++;
+              });
+        
+              // Sort by count descending
+              return [...products].sort((a, b) => {
+                const countA = layananItemCount[a.layanan_nama || 'Lainnya'] || 0;
+                const countB = layananItemCount[b.layanan_nama || 'Lainnya'] || 0;
+                return countB - countA;
+              });
+        
+            case 'layanan-aplikasi':
+              // Prioritaskan item yang merupakan layanan atau aplikasi (tanpa item)
+              return [...products].sort((a, b) => {
+                const aIsCategory = !a.item_nama && (a.layanan_nama || a.aplikasi_nama);
+                const bIsCategory = !b.item_nama && (b.layanan_nama || b.aplikasi_nama);
+                return (bIsCategory ? 1 : 0) - (aIsCategory ? 1 : 0);
+              });
+        
+            case 'selengkapnya':
+              // Tampilkan semua produk dengan urutan default
+              return products;
+        
+            default:
+              return products;
           }
-    
-          // Update filter value
-          currentProductFilter = option.dataset.filter;
-    
-          // Render ulang produk
-          renderProductsList();
-    
-          // Tutup dropdown
-          filterDropdown.classList.remove('active');
-        });
-      });
-    
-      // Tutup dropdown saat klik di luar
-      document.addEventListener('click', (e) => {
-        if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
-          filterDropdown.classList.remove('active');
-        }
-      });
-    
-      // Tutup dropdown dengan tombol Escape
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-          filterDropdown.classList.remove('active');
-        }
-      });
-    }
-    
-    // ==================== SETUP SEARCH ====================
-    function setupProductSearch() {
-      const searchInput = document.getElementById('productSearch');
-      if (!searchInput) return;
-    
-      let searchTimeout;
-      searchInput.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-          productSearchTerm = e.target.value;
-          renderProductsList();
-        }, 300);
-      });
-    }
-    
-    // ==================== UPDATE SETUP SETTINGS LINKS ====================
-    function setupSettingsLinks() {
-        if (elements.appearanceSettings && userWebsites.length > 0) {
-            elements.appearanceSettings.href = `/wtb/html/tampilan.html?website=${userWebsites[0].endpoint}`;
         }
         
-        if (elements.manageProductsBtn && userWebsites.length > 0) {
-            elements.manageProductsBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
-        }
+        // ==================== SETUP FILTER DROPDOWN ====================
+        function setupProductFilters() {
+          const filterDropdown = document.querySelector('.filter-dropdown');
+          const filterBtn = document.getElementById('filterDropdownBtn');
+          const filterMenu = document.getElementById('filterDropdownMenu');
+          const filterOptions = document.querySelectorAll('.filter-option');
+          const selectedFilterText = document.getElementById('selectedFilterText');
         
-        // Tambahkan juga untuk empty state manage button
-        const emptyStateManageBtn = document.getElementById('emptyStateManageBtn');
-        if (emptyStateManageBtn && userWebsites.length > 0) {
-            emptyStateManageBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
-        }
+          if (!filterBtn || !filterMenu || !filterDropdown) return;
         
-        if (elements.socialSettings && userWebsites.length > 0) {
-            elements.socialSettings.href = `/wtb/html/sosial.html?website=${userWebsites[0].endpoint}`;
-        }
+          // Toggle dropdown saat tombol diklik
+          filterBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            filterDropdown.classList.toggle('active');
+          });
         
-        if (elements.paymentSettings && userWebsites.length > 0) {
-            elements.paymentSettings.href = `/wtb/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
-        }
+          // Pilih filter option
+          filterOptions.forEach(option => {
+            option.addEventListener('click', () => {
+              // Update active state
+              filterOptions.forEach(opt => opt.classList.remove('active'));
+              option.classList.add('active');
         
-        if (elements.notificationSettings) {
-            elements.notificationSettings.addEventListener('click', (e) => {
-                e.preventDefault();
-                showToast('Fitur ini akan segera tersedia', 'info');
+              // Update filter text
+              const filterText = option.textContent.trim();
+              if (selectedFilterText) {
+                selectedFilterText.textContent = filterText;
+              }
+        
+              // Update filter value
+              currentProductFilter = option.dataset.filter;
+        
+              // Render ulang produk
+              renderProductsList();
+        
+              // Tutup dropdown
+              filterDropdown.classList.remove('active');
             });
-        }
+          });
         
-        if (elements.voucherSettings && userWebsites.length > 0) {
-          elements.voucherSettings.href = `/wtb/html/voucher.html?website=${userWebsites[0].endpoint}`;
-        }
-        
-        if (elements.integrationSettings) {
-            elements.integrationSettings.addEventListener('click', (e) => {
-                e.preventDefault();
-                showToast('Fitur ini akan segera tersedia', 'info');
-            });
-        }
-    }
-
-    // ==================== EVENT LISTENERS ====================
-    function setupEventListeners() {
-        if (elements.menuToggle) {
-            elements.menuToggle.addEventListener('click', toggleSidebar);
-        }
-        
-        if (elements.sidebarClose) {
-            elements.sidebarClose.addEventListener('click', closeSidebar);
-        }
-        
-        if (elements.refreshBtn) {
-          elements.refreshBtn.addEventListener('click', async () => {
-            vibrate(10);
-            const currentEndpoint = getLastWebsiteEndpoint() || (userWebsites[0]?.endpoint);
-            if (currentEndpoint) {
-              showToast(`Memuat ulang data untuk /${currentEndpoint}...`, 'info');
-              await reloadForWebsite(currentEndpoint);
-            } else {
-              showToast('Tidak ada website yang dipilih', 'warning');
+          // Tutup dropdown saat klik di luar
+          document.addEventListener('click', (e) => {
+            if (!filterBtn.contains(e.target) && !filterMenu.contains(e.target)) {
+              filterDropdown.classList.remove('active');
             }
           });
-        }
         
-        elements.menuItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                const page = item.dataset.page;
-                if (page) {
-                    showPage(page);
-                }
-                closeSidebar();
-            });
-        });
-        
-        if (elements.logoutBtn) {
-            elements.logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                clearSession(); // Hapus session saat logout
-                localStorage.removeItem('panel_user');
-                window.location.href = '/';
-            });
-        }
-        
-        if (elements.orderStatusFilter) {
-            elements.orderStatusFilter.addEventListener('change', renderOrdersTable);
-        }
-        
-        if (elements.customerSearch) {
-            elements.customerSearch.addEventListener('input', (e) => {
-                const search = e.target.value.toLowerCase();
-                // Implement search functionality
-            });
-        }
-        
-        if (elements.transactionPeriod) {
-            elements.transactionPeriod.addEventListener('change', () => {
-                showToast('Fitur filter periode akan segera tersedia', 'info');
-            });
-        }
-        
-        document.addEventListener('click', (e) => {
-            if (elements.sidebar?.classList.contains('active')) {
-                if (!elements.sidebar.contains(e.target) && !elements.menuToggle?.contains(e.target)) {
-                    closeSidebar();
-                }
-            }
-        });
-        
-        document.addEventListener('keydown', (e) => {
+          // Tutup dropdown dengan tombol Escape
+          document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                closeSidebar();
+              filterDropdown.classList.remove('active');
             }
-        });
+          });
+        }
         
-        // Simpan state saat user akan meninggalkan halaman (opsional)
-        window.addEventListener('beforeunload', () => {
-            // Tidak perlu melakukan apa-apa, session storage sudah tersimpan
-        });
-    }
-
-    // ==================== PULL TO REFRESH ====================
-    function initPullToRefresh() {
-      // Buat elemen spinner - posisikan di atas layar (sembunyi)
-      ptrState.container = document.createElement('div');
-      ptrState.container.className = 'ptr-container';
-    
-      ptrState.spinner = document.createElement('div');
-      ptrState.spinner.className = 'ptr-spinner';
-      ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
-    
-      ptrState.container.appendChild(ptrState.spinner);
-      document.body.appendChild(ptrState.container);
-    
-      // Pastikan spinner tersembunyi di atas
-      ptrState.spinner.style.top = '-60px';
-    
-      // Event listeners
-      const content = document.querySelector('.panel-content');
-      if (!content) return;
-    
-      let touchStartY = 0;
-      let touchStartX = 0;
-      let isAtTop = false;
-      let isPulling = false;
-    
-      content.addEventListener('scroll', () => {
-        // Deteksi apakah di posisi paling atas
-        isAtTop = content.scrollTop <= 0;
-      }, { passive: true });
-    
-      content.addEventListener('touchstart', (e) => {
-        // Simpan posisi awal sentuhan
-        touchStartY = e.touches[0].clientY;
-        touchStartX = e.touches[0].clientX;
-    
-        // Reset state pulling
-        isPulling = false;
-        ptrState.pulling = false;
-    
-        // Sembunyikan spinner
-        ptrState.spinner.style.top = '-60px';
-        ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
-      }, { passive: true });
-    
-      content.addEventListener('touchmove', (e) => {
-        // HANYA proses jika di posisi paling ATAS
-        if (!isAtTop) return;
-    
-        const touchY = e.touches[0].clientY;
-        const touchX = e.touches[0].clientX;
-    
-        // Hitung jarak tarikan vertikal
-        const diffY = touchY - touchStartY;
-    
-        // Hitung jarak horizontal
-        const diffX = Math.abs(touchX - touchStartX);
-    
-        // Hanya proses jika TARIK KE BAWAH (diffY > 0) dan bukan scroll horizontal
-        if (diffY > 0 && diffX < 10) {
-          e.preventDefault();
-    
-          isPulling = true;
-          ptrState.pulling = true;
-    
-          // Batasi jarak tarikan (max 80px)
-          const pullDistance = Math.min(diffY, 80);
-    
-          // Spinner mengikuti tarikan - turun dari atas
-          ptrState.spinner.style.top = `${-60 + pullDistance}px`;
-          ptrState.spinner.classList.add('pull-down');
-    
-          // Rotasi icon berdasarkan jarak
-          const rotation = Math.min(pullDistance / 80 * 180, 180);
-          const icon = ptrState.spinner.querySelector('i');
-          if (icon) {
-            icon.style.transform = `rotate(${rotation}deg)`;
-          }
-    
-          // Ganti icon ketika mencapai threshold
-          if (pullDistance >= 80) {
-            ptrState.spinner.classList.add('active');
-            ptrState.spinner.innerHTML = '<i class="fas fa-check"></i>';
-          } else {
-            ptrState.spinner.classList.remove('active');
-            ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
-          }
+        // ==================== SETUP SEARCH ====================
+        function setupProductSearch() {
+          const searchInput = document.getElementById('productSearch');
+          if (!searchInput) return;
+        
+          let searchTimeout;
+          searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+              productSearchTerm = e.target.value;
+              renderProductsList();
+            }, 300);
+          });
         }
-      }, { passive: false });
-    
-      content.addEventListener('touchend', async (e) => {
-        // Hanya proses jika sedang menarik dan di posisi atas
-        if (!isPulling || !isAtTop) {
-          // Reset spinner
-          ptrState.spinner.style.top = '-60px';
-          ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
-          return;
-        }
-    
-        const touchY = e.changedTouches[0].clientY;
-        const diffY = touchY - touchStartY;
-    
-        // Refresh jika tarikan mencapai threshold
-        if (diffY >= 80) {
-          // Tampilkan loading di atas
-          ptrState.spinner.classList.remove('pull-down', 'active');
-          ptrState.spinner.classList.add('loading');
-          ptrState.spinner.innerHTML = '<i class="fas fa-sync-alt"></i>';
-          ptrState.spinner.style.top = '10px'; // Muncul di atas konten
-    
-          // Lakukan refresh
-          await refreshPage();
-    
-          // Sembunyikan spinner
-          ptrState.spinner.style.top = '-60px';
-          ptrState.spinner.classList.remove('loading');
-        } else {
-          // Reset tanpa refresh - kembalikan ke atas
-          ptrState.spinner.style.top = '-60px';
-          ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
-        }
-    
-        isPulling = false;
-        ptrState.pulling = false;
-      }, { passive: true });
-    
-      content.addEventListener('touchcancel', () => {
-        isPulling = false;
-        ptrState.pulling = false;
-        ptrState.spinner.style.top = '-60px';
-        ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
-      }, { passive: true });
-    }
-    
-    async function refreshPage() {
-      showToast('Menyegarkan halaman...', 'info');
-    
-      const currentPage = getLastPage() || 'dashboard';
-      const currentEndpoint = getLastWebsiteEndpoint();
-    
-      try {
-        if (currentEndpoint) {
-          await reloadForWebsite(currentEndpoint, false);
-        } else {
-          const userId = await loadUserData();
-          await loadUserWebsites(userId);
-          await loadProductsAndOrders();
-        }
-    
-        showToast('Halaman berhasil disegarkan', 'success');
-        showPage(currentPage);
-    
-      } catch (error) {
-        console.error('❌ Refresh error:', error);
-        showToast('Gagal menyegarkan halaman', 'error');
-      }
-    }
-    
-    function setupWebsiteSelector() {
-      const dropdown = document.querySelector('.website-selector-dropdown');
-      const btn = document.getElementById('websiteSelectorBtn');
-      const menu = document.getElementById('websiteSelectorMenu');
-      const selectedText = document.getElementById('selectedWebsiteEndpoint');
-    
-      if (!btn || !menu || !dropdown) return;
-    
-      // Render menu options
-      renderWebsiteOptions();
-    
-      // Toggle dropdown
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dropdown.classList.toggle('active');
-      });
-    
-      // Pilih website
-      menu.addEventListener('click', (e) => {
-        const option = e.target.closest('.website-option');
-        if (!option) return;
-    
-        const endpoint = option.dataset.endpoint;
-        if (!endpoint) return;
-    
-        // Update selected
-        document.querySelectorAll('.website-option').forEach(opt => opt.classList.remove('active'));
-        option.classList.add('active');
-    
-        // Update text
-        selectedText.textContent = '/' + endpoint;
-    
-        // Save to session
-        saveWebsiteEndpoint(endpoint);
-        currentWebsiteEndpoint = endpoint;
-    
-        // Update all settings links
-        updateAllSettingsLinks(endpoint);
-    
-        // Close dropdown
-        dropdown.classList.remove('active');
-    
-        // Reload data for selected website
-        reloadForWebsite(endpoint);
-    
-        showToast(`Website: /${endpoint}`, 'success');
-      });
-    
-      // Tutup dropdown saat klik di luar
-      document.addEventListener('click', (e) => {
-        if (!btn.contains(e.target) && !menu.contains(e.target)) {
-          dropdown.classList.remove('active');
-        }
-      });
-    
-      // Load saved endpoint
-      const savedEndpoint = getLastWebsiteEndpoint();
-      if (savedEndpoint) {
-        currentWebsiteEndpoint = savedEndpoint;
-        selectedText.textContent = '/' + savedEndpoint;
-      }
-    }
-    
-    function renderWebsiteOptions() {
-      const menu = document.getElementById('websiteSelectorMenu');
-      if (!menu) return;
-    
-      if (userWebsites.length === 0) {
-        menu.innerHTML = `
-                <button class="website-option" data-endpoint="">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>Tidak ada website</span>
-                </button>
-            `;
-        return;
-      }
-    
-      let html = '';
-      const currentEndpoint = getLastWebsiteEndpoint() || (userWebsites[0]?.endpoint);
-    
-      userWebsites.forEach(website => {
-        const isActive = website.endpoint === currentEndpoint;
-        html += `
-                <button class="website-option ${isActive ? 'active' : ''}" data-endpoint="${website.endpoint}">
-                    <i class="fas fa-globe"></i>
-                    <span>/${website.endpoint}</span>
-                </button>
-            `;
-      });
-    
-      menu.innerHTML = html;
-    }
-    
-    function updateAllSettingsLinks(endpoint) {
-      // Update semua link settings dengan endpoint yang dipilih
-      const settingLinks = {
-        appearanceSettings: '/wtb/html/tampilan.html?website=' + endpoint,
-        socialSettings: '/wtb/html/sosial.html?website=' + endpoint,
-        paymentSettings: '/wtb/html/pembayaran.html?website=' + endpoint,
-        voucherSettings: '/wtb/html/voucher.html?website=' + endpoint,
-        manageProductsBtn: '/wtb/html/produk.html?website=' + endpoint,
-        emptyStateManageBtn: '/wtb/html/produk.html?website=' + endpoint
-      };
-    
-      for (const [id, url] of Object.entries(settingLinks)) {
-        const element = document.getElementById(id);
-        if (element) {
-          element.href = url;
-        }
-      }
-    
-      // Update juga quick actions
-      updateQuickActions(endpoint);
-    }
-    
-    function updateQuickActions(endpoint) {
-      if (!elements.quickActions) return;
-    
-      let html = '';
-    
-      if (userWebsites.length > 0) {
-        html += `
-                <a href="/wtb/html/produk.html?website=${endpoint}" class="quick-action-card">
-                    <i class="fas fa-box"></i>
-                    <span>Kelola Produk</span>
-                    <small>/${endpoint}</small>
-                </a>
-                <a href="/wtb/html/tampilan.html?website=${endpoint}" class="quick-action-card">
-                    <i class="fas fa-paint-brush"></i>
-                    <span>Atur Tampilan</span>
-                    <small>/${endpoint}</small>
-                </a>
-            `;
-      } else {
-        html = `
-                <a href="/wtb/html/format.html" class="quick-action-card">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>Buat Website Baru</span>
-                </a>
-            `;
-      }
-    
-      elements.quickActions.innerHTML = html;
-    }
-    
-    // Update fungsi loadUserWebsites untuk memanggil setupWebsiteSelector
-    async function loadUserWebsites(userId) {
-      try {
-        showLoading(true);
-    
-        const response = await fetchWithRetry(`${API_BASE_URL}/api/websites`, {
-          method: 'GET'
-        });
-    
-        if (response.success && response.websites) {
-          userWebsites = response.websites.filter(w => w.owner_id === userId);
-    
-          if (elements.menuWebsitesBadge) {
-            elements.menuWebsitesBadge.textContent = userWebsites.length;
-          }
-          if (elements.sidebarTotalWebsites) {
-            elements.sidebarTotalWebsites.textContent = userWebsites.length;
-          }
-    
-          const activeCount = userWebsites.filter(w => w.status === 'active').length;
-          if (elements.statActiveWebsites) {
-            elements.statActiveWebsites.textContent = activeCount;
-          }
-    
-          // Setup website selector setelah data websites dimuat
-          setupWebsiteSelector();
-    
-          // Simpan endpoint pertama jika belum ada
-          if (userWebsites.length > 0 && !getLastWebsiteEndpoint()) {
-            saveWebsiteEndpoint(userWebsites[0].endpoint);
-            currentWebsiteEndpoint = userWebsites[0].endpoint;
-          }
-    
-          return userWebsites;
-        } else {
-          userWebsites = [];
-          return [];
-        }
-      } catch (error) {
-        console.error('❌ Error loading websites:', error);
-        showToast('Gagal memuat data website', 'error');
-        userWebsites = [];
-        return [];
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    // Fungsi untuk menyimpan data website ke session
-    function cacheWebsiteData(websiteId, data) {
-      try {
-        const cacheKey = `website_${websiteId}_data`;
-        const cacheData = {
-          timestamp: Date.now(),
-          data: data
-        };
-        sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
-      } catch (e) {
-        console.warn('⚠️ Failed to cache website data:', e);
-      }
-    }
-    
-    // Fungsi untuk mengambil data website dari cache
-    function getCachedWebsiteData(websiteId, maxAge = 5 * 60 * 1000) { // 5 menit default
-      try {
-        const cacheKey = `website_${websiteId}_data`;
-        const cached = sessionStorage.getItem(cacheKey);
-        if (!cached) return null;
-    
-        const { timestamp, data } = JSON.parse(cached);
-        if (Date.now() - timestamp > maxAge) {
-          sessionStorage.removeItem(cacheKey);
-          return null;
-        }
-    
-        return data;
-      } catch (e) {
-        return null;
-      }
-    }
-    
-    // Update fungsi reloadForWebsite untuk menggunakan cache
-    async function reloadForWebsite(endpoint, useCache = true) {
-      showLoading(true);
-    
-      try {
-        const website = userWebsites.find(w => w.endpoint === endpoint);
-        if (!website) return;
-    
-        // Cek cache jika diizinkan
-        if (useCache) {
-          const cached = getCachedWebsiteData(website.id);
-          if (cached) {
-            allProducts = cached;
-            renderProductsList();
-            if (elements.sidebarTotalProducts) {
-              elements.sidebarTotalProducts.textContent = allProducts.length;
+        
+        // ==================== UPDATE SETUP SETTINGS LINKS ====================
+        function setupSettingsLinks() {
+            if (elements.appearanceSettings && userWebsites.length > 0) {
+                elements.appearanceSettings.href = `/wtb/html/tampilan.html?website=${userWebsites[0].endpoint}`;
             }
-            showLoading(false);
-            return;
-          }
+            
+            if (elements.manageProductsBtn && userWebsites.length > 0) {
+                elements.manageProductsBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
+            }
+            
+            // Tambahkan juga untuk empty state manage button
+            const emptyStateManageBtn = document.getElementById('emptyStateManageBtn');
+            if (emptyStateManageBtn && userWebsites.length > 0) {
+                emptyStateManageBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
+            }
+            
+            if (elements.socialSettings && userWebsites.length > 0) {
+                elements.socialSettings.href = `/wtb/html/sosial.html?website=${userWebsites[0].endpoint}`;
+            }
+            
+            if (elements.paymentSettings && userWebsites.length > 0) {
+                elements.paymentSettings.href = `/wtb/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
+            }
+            
+            if (elements.notificationSettings) {
+                elements.notificationSettings.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showToast('Fitur ini akan segera tersedia', 'info');
+                });
+            }
+            
+            if (elements.voucherSettings && userWebsites.length > 0) {
+              elements.voucherSettings.href = `/wtb/html/voucher.html?website=${userWebsites[0].endpoint}`;
+            }
+            
+            if (elements.integrationSettings) {
+                elements.integrationSettings.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showToast('Fitur ini akan segera tersedia', 'info');
+                });
+            }
         }
     
-        // Load dari API jika tidak ada cache
-        const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
-          method: 'GET'
-        }).catch(() => ({ success: false, data: [] }));
-    
-        if (productsResponse.success && productsResponse.data) {
-          allProducts = [];
-          productsResponse.data.forEach(layanan => {
-            if (layanan.aplikasi) {
-              layanan.aplikasi.forEach(aplikasi => {
-                if (aplikasi.items) {
-                  aplikasi.items.forEach(item => {
-                    allProducts.push({
-                      ...item,
-                      website_name: website.endpoint,
-                      website_id: website.id,
-                      layanan_nama: layanan.layanan_nama,
-                      layanan_gambar: layanan.layanan_gambar,
-                      layanan_desc: layanan.layanan_desc,
-                      aplikasi_nama: aplikasi.aplikasi_nama,
-                      aplikasi_gambar: aplikasi.aplikasi_gambar,
-                      aplikasi_desc: aplikasi.aplikasi_desc
-                    });
-                  });
+        // ==================== EVENT LISTENERS ====================
+        function setupEventListeners() {
+            if (elements.menuToggle) {
+                elements.menuToggle.addEventListener('click', toggleSidebar);
+            }
+            
+            if (elements.sidebarClose) {
+                elements.sidebarClose.addEventListener('click', closeSidebar);
+            }
+            
+            if (elements.refreshBtn) {
+              elements.refreshBtn.addEventListener('click', async () => {
+                vibrate(10);
+                const currentEndpoint = getLastWebsiteEndpoint() || (userWebsites[0]?.endpoint);
+                if (currentEndpoint) {
+                  showToast(`Memuat ulang data untuk /${currentEndpoint}...`, 'info');
+                  await reloadForWebsite(currentEndpoint);
+                } else {
+                  showToast('Tidak ada website yang dipilih', 'warning');
                 }
               });
             }
-          });
-    
-          // Cache data
-          cacheWebsiteData(website.id, allProducts);
+            
+            elements.menuItems.forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const page = item.dataset.page;
+                    if (page) {
+                        showPage(page);
+                    }
+                    closeSidebar();
+                });
+            });
+            
+            if (elements.logoutBtn) {
+                elements.logoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    clearSession(); // Hapus session saat logout
+                    localStorage.removeItem('panel_user');
+                    window.location.href = '/';
+                });
+            }
+            
+            if (elements.orderStatusFilter) {
+                elements.orderStatusFilter.addEventListener('change', renderOrdersTable);
+            }
+            
+            if (elements.customerSearch) {
+                elements.customerSearch.addEventListener('input', (e) => {
+                    const search = e.target.value.toLowerCase();
+                    // Implement search functionality
+                });
+            }
+            
+            if (elements.transactionPeriod) {
+                elements.transactionPeriod.addEventListener('change', () => {
+                    showToast('Fitur filter periode akan segera tersedia', 'info');
+                });
+            }
+            
+            document.addEventListener('click', (e) => {
+                if (elements.sidebar?.classList.contains('active')) {
+                    if (!elements.sidebar.contains(e.target) && !elements.menuToggle?.contains(e.target)) {
+                        closeSidebar();
+                    }
+                }
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeSidebar();
+                }
+            });
+            
+            // Simpan state saat user akan meninggalkan halaman (opsional)
+            window.addEventListener('beforeunload', () => {
+                // Tidak perlu melakukan apa-apa, session storage sudah tersimpan
+            });
         }
     
-        renderProductsList();
-    
-        if (elements.sidebarTotalProducts) {
-          elements.sidebarTotalProducts.textContent = allProducts.length;
+        // ==================== PULL TO REFRESH ====================
+        function initPullToRefresh() {
+          // Buat elemen spinner - posisikan di atas layar (sembunyi)
+          ptrState.container = document.createElement('div');
+          ptrState.container.className = 'ptr-container';
+        
+          ptrState.spinner = document.createElement('div');
+          ptrState.spinner.className = 'ptr-spinner';
+          ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
+        
+          ptrState.container.appendChild(ptrState.spinner);
+          document.body.appendChild(ptrState.container);
+        
+          // Pastikan spinner tersembunyi di atas
+          ptrState.spinner.style.top = '-60px';
+        
+          // Event listeners
+          const content = document.querySelector('.panel-content');
+          if (!content) return;
+        
+          let touchStartY = 0;
+          let touchStartX = 0;
+          let isAtTop = false;
+          let isPulling = false;
+        
+          content.addEventListener('scroll', () => {
+            // Deteksi apakah di posisi paling atas
+            isAtTop = content.scrollTop <= 0;
+          }, { passive: true });
+        
+          content.addEventListener('touchstart', (e) => {
+            // Simpan posisi awal sentuhan
+            touchStartY = e.touches[0].clientY;
+            touchStartX = e.touches[0].clientX;
+        
+            // Reset state pulling
+            isPulling = false;
+            ptrState.pulling = false;
+        
+            // Sembunyikan spinner
+            ptrState.spinner.style.top = '-60px';
+            ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
+          }, { passive: true });
+        
+          content.addEventListener('touchmove', (e) => {
+            // HANYA proses jika di posisi paling ATAS
+            if (!isAtTop) return;
+        
+            const touchY = e.touches[0].clientY;
+            const touchX = e.touches[0].clientX;
+        
+            // Hitung jarak tarikan vertikal
+            const diffY = touchY - touchStartY;
+        
+            // Hitung jarak horizontal
+            const diffX = Math.abs(touchX - touchStartX);
+        
+            // Hanya proses jika TARIK KE BAWAH (diffY > 0) dan bukan scroll horizontal
+            if (diffY > 0 && diffX < 10) {
+              e.preventDefault();
+        
+              isPulling = true;
+              ptrState.pulling = true;
+        
+              // Batasi jarak tarikan (max 80px)
+              const pullDistance = Math.min(diffY, 80);
+        
+              // Spinner mengikuti tarikan - turun dari atas
+              ptrState.spinner.style.top = `${-60 + pullDistance}px`;
+              ptrState.spinner.classList.add('pull-down');
+        
+              // Rotasi icon berdasarkan jarak
+              const rotation = Math.min(pullDistance / 80 * 180, 180);
+              const icon = ptrState.spinner.querySelector('i');
+              if (icon) {
+                icon.style.transform = `rotate(${rotation}deg)`;
+              }
+        
+              // Ganti icon ketika mencapai threshold
+              if (pullDistance >= 80) {
+                ptrState.spinner.classList.add('active');
+                ptrState.spinner.innerHTML = '<i class="fas fa-check"></i>';
+              } else {
+                ptrState.spinner.classList.remove('active');
+                ptrState.spinner.innerHTML = '<i class="fas fa-arrow-down"></i>';
+              }
+            }
+          }, { passive: false });
+        
+          content.addEventListener('touchend', async (e) => {
+            // Hanya proses jika sedang menarik dan di posisi atas
+            if (!isPulling || !isAtTop) {
+              // Reset spinner
+              ptrState.spinner.style.top = '-60px';
+              ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
+              return;
+            }
+        
+            const touchY = e.changedTouches[0].clientY;
+            const diffY = touchY - touchStartY;
+        
+            // Refresh jika tarikan mencapai threshold
+            if (diffY >= 80) {
+              // Tampilkan loading di atas
+              ptrState.spinner.classList.remove('pull-down', 'active');
+              ptrState.spinner.classList.add('loading');
+              ptrState.spinner.innerHTML = '<i class="fas fa-sync-alt"></i>';
+              ptrState.spinner.style.top = '10px'; // Muncul di atas konten
+        
+              // Lakukan refresh
+              await refreshPage();
+        
+              // Sembunyikan spinner
+              ptrState.spinner.style.top = '-60px';
+              ptrState.spinner.classList.remove('loading');
+            } else {
+              // Reset tanpa refresh - kembalikan ke atas
+              ptrState.spinner.style.top = '-60px';
+              ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
+            }
+        
+            isPulling = false;
+            ptrState.pulling = false;
+          }, { passive: true });
+        
+          content.addEventListener('touchcancel', () => {
+            isPulling = false;
+            ptrState.pulling = false;
+            ptrState.spinner.style.top = '-60px';
+            ptrState.spinner.classList.remove('pull-down', 'active', 'loading');
+          }, { passive: true });
         }
-    
-      } catch (error) {
-        console.error('❌ Error reloading for website:', error);
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    // Setup filter dinamis untuk halaman transaksi
-    function setupTransactionFilters() {
-      const typeFilter = elements.transactionTypeFilter;
-      const statusFilter = elements.transactionStatusFilter;
-      const statusFilterLabel = elements.statusFilterLabel;
-      const timeFilter = elements.transactionTimeFilter;
-      const resetBtn = elements.resetFiltersBtn;
-      const applyBtn = elements.applyFiltersBtn;
-    
-      if (!typeFilter || !statusFilter) return;
-    
-      // Fungsi untuk update opsi status berdasarkan tipe
-      function updateStatusOptions() {
-        const type = typeFilter.value;
-        const currentValue = statusFilter.value;
-    
-        // Kosongkan options
-        statusFilter.innerHTML = '';
-    
-        // Tambahkan option "Semua Status"
-        const allOption = document.createElement('option');
-        allOption.value = 'all';
-        allOption.textContent = 'Semua Status';
-        statusFilter.appendChild(allOption);
-    
-        if (type === 'deposit') {
-          // Status untuk deposit
-          const statuses = [
-            { value: 'pending', text: 'Pending' },
-            { value: 'processing', text: 'Processing' },
-            { value: 'success', text: 'Success' },
-            { value: 'failed', text: 'Failed' },
-            { value: 'expired', text: 'Expired' },
-            { value: 'rejected', text: 'Rejected' }
-                ];
-    
-          statuses.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.value;
-            option.textContent = s.text;
-            statusFilter.appendChild(option);
-          });
-    
-          if (statusFilterLabel) statusFilterLabel.textContent = '(Deposit)';
-    
-        } else if (type === 'withdraw') {
-          // Status untuk withdraw
-          const statuses = [
-            { value: 'pending', text: 'Pending' },
-            { value: 'processing', text: 'Processing' },
-            { value: 'success', text: 'Success' },
-            { value: 'failed', text: 'Failed' },
-            { value: 'rejected', text: 'Rejected' }
-                ];
-    
-          statuses.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.value;
-            option.textContent = s.text;
-            statusFilter.appendChild(option);
-          });
-    
-          if (statusFilterLabel) statusFilterLabel.textContent = '(Withdraw)';
-    
-        } else if (type === 'purchase') {
-          // Status untuk pembelian
-          const statuses = [
-            { value: 'pending', text: 'Pending' },
-            { value: 'processing', text: 'Processing' },
-            { value: 'success', text: 'Success' },
-            { value: 'cancelled', text: 'Cancelled' }
-                ];
-    
-          statuses.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.value;
-            option.textContent = s.text;
-            statusFilter.appendChild(option);
-          });
-    
-          if (statusFilterLabel) statusFilterLabel.textContent = '(Pembelian)';
-    
-        } else {
-          // Semua transaksi
-          const statuses = [
-            { value: 'pending', text: 'Pending' },
-            { value: 'processing', text: 'Processing' },
-            { value: 'success', text: 'Success' },
-            { value: 'failed', text: 'Failed' },
-            { value: 'expired', text: 'Expired' },
-            { value: 'rejected', text: 'Rejected' },
-            { value: 'cancelled', text: 'Cancelled' }
-                ];
-    
-          statuses.forEach(s => {
-            const option = document.createElement('option');
-            option.value = s.value;
-            option.textContent = s.text;
-            statusFilter.appendChild(option);
-          });
-    
-          if (statusFilterLabel) statusFilterLabel.textContent = '';
-        }
-    
-        // Kembalikan nilai sebelumnya jika masih ada
-        if (currentValue) {
-          const optionExists = Array.from(statusFilter.options).some(opt => opt.value === currentValue);
-          if (optionExists) {
-            statusFilter.value = currentValue;
+        
+        async function refreshPage() {
+          showToast('Menyegarkan halaman...', 'info');
+        
+          const currentPage = getLastPage() || 'dashboard';
+          const currentEndpoint = getLastWebsiteEndpoint();
+        
+          try {
+            if (currentEndpoint) {
+              await reloadForWebsite(currentEndpoint, false);
+            } else {
+              const userId = await loadUserData();
+              await loadUserWebsites(userId);
+              await loadProductsAndOrders();
+            }
+        
+            showToast('Halaman berhasil disegarkan', 'success');
+            showPage(currentPage);
+        
+          } catch (error) {
+            console.error('❌ Refresh error:', error);
+            showToast('Gagal menyegarkan halaman', 'error');
           }
         }
-      }
-    
-      // Event listeners
-      typeFilter.addEventListener('change', updateStatusOptions);
-    
-      if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
-          if (timeFilter) timeFilter.value = 'week';
-          if (typeFilter) typeFilter.value = 'all';
-          updateStatusOptions();
-          if (statusFilter) statusFilter.value = 'all';
-          loadTransactions();
-        });
-      }
-    
-      if (applyBtn) {
-        applyBtn.addEventListener('click', loadTransactions);
-      }
-    
-      // Inisialisasi
-      updateStatusOptions();
-    }
-    
-    // Fungsi untuk memuat transaksi berdasarkan filter
-    async function loadTransactions() {
-      const timeFilter = elements.transactionTimeFilter;
-      const typeFilter = elements.transactionTypeFilter;
-      const statusFilter = elements.transactionStatusFilter;
-      const tableBody = elements.transactionsTableBody;
-      const emptyState = elements.transactionsEmptyState;
-      const filterInfo = elements.filterInfo;
-    
-      if (!tableBody) return;
-    
-      showLoading(true);
-    
-      try {
-        // Ambil website yang dipilih
-        const websiteEndpoint = document.getElementById('selectedWebsiteEndpoint')?.textContent.replace('/', '') || '';
-    
-        // Cari website ID berdasarkan endpoint
-        const website = userWebsites.find(w => w.endpoint === websiteEndpoint);
-        const websiteId = website?.id;
-    
-        if (!websiteId) {
-          console.warn('Website tidak dipilih');
-          tableBody.innerHTML = `
-                    <tr class="empty-row">
-                        <td colspan="7">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <p>Pilih website terlebih dahulu</p>
-                        </td>
-                    </tr>
+        
+        function setupWebsiteSelector() {
+          const dropdown = document.querySelector('.website-selector-dropdown');
+          const btn = document.getElementById('websiteSelectorBtn');
+          const menu = document.getElementById('websiteSelectorMenu');
+          const selectedText = document.getElementById('selectedWebsiteEndpoint');
+        
+          if (!btn || !menu || !dropdown) return;
+        
+          // Render menu options
+          renderWebsiteOptions();
+        
+          // Toggle dropdown
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('active');
+          });
+        
+          // Pilih website
+          menu.addEventListener('click', (e) => {
+            const option = e.target.closest('.website-option');
+            if (!option) return;
+        
+            const endpoint = option.dataset.endpoint;
+            if (!endpoint) return;
+        
+            // Update selected
+            document.querySelectorAll('.website-option').forEach(opt => opt.classList.remove('active'));
+            option.classList.add('active');
+        
+            // Update text
+            selectedText.textContent = '/' + endpoint;
+        
+            // Save to session
+            saveWebsiteEndpoint(endpoint);
+            currentWebsiteEndpoint = endpoint;
+        
+            // Update all settings links
+            updateAllSettingsLinks(endpoint);
+        
+            // Close dropdown
+            dropdown.classList.remove('active');
+        
+            // Reload data for selected website
+            reloadForWebsite(endpoint);
+        
+            showToast(`Website: /${endpoint}`, 'success');
+          });
+        
+          // Tutup dropdown saat klik di luar
+          document.addEventListener('click', (e) => {
+            if (!btn.contains(e.target) && !menu.contains(e.target)) {
+              dropdown.classList.remove('active');
+            }
+          });
+        
+          // Load saved endpoint
+          const savedEndpoint = getLastWebsiteEndpoint();
+          if (savedEndpoint) {
+            currentWebsiteEndpoint = savedEndpoint;
+            selectedText.textContent = '/' + savedEndpoint;
+          }
+        }
+        
+        function renderWebsiteOptions() {
+          const menu = document.getElementById('websiteSelectorMenu');
+          if (!menu) return;
+        
+          if (userWebsites.length === 0) {
+            menu.innerHTML = `
+                    <button class="website-option" data-endpoint="">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Tidak ada website</span>
+                    </button>
                 `;
-          showLoading(false);
-          return;
-        }
-    
-        // Buat parameter filter
-        const params = new URLSearchParams({
-          website_id: websiteId,
-          type: typeFilter?.value || 'all',
-          status: statusFilter?.value || 'all',
-          time: timeFilter?.value || 'all',
-          limit: 100
-        });
-    
-        // Panggil API
-        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/filter?${params}`, {
-          method: 'GET'
-        });
-    
-        if (response.success) {
-          const transactions = response.transactions || [];
-    
-          // Update info filter
-          if (filterInfo) {
-            const typeText = typeFilter?.options[typeFilter.selectedIndex]?.text || 'Semua';
-            const statusText = statusFilter?.options[statusFilter.selectedIndex]?.text || 'Semua';
-            filterInfo.innerHTML = `<i class="fas fa-info-circle"></i> Menampilkan ${transactions.length} transaksi (${typeText} - ${statusText})`;
+            return;
           }
-    
-          // Render tabel
-          renderTransactionsTable(transactions);
-    
-          // Update summary
-          updateTransactionSummary(transactions);
-        } else {
-          showToast('Gagal memuat transaksi', 'error');
+        
+          let html = '';
+          const currentEndpoint = getLastWebsiteEndpoint() || (userWebsites[0]?.endpoint);
+        
+          userWebsites.forEach(website => {
+            const isActive = website.endpoint === currentEndpoint;
+            html += `
+                    <button class="website-option ${isActive ? 'active' : ''}" data-endpoint="${website.endpoint}">
+                        <i class="fas fa-globe"></i>
+                        <span>/${website.endpoint}</span>
+                    </button>
+                `;
+          });
+        
+          menu.innerHTML = html;
+        }
+        
+        function updateAllSettingsLinks(endpoint) {
+          // Update semua link settings dengan endpoint yang dipilih
+          const settingLinks = {
+            appearanceSettings: '/wtb/html/tampilan.html?website=' + endpoint,
+            socialSettings: '/wtb/html/sosial.html?website=' + endpoint,
+            paymentSettings: '/wtb/html/pembayaran.html?website=' + endpoint,
+            voucherSettings: '/wtb/html/voucher.html?website=' + endpoint,
+            manageProductsBtn: '/wtb/html/produk.html?website=' + endpoint,
+            emptyStateManageBtn: '/wtb/html/produk.html?website=' + endpoint
+          };
+        
+          for (const [id, url] of Object.entries(settingLinks)) {
+            const element = document.getElementById(id);
+            if (element) {
+              element.href = url;
+            }
+          }
+        
+          // Update juga quick actions
+          updateQuickActions(endpoint);
+        }
+        
+        function updateQuickActions(endpoint) {
+          if (!elements.quickActions) return;
+        
+          let html = '';
+        
+          if (userWebsites.length > 0) {
+            html += `
+                    <a href="/wtb/html/produk.html?website=${endpoint}" class="quick-action-card">
+                        <i class="fas fa-box"></i>
+                        <span>Kelola Produk</span>
+                        <small>/${endpoint}</small>
+                    </a>
+                    <a href="/wtb/html/tampilan.html?website=${endpoint}" class="quick-action-card">
+                        <i class="fas fa-paint-brush"></i>
+                        <span>Atur Tampilan</span>
+                        <small>/${endpoint}</small>
+                    </a>
+                `;
+          } else {
+            html = `
+                    <a href="/wtb/html/format.html" class="quick-action-card">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Buat Website Baru</span>
+                    </a>
+                `;
+          }
+        
+          elements.quickActions.innerHTML = html;
+        }
+        
+        // Update fungsi loadUserWebsites untuk memanggil setupWebsiteSelector
+        async function loadUserWebsites(userId) {
+          try {
+            showLoading(true);
+        
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/websites`, {
+              method: 'GET'
+            });
+        
+            if (response.success && response.websites) {
+              userWebsites = response.websites.filter(w => w.owner_id === userId);
+        
+              if (elements.menuWebsitesBadge) {
+                elements.menuWebsitesBadge.textContent = userWebsites.length;
+              }
+              if (elements.sidebarTotalWebsites) {
+                elements.sidebarTotalWebsites.textContent = userWebsites.length;
+              }
+        
+              const activeCount = userWebsites.filter(w => w.status === 'active').length;
+              if (elements.statActiveWebsites) {
+                elements.statActiveWebsites.textContent = activeCount;
+              }
+        
+              // Setup website selector setelah data websites dimuat
+              setupWebsiteSelector();
+        
+              // Simpan endpoint pertama jika belum ada
+              if (userWebsites.length > 0 && !getLastWebsiteEndpoint()) {
+                saveWebsiteEndpoint(userWebsites[0].endpoint);
+                currentWebsiteEndpoint = userWebsites[0].endpoint;
+              }
+        
+              return userWebsites;
+            } else {
+              userWebsites = [];
+              return [];
+            }
+          } catch (error) {
+            console.error('❌ Error loading websites:', error);
+            showToast('Gagal memuat data website', 'error');
+            userWebsites = [];
+            return [];
+          } finally {
+            showLoading(false);
+          }
         }
     
-      } catch (error) {
-        console.error('Error loading transactions:', error);
-        showToast('Gagal memuat transaksi', 'error');
-      } finally {
-        showLoading(false);
-      }
-    }
+        // Fungsi untuk menyimpan data website ke session
+        function cacheWebsiteData(websiteId, data) {
+          try {
+            const cacheKey = `website_${websiteId}_data`;
+            const cacheData = {
+              timestamp: Date.now(),
+              data: data
+            };
+            sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          } catch (e) {
+            console.warn('⚠️ Failed to cache website data:', e);
+          }
+        }
+        
+        // Fungsi untuk mengambil data website dari cache
+        function getCachedWebsiteData(websiteId, maxAge = 5 * 60 * 1000) { // 5 menit default
+          try {
+            const cacheKey = `website_${websiteId}_data`;
+            const cached = sessionStorage.getItem(cacheKey);
+            if (!cached) return null;
+        
+            const { timestamp, data } = JSON.parse(cached);
+            if (Date.now() - timestamp > maxAge) {
+              sessionStorage.removeItem(cacheKey);
+              return null;
+            }
+        
+            return data;
+          } catch (e) {
+            return null;
+          }
+        }
+        
+        // Update fungsi reloadForWebsite untuk menggunakan cache
+        async function reloadForWebsite(endpoint, useCache = true) {
+          showLoading(true);
+        
+          try {
+            const website = userWebsites.find(w => w.endpoint === endpoint);
+            if (!website) return;
+        
+            // Cek cache jika diizinkan
+            if (useCache) {
+              const cached = getCachedWebsiteData(website.id);
+              if (cached) {
+                allProducts = cached;
+                renderProductsList();
+                if (elements.sidebarTotalProducts) {
+                  elements.sidebarTotalProducts.textContent = allProducts.length;
+                }
+                showLoading(false);
+                return;
+              }
+            }
+        
+            // Load dari API jika tidak ada cache
+            const productsResponse = await fetchWithRetry(`${API_BASE_URL}/api/products/all/${website.id}`, {
+              method: 'GET'
+            }).catch(() => ({ success: false, data: [] }));
+        
+            if (productsResponse.success && productsResponse.data) {
+              allProducts = [];
+              productsResponse.data.forEach(layanan => {
+                if (layanan.aplikasi) {
+                  layanan.aplikasi.forEach(aplikasi => {
+                    if (aplikasi.items) {
+                      aplikasi.items.forEach(item => {
+                        allProducts.push({
+                          ...item,
+                          website_name: website.endpoint,
+                          website_id: website.id,
+                          layanan_nama: layanan.layanan_nama,
+                          layanan_gambar: layanan.layanan_gambar,
+                          layanan_desc: layanan.layanan_desc,
+                          aplikasi_nama: aplikasi.aplikasi_nama,
+                          aplikasi_gambar: aplikasi.aplikasi_gambar,
+                          aplikasi_desc: aplikasi.aplikasi_desc
+                        });
+                      });
+                    }
+                  });
+                }
+              });
+        
+              // Cache data
+              cacheWebsiteData(website.id, allProducts);
+            }
+        
+            renderProductsList();
+        
+            if (elements.sidebarTotalProducts) {
+              elements.sidebarTotalProducts.textContent = allProducts.length;
+            }
+        
+          } catch (error) {
+            console.error('❌ Error reloading for website:', error);
+          } finally {
+            showLoading(false);
+          }
+        }
     
+        // Setup filter dinamis untuk halaman transaksi
+        function setupTransactionFilters() {
+          const typeFilter = elements.transactionTypeFilter;
+          const statusFilter = elements.transactionStatusFilter;
+          const statusFilterLabel = elements.statusFilterLabel;
+          const timeFilter = elements.transactionTimeFilter;
+          const resetBtn = elements.resetFiltersBtn;
+          const applyBtn = elements.applyFiltersBtn;
+        
+          if (!typeFilter || !statusFilter) return;
+        
+          // Fungsi untuk update opsi status berdasarkan tipe
+          function updateStatusOptions() {
+            const type = typeFilter.value;
+            const currentValue = statusFilter.value;
+        
+            // Kosongkan options
+            statusFilter.innerHTML = '';
+        
+            // Tambahkan option "Semua Status"
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = 'Semua Status';
+            statusFilter.appendChild(allOption);
+        
+            if (type === 'deposit') {
+              // Status untuk deposit
+              const statuses = [
+                { value: 'pending', text: 'Pending' },
+                { value: 'processing', text: 'Processing' },
+                { value: 'success', text: 'Success' },
+                { value: 'failed', text: 'Failed' },
+                { value: 'expired', text: 'Expired' },
+                { value: 'rejected', text: 'Rejected' }
+                    ];
+        
+              statuses.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.value;
+                option.textContent = s.text;
+                statusFilter.appendChild(option);
+              });
+        
+              if (statusFilterLabel) statusFilterLabel.textContent = '(Deposit)';
+        
+            } else if (type === 'withdraw') {
+              // Status untuk withdraw
+              const statuses = [
+                { value: 'pending', text: 'Pending' },
+                { value: 'processing', text: 'Processing' },
+                { value: 'success', text: 'Success' },
+                { value: 'failed', text: 'Failed' },
+                { value: 'rejected', text: 'Rejected' }
+                    ];
+        
+              statuses.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.value;
+                option.textContent = s.text;
+                statusFilter.appendChild(option);
+              });
+        
+              if (statusFilterLabel) statusFilterLabel.textContent = '(Withdraw)';
+        
+            } else if (type === 'purchase') {
+              // Status untuk pembelian
+              const statuses = [
+                { value: 'pending', text: 'Pending' },
+                { value: 'processing', text: 'Processing' },
+                { value: 'success', text: 'Success' },
+                { value: 'cancelled', text: 'Cancelled' }
+                    ];
+        
+              statuses.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.value;
+                option.textContent = s.text;
+                statusFilter.appendChild(option);
+              });
+        
+              if (statusFilterLabel) statusFilterLabel.textContent = '(Pembelian)';
+        
+            } else {
+              // Semua transaksi
+              const statuses = [
+                { value: 'pending', text: 'Pending' },
+                { value: 'processing', text: 'Processing' },
+                { value: 'success', text: 'Success' },
+                { value: 'failed', text: 'Failed' },
+                { value: 'expired', text: 'Expired' },
+                { value: 'rejected', text: 'Rejected' },
+                { value: 'cancelled', text: 'Cancelled' }
+                    ];
+        
+              statuses.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.value;
+                option.textContent = s.text;
+                statusFilter.appendChild(option);
+              });
+        
+              if (statusFilterLabel) statusFilterLabel.textContent = '';
+            }
+        
+            // Kembalikan nilai sebelumnya jika masih ada
+            if (currentValue) {
+              const optionExists = Array.from(statusFilter.options).some(opt => opt.value === currentValue);
+              if (optionExists) {
+                statusFilter.value = currentValue;
+              }
+            }
+          }
+        
+          // Event listeners
+          typeFilter.addEventListener('change', updateStatusOptions);
+        
+          if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+              if (timeFilter) timeFilter.value = 'week';
+              if (typeFilter) typeFilter.value = 'all';
+              updateStatusOptions();
+              if (statusFilter) statusFilter.value = 'all';
+              loadTransactions();
+            });
+          }
+        
+          if (applyBtn) {
+            applyBtn.addEventListener('click', loadTransactions);
+          }
+        
+          // Inisialisasi
+          updateStatusOptions();
+        }
+        
+        // Fungsi untuk memuat transaksi berdasarkan filter
+        async function loadTransactions() {
+          const timeFilter = elements.transactionTimeFilter;
+          const typeFilter = elements.transactionTypeFilter;
+          const statusFilter = elements.transactionStatusFilter;
+          const tableBody = elements.transactionsTableBody;
+          const emptyState = elements.transactionsEmptyState;
+          const filterInfo = elements.filterInfo;
+        
+          if (!tableBody) return;
+        
+          showLoading(true);
+        
+          try {
+            // Ambil website yang dipilih
+            const websiteEndpoint = document.getElementById('selectedWebsiteEndpoint')?.textContent.replace('/', '') || '';
+        
+            // Cari website ID berdasarkan endpoint
+            const website = userWebsites.find(w => w.endpoint === websiteEndpoint);
+            const websiteId = website?.id;
+        
+            if (!websiteId) {
+              console.warn('Website tidak dipilih');
+              tableBody.innerHTML = `
+                        <tr class="empty-row">
+                            <td colspan="7">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>Pilih website terlebih dahulu</p>
+                            </td>
+                        </tr>
+                    `;
+              showLoading(false);
+              return;
+            }
+        
+            // Buat parameter filter
+            const params = new URLSearchParams({
+              website_id: websiteId,
+              type: typeFilter?.value || 'all',
+              status: statusFilter?.value || 'all',
+              time: timeFilter?.value || 'all',
+              limit: 100
+            });
+        
+            // Panggil API
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/filter?${params}`, {
+              method: 'GET'
+            });
+        
+            if (response.success) {
+              const transactions = response.transactions || [];
+        
+              // Update info filter
+              if (filterInfo) {
+                const typeText = typeFilter?.options[typeFilter.selectedIndex]?.text || 'Semua';
+                const statusText = statusFilter?.options[statusFilter.selectedIndex]?.text || 'Semua';
+                filterInfo.innerHTML = `<i class="fas fa-info-circle"></i> Menampilkan ${transactions.length} transaksi (${typeText} - ${statusText})`;
+              }
+        
+              // Render tabel
+              renderTransactionsTable(transactions);
+        
+              // Update summary
+              updateTransactionSummary(transactions);
+            } else {
+              showToast('Gagal memuat transaksi', 'error');
+            }
+        
+          } catch (error) {
+            console.error('Error loading transactions:', error);
+            showToast('Gagal memuat transaksi', 'error');
+          } finally {
+            showLoading(false);
+          }
+        }
+        
     // Fungsi untuk render tabel transaksi
     function renderTransactionsTable(transactions) {
       const tableBody = elements.transactionsTableBody;
@@ -1896,21 +1896,18 @@
       if (!tableBody) return;
     
       if (!transactions || transactions.length === 0) {
-        tableBody.innerHTML = `
-                <tr class="empty-row">
-                    <td colspan="7">
-                        <i class="fas fa-credit-card"></i>
-                        <p>Tidak ada transaksi</p>
-                    </td>
-                </tr>
-            `;
+        tableBody.innerHTML = '';
         if (emptyState) emptyState.style.display = 'flex';
+    
+        // Update summary dengan data kosong
+        updateTransactionSummary([]);
         return;
       }
     
       if (emptyState) emptyState.style.display = 'none';
     
       let html = '';
+      const now = new Date().getTime();
     
       transactions.forEach(trx => {
         const typeClass = trx.transaction_type === 'deposit' ? 'type-deposit' :
@@ -1923,75 +1920,113 @@
         const userName = trx.user_username || trx.user_first_name || `User ${trx.user_id}`;
         const userId = trx.user_id;
     
+        // Hitung sisa waktu untuk deposit pending
+        let remainingTime = '-';
+        let remainingTimeClass = '';
+    
+        if (trx.transaction_type === 'deposit' && trx.status === 'pending') {
+          const expiredAt = trx.cashify_expired_at || trx.expired_at;
+          if (expiredAt) {
+            const expiredTime = new Date(expiredAt).getTime();
+            const distance = expiredTime - now;
+    
+            if (distance > 0) {
+              const hours = Math.floor(distance / (1000 * 60 * 60));
+              const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+              const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    
+              if (hours > 0) {
+                remainingTime = `${hours}j ${minutes}m`;
+                remainingTimeClass = distance < 5 * 60 * 1000 ? 'text-danger' : 'text-warning';
+              } else if (minutes > 0) {
+                remainingTime = `${minutes}m ${seconds}d`;
+                remainingTimeClass = minutes < 5 ? 'text-danger' : 'text-warning';
+              } else {
+                remainingTime = `${seconds}d`;
+                remainingTimeClass = 'text-danger';
+              }
+            } else {
+              remainingTime = 'Expired';
+              remainingTimeClass = 'text-expired';
+            }
+          }
+        } else if (trx.status === 'expired') {
+          remainingTime = 'Expired';
+          remainingTimeClass = 'text-expired';
+        } else if (trx.status === 'success') {
+          remainingTime = 'Selesai';
+          remainingTimeClass = 'text-success';
+        } else if (trx.status === 'rejected') {
+          remainingTime = 'Ditolak';
+          remainingTimeClass = 'text-rejected';
+        }
+    
         html += `
                 <tr id="transaction-row-${trx.id}" onclick="window.panel.toggleTransactionRow(${trx.id})">
-                    <td>#${trx.id}</td>
+                    <td>
+                        <button class="table-btn view-btn" onclick="event.stopPropagation(); window.panel.viewTransactionDetail(${trx.id}, '${trx.transaction_type}')">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                    <td><span class="transaction-id">#${trx.id}</span></td>
                     <td><span class="transaction-type-badge ${typeClass}">${trx.transaction_type}</span></td>
                     <td>
                         <div class="transaction-user-info">
-                            <span>${escapeHtml(userName)}</span>
+                            <span class="user-name">${escapeHtml(userName)}</span>
                             <span class="transaction-user-id">ID: ${userId}</span>
                         </div>
                     </td>
+                    <td><span class="transaction-time">${formatDate(trx.created_at)}</span></td>
                     <td><span class="transaction-amount ${amountClass}">${amountPrefix} ${formatRupiah(trx.amount)}</span></td>
-                    <td><span class="transaction-status-badge ${statusClass}">${trx.status}</span></td>
-                    <td>${formatDate(trx.created_at)}</td>
-                    <td>
-                        <div class="table-actions">
-                            <button class="table-btn" onclick="event.stopPropagation(); window.panel.viewTransaction(${trx.id})">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </td>
+                    <td><span class="transaction-remaining-time ${remainingTimeClass}" data-expired="${trx.cashify_expired_at || trx.expired_at || ''}">${remainingTime}</span></td>
                 </tr>
-                <tr id="transaction-detail-${trx.id}" style="display: none;"></tr>
+                <tr id="transaction-detail-${trx.id}" class="transaction-detail-row" style="display: none;"></tr>
             `;
       });
     
       tableBody.innerHTML = html;
+    
+      // Mulai interval untuk update countdown setiap detik
+      startCountdownInterval();
     }
     
-    // Fungsi untuk update summary
-    function updateTransactionSummary(transactions) {
-      const totalElement = elements.transactionTotal;
-      const countElement = elements.transactionCount;
-      const averageElement = elements.transactionAverage;
-      const totalSub = elements.totalRevenueSub;
-      const countSub = elements.totalCountSub;
-      const averageSub = elements.averageSub;
+    // Fungsi untuk memulai interval countdown
+    let countdownInterval = null;
+    function startCountdownInterval() {
+      if (countdownInterval) clearInterval(countdownInterval);
     
-      let total = 0;
-      let count = transactions.length;
+      countdownInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const timeElements = document.querySelectorAll('.transaction-remaining-time[data-expired]');
     
-      transactions.forEach(t => {
-        if (t.transaction_type === 'deposit' && t.status === 'success') {
-          total += t.amount;
-        } else if (t.transaction_type === 'withdraw' && t.status === 'success') {
-          total -= t.amount;
-        } else if (t.transaction_type === 'purchase' && t.status === 'success') {
-          total += t.amount;
-        }
-      });
+        timeElements.forEach(el => {
+          const expiredAt = el.getAttribute('data-expired');
+          if (!expiredAt) return;
     
-      const average = count > 0 ? Math.round(total / count) : 0;
+          const expiredTime = new Date(expiredAt).getTime();
+          const distance = expiredTime - now;
     
-      if (totalElement) totalElement.textContent = formatRupiah(total);
-      if (countElement) countElement.textContent = count;
-      if (averageElement) averageElement.textContent = formatRupiah(average);
+          if (distance > 0) {
+            const hours = Math.floor(distance / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
     
-      // Update border kosong
-      const cards = document.querySelectorAll('.summary-card');
-      cards.forEach(card => {
-        if (count === 0) {
-          card.classList.add('empty');
-        } else {
-          card.classList.remove('empty');
-        }
-      });
-    
-      if (totalSub) totalSub.textContent = count > 0 ? 'Dengan data' : 'Tidak ada data';
-      if (countSub) countSub.textContent = count > 0 ? `${count} transaksi` : 'Kosong';
-      if (averageSub) averageSub.textContent = count > 0 ? 'Rata-rata' : 'Kosong';
+            if (hours > 0) {
+              el.textContent = `${hours}j ${minutes}m`;
+              el.className = `transaction-remaining-time ${distance < 5 * 60 * 1000 ? 'text-danger' : 'text-warning'}`;
+            } else if (minutes > 0) {
+              el.textContent = `${minutes}m ${seconds}d`;
+              el.className = `transaction-remaining-time ${minutes < 5 ? 'text-danger' : 'text-warning'}`;
+            } else {
+              el.textContent = `${seconds}d`;
+              el.className = 'transaction-remaining-time text-danger';
+            }
+          } else {
+            el.textContent = 'Expired';
+            el.className = 'transaction-remaining-time text-expired';
+          }
+        });
+      }, 1000);
     }
 
     async function init() {
@@ -2043,204 +2078,459 @@
 
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.panel = {
-      /**
-       * Melihat detail pesanan
-       * @param {string|number} orderId - ID pesanan
-       */
-      viewOrder: (orderId) => {
-        showToast(`Melihat detail pesanan #${orderId}`, 'info');
-      },
+        // ==================== FUNGSI PESANAN ====================
+        
+        /**
+         * Melihat detail pesanan
+         * @param {string|number} orderId - ID pesanan
+         */
+        viewOrder: (orderId) => {
+            showToast(`Melihat detail pesanan #${orderId}`, 'info');
+        },
     
-      /**
-       * Update status pesanan
-       * @param {string|number} orderId - ID pesanan
-       */
-      updateOrderStatus: (orderId) => {
-        showToast(`Fitur update status akan segera tersedia`, 'info');
-      },
+        /**
+         * Update status pesanan
+         * @param {string|number} orderId - ID pesanan
+         */
+        updateOrderStatus: (orderId) => {
+            showToast(`Fitur update status akan segera tersedia`, 'info');
+        },
     
-      // ==================== FUNGSI TRANSAKSI ====================
+        // ==================== FUNGSI TRANSAKSI ====================
     
-      /**
-       * Melihat detail transaksi
-       * @param {string|number} transactionId - ID transaksi
-       */
-      viewTransaction: (transactionId) => {
-        showToast(`Melihat detail transaksi #${transactionId}`, 'info');
-      },
+        /**
+         * Melihat detail transaksi (versi sederhana)
+         * @param {string|number} transactionId - ID transaksi
+         */
+        viewTransaction: (transactionId) => {
+            showToast(`Melihat detail transaksi #${transactionId}`, 'info');
+        },
     
-      /**
-       * Konfirmasi deposit (admin) - saldo user bertambah
-       * @param {number} depositId - ID deposit
-       */
-      confirmDeposit: async (depositId) => {
-        if (!confirm('✅ Konfirmasi deposit ini?\n\nSaldo user akan bertambah secara otomatis.')) {
-          return;
+        /**
+         * Melihat detail transaksi lengkap (seperti di website.html)
+         * @param {number} transactionId - ID transaksi
+         * @param {string} type - Tipe transaksi ('deposit' atau 'withdraw')
+         */
+        viewTransactionDetail: async (transactionId, type) => {
+            showLoading(true);
+            
+            try {
+                // Ambil website yang dipilih
+                const websiteEndpoint = document.getElementById('selectedWebsiteEndpoint')?.textContent.replace('/', '') || '';
+                const website = userWebsites.find(w => w.endpoint === websiteEndpoint);
+                const websiteId = website?.id;
+                
+                if (!websiteId) {
+                    showToast('Pilih website terlebih dahulu', 'warning');
+                    showLoading(false);
+                    return;
+                }
+                
+                // Panggil API untuk mendapatkan detail transaksi
+                const response = await fetchWithRetry(
+                    `${API_BASE_URL}/api/transactions/detail/${transactionId}?type=${type}&website_id=${websiteId}`, 
+                    { method: 'GET' }
+                );
+                
+                if (response.success && response.transaction) {
+                    const transaction = response.transaction;
+                    
+                    // Tampilkan modal detail (bisa menggunakan modal yang sudah ada di website.html)
+                    // atau buat modal baru di panel
+                    
+                    // Format pesan detail
+                    let detailMessage = `=== DETAIL TRANSAKSI ===\n`;
+                    detailMessage += `ID: #${transaction.id}\n`;
+                    detailMessage += `Tipe: ${transaction.transaction_type}\n`;
+                    detailMessage += `Status: ${transaction.status}\n`;
+                    detailMessage += `User ID: ${transaction.user_id}\n`;
+                    detailMessage += `Username: ${transaction.user_username || '-'}\n`;
+                    detailMessage += `Nama: ${transaction.user_first_name || ''} ${transaction.user_last_name || ''}\n`;
+                    detailMessage += `Jumlah: ${formatRupiah(transaction.amount)}\n`;
+                    detailMessage += `Metode: ${transaction.payment_method || '-'}\n`;
+                    detailMessage += `Dibuat: ${formatDate(transaction.created_at)}\n`;
+                    
+                    if (transaction.processed_at) {
+                        detailMessage += `Diproses: ${formatDate(transaction.processed_at)}\n`;
+                    }
+                    
+                    if (transaction.status_message) {
+                        detailMessage += `\nPesan: ${transaction.status_message}\n`;
+                    }
+                    
+                    if (transaction.rejection_reason) {
+                        detailMessage += `\nAlasan Penolakan: ${transaction.rejection_reason}\n`;
+                    }
+                    
+                    if (transaction.proof_url) {
+                        detailMessage += `\nBukti Transfer: ${transaction.proof_url}\n`;
+                    }
+                    
+                    alert(detailMessage); // Sementara pakai alert, nanti bisa diganti dengan modal kustom
+                } else {
+                    showToast('Gagal memuat detail transaksi', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading transaction detail:', error);
+                showToast('Gagal memuat detail transaksi', 'error');
+            } finally {
+                showLoading(false);
+            }
+        },
+    
+        /**
+         * Konfirmasi deposit (admin) - saldo user bertambah
+         * @param {number} depositId - ID deposit
+         */
+        confirmDeposit: async (depositId) => {
+            if (!confirm('✅ Konfirmasi deposit ini?\n\nSaldo user akan bertambah secara otomatis.')) {
+                return;
+            }
+    
+            showLoading(true);
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/confirm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deposit_id: depositId })
+                });
+    
+                if (response.success) {
+                    showToast('✅ Deposit berhasil dikonfirmasi!', 'success');
+                    // Refresh data transaksi
+                    await loadProductsAndOrders();
+                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                } else {
+                    showToast(response.error || 'Gagal mengkonfirmasi deposit', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Error confirming deposit:', error);
+                showToast('Gagal mengkonfirmasi deposit: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        },
+    
+        /**
+         * Menolak deposit (admin) - saldo user TIDAK bertambah
+         * @param {number} depositId - ID deposit
+         * @param {string} reason - Alasan penolakan
+         */
+        rejectDeposit: async (depositId, reason) => {
+            if (!reason || reason.trim() === '') {
+                showToast('❌ Alasan penolakan wajib diisi', 'warning');
+                return;
+            }
+    
+            if (!confirm('⚠️ Tolak deposit ini?\n\nSaldo user TIDAK akan bertambah.')) {
+                return;
+            }
+    
+            showLoading(true);
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/reject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        deposit_id: depositId,
+                        reason: reason.trim()
+                    })
+                });
+    
+                if (response.success) {
+                    showToast('✅ Deposit ditolak', 'success');
+                    // Refresh data transaksi
+                    await loadProductsAndOrders();
+                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                } else {
+                    showToast(response.error || 'Gagal menolak deposit', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Error rejecting deposit:', error);
+                showToast('Gagal menolak deposit: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        },
+    
+        /**
+         * Konfirmasi withdraw (admin) - saldo user berkurang
+         * @param {number} withdrawId - ID withdraw
+         */
+        confirmWithdraw: async (withdrawId) => {
+            if (!confirm('✅ Konfirmasi withdraw ini?\n\nSaldo user akan berkurang secara otomatis.')) {
+                return;
+            }
+    
+            showLoading(true);
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/confirm`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ withdraw_id: withdrawId })
+                });
+    
+                if (response.success) {
+                    showToast('✅ Withdraw berhasil dikonfirmasi!', 'success');
+                    await loadProductsAndOrders();
+                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                } else {
+                    showToast(response.error || 'Gagal mengkonfirmasi withdraw', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Error confirming withdraw:', error);
+                showToast('Gagal mengkonfirmasi withdraw: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        },
+    
+        /**
+         * Menolak withdraw (admin) - saldo user TIDAK berkurang
+         * @param {number} withdrawId - ID withdraw
+         * @param {string} reason - Alasan penolakan
+         */
+        rejectWithdraw: async (withdrawId, reason) => {
+            if (!reason || reason.trim() === '') {
+                showToast('❌ Alasan penolakan wajib diisi', 'warning');
+                return;
+            }
+    
+            if (!confirm('⚠️ Tolak withdraw ini?\n\nSaldo user TIDAK akan berkurang.')) {
+                return;
+            }
+    
+            showLoading(true);
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/reject`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        withdraw_id: withdrawId,
+                        reason: reason.trim()
+                    })
+                });
+    
+                if (response.success) {
+                    showToast('✅ Withdraw ditolak', 'success');
+                    await loadProductsAndOrders();
+                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                } else {
+                    showToast(response.error || 'Gagal menolak withdraw', 'error');
+                }
+            } catch (error) {
+                console.error('❌ Error rejecting withdraw:', error);
+                showToast('Gagal menolak withdraw: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        },
+    
+        /**
+         * Toggle expanded row untuk menampilkan detail transaksi
+         * @param {string|number} transactionId - ID transaksi
+         */
+        toggleTransactionRow: (transactionId) => {
+            const row = document.getElementById(`transaction-row-${transactionId}`);
+            const detailRow = document.getElementById(`transaction-detail-${transactionId}`);
+    
+            if (row && detailRow) {
+                const isExpanded = row.classList.contains('expanded');
+    
+                if (isExpanded) {
+                    row.classList.remove('expanded');
+                    detailRow.style.display = 'none';
+                } else {
+                    row.classList.add('expanded');
+                    detailRow.style.display = 'table-row';
+                    
+                    // Isi detail row dengan template
+                    const template = document.getElementById('transactionDetailTemplate');
+                    if (template && detailRow.innerHTML === '') {
+                        const clone = document.importNode(template.content, true);
+                        detailRow.innerHTML = '';
+                        detailRow.appendChild(clone);
+                        
+                        // Isi data ke template (akan diisi oleh fungsi terpisah)
+                        window.panel.populateTransactionDetail(transactionId);
+                    }
+                }
+            }
+        },
+    
+        /**
+         * Mengisi data ke template detail transaksi
+         * @param {string|number} transactionId - ID transaksi
+         */
+        populateTransactionDetail: async (transactionId) => {
+            try {
+                // Cari data transaksi dari array transactions
+                const transaction = transactions.find(t => t.id == transactionId);
+                if (!transaction) return;
+                
+                // Ambil elemen-elemen di detail row
+                const detailRow = document.getElementById(`transaction-detail-${transactionId}`);
+                if (!detailRow) return;
+                
+                // Isi data user
+                const userIdEl = detailRow.querySelector('#detailUserId');
+                const usernameEl = detailRow.querySelector('#detailUsername');
+                const nameEl = detailRow.querySelector('#detailName');
+                
+                if (userIdEl) userIdEl.textContent = transaction.user_id || '-';
+                if (usernameEl) usernameEl.textContent = transaction.user_username || '-';
+                
+                const fullName = [transaction.user_first_name, transaction.user_last_name].filter(Boolean).join(' ') || '-';
+                if (nameEl) nameEl.textContent = fullName;
+                
+                // Isi data transaksi
+                const transIdEl = detailRow.querySelector('#detailTransactionId');
+                const createdAtEl = detailRow.querySelector('#detailCreatedAt');
+                const processedAtEl = detailRow.querySelector('#detailProcessedAt');
+                const amountEl = detailRow.querySelector('#detailAmount');
+                const paymentMethodEl = detailRow.querySelector('#detailPaymentMethod');
+                
+                if (transIdEl) transIdEl.textContent = `#${transaction.id}`;
+                if (createdAtEl) createdAtEl.textContent = formatDate(transaction.created_at, true);
+                if (processedAtEl) processedAtEl.textContent = transaction.processed_at ? formatDate(transaction.processed_at, true) : '-';
+                if (amountEl) amountEl.textContent = formatRupiah(transaction.amount);
+                
+                let paymentMethod = transaction.payment_method || '-';
+                if (transaction.payment_method === 'qris') paymentMethod = 'QRIS (Otomatis)';
+                else if (transaction.rekening_nama) paymentMethod = `${transaction.rekening_nama}`;
+                if (paymentMethodEl) paymentMethodEl.textContent = paymentMethod;
+                
+                // Tampilkan section rekening jika ada
+                const rekeningSection = detailRow.querySelector('#rekeningDetailSection');
+                if (rekeningSection && (transaction.rekening_nama || transaction.rekening_nomor)) {
+                    rekeningSection.style.display = 'block';
+                    const bankEl = detailRow.querySelector('#detailRekeningBank');
+                    const nomorEl = detailRow.querySelector('#detailRekeningNomor');
+                    const pemilikEl = detailRow.querySelector('#detailRekeningPemilik');
+                    
+                    if (bankEl) bankEl.textContent = transaction.rekening_nama || '-';
+                    if (nomorEl) nomorEl.textContent = transaction.rekening_nomor || '-';
+                    if (pemilikEl) pemilikEl.textContent = transaction.rekening_pemilik || '-';
+                }
+                
+                // Tampilkan section QRIS jika ada
+                const qrisSection = detailRow.querySelector('#qrisDetailSection');
+                if (qrisSection && transaction.payment_method === 'qris') {
+                    qrisSection.style.display = 'block';
+                    const amountEl = detailRow.querySelector('#detailQrisAmount');
+                    const uniqueEl = detailRow.querySelector('#detailQrisUnique');
+                    const totalEl = detailRow.querySelector('#detailQrisTotal');
+                    const expiredEl = detailRow.querySelector('#detailQrisExpired');
+                    
+                    const unique = transaction.cashify_unique_nominal || 0;
+                    const total = transaction.amount + unique;
+                    
+                    if (amountEl) amountEl.textContent = formatRupiah(transaction.amount);
+                    if (uniqueEl) uniqueEl.textContent = formatRupiah(unique);
+                    if (totalEl) totalEl.textContent = formatRupiah(total);
+                    if (expiredEl) expiredEl.textContent = transaction.cashify_expired_at ? formatDate(transaction.cashify_expired_at, true) : '-';
+                }
+                
+                // Tampilkan bukti transfer jika ada
+                const proofSection = detailRow.querySelector('#proofSection');
+                const proofImage = detailRow.querySelector('#proofImage');
+                const viewProofBtn = detailRow.querySelector('#viewProofBtn');
+                
+                if (proofSection && transaction.proof_url) {
+                    proofSection.style.display = 'block';
+                    if (proofImage) proofImage.src = transaction.proof_url;
+                    if (viewProofBtn) viewProofBtn.href = transaction.proof_url;
+                }
+                
+                // Tampilkan status message jika ada
+                const statusSection = detailRow.querySelector('#statusMessageSection');
+                const statusText = detailRow.querySelector('#statusMessageText');
+                
+                if (statusSection && transaction.status_message) {
+                    statusSection.style.display = 'flex';
+                    if (statusText) statusText.textContent = transaction.status_message;
+                }
+                
+                // Tampilkan alasan penolakan jika status rejected
+                const rejectionPreview = detailRow.querySelector('#rejectionReasonPreview');
+                const rejectionText = detailRow.querySelector('#rejectionReasonText');
+                
+                if (rejectionPreview && transaction.status === 'rejected' && transaction.rejection_reason) {
+                    rejectionPreview.style.display = 'block';
+                    if (rejectionText) rejectionText.textContent = transaction.rejection_reason;
+                }
+                
+                // Tampilkan form penolakan untuk deposit pending
+                const rejectionForm = detailRow.querySelector('#rejectionForm');
+                if (rejectionForm && transaction.transaction_type === 'deposit' && transaction.status === 'pending') {
+                    rejectionForm.style.display = 'block';
+                    
+                    // Setup tombol tolak
+                    const submitBtn = detailRow.querySelector('#submitRejectionBtn');
+                    const cancelBtn = detailRow.querySelector('#cancelRejectionBtn');
+                    const reasonInput = detailRow.querySelector('#rejectionReason');
+                    
+                    if (submitBtn) {
+                        submitBtn.onclick = async () => {
+                            const reason = reasonInput?.value.trim();
+                            if (!reason) {
+                                showToast('Alasan penolakan wajib diisi', 'warning');
+                                return;
+                            }
+                            await window.panel.rejectDeposit(transaction.id, reason);
+                        };
+                    }
+                    
+                    if (cancelBtn) {
+                        cancelBtn.onclick = () => {
+                            if (reasonInput) reasonInput.value = '';
+                            rejectionForm.style.display = 'none';
+                        };
+                    }
+                }
+                
+                // Tampilkan tombol aksi
+                const detailActions = detailRow.querySelector('#detailActions');
+                if (detailActions) {
+                    let actionsHtml = '';
+                    
+                    if (transaction.transaction_type === 'deposit' && transaction.status === 'pending') {
+                        actionsHtml = `
+                            <button class="action-btn confirm" onclick="window.panel.confirmDeposit(${transaction.id})">
+                                <i class="fas fa-check-circle"></i> Konfirmasi
+                            </button>
+                            <button class="action-btn reject" onclick="document.getElementById('rejectionForm').style.display='block'">
+                                <i class="fas fa-times-circle"></i> Tolak
+                            </button>
+                        `;
+                    } else if (transaction.transaction_type === 'withdraw' && transaction.status === 'pending') {
+                        actionsHtml = `
+                            <button class="action-btn confirm" onclick="window.panel.confirmWithdraw(${transaction.id})">
+                                <i class="fas fa-check-circle"></i> Konfirmasi
+                            </button>
+                            <button class="action-btn reject" onclick="window.panel.rejectWithdraw(${transaction.id}, prompt('Alasan penolakan:'))">
+                                <i class="fas fa-times-circle"></i> Tolak
+                            </button>
+                        `;
+                    } else {
+                        actionsHtml = `
+                            <button class="action-btn view" onclick="window.panel.viewTransactionDetail(${transaction.id}, '${transaction.transaction_type}')">
+                                <i class="fas fa-eye"></i> Lihat Detail
+                            </button>
+                        `;
+                    }
+                    
+                    detailActions.innerHTML = actionsHtml;
+                }
+                
+            } catch (error) {
+                console.error('Error populating transaction detail:', error);
+            }
         }
-    
-        showLoading(true);
-        try {
-          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/confirm`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ deposit_id: depositId })
-          });
-    
-          if (response.success) {
-            showToast('✅ Deposit berhasil dikonfirmasi!', 'success');
-            // Refresh data transaksi
-            await loadProductsAndOrders();
-            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
-          } else {
-            showToast(response.error || 'Gagal mengkonfirmasi deposit', 'error');
-          }
-        } catch (error) {
-          console.error('❌ Error confirming deposit:', error);
-          showToast('Gagal mengkonfirmasi deposit: ' + error.message, 'error');
-        } finally {
-          showLoading(false);
-        }
-      },
-    
-      /**
-       * Menolak deposit (admin) - saldo user TIDAK bertambah
-       * @param {number} depositId - ID deposit
-       * @param {string} reason - Alasan penolakan
-       */
-      rejectDeposit: async (depositId, reason) => {
-        if (!reason || reason.trim() === '') {
-          showToast('❌ Alasan penolakan wajib diisi', 'warning');
-          return;
-        }
-    
-        if (!confirm('⚠️ Tolak deposit ini?\n\nSaldo user TIDAK akan bertambah.')) {
-          return;
-        }
-    
-        showLoading(true);
-        try {
-          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/reject`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              deposit_id: depositId,
-              reason: reason.trim()
-            })
-          });
-    
-          if (response.success) {
-            showToast('✅ Deposit ditolak', 'success');
-            // Refresh data transaksi
-            await loadProductsAndOrders();
-            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
-          } else {
-            showToast(response.error || 'Gagal menolak deposit', 'error');
-          }
-        } catch (error) {
-          console.error('❌ Error rejecting deposit:', error);
-          showToast('Gagal menolak deposit: ' + error.message, 'error');
-        } finally {
-          showLoading(false);
-        }
-      },
-    
-      /**
-       * Konfirmasi withdraw (admin) - saldo user berkurang
-       * @param {number} withdrawId - ID withdraw
-       */
-      confirmWithdraw: async (withdrawId) => {
-        if (!confirm('✅ Konfirmasi withdraw ini?\n\nSaldo user akan berkurang secara otomatis.')) {
-          return;
-        }
-    
-        showLoading(true);
-        try {
-          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/confirm`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ withdraw_id: withdrawId })
-          });
-    
-          if (response.success) {
-            showToast('✅ Withdraw berhasil dikonfirmasi!', 'success');
-            await loadProductsAndOrders();
-            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
-          } else {
-            showToast(response.error || 'Gagal mengkonfirmasi withdraw', 'error');
-          }
-        } catch (error) {
-          console.error('❌ Error confirming withdraw:', error);
-          showToast('Gagal mengkonfirmasi withdraw: ' + error.message, 'error');
-        } finally {
-          showLoading(false);
-        }
-      },
-    
-      /**
-       * Menolak withdraw (admin) - saldo user TIDAK berkurang
-       * @param {number} withdrawId - ID withdraw
-       * @param {string} reason - Alasan penolakan
-       */
-      rejectWithdraw: async (withdrawId, reason) => {
-        if (!reason || reason.trim() === '') {
-          showToast('❌ Alasan penolakan wajib diisi', 'warning');
-          return;
-        }
-    
-        if (!confirm('⚠️ Tolak withdraw ini?\n\nSaldo user TIDAK akan berkurang.')) {
-          return;
-        }
-    
-        showLoading(true);
-        try {
-          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/reject`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              withdraw_id: withdrawId,
-              reason: reason.trim()
-            })
-          });
-    
-          if (response.success) {
-            showToast('✅ Withdraw ditolak', 'success');
-            await loadProductsAndOrders();
-            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
-          } else {
-            showToast(response.error || 'Gagal menolak withdraw', 'error');
-          }
-        } catch (error) {
-          console.error('❌ Error rejecting withdraw:', error);
-          showToast('Gagal menolak withdraw: ' + error.message, 'error');
-        } finally {
-          showLoading(false);
-        }
-      },
-    
-      /**
-       * Toggle expanded row untuk menampilkan detail transaksi
-       * @param {string|number} transactionId - ID transaksi
-       */
-      toggleTransactionRow: (transactionId) => {
-        const row = document.getElementById(`transaction-row-${transactionId}`);
-        const detailRow = document.getElementById(`transaction-detail-${transactionId}`);
-    
-        if (row && detailRow) {
-          const isExpanded = row.classList.contains('expanded');
-    
-          if (isExpanded) {
-            row.classList.remove('expanded');
-            detailRow.style.display = 'none';
-          } else {
-            row.classList.add('expanded');
-            detailRow.style.display = 'table-row';
-          }
-        }
-      }
     };
 
     // ==================== START ====================
