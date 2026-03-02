@@ -2451,6 +2451,15 @@
                 </div>
         `;
 
+    if (transaction.status === 'rejected' && transaction.rejection_reason) {
+      html += `
+            <div class="detail-message" style="margin-top: 16px; padding: 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; font-size: 12px; color: var(--tg-hint-color); border-left: 3px solid var(--danger-color);">
+                <i class="fas fa-exclamation-circle" style="margin-right: 6px; color: var(--danger-color);"></i>
+                <strong>Alasan Penolakan:</strong> ${escapeHtml(transaction.rejection_reason)}
+            </div>
+        `;
+    }
+
       // Untuk deposit QRIS - tampilkan informasi QRIS
       if (transaction.transaction_type === 'deposit' && transaction.payment_method === 'qris') {
         html += `
