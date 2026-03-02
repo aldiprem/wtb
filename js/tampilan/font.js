@@ -14,7 +14,7 @@
     
     if (isGitHubPages) {
         // Di GitHub Pages, gunakan URL tunnel
-        API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
+        API_BASE_URL = 'https://desperate-journey-penny-expansion.trycloudflare.com';
     } else if (isLocalhost) {
         // Di localhost, gunakan port 5050
         API_BASE_URL = 'http://localhost:5050';
