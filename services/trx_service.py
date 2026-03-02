@@ -581,3 +581,95 @@ def reject_withdraw():
     except Exception as e:
         print(f"❌ Error rejecting withdraw: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+        
+# ==================== FILTER TRANSACTIONS ENDPOINT ====================
+
+@trx_bp.route('/transactions/filter', methods=['GET', 'OPTIONS'])
+def filter_transactions():
+    """
+    Mendapatkan semua transaksi dengan filter (untuk panel admin)
+    Filter: website_id, type, status, time, limit
+    """
+    # Handle preflight OPTIONS request
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response, 200
+    
+    try:
+        # Ambil parameter
+        website_id = request.args.get('website_id', type=int)
+        trans_type = request.args.get('type', 'all')  # all, deposit, withdraw, purchase
+        status = request.args.get('status', 'all')
+        time_filter = request.args.get('time', 'all')  # today, week, month, year, all
+        limit = request.args.get('limit', default=100, type=int)
+        
+        if not website_id:
+            return jsonify({'success': False, 'error': 'Website ID diperlukan'}), 400
+        
+        # Ambil semua deposit
+        deposits = trx.get_all_deposits(website_id, limit=limit)
+        for d in deposits:
+            d['transaction_type'] = 'deposit'
+            d['type_icon'] = 'fa-arrow-down'
+        
+        # Ambil semua withdrawals
+        withdrawals = trx.get_all_withdrawals(website_id, limit=limit)
+        for w in withdrawals:
+            w['transaction_type'] = 'withdraw'
+            w['type_icon'] = 'fa-arrow-up'
+        
+        # Gabungkan
+        all_transactions = deposits + withdrawals
+        
+        # Filter berdasarkan tipe
+        if trans_type != 'all':
+            all_transactions = [t for t in all_transactions if t['transaction_type'] == trans_type]
+        
+        # Filter berdasarkan status
+        if status != 'all':
+            all_transactions = [t for t in all_transactions if t['status'] == status]
+        
+        # Filter berdasarkan waktu
+        if time_filter != 'all':
+            from datetime import datetime, timedelta
+            now = datetime.now()
+            
+            if time_filter == 'today':
+                start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif time_filter == 'week':
+                start_date = now - timedelta(days=7)
+            elif time_filter == 'month':
+                start_date = now - timedelta(days=30)
+            elif time_filter == 'year':
+                start_date = now - timedelta(days=365)
+            else:
+                start_date = None
+            
+            if start_date:
+                all_transactions = [t for t in all_transactions 
+                                   if datetime.fromisoformat(t['created_at'].replace('Z', '+00:00')) >= start_date]
+        
+        # Urutkan berdasarkan created_at descending
+        all_transactions.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        # Batasi jumlah
+        all_transactions = all_transactions[:limit]
+        
+        return jsonify({
+            'success': True,
+            'transactions': all_transactions,
+            'count': len(all_transactions),
+            'filters': {
+                'website_id': website_id,
+                'type': trans_type,
+                'status': status,
+                'time': time_filter
+            }
+        })
+        
+    except Exception as e:
+        print(f"❌ Error filtering transactions: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
