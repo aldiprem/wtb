@@ -396,40 +396,221 @@
 
             <!-- Transactions Page -->
             <div class="page" id="page-transactions">
-                <div class="page-header">
-                    <h2 class="page-title">
-                        <i class="fas fa-credit-card"></i>
-                        Transaksi
-                    </h2>
-                    <div class="header-actions">
-                        <select class="period-selector" id="transactionPeriod">
-                            <option value="today">Hari Ini</option>
-                            <option value="week">Minggu Ini</option>
-                            <option value="month">Bulan Ini</option>
-                            <option value="year">Tahun Ini</option>
-                            <option value="all">Semua</option>
-                        </select>
-                    </div>
+              <div class="page-header">
+                <h2 class="page-title">
+                  <i class="fas fa-credit-card"></i>
+                  Transaksi
+                </h2>
+              </div>
+            
+              <!-- Filter Section -->
+              <div class="transactions-filter-section">
+                <div class="filter-row">
+                  <!-- Filter Waktu -->
+                  <div class="filter-group">
+                    <label><i class="fas fa-calendar-alt"></i> Waktu</label>
+                    <select id="transactionTimeFilter">
+                      <option value="today">Hari Ini</option>
+                      <option value="week" selected>Minggu Ini</option>
+                      <option value="month">Bulan Ini</option>
+                      <option value="year">Tahun Ini</option>
+                      <option value="all">Semua Waktu</option>
+                    </select>
+                  </div>
+            
+                  <!-- Filter Tipe Transaksi -->
+                  <div class="filter-group">
+                    <label><i class="fas fa-filter"></i> Tipe Transaksi</label>
+                    <select id="transactionTypeFilter">
+                      <option value="all" selected>Semua Transaksi</option>
+                      <option value="deposit">Deposit</option>
+                      <option value="withdraw">Withdraw</option>
+                      <option value="purchase">Pembelian</option>
+                    </select>
+                  </div>
+            
+                  <!-- Filter Status (Dinamis, akan berubah berdasarkan tipe) -->
+                  <div class="filter-group" id="statusFilterGroup">
+                    <label><i class="fas fa-info-circle"></i> Status <span id="statusFilterLabel"></span></label>
+                    <select id="transactionStatusFilter">
+                      <!-- Akan diisi oleh JavaScript -->
+                    </select>
+                  </div>
+            
+                  <!-- Tombol Aksi -->
+                  <div class="filter-actions">
+                    <button class="filter-action-btn reset" id="resetFiltersBtn">
+                      <i class="fas fa-undo-alt"></i> Reset
+                    </button>
+                    <button class="filter-action-btn apply" id="applyFiltersBtn">
+                      <i class="fas fa-check"></i> Terapkan
+                    </button>
+                  </div>
                 </div>
-
-                <div class="transactions-summary">
-                    <div class="summary-card">
-                        <div class="summary-label">Total Pendapatan</div>
-                        <div class="summary-value" id="transactionTotal">Rp 0</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-label">Jumlah Transaksi</div>
-                        <div class="summary-value" id="transactionCount">0</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-label">Rata-rata</div>
-                        <div class="summary-value" id="transactionAverage">Rp 0</div>
-                    </div>
+            
+                <!-- Info Filter -->
+                <div class="filter-info" id="filterInfo">
+                  <i class="fas fa-info-circle"></i>
+                  <span>Menampilkan semua transaksi</span>
                 </div>
-
-                <div class="transactions-list" id="transactionsList">
+              </div>
+            
+              <!-- Summary Cards dengan Border Kosong -->
+              <div class="transactions-summary">
+                <div class="summary-card" id="totalRevenueCard">
+                  <div class="summary-label">
+                    <i class="fas fa-credit-card"></i> Total Pendapatan
+                  </div>
+                  <div class="summary-value" id="transactionTotal">Rp 0</div>
+                  <div class="summary-sub" id="totalRevenueSub">-</div>
+                </div>
+                <div class="summary-card" id="totalCountCard">
+                  <div class="summary-label">
+                    <i class="fas fa-chart-line"></i> Jumlah Transaksi
+                  </div>
+                  <div class="summary-value" id="transactionCount">0</div>
+                  <div class="summary-sub" id="totalCountSub">-</div>
+                </div>
+                <div class="summary-card" id="averageCard">
+                  <div class="summary-label">
+                    <i class="fas fa-calculator"></i> Rata-rata
+                  </div>
+                  <div class="summary-value" id="transactionAverage">Rp 0</div>
+                  <div class="summary-sub" id="averageSub">-</div>
+                </div>
+              </div>
+            
+              <!-- Tabel Transaksi -->
+              <div class="transactions-table-container">
+                <table class="transactions-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Tipe</th>
+                      <th>User</th>
+                      <th>Jumlah</th>
+                      <th>Status</th>
+                      <th>Tanggal</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="transactionsTableBody">
                     <!-- Akan diisi oleh JavaScript -->
-                </div>
+                    <tr class="empty-row">
+                      <td colspan="7">
+                        <i class="fas fa-credit-card"></i>
+                        <p>Memuat data transaksi...</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            
+              <!-- Template untuk Detail Row (Expanded) - LANGSUNG DI DALAM TABEL (tapi disembunyikan) -->
+              <template id="transactionDetailTemplate">
+                <tr class="transaction-detail-row">
+                  <td colspan="7" class="transaction-detail-cell">
+                    <div class="transaction-detail-panel">
+                      <div class="detail-grid">
+                        <!-- Informasi User -->
+                        <div class="detail-section">
+                          <h4><i class="fas fa-user"></i> Informasi User</h4>
+                          <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-id-card"></i> User ID:</span>
+                            <span class="detail-value" id="detailUserId"></span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-user-tag"></i> Username:</span>
+                            <span class="detail-value" id="detailUsername"></span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-signature"></i> Nama:</span>
+                            <span class="detail-value" id="detailName"></span>
+                          </div>
+                        </div>
+            
+                        <!-- Informasi Transaksi -->
+                        <div class="detail-section">
+                          <h4><i class="fas fa-credit-card"></i> Detail Transaksi</h4>
+                          <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-hashtag"></i> ID Transaksi:</span>
+                            <span class="detail-value" id="detailTransactionId"></span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-clock"></i> Dibuat:</span>
+                            <span class="detail-value" id="detailCreatedAt"></span>
+                          </div>
+                          <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-check-circle"></i> Diproses:</span>
+                            <span class="detail-value" id="detailProcessedAt"></span>
+                          </div>
+                        </div>
+            
+                        <!-- Bukti Transfer (khusus deposit) -->
+                        <div class="detail-section proof-preview-section" id="proofSection" style="display: none;">
+                          <h4><i class="fas fa-image"></i> Bukti Transfer</h4>
+                          <div class="proof-preview">
+                            <div class="proof-image" id="proofImageContainer">
+                              <img id="proofImage" src="" alt="Bukti Transfer">
+                            </div>
+                            <div class="proof-info">
+                              <p id="proofFileName"></p>
+                              <div class="proof-actions">
+                                <a href="#" class="proof-btn" id="viewProofBtn" target="_blank">
+                                  <i class="fas fa-external-link-alt"></i> Lihat
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+            
+                        <!-- Form Penolakan (khusus deposit pending) -->
+                        <div class="rejection-form" id="rejectionForm" style="display: none;">
+                          <h5><i class="fas fa-exclamation-triangle"></i> Alasan Penolakan</h5>
+                          <textarea id="rejectionReason" placeholder="Masukkan alasan penolakan..." rows="3"></textarea>
+                          <div class="rejection-actions">
+                            <button class="action-btn reject" id="submitRejectionBtn">
+                              <i class="fas fa-times-circle"></i> Tolak
+                            </button>
+                            <button class="action-btn view" id="cancelRejectionBtn">
+                              <i class="fas fa-undo"></i> Batal
+                            </button>
+                          </div>
+                        </div>
+            
+                        <!-- Alasan Penolakan (ditampilkan jika status rejected) -->
+                        <div class="rejection-reason-preview" id="rejectionReasonPreview" style="display: none;">
+                          <i class="fas fa-exclamation-circle"></i>
+                          <span id="rejectionReasonText"></span>
+                        </div>
+                      </div>
+            
+                      <!-- Tombol Aksi -->
+                      <div class="detail-actions" id="detailActions">
+                        <!-- Tombol akan diisi oleh JavaScript berdasarkan tipe dan status -->
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            
+              <!-- Empty State (akan ditampilkan jika tidak ada data) -->
+              <div class="empty-state" id="transactionsEmptyState" style="display: none;">
+                <i class="fas fa-credit-card"></i>
+                <h3>Tidak Ada Transaksi</h3>
+                <p>Belum ada transaksi dengan filter yang dipilih</p>
+              </div>
+            
+              <!-- Pagination -->
+              <div class="pagination" id="transactionsPagination">
+                <button class="page-btn" id="prevTransactionPage" disabled>
+                  <i class="fas fa-chevron-left"></i>
+                </button>
+                <span class="page-info" id="transactionPageInfo">Halaman 1 dari 1</span>
+                <button class="page-btn" id="nextTransactionPage" disabled>
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
             </div>
 
             <!-- Customers Page -->
