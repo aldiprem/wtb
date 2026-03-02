@@ -114,7 +114,23 @@
       paymentSettings: document.getElementById('paymentSettings'),
       notificationSettings: document.getElementById('notificationSettings'),
       voucherSettings: document.getElementById('voucherSettings'),
-      integrationSettings: document.getElementById('integrationSettings')
+      integrationSettings: document.getElementById('integrationSettings'),
+      transactionTimeFilter: document.getElementById('transactionTimeFilter'),
+      transactionTypeFilter: document.getElementById('transactionTypeFilter'),
+      transactionStatusFilter: document.getElementById('transactionStatusFilter'),
+      statusFilterLabel: document.getElementById('statusFilterLabel'),
+      resetFiltersBtn: document.getElementById('resetFiltersBtn'),
+      applyFiltersBtn: document.getElementById('applyFiltersBtn'),
+      filterInfo: document.getElementById('filterInfo'),
+      transactionsTableBody: document.getElementById('transactionsTableBody'),
+      transactionsEmptyState: document.getElementById('transactionsEmptyState'),
+      transactionsPagination: document.getElementById('transactionsPagination'),
+      prevTransactionPage: document.getElementById('prevTransactionPage'),
+      nextTransactionPage: document.getElementById('nextTransactionPage'),
+      transactionPageInfo: document.getElementById('transactionPageInfo'),
+      totalRevenueSub: document.getElementById('totalRevenueSub'),
+      totalCountSub: document.getElementById('totalCountSub'),
+      averageSub: document.getElementById('averageSub')
     };
     
     // ==================== SESSION STORAGE FUNCTIONS ====================
@@ -732,51 +748,6 @@
         return allOrders.filter(order => (order.status || 'pending') === filter);
     }
 
-    function renderTransactions(totalRevenue, totalCount) {
-        if (!elements.transactionTotal || !elements.transactionCount || !elements.transactionAverage) return;
-        
-        elements.transactionTotal.textContent = formatRupiah(totalRevenue);
-        elements.transactionCount.textContent = totalCount;
-        
-        const average = totalCount > 0 ? totalRevenue / totalCount : 0;
-        elements.transactionAverage.textContent = formatRupiah(Math.round(average));
-        
-        if (elements.transactionsList) {
-            if (allOrders.length === 0) {
-                elements.transactionsList.innerHTML = `
-                    <div class="empty-state" style="padding: 40px 20px;">
-                        <i class="fas fa-credit-card"></i>
-                        <p>Belum ada transaksi</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            allOrders.slice(0, 10).forEach(order => {
-                html += `
-                    <div class="transaction-item">
-                        <div class="transaction-info">
-                            <div class="transaction-icon">
-                                <i class="fas fa-credit-card"></i>
-                            </div>
-                            <div class="transaction-details">
-                                <h4>${escapeHtml(order.customer_name || 'Customer')}</h4>
-                                <div class="transaction-meta">
-                                    <span>${formatDate(order.created_at)}</span>
-                                    <span>• ${order.website_endpoint || '-'}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="transaction-amount">${formatRupiah(order.total || 0)}</div>
-                    </div>
-                `;
-            });
-            
-            elements.transactionsList.innerHTML = html;
-        }
-    }
-
     function renderCustomersGrid() {
         if (!elements.customersGrid) return;
         
@@ -813,28 +784,31 @@
         elements.customersGrid.innerHTML = html;
     }
 
-    // ==================== NAVIGATION ====================
     function showPage(pageId) {
-        elements.pages.forEach(page => {
-            page.classList.remove('active');
-        });
-        
-        const targetPage = document.getElementById(`page-${pageId}`);
-        if (targetPage) {
-            targetPage.classList.add('active');
+      elements.pages.forEach(page => {
+        page.classList.remove('active');
+      });
+    
+      const targetPage = document.getElementById(`page-${pageId}`);
+      if (targetPage) {
+        targetPage.classList.add('active');
+      }
+    
+      elements.menuItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === pageId) {
+          item.classList.add('active');
         }
-        
-        elements.menuItems.forEach(item => {
-            item.classList.remove('active');
-            if (item.dataset.page === pageId) {
-                item.classList.add('active');
-            }
-        });
-        
-        // Simpan halaman aktif ke session storage
-        saveCurrentPage(pageId);
-        
-        vibrate(10);
+      });
+    
+      saveCurrentPage(pageId);
+    
+      // Jika halaman transaksi, load data
+      if (pageId === 'transactions') {
+        loadTransactions();
+      }
+    
+      vibrate(10);
     }
 
     /**
@@ -1704,6 +1678,322 @@
       }
     }
 
+    // Setup filter dinamis untuk halaman transaksi
+    function setupTransactionFilters() {
+      const typeFilter = elements.transactionTypeFilter;
+      const statusFilter = elements.transactionStatusFilter;
+      const statusFilterLabel = elements.statusFilterLabel;
+      const timeFilter = elements.transactionTimeFilter;
+      const resetBtn = elements.resetFiltersBtn;
+      const applyBtn = elements.applyFiltersBtn;
+    
+      if (!typeFilter || !statusFilter) return;
+    
+      // Fungsi untuk update opsi status berdasarkan tipe
+      function updateStatusOptions() {
+        const type = typeFilter.value;
+        const currentValue = statusFilter.value;
+    
+        // Kosongkan options
+        statusFilter.innerHTML = '';
+    
+        // Tambahkan option "Semua Status"
+        const allOption = document.createElement('option');
+        allOption.value = 'all';
+        allOption.textContent = 'Semua Status';
+        statusFilter.appendChild(allOption);
+    
+        if (type === 'deposit') {
+          // Status untuk deposit
+          const statuses = [
+            { value: 'pending', text: 'Pending' },
+            { value: 'processing', text: 'Processing' },
+            { value: 'success', text: 'Success' },
+            { value: 'failed', text: 'Failed' },
+            { value: 'expired', text: 'Expired' },
+            { value: 'rejected', text: 'Rejected' }
+                ];
+    
+          statuses.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.value;
+            option.textContent = s.text;
+            statusFilter.appendChild(option);
+          });
+    
+          if (statusFilterLabel) statusFilterLabel.textContent = '(Deposit)';
+    
+        } else if (type === 'withdraw') {
+          // Status untuk withdraw
+          const statuses = [
+            { value: 'pending', text: 'Pending' },
+            { value: 'processing', text: 'Processing' },
+            { value: 'success', text: 'Success' },
+            { value: 'failed', text: 'Failed' },
+            { value: 'rejected', text: 'Rejected' }
+                ];
+    
+          statuses.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.value;
+            option.textContent = s.text;
+            statusFilter.appendChild(option);
+          });
+    
+          if (statusFilterLabel) statusFilterLabel.textContent = '(Withdraw)';
+    
+        } else if (type === 'purchase') {
+          // Status untuk pembelian
+          const statuses = [
+            { value: 'pending', text: 'Pending' },
+            { value: 'processing', text: 'Processing' },
+            { value: 'success', text: 'Success' },
+            { value: 'cancelled', text: 'Cancelled' }
+                ];
+    
+          statuses.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.value;
+            option.textContent = s.text;
+            statusFilter.appendChild(option);
+          });
+    
+          if (statusFilterLabel) statusFilterLabel.textContent = '(Pembelian)';
+    
+        } else {
+          // Semua transaksi
+          const statuses = [
+            { value: 'pending', text: 'Pending' },
+            { value: 'processing', text: 'Processing' },
+            { value: 'success', text: 'Success' },
+            { value: 'failed', text: 'Failed' },
+            { value: 'expired', text: 'Expired' },
+            { value: 'rejected', text: 'Rejected' },
+            { value: 'cancelled', text: 'Cancelled' }
+                ];
+    
+          statuses.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.value;
+            option.textContent = s.text;
+            statusFilter.appendChild(option);
+          });
+    
+          if (statusFilterLabel) statusFilterLabel.textContent = '';
+        }
+    
+        // Kembalikan nilai sebelumnya jika masih ada
+        if (currentValue) {
+          const optionExists = Array.from(statusFilter.options).some(opt => opt.value === currentValue);
+          if (optionExists) {
+            statusFilter.value = currentValue;
+          }
+        }
+      }
+    
+      // Event listeners
+      typeFilter.addEventListener('change', updateStatusOptions);
+    
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          if (timeFilter) timeFilter.value = 'week';
+          if (typeFilter) typeFilter.value = 'all';
+          updateStatusOptions();
+          if (statusFilter) statusFilter.value = 'all';
+          loadTransactions();
+        });
+      }
+    
+      if (applyBtn) {
+        applyBtn.addEventListener('click', loadTransactions);
+      }
+    
+      // Inisialisasi
+      updateStatusOptions();
+    }
+    
+    // Fungsi untuk memuat transaksi berdasarkan filter
+    async function loadTransactions() {
+      const timeFilter = elements.transactionTimeFilter;
+      const typeFilter = elements.transactionTypeFilter;
+      const statusFilter = elements.transactionStatusFilter;
+      const tableBody = elements.transactionsTableBody;
+      const emptyState = elements.transactionsEmptyState;
+      const filterInfo = elements.filterInfo;
+    
+      if (!tableBody) return;
+    
+      showLoading(true);
+    
+      try {
+        // Ambil website yang dipilih
+        const websiteEndpoint = document.getElementById('selectedWebsiteEndpoint')?.textContent.replace('/', '') || '';
+    
+        // Cari website ID berdasarkan endpoint
+        const website = userWebsites.find(w => w.endpoint === websiteEndpoint);
+        const websiteId = website?.id;
+    
+        if (!websiteId) {
+          console.warn('Website tidak dipilih');
+          tableBody.innerHTML = `
+                    <tr class="empty-row">
+                        <td colspan="7">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>Pilih website terlebih dahulu</p>
+                        </td>
+                    </tr>
+                `;
+          showLoading(false);
+          return;
+        }
+    
+        // Buat parameter filter
+        const params = new URLSearchParams({
+          website_id: websiteId,
+          type: typeFilter?.value || 'all',
+          status: statusFilter?.value || 'all',
+          time: timeFilter?.value || 'all',
+          limit: 100
+        });
+    
+        // Panggil API
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/filter?${params}`, {
+          method: 'GET'
+        });
+    
+        if (response.success) {
+          const transactions = response.transactions || [];
+    
+          // Update info filter
+          if (filterInfo) {
+            const typeText = typeFilter?.options[typeFilter.selectedIndex]?.text || 'Semua';
+            const statusText = statusFilter?.options[statusFilter.selectedIndex]?.text || 'Semua';
+            filterInfo.innerHTML = `<i class="fas fa-info-circle"></i> Menampilkan ${transactions.length} transaksi (${typeText} - ${statusText})`;
+          }
+    
+          // Render tabel
+          renderTransactionsTable(transactions);
+    
+          // Update summary
+          updateTransactionSummary(transactions);
+        } else {
+          showToast('Gagal memuat transaksi', 'error');
+        }
+    
+      } catch (error) {
+        console.error('Error loading transactions:', error);
+        showToast('Gagal memuat transaksi', 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+    
+    // Fungsi untuk render tabel transaksi
+    function renderTransactionsTable(transactions) {
+      const tableBody = elements.transactionsTableBody;
+      const emptyState = elements.transactionsEmptyState;
+    
+      if (!tableBody) return;
+    
+      if (!transactions || transactions.length === 0) {
+        tableBody.innerHTML = `
+                <tr class="empty-row">
+                    <td colspan="7">
+                        <i class="fas fa-credit-card"></i>
+                        <p>Tidak ada transaksi</p>
+                    </td>
+                </tr>
+            `;
+        if (emptyState) emptyState.style.display = 'flex';
+        return;
+      }
+    
+      if (emptyState) emptyState.style.display = 'none';
+    
+      let html = '';
+    
+      transactions.forEach(trx => {
+        const typeClass = trx.transaction_type === 'deposit' ? 'type-deposit' :
+          trx.transaction_type === 'withdraw' ? 'type-withdraw' : 'type-purchase';
+    
+        const statusClass = `status-${trx.status}`;
+        const amountClass = trx.transaction_type === 'deposit' ? 'positive' : 'negative';
+        const amountPrefix = trx.transaction_type === 'deposit' ? '+' : '-';
+    
+        const userName = trx.user_username || trx.user_first_name || `User ${trx.user_id}`;
+        const userId = trx.user_id;
+    
+        html += `
+                <tr id="transaction-row-${trx.id}" onclick="window.panel.toggleTransactionRow(${trx.id})">
+                    <td>#${trx.id}</td>
+                    <td><span class="transaction-type-badge ${typeClass}">${trx.transaction_type}</span></td>
+                    <td>
+                        <div class="transaction-user-info">
+                            <span>${escapeHtml(userName)}</span>
+                            <span class="transaction-user-id">ID: ${userId}</span>
+                        </div>
+                    </td>
+                    <td><span class="transaction-amount ${amountClass}">${amountPrefix} ${formatRupiah(trx.amount)}</span></td>
+                    <td><span class="transaction-status-badge ${statusClass}">${trx.status}</span></td>
+                    <td>${formatDate(trx.created_at)}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="table-btn" onclick="event.stopPropagation(); window.panel.viewTransaction(${trx.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="transaction-detail-${trx.id}" style="display: none;"></tr>
+            `;
+      });
+    
+      tableBody.innerHTML = html;
+    }
+    
+    // Fungsi untuk update summary
+    function updateTransactionSummary(transactions) {
+      const totalElement = elements.transactionTotal;
+      const countElement = elements.transactionCount;
+      const averageElement = elements.transactionAverage;
+      const totalSub = elements.totalRevenueSub;
+      const countSub = elements.totalCountSub;
+      const averageSub = elements.averageSub;
+    
+      let total = 0;
+      let count = transactions.length;
+    
+      transactions.forEach(t => {
+        if (t.transaction_type === 'deposit' && t.status === 'success') {
+          total += t.amount;
+        } else if (t.transaction_type === 'withdraw' && t.status === 'success') {
+          total -= t.amount;
+        } else if (t.transaction_type === 'purchase' && t.status === 'success') {
+          total += t.amount;
+        }
+      });
+    
+      const average = count > 0 ? Math.round(total / count) : 0;
+    
+      if (totalElement) totalElement.textContent = formatRupiah(total);
+      if (countElement) countElement.textContent = count;
+      if (averageElement) averageElement.textContent = formatRupiah(average);
+    
+      // Update border kosong
+      const cards = document.querySelectorAll('.summary-card');
+      cards.forEach(card => {
+        if (count === 0) {
+          card.classList.add('empty');
+        } else {
+          card.classList.remove('empty');
+        }
+      });
+    
+      if (totalSub) totalSub.textContent = count > 0 ? 'Dengan data' : 'Tidak ada data';
+      if (countSub) countSub.textContent = count > 0 ? `${count} transaksi` : 'Kosong';
+      if (averageSub) averageSub.textContent = count > 0 ? 'Rata-rata' : 'Kosong';
+    }
+
     async function init() {
       showLoading(true);
     
@@ -1717,6 +2007,7 @@
         setupProductFilters();
         setupProductSearch();
         initPullToRefresh();
+        setupTransactionFilters();
     
         setupWebsiteSelector();
     
