@@ -1752,12 +1752,204 @@
 
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.panel = {
-        viewOrder: (orderId) => {
-            showToast(`Melihat detail pesanan #${orderId}`, 'info');
-        },
-        updateOrderStatus: (orderId) => {
-            showToast(`Fitur update status akan segera tersedia`, 'info');
+      /**
+       * Melihat detail pesanan
+       * @param {string|number} orderId - ID pesanan
+       */
+      viewOrder: (orderId) => {
+        showToast(`Melihat detail pesanan #${orderId}`, 'info');
+      },
+    
+      /**
+       * Update status pesanan
+       * @param {string|number} orderId - ID pesanan
+       */
+      updateOrderStatus: (orderId) => {
+        showToast(`Fitur update status akan segera tersedia`, 'info');
+      },
+    
+      // ==================== FUNGSI TRANSAKSI ====================
+    
+      /**
+       * Melihat detail transaksi
+       * @param {string|number} transactionId - ID transaksi
+       */
+      viewTransaction: (transactionId) => {
+        showToast(`Melihat detail transaksi #${transactionId}`, 'info');
+      },
+    
+      /**
+       * Konfirmasi deposit (admin) - saldo user bertambah
+       * @param {number} depositId - ID deposit
+       */
+      confirmDeposit: async (depositId) => {
+        if (!confirm('✅ Konfirmasi deposit ini?\n\nSaldo user akan bertambah secara otomatis.')) {
+          return;
         }
+    
+        showLoading(true);
+        try {
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deposit_id: depositId })
+          });
+    
+          if (response.success) {
+            showToast('✅ Deposit berhasil dikonfirmasi!', 'success');
+            // Refresh data transaksi
+            await loadProductsAndOrders();
+            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+          } else {
+            showToast(response.error || 'Gagal mengkonfirmasi deposit', 'error');
+          }
+        } catch (error) {
+          console.error('❌ Error confirming deposit:', error);
+          showToast('Gagal mengkonfirmasi deposit: ' + error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      },
+    
+      /**
+       * Menolak deposit (admin) - saldo user TIDAK bertambah
+       * @param {number} depositId - ID deposit
+       * @param {string} reason - Alasan penolakan
+       */
+      rejectDeposit: async (depositId, reason) => {
+        if (!reason || reason.trim() === '') {
+          showToast('❌ Alasan penolakan wajib diisi', 'warning');
+          return;
+        }
+    
+        if (!confirm('⚠️ Tolak deposit ini?\n\nSaldo user TIDAK akan bertambah.')) {
+          return;
+        }
+    
+        showLoading(true);
+        try {
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              deposit_id: depositId,
+              reason: reason.trim()
+            })
+          });
+    
+          if (response.success) {
+            showToast('✅ Deposit ditolak', 'success');
+            // Refresh data transaksi
+            await loadProductsAndOrders();
+            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+          } else {
+            showToast(response.error || 'Gagal menolak deposit', 'error');
+          }
+        } catch (error) {
+          console.error('❌ Error rejecting deposit:', error);
+          showToast('Gagal menolak deposit: ' + error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      },
+    
+      /**
+       * Konfirmasi withdraw (admin) - saldo user berkurang
+       * @param {number} withdrawId - ID withdraw
+       */
+      confirmWithdraw: async (withdrawId) => {
+        if (!confirm('✅ Konfirmasi withdraw ini?\n\nSaldo user akan berkurang secara otomatis.')) {
+          return;
+        }
+    
+        showLoading(true);
+        try {
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ withdraw_id: withdrawId })
+          });
+    
+          if (response.success) {
+            showToast('✅ Withdraw berhasil dikonfirmasi!', 'success');
+            await loadProductsAndOrders();
+            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+          } else {
+            showToast(response.error || 'Gagal mengkonfirmasi withdraw', 'error');
+          }
+        } catch (error) {
+          console.error('❌ Error confirming withdraw:', error);
+          showToast('Gagal mengkonfirmasi withdraw: ' + error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      },
+    
+      /**
+       * Menolak withdraw (admin) - saldo user TIDAK berkurang
+       * @param {number} withdrawId - ID withdraw
+       * @param {string} reason - Alasan penolakan
+       */
+      rejectWithdraw: async (withdrawId, reason) => {
+        if (!reason || reason.trim() === '') {
+          showToast('❌ Alasan penolakan wajib diisi', 'warning');
+          return;
+        }
+    
+        if (!confirm('⚠️ Tolak withdraw ini?\n\nSaldo user TIDAK akan berkurang.')) {
+          return;
+        }
+    
+        showLoading(true);
+        try {
+          const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              withdraw_id: withdrawId,
+              reason: reason.trim()
+            })
+          });
+    
+          if (response.success) {
+            showToast('✅ Withdraw ditolak', 'success');
+            await loadProductsAndOrders();
+            if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
+            if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+          } else {
+            showToast(response.error || 'Gagal menolak withdraw', 'error');
+          }
+        } catch (error) {
+          console.error('❌ Error rejecting withdraw:', error);
+          showToast('Gagal menolak withdraw: ' + error.message, 'error');
+        } finally {
+          showLoading(false);
+        }
+      },
+    
+      /**
+       * Toggle expanded row untuk menampilkan detail transaksi
+       * @param {string|number} transactionId - ID transaksi
+       */
+      toggleTransactionRow: (transactionId) => {
+        const row = document.getElementById(`transaction-row-${transactionId}`);
+        const detailRow = document.getElementById(`transaction-detail-${transactionId}`);
+    
+        if (row && detailRow) {
+          const isExpanded = row.classList.contains('expanded');
+    
+          if (isExpanded) {
+            row.classList.remove('expanded');
+            detailRow.style.display = 'none';
+          } else {
+            row.classList.add('expanded');
+            detailRow.style.display = 'table-row';
+          }
+        }
+      }
     };
 
     // ==================== START ====================
