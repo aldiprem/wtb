@@ -5,12 +5,7 @@
     console.log('🏪 Website Store - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = (function() {
-        if (window.location.hostname.includes('github.io')) {
-            return 'https://supports-lease-honest-potter.trycloudflare.com';
-        }
-        return 'http://localhost:5050';
-    })();
+    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://desperate-journey-penny-expansion.trycloudflare.com';
     
     const MAX_RETRIES = 3;
     const ITEMS_PER_PAGE = 8;
