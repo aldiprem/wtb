@@ -5,7 +5,7 @@
     console.log('💳 Payment Manager - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = 'https://supports-lease-honest-potter.trycloudflare.com';
+    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://desperate-journey-penny-expansion.trycloudflare.com';
     const MAX_RETRIES = 3;
 
     // ==================== STATE ====================
