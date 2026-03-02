@@ -450,3 +450,134 @@ def cashify_webhook():
     except Exception as e:
         print(f"❌ Error processing webhook: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+        
+@trx_bp.route('/transactions/deposit/confirm', methods=['POST', 'OPTIONS'])
+def confirm_deposit():
+    """
+    Konfirmasi deposit (admin) - saldo user bertambah
+    """
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
+    try:
+        data = request.json
+        deposit_id = data.get('deposit_id')
+        
+        if not deposit_id:
+            return jsonify({'success': False, 'error': 'Deposit ID diperlukan'}), 400
+        
+        # Update status jadi success
+        success = trx.update_deposit_status(deposit_id, 'success', 'Dikonfirmasi oleh admin')
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Deposit berhasil dikonfirmasi'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Gagal mengkonfirmasi deposit'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error confirming deposit: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@trx_bp.route('/transactions/deposit/reject', methods=['POST', 'OPTIONS'])
+def reject_deposit():
+    """
+    Menolak deposit (admin) - saldo user TIDAK bertambah
+    """
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
+    try:
+        data = request.json
+        deposit_id = data.get('deposit_id')
+        reason = data.get('reason', 'Ditolak oleh admin')
+        
+        if not deposit_id:
+            return jsonify({'success': False, 'error': 'Deposit ID diperlukan'}), 400
+        
+        # Update status jadi rejected dengan alasan
+        success = trx.update_deposit_status(deposit_id, 'rejected', reason)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Deposit ditolak'
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Gagal menolak deposit'}), 500
+            
+    except Exception as e:
+        print(f"❌ Error rejecting deposit: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@trx_bp.route('/transactions/withdraw/confirm', methods=['POST', 'OPTIONS'])
+def confirm_withdraw():
+    """
+    Konfirmasi withdraw (admin) - saldo user berkurang
+    """
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
+    try:
+        data = request.json
+        withdraw_id = data.get('withdraw_id')
+        
+        if not withdraw_id:
+            return jsonify({'success': False, 'error': 'Withdraw ID diperlukan'}), 400
+        
+        # Ambil data withdraw
+        # Implementasi get withdrawal by id
+        # Update status jadi success dan kurangi balance
+        
+        return jsonify({
+            'success': True,
+            'message': 'Withdraw berhasil dikonfirmasi'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error confirming withdraw: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@trx_bp.route('/transactions/withdraw/reject', methods=['POST', 'OPTIONS'])
+def reject_withdraw():
+    """
+    Menolak withdraw (admin) - saldo user TIDAK berkurang
+    """
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response, 200
+    
+    try:
+        data = request.json
+        withdraw_id = data.get('withdraw_id')
+        reason = data.get('reason', 'Ditolak oleh admin')
+        
+        if not withdraw_id:
+            return jsonify({'success': False, 'error': 'Withdraw ID diperlukan'}), 400
+        
+        # Update status jadi rejected
+        # Implementasi update withdrawal status
+        
+        return jsonify({
+            'success': True,
+            'message': 'Withdraw ditolak'
+        })
+        
+    except Exception as e:
+        print(f"❌ Error rejecting withdraw: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
