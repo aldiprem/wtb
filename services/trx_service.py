@@ -673,3 +673,33 @@ def filter_transactions():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+        
+@trx_bp.route('/transactions/detail/<int:transaction_id>', methods=['GET', 'OPTIONS'])
+def get_transaction_detail(transaction_id):
+    """
+    Mendapatkan detail transaksi berdasarkan ID (bisa deposit atau withdraw)
+    """
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response, 200
+    
+    try:
+        trans_type = request.args.get('type', 'deposit')
+        
+        if trans_type == 'deposit':
+            transaction = trx.get_deposit(transaction_id)
+            if transaction:
+                transaction['transaction_type'] = 'deposit'
+        else:
+            # Implementasi get_withdrawal
+            transaction = None
+        
+        if not transaction:
+            return jsonify({'success': False, 'error': 'Transaksi tidak ditemukan'}), 404
+        
+        return jsonify({'success': True, 'transaction': transaction})
+        
+    except Exception as e:
+        print(f"❌ Error getting transaction detail: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
