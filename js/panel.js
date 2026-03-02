@@ -33,7 +33,12 @@
       threshold: 80,
       spinner: null,
       container: null
+      
     };
+    let allTransactions = [];
+    let currentTransactionPage = 1;
+    let transactionsPerPage = 10;
+    let countdownIntervals = {};
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -244,22 +249,24 @@
         return div.innerHTML;
     }
 
-    function formatDate(dateString) {
+    function formatDate(dateString, withTime = true) {
         if (!dateString) return '-';
         try {
             const date = new Date(dateString);
+            if (withTime) {
+                return date.toLocaleDateString('id-ID', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            }
             return date.toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+                day: 'numeric', month: 'short', year: 'numeric'
             });
         } catch (e) {
             return dateString;
         }
     }
-
+    
     function generateAvatarUrl(name) {
         if (!name) return `https://ui-avatars.com/api/?name=U&size=80&background=40a7e3&color=fff`;
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(name.charAt(0).toUpperCase())}&size=80&background=40a7e3&color=fff`;
@@ -1678,11 +1685,9 @@
           }
         }
     
-        // Setup filter dinamis untuk halaman transaksi
         function setupTransactionFilters() {
           const typeFilter = elements.transactionTypeFilter;
           const statusFilter = elements.transactionStatusFilter;
-          const statusFilterLabel = elements.statusFilterLabel;
           const timeFilter = elements.transactionTimeFilter;
           const resetBtn = elements.resetFiltersBtn;
           const applyBtn = elements.applyFiltersBtn;
@@ -1721,8 +1726,6 @@
                 statusFilter.appendChild(option);
               });
         
-              if (statusFilterLabel) statusFilterLabel.textContent = '(Deposit)';
-        
             } else if (type === 'withdraw') {
               // Status untuk withdraw
               const statuses = [
@@ -1740,8 +1743,6 @@
                 statusFilter.appendChild(option);
               });
         
-              if (statusFilterLabel) statusFilterLabel.textContent = '(Withdraw)';
-        
             } else if (type === 'purchase') {
               // Status untuk pembelian
               const statuses = [
@@ -1757,8 +1758,6 @@
                 option.textContent = s.text;
                 statusFilter.appendChild(option);
               });
-        
-              if (statusFilterLabel) statusFilterLabel.textContent = '(Pembelian)';
         
             } else {
               // Semua transaksi
@@ -1778,8 +1777,6 @@
                 option.textContent = s.text;
                 statusFilter.appendChild(option);
               });
-        
-              if (statusFilterLabel) statusFilterLabel.textContent = '';
             }
         
             // Kembalikan nilai sebelumnya jika masih ada
@@ -1812,7 +1809,6 @@
           updateStatusOptions();
         }
         
-        // Fungsi untuk memuat transaksi berdasarkan filter
         async function loadTransactions() {
           const timeFilter = elements.transactionTimeFilter;
           const typeFilter = elements.transactionTypeFilter;
@@ -1843,6 +1839,7 @@
                             </td>
                         </tr>
                     `;
+              if (emptyState) emptyState.style.display = 'none';
               showLoading(false);
               return;
             }
@@ -1862,20 +1859,23 @@
             });
         
             if (response.success) {
-              const transactions = response.transactions || [];
+              allTransactions = response.transactions || [];
         
               // Update info filter
               if (filterInfo) {
                 const typeText = typeFilter?.options[typeFilter.selectedIndex]?.text || 'Semua';
                 const statusText = statusFilter?.options[statusFilter.selectedIndex]?.text || 'Semua';
-                filterInfo.innerHTML = `<i class="fas fa-info-circle"></i> Menampilkan ${transactions.length} transaksi (${typeText} - ${statusText})`;
+                filterInfo.innerHTML = `<i class="fas fa-info-circle"></i> Menampilkan ${allTransactions.length} transaksi (${typeText} - ${statusText})`;
               }
         
+              // Reset ke halaman 1
+              currentTransactionPage = 1;
+        
               // Render tabel
-              renderTransactionsTable(transactions);
+              renderTransactionsTable();
         
               // Update summary
-              updateTransactionSummary(transactions);
+              updateTransactionSummary();
             } else {
               showToast('Gagal memuat transaksi', 'error');
             }
@@ -1888,28 +1888,45 @@
           }
         }
         
-    // Fungsi untuk render tabel transaksi
-    function renderTransactionsTable(transactions) {
+    function renderTransactionsTable() {
       const tableBody = elements.transactionsTableBody;
       const emptyState = elements.transactionsEmptyState;
+      const pageInfo = elements.transactionPageInfo;
+      const prevBtn = elements.prevTransactionPage;
+      const nextBtn = elements.nextTransactionPage;
     
       if (!tableBody) return;
     
-      if (!transactions || transactions.length === 0) {
+      // Hentikan semua interval countdown yang berjalan
+      Object.values(countdownIntervals).forEach(interval => clearInterval(interval));
+      countdownIntervals = {};
+    
+      if (!allTransactions || allTransactions.length === 0) {
         tableBody.innerHTML = '';
         if (emptyState) emptyState.style.display = 'flex';
     
+        // Update pagination
+        if (pageInfo) pageInfo.textContent = 'Halaman 0 / 0';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+    
         // Update summary dengan data kosong
-        updateTransactionSummary([]);
+        updateTransactionSummary();
         return;
       }
     
       if (emptyState) emptyState.style.display = 'none';
     
+      // Hitung pagination
+      const startIndex = (currentTransactionPage - 1) * transactionsPerPage;
+      const endIndex = Math.min(startIndex + transactionsPerPage, allTransactions.length);
+      const pageTransactions = allTransactions.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(allTransactions.length / transactionsPerPage);
+    
       let html = '';
       const now = new Date().getTime();
     
-      transactions.forEach(trx => {
+      pageTransactions.forEach(trx => {
         const typeClass = trx.transaction_type === 'deposit' ? 'type-deposit' :
           trx.transaction_type === 'withdraw' ? 'type-withdraw' : 'type-purchase';
     
@@ -1920,35 +1937,35 @@
         const userName = trx.user_username || trx.user_first_name || `User ${trx.user_id}`;
         const userId = trx.user_id;
     
-        // Hitung sisa waktu untuk deposit pending
+        // Hitung sisa waktu
         let remainingTime = '-';
         let remainingTimeClass = '';
+        let expiredAt = null;
     
         if (trx.transaction_type === 'deposit' && trx.status === 'pending') {
-          const expiredAt = trx.cashify_expired_at || trx.expired_at;
-          if (expiredAt) {
-            const expiredTime = new Date(expiredAt).getTime();
-            const distance = expiredTime - now;
+          expiredAt = trx.cashify_expired_at || trx.expired_at;
+        } else if (trx.transaction_type === 'withdraw' && trx.status === 'pending') {
+          expiredAt = trx.expired_at;
+        }
     
-            if (distance > 0) {
-              const hours = Math.floor(distance / (1000 * 60 * 60));
-              const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-              const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        if (expiredAt) {
+          const expiredTime = new Date(expiredAt).getTime();
+          const distance = expiredTime - now;
     
-              if (hours > 0) {
-                remainingTime = `${hours}j ${minutes}m`;
-                remainingTimeClass = distance < 5 * 60 * 1000 ? 'text-danger' : 'text-warning';
-              } else if (minutes > 0) {
-                remainingTime = `${minutes}m ${seconds}d`;
-                remainingTimeClass = minutes < 5 ? 'text-danger' : 'text-warning';
-              } else {
-                remainingTime = `${seconds}d`;
-                remainingTimeClass = 'text-danger';
-              }
+          if (distance > 0) {
+            const hours = Math.floor(distance / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    
+            if (hours > 0) {
+              remainingTime = `${hours}j ${minutes}m`;
+              remainingTimeClass = distance < 30 * 60 * 1000 ? 'text-danger' : 'text-warning';
             } else {
-              remainingTime = 'Expired';
-              remainingTimeClass = 'text-expired';
+              remainingTime = `${minutes}m`;
+              remainingTimeClass = minutes < 5 ? 'text-danger' : 'text-warning';
             }
+          } else {
+            remainingTime = 'Expired';
+            remainingTimeClass = 'text-expired';
           }
         } else if (trx.status === 'expired') {
           remainingTime = 'Expired';
@@ -1962,9 +1979,9 @@
         }
     
         html += `
-                <tr id="transaction-row-${trx.id}" onclick="window.panel.toggleTransactionRow(${trx.id})">
+                <tr id="transaction-row-${trx.id}" onclick="window.panel.toggleTransactionRow(${trx.id})" style="cursor: pointer;">
                     <td>
-                        <button class="table-btn view-btn" onclick="event.stopPropagation(); window.panel.viewTransactionDetail(${trx.id}, '${trx.transaction_type}')">
+                        <button class="table-btn view-btn" onclick="event.stopPropagation(); window.panel.toggleTransactionRow(${trx.id})">
                             <i class="fas fa-eye"></i>
                         </button>
                     </td>
@@ -1978,7 +1995,14 @@
                     </td>
                     <td><span class="transaction-time">${formatDate(trx.created_at)}</span></td>
                     <td><span class="transaction-amount ${amountClass}">${amountPrefix} ${formatRupiah(trx.amount)}</span></td>
-                    <td><span class="transaction-remaining-time ${remainingTimeClass}" data-expired="${trx.cashify_expired_at || trx.expired_at || ''}">${remainingTime}</span></td>
+                    <td>
+                        <span class="transaction-remaining-time ${remainingTimeClass}" 
+                              data-expired="${expiredAt || ''}" 
+                              data-transaction-id="${trx.id}"
+                              data-status="${trx.status}">
+                            ${remainingTime}
+                        </span>
+                    </td>
                 </tr>
                 <tr id="transaction-detail-${trx.id}" class="transaction-detail-row" style="display: none;"></tr>
             `;
@@ -1986,10 +2010,101 @@
     
       tableBody.innerHTML = html;
     
-      // Mulai interval untuk update countdown setiap detik
-      startCountdownInterval();
-    }
+      // Update pagination info
+      if (pageInfo) {
+        pageInfo.textContent = `Halaman ${currentTransactionPage} / ${totalPages}`;
+      }
     
+      if (prevBtn) {
+        prevBtn.disabled = currentTransactionPage === 1;
+        prevBtn.onclick = () => {
+          if (currentTransactionPage > 1) {
+            currentTransactionPage--;
+            renderTransactionsTable();
+          }
+        };
+      }
+    
+      if (nextBtn) {
+        nextBtn.disabled = currentTransactionPage === totalPages;
+        nextBtn.onclick = () => {
+          if (currentTransactionPage < totalPages) {
+            currentTransactionPage++;
+            renderTransactionsTable();
+          }
+        };
+      }
+    
+      // Mulai countdown untuk setiap baris yang memiliki sisa waktu
+      startTransactionCountdowns();
+    }
+
+    function startTransactionCountdowns() {
+      const timeElements = document.querySelectorAll('.transaction-remaining-time[data-expired]');
+    
+      timeElements.forEach(el => {
+        const transactionId = el.getAttribute('data-transaction-id');
+        const expiredAt = el.getAttribute('data-expired');
+        const status = el.getAttribute('data-status');
+    
+        if (!expiredAt || status !== 'pending') return;
+    
+        // Hentikan interval lama jika ada
+        if (countdownIntervals[transactionId]) {
+          clearInterval(countdownIntervals[transactionId]);
+        }
+    
+        // Buat interval baru
+        countdownIntervals[transactionId] = setInterval(() => {
+          updateCountdownForElement(el, expiredAt);
+        }, 1000);
+    
+        // Update segera
+        updateCountdownForElement(el, expiredAt);
+      });
+    }
+
+    function updateCountdownForElement(el, expiredAt) {
+      const now = new Date().getTime();
+      const expiredTime = new Date(expiredAt).getTime();
+      const distance = expiredTime - now;
+    
+      if (distance <= 0) {
+        el.textContent = 'Expired';
+        el.className = 'transaction-remaining-time text-expired';
+    
+        // Hentikan interval untuk transaksi ini
+        const transactionId = el.getAttribute('data-transaction-id');
+        if (countdownIntervals[transactionId]) {
+          clearInterval(countdownIntervals[transactionId]);
+          delete countdownIntervals[transactionId];
+        }
+        return;
+      }
+    
+      const hours = Math.floor(distance / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+    
+      let timeString = '';
+      if (hours > 0) {
+        timeString = `${hours}j ${minutes}m`;
+      } else if (minutes > 0) {
+        timeString = `${minutes}m ${seconds}d`;
+      } else {
+        timeString = `${seconds}d`;
+      }
+    
+      el.textContent = timeString;
+    
+      // Update class berdasarkan sisa waktu
+      if (distance < 5 * 60 * 1000) {
+        el.className = 'transaction-remaining-time text-danger';
+      } else if (distance < 30 * 60 * 1000) {
+        el.className = 'transaction-remaining-time text-warning';
+      }
+    }
+
     // Fungsi untuk memulai interval countdown
     let countdownInterval = null;
     function startCountdownInterval() {
@@ -2027,6 +2142,397 @@
           }
         });
       }, 1000);
+    }
+
+    function updateTransactionSummary() {
+      const totalElement = elements.transactionTotal;
+      const countElement = elements.transactionCount;
+      const averageElement = elements.transactionAverage;
+      const totalSub = elements.totalRevenueSub;
+      const countSub = elements.totalCountSub;
+      const averageSub = elements.averageSub;
+    
+      if (!allTransactions || allTransactions.length === 0) {
+        if (totalElement) totalElement.textContent = 'Rp 0';
+        if (countElement) countElement.textContent = '0';
+        if (averageElement) averageElement.textContent = 'Rp 0';
+        if (totalSub) totalSub.textContent = '-';
+        if (countSub) countSub.textContent = '-';
+        if (averageSub) averageSub.textContent = '-';
+        return;
+      }
+    
+      // Hitung total pendapatan (hanya deposit success)
+      const totalRevenue = allTransactions
+        .filter(t => t.transaction_type === 'deposit' && t.status === 'success')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+    
+      // Hitung rata-rata
+      const avg = totalRevenue / allTransactions.length || 0;
+    
+      if (totalElement) totalElement.textContent = formatRupiah(totalRevenue);
+      if (countElement) countElement.textContent = allTransactions.length;
+      if (averageElement) averageElement.textContent = formatRupiah(avg);
+    
+      if (totalSub) totalSub.textContent = `${allTransactions.filter(t => t.status === 'success').length} sukses`;
+      if (countSub) countSub.textContent = `${allTransactions.filter(t => t.status === 'pending').length} pending`;
+      if (averageSub) averageSub.textContent = `dari ${allTransactions.length} transaksi`;
+    }
+
+    async function toggleTransactionRow(transactionId) {
+      const row = document.getElementById(`transaction-row-${transactionId}`);
+      const detailRow = document.getElementById(`transaction-detail-${transactionId}`);
+    
+      if (!row || !detailRow) return;
+    
+      const isExpanded = row.classList.contains('expanded');
+    
+      if (isExpanded) {
+        // Tutup detail
+        row.classList.remove('expanded');
+        detailRow.style.display = 'none';
+      } else {
+        // Tutup semua detail row lainnya
+        document.querySelectorAll('.transaction-detail-row').forEach(el => {
+          el.style.display = 'none';
+        });
+        document.querySelectorAll('.transactions-table tr.expanded').forEach(el => {
+          el.classList.remove('expanded');
+        });
+    
+        // Buka detail baru
+        row.classList.add('expanded');
+        detailRow.style.display = 'table-row';
+    
+        // Isi detail row dengan data
+        await populateTransactionDetail(transactionId);
+      }
+    }
+
+    /**
+     * Mengisi template detail transaksi dengan data
+     */
+    async function fillTransactionDetailTemplate(transactionId, transaction) {
+      const detailRow = document.getElementById(`transaction-detail-${transactionId}`);
+      if (!detailRow) return;
+    
+      // Isi data user
+      const userIdEl = detailRow.querySelector('#detailUserId');
+      const usernameEl = detailRow.querySelector('#detailUsername');
+      const nameEl = detailRow.querySelector('#detailName');
+    
+      if (userIdEl) userIdEl.textContent = transaction.user_id || '-';
+      if (usernameEl) usernameEl.textContent = transaction.user_username || '-';
+    
+      const fullName = [transaction.user_first_name, transaction.user_last_name].filter(Boolean).join(' ') || '-';
+      if (nameEl) nameEl.textContent = fullName;
+    
+      // Isi data transaksi
+      const transIdEl = detailRow.querySelector('#detailTransactionId');
+      const createdAtEl = detailRow.querySelector('#detailCreatedAt');
+      const processedAtEl = detailRow.querySelector('#detailProcessedAt');
+      const amountEl = detailRow.querySelector('#detailAmount');
+      const paymentMethodEl = detailRow.querySelector('#detailPaymentMethod');
+    
+      if (transIdEl) transIdEl.textContent = `#${transaction.id}`;
+      if (createdAtEl) createdAtEl.textContent = formatDate(transaction.created_at, true);
+      if (processedAtEl) processedAtEl.textContent = transaction.processed_at ? formatDate(transaction.processed_at, true) : '-';
+      if (amountEl) amountEl.textContent = formatRupiah(transaction.amount);
+    
+      let paymentMethod = transaction.payment_method || '-';
+      if (transaction.payment_method === 'qris') paymentMethod = 'QRIS (Otomatis)';
+      else if (transaction.rekening_nama) paymentMethod = `${transaction.rekening_nama}`;
+      if (paymentMethodEl) paymentMethodEl.textContent = paymentMethod;
+    
+      // Tampilkan section rekening jika ada
+      const rekeningSection = detailRow.querySelector('#rekeningDetailSection');
+      if (rekeningSection && (transaction.rekening_nama || transaction.rekening_nomor)) {
+        rekeningSection.style.display = 'block';
+        const bankEl = detailRow.querySelector('#detailRekeningBank');
+        const nomorEl = detailRow.querySelector('#detailRekeningNomor');
+        const pemilikEl = detailRow.querySelector('#detailRekeningPemilik');
+    
+        if (bankEl) bankEl.textContent = transaction.rekening_nama || '-';
+        if (nomorEl) nomorEl.textContent = transaction.rekening_nomor || '-';
+        if (pemilikEl) pemilikEl.textContent = transaction.rekening_pemilik || '-';
+      }
+    
+      // Tampilkan section QRIS jika ada
+      const qrisSection = detailRow.querySelector('#qrisDetailSection');
+      if (qrisSection && transaction.payment_method === 'qris') {
+        qrisSection.style.display = 'block';
+        const amountQrisEl = detailRow.querySelector('#detailQrisAmount');
+        const uniqueEl = detailRow.querySelector('#detailQrisUnique');
+        const totalEl = detailRow.querySelector('#detailQrisTotal');
+        const expiredEl = detailRow.querySelector('#detailQrisExpired');
+    
+        const unique = transaction.cashify_unique_nominal || 0;
+        const total = transaction.amount + unique;
+    
+        if (amountQrisEl) amountQrisEl.textContent = formatRupiah(transaction.amount);
+        if (uniqueEl) uniqueEl.textContent = formatRupiah(unique);
+        if (totalEl) totalEl.textContent = formatRupiah(total);
+        if (expiredEl) expiredEl.textContent = transaction.cashify_expired_at ? formatDate(transaction.cashify_expired_at, true) : '-';
+      }
+    
+      // Tampilkan bukti transfer jika ada (untuk deposit manual)
+      const proofSection = detailRow.querySelector('#proofSection');
+      const proofImage = detailRow.querySelector('#proofImage');
+      const proofFileName = detailRow.querySelector('#proofFileName');
+      const viewProofBtn = detailRow.querySelector('#viewProofBtn');
+    
+      if (proofSection && transaction.proof_url) {
+        proofSection.style.display = 'block';
+        if (proofImage) proofImage.src = transaction.proof_url;
+        if (proofFileName) proofFileName.textContent = 'Bukti Transfer';
+        if (viewProofBtn) {
+          viewProofBtn.href = transaction.proof_url;
+          viewProofBtn.target = '_blank';
+        }
+      }
+    
+      // Tampilkan status message jika ada
+      const statusSection = detailRow.querySelector('#statusMessageSection');
+      const statusText = detailRow.querySelector('#statusMessageText');
+    
+      if (statusSection && transaction.status_message) {
+        statusSection.style.display = 'flex';
+        if (statusText) statusText.textContent = transaction.status_message;
+      }
+    
+      // Tampilkan alasan penolakan jika status rejected
+      const rejectionPreview = detailRow.querySelector('#rejectionReasonPreview');
+      const rejectionText = detailRow.querySelector('#rejectionReasonText');
+    
+      if (rejectionPreview && transaction.status === 'rejected' && transaction.rejection_reason) {
+        rejectionPreview.style.display = 'block';
+        if (rejectionText) rejectionText.textContent = transaction.rejection_reason;
+      }
+    
+      // Tampilkan form penolakan untuk deposit pending
+      const rejectionForm = detailRow.querySelector('#rejectionForm');
+      if (rejectionForm && transaction.transaction_type === 'deposit' && transaction.status === 'pending') {
+        rejectionForm.style.display = 'block';
+    
+        // Setup tombol tolak
+        const submitBtn = detailRow.querySelector('#submitRejectionBtn');
+        const cancelBtn = detailRow.querySelector('#cancelRejectionBtn');
+        const reasonInput = detailRow.querySelector('#rejectionReason');
+    
+        if (submitBtn) {
+          submitBtn.onclick = async () => {
+            const reason = reasonInput?.value.trim();
+            if (!reason) {
+              showToast('Alasan penolakan wajib diisi', 'warning');
+              return;
+            }
+            await window.panel.rejectDeposit(transaction.id, reason);
+          };
+        }
+    
+        if (cancelBtn) {
+          cancelBtn.onclick = () => {
+            if (reasonInput) reasonInput.value = '';
+            rejectionForm.style.display = 'none';
+          };
+        }
+      }
+    
+      // Tampilkan tombol aksi
+      const detailActions = detailRow.querySelector('#detailActions');
+      if (detailActions) {
+        let actionsHtml = '';
+    
+        if (transaction.transaction_type === 'deposit' && transaction.status === 'pending') {
+          actionsHtml = `
+                    <button class="action-btn confirm" onclick="window.panel.confirmDeposit(${transaction.id})">
+                        <i class="fas fa-check-circle"></i> Konfirmasi
+                    </button>
+                    <button class="action-btn reject" onclick="document.getElementById('rejectionForm').style.display='block'">
+                        <i class="fas fa-times-circle"></i> Tolak
+                    </button>
+                `;
+        } else if (transaction.transaction_type === 'withdraw' && transaction.status === 'pending') {
+          actionsHtml = `
+                    <button class="action-btn confirm" onclick="window.panel.confirmWithdraw(${transaction.id})">
+                        <i class="fas fa-check-circle"></i> Konfirmasi
+                    </button>
+                    <button class="action-btn reject" onclick="window.panel.rejectWithdraw(${transaction.id}, prompt('Alasan penolakan:'))">
+                        <i class="fas fa-times-circle"></i> Tolak
+                    </button>
+                `;
+        } else {
+          actionsHtml = `
+                    <button class="action-btn view" onclick="window.panel.viewTransactionDetail(${transaction.id}, '${transaction.transaction_type}')">
+                        <i class="fas fa-eye"></i> Lihat Detail
+                    </button>
+                `;
+        }
+    
+        detailActions.innerHTML = actionsHtml;
+      }
+    }
+
+    async function confirmDeposit(depositId) {
+      if (!confirm('✅ Konfirmasi deposit ini?\n\nSaldo user akan bertambah secara otomatis.')) {
+        return;
+      }
+    
+      showLoading(true);
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ deposit_id: depositId })
+        });
+    
+        if (response.success) {
+          showToast('✅ Deposit berhasil dikonfirmasi!', 'success');
+    
+          // Tutup detail row
+          const detailRow = document.getElementById(`transaction-detail-${depositId}`);
+          const row = document.getElementById(`transaction-row-${depositId}`);
+          if (detailRow) detailRow.style.display = 'none';
+          if (row) row.classList.remove('expanded');
+    
+          // Refresh data transaksi
+          await loadTransactions();
+        } else {
+          showToast(response.error || 'Gagal mengkonfirmasi deposit', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error confirming deposit:', error);
+        showToast('Gagal mengkonfirmasi deposit: ' + error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+    
+    /**
+     * Menolak deposit (admin) - saldo user TIDAK bertambah
+     */
+    async function rejectDeposit(depositId, reason) {
+      if (!reason || reason.trim() === '') {
+        showToast('❌ Alasan penolakan wajib diisi', 'warning');
+        return;
+      }
+    
+      if (!confirm('⚠️ Tolak deposit ini?\n\nSaldo user TIDAK akan bertambah.')) {
+        return;
+      }
+    
+      showLoading(true);
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            deposit_id: depositId,
+            reason: reason.trim()
+          })
+        });
+    
+        if (response.success) {
+          showToast('✅ Deposit ditolak', 'success');
+    
+          // Tutup detail row
+          const detailRow = document.getElementById(`transaction-detail-${depositId}`);
+          const row = document.getElementById(`transaction-row-${depositId}`);
+          if (detailRow) detailRow.style.display = 'none';
+          if (row) row.classList.remove('expanded');
+    
+          // Refresh data transaksi
+          await loadTransactions();
+        } else {
+          showToast(response.error || 'Gagal menolak deposit', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error rejecting deposit:', error);
+        showToast('Gagal menolak deposit: ' + error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+    
+    async function confirmWithdraw(withdrawId) {
+      if (!confirm('✅ Konfirmasi withdraw ini?\n\nSaldo user akan berkurang secara otomatis.')) {
+        return;
+      }
+    
+      showLoading(true);
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ withdraw_id: withdrawId })
+        });
+    
+        if (response.success) {
+          showToast('✅ Withdraw berhasil dikonfirmasi!', 'success');
+    
+          // Tutup detail row
+          const detailRow = document.getElementById(`transaction-detail-${withdrawId}`);
+          const row = document.getElementById(`transaction-row-${withdrawId}`);
+          if (detailRow) detailRow.style.display = 'none';
+          if (row) row.classList.remove('expanded');
+    
+          // Refresh data transaksi
+          await loadTransactions();
+        } else {
+          showToast(response.error || 'Gagal mengkonfirmasi withdraw', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error confirming withdraw:', error);
+        showToast('Gagal mengkonfirmasi withdraw: ' + error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
+    }
+    
+    /**
+     * Menolak withdraw (admin) - saldo user TIDAK berkurang
+     */
+    async function rejectWithdraw(withdrawId, reason) {
+      if (!reason || reason.trim() === '') {
+        showToast('❌ Alasan penolakan wajib diisi', 'warning');
+        return;
+      }
+    
+      if (!confirm('⚠️ Tolak withdraw ini?\n\nSaldo user TIDAK akan berkurang.')) {
+        return;
+      }
+    
+      showLoading(true);
+      try {
+        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/withdraw/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            withdraw_id: withdrawId,
+            reason: reason.trim()
+          })
+        });
+    
+        if (response.success) {
+          showToast('✅ Withdraw ditolak', 'success');
+    
+          // Tutup detail row
+          const detailRow = document.getElementById(`transaction-detail-${withdrawId}`);
+          const row = document.getElementById(`transaction-row-${withdrawId}`);
+          if (detailRow) detailRow.style.display = 'none';
+          if (row) row.classList.remove('expanded');
+    
+          // Refresh data transaksi
+          await loadTransactions();
+        } else {
+          showToast(response.error || 'Gagal menolak withdraw', 'error');
+        }
+      } catch (error) {
+        console.error('❌ Error rejecting withdraw:', error);
+        showToast('Gagal menolak withdraw: ' + error.message, 'error');
+      } finally {
+        showLoading(false);
+      }
     }
 
     async function init() {
@@ -2135,9 +2641,6 @@
                 if (response.success && response.transaction) {
                     const transaction = response.transaction;
                     
-                    // Tampilkan modal detail (bisa menggunakan modal yang sudah ada di website.html)
-                    // atau buat modal baru di panel
-                    
                     // Format pesan detail
                     let detailMessage = `=== DETAIL TRANSAKSI ===\n`;
                     detailMessage += `ID: #${transaction.id}\n`;
@@ -2166,7 +2669,7 @@
                         detailMessage += `\nBukti Transfer: ${transaction.proof_url}\n`;
                     }
                     
-                    alert(detailMessage); // Sementara pakai alert, nanti bisa diganti dengan modal kustom
+                    alert(detailMessage);
                 } else {
                     showToast('Gagal memuat detail transaksi', 'error');
                 }
@@ -2197,10 +2700,15 @@
     
                 if (response.success) {
                     showToast('✅ Deposit berhasil dikonfirmasi!', 'success');
+                    
+                    // Tutup detail row
+                    const detailRow = document.getElementById(`transaction-detail-${depositId}`);
+                    const row = document.getElementById(`transaction-row-${depositId}`);
+                    if (detailRow) detailRow.style.display = 'none';
+                    if (row) row.classList.remove('expanded');
+                    
                     // Refresh data transaksi
-                    await loadProductsAndOrders();
-                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                    await loadTransactions();
                 } else {
                     showToast(response.error || 'Gagal mengkonfirmasi deposit', 'error');
                 }
@@ -2240,10 +2748,15 @@
     
                 if (response.success) {
                     showToast('✅ Deposit ditolak', 'success');
+                    
+                    // Tutup detail row
+                    const detailRow = document.getElementById(`transaction-detail-${depositId}`);
+                    const row = document.getElementById(`transaction-row-${depositId}`);
+                    if (detailRow) detailRow.style.display = 'none';
+                    if (row) row.classList.remove('expanded');
+                    
                     // Refresh data transaksi
-                    await loadProductsAndOrders();
-                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                    await loadTransactions();
                 } else {
                     showToast(response.error || 'Gagal menolak deposit', 'error');
                 }
@@ -2274,9 +2787,15 @@
     
                 if (response.success) {
                     showToast('✅ Withdraw berhasil dikonfirmasi!', 'success');
-                    await loadProductsAndOrders();
-                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                    
+                    // Tutup detail row
+                    const detailRow = document.getElementById(`transaction-detail-${withdrawId}`);
+                    const row = document.getElementById(`transaction-row-${withdrawId}`);
+                    if (detailRow) detailRow.style.display = 'none';
+                    if (row) row.classList.remove('expanded');
+                    
+                    // Refresh data transaksi
+                    await loadTransactions();
                 } else {
                     showToast(response.error || 'Gagal mengkonfirmasi withdraw', 'error');
                 }
@@ -2316,9 +2835,15 @@
     
                 if (response.success) {
                     showToast('✅ Withdraw ditolak', 'success');
-                    await loadProductsAndOrders();
-                    if (typeof renderTransactionsSummary === 'function') renderTransactionsSummary();
-                    if (typeof renderTransactionsTable === 'function') renderTransactionsTable();
+                    
+                    // Tutup detail row
+                    const detailRow = document.getElementById(`transaction-detail-${withdrawId}`);
+                    const row = document.getElementById(`transaction-row-${withdrawId}`);
+                    if (detailRow) detailRow.style.display = 'none';
+                    if (row) row.classList.remove('expanded');
+                    
+                    // Refresh data transaksi
+                    await loadTransactions();
                 } else {
                     showToast(response.error || 'Gagal menolak withdraw', 'error');
                 }
@@ -2345,19 +2870,20 @@
                     row.classList.remove('expanded');
                     detailRow.style.display = 'none';
                 } else {
+                    // Tutup semua detail row lainnya
+                    document.querySelectorAll('.transaction-detail-row').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                    document.querySelectorAll('.transactions-table tr.expanded').forEach(el => {
+                        el.classList.remove('expanded');
+                    });
+    
+                    // Buka detail baru
                     row.classList.add('expanded');
                     detailRow.style.display = 'table-row';
                     
-                    // Isi detail row dengan template
-                    const template = document.getElementById('transactionDetailTemplate');
-                    if (template && detailRow.innerHTML === '') {
-                        const clone = document.importNode(template.content, true);
-                        detailRow.innerHTML = '';
-                        detailRow.appendChild(clone);
-                        
-                        // Isi data ke template (akan diisi oleh fungsi terpisah)
-                        window.panel.populateTransactionDetail(transactionId);
-                    }
+                    // Isi detail row dengan data
+                    window.panel.populateTransactionDetail(transactionId);
                 }
             }
         },
@@ -2368,23 +2894,47 @@
          */
         populateTransactionDetail: async (transactionId) => {
             try {
-                // Cari data transaksi dari array transactions
-                const transaction = transactions.find(t => t.id == transactionId);
+                // Cari data transaksi dari array allTransactions
+                const transaction = allTransactions.find(t => t.id == transactionId);
                 if (!transaction) return;
                 
-                // Ambil elemen-elemen di detail row
+                // Ambil data lengkap dari API jika perlu
+                let fullTransaction = transaction;
+                if (transaction.transaction_type === 'deposit') {
+                    try {
+                        const response = await fetchWithRetry(`${API_BASE_URL}/api/transactions/deposit/${transactionId}`, {
+                            method: 'GET'
+                        });
+                        if (response.success && response.deposit) {
+                            fullTransaction = { ...transaction, ...response.deposit };
+                        }
+                    } catch (error) {
+                        console.warn('Could not fetch full transaction details:', error);
+                    }
+                }
+                
+                // Ambil elemen detail row
                 const detailRow = document.getElementById(`transaction-detail-${transactionId}`);
                 if (!detailRow) return;
+                
+                // Gunakan template
+                const template = document.getElementById('transactionDetailTemplate');
+                if (!template) return;
+                
+                // Bersihkan dan clone template
+                detailRow.innerHTML = '';
+                const clone = document.importNode(template.content, true);
+                detailRow.appendChild(clone);
                 
                 // Isi data user
                 const userIdEl = detailRow.querySelector('#detailUserId');
                 const usernameEl = detailRow.querySelector('#detailUsername');
                 const nameEl = detailRow.querySelector('#detailName');
                 
-                if (userIdEl) userIdEl.textContent = transaction.user_id || '-';
-                if (usernameEl) usernameEl.textContent = transaction.user_username || '-';
+                if (userIdEl) userIdEl.textContent = fullTransaction.user_id || '-';
+                if (usernameEl) usernameEl.textContent = fullTransaction.user_username || '-';
                 
-                const fullName = [transaction.user_first_name, transaction.user_last_name].filter(Boolean).join(' ') || '-';
+                const fullName = [fullTransaction.user_first_name, fullTransaction.user_last_name].filter(Boolean).join(' ') || '-';
                 if (nameEl) nameEl.textContent = fullName;
                 
                 // Isi data transaksi
@@ -2394,79 +2944,84 @@
                 const amountEl = detailRow.querySelector('#detailAmount');
                 const paymentMethodEl = detailRow.querySelector('#detailPaymentMethod');
                 
-                if (transIdEl) transIdEl.textContent = `#${transaction.id}`;
-                if (createdAtEl) createdAtEl.textContent = formatDate(transaction.created_at, true);
-                if (processedAtEl) processedAtEl.textContent = transaction.processed_at ? formatDate(transaction.processed_at, true) : '-';
-                if (amountEl) amountEl.textContent = formatRupiah(transaction.amount);
+                if (transIdEl) transIdEl.textContent = `#${fullTransaction.id}`;
+                if (createdAtEl) createdAtEl.textContent = formatDate(fullTransaction.created_at);
+                if (processedAtEl) processedAtEl.textContent = fullTransaction.processed_at ? formatDate(fullTransaction.processed_at) : '-';
+                if (amountEl) amountEl.textContent = formatRupiah(fullTransaction.amount);
                 
-                let paymentMethod = transaction.payment_method || '-';
-                if (transaction.payment_method === 'qris') paymentMethod = 'QRIS (Otomatis)';
-                else if (transaction.rekening_nama) paymentMethod = `${transaction.rekening_nama}`;
+                let paymentMethod = fullTransaction.payment_method || '-';
+                if (fullTransaction.payment_method === 'qris') paymentMethod = 'QRIS (Otomatis)';
+                else if (fullTransaction.rekening_nama) paymentMethod = `${fullTransaction.rekening_nama}`;
                 if (paymentMethodEl) paymentMethodEl.textContent = paymentMethod;
                 
                 // Tampilkan section rekening jika ada
                 const rekeningSection = detailRow.querySelector('#rekeningDetailSection');
-                if (rekeningSection && (transaction.rekening_nama || transaction.rekening_nomor)) {
+                if (rekeningSection && (fullTransaction.rekening_nama || fullTransaction.rekening_nomor)) {
                     rekeningSection.style.display = 'block';
                     const bankEl = detailRow.querySelector('#detailRekeningBank');
                     const nomorEl = detailRow.querySelector('#detailRekeningNomor');
                     const pemilikEl = detailRow.querySelector('#detailRekeningPemilik');
                     
-                    if (bankEl) bankEl.textContent = transaction.rekening_nama || '-';
-                    if (nomorEl) nomorEl.textContent = transaction.rekening_nomor || '-';
-                    if (pemilikEl) pemilikEl.textContent = transaction.rekening_pemilik || '-';
+                    if (bankEl) bankEl.textContent = fullTransaction.rekening_nama || '-';
+                    if (nomorEl) nomorEl.textContent = fullTransaction.rekening_nomor || '-';
+                    if (pemilikEl) pemilikEl.textContent = fullTransaction.rekening_pemilik || '-';
                 }
                 
                 // Tampilkan section QRIS jika ada
                 const qrisSection = detailRow.querySelector('#qrisDetailSection');
-                if (qrisSection && transaction.payment_method === 'qris') {
+                if (qrisSection && fullTransaction.payment_method === 'qris') {
                     qrisSection.style.display = 'block';
-                    const amountEl = detailRow.querySelector('#detailQrisAmount');
+                    const amountQrisEl = detailRow.querySelector('#detailQrisAmount');
                     const uniqueEl = detailRow.querySelector('#detailQrisUnique');
                     const totalEl = detailRow.querySelector('#detailQrisTotal');
                     const expiredEl = detailRow.querySelector('#detailQrisExpired');
                     
-                    const unique = transaction.cashify_unique_nominal || 0;
-                    const total = transaction.amount + unique;
+                    const unique = fullTransaction.cashify_unique_nominal || 0;
+                    const total = fullTransaction.amount + unique;
                     
-                    if (amountEl) amountEl.textContent = formatRupiah(transaction.amount);
+                    if (amountQrisEl) amountQrisEl.textContent = formatRupiah(fullTransaction.amount);
                     if (uniqueEl) uniqueEl.textContent = formatRupiah(unique);
                     if (totalEl) totalEl.textContent = formatRupiah(total);
-                    if (expiredEl) expiredEl.textContent = transaction.cashify_expired_at ? formatDate(transaction.cashify_expired_at, true) : '-';
+                    if (expiredEl) expiredEl.textContent = fullTransaction.cashify_expired_at ? formatDate(fullTransaction.cashify_expired_at) : '-';
                 }
                 
                 // Tampilkan bukti transfer jika ada
                 const proofSection = detailRow.querySelector('#proofSection');
                 const proofImage = detailRow.querySelector('#proofImage');
+                const proofFileName = detailRow.querySelector('#proofFileName');
                 const viewProofBtn = detailRow.querySelector('#viewProofBtn');
                 
-                if (proofSection && transaction.proof_url) {
+                if (proofSection && fullTransaction.proof_url) {
                     proofSection.style.display = 'block';
-                    if (proofImage) proofImage.src = transaction.proof_url;
-                    if (viewProofBtn) viewProofBtn.href = transaction.proof_url;
+                    if (proofImage) proofImage.src = fullTransaction.proof_url;
+                    if (proofFileName) proofFileName.textContent = 'Bukti Transfer';
+                    if (viewProofBtn) {
+                        viewProofBtn.href = fullTransaction.proof_url;
+                        viewProofBtn.target = '_blank';
+                    }
                 }
                 
                 // Tampilkan status message jika ada
                 const statusSection = detailRow.querySelector('#statusMessageSection');
                 const statusText = detailRow.querySelector('#statusMessageText');
                 
-                if (statusSection && transaction.status_message) {
+                if (statusSection && fullTransaction.status_message) {
                     statusSection.style.display = 'flex';
-                    if (statusText) statusText.textContent = transaction.status_message;
+                    if (statusText) statusText.textContent = fullTransaction.status_message;
                 }
                 
                 // Tampilkan alasan penolakan jika status rejected
                 const rejectionPreview = detailRow.querySelector('#rejectionReasonPreview');
                 const rejectionText = detailRow.querySelector('#rejectionReasonText');
                 
-                if (rejectionPreview && transaction.status === 'rejected' && transaction.rejection_reason) {
+                if (rejectionPreview && fullTransaction.status === 'rejected' && fullTransaction.rejection_reason) {
                     rejectionPreview.style.display = 'block';
-                    if (rejectionText) rejectionText.textContent = transaction.rejection_reason;
+                    if (rejectionText) rejectionText.textContent = fullTransaction.rejection_reason;
                 }
                 
                 // Tampilkan form penolakan untuk deposit pending
                 const rejectionForm = detailRow.querySelector('#rejectionForm');
-                if (rejectionForm && transaction.transaction_type === 'deposit' && transaction.status === 'pending') {
+                if (rejectionForm && fullTransaction.transaction_type === 'deposit' && fullTransaction.status === 'pending') {
                     rejectionForm.style.display = 'block';
                     
                     // Setup tombol tolak
@@ -2481,7 +3036,7 @@
                                 showToast('Alasan penolakan wajib diisi', 'warning');
                                 return;
                             }
-                            await window.panel.rejectDeposit(transaction.id, reason);
+                            await window.panel.rejectDeposit(fullTransaction.id, reason);
                         };
                     }
                     
@@ -2498,27 +3053,27 @@
                 if (detailActions) {
                     let actionsHtml = '';
                     
-                    if (transaction.transaction_type === 'deposit' && transaction.status === 'pending') {
+                    if (fullTransaction.transaction_type === 'deposit' && fullTransaction.status === 'pending') {
                         actionsHtml = `
-                            <button class="action-btn confirm" onclick="window.panel.confirmDeposit(${transaction.id})">
+                            <button class="action-btn confirm" onclick="window.panel.confirmDeposit(${fullTransaction.id})">
                                 <i class="fas fa-check-circle"></i> Konfirmasi
                             </button>
                             <button class="action-btn reject" onclick="document.getElementById('rejectionForm').style.display='block'">
                                 <i class="fas fa-times-circle"></i> Tolak
                             </button>
                         `;
-                    } else if (transaction.transaction_type === 'withdraw' && transaction.status === 'pending') {
+                    } else if (fullTransaction.transaction_type === 'withdraw' && fullTransaction.status === 'pending') {
                         actionsHtml = `
-                            <button class="action-btn confirm" onclick="window.panel.confirmWithdraw(${transaction.id})">
+                            <button class="action-btn confirm" onclick="window.panel.confirmWithdraw(${fullTransaction.id})">
                                 <i class="fas fa-check-circle"></i> Konfirmasi
                             </button>
-                            <button class="action-btn reject" onclick="window.panel.rejectWithdraw(${transaction.id}, prompt('Alasan penolakan:'))">
+                            <button class="action-btn reject" onclick="const reason = prompt('Alasan penolakan:'); if(reason) window.panel.rejectWithdraw(${fullTransaction.id}, reason)">
                                 <i class="fas fa-times-circle"></i> Tolak
                             </button>
                         `;
                     } else {
                         actionsHtml = `
-                            <button class="action-btn view" onclick="window.panel.viewTransactionDetail(${transaction.id}, '${transaction.transaction_type}')">
+                            <button class="action-btn view" onclick="window.panel.viewTransactionDetail(${fullTransaction.id}, '${fullTransaction.transaction_type}')">
                                 <i class="fas fa-eye"></i> Lihat Detail
                             </button>
                         `;
@@ -2529,6 +3084,24 @@
                 
             } catch (error) {
                 console.error('Error populating transaction detail:', error);
+            }
+        },
+    
+        /**
+         * Memuat ulang data transaksi
+         */
+        reloadTransactions: async () => {
+            await loadTransactions();
+        },
+    
+        /**
+         * Mengubah halaman transaksi
+         * @param {number} page - Nomor halaman
+         */
+        goToTransactionPage: (page) => {
+            if (page >= 1 && page <= Math.ceil(allTransactions.length / transactionsPerPage)) {
+                currentTransactionPage = page;
+                renderTransactionsTable();
             }
         }
     };
