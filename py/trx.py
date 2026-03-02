@@ -695,6 +695,60 @@ def migrate_database():
         if conn:
             conn.close()
 
+# ==================== FUNGSI UNTUK ADMIN PANEL ====================
+
+def get_all_deposits(website_id, limit=100):
+    """
+    Mendapatkan semua deposit untuk website tertentu (untuk admin panel)
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM deposits 
+            WHERE website_id = ? 
+            ORDER BY created_at DESC
+            LIMIT ?
+        ''', (website_id, limit))
+        
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+        
+    except Exception as e:
+        print(f"❌ Error getting all deposits: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def get_all_withdrawals(website_id, limit=100):
+    """
+    Mendapatkan semua withdrawals untuk website tertentu (untuk admin panel)
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM withdrawals 
+            WHERE website_id = ? 
+            ORDER BY created_at DESC
+            LIMIT ?
+        ''', (website_id, limit))
+        
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+        
+    except Exception as e:
+        print(f"❌ Error getting all withdrawals: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
 # Jalankan pengecekan expired saat startup
 try:
     migrate_database()
