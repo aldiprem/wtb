@@ -261,12 +261,7 @@ def update_deposit_cashify(deposit_id, cashify_data):
         if conn:
             conn.close()
 
-# trx.py - Pastikan balance terupdate saat deposit sukses
-
 def update_deposit_status(deposit_id, status, status_message=None):
-    """
-    Update status deposit dan update balance jika success
-    """
     conn = None
     try:
         conn = get_db()
@@ -277,12 +272,17 @@ def update_deposit_status(deposit_id, status, status_message=None):
         deposit = cursor.fetchone()
         
         if not deposit:
+            print(f"❌ Deposit dengan ID {deposit_id} tidak ditemukan")
             return False
         
+        # Tentukan processed_at - semua status final memiliki timestamp
+        # Status final: success, failed, expired, rejected
         processed_at = None
-        if status in ['success', 'failed', 'expired']:
+        if status in ['success', 'failed', 'expired', 'rejected']:
             processed_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print(f"📅 Setting processed_at untuk status {status}: {processed_at}")
         
+        # Update status di database
         cursor.execute('''
             UPDATE deposits SET
                 status = ?,
@@ -311,8 +311,19 @@ def update_deposit_status(deposit_id, status, status_message=None):
             else:
                 print(f"❌ Failed to update balance")
         
+        # Log untuk status rejected
+        elif status == 'rejected':
+            print(f"❌ Deposit {deposit_id} ditolak. Alasan: {status_message}")
+        
         conn.commit()
-        return cursor.rowcount > 0
+        
+        # Verifikasi update berhasil
+        if cursor.rowcount > 0:
+            print(f"✅ Status deposit {deposit_id} berhasil diupdate menjadi {status}")
+            return True
+        else:
+            print(f"⚠️ Tidak ada perubahan status untuk deposit {deposit_id}")
+            return False
         
     except Exception as e:
         print(f"❌ Error updating deposit status: {e}")
@@ -622,14 +633,16 @@ def migrate_database():
         
         print("📊 Existing columns in deposits:", existing_columns)
         
-        # Kolom baru yang perlu ditambahkan
+        # Di dalam fungsi migrate_database(), tambahkan:
         new_columns = {
             'voucher_id': 'INTEGER',
             'proof_url': 'TEXT',
             'rekening_logo': 'TEXT',
             'rekening_nama': 'TEXT',
             'rekening_nomor': 'TEXT',
-            'rekening_pemilik': 'TEXT'
+            'rekening_pemilik': 'TEXT',
+            'rejection_reason': 'TEXT',
+            'rejected_at': 'TIMESTAMP'
         }
         
         columns_added = []
