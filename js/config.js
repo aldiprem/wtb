@@ -1,24 +1,18 @@
-// config.js - Konfigurasi path berdasarkan environment
+// config.js - Konfigurasi global
 (function() {
   window.APP_CONFIG = {
-    // Deteksi apakah di GitHub Pages
+    // Deteksi environment
     isGitHubPages: window.location.hostname.includes('github.io'),
-
+    
+    // API Base URL - GANTI HANYA DI SINI!
+    API_BASE_URL: 'https://desperate-journey-penny-expansion.trycloudflare.com',
+    
     // Base path untuk assets
     get assetPath() {
-      // Di GitHub Pages, pathnya adalah '/wtb'
-      // Di lokal/tunnel, pathnya adalah '' (root)
       return this.isGitHubPages ? '/wtb' : '';
-    },
-
-    // API Base URL - GANTI DENGAN URL TUNNEL ANDA
-    get apiBaseUrl() {
-      // PASTIKAN URL INI ADALAH URL TUNNEL CLOUDFLARE YANG AKTIF
-      return 'https://supports-lease-honest-potter.trycloudflare.com'; 
     }
   };
 
   console.log('🌍 Environment:', window.APP_CONFIG.isGitHubPages ? 'GitHub Pages' : 'Local/Tunnel');
-  console.log('📁 Asset path:', window.APP_CONFIG.assetPath || '(root)');
-  console.log('🔗 API Base URL:', window.APP_CONFIG.apiBaseUrl);
+  console.log('🔗 API Base URL:', window.APP_CONFIG.API_BASE_URL);
 })();
