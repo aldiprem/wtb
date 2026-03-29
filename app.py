@@ -15,16 +15,19 @@ from services.tmp_font_service import tmp_font_bp
 from services.trx_service import trx_bp
 from services.users_service import user_bp
 
+# Mendapatkan path absolut direktori proyek
+base_dir = os.path.abspath(os.path.dirname(__file__))
+
 app = Flask(__name__, static_folder='.')
 
-# Konfigurasi CORS - Pastikan domain Anda diizinkan
+# Konfigurasi CORS
 CORS(app, 
      origins=['http://companel.shop', 'https://companel.shop'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)
 
-# Middleware untuk menangani proxy headers (Berguna jika nanti menggunakan Nginx/SSL)
+# Middleware untuk menangani proxy headers
 @app.before_request
 def before_request():
     if request.headers.get('X-Forwarded-Proto') == 'https':
@@ -49,42 +52,49 @@ app.register_blueprint(tmp_font_bp, url_prefix='/api')
 app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
 
-# Routes untuk file statis
+# --- PERBAIKAN FILE PATH STATIS ---
+
 @app.route('/')
 def serve_index():
-    return send_from_directory('.', 'html/dashboard.html')
+    # Mengambil dari folder html/ secara eksplisit
+    return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
 
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
 
-@app.route('/<path:path>')
-def serve_static(path):
-    return send_from_directory('.', path)
-
-@app.route('/website/<string:endpoint>')
-def serve_website(endpoint):
-    return send_from_directory('.', 'website.html')
-
-@app.route('/panel/<string:endpoint>')
-def serve_panel(endpoint):
-    return send_from_directory('.', 'html/panel.html')
+@app.route('/dashboard')
+def serve_dashboard():
+    return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
 
 @app.route('/format')
 def serve_format():
-    return send_from_directory('.', 'html/format.html')
+    return send_from_directory(os.path.join(base_dir, 'html'), 'format.html')
 
-@app.route('/dashboard')
-def serve_dashboard():
-    return send_from_directory('.', 'html/dashboard.html')
+@app.route('/panel/<string:endpoint>')
+def serve_panel(endpoint):
+    return send_from_directory(os.path.join(base_dir, 'html'), 'panel.html')
+
+@app.route('/website/<string:endpoint>')
+def serve_website(endpoint):
+    return send_from_directory(base_dir, 'website.html')
 
 @app.route('/css/<path:filename>')
 def serve_css(filename):
-    return send_from_directory('css', filename)
+    # Mengarahkan langsung ke folder css/ di root
+    return send_from_directory(os.path.join(base_dir, 'css'), filename)
 
 @app.route('/js/<path:filename>')
 def serve_js(filename):
-    return send_from_directory('js', filename)
+    # Mengarahkan langsung ke folder js/ di root
+    return send_from_directory(os.path.join(base_dir, 'js'), filename)
+
+# Catch-all untuk file lainnya
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory(base_dir, path)
+
+# --- END OF STATIC ROUTES ---
 
 @app.route('/api/health', methods=['GET', 'OPTIONS'])
 def health_check():
@@ -115,7 +125,6 @@ def debug_info():
     })
 
 if __name__ == '__main__':
-    # Konfigurasi Domain
     DOMAIN = "companel.shop"
     PORT = 5050
     
@@ -130,6 +139,4 @@ if __name__ == '__main__':
     print(f"📡 DNS Mode Active: Pastikan Port {PORT} sudah dibuka di Firewall.")
     print("="*60)
     
-    # host='0.0.0.0' mengizinkan koneksi dari IP luar/internet
-    # debug=True sebaiknya dimatikan jika sudah produksi (live)
     app.run(host='0.0.0.0', port=PORT, debug=False)
