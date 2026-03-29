@@ -5,7 +5,7 @@
     isGitHubPages: window.location.hostname.includes('github.io'),
     
     // API Base URL - GANTI HANYA DI SINI!
-    API_BASE_URL: 'https://desperate-journey-penny-expansion.trycloudflare.com',
+    API_BASE_URL: 'https://companel.shop',
     
     // Base path untuk assets
     get assetPath() {

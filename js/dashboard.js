@@ -4,7 +4,7 @@
 
     // ==================== KONFIGURASI ====================
     const OWNER_IDS = [7998861975, 7349865750]; // Tambahkan ID owner Anda di sini
-    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://desperate-journey-penny-expansion.trycloudflare.com';
+    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://companel.shop';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {

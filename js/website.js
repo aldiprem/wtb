@@ -5,7 +5,7 @@
     console.log('🏪 Website Store - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://desperate-journey-penny-expansion.trycloudflare.com';
+    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://companel.shop';
     
     const MAX_RETRIES = 3;
     const ITEMS_PER_PAGE = 8;

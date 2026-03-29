@@ -5,7 +5,7 @@
     console.log('📝 Create Website Form - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://desperate-journey-penny-expansion.trycloudflare.com';
+    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://companel.shop';
 
     // ==================== DOM ELEMENTS ====================
     const elements = {};
