@@ -113,7 +113,7 @@ def debug_info():
 if __name__ == '__main__':
     # Konfigurasi Domain
     DOMAIN = "companel.shop"
-    PORT = 80
+    PORT = 5050
     
     print("="*60)
     print("🚀 Starting Website Management API Server...")
