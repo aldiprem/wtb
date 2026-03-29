@@ -17,14 +17,14 @@ from services.users_service import user_bp
 
 app = Flask(__name__, static_folder='.')
 
-# Konfigurasi CORS
+# Konfigurasi CORS - Pastikan domain Anda diizinkan
 CORS(app, 
-     origins='*',
+     origins='*',  # Anda bisa mengganti '*' dengan ['http://companel.shop', 'https://companel.shop'] untuk keamanan lebih
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)
 
-# Middleware untuk menangani proxy headers dari Cloudflare
+# Middleware untuk menangani proxy headers (Berguna jika nanti menggunakan Nginx/SSL)
 @app.before_request
 def before_request():
     if request.headers.get('X-Forwarded-Proto') == 'https':
@@ -111,15 +111,21 @@ def debug_info():
     })
 
 if __name__ == '__main__':
+    # Konfigurasi Domain
+    DOMAIN = "companel.shop"
+    PORT = 5050
+    
     print("="*60)
     print("🚀 Starting Website Management API Server...")
     print(f"📅 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("🔗 API available at: http://localhost:5050")
+    print(f"🔗 Public Domain: http://{DOMAIN}")
+    print(f"🔗 API Endpoint: http://{DOMAIN}/api")
+    print(f"🔗 Local Access: http://localhost:{PORT}")
     print("📊 Databases: website.db, vcr.db, pmb.db, products.db, social.db, tmp.db, tmp_font.db")
     print("="*60)
-    print("💡 Gunakan tunnel Cloudflare untuk akses publik:")
-    print("   cloudflared tunnel --url http://localhost:5050")
+    print(f"📡 DNS Mode Active: Pastikan Port {PORT} sudah dibuka di Firewall.")
     print("="*60)
-    print("📡 Server is running... Press CTRL+C to stop")
-    print("="*60)
-    app.run(host='0.0.0.0', port=5050, debug=True)
+    
+    # host='0.0.0.0' mengizinkan koneksi dari IP luar/internet
+    # debug=True sebaiknya dimatikan jika sudah produksi (live)
+    app.run(host='0.0.0.0', port=PORT, debug=False)
