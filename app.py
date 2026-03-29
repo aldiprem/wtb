@@ -54,6 +54,10 @@ app.register_blueprint(user_bp, url_prefix='/api')
 def serve_index():
     return send_from_directory('.', 'html/dashboard.html')
 
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory('.', path)
