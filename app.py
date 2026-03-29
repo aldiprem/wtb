@@ -19,7 +19,7 @@ app = Flask(__name__, static_folder='.')
 
 # Konfigurasi CORS - Pastikan domain Anda diizinkan
 CORS(app, 
-     origins='*',  # Anda bisa mengganti '*' dengan ['http://companel.shop', 'https://companel.shop'] untuk keamanan lebih
+     origins=['http://companel.shop', 'https://companel.shop'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)

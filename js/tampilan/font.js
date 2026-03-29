@@ -17,7 +17,7 @@
         API_BASE_URL = 'https://companel.shop';
     } else if (isLocalhost) {
         // Di localhost, gunakan port 5050
-        API_BASE_URL = 'http://localhost:5050';
+        API_BASE_URL = 'https://localhost:5050';
     } else {
         // Di server dengan domain, gunakan origin
         API_BASE_URL = window.location.origin;
