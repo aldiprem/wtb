@@ -19,7 +19,7 @@ app = Flask(__name__, static_folder='.')
 
 # Konfigurasi CORS
 CORS(app, 
-     origins='*',
+     origins=['https://domain-baru-kamu.com', 'http://localhost:5050'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)
