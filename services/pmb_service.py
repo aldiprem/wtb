@@ -56,6 +56,9 @@ def save_gateway(website_id):
     try:
         data = request.json
         
+        # Log untuk debugging
+        print(f"📦 Saving gateway with package_ids: {data.get('package_ids', [])}")
+        
         gateway_id = pmb.save_gateway(website_id, data)
         if gateway_id:
             return jsonify({'success': True, 'id': gateway_id, 'message': 'Gateway saved successfully'})
@@ -63,6 +66,8 @@ def save_gateway(website_id):
             return jsonify({'success': False, 'error': 'Failed to save gateway'}), 500
     except Exception as e:
         print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @pmb_bp.route('/payments/gateway/<int:gateway_id>', methods=['DELETE'])
@@ -101,8 +106,7 @@ def get_rekening_limited(website_id):
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
         
-# Di pmb_service.py, tambahkan endpoint baru:
-
+# Endpoint untuk package IDs
 @pmb_bp.route('/payments/package-ids', methods=['GET', 'OPTIONS'])
 def get_package_ids_list():
     """
@@ -111,11 +115,11 @@ def get_package_ids_list():
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         return response, 200
     
     try:
-        from py.pmb import get_available_package_ids
-        package_ids = get_available_package_ids()
+        package_ids = pmb.get_available_package_ids()
         return jsonify({'success': True, 'package_ids': package_ids})
     except Exception as e:
         print(f"❌ Error: {str(e)}")
@@ -133,11 +137,9 @@ def manage_gateway_packages(gateway_id):
         return response, 200
     
     try:
-        from py.pmb import get_package_ids, update_package_ids, get_gateway_by_id
-        
         if request.method == 'GET':
-            package_ids = get_package_ids(gateway_id)
-            gateway = get_gateway_by_id(gateway_id)
+            package_ids = pmb.get_package_ids(gateway_id)
+            gateway = pmb.get_gateway_by_id(gateway_id)
             
             return jsonify({
                 'success': True,
@@ -154,13 +156,12 @@ def manage_gateway_packages(gateway_id):
                 return jsonify({'success': False, 'error': 'package_ids harus berupa array'}), 400
             
             # Validasi package IDs
-            from py.pmb import AVAILABLE_PACKAGE_IDS
-            valid_ids = [p['id'] for p in AVAILABLE_PACKAGE_IDS]
+            valid_ids = [p['id'] for p in pmb.get_available_package_ids()]
             for pid in package_ids:
                 if pid not in valid_ids:
                     return jsonify({'success': False, 'error': f'Package ID {pid} tidak valid'}), 400
             
-            success = update_package_ids(gateway_id, package_ids)
+            success = pmb.update_package_ids(gateway_id, package_ids)
             
             if success:
                 return jsonify({
@@ -173,4 +174,6 @@ def manage_gateway_packages(gateway_id):
         
     except Exception as e:
         print(f"❌ Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
