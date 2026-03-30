@@ -3,8 +3,9 @@ import sys
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
+from db_config import get_db_connection # Import koneksi MySQL
 
-# Import semua blueprint dari service folder
+# Import semua blueprint
 from services.website_service import website_bp
 from services.vcr_service import vcr_bp
 from services.pmb_service import pmb_bp
@@ -15,33 +16,28 @@ from services.tmp_font_service import tmp_font_bp
 from services.trx_service import trx_bp
 from services.users_service import user_bp
 
-# Mendapatkan path absolut direktori proyek
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__, static_folder='.')
 
-# Konfigurasi CORS
 CORS(app, 
      origins=['http://companel.shop', 'https://companel.shop'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)
 
-# Middleware untuk menangani proxy headers
 @app.before_request
 def before_request():
     if request.headers.get('X-Forwarded-Proto') == 'https':
         request.environ['wsgi.url_scheme'] = 'https'
     print(f"📥 {request.method} {request.path} - {request.remote_addr}")
 
-# Handler untuk preflight OPTIONS requests
 @app.route('/', methods=['OPTIONS'])
 @app.route('/<path:path>', methods=['OPTIONS'])
 def handle_options(path=None):
-    response = app.make_default_options_response()
-    return response
+    return app.make_default_options_response()
 
-# Register semua blueprint
+# Register Blueprints
 app.register_blueprint(website_bp, url_prefix='/api')
 app.register_blueprint(vcr_bp, url_prefix='/api')
 app.register_blueprint(pmb_bp, url_prefix='/api')
@@ -52,11 +48,9 @@ app.register_blueprint(tmp_font_bp, url_prefix='/api')
 app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
 
-# --- PERBAIKAN FILE PATH STATIS ---
-
+# --- STATIC ROUTES ---
 @app.route('/')
 def serve_index():
-    # Mengambil dari folder html/ secara eksplisit
     return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
 
 @app.route('/favicon.ico')
@@ -66,10 +60,6 @@ def favicon():
 @app.route('/dashboard')
 def serve_dashboard():
     return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
-
-@app.route('/format')
-def serve_format():
-    return send_from_directory(os.path.join(base_dir, 'html'), 'format.html')
 
 @app.route('/panel/<string:endpoint>')
 def serve_panel(endpoint):
@@ -81,62 +71,55 @@ def serve_website(endpoint):
 
 @app.route('/css/<path:filename>')
 def serve_css(filename):
-    # Mengarahkan langsung ke folder css/ di root
     return send_from_directory(os.path.join(base_dir, 'css'), filename)
 
 @app.route('/js/<path:filename>')
 def serve_js(filename):
-    # Mengarahkan langsung ke folder js/ di root
     return send_from_directory(os.path.join(base_dir, 'js'), filename)
 
-# Catch-all untuk file lainnya
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory(base_dir, path)
 
-# --- END OF STATIC ROUTES ---
+# --- DATABASE INIT & HEALTH ---
+def init_mysql_tables():
+    """Inisialisasi tabel utama jika belum ada"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Contoh satu tabel, lakukan hal yang sama untuk tabel lain (users, trx, dll)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS websites (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                endpoint VARCHAR(255) UNIQUE NOT NULL,
+                bot_token TEXT NOT NULL,
+                owner_id BIGINT NOT NULL,
+                status VARCHAR(50) DEFAULT 'active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("✅ MySQL Tables checked/initialized")
+    except Exception as e:
+        print(f"❌ MySQL Init Error: {e}")
 
-@app.route('/api/health', methods=['GET', 'OPTIONS'])
+@app.route('/api/health')
 def health_check():
     try:
-        return jsonify({
-            'status': 'healthy',
-            'database': 'connected',
-            'timestamp': datetime.now().isoformat(),
-            'scheme': request.scheme,
-            'host': request.host
-        })
+        conn = get_db_connection()
+        conn.close()
+        return jsonify({'status': 'healthy', 'mysql': 'connected', 'timestamp': datetime.now().isoformat()})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/debug', methods=['GET'])
-def debug_info():
-    return jsonify({
-        'headers': dict(request.headers),
-        'scheme': request.scheme,
-        'host': request.host,
-        'host_url': request.host_url,
-        'path': request.path,
-        'full_path': request.full_path,
-        'url': request.url,
-        'base_url': request.base_url,
-        'remote_addr': request.remote_addr,
-        'method': request.method
-    })
+        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
 
 if __name__ == '__main__':
-    DOMAIN = "companel.shop"
+    init_mysql_tables()
     PORT = 5050
-    
     print("="*60)
-    print("🚀 Starting Website Management API Server...")
-    print(f"📅 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🔗 Public Domain: http://{DOMAIN}")
-    print(f"🔗 API Endpoint: http://{DOMAIN}/api")
-    print(f"🔗 Local Access: http://localhost:{PORT}")
-    print("📊 Databases: website.db, vcr.db, pmb.db, products.db, social.db, tmp.db, tmp_font.db")
+    print(f"🚀 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"🔗 Public Domain: http://companel.shop")
+    print("📊 Database: MySQL (wtb_database)")
     print("="*60)
-    print(f"📡 DNS Mode Active: Pastikan Port {PORT} sudah dibuka di Firewall.")
-    print("="*60)
-    
     app.run(host='0.0.0.0', port=PORT, debug=False)
