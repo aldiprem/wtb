@@ -10,30 +10,53 @@ tmp_bp = Blueprint('tmp', __name__)
 @tmp_bp.route('/tampilan/<int:website_id>', methods=['GET'])
 def get_tampilan(website_id):
     try:
+        print(f"🔍 Fetching tampilan for website_id: {website_id}")
         data = tmp.get_tampilan(website_id)
+        
         if data:
+            print(f"✅ Tampilan data found for website {website_id}")
             return jsonify({'success': True, 'tampilan': data})
         else:
-            return jsonify({'success': False, 'error': 'Tampilan not found'}), 404
+            # Jika data tidak ada, buat data default
+            print(f"ℹ️ No tampilan data for website {website_id}, creating default")
+            default_data = {
+                'colors': {},
+                'banners': [],
+                'promos': [],
+                'store_display_name': 'Toko Online',
+                'font_family': 'Inter',
+                'font_size': 14,
+                'font_animation': 'none'
+            }
+            # Simpan default data
+            tmp.save_tampilan(website_id, default_data)
+            return jsonify({'success': True, 'tampilan': default_data})
+            
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error in get_tampilan: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/colors', methods=['POST'])
 def save_colors(website_id):
     try:
         data = request.json
+        print(f"🎨 Saving colors for website {website_id}: {data}")
         
         tmp.save_colors(website_id, data)
         return jsonify({'success': True, 'message': 'Colors saved successfully'})
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error saving colors: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/banners', methods=['POST'])
 def save_banners(website_id):
     try:
         data = request.json
+        print(f"🎨 Saving banners for website {website_id}: {len(data.get('banners', []))} banners")
         
         banners = data.get('banners', [])
         for banner in banners:
@@ -43,7 +66,9 @@ def save_banners(website_id):
         tmp.save_banners(website_id, banners)
         return jsonify({'success': True, 'message': f'{len(banners)} banners saved successfully'})
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error saving banners: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/banners/<int:banner_index>', methods=['DELETE'])
@@ -61,13 +86,14 @@ def delete_banner(website_id, banner_index):
         tmp.save_banners(website_id, banners)
         return jsonify({'success': True, 'message': 'Banner deleted successfully'})
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error deleting banner: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/logo', methods=['POST'])
 def save_logo(website_id):
     try:
         data = request.json
+        print(f"🎨 Saving logo for website {website_id}")
         
         logo_url = data.get('url', '')
         if logo_url and not (logo_url.lower().endswith('.png') or logo_url.startswith('data:image/png')):
@@ -76,7 +102,7 @@ def save_logo(website_id):
         tmp.save_logo(website_id, logo_url)
         return jsonify({'success': True, 'message': 'Logo saved successfully'})
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error saving logo: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/banners/reorder', methods=['POST'])
@@ -97,7 +123,7 @@ def reorder_banners(website_id):
         else:
             return jsonify({'success': False, 'error': 'Invalid order'}), 400
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error reordering banners: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/promos', methods=['GET'])
@@ -106,13 +132,14 @@ def get_promos(website_id):
         data = tmp.get_promos(website_id)
         return jsonify({'success': True, 'promos': data})
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error getting promos: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/promos', methods=['POST'])
 def save_promos(website_id):
     try:
         data = request.json
+        print(f"🎨 Saving promos for website {website_id}: {len(data.get('promos', []))} promos")
         
         promos = data.get('promos', [])
         for promo in promos:
@@ -124,7 +151,9 @@ def save_promos(website_id):
         tmp.save_promos(website_id, promos)
         return jsonify({'success': True, 'message': f'{len(promos)} promos saved successfully'})
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error saving promos: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/promos/<int:promo_index>', methods=['DELETE'])
@@ -141,7 +170,7 @@ def delete_promo(website_id, promo_index):
         tmp.save_promos(website_id, existing)
         return jsonify({'success': True, 'message': 'Promo deleted successfully'})
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error deleting promo: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/promos/reorder', methods=['POST'])
@@ -161,7 +190,20 @@ def reorder_promos(website_id):
         else:
             return jsonify({'success': False, 'error': 'Invalid order'}), 400
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error reordering promos: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@tmp_bp.route('/tampilan/<int:website_id>/font-anim', methods=['POST'])
+def save_font_anim(website_id):
+    """Save font and animation settings"""
+    try:
+        data = request.json
+        print(f"🎨 Saving font animation for website {website_id}")
+        
+        tmp.save_font_anim(website_id, data)
+        return jsonify({'success': True, 'message': 'Font animation saved successfully'})
+    except Exception as e:
+        print(f"❌ Error saving font animation: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/font-style', methods=['POST'])
@@ -180,33 +222,42 @@ def save_font_style(website_id):
             return jsonify({'success': False, 'error': 'Target dan template code diperlukan'}), 400
         
         # Ambil data template dari database font
-        from py import tmp_font
-        template_data = tmp_font.get_template(template_code)
-        if not template_data:
-            return jsonify({'success': False, 'error': 'Template tidak ditemukan'}), 404
+        try:
+            from py import tmp_font
+            template_data = tmp_font.get_template(template_code)
+            if not template_data:
+                return jsonify({'success': False, 'error': 'Template tidak ditemukan'}), 404
+        except ImportError:
+            # Jika tmp_font belum ada, gunakan data dari request
+            template_data = {
+                'font_family': data.get('font_family', 'Inter'),
+                'font_size': data.get('font_size', 16),
+                'animation_type': data.get('font_animation', 'none'),
+                'animation_duration': data.get('animation_duration', 2),
+                'animation_delay': data.get('animation_delay', 0),
+                'animation_iteration': data.get('animation_iteration', 'infinite')
+            }
         
         # Siapkan data update berdasarkan target
         update_data = {}
         
         if target == 'store_name' or target == 'all_text':
             update_data = {
-                'font_family': template_data['font_family'],
-                'font_size': template_data['font_size'],
-                'font_animation': template_data['animation_type'],
-                'animation_duration': template_data['animation_duration'],
-                'animation_delay': template_data['animation_delay'],
-                'animation_iteration': template_data['animation_iteration']
+                'font_family': template_data.get('font_family', 'Inter'),
+                'font_size': template_data.get('font_size', 16),
+                'font_animation': template_data.get('animation_type', 'none'),
+                'animation_duration': template_data.get('animation_duration', 2),
+                'animation_delay': template_data.get('animation_delay', 0),
+                'animation_iteration': template_data.get('animation_iteration', 'infinite')
             }
         elif target == 'headings':
-            # Untuk headings, kita simpan di settings (JSON) karena tidak ada kolom khusus
-            # Ambil settings saat ini
+            # Untuk headings, kita simpan di settings (JSON)
             current = tmp.get_tampilan(website_id)
             settings = current.get('settings', {}) if current else {}
             
-            # Update settings
-            settings['heading_font_family'] = template_data['font_family']
-            settings['heading_font_size'] = template_data['font_size']
-            settings['heading_font_animation'] = template_data['animation_type']
+            settings['heading_font_family'] = template_data.get('font_family', 'Inter')
+            settings['heading_font_size'] = template_data.get('font_size', 16)
+            settings['heading_font_animation'] = template_data.get('animation_type', 'none')
             
             update_data = {'settings': settings}
             
@@ -215,9 +266,9 @@ def save_font_style(website_id):
             current = tmp.get_tampilan(website_id)
             settings = current.get('settings', {}) if current else {}
             
-            settings['body_font_family'] = template_data['font_family']
-            settings['body_font_size'] = template_data['font_size']
-            settings['body_font_animation'] = template_data['animation_type']
+            settings['body_font_family'] = template_data.get('font_family', 'Inter')
+            settings['body_font_size'] = template_data.get('font_size', 16)
+            settings['body_font_animation'] = template_data.get('animation_type', 'none')
             
             update_data = {'settings': settings}
         else:
@@ -288,19 +339,24 @@ def apply_template(website_id):
         data = request.json
         template_code = data.get('template_code')
         
-        from py import tmp_font
-        template_data = tmp_font.get_template(template_code)
+        try:
+            from py import tmp_font
+            template_data = tmp_font.get_template(template_code)
+        except ImportError:
+            # Jika tmp_font tidak ada, gunakan data dari request
+            template_data = data.get('template_data', {})
+        
         if not template_data:
             return jsonify({'success': False, 'error': 'Template not found'}), 404
         
         tampilan_update = {
-            'font_family': template_data['font_family'],
-            'font_size': template_data['font_size'],
-            'store_display_name': template_data['preview_text'],
-            'font_animation': template_data['animation_type'],
-            'animation_duration': template_data['animation_duration'],
-            'animation_delay': template_data['animation_delay'],
-            'animation_iteration': template_data['animation_iteration']
+            'font_family': template_data.get('font_family', 'Inter'),
+            'font_size': template_data.get('font_size', 16),
+            'store_display_name': template_data.get('preview_text', 'Toko Online'),
+            'font_animation': template_data.get('animation_type', 'none'),
+            'animation_duration': template_data.get('animation_duration', 2),
+            'animation_delay': template_data.get('animation_delay', 0),
+            'animation_iteration': template_data.get('animation_iteration', 'infinite')
         }
         
         tmp.update_tampilan(website_id, tampilan_update)
@@ -322,26 +378,42 @@ def get_font_preview(website_id):
         if not template_code:
             return jsonify({'success': False, 'error': 'Template code diperlukan'}), 400
         
-        from py import tmp_font
-        template_data = tmp_font.get_template(template_code)
+        try:
+            from py import tmp_font
+            template_data = tmp_font.get_template(template_code)
+        except ImportError:
+            # Jika tmp_font tidak ada, gunakan data dari request
+            template_data = {
+                'font_family': data.get('font_family', 'Inter'),
+                'font_size': data.get('font_size', 16),
+                'font_weight': data.get('font_weight', 'normal'),
+                'font_style': data.get('font_style', 'normal'),
+                'text_color': data.get('text_color', '#ffffff'),
+                'animation_type': data.get('animation_type', 'none'),
+                'animation_duration': data.get('animation_duration', 2),
+                'animation_delay': data.get('animation_delay', 0),
+                'animation_iteration': data.get('animation_iteration', 'infinite'),
+                'preview_text': data.get('preview_text', 'Toko Online')
+            }
+        
         if not template_data:
             return jsonify({'success': False, 'error': 'Template tidak ditemukan'}), 404
         
-        # Kembalikan data template (tanpa file font jika terlalu besar)
+        # Kembalikan data template
         preview_data = {
-            'font_family': template_data['font_family'],
-            'font_size': template_data['font_size'],
-            'font_weight': template_data['font_weight'],
-            'font_style': template_data['font_style'],
-            'text_color': template_data['text_color'],
-            'animation_type': template_data['animation_type'],
-            'animation_duration': template_data['animation_duration'],
-            'animation_delay': template_data['animation_delay'],
-            'animation_iteration': template_data['animation_iteration'],
-            'preview_text': template_data['preview_text']
+            'font_family': template_data.get('font_family', 'Inter'),
+            'font_size': template_data.get('font_size', 16),
+            'font_weight': template_data.get('font_weight', 'normal'),
+            'font_style': template_data.get('font_style', 'normal'),
+            'text_color': template_data.get('text_color', '#ffffff'),
+            'animation_type': template_data.get('animation_type', 'none'),
+            'animation_duration': template_data.get('animation_duration', 2),
+            'animation_delay': template_data.get('animation_delay', 0),
+            'animation_iteration': template_data.get('animation_iteration', 'infinite'),
+            'preview_text': template_data.get('preview_text', 'Toko Online')
         }
         
-        # Sertakan font file data jika ada (untuk preview)
+        # Sertakan font file data jika ada
         if template_data.get('font_file_data'):
             preview_data['font_file_data'] = template_data['font_file_data']
         

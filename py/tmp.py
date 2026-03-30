@@ -1153,8 +1153,16 @@ def get_font_settings(website_id):
         if conn:
             conn.close()
 
-# Jalankan inisialisasi database
 try:
-    init_db()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'tampilan'")
+    table_exists = cursor.fetchone()
+    conn.close()
+    
+    if not table_exists:
+        init_db()
+    else:
+        print("✅ MySQL tables already exist, skipping initialization")
 except Exception as e:
-    print(f"⚠️ Database init warning: {e}")
+    print(f"⚠️ Database check warning: {e}")

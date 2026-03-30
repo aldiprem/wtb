@@ -3,7 +3,7 @@ import sys
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from datetime import datetime
-from db_config import get_db_connection  # Import koneksi MySQL
+from db_config import get_db_connection
 
 # Menambahkan direktori root ke path agar modul internal terbaca dengan benar
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -25,7 +25,7 @@ app = Flask(__name__, static_folder='.')
 
 # Konfigurasi CORS yang mendukung domain panel Anda
 CORS(app, 
-     origins=['http://companel.shop', 'https://companel.shop'],
+     origins=['http://companel.shop', 'https://companel.shop', 'http://localhost:5050'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)
@@ -53,6 +53,19 @@ app.register_blueprint(tmp_bp, url_prefix='/api')
 app.register_blueprint(tmp_font_bp, url_prefix='/api')
 app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
+
+# Tambahkan route untuk debug
+@app.route('/api/debug/routes', methods=['GET'])
+def debug_routes():
+    """Debug endpoint to list all registered routes"""
+    routes = []
+    for rule in app.url_map.iter_rules():
+        routes.append({
+            'endpoint': rule.endpoint,
+            'methods': list(rule.methods),
+            'path': str(rule)
+        })
+    return jsonify({'routes': routes})
 
 # --- STATIC ROUTES (SERVING HTML) ---
 
@@ -128,6 +141,8 @@ def init_mysql_tables():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # Tabel websites
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS websites (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -138,6 +153,15 @@ def init_mysql_tables():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Cek apakah ada website dengan id 2 (untuk testing)
+        cursor.execute("SELECT id FROM websites WHERE id = 2")
+        website_exists = cursor.fetchone()
+        
+        if not website_exists:
+            # Insert sample website if needed
+            print("⚠️ Website with id=2 not found. Please create a website first.")
+        
         conn.commit()
         cursor.close()
         conn.close()
@@ -172,6 +196,11 @@ if __name__ == '__main__':
     print(f"🔗 Public Domain: https://companel.shop")
     print("📊 Database: MySQL (wtb_database)")
     print("="*60)
+    print("\n📋 Registered API Routes:")
+    for rule in app.url_map.iter_rules():
+        if rule.endpoint not in ['static', 'serve_dashboard', 'serve_tampilan_page', 'serve_main_panel', 'serve_admin_panel', 'serve_website', 'serve_html_subfolder', 'serve_html_root', 'serve_js', 'serve_css', 'serve_static', 'favicon', 'handle_options', 'debug_routes']:
+            print(f"   {rule.methods} {rule}")
+    print("="*60)
     
     # Jalankan Flask app
-    app.run(host='0.0.0.0', port=PORT, debug=False)
+    app.run(host='0.0.0.0', port=PORT, debug=True)  # Set debug=True untuk melihat error
