@@ -51,18 +51,31 @@ app.register_blueprint(user_bp, url_prefix='/api')
 # --- STATIC ROUTES ---
 
 @app.route('/')
-def serve_index():
+@app.route('/dashboard')
+def serve_dashboard():
     return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
 
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
 
-@app.route('/dashboard')
-def serve_dashboard():
-    return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
+# Route Tunggal untuk Tampilan
+@app.route('/tampilan')
+def serve_tampilan_page():
+    # Prioritas: cek di folder html/, jika tidak ada cek di root
+    html_dir = os.path.join(base_dir, 'html')
+    if os.path.exists(os.path.join(html_dir, 'tampilan.html')):
+        return send_from_directory(html_dir, 'tampilan.html')
+    return send_from_directory(base_dir, 'tampilan.html')
 
-# Nama fungsi diubah agar unik: serve_admin_panel
+# Route Tunggal untuk Panel
+@app.route('/panel')
+def serve_main_panel():
+    html_dir = os.path.join(base_dir, 'html')
+    if os.path.exists(os.path.join(html_dir, 'panel.html')):
+        return send_from_directory(html_dir, 'panel.html')
+    return send_from_directory(base_dir, 'panel.html')
+
 @app.route('/admins/<string:endpoint>')
 def serve_admin_panel(endpoint):
     return send_from_directory(os.path.join(base_dir, 'html'), 'panel.html')
@@ -79,21 +92,7 @@ def serve_css(filename):
 def serve_js(filename):
     return send_from_directory(os.path.join(base_dir, 'js'), filename)
 
-# Rute eksplisit untuk Tampilan (mencari file di root/ atau root/html/)
-@app.route('/tampilan')
-def serve_tampilan_page():
-    # Mencoba mencari di root folder dulu, jika tidak ada cari di /html
-    if os.path.exists(os.path.join(base_dir, 'tampilan.html')):
-        return send_from_directory(base_dir, 'tampilan.html')
-    return send_from_directory(os.path.join(base_dir, 'html'), 'tampilan.html')
-
-# Nama fungsi diubah agar unik: serve_main_panel
-@app.route('/panel')
-def serve_main_panel():
-    if os.path.exists(os.path.join(base_dir, 'panel.html')):
-        return send_from_directory(base_dir, 'panel.html')
-    return send_from_directory(os.path.join(base_dir, 'html'), 'panel.html')
-
+# Catch-all route diletakkan paling bawah
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory(base_dir, path)
@@ -135,7 +134,7 @@ if __name__ == '__main__':
     PORT = 5050
     print("="*60)
     print(f"🚀 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🔗 Public Domain: http://companel.shop")
+    print(f"🔗 Public Domain: https://companel.shop")
     print("📊 Database: MySQL (wtb_database)")
     print("="*60)
     app.run(host='0.0.0.0', port=PORT, debug=False)
