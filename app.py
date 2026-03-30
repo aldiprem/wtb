@@ -61,7 +61,7 @@ def favicon():
 def serve_dashboard():
     return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
 
-@app.route('/panel/<string:endpoint>')
+@app.route('/admins/<string:endpoint>')
 def serve_panel(endpoint):
     return send_from_directory(os.path.join(base_dir, 'html'), 'panel.html')
 
