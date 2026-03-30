@@ -1,5 +1,5 @@
 #!/bin/bash
-BACKUP_DIR="/root/wtb/backups"
+BACKUP_DIR="/root/backups"
 mkdir -p $BACKUP_DIR
 FILE_NAME="$BACKUP_DIR/wtb_backup_$(date +%Y%m%d_%H%M%S).sql"
 

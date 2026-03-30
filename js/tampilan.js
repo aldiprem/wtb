@@ -393,7 +393,7 @@
         if (!endpoint) {
             showToast('Website tidak ditemukan', 'error');
             setTimeout(() => {
-                window.location.href = '/wtb/html/panel.html';
+                window.location.href = '/html/panel.html';
             }, 2000);
             return null;
         }
@@ -410,7 +410,7 @@
                 
                 // Update create template button href
                 if (elements.createFontTemplateBtn) {
-                    elements.createFontTemplateBtn.href = `/wtb/html/tampilan/font.html?website=${endpoint}`;
+                    elements.createFontTemplateBtn.href = `/html/tampilan/font.html?website=${endpoint}`;
                 }
                 
                 return data.website;
@@ -430,7 +430,7 @@
             sessionStorage.setItem('panel_return_from', 'settings');
         } catch (e) {}
         
-        window.location.href = '/wtb/html/panel.html';
+        window.location.href = '/html/panel.html';
     }
 
     async function loadTampilanData() {

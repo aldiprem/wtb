@@ -1934,7 +1934,7 @@
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', (e) => {
                 e.preventDefault();
-                window.location.href = '/wtb/html/panel.html';
+                window.location.href = '/html/panel.html';
             });
         }
         

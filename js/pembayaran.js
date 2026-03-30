@@ -226,7 +226,7 @@
       if (!endpoint) {
         showToast('Website tidak ditemukan', 'error');
         setTimeout(() => {
-          window.location.href = '/wtb/html/panel.html';
+          window.location.href = '/html/panel.html';
         }, 2000);
         return null;
       }
@@ -261,7 +261,7 @@
       }
     
       // Redirect ke panel
-      window.location.href = '/wtb/html/panel.html';
+      window.location.href = '/html/panel.html';
     }
 
 
@@ -974,7 +974,7 @@
               sessionStorage.setItem('panel_return_from', 'settings');
             } catch (e) {}
         
-            window.location.href = '/wtb/html/panel.html';
+            window.location.href = '/html/panel.html';
           });
         }
         

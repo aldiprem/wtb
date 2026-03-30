@@ -514,12 +514,12 @@
         if (userWebsites.length > 0) {
             userWebsites.slice(0, 4).forEach(website => {
                 html += `
-                    <a href="/wtb/html/produk.html?website=${website.endpoint}" class="quick-action-card">
+                    <a href="/html/produk.html?website=${website.endpoint}" class="quick-action-card">
                         <i class="fas fa-box"></i>
                         <span>Kelola Produk</span>
                         <small>/${website.endpoint}</small>
                     </a>
-                    <a href="/wtb/html/tampilan.html?website=${website.endpoint}" class="quick-action-card">
+                    <a href="/html/tampilan.html?website=${website.endpoint}" class="quick-action-card">
                         <i class="fas fa-paint-brush"></i>
                         <span>Atur Tampilan</span>
                         <small>/${website.endpoint}</small>
@@ -528,7 +528,7 @@
             });
         } else {
             html = `
-                <a href="/wtb/html/format.html" class="quick-action-card">
+                <a href="/html/format.html" class="quick-action-card">
                     <i class="fas fa-plus-circle"></i>
                     <span>Buat Website Baru</span>
                 </a>
@@ -666,10 +666,10 @@
                         </div>
                         
                         <div class="website-actions">
-                            <a href="/wtb/html/produk.html?website=${website.endpoint}" class="website-btn primary">
+                            <a href="/html/produk.html?website=${website.endpoint}" class="website-btn primary">
                                 <i class="fas fa-box"></i> Produk
                             </a>
-                            <a href="/wtb/html/tampilan.html?website=${website.endpoint}" class="website-btn secondary">
+                            <a href="/html/tampilan.html?website=${website.endpoint}" class="website-btn secondary">
                                 <i class="fas fa-paint-brush"></i> Tampilan
                             </a>
                         </div>
@@ -695,7 +695,7 @@
         elements.productWebsiteSelector.addEventListener('change', (e) => {
             const endpoint = e.target.value;
             if (endpoint) {
-                elements.manageProductsBtn.href = `/wtb/html/produk?website=${endpoint}`;
+                elements.manageProductsBtn.href = `/html/produk?website=${endpoint}`;
             } else {
                 elements.manageProductsBtn.href = '#';
             }
@@ -1114,25 +1114,25 @@
         // ==================== UPDATE SETUP SETTINGS LINKS ====================
         function setupSettingsLinks() {
             if (elements.appearanceSettings && userWebsites.length > 0) {
-                elements.appearanceSettings.href = `/wtb/html/tampilan.html?website=${userWebsites[0].endpoint}`;
+                elements.appearanceSettings.href = `/html/tampilan.html?website=${userWebsites[0].endpoint}`;
             }
             
             if (elements.manageProductsBtn && userWebsites.length > 0) {
-                elements.manageProductsBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
+                elements.manageProductsBtn.href = `/html/produk.html?website=${userWebsites[0].endpoint}`;
             }
             
             // Tambahkan juga untuk empty state manage button
             const emptyStateManageBtn = document.getElementById('emptyStateManageBtn');
             if (emptyStateManageBtn && userWebsites.length > 0) {
-                emptyStateManageBtn.href = `/wtb/html/produk.html?website=${userWebsites[0].endpoint}`;
+                emptyStateManageBtn.href = `/html/produk.html?website=${userWebsites[0].endpoint}`;
             }
             
             if (elements.socialSettings && userWebsites.length > 0) {
-                elements.socialSettings.href = `/wtb/html/sosial.html?website=${userWebsites[0].endpoint}`;
+                elements.socialSettings.href = `/html/sosial.html?website=${userWebsites[0].endpoint}`;
             }
             
             if (elements.paymentSettings && userWebsites.length > 0) {
-                elements.paymentSettings.href = `/wtb/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
+                elements.paymentSettings.href = `/html/pembayaran.html?website=${userWebsites[0].endpoint}`;
             }
             
             if (elements.notificationSettings) {
@@ -1143,7 +1143,7 @@
             }
             
             if (elements.voucherSettings && userWebsites.length > 0) {
-              elements.voucherSettings.href = `/wtb/html/voucher.html?website=${userWebsites[0].endpoint}`;
+              elements.voucherSettings.href = `/html/voucher.html?website=${userWebsites[0].endpoint}`;
             }
             
             if (elements.integrationSettings) {
@@ -1487,12 +1487,12 @@
         function updateAllSettingsLinks(endpoint) {
           // Update semua link settings dengan endpoint yang dipilih
           const settingLinks = {
-            appearanceSettings: '/wtb/html/tampilan.html?website=' + endpoint,
-            socialSettings: '/wtb/html/sosial.html?website=' + endpoint,
-            paymentSettings: '/wtb/html/pembayaran.html?website=' + endpoint,
-            voucherSettings: '/wtb/html/voucher.html?website=' + endpoint,
-            manageProductsBtn: '/wtb/html/produk.html?website=' + endpoint,
-            emptyStateManageBtn: '/wtb/html/produk.html?website=' + endpoint
+            appearanceSettings: '/html/tampilan.html?website=' + endpoint,
+            socialSettings: '/html/sosial.html?website=' + endpoint,
+            paymentSettings: '/html/pembayaran.html?website=' + endpoint,
+            voucherSettings: '/html/voucher.html?website=' + endpoint,
+            manageProductsBtn: '/html/produk.html?website=' + endpoint,
+            emptyStateManageBtn: '/html/produk.html?website=' + endpoint
           };
         
           for (const [id, url] of Object.entries(settingLinks)) {
@@ -1513,12 +1513,12 @@
         
           if (userWebsites.length > 0) {
             html += `
-                    <a href="/wtb/html/produk.html?website=${endpoint}" class="quick-action-card">
+                    <a href="/html/produk.html?website=${endpoint}" class="quick-action-card">
                         <i class="fas fa-box"></i>
                         <span>Kelola Produk</span>
                         <small>/${endpoint}</small>
                     </a>
-                    <a href="/wtb/html/tampilan.html?website=${endpoint}" class="quick-action-card">
+                    <a href="/html/tampilan.html?website=${endpoint}" class="quick-action-card">
                         <i class="fas fa-paint-brush"></i>
                         <span>Atur Tampilan</span>
                         <small>/${endpoint}</small>
@@ -1526,7 +1526,7 @@
                 `;
           } else {
             html = `
-                    <a href="/wtb/html/format.html" class="quick-action-card">
+                    <a href="/html/format.html" class="quick-action-card">
                         <i class="fas fa-plus-circle"></i>
                         <span>Buat Website Baru</span>
                     </a>
