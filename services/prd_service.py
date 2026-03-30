@@ -51,7 +51,10 @@ def api_save_layanan(website_id):
             return jsonify({'success': False, 'error': 'Layanan name required'}), 400
         
         success = prd.save_layanan(website_id, data)
-        return jsonify({'success': success, 'message': 'Layanan saved successfully'})
+        if success:
+            return jsonify({'success': True, 'message': 'Layanan saved successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save layanan'}), 500
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -64,7 +67,10 @@ def api_save_aplikasi(website_id, layanan_nama):
             return jsonify({'success': False, 'error': 'Aplikasi name required'}), 400
         
         success = prd.save_aplikasi(website_id, layanan_nama, data)
-        return jsonify({'success': success, 'message': 'Aplikasi saved successfully'})
+        if success:
+            return jsonify({'success': True, 'message': 'Aplikasi saved successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save aplikasi'}), 500
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -77,7 +83,10 @@ def api_save_item(website_id, layanan_nama, aplikasi_nama):
             return jsonify({'success': False, 'error': 'Item name required'}), 400
         
         success = prd.save_item(website_id, layanan_nama, aplikasi_nama, data)
-        return jsonify({'success': success, 'message': 'Item saved successfully'})
+        if success:
+            return jsonify({'success': True, 'message': 'Item saved successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to save item'}), 500
     except Exception as e:
         print(f"❌ Error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
