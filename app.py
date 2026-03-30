@@ -49,6 +49,7 @@ app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
 
 # --- STATIC ROUTES ---
+
 @app.route('/')
 def serve_index():
     return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
@@ -61,8 +62,9 @@ def favicon():
 def serve_dashboard():
     return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
 
+# Nama fungsi diubah agar unik: serve_admin_panel
 @app.route('/admins/<string:endpoint>')
-def serve_panel(endpoint):
+def serve_admin_panel(endpoint):
     return send_from_directory(os.path.join(base_dir, 'html'), 'panel.html')
 
 @app.route('/website/<string:endpoint>')
@@ -77,17 +79,24 @@ def serve_css(filename):
 def serve_js(filename):
     return send_from_directory(os.path.join(base_dir, 'js'), filename)
 
+# Rute eksplisit untuk Tampilan (mencari file di root/ atau root/html/)
+@app.route('/tampilan')
+def serve_tampilan_page():
+    # Mencoba mencari di root folder dulu, jika tidak ada cari di /html
+    if os.path.exists(os.path.join(base_dir, 'tampilan.html')):
+        return send_from_directory(base_dir, 'tampilan.html')
+    return send_from_directory(os.path.join(base_dir, 'html'), 'tampilan.html')
+
+# Nama fungsi diubah agar unik: serve_main_panel
+@app.route('/panel')
+def serve_main_panel():
+    if os.path.exists(os.path.join(base_dir, 'panel.html')):
+        return send_from_directory(base_dir, 'panel.html')
+    return send_from_directory(os.path.join(base_dir, 'html'), 'panel.html')
+
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory(base_dir, path)
-
-@app.route('/tampilan')
-def serve_tampilan():
-    return send_from_directory('.', 'tampilan.html')
-
-@app.route('/panel')
-def serve_panel():
-    return send_from_directory('.', 'panel.html')
 
 # --- DATABASE INIT & HEALTH ---
 def init_mysql_tables():
@@ -95,7 +104,6 @@ def init_mysql_tables():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        # Contoh satu tabel, lakukan hal yang sama untuk tabel lain (users, trx, dll)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS websites (
                 id INT AUTO_INCREMENT PRIMARY KEY,
