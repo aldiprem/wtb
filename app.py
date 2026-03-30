@@ -81,6 +81,14 @@ def serve_js(filename):
 def serve_static(path):
     return send_from_directory(base_dir, path)
 
+@app.route('/tampilan')
+def serve_tampilan():
+    return send_from_directory('.', 'tampilan.html')
+
+@app.route('/panel')
+def serve_panel():
+    return send_from_directory('.', 'panel.html')
+
 # --- DATABASE INIT & HEALTH ---
 def init_mysql_tables():
     """Inisialisasi tabel utama jika belum ada"""
