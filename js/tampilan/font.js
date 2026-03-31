@@ -554,18 +554,14 @@
     function renderAllTemplatesByWebsite(templates, currentWebsiteId) {
         if (!elements.allTemplatesGrid) return;
         
-        if (templates.length === 0) {
-            elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-folder-open"></i><span>Belum ada template</span></div>';
-            return;
-        }
+        console.log('🎯 RENDER DEBUG:');
+        console.log('currentWebsiteId:', currentWebsiteId);
+        console.log('currentWebsiteId type:', typeof currentWebsiteId);
+        console.log('templates count:', templates.length);
         
-        console.log('🎯 Rendering templates...');
-        console.log('📌 Current Website ID:', currentWebsiteId);
-        console.log('📦 Templates data:', templates.map(t => ({ 
-            name: t.template_name, 
-            website_id: t.website_id,
-            template_code: t.template_code 
-        })));
+        templates.forEach(t => {
+            console.log(`📋 ${t.template_name}: website_id=${t.website_id} (${typeof t.website_id})`);
+        });
         
         let html = '';
         templates.forEach(template => {
