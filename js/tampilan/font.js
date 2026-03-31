@@ -1145,6 +1145,7 @@
         }
     }
 
+    
     // ==================== INIT ====================
     function init() {
         showLoading(true);
@@ -1531,7 +1532,8 @@
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.fontStudio = {
         loadTemplate: loadTemplateFromList,
-        copyTemplateCode: copyTemplateCodeFromList
+        copyTemplateCode: copyTemplateCodeFromList,
+        deleteTemplate: deleteTemplate
     };
     
     // ==================== START ====================
