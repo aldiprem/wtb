@@ -1,9 +1,11 @@
 import os
 import sys
-from flask import Flask, request, jsonify, send_from_directory
+import time
+from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
 from datetime import datetime
 from db_config import get_db_connection
+from collections import defaultdict
 
 # Menambahkan direktori root ke path agar modul internal terbaca dengan benar
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -20,6 +22,8 @@ from services.trx_service import trx_bp
 from services.users_service import user_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
+
+request_counts = defaultdict(list)
 
 app = Flask(__name__, static_folder='.')
 
@@ -185,6 +189,46 @@ def health_check():
             'status': 'unhealthy', 
             'error': str(e)
         }), 500
+
+@app.before_request
+def rate_limit():
+    # Abaikan request ke path statis
+    if request.path.startswith(('/css/', '/js/', '/html/', '/api/')):
+        return
+    
+    client_ip = request.remote_addr
+    current_time = time.time()
+    
+    # Bersihkan request lama (lebih dari 60 detik)
+    request_counts[client_ip] = [t for t in request_counts[client_ip] if current_time - t < 60]
+    
+    # Jika lebih dari 30 request dalam 60 detik, blokir
+    if len(request_counts[client_ip]) > 30:
+        print(f"🚫 Rate limit exceeded for {client_ip}")
+        abort(429)
+    
+    request_counts[client_ip].append(current_time)
+
+@app.before_request
+def block_suspicious_paths():
+    """Blokir path yang mencurigakan"""
+    suspicious_paths = [
+        'wp-admin', 'wp-content', 'wp-includes', 'wordpress',
+        'lander', 'sberbank', 'quiz', 'setup-config'
+    ]
+    
+    for bad_path in suspicious_paths:
+        if bad_path in request.path.lower():
+            print(f"🚫 Blocked suspicious path: {request.path} from {request.remote_addr}")
+            abort(404)  # Return 404 tanpa expose informasi
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({
+        'error': 'Too many requests. Please try again later.',
+        'retry_after': 60
+    }), 429
+
 
 if __name__ == '__main__':
     # Jalankan inisialisasi tabel saat startup
