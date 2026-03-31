@@ -488,14 +488,13 @@
         }
     }
     
-    // ==================== LOAD ALL TEMPLATES ====================
     async function loadAllTemplates(search = '') {
         if (!elements.allTemplatesGrid) return;
         
         elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
         
         try {
-            // ==================== AMBIL WEBSITE ID DARI URL ====================
+            // ==================== AMBIL WEBSITE ID DARI URL (SYNC) ====================
             const urlParams = new URLSearchParams(window.location.search);
             const websiteParam = urlParams.get('website');
             let currentWebsiteId = null;
@@ -504,13 +503,12 @@
             
             if (websiteParam) {
                 try {
-                    // Ambil website_id dari endpoint melalui API
+                    // WAIT sampai data website_id didapat
                     const websiteResponse = await fetch(`${API_BASE_URL}/api/websites/endpoint/${websiteParam}`);
                     const websiteData = await websiteResponse.json();
                     if (websiteData.success && websiteData.website) {
                         currentWebsiteId = websiteData.website.id;
                         console.log('🌐 Current Website ID:', currentWebsiteId);
-                        // Simpan ke window global untuk digunakan di fungsi lain
                         window.currentWebsiteId = currentWebsiteId;
                         window.currentWebsiteEndpoint = websiteParam;
                     } else {
@@ -531,20 +529,6 @@
             
             console.log('📡 Fetching templates from:', url);
             
-            // Test koneksi ke API health check dulu
-            const healthCheck = await fetch(`${API_BASE_URL}/api/health`).catch(err => {
-                console.error('❌ Health check failed:', err);
-                return null;
-            });
-            
-            if (!healthCheck) {
-                throw new Error('Tidak dapat terhubung ke server. Pastikan Flask berjalan di port 5050');
-            }
-            
-            if (!healthCheck.ok) {
-                console.warn('⚠️ Health check response:', healthCheck.status);
-            }
-            
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
@@ -554,12 +538,7 @@
                 mode: 'cors'
             });
             
-            console.log('📥 Response status:', response.status);
-            
             if (!response.ok) {
-                if (response.status === 404) {
-                    throw new Error(`Endpoint tidak ditemukan: ${url}`);
-                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
@@ -570,14 +549,14 @@
                 savedTemplates = data.templates || [];
                 console.log(`✅ Loaded ${savedTemplates.length} templates`);
                 
-                // Inject font untuk setiap template sebelum render
+                // Inject font untuk setiap template
                 for (const template of savedTemplates) {
                     if (template.font_file_data) {
                         injectFontForPreview(template.font_family, template.font_file_data);
                     }
                 }
                 
-                // Render dengan website_id yang sudah didapat
+                // Render dengan website_id yang sudah didapat (SUDAH ADA NILAINYA)
                 renderAllTemplatesByWebsite(savedTemplates, currentWebsiteId);
             } else {
                 throw new Error(data.error || 'Gagal memuat template');
@@ -608,6 +587,8 @@
             return;
         }
         
+        console.log('🎯 Rendering with currentWebsiteId:', currentWebsiteId);
+        
         let html = '';
         templates.forEach(template => {
             const shortCode = template.template_code.substring(0, 10) + '...';
@@ -615,8 +596,10 @@
             const fontFamily = template.font_family || 'Inter';
             const animType = template.animation_type || 'pulse';
             
-            // ==================== CEK KEPEMILIKAN BERDASARKAN WEBSITE_ID ====================
-            const isOwner = (template.website_id === currentWebsiteId && currentWebsiteId !== null);
+            // CEK KEPEMILIKAN - PASTIKAN PERBANDINGAN ANGKA
+            const isOwner = (template.website_id !== null && template.website_id === currentWebsiteId);
+            
+            console.log(`📋 Template: ${template.template_name}, website_id: ${template.website_id}, current: ${currentWebsiteId}, isOwner: ${isOwner}`);
             
             // Badge untuk menunjukkan kepemilikan
             let ownerBadge = '';
@@ -648,7 +631,7 @@
                             </button>
             `;
             
-            // ==================== TOMBOL HAPUS HANYA UNTUK PEMILIK WEBSITE ====================
+            // TOMBOL HAPUS HANYA UNTUK PEMILIK WEBSITE
             if (isOwner) {
                 html += `
                             <button class="template-btn delete" onclick="window.fontStudio.deleteTemplate('${template.template_code}', '${escapeHtml(template.template_name)}')">
@@ -666,7 +649,7 @@
         
         elements.allTemplatesGrid.innerHTML = html;
         
-        // Verifikasi font untuk setiap card
+        // Verifikasi font
         document.querySelectorAll('.template-card').forEach(card => {
             const fontFamily = card.dataset.font;
             const previewDiv = card.querySelector('.template-preview-text');
