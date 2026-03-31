@@ -1,47 +1,40 @@
-# tmp_font.py - Database handler untuk template font & animasi
-import sqlite3
+# tmp_font.py - Database handler untuk template font & animasi VERSI MYSQL
 import json
 import random
 import string
 from datetime import datetime
-
-DATABASE = 'tmp_font.db'
+from db_config import get_db_connection
 
 # ==================== FUNGSI DASAR ====================
-def get_db():
-    """Mendapatkan koneksi database"""
-    conn = sqlite3.connect(DATABASE, timeout=30)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def init_db():
-    """Inisialisasi database template font"""
-    conn = get_db()
+    """Inisialisasi database MySQL untuk template font"""
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Tabel untuk template font & animasi
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS font_templates (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        template_code TEXT UNIQUE NOT NULL,
-        template_name TEXT NOT NULL,
-        website_id INTEGER,
-        user_id INTEGER,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        template_code VARCHAR(35) UNIQUE NOT NULL,
+        template_name VARCHAR(255) NOT NULL,
+        website_id INT,
+        user_id INT,
         
         -- Data Font
-        font_family TEXT NOT NULL,
-        font_file_data TEXT,  -- Base64 data URL file TTF
-        font_file_name TEXT,  -- Nama file asli
-        font_weight INTEGER DEFAULT 400,
-        font_style TEXT DEFAULT 'normal',
-        font_size INTEGER DEFAULT 48,
-        text_color TEXT DEFAULT '#ffffff',
+        font_family VARCHAR(255) NOT NULL,
+        font_file_data LONGTEXT,
+        font_file_name VARCHAR(255),
+        font_weight INT DEFAULT 400,
+        font_style VARCHAR(50) DEFAULT 'normal',
+        font_size INT DEFAULT 48,
+        text_color VARCHAR(20) DEFAULT '#ffffff',
         
         -- Data Animasi
-        animation_type TEXT DEFAULT 'none',
-        animation_duration REAL DEFAULT 2,
-        animation_delay REAL DEFAULT 0,
-        animation_iteration TEXT DEFAULT 'infinite',
+        animation_type VARCHAR(50) DEFAULT 'none',
+        animation_duration FLOAT DEFAULT 2,
+        animation_delay FLOAT DEFAULT 0,
+        animation_iteration VARCHAR(50) DEFAULT 'infinite',
         
         -- Preview Text
         preview_text TEXT DEFAULT 'Toko Online Premium',
@@ -49,42 +42,42 @@ def init_db():
         
         -- Metadata
         is_public BOOLEAN DEFAULT 0,
-        usage_count INTEGER DEFAULT 0,
-        last_used TIMESTAMP,
+        usage_count INT DEFAULT 0,
+        last_used TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        
+        INDEX idx_template_code (template_code),
+        INDEX idx_template_name (template_name(191)),
+        INDEX idx_website_id (website_id),
+        INDEX idx_user_id (user_id),
+        INDEX idx_animation (animation_type)
     )
     ''')
     
-    # Index untuk pencarian
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_template_code ON font_templates(template_code)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_template_name ON font_templates(template_name)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_id ON font_templates(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_user_id ON font_templates(user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_animation ON font_templates(animation_type)')
-    
     conn.commit()
     conn.close()
-    print("✅ Font templates database initialized successfully")
-
-# Inisialisasi database
-init_db()
+    print("✅ MySQL Font templates database initialized successfully")
 
 # ==================== FUNGSI GENERATE KODE ====================
+
 def generate_template_code(length=35):
     """Generate random template code dengan panjang 35 karakter"""
     characters = string.ascii_letters + string.digits
+    conn = get_db_connection()
+    
     while True:
         code = ''.join(random.choice(characters) for _ in range(length))
         # Cek apakah kode sudah ada
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('SELECT id FROM font_templates WHERE template_code = ?', (code,))
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('SELECT id FROM font_templates WHERE template_code = %s', (code,))
         existing = cursor.fetchone()
-        conn.close()
         
         if not existing:
+            conn.close()
             return code
+        
+    conn.close()
 
 # ==================== FUNGSI CRUD TEMPLATE ====================
 
@@ -109,7 +102,7 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
         template_code = generate_template_code()
         print(f"📝 Generated template code: {template_code}")
         
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Log data yang akan disimpan
@@ -126,7 +119,7 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
                 font_weight, font_style, font_size, text_color,
                 animation_type, animation_duration, animation_delay, animation_iteration,
                 preview_text, preview_subtext, is_public
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             template_code,
             template_name,
@@ -151,18 +144,13 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
         conn.commit()
         
         # Verifikasi data tersimpan
-        cursor.execute("SELECT COUNT(*) as count FROM font_templates WHERE template_code = ?", (template_code,))
-        count = cursor.fetchone()['count']
-        print(f"✅ Verifikasi: {count} record tersimpan dengan code {template_code}")
+        cursor.execute("SELECT COUNT(*) as count FROM font_templates WHERE template_code = %s", (template_code,))
+        count = cursor.fetchone()
+        print(f"✅ Verifikasi: {count['count']} record tersimpan dengan code {template_code}")
         
         print(f"✅ Template saved with code: {template_code}")
         return template_code
         
-    except sqlite3.IntegrityError as e:
-        print(f"❌ Integrity error saving template: {e}")
-        if conn:
-            conn.rollback()
-        return None
     except Exception as e:
         print(f"❌ Error saving template: {e}")
         import traceback
@@ -185,11 +173,11 @@ def update_template(template_code, template_name=None, font_family=None, font_fi
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek apakah template ada
-        cursor.execute('SELECT id FROM font_templates WHERE template_code = ?', (template_code,))
+        cursor.execute('SELECT id FROM font_templates WHERE template_code = %s', (template_code,))
         if not cursor.fetchone():
             return False
         
@@ -197,69 +185,69 @@ def update_template(template_code, template_name=None, font_family=None, font_fi
         params = []
         
         if template_name is not None:
-            updates.append("template_name = ?")
+            updates.append("template_name = %s")
             params.append(template_name)
         
         if font_family is not None:
-            updates.append("font_family = ?")
+            updates.append("font_family = %s")
             params.append(font_family)
         
         if font_file_data is not None:
-            updates.append("font_file_data = ?")
+            updates.append("font_file_data = %s")
             params.append(font_file_data)
         
         if font_file_name is not None:
-            updates.append("font_file_name = ?")
+            updates.append("font_file_name = %s")
             params.append(font_file_name)
         
         if font_weight is not None:
-            updates.append("font_weight = ?")
+            updates.append("font_weight = %s")
             params.append(font_weight)
         
         if font_style is not None:
-            updates.append("font_style = ?")
+            updates.append("font_style = %s")
             params.append(font_style)
         
         if font_size is not None:
-            updates.append("font_size = ?")
+            updates.append("font_size = %s")
             params.append(font_size)
         
         if text_color is not None:
-            updates.append("text_color = ?")
+            updates.append("text_color = %s")
             params.append(text_color)
         
         if animation_type is not None:
-            updates.append("animation_type = ?")
+            updates.append("animation_type = %s")
             params.append(animation_type)
         
         if animation_duration is not None:
-            updates.append("animation_duration = ?")
+            updates.append("animation_duration = %s")
             params.append(animation_duration)
         
         if animation_delay is not None:
-            updates.append("animation_delay = ?")
+            updates.append("animation_delay = %s")
             params.append(animation_delay)
         
         if animation_iteration is not None:
-            updates.append("animation_iteration = ?")
+            updates.append("animation_iteration = %s")
             params.append(animation_iteration)
         
         if preview_text is not None:
-            updates.append("preview_text = ?")
+            updates.append("preview_text = %s")
             params.append(preview_text)
         
         if preview_subtext is not None:
-            updates.append("preview_subtext = ?")
+            updates.append("preview_subtext = %s")
             params.append(preview_subtext)
         
         if is_public is not None:
-            updates.append("is_public = ?")
+            updates.append("is_public = %s")
             params.append(1 if is_public else 0)
         
         updates.append("updated_at = CURRENT_TIMESTAMP")
         
         if updates:
-            query = f"UPDATE font_templates SET {', '.join(updates)} WHERE template_code = ?"
+            query = f"UPDATE font_templates SET {', '.join(updates)} WHERE template_code = %s"
             params.append(template_code)
             cursor.execute(query, params)
             conn.commit()
@@ -284,12 +272,12 @@ def get_template(template_code):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT * FROM font_templates 
-            WHERE template_code = ?
+            WHERE template_code = %s
         ''', (template_code,))
         
         row = cursor.fetchone()
@@ -299,11 +287,11 @@ def get_template(template_code):
             cursor.execute('''
                 UPDATE font_templates 
                 SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP
-                WHERE template_code = ?
+                WHERE template_code = %s
             ''', (template_code,))
             conn.commit()
             
-            return dict(row)
+            return row
         
         return None
         
@@ -321,10 +309,10 @@ def delete_template(template_code):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('DELETE FROM font_templates WHERE template_code = ?', (template_code,))
+        cursor.execute('DELETE FROM font_templates WHERE template_code = %s', (template_code,))
         deleted = cursor.rowcount > 0
         
         conn.commit()
@@ -348,41 +336,35 @@ def get_all_templates(limit=50, offset=0):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek apakah tabel ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='font_templates'")
+        cursor.execute("SHOW TABLES LIKE 'font_templates'")
         if not cursor.fetchone():
             print("⚠️ Table font_templates tidak ditemukan!")
             return []
         
         # Hitung total data
         cursor.execute("SELECT COUNT(*) as count FROM font_templates")
-        count = cursor.fetchone()['count']
-        print(f"📊 Total templates in database: {count}")
+        count = cursor.fetchone()
+        print(f"📊 Total templates in database: {count['count']}")
         
         cursor.execute('''
             SELECT * FROM font_templates 
             ORDER BY created_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         ''', (limit, offset))
         
         rows = cursor.fetchall()
         print(f"📊 Retrieved {len(rows)} templates from database")
         
-        templates = []
-        for row in rows:
-            template = dict(row)
-            # Parse JSON if needed (tidak ada JSON di tabel ini)
-            templates.append(template)
-        
-        return templates
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting templates: {e}")
         import traceback
-        traceback.print_exc()  # Tambahkan stack trace untuk debugging
+        traceback.print_exc()
         return []
     finally:
         if conn:
@@ -394,8 +376,8 @@ def search_templates(query, limit=20):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT id, template_code, template_name, website_id, user_id,
@@ -404,13 +386,13 @@ def search_templates(query, limit=20):
                    preview_text, preview_subtext, is_public, usage_count,
                    created_at, updated_at, last_used
             FROM font_templates 
-            WHERE template_name LIKE ? OR template_code LIKE ?
+            WHERE template_name LIKE %s OR template_code LIKE %s
             ORDER BY usage_count DESC, created_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (f'%{query}%', f'%{query}%', limit))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error searching templates: {e}")
@@ -425,8 +407,8 @@ def get_popular_templates(limit=10):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT id, template_code, template_name, website_id, user_id,
@@ -437,11 +419,11 @@ def get_popular_templates(limit=10):
             FROM font_templates 
             WHERE is_public = 1
             ORDER BY usage_count DESC, created_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (limit,))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting popular templates: {e}")
@@ -456,8 +438,8 @@ def get_user_templates(user_id, limit=50):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT id, template_code, template_name, website_id, user_id,
@@ -466,13 +448,13 @@ def get_user_templates(user_id, limit=50):
                    preview_text, preview_subtext, is_public, usage_count,
                    created_at, updated_at, last_used
             FROM font_templates 
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY created_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (user_id, limit))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting user templates: {e}")
@@ -487,8 +469,8 @@ def get_website_templates(website_id, limit=50):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT id, template_code, template_name, website_id, user_id,
@@ -497,13 +479,13 @@ def get_website_templates(website_id, limit=50):
                    preview_text, preview_subtext, is_public, usage_count,
                    created_at, updated_at, last_used
             FROM font_templates 
-            WHERE website_id = ? OR is_public = 1
+            WHERE website_id = %s OR is_public = 1
             ORDER BY is_public DESC, usage_count DESC, created_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (website_id, limit))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting website templates: {e}")
@@ -518,10 +500,10 @@ def check_template_exists(template_code):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        cursor.execute('SELECT id FROM font_templates WHERE template_code = ?', (template_code,))
+        cursor.execute('SELECT id FROM font_templates WHERE template_code = %s', (template_code,))
         return cursor.fetchone() is not None
         
     except Exception as e:
@@ -537,13 +519,13 @@ def increment_usage_count(template_code):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             UPDATE font_templates 
             SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP
-            WHERE template_code = ?
+            WHERE template_code = %s
         ''', (template_code,))
         
         conn.commit()
@@ -559,14 +541,14 @@ def increment_usage_count(template_code):
 # ==================== FUNGSI MIGRASI ====================
 
 def migrate_database():
-    """Migrasi database jika ada perubahan struktur"""
+    """Migrasi database MySQL jika ada perubahan struktur"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek apakah tabel sudah ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='font_templates'")
+        cursor.execute("SHOW TABLES LIKE 'font_templates'")
         if not cursor.fetchone():
             print("⚠️ Table font_templates not found, creating...")
             conn.close()
@@ -574,31 +556,31 @@ def migrate_database():
             return
         
         # Dapatkan daftar kolom yang sudah ada
-        cursor.execute("PRAGMA table_info(font_templates)")
-        existing_columns = [col[1] for col in cursor.fetchall()]
+        cursor.execute("SHOW COLUMNS FROM font_templates")
+        existing_columns = [col['Field'] for col in cursor.fetchall()]
         
         print("📊 Existing columns in font_templates:", existing_columns)
         
         # Kolom yang harus ada
         required_columns = {
-            'font_family': 'TEXT NOT NULL',
-            'font_file_data': 'TEXT',
-            'font_file_name': 'TEXT',
-            'font_weight': 'INTEGER DEFAULT 400',
-            'font_style': 'TEXT DEFAULT "normal"',
-            'font_size': 'INTEGER DEFAULT 48',
-            'text_color': 'TEXT DEFAULT "#ffffff"',
-            'animation_type': 'TEXT DEFAULT "none"',
-            'animation_duration': 'REAL DEFAULT 2',
-            'animation_delay': 'REAL DEFAULT 0',
-            'animation_iteration': 'TEXT DEFAULT "infinite"',
-            'preview_text': 'TEXT DEFAULT "Toko Online Premium"',
-            'preview_subtext': 'TEXT DEFAULT "dengan Layanan Terbaik 24/7"',
-            'website_id': 'INTEGER',
-            'user_id': 'INTEGER',
+            'font_family': 'VARCHAR(255) NOT NULL',
+            'font_file_data': 'LONGTEXT',
+            'font_file_name': 'VARCHAR(255)',
+            'font_weight': 'INT DEFAULT 400',
+            'font_style': 'VARCHAR(50) DEFAULT "normal"',
+            'font_size': 'INT DEFAULT 48',
+            'text_color': 'VARCHAR(20) DEFAULT "#ffffff"',
+            'animation_type': 'VARCHAR(50) DEFAULT "none"',
+            'animation_duration': 'FLOAT DEFAULT 2',
+            'animation_delay': 'FLOAT DEFAULT 0',
+            'animation_iteration': 'VARCHAR(50) DEFAULT "infinite"',
+            'preview_text': 'TEXT',
+            'preview_subtext': 'TEXT',
+            'website_id': 'INT',
+            'user_id': 'INT',
             'is_public': 'BOOLEAN DEFAULT 0',
-            'usage_count': 'INTEGER DEFAULT 0',
-            'last_used': 'TIMESTAMP'
+            'usage_count': 'INT DEFAULT 0',
+            'last_used': 'TIMESTAMP NULL'
         }
         
         columns_added = []
@@ -618,7 +600,7 @@ def migrate_database():
             print("✅ All columns already exist")
         
         conn.commit()
-        print("✅ Font templates database migration completed")
+        print("✅ MySQL Font templates database migration completed")
         
     except Exception as e:
         print(f"⚠️ Migration error: {e}")
@@ -628,8 +610,22 @@ def migrate_database():
         if conn:
             conn.close()
 
-# Jalankan migrasi
+# ==================== INISIALISASI ====================
+
+# Inisialisasi database
 try:
-    migrate_database()
+    # Cek apakah tabel sudah ada
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'font_templates'")
+    table_exists = cursor.fetchone()
+    conn.close()
+    
+    if not table_exists:
+        init_db()
+    else:
+        print("✅ MySQL font_templates table already exist, checking migration...")
+        migrate_database()
+        
 except Exception as e:
-    print(f"⚠️ Migration warning: {e}")
+    print(f"⚠️ Database init warning: {e}")
