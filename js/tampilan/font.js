@@ -347,7 +347,6 @@
         }
     }
     
-    // ==================== TEMPLATE FUNCTIONS ====================
     async function saveTemplate() {
         const name = elements.templateName?.value.trim();
         if (!name) {
@@ -363,10 +362,32 @@
         showLoading(true);
         
         try {
-            // AMBIL USER ID DENGAN FUNGSI YANG SUDAH DIPERBAIKI
-            const currentUserId = getCurrentUserId();
-            console.log('👤 Saving template with user_id:', currentUserId);
+            // ==================== AMBIL WEBSITE ID DARI URL ====================
+            const urlParams = new URLSearchParams(window.location.search);
+            const websiteParam = urlParams.get('website');
+            let websiteId = null;
             
+            console.log('🌐 Website endpoint dari URL:', websiteParam);
+            
+            if (websiteParam) {
+                try {
+                    // Ambil website_id dari endpoint melalui API
+                    const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${websiteParam}`);
+                    const data = await response.json();
+                    if (data.success && data.website) {
+                        websiteId = data.website.id;
+                        console.log('🌐 Website ID dari endpoint:', websiteId);
+                    } else {
+                        console.warn('⚠️ Gagal mendapatkan website_id untuk endpoint:', websiteParam);
+                    }
+                } catch (e) {
+                    console.error('❌ Error fetching website_id:', e);
+                }
+            } else {
+                console.log('⚠️ Tidak ada parameter website di URL');
+            }
+            
+            // Siapkan data template dengan website_id (bukan user_id)
             const templateData = {
                 template_name: name,
                 font_family: elements.fontFamily?.value || 'MyCustomFont',
@@ -382,13 +403,13 @@
                 animation_iteration: elements.animIteration?.value || 'infinite',
                 preview_text: elements.previewText?.value || 'Toko Online',
                 is_public: false,
-                user_id: currentUserId  // ← KIRIM USER_ID
+                website_id: websiteId  // ← KIRIM WEBSITE_ID, BUKAN USER_ID
             };
             
-            console.log('📤 Sending template data:', {
-                ...templateData,
-                font_file_data: templateData.font_file_data ? '[BASE64_DATA]' : null
-            });
+            console.log('📤 Saving template with website_id:', websiteId);
+            console.log('📤 Template name:', name);
+            console.log('📤 Font family:', templateData.font_family);
+            console.log('📤 Font file:', templateData.font_file_name || 'none');
             
             const response = await fetch(`${API_BASE_URL}/api/font-templates/save`, {
                 method: 'POST',
@@ -422,7 +443,7 @@
                 throw new Error(result.error || 'Gagal menyimpan template');
             }
         } catch (error) {
-            console.error('Error saving template:', error);
+            console.error('❌ Error saving template:', error);
             showToast(error.message || 'Gagal menyimpan template', 'error');
         } finally {
             showLoading(false);
@@ -474,6 +495,35 @@
         elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
         
         try {
+            // ==================== AMBIL WEBSITE ID DARI URL ====================
+            const urlParams = new URLSearchParams(window.location.search);
+            const websiteParam = urlParams.get('website');
+            let currentWebsiteId = null;
+            
+            console.log('🌐 Website endpoint dari URL:', websiteParam);
+            
+            if (websiteParam) {
+                try {
+                    // Ambil website_id dari endpoint melalui API
+                    const websiteResponse = await fetch(`${API_BASE_URL}/api/websites/endpoint/${websiteParam}`);
+                    const websiteData = await websiteResponse.json();
+                    if (websiteData.success && websiteData.website) {
+                        currentWebsiteId = websiteData.website.id;
+                        console.log('🌐 Current Website ID:', currentWebsiteId);
+                        // Simpan ke window global untuk digunakan di fungsi lain
+                        window.currentWebsiteId = currentWebsiteId;
+                        window.currentWebsiteEndpoint = websiteParam;
+                    } else {
+                        console.warn('⚠️ Gagal mendapatkan website_id untuk endpoint:', websiteParam);
+                    }
+                } catch (e) {
+                    console.error('❌ Error fetching website_id:', e);
+                }
+            } else {
+                console.log('⚠️ Tidak ada parameter website di URL');
+            }
+            
+            // ==================== AMBIL SEMUA TEMPLATE ====================
             let url = `${API_BASE_URL}/api/font-templates?limit=50`;
             if (search) {
                 url += `&search=${encodeURIComponent(search)}`;
@@ -527,7 +577,8 @@
                     }
                 }
                 
-                renderAllTemplates(savedTemplates);
+                // Render dengan website_id yang sudah didapat
+                renderAllTemplatesByWebsite(savedTemplates, currentWebsiteId);
             } else {
                 throw new Error(data.error || 'Gagal memuat template');
             }
@@ -548,7 +599,83 @@
             </div>`;
         }
     }
-    
+
+    function renderAllTemplatesByWebsite(templates, currentWebsiteId) {
+        if (!elements.allTemplatesGrid) return;
+        
+        if (templates.length === 0) {
+            elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-folder-open"></i><span>Belum ada template</span></div>';
+            return;
+        }
+        
+        let html = '';
+        templates.forEach(template => {
+            const shortCode = template.template_code.substring(0, 10) + '...';
+            const previewText = template.preview_text || template.template_name || 'Aa';
+            const fontFamily = template.font_family || 'Inter';
+            const animType = template.animation_type || 'pulse';
+            
+            // ==================== CEK KEPEMILIKAN BERDASARKAN WEBSITE_ID ====================
+            const isOwner = (template.website_id === currentWebsiteId && currentWebsiteId !== null);
+            
+            // Badge untuk menunjukkan kepemilikan
+            let ownerBadge = '';
+            if (isOwner) {
+                ownerBadge = '<span class="owner-badge"><i class="fas fa-store"></i> Milik Website Ini</span>';
+            } else if (template.website_id) {
+                ownerBadge = `<span class="other-badge"><i class="fas fa-globe"></i> Website ID: ${template.website_id}</span>`;
+            }
+            
+            html += `
+                <div class="template-card" data-code="${template.template_code}" data-font="${fontFamily}" data-website="${template.website_id || 0}">
+                    <div class="template-preview" style="background: linear-gradient(135deg, #1a1a1a, #2a2a2a);">
+                        <div class="template-preview-text" style="font-family: '${fontFamily}', sans-serif; animation: ${animType}Anim 2s infinite; font-size: 24px; color: ${template.text_color || '#ffffff'};">
+                            ${escapeHtml(previewText)}
+                        </div>
+                    </div>
+                    <div class="template-info">
+                        <div class="template-name">
+                            ${escapeHtml(template.template_name)}
+                            ${ownerBadge}
+                        </div>
+                        <div class="template-code" onclick="window.fontStudio.copyTemplateCode('${template.template_code}')">
+                            <code>${shortCode}</code>
+                            <i class="fas fa-copy"></i>
+                        </div>
+                        <div class="template-actions">
+                            <button class="template-btn load" onclick="window.fontStudio.loadTemplate('${template.template_code}')">
+                                <i class="fas fa-download"></i> Load
+                            </button>
+            `;
+            
+            // ==================== TOMBOL HAPUS HANYA UNTUK PEMILIK WEBSITE ====================
+            if (isOwner) {
+                html += `
+                            <button class="template-btn delete" onclick="window.fontStudio.deleteTemplate('${template.template_code}', '${escapeHtml(template.template_name)}')">
+                                <i class="fas fa-trash-alt"></i> Hapus
+                            </button>
+                `;
+            }
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        elements.allTemplatesGrid.innerHTML = html;
+        
+        // Verifikasi font untuk setiap card
+        document.querySelectorAll('.template-card').forEach(card => {
+            const fontFamily = card.dataset.font;
+            const previewDiv = card.querySelector('.template-preview-text');
+            if (previewDiv) {
+                previewDiv.style.fontFamily = `'${fontFamily}', sans-serif`;
+            }
+        });
+    }
+
     function renderAllTemplates(templates) {
         if (!elements.allTemplatesGrid) return;
         
@@ -1031,12 +1158,65 @@
             if (elements.animDuration) elements.animDuration.value = 2;
             if (elements.animDelay) elements.animDelay.value = 0;
             
-            // ==================== AMBIL USER ID DARI TELEGRAM ====================
+            // ==================== AMBIL WEBSITE ID DARI URL ====================
+            const urlParams = new URLSearchParams(window.location.search);
+            const websiteParam = urlParams.get('website');
+            let currentWebsiteId = null;
+            
+            console.log('🔍 ========== WEBSITE DEBUGGING ==========');
+            console.log('📱 Current URL:', window.location.href);
+            console.log('🌐 Website endpoint dari URL:', websiteParam);
+            
+            // Fungsi untuk mengambil website_id dari endpoint
+            async function fetchWebsiteId(endpoint) {
+                if (!endpoint) return null;
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/websites/endpoint/${endpoint}`);
+                    const data = await response.json();
+                    if (data.success && data.website) {
+                        console.log('🌐 Website ID dari endpoint:', data.website.id);
+                        console.log('🌐 Website endpoint:', data.website.endpoint);
+                        return data.website.id;
+                    }
+                    return null;
+                } catch (error) {
+                    console.error('❌ Error fetching website_id:', error);
+                    return null;
+                }
+            }
+            
+            // Ambil website_id secara async
+            if (websiteParam) {
+                fetchWebsiteId(websiteParam).then(websiteId => {
+                    if (websiteId) {
+                        currentWebsiteId = websiteId;
+                        window.currentWebsiteId = websiteId;
+                        window.currentWebsiteEndpoint = websiteParam;
+                        console.log('💾 Website ID saved:', currentWebsiteId);
+                        
+                        // Simpan ke localStorage untuk penggunaan berikutnya
+                        localStorage.setItem('fontStudioWebsiteId', currentWebsiteId);
+                        localStorage.setItem('fontStudioWebsiteEndpoint', websiteParam);
+                    }
+                }).catch(err => {
+                    console.warn('⚠️ Gagal mengambil website_id:', err);
+                });
+            } else {
+                console.log('⚠️ Tidak ada parameter website di URL');
+                // Cek dari localStorage sebagai fallback
+                const savedWebsiteId = localStorage.getItem('fontStudioWebsiteId');
+                const savedWebsiteEndpoint = localStorage.getItem('fontStudioWebsiteEndpoint');
+                if (savedWebsiteId && savedWebsiteEndpoint) {
+                    console.log('💾 Menggunakan website_id dari localStorage:', savedWebsiteId);
+                    window.currentWebsiteId = parseInt(savedWebsiteId);
+                    window.currentWebsiteEndpoint = savedWebsiteEndpoint;
+                }
+            }
+            
+            // ==================== AMBIL USER ID (OPSIONAL, UNTUK KEPERLUAN LAIN) ====================
             let userId = 0;
             
             console.log('🔍 ========== USER ID DEBUGGING ==========');
-            console.log('📱 Current URL:', window.location.href);
-            console.log('🌐 User Agent:', navigator.userAgent);
             
             // 1. Cek dari Telegram WebApp (jika diakses melalui bot)
             if (window.Telegram && window.Telegram.WebApp) {
@@ -1074,7 +1254,6 @@
                     console.log('⚠️ initDataUnsafe.user tidak ditemukan');
                     console.log('📦 initDataUnsafe keys:', initData ? Object.keys(initData) : 'undefined');
                     
-                    // Coba cek apakah ada authDate atau query_id
                     if (initData) {
                         console.log('📦 Available keys:', Object.keys(initData));
                         if (initData.auth_date) console.log('📦 auth_date:', initData.auth_date);
@@ -1103,7 +1282,6 @@
                                 userId = userObj.id;
                                 console.log('✅ User ID dari parsed initData:', userId);
                                 
-                                // Simpan ke localStorage
                                 localStorage.setItem('fontStudioUserId', userId);
                                 if (userObj.username) localStorage.setItem('fontStudioUserName', userObj.username);
                                 if (userObj.first_name) localStorage.setItem('fontStudioUserFirstName', userObj.first_name);
@@ -1125,7 +1303,6 @@
             
             // 3. Fallback: cek dari URL parameter
             if (userId === 0) {
-                const urlParams = new URLSearchParams(window.location.search);
                 console.log('🔍 URL Parameters:');
                 for (const [key, value] of urlParams.entries()) {
                     console.log(`   ${key}: ${value}`);
@@ -1135,17 +1312,6 @@
                 if (urlUserId) {
                     userId = parseInt(urlUserId);
                     console.log('👤 User ID dari URL parameter:', userId);
-                }
-                
-                const urlStartParam = urlParams.get('startapp');
-                if (urlStartParam && !userId) {
-                    console.log('📦 startapp param:', urlStartParam);
-                    // Coba parse jika startapp berisi user_id
-                    const match = urlStartParam.match(/user_id=(\d+)/);
-                    if (match) {
-                        userId = parseInt(match[1]);
-                        console.log('👤 User ID dari startapp param:', userId);
-                    }
                 }
             }
             
@@ -1158,43 +1324,18 @@
                 }
             }
             
-            // 5. Fallback: cek dari sessionStorage
-            if (userId === 0) {
-                const sessionUserId = sessionStorage.getItem('fontStudioUserId');
-                if (sessionUserId) {
-                    userId = parseInt(sessionUserId);
-                    console.log('👤 User ID dari sessionStorage:', userId);
-                }
-            }
-            
-            // 6. Cek dari meta tag (jika ada)
-            if (userId === 0) {
-                const metaUserId = document.querySelector('meta[name="telegram-user-id"]')?.getAttribute('content');
-                if (metaUserId) {
-                    userId = parseInt(metaUserId);
-                    console.log('👤 User ID dari meta tag:', userId);
-                }
-            }
-            
-            // Simpan user ID ke berbagai storage untuk penggunaan berikutnya
+            // Simpan user ID jika ada
             if (userId > 0) {
                 localStorage.setItem('fontStudioUserId', userId.toString());
                 sessionStorage.setItem('fontStudioUserId', userId.toString());
                 
-                // Set cookie (30 hari)
                 const expires = new Date();
                 expires.setTime(expires.getTime() + (30 * 24 * 60 * 60 * 1000));
                 document.cookie = `telegram_user_id=${userId}; expires=${expires.toUTCString()}; path=/`;
                 
-                console.log('💾 User ID saved to localStorage, sessionStorage, and cookie:', userId);
+                console.log('💾 User ID saved:', userId);
             } else {
-                console.warn('⚠️⚠️⚠️ USER ID TIDAK DITEMUKAN! ⚠️⚠️⚠️');
-                console.warn('Tombol hapus tidak akan muncul.');
-                console.warn('Cara mengatasi:');
-                console.warn('1. Akses halaman melalui bot Telegram dengan link:');
-                console.warn('   https://companel.shop/html/tampilan/font.html?user_id=7998861975');
-                console.warn('2. Atau set manual di console:');
-                console.warn('   localStorage.setItem("fontStudioUserId", "7998861975"); location.reload();');
+                console.log('ℹ️ User ID tidak ditemukan (tidak masalah, kepemilikan berdasarkan website_id)');
             }
             
             // Simpan ke hidden input jika ada
@@ -1203,11 +1344,13 @@
                 hiddenUserId.value = userId;
             }
             
-            // Log final user ID
+            // Log final website dan user ID
+            console.log('🎯 FINAL Website ID:', window.currentWebsiteId || 'belum diambil');
+            console.log('🎯 FINAL Website Endpoint:', window.currentWebsiteEndpoint || 'tidak ada');
             console.log('🎯 FINAL User ID:', userId);
-            console.log('🔍 ========== END USER ID DEBUGGING ==========');
+            console.log('🔍 ========== END DEBUGGING ==========');
             
-            // Simpan ke global variable untuk digunakan di fungsi lain
+            // Simpan ke global variable
             window.currentFontStudioUserId = userId;
             
             // Update preview
@@ -1222,7 +1365,6 @@
                 tg.ready();
                 console.log('📱 Telegram WebApp siap, theme:', tg.colorScheme);
                 
-                // Jika ada user ID, set data ke WebApp
                 if (userId > 0) {
                     try {
                         tg.sendData(JSON.stringify({ action: 'user_id', user_id: userId }));
