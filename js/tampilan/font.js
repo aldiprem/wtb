@@ -561,7 +561,11 @@
         
         console.log('🎯 Rendering templates...');
         console.log('📌 Current Website ID:', currentWebsiteId);
-        console.log('📦 Templates data:', templates.map(t => ({ name: t.template_name, website_id: t.website_id })));
+        console.log('📦 Templates data:', templates.map(t => ({ 
+            name: t.template_name, 
+            website_id: t.website_id,
+            template_code: t.template_code 
+        })));
         
         let html = '';
         templates.forEach(template => {
@@ -570,14 +574,23 @@
             const fontFamily = template.font_family || 'Inter';
             const animType = template.animation_type || 'pulse';
             
-            // CEK KEPEMILIKAN - PASTIKAN PERBANDINGAN ANGKA
-            const isOwner = (template.website_id !== null && template.website_id === currentWebsiteId);
+            // CEK KEPEMILIKAN - Pastikan perbandingan yang tepat
+            // Template bisa dihapus jika: 
+            // 1. website_id sama dengan currentWebsiteId, ATAU
+            // 2. template tidak memiliki website_id (template lama), ATAU  
+            // 3. currentWebsiteId null (tapi ini tidak mungkin karena sudah diambil dari URL)
+            const isOwner = currentWebsiteId && (
+                template.website_id === currentWebsiteId || 
+                (template.website_id === null && template.user_id === null) // Template lama tanpa owner
+            );
             
             console.log(`📋 ${template.template_name}: website_id=${template.website_id}, current=${currentWebsiteId}, isOwner=${isOwner}`);
             
             let ownerBadge = '';
             if (isOwner) {
                 ownerBadge = '<span class="owner-badge" style="background:#10b981; padding:2px 8px; border-radius:12px; font-size:10px;"><i class="fas fa-check-circle"></i> Milik Website Ini</span>';
+            } else if (template.website_id) {
+                ownerBadge = '<span class="owner-badge" style="background:#6b7280; padding:2px 8px; border-radius:12px; font-size:10px;"><i class="fas fa-lock"></i> Website Lain</span>';
             }
             
             html += `
@@ -616,6 +629,9 @@
         });
         
         elements.allTemplatesGrid.innerHTML = html;
+        
+        // Log untuk debugging
+        console.log(`✅ Rendered ${templates.length} templates with ${html.split('delete').length - 1} delete buttons`);
     }
 
     function renderAllTemplates(templates) {
@@ -1054,12 +1070,14 @@
     }
 
     async function deleteTemplate(templateCode, templateName) {
+        console.log(`🗑️ Delete function called with: ${templateCode} - ${templateName}`);
+        
         if (!confirm(`Hapus template "${templateName}"? Tindakan ini tidak dapat dibatalkan!`)) {
-            console.log('❌ Hapus dibatalkan');
+            console.log('❌ Hapus dibatalkan oleh user');
             return;
         }
         
-        console.log(`🗑️ Menghapus template: ${templateCode} - ${templateName}`);
+        console.log(`🗑️ User confirmed delete for: ${templateCode} - ${templateName}`);
         showLoading(true);
         
         try {
@@ -1075,20 +1093,29 @@
             });
             
             console.log('📥 Response status:', response.status);
+            console.log('📥 Response headers:', response.headers);
             
             const result = await response.json();
             console.log('📥 Response data:', result);
             
             if (result.success) {
                 showToast(`✅ Template "${templateName}" dihapus!`, 'success');
+                console.log('✅ Template deleted successfully, refreshing list...');
                 
                 // Refresh daftar template
                 await loadAllTemplates(elements.modalTemplateSearch?.value || '');
             } else {
+                console.error('❌ Delete failed:', result.error);
                 throw new Error(result.error || 'Gagal menghapus template');
             }
         } catch (error) {
             console.error('❌ Error deleting template:', error);
+            console.error('❌ Full error details:', {
+                message: error.message,
+                stack: error.stack,
+                templateCode,
+                templateName
+            });
             showToast(error.message || 'Gagal menghapus template', 'error');
         } finally {
             showLoading(false);

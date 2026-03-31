@@ -311,22 +311,58 @@ def get_template(template_code):
             conn.close()
 
 def delete_template(template_code):
+    """
+    Menghapus template berdasarkan kode
+    Returns: True jika sukses, False jika gagal
+    """
     conn = None
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        if not template_code or len(template_code.strip()) == 0:
+            print("❌ Template code is empty")
+            return False
+            
+        template_code = template_code.strip()
+        print(f"🗑️ Attempting to delete template: {template_code}")
         
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Cek apakah template ada terlebih dahulu
+        cursor.execute('SELECT id, template_name, website_id, user_id FROM font_templates WHERE template_code = %s', (template_code,))
+        existing = cursor.fetchone()
+        
+        if not existing:
+            print(f"❌ Template not found: {template_code}")
+            return False
+        
+        print(f"✅ Template found: {existing['template_name']} (ID: {existing['id']})")
+        print(f"📋 Template ownership: website_id={existing['website_id']}, user_id={existing['user_id']}")
+        
+        # Hapus template
         cursor.execute('DELETE FROM font_templates WHERE template_code = %s', (template_code,))
         deleted = cursor.rowcount > 0
         
-        conn.commit()
-        
         if deleted:
-            print(f"✅ Template {template_code} deleted")
-        return deleted
+            print(f"✅ Template {template_code} deleted ({cursor.rowcount} rows affected)")
+            conn.commit()
+            
+            # Verifikasi penghapusan
+            cursor.execute('SELECT COUNT(*) as count FROM font_templates WHERE template_code = %s', (template_code,))
+            verify = cursor.fetchone()
+            if verify['count'] == 0:
+                print(f"✅ Verification passed: Template {template_code} completely deleted")
+                return True
+            else:
+                print(f"⚠️ Verification failed: Template {template_code} still exists ({verify['count']} records)")
+                return False
+        else:
+            print(f"❌ No rows deleted for template: {template_code}")
+            return False
         
     except Exception as e:
         print(f"❌ Error deleting template: {e}")
+        import traceback
+        traceback.print_exc()
         if conn:
             conn.rollback()
         return False

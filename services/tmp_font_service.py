@@ -88,14 +88,42 @@ def get_font_template(template_code):
 def delete_font_template(template_code):
     try:
         print(f"📥 Deleting template: {template_code}")
+        
+        # Validasi input
+        if not template_code or len(template_code.strip()) == 0:
+            print("❌ Template code is empty")
+            return jsonify({'success': False, 'error': 'Template code is required'}), 400
+        
+        template_code = template_code.strip()
+        print(f"🔍 Looking for template with code: {template_code}")
+        
+        # Cek apakah template ada terlebih dahulu
+        existing_template = tmp_font.get_template(template_code)
+        if not existing_template:
+            print(f"❌ Template not found: {template_code}")
+            return jsonify({'success': False, 'error': 'Template not found'}), 404
+        
+        print(f"✅ Template found: {existing_template.get('template_name', 'Unknown')}")
+        print(f"📋 Template details: website_id={existing_template.get('website_id')}, user_id={existing_template.get('user_id')}")
+        
+        # Hapus template
         success = tmp_font.delete_template(template_code)
         
         if success:
-            return jsonify({'success': True, 'message': 'Template deleted successfully'})
+            print(f"✅ Template {template_code} deleted successfully")
+            return jsonify({
+                'success': True, 
+                'message': f'Template "{existing_template.get("template_name", "Unknown")}" deleted successfully',
+                'deleted_template_code': template_code
+            })
         else:
-            return jsonify({'success': False, 'error': 'Template not found'}), 404
+            print(f"❌ Failed to delete template: {template_code}")
+            return jsonify({'success': False, 'error': 'Failed to delete template'}), 500
+            
     except Exception as e:
         print(f"❌ Error deleting template: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_font_bp.route('/font-templates', methods=['GET'])
