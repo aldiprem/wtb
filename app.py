@@ -356,11 +356,17 @@ def serve_tampilan_page():
 
 @app.route('/panel')
 def serve_main_panel():
-    """Menyediakan halaman panel utama"""
     html_dir = os.path.join(base_dir, 'html')
     if os.path.exists(os.path.join(html_dir, 'panel.html')):
         return send_from_directory(html_dir, 'panel.html')
     return send_from_directory(base_dir, 'panel.html')
+
+@app.route('/panel')
+def serve_main_format():
+    html_dir = os.path.join(base_dir, 'html')
+    if os.path.exists(os.path.join(html_dir, 'format.html')):
+        return send_from_directory(html_dir, 'format.html')
+    return send_from_directory(base_dir, 'format.html')
 
 @app.route('/admins/<string:endpoint>')
 def serve_admin_panel(endpoint):
