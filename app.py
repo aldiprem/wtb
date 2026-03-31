@@ -361,7 +361,7 @@ def serve_main_panel():
         return send_from_directory(html_dir, 'panel.html')
     return send_from_directory(base_dir, 'panel.html')
 
-@app.route('/panel')
+@app.route('/format')
 def serve_main_format():
     html_dir = os.path.join(base_dir, 'html')
     if os.path.exists(os.path.join(html_dir, 'format.html')):
