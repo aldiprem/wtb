@@ -340,7 +340,6 @@ def debug_routes():
 @app.route('/')
 @app.route('/dashboard')
 def serve_dashboard():
-    """Menyediakan halaman dashboard utama"""
     return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
 
 @app.route('/favicon.ico')
