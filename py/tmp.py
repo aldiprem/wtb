@@ -13,7 +13,7 @@ def init_db():
     CREATE TABLE IF NOT EXISTS tampilan (
         id INT AUTO_INCREMENT PRIMARY KEY,
         website_id INT UNIQUE NOT NULL,
-        logo TEXT,
+        logo LONGTEXT,
         banners TEXT DEFAULT '[]',
         promos TEXT DEFAULT '[]',
         colors TEXT DEFAULT '{}',
@@ -87,7 +87,7 @@ def init_db():
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS website_templates (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        website_id INT NOT NULL,
+        website_id LONGTEXT NOT NULL,
         template_code VARCHAR(100) NOT NULL,
         template_name VARCHAR(255) NOT NULL,
         template_data TEXT NOT NULL,
@@ -98,15 +98,63 @@ def init_db():
     )
     ''')
 
-    cursor.execute("ALTER TABLE website_templates MODIFY COLUMN template_data LONGTEXT")
-    cursor.execute("ALTER TABLE tampilan MODIFY COLUMN settings LONGTEXT")
-    cursor.execute("ALTER TABLE tampilan MODIFY COLUMN logo LONGTEXT")
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_code ON website_templates(template_code)')
 
     conn.commit()
     conn.close()
     print("✅ MySQL Database initialized with new structure (tables: tampilan, promo, website_templates)")
+
+def upgrade_tables():
+    """Upgrade tabel yang sudah ada dengan tipe data yang lebih besar"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Cek apakah tabel website_templates ada
+        cursor.execute("SHOW TABLES LIKE 'website_templates'")
+        if cursor.fetchone():
+            # Ubah template_data menjadi LONGTEXT
+            cursor.execute("ALTER TABLE website_templates MODIFY COLUMN template_data LONGTEXT")
+            print("✅ Upgraded website_templates.template_data to LONGTEXT")
+        
+        # Cek apakah tabel tampilan ada
+        cursor.execute("SHOW TABLES LIKE 'tampilan'")
+        if cursor.fetchone():
+            # Ubah kolom-kolom yang perlu
+            cursor.execute("ALTER TABLE tampilan MODIFY COLUMN settings LONGTEXT")
+            cursor.execute("ALTER TABLE tampilan MODIFY COLUMN logo LONGTEXT")
+            cursor.execute("ALTER TABLE tampilan MODIFY COLUMN banners LONGTEXT")
+            cursor.execute("ALTER TABLE tampilan MODIFY COLUMN promos LONGTEXT")
+            print("✅ Upgraded tampilan table columns to LONGTEXT")
+        
+        conn.commit()
+        
+    except Exception as e:
+        print(f"⚠️ Upgrade error: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+# Panggil upgrade_tables() setelah inisialisasi
+try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'tampilan'")
+    table_exists = cursor.fetchone()
+    conn.close()
+    
+    if not table_exists:
+        init_db()
+    else:
+        print("✅ MySQL tables already exist, checking migration...")
+        upgrade_tables()
+        
+except Exception as e:
+    print(f"⚠️ Database check warning: {e}")
 
 # ==================== FUNGSI UNTUK TAMPILAN ====================
 
