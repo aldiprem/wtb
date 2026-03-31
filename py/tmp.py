@@ -5,7 +5,6 @@ from db_config import get_db_connection
 # ==================== FUNGSI DASAR ====================
 
 def init_db():
-    """Inisialisasi database MySQL dengan struktur baru"""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -98,8 +97,10 @@ def init_db():
         UNIQUE KEY unique_website_template (website_id, template_code)
     )
     ''')
-    
-    # Create indexes
+
+    cursor.execute("ALTER TABLE website_templates MODIFY COLUMN template_data LONGTEXT")
+    cursor.execute("ALTER TABLE tampilan MODIFY COLUMN settings LONGTEXT")
+    cursor.execute("ALTER TABLE tampilan MODIFY COLUMN logo LONGTEXT")
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_code ON website_templates(template_code)')
 
@@ -854,25 +855,34 @@ def delete_promo(website_id):
 
 # ==================== FUNGSI UNTUK TEMPLATE PER WEBSITE ====================
 
-def save_website_template(website_id, template_code, template_name, template_data):
-    """Menyimpan template untuk website tertentu"""
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    # Simpan data template
-    cursor.execute('''
-    INSERT INTO website_templates 
-    (website_id, template_code, template_name, template_data)
-    VALUES (%s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE
-        template_name = VALUES(template_name),
-        template_data = VALUES(template_data),
-        updated_at = CURRENT_TIMESTAMP
-    ''', (website_id, template_code, template_name, json.dumps(template_data)))
-    
-    conn.commit()
-    conn.close()
-    return True
+def save_website_template(website_id, name, template_data):
+    """Fungsi simpan template website (untuk route /templates)"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        template_code = f"TMP-{website_id}-{name[:10]}" # Contoh generate code sederhana
+        
+        if isinstance(template_data, (dict, list)):
+            template_data = json.dumps(template_data)
+
+        sql = '''
+            INSERT INTO website_templates (website_id, template_code, template_name, template_data)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE 
+                template_name=VALUES(template_name), 
+                template_data=VALUES(template_data)
+        '''
+        cursor.execute(sql, (website_id, template_code, name, template_data))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"❌ Error saving website template: {e}")
+        return False
+    finally:
+        if conn:
+            conn.close()
 
 def get_website_templates(website_id):
     """Mendapatkan semua template untuk website tertentu"""
