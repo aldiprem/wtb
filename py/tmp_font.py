@@ -311,10 +311,6 @@ def get_template(template_code):
             conn.close()
 
 def delete_template(template_code):
-    """
-    Menghapus template berdasarkan kode
-    Returns: True jika sukses, False jika gagal
-    """
     conn = None
     try:
         conn = get_db_connection()

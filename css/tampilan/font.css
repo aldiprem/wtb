@@ -816,6 +816,48 @@ body {
 
 .template-btn.load:hover { transform: translateY(-1px); box-shadow: var(--shadow-glow); }
 
+/* Badge untuk template */
+.owner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    margin-left: 8px;
+}
+
+.public-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 20px;
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-color);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    margin-left: 8px;
+}
+
+/* Tombol Hapus */
+.template-btn.delete {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.template-btn.delete:hover {
+    background: var(--danger-color);
+    color: white;
+    border-color: transparent;
+    transform: translateY(-1px);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); border-radius: 10px; }

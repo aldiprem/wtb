@@ -542,9 +542,6 @@
         }
     }
     
-    /**
-     * Render template dengan font yang sudah di-inject
-     */
     function renderAllTemplates(templates) {
         if (!elements.allTemplatesGrid) return;
         
@@ -553,6 +550,9 @@
             return;
         }
         
+        const currentUserId = getCurrentUserId();
+        console.log('👤 Current User ID:', currentUserId);
+        
         let html = '';
         templates.forEach(template => {
             const shortCode = template.template_code.substring(0, 10) + '...';
@@ -560,15 +560,30 @@
             const fontFamily = template.font_family || 'Inter';
             const animType = template.animation_type || 'pulse';
             
+            // Cek apakah user yang login adalah pembuat template
+            const isOwner = (template.user_id === currentUserId && currentUserId !== 0);
+            const isPublic = template.is_public === 1;
+            
+            // Badge untuk menunjukkan kepemilikan
+            let ownerBadge = '';
+            if (isOwner) {
+                ownerBadge = '<span class="owner-badge"><i class="fas fa-user-check"></i> Milik Saya</span>';
+            } else if (isPublic) {
+                ownerBadge = '<span class="public-badge"><i class="fas fa-globe"></i> Public</span>';
+            }
+            
             html += `
-                <div class="template-card" data-code="${template.template_code}" data-font="${fontFamily}">
+                <div class="template-card" data-code="${template.template_code}" data-font="${fontFamily}" data-owner="${template.user_id || 0}">
                     <div class="template-preview" style="background: linear-gradient(135deg, #1a1a1a, #2a2a2a);">
                         <div class="template-preview-text" style="font-family: '${fontFamily}', sans-serif; animation: ${animType}Anim 2s infinite; font-size: 24px; color: ${template.text_color || '#ffffff'};">
-                            ${previewText}
+                            ${escapeHtml(previewText)}
                         </div>
                     </div>
                     <div class="template-info">
-                        <div class="template-name">${template.template_name}</div>
+                        <div class="template-name">
+                            ${escapeHtml(template.template_name)}
+                            ${ownerBadge}
+                        </div>
                         <div class="template-code" onclick="window.fontStudio.copyTemplateCode('${template.template_code}')">
                             <code>${shortCode}</code>
                             <i class="fas fa-copy"></i>
@@ -577,6 +592,18 @@
                             <button class="template-btn load" onclick="window.fontStudio.loadTemplate('${template.template_code}')">
                                 <i class="fas fa-download"></i> Load
                             </button>
+                `;
+            
+            // Tambahkan tombol hapus hanya jika user adalah pemilik
+            if (isOwner) {
+                html += `
+                            <button class="template-btn delete" onclick="window.fontStudio.deleteTemplate('${template.template_code}', '${escapeHtml(template.template_name)}')">
+                                <i class="fas fa-trash-alt"></i> Hapus
+                            </button>
+                `;
+            }
+            
+            html += `
                         </div>
                     </div>
                 </div>
@@ -594,7 +621,14 @@
             }
         });
     }
-    
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     async function loadTemplateFromList(code) {
         try {
             const response = await fetch(`${API_BASE_URL}/api/font-templates/${code}`);
@@ -762,7 +796,58 @@
             console.warn('Failed to load saved settings:', e);
         }
     }
-    
+
+    // ==================== GET CURRENT USER ID ====================
+    function getCurrentUserId() {
+        // Ambil dari Telegram Web App
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user) {
+            return window.Telegram.WebApp.initDataUnsafe.user.id;
+        }
+        // Fallback: ambil dari localStorage atau gunakan 0 (tidak teridentifikasi)
+        const savedUserId = localStorage.getItem('fontStudioUserId');
+        if (savedUserId) return parseInt(savedUserId);
+        return 0; // 0 berarti tidak teridentifikasi
+    }
+
+    // Simpan user ID ke localStorage (opsional)
+    function saveCurrentUserId(userId) {
+        if (userId) localStorage.setItem('fontStudioUserId', userId);
+    }
+
+    // ==================== DELETE TEMPLATE ====================
+    async function deleteTemplate(templateCode, templateName) {
+        if (!confirm(`Hapus template "${templateName}"? Tindakan ini tidak dapat dibatalkan!`)) {
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/font-templates/${templateCode}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(`✅ Template "${templateName}" dihapus!`, 'success');
+                // Refresh daftar template
+                await loadAllTemplates(elements.modalTemplateSearch?.value || '');
+            } else {
+                throw new Error(result.error || 'Gagal menghapus template');
+            }
+        } catch (error) {
+            console.error('Error deleting template:', error);
+            showToast(error.message || 'Gagal menghapus template', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     // ==================== INIT ====================
     function init() {
         showLoading(true);
@@ -776,6 +861,11 @@
             if (elements.animDuration) elements.animDuration.value = 2;
             if (elements.animDelay) elements.animDelay.value = 0;
             
+            // Log user ID untuk debugging
+            const userId = getCurrentUserId();
+            console.log('👤 Current User ID from Telegram:', userId);
+            saveCurrentUserId(userId);
+
             updatePreview();
             setupEventListeners();
             initSectionToggles();
