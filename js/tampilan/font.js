@@ -364,6 +364,10 @@
         showLoading(true);
         
         try {
+            // AMBIL USER ID DARI TELEGRAM
+            const currentUserId = getCurrentUserId();
+            console.log('👤 Saving template with user_id:', currentUserId);
+            
             const templateData = {
                 template_name: name,
                 font_family: elements.fontFamily?.value || 'MyCustomFont',
@@ -378,7 +382,8 @@
                 animation_delay: parseFloat(elements.animDelay?.value) || 0,
                 animation_iteration: elements.animIteration?.value || 'infinite',
                 preview_text: elements.previewText?.value || 'Toko Online',
-                is_public: false
+                is_public: false,
+                user_id: currentUserId  // ✅ TAMBAHKAN INI
             };
             
             console.log('📤 Saving template to:', `${API_BASE_URL}/api/font-templates/save`);
@@ -800,12 +805,22 @@
     // ==================== GET CURRENT USER ID ====================
     function getCurrentUserId() {
         // Ambil dari Telegram Web App
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe?.user) {
-            return window.Telegram.WebApp.initDataUnsafe.user.id;
+        if (window.Telegram && window.Telegram.WebApp) {
+            const user = window.Telegram.WebApp.initDataUnsafe?.user;
+            if (user && user.id) {
+                console.log('👤 Telegram user detected:', user.id);
+                return user.id;
+            }
         }
-        // Fallback: ambil dari localStorage atau gunakan 0 (tidak teridentifikasi)
+        
+        // Fallback: dari localStorage
         const savedUserId = localStorage.getItem('fontStudioUserId');
-        if (savedUserId) return parseInt(savedUserId);
+        if (savedUserId) {
+            console.log('👤 Using saved user ID:', savedUserId);
+            return parseInt(savedUserId);
+        }
+        
+        console.log('⚠️ No user ID found, using 0');
         return 0; // 0 berarti tidak teridentifikasi
     }
 
