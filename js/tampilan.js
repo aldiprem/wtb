@@ -447,7 +447,7 @@
                         fontUrl += `?user_id=${userId}`;
                     } else {
                         // Jika tidak ada user_id, tetap buka halaman tanpa parameter
-                        fontUrl += `?website=${endpoint}`;
+                        fontUrl += `?user_id=0`;
                     }
                     
                     // Opsional: tambahkan website untuk keperluan lain (tapi user_id sudah cukup)
