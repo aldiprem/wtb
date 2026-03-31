@@ -1,116 +1,109 @@
-# users.py - Database handler untuk user Telegram
-import sqlite3
+# users.py - Database handler untuk user Telegram VERSI MYSQL
 import json
 from datetime import datetime
-
-DATABASE = 'users.db'
+from db_config import get_db_connection
 
 # ==================== FUNGSI DASAR ====================
 
-def get_db():
-    """Mendapatkan koneksi database"""
-    conn = sqlite3.connect(DATABASE, timeout=30)
-    conn.row_factory = sqlite3.Row
-    return conn
-
 def init_db():
-    """Inisialisasi database user"""
-    conn = get_db()
+    """Inisialisasi database MySQL untuk user"""
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Tabel untuk menyimpan data user Telegram
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY,
-        username TEXT,
-        first_name TEXT,
-        last_name TEXT,
+        id BIGINT PRIMARY KEY,
+        username VARCHAR(255),
+        first_name VARCHAR(255),
+        last_name VARCHAR(255),
         photo_url TEXT,
-        language_code TEXT,
+        language_code VARCHAR(10),
         is_bot BOOLEAN DEFAULT 0,
         is_premium BOOLEAN DEFAULT 0,
         last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        
+        INDEX idx_users_username (username),
+        INDEX idx_users_last_login (last_login)
     )
     ''')
     
     # Tabel untuk menyimpan preferensi user per website
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS user_preferences (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        website_id INTEGER NOT NULL,
-        balance INTEGER DEFAULT 0,
-        total_deposit INTEGER DEFAULT 0,
-        total_withdraw INTEGER DEFAULT 0,
-        total_purchase INTEGER DEFAULT 0,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        website_id INT NOT NULL,
+        balance INT DEFAULT 0,
+        total_deposit INT DEFAULT 0,
+        total_withdraw INT DEFAULT 0,
+        total_purchase INT DEFAULT 0,
         settings TEXT DEFAULT '{}',
         is_blocked BOOLEAN DEFAULT 0,
         notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
-        UNIQUE(user_id, website_id)
+        UNIQUE KEY unique_user_website (user_id, website_id),
+        INDEX idx_preferences_user (user_id),
+        INDEX idx_preferences_website (website_id)
     )
     ''')
     
     # Tabel untuk menyimpan alamat/identitas tambahan user
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS user_addresses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        website_id INTEGER NOT NULL,
-        address_type TEXT NOT NULL, -- 'shipping', 'billing', etc
-        recipient_name TEXT,
-        phone_number TEXT,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        website_id INT NOT NULL,
+        address_type VARCHAR(50) NOT NULL,
+        recipient_name VARCHAR(255),
+        phone_number VARCHAR(50),
         address_line1 TEXT,
         address_line2 TEXT,
-        city TEXT,
-        state TEXT,
-        postal_code TEXT,
-        country TEXT DEFAULT 'Indonesia',
+        city VARCHAR(100),
+        state VARCHAR(100),
+        postal_code VARCHAR(20),
+        country VARCHAR(100) DEFAULT 'Indonesia',
         is_default BOOLEAN DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+        INDEX idx_addresses_user (user_id),
+        INDEX idx_addresses_website (website_id)
     )
     ''')
     
     # Tabel untuk log aktivitas user
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS user_activity_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        website_id INTEGER,
-        action_type TEXT NOT NULL, -- 'login', 'deposit', 'withdraw', 'purchase', 'claim_voucher', etc
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        website_id INT,
+        action_type VARCHAR(50) NOT NULL,
         description TEXT,
-        ip_address TEXT,
+        ip_address VARCHAR(45),
         user_agent TEXT,
         meta_data TEXT DEFAULT '{}',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+        INDEX idx_activity_user (user_id),
+        INDEX idx_activity_website (website_id),
+        INDEX idx_activity_created (created_at)
     )
     ''')
     
-    # Create indexes
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_id ON users(id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_preferences_user ON user_preferences(user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_preferences_website ON user_preferences(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_activity_user ON user_activity_logs(user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_activity_website ON user_activity_logs(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_activity_created ON user_activity_logs(created_at)')
-    
     conn.commit()
     conn.close()
-    print("✅ Users database initialized successfully")
-
-# Inisialisasi database
-init_db()
+    print("✅ MySQL Users database initialized successfully")
 
 # ==================== FUNGSI UTAMA USER ====================
 
@@ -123,29 +116,29 @@ def get_or_create_user(user_data):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         user_id = user_data.get('user_id')
         if not user_id:
             return None
         
         # Cek apakah user sudah ada
-        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
         existing = cursor.fetchone()
         
         if existing:
             # Update last login dan data jika berubah
             cursor.execute('''
                 UPDATE users SET
-                    username = COALESCE(?, username),
-                    first_name = COALESCE(?, first_name),
-                    last_name = COALESCE(?, last_name),
-                    photo_url = COALESCE(?, photo_url),
-                    language_code = COALESCE(?, language_code),
+                    username = COALESCE(%s, username),
+                    first_name = COALESCE(%s, first_name),
+                    last_name = COALESCE(%s, last_name),
+                    photo_url = COALESCE(%s, photo_url),
+                    language_code = COALESCE(%s, language_code),
                     last_login = CURRENT_TIMESTAMP,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
+                WHERE id = %s
             ''', (
                 user_data.get('username'),
                 user_data.get('first_name'),
@@ -156,8 +149,8 @@ def get_or_create_user(user_data):
             ))
             
             # Ambil data terbaru
-            cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
-            user = dict(cursor.fetchone())
+            cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+            user = cursor.fetchone()
             
             # Log activity
             log_user_activity(conn, user_id, None, 'login', 'User logged in')
@@ -168,7 +161,7 @@ def get_or_create_user(user_data):
                 INSERT INTO users (
                     id, username, first_name, last_name, photo_url, 
                     language_code, is_bot, is_premium
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 user_id,
                 user_data.get('username'),
@@ -181,8 +174,8 @@ def get_or_create_user(user_data):
             ))
             
             # Ambil data yang baru diinsert
-            cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
-            user = dict(cursor.fetchone())
+            cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+            user = cursor.fetchone()
             
             # Log activity
             log_user_activity(conn, user_id, None, 'register', 'New user registered')
@@ -207,13 +200,13 @@ def get_user(user_id):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))
+        cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
         row = cursor.fetchone()
         
-        return dict(row) if row else None
+        return row
         
     except Exception as e:
         print(f"❌ Error getting user: {e}")
@@ -228,11 +221,11 @@ def update_user(user_id, update_data):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Cek apakah user ada
-        cursor.execute('SELECT id FROM users WHERE id = ?', (user_id,))
+        cursor.execute('SELECT id FROM users WHERE id = %s', (user_id,))
         if not cursor.fetchone():
             return False
         
@@ -244,12 +237,12 @@ def update_user(user_id, update_data):
         
         for field in allowed_fields:
             if field in update_data:
-                updates.append(f"{field} = ?")
+                updates.append(f"{field} = %s")
                 params.append(update_data[field])
         
         if updates:
             updates.append("updated_at = CURRENT_TIMESTAMP")
-            query = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = %s"
             params.append(user_id)
             cursor.execute(query, params)
             conn.commit()
@@ -273,10 +266,10 @@ def delete_user(user_id):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))
+        cursor.execute('DELETE FROM users WHERE id = %s', (user_id,))
         deleted = cursor.rowcount > 0
         
         conn.commit()
@@ -297,19 +290,19 @@ def search_users(query, limit=20):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         search_term = f"%{query}%"
         cursor.execute('''
             SELECT * FROM users 
-            WHERE username LIKE ? OR first_name LIKE ? OR last_name LIKE ?
+            WHERE username LIKE %s OR first_name LIKE %s OR last_name LIKE %s
             ORDER BY last_login DESC
-            LIMIT ?
+            LIMIT %s
         ''', (search_term, search_term, search_term, limit))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error searching users: {e}")
@@ -326,19 +319,22 @@ def get_user_preferences(user_id, website_id):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT * FROM user_preferences
-            WHERE user_id = ? AND website_id = ?
+            WHERE user_id = %s AND website_id = %s
         ''', (user_id, website_id))
         
         row = cursor.fetchone()
         
         if row:
             data = dict(row)
-            data['settings'] = json.loads(data['settings'] or '{}')
+            try:
+                data['settings'] = json.loads(data['settings'] or '{}')
+            except:
+                data['settings'] = {}
             return data
         else:
             # Buat default preferences
@@ -357,12 +353,12 @@ def create_user_preferences(user_id, website_id):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             INSERT INTO user_preferences (user_id, website_id, balance, settings)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         ''', (user_id, website_id, 0, json.dumps({})))
         
         conn.commit()
@@ -387,8 +383,6 @@ def create_user_preferences(user_id, website_id):
         if conn:
             conn.close()
 
-# users.py - Perbaiki fungsi update_user_balance
-
 def update_user_balance(user_id, website_id, amount, operation='add', transaction_type=None):
     """
     Update balance user
@@ -399,30 +393,29 @@ def update_user_balance(user_id, website_id, amount, operation='add', transactio
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek apakah preferensi sudah ada
         cursor.execute('''
             SELECT id, balance, total_deposit, total_withdraw FROM user_preferences
-            WHERE user_id = ? AND website_id = ?
+            WHERE user_id = %s AND website_id = %s
         ''', (user_id, website_id))
         
         existing = cursor.fetchone()
         
         if existing:
-            current = dict(existing)
-            current_balance = current['balance']
+            current_balance = existing['balance']
             
             if operation == 'add':
                 new_balance = current_balance + amount
                 # Update balance dan total_deposit
                 cursor.execute('''
                     UPDATE user_preferences SET
-                        balance = ?,
-                        total_deposit = total_deposit + ?,
+                        balance = %s,
+                        total_deposit = total_deposit + %s,
                         updated_at = CURRENT_TIMESTAMP
-                    WHERE user_id = ? AND website_id = ?
+                    WHERE user_id = %s AND website_id = %s
                 ''', (new_balance, amount, user_id, website_id))
                 print(f"💰 Balance added: +{amount}, new balance: {new_balance}")
                 
@@ -430,10 +423,10 @@ def update_user_balance(user_id, website_id, amount, operation='add', transactio
                 new_balance = max(0, current_balance - amount)
                 cursor.execute('''
                     UPDATE user_preferences SET
-                        balance = ?,
-                        total_withdraw = total_withdraw + ?,
+                        balance = %s,
+                        total_withdraw = total_withdraw + %s,
                         updated_at = CURRENT_TIMESTAMP
-                    WHERE user_id = ? AND website_id = ?
+                    WHERE user_id = %s AND website_id = %s
                 ''', (new_balance, amount, user_id, website_id))
                 print(f"💰 Balance subtracted: -{amount}, new balance: {new_balance}")
         else:
@@ -443,7 +436,7 @@ def update_user_balance(user_id, website_id, amount, operation='add', transactio
                 cursor.execute('''
                     INSERT INTO user_preferences 
                     (user_id, website_id, balance, total_deposit)
-                    VALUES (?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s)
                 ''', (user_id, website_id, new_balance, amount))
                 print(f"💰 New user, balance set to: {new_balance}")
             else:
@@ -451,7 +444,7 @@ def update_user_balance(user_id, website_id, amount, operation='add', transactio
                 cursor.execute('''
                     INSERT INTO user_preferences 
                     (user_id, website_id, balance)
-                    VALUES (?, ?, ?)
+                    VALUES (%s, %s, %s)
                 ''', (user_id, website_id, new_balance))
                 print(f"💰 New user, balance set to: {new_balance}")
         
@@ -469,7 +462,7 @@ def update_user_balance(user_id, website_id, amount, operation='add', transactio
         # Verifikasi balance tersimpan
         cursor.execute('''
             SELECT balance FROM user_preferences
-            WHERE user_id = ? AND website_id = ?
+            WHERE user_id = %s AND website_id = %s
         ''', (user_id, website_id))
         verified = cursor.fetchone()
         if verified and verified['balance'] == new_balance:
@@ -497,12 +490,12 @@ def get_user_balance(user_id, website_id):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT balance FROM user_preferences
-            WHERE user_id = ? AND website_id = ?
+            WHERE user_id = %s AND website_id = %s
         ''', (user_id, website_id))
         
         row = cursor.fetchone()
@@ -523,16 +516,16 @@ def update_user_preferences(user_id, website_id, settings):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         settings_json = json.dumps(settings)
         
         cursor.execute('''
             UPDATE user_preferences SET
-                settings = ?,
+                settings = %s,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = ? AND website_id = ?
+            WHERE user_id = %s AND website_id = %s
         ''', (settings_json, user_id, website_id))
         
         conn.commit()
@@ -553,15 +546,15 @@ def block_user(user_id, website_id, block=True, reason=None):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             UPDATE user_preferences SET
-                is_blocked = ?,
-                notes = ?,
+                is_blocked = %s,
+                notes = %s,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE user_id = ? AND website_id = ?
+            WHERE user_id = %s AND website_id = %s
         ''', (1 if block else 0, reason, user_id, website_id))
         
         conn.commit()
@@ -584,14 +577,14 @@ def add_user_address(user_id, website_id, address_data):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Jika ini alamat default, reset default lainnya
         if address_data.get('is_default'):
             cursor.execute('''
                 UPDATE user_addresses SET is_default = 0
-                WHERE user_id = ? AND website_id = ?
+                WHERE user_id = %s AND website_id = %s
             ''', (user_id, website_id))
         
         cursor.execute('''
@@ -599,7 +592,7 @@ def add_user_address(user_id, website_id, address_data):
                 user_id, website_id, address_type, recipient_name,
                 phone_number, address_line1, address_line2, city,
                 state, postal_code, country, is_default
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             user_id,
             website_id,
@@ -638,14 +631,14 @@ def get_user_addresses(user_id, website_id, address_type=None):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        query = "SELECT * FROM user_addresses WHERE user_id = ? AND website_id = ?"
+        query = "SELECT * FROM user_addresses WHERE user_id = %s AND website_id = %s"
         params = [user_id, website_id]
         
         if address_type:
-            query += " AND address_type = ?"
+            query += " AND address_type = %s"
             params.append(address_type)
         
         query += " ORDER BY is_default DESC, created_at DESC"
@@ -653,7 +646,7 @@ def get_user_addresses(user_id, website_id, address_type=None):
         cursor.execute(query, params)
         rows = cursor.fetchall()
         
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting addresses: {e}")
@@ -668,10 +661,10 @@ def delete_user_address(address_id, user_id):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute('DELETE FROM user_addresses WHERE id = ? AND user_id = ?', 
+        cursor.execute('DELETE FROM user_addresses WHERE id = %s AND user_id = %s', 
                       (address_id, user_id))
         deleted = cursor.rowcount > 0
         
@@ -700,7 +693,7 @@ def log_user_activity(conn, user_id, website_id, action_type, description, meta_
         cursor.execute('''
             INSERT INTO user_activity_logs 
             (user_id, website_id, action_type, description, meta_data)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (user_id, website_id, action_type, description, meta_json))
         
     except Exception as e:
@@ -712,17 +705,17 @@ def get_user_activities(user_id, website_id=None, limit=50, offset=0):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        query = "SELECT * FROM user_activity_logs WHERE user_id = ?"
+        query = "SELECT * FROM user_activity_logs WHERE user_id = %s"
         params = [user_id]
         
         if website_id:
-            query += " AND website_id = ?"
+            query += " AND website_id = %s"
             params.append(website_id)
         
-        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         
         cursor.execute(query, params)
@@ -731,7 +724,10 @@ def get_user_activities(user_id, website_id=None, limit=50, offset=0):
         activities = []
         for row in rows:
             activity = dict(row)
-            activity['meta_data'] = json.loads(activity['meta_data'] or '{}')
+            try:
+                activity['meta_data'] = json.loads(activity['meta_data'] or '{}')
+            except:
+                activity['meta_data'] = {}
             activities.append(activity)
         
         return activities
@@ -751,8 +747,8 @@ def get_user_statistics(website_id=None):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         stats = {
             'total_users': 0,
@@ -769,7 +765,7 @@ def get_user_statistics(website_id=None):
         if website_id:
             cursor.execute('''
                 SELECT COUNT(DISTINCT user_id) as total
-                FROM user_preferences WHERE website_id = ?
+                FROM user_preferences WHERE website_id = %s
             ''', (website_id,))
         else:
             cursor.execute('SELECT COUNT(*) as total FROM users')
@@ -782,13 +778,13 @@ def get_user_statistics(website_id=None):
             cursor.execute('''
                 SELECT COUNT(DISTINCT user_id) as total
                 FROM user_activity_logs
-                WHERE website_id = ? AND date(created_at) = date('now')
+                WHERE website_id = %s AND DATE(created_at) = CURDATE()
             ''', (website_id,))
         else:
             cursor.execute('''
                 SELECT COUNT(DISTINCT user_id) as total
                 FROM user_activity_logs
-                WHERE date(created_at) = date('now')
+                WHERE DATE(created_at) = CURDATE()
             ''')
         row = cursor.fetchone()
         stats['active_today'] = row['total'] or 0
@@ -797,7 +793,7 @@ def get_user_statistics(website_id=None):
         if website_id:
             cursor.execute('''
                 SELECT SUM(balance) as total FROM user_preferences
-                WHERE website_id = ?
+                WHERE website_id = %s
             ''', (website_id,))
             row = cursor.fetchone()
             stats['total_balance'] = row['total'] or 0
@@ -814,14 +810,14 @@ def get_user_statistics(website_id=None):
 # ==================== FUNGSI MIGRASI ====================
 
 def migrate_database():
-    """Migrasi database ke struktur terbaru"""
+    """Migrasi database MySQL ke struktur terbaru"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek apakah tabel users ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        cursor.execute("SHOW TABLES LIKE 'users'")
         if not cursor.fetchone():
             print("⚠️ Tabel users belum ada, inisialisasi dulu...")
             conn.close()
@@ -829,14 +825,14 @@ def migrate_database():
             return
         
         # Dapatkan daftar kolom yang sudah ada di tabel users
-        cursor.execute("PRAGMA table_info(users)")
-        existing_columns = [col[1] for col in cursor.fetchall()]
+        cursor.execute("SHOW COLUMNS FROM users")
+        existing_columns = [col['Field'] for col in cursor.fetchall()]
         
         print("📊 Existing columns in users:", existing_columns)
         
         # Kolom yang mungkin kurang
         required_columns = {
-            'language_code': 'TEXT',
+            'language_code': 'VARCHAR(10)',
             'is_bot': 'BOOLEAN DEFAULT 0',
             'is_premium': 'BOOLEAN DEFAULT 0'
         }
@@ -851,15 +847,15 @@ def migrate_database():
                     print(f"❌ Failed to add column '{col_name}': {e}")
         
         # Cek tabel user_preferences
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_preferences'")
+        cursor.execute("SHOW TABLES LIKE 'user_preferences'")
         if cursor.fetchone():
-            cursor.execute("PRAGMA table_info(user_preferences)")
-            existing_pref_columns = [col[1] for col in cursor.fetchall()]
+            cursor.execute("SHOW COLUMNS FROM user_preferences")
+            existing_pref_columns = [col['Field'] for col in cursor.fetchall()]
             
             pref_columns = {
-                'total_deposit': 'INTEGER DEFAULT 0',
-                'total_withdraw': 'INTEGER DEFAULT 0',
-                'total_purchase': 'INTEGER DEFAULT 0',
+                'total_deposit': 'INT DEFAULT 0',
+                'total_withdraw': 'INT DEFAULT 0',
+                'total_purchase': 'INT DEFAULT 0',
                 'is_blocked': 'BOOLEAN DEFAULT 0',
                 'notes': 'TEXT'
             }
@@ -874,7 +870,7 @@ def migrate_database():
                         print(f"❌ Failed to add column '{col_name}': {e}")
         
         conn.commit()
-        print("✅ Users database migration completed successfully")
+        print("✅ MySQL Users database migration completed successfully")
         
     except Exception as e:
         print(f"⚠️ Migration error: {e}")
@@ -886,12 +882,6 @@ def migrate_database():
         if conn:
             conn.close()
 
-# Jalankan migrasi
-try:
-    migrate_database()
-except Exception as e:
-    print(f"⚠️ Migration warning: {e}")
-
 # ==================== FUNGSI SCHEDULED ====================
 
 def cleanup_old_logs(days=30):
@@ -901,13 +891,13 @@ def cleanup_old_logs(days=30):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             DELETE FROM user_activity_logs
-            WHERE created_at < datetime('now', ?)
-        ''', (f'-{days} days',))
+            WHERE created_at < DATE_SUB(NOW(), INTERVAL %s DAY)
+        ''', (days,))
         
         deleted = cursor.rowcount
         conn.commit()
@@ -925,3 +915,22 @@ def cleanup_old_logs(days=30):
     finally:
         if conn:
             conn.close()
+
+# ==================== INISIALISASI ====================
+
+# Inisialisasi database
+try:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'users'")
+    table_exists = cursor.fetchone()
+    conn.close()
+    
+    if not table_exists:
+        init_db()
+    else:
+        print("✅ MySQL users tables already exist, checking migration...")
+        migrate_database()
+        
+except Exception as e:
+    print(f"⚠️ Database init warning: {e}")

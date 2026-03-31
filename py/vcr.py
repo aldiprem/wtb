@@ -1,128 +1,117 @@
-# vcr.py - Database handler untuk voucher website
-import sqlite3
+# vcr.py - Database handler untuk voucher website VERSI MYSQL
 import json
 from datetime import datetime, timedelta
-
-DATABASE = 'vcr.db'
+from db_config import get_db_connection
 
 # ==================== FUNGSI DASAR ====================
-def get_db():
-    """Mendapatkan koneksi database"""
-    conn = sqlite3.connect(DATABASE, timeout=30)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def init_db():
-    """Inisialisasi database voucher"""
-    conn = get_db()
+    """Inisialisasi database MySQL untuk voucher"""
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Tabel untuk voucher
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS vouchers (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        website_id INTEGER NOT NULL,
-        kode TEXT NOT NULL,
-        nama TEXT NOT NULL,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        website_id INT NOT NULL,
+        kode VARCHAR(100) NOT NULL,
+        nama VARCHAR(255) NOT NULL,
         deskripsi TEXT,
         
         -- Masa berlaku
         start_date DATE,
         end_date DATE,
-        start_time TEXT DEFAULT '00:00',
-        end_time TEXT DEFAULT '23:59',
+        start_time VARCHAR(5) DEFAULT '00:00',
+        end_time VARCHAR(5) DEFAULT '23:59',
         no_expiry BOOLEAN DEFAULT 0,
         
         -- Pengaturan klaim
-        target TEXT DEFAULT 'all', -- 'all', 'subscriber', 'new_member', 'manual'
-        limit_klaim INTEGER DEFAULT 1,
-        selected_users TEXT DEFAULT '[]', -- JSON array untuk target manual
+        target VARCHAR(50) DEFAULT 'all',
+        limit_klaim INT DEFAULT 1,
+        selected_users TEXT DEFAULT '[]',
         
         -- Status
         active BOOLEAN DEFAULT 1,
         expired BOOLEAN DEFAULT 0,
         
         -- Reward
-        reward_type TEXT NOT NULL, -- 'saldo', 'deposit', 'diskon'
-        reward_data TEXT NOT NULL, -- JSON data sesuai tipe reward
+        reward_type VARCHAR(50) NOT NULL,
+        reward_data TEXT NOT NULL,
         
         -- Statistik
-        total_claimed INTEGER DEFAULT 0,
-        total_used INTEGER DEFAULT 0,
+        total_claimed INT DEFAULT 0,
+        total_used INT DEFAULT 0,
         
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         
         FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
-        UNIQUE(website_id, kode)
+        UNIQUE KEY unique_voucher_code (website_id, kode),
+        INDEX idx_vouchers_website (website_id),
+        INDEX idx_vouchers_kode (website_id, kode),
+        INDEX idx_vouchers_status (website_id, active, expired)
     )
     ''')
     
     # Tabel untuk klaim voucher (user yang mengklaim)
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS voucher_claims (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        voucher_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        user_username TEXT,
-        user_name TEXT,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        voucher_id INT NOT NULL,
+        user_id BIGINT NOT NULL,
+        user_username VARCHAR(255),
+        user_name VARCHAR(255),
         claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         used BOOLEAN DEFAULT 0,
-        used_at TIMESTAMP,
-        order_id INTEGER,
-        expired_at TIMESTAMP,
+        used_at TIMESTAMP NULL,
+        order_id INT,
+        expired_at TIMESTAMP NULL,
         
-        FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE
+        FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE,
+        INDEX idx_claims_voucher (voucher_id),
+        INDEX idx_claims_user (user_id)
     )
     ''')
     
     # Tabel untuk broadcast voucher
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS voucher_broadcasts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        voucher_id INTEGER NOT NULL,
-        target TEXT NOT NULL, -- 'all', 'subscriber', 'new_member', 'manual'
-        selected_users TEXT DEFAULT '[]', -- JSON array untuk target manual
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        voucher_id INT NOT NULL,
+        target VARCHAR(50) NOT NULL,
+        selected_users TEXT DEFAULT '[]',
         message TEXT,
-        sent_count INTEGER DEFAULT 0,
+        sent_count INT DEFAULT 0,
         sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         
-        FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE
+        FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE,
+        INDEX idx_broadcasts_voucher (voucher_id)
     )
     ''')
     
     # Tabel untuk aktivitas voucher
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS voucher_activities (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        website_id INTEGER NOT NULL,
-        voucher_id INTEGER,
-        type TEXT NOT NULL, -- 'create', 'update', 'claim', 'use', 'expire', 'broadcast'
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        website_id INT NOT NULL,
+        voucher_id INT,
+        type VARCHAR(50) NOT NULL,
         description TEXT,
-        meta_data TEXT DEFAULT '{}', -- JSON data tambahan
+        meta_data TEXT DEFAULT '{}',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         
         FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
-        FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE SET NULL
+        FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE SET NULL,
+        INDEX idx_activities_website (website_id),
+        INDEX idx_activities_voucher (voucher_id),
+        INDEX idx_activities_created (created_at)
     )
     ''')
     
-    # Create indexes
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_website ON vouchers(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_kode ON vouchers(website_id, kode)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_vouchers_status ON vouchers(website_id, active, expired)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_claims_voucher ON voucher_claims(voucher_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_claims_user ON voucher_claims(user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_activities_website ON voucher_activities(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_activities_voucher ON voucher_activities(voucher_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_activities_created ON voucher_activities(created_at)')
-    
     conn.commit()
     conn.close()
-    print("✅ Database voucher initialized successfully")
-
-# Inisialisasi database
-init_db()
+    print("✅ MySQL Voucher database initialized successfully")
 
 # ==================== FUNGSI UNTUK VOUCHER ====================
 
@@ -133,7 +122,7 @@ def save_voucher(website_id, data):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         voucher_id = data.get('id')
@@ -148,22 +137,22 @@ def save_voucher(website_id, data):
             # Update existing voucher
             cursor.execute('''
                 UPDATE vouchers SET
-                    kode = ?,
-                    nama = ?,
-                    deskripsi = ?,
-                    start_date = ?,
-                    end_date = ?,
-                    start_time = ?,
-                    end_time = ?,
-                    no_expiry = ?,
-                    target = ?,
-                    limit_klaim = ?,
-                    selected_users = ?,
-                    active = ?,
-                    reward_type = ?,
-                    reward_data = ?,
+                    kode = %s,
+                    nama = %s,
+                    deskripsi = %s,
+                    start_date = %s,
+                    end_date = %s,
+                    start_time = %s,
+                    end_time = %s,
+                    no_expiry = %s,
+                    target = %s,
+                    limit_klaim = %s,
+                    selected_users = %s,
+                    active = %s,
+                    reward_type = %s,
+                    reward_data = %s,
                     updated_at = CURRENT_TIMESTAMP
-                WHERE id = ? AND website_id = ?
+                WHERE id = %s AND website_id = %s
             ''', (
                 data.get('kode'),
                 data.get('nama'),
@@ -195,7 +184,7 @@ def save_voucher(website_id, data):
                     start_date, end_date, start_time, end_time, no_expiry,
                     target, limit_klaim, selected_users,
                     active, reward_type, reward_data
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 website_id,
                 data.get('kode'),
@@ -226,11 +215,6 @@ def save_voucher(website_id, data):
         
         return voucher_id
         
-    except sqlite3.IntegrityError as e:
-        print(f"❌ Integrity error saving voucher: {e}")
-        if conn:
-            conn.rollback()
-        return None
     except Exception as e:
         print(f"❌ Error saving voucher: {e}")
         import traceback
@@ -249,27 +233,27 @@ def get_vouchers(website_id, filters=None):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        query = "SELECT * FROM vouchers WHERE website_id = ?"
+        query = "SELECT * FROM vouchers WHERE website_id = %s"
         params = [website_id]
         
         if filters:
             if filters.get('active') is not None:
-                query += " AND active = ?"
+                query += " AND active = %s"
                 params.append(1 if filters['active'] else 0)
             
             if filters.get('expired') is not None:
-                query += " AND expired = ?"
+                query += " AND expired = %s"
                 params.append(1 if filters['expired'] else 0)
             
             if filters.get('type'):
-                query += " AND reward_type = ?"
+                query += " AND reward_type = %s"
                 params.append(filters['type'])
             
             if filters.get('search'):
-                query += " AND (nama LIKE ? OR kode LIKE ?)"
+                query += " AND (nama LIKE %s OR kode LIKE %s)"
                 params.append(f'%{filters["search"]}%')
                 params.append(f'%{filters["search"]}%')
         
@@ -282,8 +266,14 @@ def get_vouchers(website_id, filters=None):
         for row in rows:
             voucher = dict(row)
             # Parse JSON fields
-            voucher['reward_data'] = json.loads(voucher['reward_data'] or '{}')
-            voucher['selected_users'] = json.loads(voucher['selected_users'] or '[]')
+            try:
+                voucher['reward_data'] = json.loads(voucher['reward_data'] or '{}')
+            except:
+                voucher['reward_data'] = {}
+            try:
+                voucher['selected_users'] = json.loads(voucher['selected_users'] or '[]')
+            except:
+                voucher['selected_users'] = []
             vouchers.append(voucher)
         
         return vouchers
@@ -299,16 +289,22 @@ def get_voucher(voucher_id):
     """Mendapatkan voucher berdasarkan ID"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        cursor.execute('SELECT * FROM vouchers WHERE id = ?', (voucher_id,))
+        cursor.execute('SELECT * FROM vouchers WHERE id = %s', (voucher_id,))
         row = cursor.fetchone()
         
         if row:
             voucher = dict(row)
-            voucher['reward_data'] = json.loads(voucher['reward_data'] or '{}')
-            voucher['selected_users'] = json.loads(voucher['selected_users'] or '[]')
+            try:
+                voucher['reward_data'] = json.loads(voucher['reward_data'] or '{}')
+            except:
+                voucher['reward_data'] = {}
+            try:
+                voucher['selected_users'] = json.loads(voucher['selected_users'] or '[]')
+            except:
+                voucher['selected_users'] = []
             return voucher
         
         return None
@@ -324,20 +320,26 @@ def get_voucher_by_code(website_id, kode):
     """Mendapatkan voucher berdasarkan kode"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT * FROM vouchers 
-            WHERE website_id = ? AND kode = ?
+            WHERE website_id = %s AND kode = %s
         ''', (website_id, kode))
         
         row = cursor.fetchone()
         
         if row:
             voucher = dict(row)
-            voucher['reward_data'] = json.loads(voucher['reward_data'] or '{}')
-            voucher['selected_users'] = json.loads(voucher['selected_users'] or '[]')
+            try:
+                voucher['reward_data'] = json.loads(voucher['reward_data'] or '{}')
+            except:
+                voucher['reward_data'] = {}
+            try:
+                voucher['selected_users'] = json.loads(voucher['selected_users'] or '[]')
+            except:
+                voucher['selected_users'] = []
             return voucher
         
         return None
@@ -353,23 +355,23 @@ def update_voucher_status(voucher_id, active=None, expired=None):
     """Update status voucher"""
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         updates = []
         params = []
         
         if active is not None:
-            updates.append("active = ?")
+            updates.append("active = %s")
             params.append(1 if active else 0)
         
         if expired is not None:
-            updates.append("expired = ?")
+            updates.append("expired = %s")
             params.append(1 if expired else 0)
         
         if updates:
             updates.append("updated_at = CURRENT_TIMESTAMP")
-            query = f"UPDATE vouchers SET {', '.join(updates)} WHERE id = ?"
+            query = f"UPDATE vouchers SET {', '.join(updates)} WHERE id = %s"
             params.append(voucher_id)
             cursor.execute(query, params)
             conn.commit()
@@ -390,18 +392,18 @@ def delete_voucher(voucher_id):
     """Hapus voucher berdasarkan ID"""
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         # Dapatkan data voucher untuk log
-        cursor.execute('SELECT nama FROM vouchers WHERE id = ?', (voucher_id,))
+        cursor.execute('SELECT nama FROM vouchers WHERE id = %s', (voucher_id,))
         voucher = cursor.fetchone()
         
         if not voucher:
             return False
         
         # Hapus voucher (claims dan broadcasts akan terhapus otomatis karena cascade)
-        cursor.execute('DELETE FROM vouchers WHERE id = ?', (voucher_id,))
+        cursor.execute('DELETE FROM vouchers WHERE id = %s', (voucher_id,))
         deleted = cursor.rowcount > 0
         
         conn.commit()
@@ -423,21 +425,19 @@ def check_expired_vouchers(website_id=None):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
-        
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         query = '''
             UPDATE vouchers 
             SET expired = 1, active = 0, updated_at = CURRENT_TIMESTAMP
             WHERE no_expiry = 0 
-            AND (end_date < date('now') 
-                 OR (end_date = date('now') AND end_time < time('now')))
+            AND (end_date < CURDATE() 
+                 OR (end_date = CURDATE() AND end_time < CURTIME()))
         '''
         
         if website_id:
-            query += " AND website_id = ?"
+            query += " AND website_id = %s"
             cursor.execute(query, (website_id,))
         else:
             cursor.execute(query)
@@ -468,20 +468,18 @@ def claim_voucher(voucher_id, user_id, user_username=None, user_name=None):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek voucher
         cursor.execute('''
             SELECT * FROM vouchers 
-            WHERE id = ? AND active = 1 AND expired = 0
+            WHERE id = %s AND active = 1 AND expired = 0
         ''', (voucher_id,))
         
         voucher = cursor.fetchone()
         if not voucher:
             return {'success': False, 'message': 'Voucher tidak tersedia'}
-        
-        voucher = dict(voucher)
         
         # Cek limit klaim
         if voucher['total_claimed'] >= voucher['limit_klaim']:
@@ -490,7 +488,7 @@ def claim_voucher(voucher_id, user_id, user_username=None, user_name=None):
         # Cek apakah user sudah pernah klaim
         cursor.execute('''
             SELECT id FROM voucher_claims 
-            WHERE voucher_id = ? AND user_id = ?
+            WHERE voucher_id = %s AND user_id = %s
         ''', (voucher_id, user_id))
         
         if cursor.fetchone():
@@ -498,7 +496,10 @@ def claim_voucher(voucher_id, user_id, user_username=None, user_name=None):
         
         # Cek target
         if voucher['target'] == 'manual':
-            selected_users = json.loads(voucher['selected_users'] or '[]')
+            try:
+                selected_users = json.loads(voucher['selected_users'] or '[]')
+            except:
+                selected_users = []
             if user_id not in selected_users:
                 return {'success': False, 'message': 'Anda tidak berhak mengklaim voucher ini'}
         
@@ -511,28 +512,26 @@ def claim_voucher(voucher_id, user_id, user_username=None, user_name=None):
         cursor.execute('''
             INSERT INTO voucher_claims 
             (voucher_id, user_id, user_username, user_name, expired_at)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (voucher_id, user_id, user_username, user_name, expiry_date))
         
         # Update total claimed
         cursor.execute('''
             UPDATE vouchers 
             SET total_claimed = total_claimed + 1, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
+            WHERE id = %s
         ''', (voucher_id,))
         
         # Log activity
         cursor.execute('''
             INSERT INTO voucher_activities 
             (website_id, voucher_id, type, description, meta_data)
-            SELECT ?, ?, 'claim', ?, ?
-            FROM vouchers WHERE id = ?
+            SELECT %s, %s, 'claim', %s, %s
         ''', (
             voucher['website_id'],
             voucher_id,
             f'User {user_username or user_id} mengklaim voucher',
-            json.dumps({'user_id': user_id, 'username': user_username}),
-            voucher_id
+            json.dumps({'user_id': user_id, 'username': user_username})
         ))
         
         conn.commit()
@@ -558,13 +557,13 @@ def use_voucher(claim_id, order_id=None):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute('''
             UPDATE voucher_claims 
-            SET used = 1, used_at = CURRENT_TIMESTAMP, order_id = ?
-            WHERE id = ? AND used = 0
+            SET used = 1, used_at = CURRENT_TIMESTAMP, order_id = %s
+            WHERE id = %s AND used = 0
         ''', (order_id, claim_id))
         
         if cursor.rowcount == 0:
@@ -574,7 +573,7 @@ def use_voucher(claim_id, order_id=None):
         cursor.execute('''
             UPDATE vouchers 
             SET total_used = total_used + 1, updated_at = CURRENT_TIMESTAMP
-            WHERE id = (SELECT voucher_id FROM voucher_claims WHERE id = ?)
+            WHERE id = (SELECT voucher_id FROM voucher_claims WHERE id = %s)
         ''', (claim_id,))
         
         conn.commit()
@@ -594,18 +593,18 @@ def get_voucher_claims(voucher_id, limit=50, offset=0):
     """Mendapatkan daftar klaim untuk voucher"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT * FROM voucher_claims 
-            WHERE voucher_id = ?
+            WHERE voucher_id = %s
             ORDER BY claimed_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         ''', (voucher_id, limit, offset))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting voucher claims: {e}")
@@ -618,22 +617,22 @@ def get_user_claims(user_id, website_id=None, limit=50):
     """Mendapatkan semua klaim user"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         query = '''
             SELECT vc.*, v.kode, v.nama, v.reward_type, v.reward_data
             FROM voucher_claims vc
             JOIN vouchers v ON vc.voucher_id = v.id
-            WHERE vc.user_id = ?
+            WHERE vc.user_id = %s
         '''
         params = [user_id]
         
         if website_id:
-            query += " AND v.website_id = ?"
+            query += " AND v.website_id = %s"
             params.append(website_id)
         
-        query += " ORDER BY vc.claimed_at DESC LIMIT ?"
+        query += " ORDER BY vc.claimed_at DESC LIMIT %s"
         params.append(limit)
         
         cursor.execute(query, params)
@@ -642,7 +641,10 @@ def get_user_claims(user_id, website_id=None, limit=50):
         claims = []
         for row in rows:
             claim = dict(row)
-            claim['reward_data'] = json.loads(claim['reward_data'] or '{}')
+            try:
+                claim['reward_data'] = json.loads(claim['reward_data'] or '{}')
+            except:
+                claim['reward_data'] = {}
             claims.append(claim)
         
         return claims
@@ -662,7 +664,7 @@ def save_broadcast(voucher_id, target, selected_users=None, message=None):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         selected_users_json = json.dumps(selected_users or [])
@@ -670,7 +672,7 @@ def save_broadcast(voucher_id, target, selected_users=None, message=None):
         cursor.execute('''
             INSERT INTO voucher_broadcasts 
             (voucher_id, target, selected_users, message)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         ''', (voucher_id, target, selected_users_json, message))
         
         broadcast_id = cursor.lastrowid
@@ -679,10 +681,9 @@ def save_broadcast(voucher_id, target, selected_users=None, message=None):
         cursor.execute('''
             INSERT INTO voucher_activities 
             (website_id, voucher_id, type, description, meta_data)
-            SELECT ?, ?, 'broadcast', ?, ?
-            FROM vouchers WHERE id = ?
+            SELECT website_id, %s, 'broadcast', %s, %s
+            FROM vouchers WHERE id = %s
         ''', (
-            0,  # website_id akan diisi dari subquery
             voucher_id,
             f'Broadcast voucher ke {target}',
             json.dumps({'target': target, 'count': len(selected_users) if selected_users else 'all'}),
@@ -705,17 +706,17 @@ def get_broadcasts(voucher_id=None, limit=50):
     """Mendapatkan daftar broadcast"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         query = "SELECT * FROM voucher_broadcasts"
         params = []
         
         if voucher_id:
-            query += " WHERE voucher_id = ?"
+            query += " WHERE voucher_id = %s"
             params.append(voucher_id)
         
-        query += " ORDER BY sent_at DESC LIMIT ?"
+        query += " ORDER BY sent_at DESC LIMIT %s"
         params.append(limit)
         
         cursor.execute(query, params)
@@ -724,7 +725,10 @@ def get_broadcasts(voucher_id=None, limit=50):
         broadcasts = []
         for row in rows:
             broadcast = dict(row)
-            broadcast['selected_users'] = json.loads(broadcast['selected_users'] or '[]')
+            try:
+                broadcast['selected_users'] = json.loads(broadcast['selected_users'] or '[]')
+            except:
+                broadcast['selected_users'] = []
             broadcasts.append(broadcast)
         
         return broadcasts
@@ -747,7 +751,7 @@ def log_activity(conn, website_id, voucher_id, type, description, meta_data=None
         cursor.execute('''
             INSERT INTO voucher_activities 
             (website_id, voucher_id, type, description, meta_data)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         ''', (website_id, voucher_id, type, description, meta_json))
         
     except Exception as e:
@@ -760,30 +764,30 @@ def get_activities(website_id, filters=None, limit=50, offset=0):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        query = "SELECT * FROM voucher_activities WHERE website_id = ?"
+        query = "SELECT * FROM voucher_activities WHERE website_id = %s"
         params = [website_id]
         
         if filters:
             if filters.get('type'):
-                query += " AND type = ?"
+                query += " AND type = %s"
                 params.append(filters['type'])
             
             if filters.get('voucher_id'):
-                query += " AND voucher_id = ?"
+                query += " AND voucher_id = %s"
                 params.append(filters['voucher_id'])
             
             if filters.get('start_date'):
-                query += " AND date(created_at) >= ?"
+                query += " AND DATE(created_at) >= %s"
                 params.append(filters['start_date'])
             
             if filters.get('end_date'):
-                query += " AND date(created_at) <= ?"
+                query += " AND DATE(created_at) <= %s"
                 params.append(filters['end_date'])
         
-        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
         params.append(limit)
         params.append(offset)
         
@@ -793,7 +797,10 @@ def get_activities(website_id, filters=None, limit=50, offset=0):
         activities = []
         for row in rows:
             activity = dict(row)
-            activity['meta_data'] = json.loads(activity['meta_data'] or '{}')
+            try:
+                activity['meta_data'] = json.loads(activity['meta_data'] or '{}')
+            except:
+                activity['meta_data'] = {}
             activities.append(activity)
         
         return activities
@@ -814,8 +821,8 @@ def get_statistics(website_id, period='all'):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         stats = {
             'total_vouchers': 0,
@@ -832,7 +839,7 @@ def get_statistics(website_id, period='all'):
             SELECT 
                 COUNT(*) as total,
                 SUM(CASE WHEN active = 1 AND expired = 0 THEN 1 ELSE 0 END) as active
-            FROM vouchers WHERE website_id = ?
+            FROM vouchers WHERE website_id = %s
         ''', (website_id,))
         
         row = cursor.fetchone()
@@ -847,7 +854,7 @@ def get_statistics(website_id, period='all'):
                 SUM(CASE WHEN used = 1 THEN 1 ELSE 0 END) as used_count
             FROM voucher_claims vc
             JOIN vouchers v ON vc.voucher_id = v.id
-            WHERE v.website_id = ?
+            WHERE v.website_id = %s
         ''', (website_id,))
         
         row = cursor.fetchone()
@@ -860,7 +867,7 @@ def get_statistics(website_id, period='all'):
             SELECT COUNT(DISTINCT user_id) as unique_users
             FROM voucher_claims vc
             JOIN vouchers v ON vc.voucher_id = v.id
-            WHERE v.website_id = ?
+            WHERE v.website_id = %s
         ''', (website_id,))
         
         row = cursor.fetchone()
@@ -870,18 +877,18 @@ def get_statistics(website_id, period='all'):
         # Daily claims (last 7 days)
         cursor.execute('''
             SELECT 
-                date(vc.claimed_at) as claim_date,
+                DATE(vc.claimed_at) as claim_date,
                 COUNT(*) as count
             FROM voucher_claims vc
             JOIN vouchers v ON vc.voucher_id = v.id
-            WHERE v.website_id = ?
-                AND vc.claimed_at >= date('now', '-7 days')
-            GROUP BY date(vc.claimed_at)
+            WHERE v.website_id = %s
+                AND vc.claimed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            GROUP BY DATE(vc.claimed_at)
             ORDER BY claim_date
         ''', (website_id,))
         
         rows = cursor.fetchall()
-        stats['daily_claims'] = [dict(row) for row in rows]
+        stats['daily_claims'] = rows
         
         return stats
         
@@ -896,21 +903,21 @@ def get_top_vouchers(website_id, limit=5):
     """Mendapatkan voucher terpopuler berdasarkan klaim"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         cursor.execute('''
             SELECT 
                 id, kode, nama, reward_type,
                 total_claimed, total_used
             FROM vouchers
-            WHERE website_id = ?
+            WHERE website_id = %s
             ORDER BY total_claimed DESC
-            LIMIT ?
+            LIMIT %s
         ''', (website_id, limit))
         
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting top vouchers: {e}")
@@ -922,14 +929,14 @@ def get_top_vouchers(website_id, limit=5):
 # ==================== FUNGSI MIGRASI ====================
 
 def migrate_database():
-    """Migrasi database jika ada perubahan struktur"""
+    """Migrasi database MySQL ke struktur terbaru"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek apakah tabel vouchers ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='vouchers'")
+        cursor.execute("SHOW TABLES LIKE 'vouchers'")
         if not cursor.fetchone():
             print("⚠️ Tabel vouchers belum ada, inisialisasi dulu...")
             conn.close()
@@ -937,20 +944,20 @@ def migrate_database():
             return
         
         # Dapatkan daftar kolom yang sudah ada di tabel vouchers
-        cursor.execute("PRAGMA table_info(vouchers)")
-        existing_columns = [col[1] for col in cursor.fetchall()]
+        cursor.execute("SHOW COLUMNS FROM vouchers")
+        existing_columns = [col['Field'] for col in cursor.fetchall()]
         
         print("📊 Existing columns in vouchers:", existing_columns)
         
         # Kolom yang mungkin kurang
         required_columns = {
-            'start_time': 'TEXT DEFAULT "00:00"',
-            'end_time': 'TEXT DEFAULT "23:59"',
+            'start_time': "VARCHAR(5) DEFAULT '00:00'",
+            'end_time': "VARCHAR(5) DEFAULT '23:59'",
             'no_expiry': 'BOOLEAN DEFAULT 0',
-            'selected_users': 'TEXT DEFAULT "[]"',
+            'selected_users': "TEXT DEFAULT '[]'",
             'expired': 'BOOLEAN DEFAULT 0',
-            'total_claimed': 'INTEGER DEFAULT 0',
-            'total_used': 'INTEGER DEFAULT 0'
+            'total_claimed': 'INT DEFAULT 0',
+            'total_used': 'INT DEFAULT 0'
         }
         
         columns_added = []
@@ -968,14 +975,14 @@ def migrate_database():
             print(f"✅ Added columns: {', '.join(columns_added)}")
         
         # Cek tabel voucher_claims
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='voucher_claims'")
+        cursor.execute("SHOW TABLES LIKE 'voucher_claims'")
         if cursor.fetchone():
-            cursor.execute("PRAGMA table_info(voucher_claims)")
-            existing_claims_columns = [col[1] for col in cursor.fetchall()]
+            cursor.execute("SHOW COLUMNS FROM voucher_claims")
+            existing_claims_columns = [col['Field'] for col in cursor.fetchall()]
             
             claims_columns = {
-                'expired_at': 'TIMESTAMP',
-                'order_id': 'INTEGER'
+                'expired_at': 'TIMESTAMP NULL',
+                'order_id': 'INT'
             }
             
             for col_name, col_type in claims_columns.items():
@@ -988,7 +995,7 @@ def migrate_database():
                         print(f"❌ Failed to add column '{col_name}': {e}")
         
         conn.commit()
-        print("✅ Database migration completed successfully")
+        print("✅ MySQL Voucher database migration completed successfully")
         
     except Exception as e:
         print(f"⚠️ Migration error: {e}")
@@ -999,12 +1006,6 @@ def migrate_database():
     finally:
         if conn:
             conn.close()
-
-# Jalankan migrasi
-try:
-    migrate_database()
-except Exception as e:
-    print(f"⚠️ Migration warning: {e}")
 
 # ==================== FUNGSI UNTUK UPDATE OTOMATIS ====================
 
@@ -1019,8 +1020,22 @@ def scheduled_expiry_check():
     except Exception as e:
         print(f"❌ Error in scheduled expiry check: {e}")
 
-# Jalankan pengecekan expired saat startup
+# ==================== INISIALISASI ====================
+
+# Inisialisasi database
 try:
-    check_expired_vouchers()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'vouchers'")
+    table_exists = cursor.fetchone()
+    conn.close()
+    
+    if not table_exists:
+        init_db()
+    else:
+        print("✅ MySQL vouchers tables already exist, checking migration...")
+        migrate_database()
+        check_expired_vouchers()
+        
 except Exception as e:
-    print(f"⚠️ Initial expiry check warning: {e}")
+    print(f"⚠️ Database init warning: {e}")

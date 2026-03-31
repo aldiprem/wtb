@@ -1,112 +1,110 @@
-# trx.py - Database handler untuk transaksi (deposit, withdraw)
-import sqlite3
+# trx.py - Database handler untuk transaksi (deposit, withdraw) VERSI MYSQL
 import json
 from datetime import datetime, timedelta
-
-DATABASE = 'trx.db'
+from db_config import get_db_connection
 
 # ==================== FUNGSI DASAR ====================
-def get_db():
-    """Mendapatkan koneksi database"""
-    conn = sqlite3.connect(DATABASE, timeout=30)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def init_db():
-    """Inisialisasi database transaksi"""
-    conn = get_db()
+    """Inisialisasi database MySQL untuk transaksi"""
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Tabel untuk transaksi deposit
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS deposits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        website_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        user_username TEXT,
-        user_first_name TEXT,
-        user_last_name TEXT,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        website_id INT NOT NULL,
+        user_id INT NOT NULL,
+        user_username VARCHAR(255),
+        user_first_name VARCHAR(255),
+        user_last_name VARCHAR(255),
         
         -- Detail transaksi
-        amount INTEGER NOT NULL,
-        payment_method TEXT NOT NULL, -- 'rekening' atau 'qris'
-        rekening_id INTEGER, -- ID rekening jika pakai transfer manual
-        gateway_id INTEGER, -- ID gateway jika pakai qris
+        amount INT NOT NULL,
+        payment_method VARCHAR(50) NOT NULL,
+        rekening_id INT,
+        gateway_id INT,
         
         -- Status transaksi
-        status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'success', 'failed', 'expired'
+        status VARCHAR(50) DEFAULT 'pending',
         status_message TEXT,
         
         -- Data Cashify
-        cashify_transaction_id TEXT UNIQUE,
-        cashify_reference_id TEXT,
+        cashify_transaction_id VARCHAR(255) UNIQUE,
+        cashify_reference_id VARCHAR(255),
         cashify_qr_string TEXT,
         cashify_qr_image_url TEXT,
-        cashify_original_amount INTEGER,
-        cashify_total_amount INTEGER,
-        cashify_unique_nominal INTEGER,
-        cashify_expired_at TIMESTAMP,
+        cashify_original_amount INT,
+        cashify_total_amount INT,
+        cashify_unique_nominal INT,
+        cashify_expired_at TIMESTAMP NULL,
+        
+        -- Kolom tambahan
+        voucher_id INT,
+        proof_url TEXT,
+        rekening_logo TEXT,
+        rekening_nama VARCHAR(255),
+        rekening_nomor VARCHAR(100),
+        rekening_pemilik VARCHAR(255),
+        rejection_reason TEXT,
+        rejected_at TIMESTAMP NULL,
         
         -- Metadata
         notes TEXT,
-        processed_at TIMESTAMP,
-        expired_at TIMESTAMP,
+        processed_at TIMESTAMP NULL,
+        expired_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         
         FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
-        FOREIGN KEY (rekening_id) REFERENCES rekening(id) ON DELETE SET NULL,
-        FOREIGN KEY (gateway_id) REFERENCES gateway(id) ON DELETE SET NULL
+        INDEX idx_deposits_website (website_id),
+        INDEX idx_deposits_user (user_id),
+        INDEX idx_deposits_status (status),
+        INDEX idx_deposits_cashify (cashify_transaction_id)
     )
     ''')
     
     # Tabel untuk transaksi withdraw
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS withdrawals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        website_id INTEGER NOT NULL,
-        user_id INTEGER NOT NULL,
-        user_username TEXT,
-        user_first_name TEXT,
-        user_last_name TEXT,
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        website_id INT NOT NULL,
+        user_id INT NOT NULL,
+        user_username VARCHAR(255),
+        user_first_name VARCHAR(255),
+        user_last_name VARCHAR(255),
         
         -- Detail withdraw
-        amount INTEGER NOT NULL,
-        rekening_id INTEGER NOT NULL,
-        rekening_nama TEXT,
-        rekening_nomor TEXT,
-        rekening_pemilik TEXT,
+        amount INT NOT NULL,
+        rekening_id INT NOT NULL,
+        rekening_nama VARCHAR(255),
+        rekening_nomor VARCHAR(100),
+        rekening_pemilik VARCHAR(255),
+        rekening_logo TEXT,
         
         -- Status
-        status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'success', 'failed'
+        status VARCHAR(50) DEFAULT 'pending',
         status_message TEXT,
         
         -- Metadata
         notes TEXT,
-        processed_at TIMESTAMP,
+        processed_by INT,
+        processed_notes TEXT,
+        processed_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         
         FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
-        FOREIGN KEY (rekening_id) REFERENCES rekening(id) ON DELETE SET NULL
+        INDEX idx_withdrawals_website (website_id),
+        INDEX idx_withdrawals_user (user_id),
+        INDEX idx_withdrawals_status (status)
     )
     ''')
     
-    # Create indexes
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_deposits_website ON deposits(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_deposits_user ON deposits(user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_deposits_status ON deposits(status)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_deposits_cashify ON deposits(cashify_transaction_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_withdrawals_website ON withdrawals(website_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id)')
-    cursor.execute('CREATE INDEX IF NOT EXISTS idx_withdrawals_status ON withdrawals(status)')
-    
     conn.commit()
     conn.close()
-    print("✅ Transactions database initialized successfully")
-
-# Inisialisasi database
-init_db()
+    print("✅ MySQL Transactions database initialized successfully")
 
 # ==================== FUNGSI UNTUK DEPOSIT ====================
 
@@ -117,8 +115,8 @@ def create_deposit(website_id, user_id, amount, payment_method, rekening_id=None
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Hitung waktu expired (30 menit untuk qris, 1 jam untuk manual)
         expired_at = None
@@ -146,52 +144,18 @@ def create_deposit(website_id, user_id, amount, payment_method, rekening_id=None
                 rekening_nomor = rekening.get('nomor')
                 rekening_pemilik = rekening.get('pemilik')
         
-        # Cek apakah kolom baru sudah ada
-        cursor.execute("PRAGMA table_info(deposits)")
-        existing_columns = [col[1] for col in cursor.fetchall()]
-        
-        # Siapkan query dinamis berdasarkan kolom yang ada
-        base_columns = [
-            'website_id', 'user_id', 'user_username', 'user_first_name', 'user_last_name',
-            'amount', 'payment_method', 'rekening_id', 'gateway_id', 'status', 'expired_at'
-        ]
-        base_values = [
+        cursor.execute('''
+            INSERT INTO deposits (
+                website_id, user_id, user_username, user_first_name, user_last_name,
+                amount, payment_method, rekening_id, gateway_id, status, expired_at,
+                voucher_id, proof_url, rekening_logo, rekening_nama, rekening_nomor, rekening_pemilik
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (
             website_id, user_id, username, first_name, last_name,
-            amount, payment_method, rekening_id, gateway_id, 'pending', expired_at
-        ]
+            amount, payment_method, rekening_id, gateway_id, 'pending', expired_at,
+            voucher_id, proof_url, rekening_logo, rekening_nama, rekening_nomor, rekening_pemilik
+        ))
         
-        # Tambahkan kolom baru jika ada
-        if 'voucher_id' in existing_columns:
-            base_columns.append('voucher_id')
-            base_values.append(voucher_id)
-        
-        if 'proof_url' in existing_columns:
-            base_columns.append('proof_url')
-            base_values.append(proof_url)
-        
-        if 'rekening_logo' in existing_columns:
-            base_columns.append('rekening_logo')
-            base_values.append(rekening_logo)
-        
-        if 'rekening_nama' in existing_columns:
-            base_columns.append('rekening_nama')
-            base_values.append(rekening_nama)
-        
-        if 'rekening_nomor' in existing_columns:
-            base_columns.append('rekening_nomor')
-            base_values.append(rekening_nomor)
-        
-        if 'rekening_pemilik' in existing_columns:
-            base_columns.append('rekening_pemilik')
-            base_values.append(rekening_pemilik)
-        
-        # Buat query dinamis
-        placeholders = ','.join(['?'] * len(base_columns))
-        columns_str = ','.join(base_columns)
-        
-        query = f"INSERT INTO deposits ({columns_str}) VALUES ({placeholders})"
-        
-        cursor.execute(query, base_values)
         deposit_id = cursor.lastrowid
         conn.commit()
         return deposit_id
@@ -213,7 +177,7 @@ def update_deposit_cashify(deposit_id, cashify_data):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         expired_at = cashify_data.get('expired_at')
@@ -227,16 +191,16 @@ def update_deposit_cashify(deposit_id, cashify_data):
         
         cursor.execute('''
             UPDATE deposits SET
-                cashify_transaction_id = ?,
-                cashify_reference_id = ?,
-                cashify_qr_string = ?,
-                cashify_qr_image_url = ?,
-                cashify_original_amount = ?,
-                cashify_total_amount = ?,
-                cashify_unique_nominal = ?,
-                cashify_expired_at = ?,
+                cashify_transaction_id = %s,
+                cashify_reference_id = %s,
+                cashify_qr_string = %s,
+                cashify_qr_image_url = %s,
+                cashify_original_amount = %s,
+                cashify_total_amount = %s,
+                cashify_unique_nominal = %s,
+                cashify_expired_at = %s,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
+            WHERE id = %s
         ''', (
             cashify_data.get('transaction_id'),
             cashify_data.get('reference_id'),
@@ -262,13 +226,14 @@ def update_deposit_cashify(deposit_id, cashify_data):
             conn.close()
 
 def update_deposit_status(deposit_id, status, status_message=None):
+    """Update status deposit"""
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Ambil data deposit dulu
-        cursor.execute('SELECT * FROM deposits WHERE id = ?', (deposit_id,))
+        cursor.execute('SELECT * FROM deposits WHERE id = %s', (deposit_id,))
         deposit = cursor.fetchone()
         
         if not deposit:
@@ -276,7 +241,6 @@ def update_deposit_status(deposit_id, status, status_message=None):
             return False
         
         # Tentukan processed_at - semua status final memiliki timestamp
-        # Status final: success, failed, expired, rejected
         processed_at = None
         if status in ['success', 'failed', 'expired', 'rejected']:
             processed_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -285,23 +249,22 @@ def update_deposit_status(deposit_id, status, status_message=None):
         # Update status di database
         cursor.execute('''
             UPDATE deposits SET
-                status = ?,
-                status_message = ?,
-                processed_at = COALESCE(?, processed_at),
+                status = %s,
+                status_message = %s,
+                processed_at = COALESCE(%s, processed_at),
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
+            WHERE id = %s
         ''', (status, status_message, processed_at, deposit_id))
         
         # Jika status success, update balance user
         if status == 'success':
             from py import users
-            deposit_dict = dict(deposit)
-            print(f"💰 Updating balance for user {deposit_dict['user_id']} on website {deposit_dict['website_id']} with amount {deposit_dict['amount']}")
+            print(f"💰 Updating balance for user {deposit['user_id']} on website {deposit['website_id']} with amount {deposit['amount']}")
             
             new_balance = users.update_user_balance(
-                user_id=deposit_dict['user_id'],
-                website_id=deposit_dict['website_id'],
-                amount=deposit_dict['amount'],
+                user_id=deposit['user_id'],
+                website_id=deposit['website_id'],
+                amount=deposit['amount'],
                 operation='add',
                 transaction_type='deposit'
             )
@@ -317,7 +280,6 @@ def update_deposit_status(deposit_id, status, status_message=None):
         
         conn.commit()
         
-        # Verifikasi update berhasil
         if cursor.rowcount > 0:
             print(f"✅ Status deposit {deposit_id} berhasil diupdate menjadi {status}")
             return True
@@ -342,15 +304,13 @@ def get_deposit(deposit_id):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        cursor.execute('SELECT * FROM deposits WHERE id = ?', (deposit_id,))
+        cursor.execute('SELECT * FROM deposits WHERE id = %s', (deposit_id,))
         row = cursor.fetchone()
         
-        if row:
-            return dict(row)
-        return None
+        return row
         
     except Exception as e:
         print(f"❌ Error getting deposit: {e}")
@@ -365,13 +325,13 @@ def get_deposit_by_cashify_id(transaction_id):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        cursor.execute('SELECT * FROM deposits WHERE cashify_transaction_id = ?', (transaction_id,))
+        cursor.execute('SELECT * FROM deposits WHERE cashify_transaction_id = %s', (transaction_id,))
         row = cursor.fetchone()
         
-        return dict(row) if row else None
+        return row
         
     except Exception as e:
         print(f"❌ Error getting deposit by cashify id: {e}")
@@ -386,14 +346,14 @@ def get_user_deposits(user_id, website_id=None, status=None, limit=50):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        query = "SELECT * FROM deposits WHERE user_id = ?"
+        query = "SELECT * FROM deposits WHERE user_id = %s"
         params = [user_id]
         
         if website_id:
-            query += " AND website_id = ?"
+            query += " AND website_id = %s"
             params.append(website_id)
         
         if status and status != 'all':
@@ -406,13 +366,13 @@ def get_user_deposits(user_id, website_id=None, status=None, limit=50):
             elif status == 'expired':
                 query += " AND status = 'expired'"
         
-        query += " ORDER BY created_at DESC LIMIT ?"
+        query += " ORDER BY created_at DESC LIMIT %s"
         params.append(limit)
         
         cursor.execute(query, params)
         rows = cursor.fetchall()
         
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting user deposits: {e}")
@@ -427,7 +387,7 @@ def check_expired_deposits():
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -435,7 +395,7 @@ def check_expired_deposits():
         cursor.execute('''
             UPDATE deposits 
             SET status = 'expired', updated_at = CURRENT_TIMESTAMP
-            WHERE status = 'pending' AND expired_at < ?
+            WHERE status = 'pending' AND expired_at < %s
         ''', (now,))
         
         updated = cursor.rowcount
@@ -455,6 +415,32 @@ def check_expired_deposits():
         if conn:
             conn.close()
 
+def get_all_deposits(website_id, limit=100):
+    """
+    Mendapatkan semua deposit untuk website tertentu (untuk admin panel)
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('''
+            SELECT * FROM deposits 
+            WHERE website_id = %s 
+            ORDER BY created_at DESC
+            LIMIT %s
+        ''', (website_id, limit))
+        
+        rows = cursor.fetchall()
+        return rows
+        
+    except Exception as e:
+        print(f"❌ Error getting all deposits: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
 # ==================== FUNGSI UNTUK WITHDRAW ====================
 
 def create_withdrawal(website_id, user_id, amount, rekening_id, rekening_data, user_data=None):
@@ -463,7 +449,7 @@ def create_withdrawal(website_id, user_id, amount, rekening_id, rekening_data, u
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         username = user_data.get('username') if user_data else None
@@ -475,7 +461,7 @@ def create_withdrawal(website_id, user_id, amount, rekening_id, rekening_data, u
                 website_id, user_id, user_username, user_first_name, user_last_name,
                 amount, rekening_id, rekening_nama, rekening_nomor, rekening_pemilik,
                 status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             website_id, user_id, username, first_name, last_name,
             amount, rekening_id,
@@ -502,7 +488,7 @@ def update_withdrawal_status(withdraw_id, status, status_message=None):
     """
     conn = None
     try:
-        conn = get_db()
+        conn = get_db_connection()
         cursor = conn.cursor()
         
         processed_at = None
@@ -511,11 +497,11 @@ def update_withdrawal_status(withdraw_id, status, status_message=None):
         
         cursor.execute('''
             UPDATE withdrawals SET
-                status = ?,
-                status_message = ?,
-                processed_at = COALESCE(?, processed_at),
+                status = %s,
+                status_message = %s,
+                processed_at = COALESCE(%s, processed_at),
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
+            WHERE id = %s
         ''', (status, status_message, processed_at, withdraw_id))
         
         conn.commit()
@@ -536,14 +522,14 @@ def get_user_withdrawals(user_id, website_id=None, status=None, limit=50):
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
-        query = "SELECT * FROM withdrawals WHERE user_id = ?"
+        query = "SELECT * FROM withdrawals WHERE user_id = %s"
         params = [user_id]
         
         if website_id:
-            query += " AND website_id = ?"
+            query += " AND website_id = %s"
             params.append(website_id)
         
         if status and status != 'all':
@@ -554,16 +540,42 @@ def get_user_withdrawals(user_id, website_id=None, status=None, limit=50):
             elif status == 'failed':
                 query += " AND status = 'failed'"
         
-        query += " ORDER BY created_at DESC LIMIT ?"
+        query += " ORDER BY created_at DESC LIMIT %s"
         params.append(limit)
         
         cursor.execute(query, params)
         rows = cursor.fetchall()
         
-        return [dict(row) for row in rows]
+        return rows
         
     except Exception as e:
         print(f"❌ Error getting user withdrawals: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def get_all_withdrawals(website_id, limit=100):
+    """
+    Mendapatkan semua withdrawals untuk website tertentu (untuk admin panel)
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('''
+            SELECT * FROM withdrawals 
+            WHERE website_id = %s 
+            ORDER BY created_at DESC
+            LIMIT %s
+        ''', (website_id, limit))
+        
+        rows = cursor.fetchall()
+        return rows
+        
+    except Exception as e:
+        print(f"❌ Error getting all withdrawals: {e}")
         return []
     finally:
         if conn:
@@ -608,19 +620,19 @@ def run_scheduled_checks():
     except Exception as e:
         print(f"❌ Error in scheduled check: {e}")
 
-# trx.py - Tambahkan fungsi migrasi database
+# ==================== FUNGSI MIGRASI ====================
 
 def migrate_database():
     """
-    Migrasi database dengan menambahkan kolom baru jika belum ada
+    Migrasi database MySQL dengan menambahkan kolom baru jika belum ada
     """
     conn = None
     try:
-        conn = get_db()
-        cursor = conn.cursor()
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
         
         # Cek apakah tabel deposits ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='deposits'")
+        cursor.execute("SHOW TABLES LIKE 'deposits'")
         if not cursor.fetchone():
             print("⚠️ Tabel deposits belum ada, inisialisasi dulu...")
             conn.close()
@@ -628,21 +640,21 @@ def migrate_database():
             return
         
         # Dapatkan daftar kolom yang sudah ada di tabel deposits
-        cursor.execute("PRAGMA table_info(deposits)")
-        existing_columns = [col[1] for col in cursor.fetchall()]
+        cursor.execute("SHOW COLUMNS FROM deposits")
+        existing_columns = [col['Field'] for col in cursor.fetchall()]
         
         print("📊 Existing columns in deposits:", existing_columns)
         
-        # Di dalam fungsi migrate_database(), tambahkan:
+        # Kolom baru yang harus ada
         new_columns = {
-            'voucher_id': 'INTEGER',
+            'voucher_id': 'INT',
             'proof_url': 'TEXT',
             'rekening_logo': 'TEXT',
-            'rekening_nama': 'TEXT',
-            'rekening_nomor': 'TEXT',
-            'rekening_pemilik': 'TEXT',
+            'rekening_nama': 'VARCHAR(255)',
+            'rekening_nomor': 'VARCHAR(100)',
+            'rekening_pemilik': 'VARCHAR(255)',
             'rejection_reason': 'TEXT',
-            'rejected_at': 'TIMESTAMP'
+            'rejected_at': 'TIMESTAMP NULL'
         }
         
         columns_added = []
@@ -662,14 +674,14 @@ def migrate_database():
             print("✅ All columns already exist")
         
         # Cek apakah tabel withdrawals ada
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='withdrawals'")
+        cursor.execute("SHOW TABLES LIKE 'withdrawals'")
         if cursor.fetchone():
-            cursor.execute("PRAGMA table_info(withdrawals)")
-            existing_withdraw_columns = [col[1] for col in cursor.fetchall()]
+            cursor.execute("SHOW COLUMNS FROM withdrawals")
+            existing_withdraw_columns = [col['Field'] for col in cursor.fetchall()]
             
             new_withdraw_columns = {
                 'rekening_logo': 'TEXT',
-                'processed_by': 'INTEGER',
+                'processed_by': 'INT',
                 'processed_notes': 'TEXT'
             }
             
@@ -683,7 +695,7 @@ def migrate_database():
                         print(f"❌ Failed to add column '{col_name}': {e}")
         
         conn.commit()
-        print("✅ Database migration completed successfully")
+        print("✅ MySQL Transactions database migration completed successfully")
         
     except Exception as e:
         print(f"⚠️ Migration error: {e}")
@@ -695,63 +707,22 @@ def migrate_database():
         if conn:
             conn.close()
 
-# ==================== FUNGSI UNTUK ADMIN PANEL ====================
+# ==================== INISIALISASI ====================
 
-def get_all_deposits(website_id, limit=100):
-    """
-    Mendapatkan semua deposit untuk website tertentu (untuk admin panel)
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT * FROM deposits 
-            WHERE website_id = ? 
-            ORDER BY created_at DESC
-            LIMIT ?
-        ''', (website_id, limit))
-        
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-        
-    except Exception as e:
-        print(f"❌ Error getting all deposits: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
-def get_all_withdrawals(website_id, limit=100):
-    """
-    Mendapatkan semua withdrawals untuk website tertentu (untuk admin panel)
-    """
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT * FROM withdrawals 
-            WHERE website_id = ? 
-            ORDER BY created_at DESC
-            LIMIT ?
-        ''', (website_id, limit))
-        
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-        
-    except Exception as e:
-        print(f"❌ Error getting all withdrawals: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
-# Jalankan pengecekan expired saat startup
+# Inisialisasi database
 try:
-    migrate_database()
-    check_expired_deposits()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SHOW TABLES LIKE 'deposits'")
+    table_exists = cursor.fetchone()
+    conn.close()
+    
+    if not table_exists:
+        init_db()
+    else:
+        print("✅ MySQL transactions tables already exist, checking migration...")
+        migrate_database()
+        check_expired_deposits()
+        
 except Exception as e:
-    print(f"⚠️ Initial expiry check warning: {e}")
+    print(f"⚠️ Database init warning: {e}")
