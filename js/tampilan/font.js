@@ -355,7 +355,6 @@
             return;
         }
         
-        // Validasi font harus sudah dimuat
         if (!currentFontDataUrl) {
             showToast('Upload dan load font terlebih dahulu', 'warning');
             return;
@@ -364,7 +363,7 @@
         showLoading(true);
         
         try {
-            // AMBIL USER ID DARI TELEGRAM
+            // AMBIL USER ID DENGAN FUNGSI YANG SUDAH DIPERBAIKI
             const currentUserId = getCurrentUserId();
             console.log('👤 Saving template with user_id:', currentUserId);
             
@@ -383,10 +382,13 @@
                 animation_iteration: elements.animIteration?.value || 'infinite',
                 preview_text: elements.previewText?.value || 'Toko Online',
                 is_public: false,
-                user_id: currentUserId  // ✅ TAMBAHKAN INI
+                user_id: currentUserId  // ← KIRIM USER_ID
             };
             
-            console.log('📤 Saving template to:', `${API_BASE_URL}/api/font-templates/save`);
+            console.log('📤 Sending template data:', {
+                ...templateData,
+                font_file_data: templateData.font_file_data ? '[BASE64_DATA]' : null
+            });
             
             const response = await fetch(`${API_BASE_URL}/api/font-templates/save`, {
                 method: 'POST',
@@ -804,24 +806,177 @@
 
     // ==================== GET CURRENT USER ID ====================
     function getCurrentUserId() {
-        // Ambil dari Telegram Web App
-        if (window.Telegram && window.Telegram.WebApp) {
-            const user = window.Telegram.WebApp.initDataUnsafe?.user;
-            if (user && user.id) {
-                console.log('👤 Telegram user detected:', user.id);
-                return user.id;
+        try {
+            console.log('🔍 ========== GETTING USER ID ==========');
+            
+            // ==================== 1. CEK TELEGRAM WEBAPP ====================
+            console.log('📱 Checking Telegram WebApp...');
+            console.log('window.Telegram exists:', !!window.Telegram);
+            
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('✅ Telegram.WebApp found');
+                
+                const webApp = window.Telegram.WebApp;
+                console.log('WebApp version:', webApp.version);
+                console.log('WebApp platform:', webApp.platform);
+                console.log('WebApp colorScheme:', webApp.colorScheme);
+                
+                // Cek initDataUnsafe
+                const initDataUnsafe = webApp.initDataUnsafe;
+                console.log('initDataUnsafe exists:', !!initDataUnsafe);
+                
+                if (initDataUnsafe) {
+                    console.log('initDataUnsafe keys:', Object.keys(initDataUnsafe));
+                    const user = initDataUnsafe.user;
+                    
+                    if (user) {
+                        console.log('✅ User object found:', user);
+                        console.log('User ID:', user.id);
+                        console.log('Username:', user.username);
+                        console.log('First name:', user.first_name);
+                        console.log('Last name:', user.last_name);
+                        console.log('Language:', user.language_code);
+                        
+                        if (user.id) {
+                            console.log('🎯 Returning User ID from Telegram:', user.id);
+                            return user.id;
+                        }
+                    } else {
+                        console.log('⚠️ User object not found in initDataUnsafe');
+                        console.log('initDataUnsafe content:', initDataUnsafe);
+                    }
+                }
+                
+                // ==================== 2. PARSE INITDATA (FALLBACK) ====================
+                const initData = webApp.initData;
+                if (initData) {
+                    console.log('📦 initData found, length:', initData.length);
+                    console.log('initData preview:', initData.substring(0, 200) + '...');
+                    
+                    try {
+                        // Parse initData sebagai query string
+                        const params = new URLSearchParams(initData);
+                        const userStr = params.get('user');
+                        
+                        if (userStr) {
+                            console.log('📦 user param found in initData');
+                            const userObj = JSON.parse(decodeURIComponent(userStr));
+                            console.log('Parsed user object:', userObj);
+                            
+                            if (userObj && userObj.id) {
+                                console.log('🎯 Returning User ID from parsed initData:', userObj.id);
+                                return userObj.id;
+                            }
+                        } else {
+                            console.log('⚠️ No user param in initData');
+                            console.log('Available params:', Array.from(params.keys()));
+                        }
+                    } catch (parseError) {
+                        console.error('❌ Failed to parse initData:', parseError);
+                    }
+                } else {
+                    console.log('⚠️ initData is empty');
+                }
+            } else {
+                console.log('❌ Telegram.WebApp not available');
+                if (window.Telegram) {
+                    console.log('window.Telegram exists but WebApp is missing');
+                    console.log('window.Telegram keys:', Object.keys(window.Telegram));
+                }
             }
+            
+            // ==================== 3. FALLBACK: URL PARAMETER ====================
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlUserId = urlParams.get('user_id');
+            if (urlUserId) {
+                console.log('👤 User ID from URL parameter:', urlUserId);
+                const parsedId = parseInt(urlUserId);
+                if (!isNaN(parsedId) && parsedId > 0) {
+                    console.log('🎯 Returning User ID from URL:', parsedId);
+                    return parsedId;
+                }
+            }
+            
+            // ==================== 4. FALLBACK: LOCALSTORAGE ====================
+            const savedUserId = localStorage.getItem('fontStudioUserId');
+            if (savedUserId) {
+                console.log('👤 User ID from localStorage:', savedUserId);
+                const parsedId = parseInt(savedUserId);
+                if (!isNaN(parsedId) && parsedId > 0) {
+                    console.log('🎯 Returning User ID from localStorage:', parsedId);
+                    return parsedId;
+                }
+            }
+            
+            // ==================== 5. FALLBACK: SESSIONSTORAGE ====================
+            const sessionUserId = sessionStorage.getItem('fontStudioUserId');
+            if (sessionUserId) {
+                console.log('👤 User ID from sessionStorage:', sessionUserId);
+                const parsedId = parseInt(sessionUserId);
+                if (!isNaN(parsedId) && parsedId > 0) {
+                    console.log('🎯 Returning User ID from sessionStorage:', parsedId);
+                    return parsedId;
+                }
+            }
+            
+            // ==================== 6. FALLBACK: COOKIE ====================
+            const getCookie = (name) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+            };
+            const cookieUserId = getCookie('telegram_user_id');
+            if (cookieUserId) {
+                console.log('👤 User ID from cookie:', cookieUserId);
+                const parsedId = parseInt(cookieUserId);
+                if (!isNaN(parsedId) && parsedId > 0) {
+                    console.log('🎯 Returning User ID from cookie:', parsedId);
+                    return parsedId;
+                }
+            }
+            
+            // ==================== 7. FALLBACK: META TAG ====================
+            const metaUserId = document.querySelector('meta[name="telegram-user-id"]')?.getAttribute('content');
+            if (metaUserId) {
+                console.log('👤 User ID from meta tag:', metaUserId);
+                const parsedId = parseInt(metaUserId);
+                if (!isNaN(parsedId) && parsedId > 0) {
+                    console.log('🎯 Returning User ID from meta tag:', parsedId);
+                    return parsedId;
+                }
+            }
+            
+            // ==================== 8. DEBUG: LIST ALL STORAGE ITEMS ====================
+            console.log('🔍 LocalStorage contents:');
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                console.log(`   ${key}:`, localStorage.getItem(key));
+            }
+            
+            console.log('🔍 SessionStorage contents:');
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                console.log(`   ${key}:`, sessionStorage.getItem(key));
+            }
+            
+            console.log('🔍 URL Parameters:');
+            for (const [key, value] of urlParams.entries()) {
+                console.log(`   ${key}:`, value);
+            }
+            
+            console.log('⚠️ No user ID found in any source, using 0');
+            console.log('💡 Tips:');
+            console.log('   - Akses halaman melalui bot Telegram untuk mendapatkan user ID otomatis');
+            console.log('   - Atau set manual: localStorage.setItem("fontStudioUserId", "7998861975")');
+            console.log('   - Kemudian refresh halaman');
+            
+            return 0;
+            
+        } catch (error) {
+            console.error('❌ Error in getCurrentUserId:', error);
+            console.error('Error stack:', error.stack);
+            return 0;
         }
-        
-        // Fallback: dari localStorage
-        const savedUserId = localStorage.getItem('fontStudioUserId');
-        if (savedUserId) {
-            console.log('👤 Using saved user ID:', savedUserId);
-            return parseInt(savedUserId);
-        }
-        
-        console.log('⚠️ No user ID found, using 0');
-        return 0; // 0 berarti tidak teridentifikasi
     }
 
     // Simpan user ID ke localStorage (opsional)
@@ -876,19 +1031,116 @@
             if (elements.animDuration) elements.animDuration.value = 2;
             if (elements.animDelay) elements.animDelay.value = 0;
             
-            // Log user ID untuk debugging
-            const userId = getCurrentUserId();
-            console.log('👤 Current User ID from Telegram:', userId);
-            saveCurrentUserId(userId);
-
+            // ==================== AMBIL USER ID DARI TELEGRAM ====================
+            let userId = 0;
+            
+            // 1. Cek dari Telegram WebApp (jika diakses melalui bot)
+            if (window.Telegram && window.Telegram.WebApp) {
+                console.log('✅ Telegram.WebApp ditemukan');
+                const initData = window.Telegram.WebApp.initDataUnsafe;
+                console.log('📦 initDataUnsafe:', initData);
+                
+                if (initData && initData.user) {
+                    userId = initData.user.id;
+                    console.log('👤 User ID dari Telegram:', userId);
+                    console.log('👤 User Info:', {
+                        id: initData.user.id,
+                        username: initData.user.username,
+                        first_name: initData.user.first_name,
+                        last_name: initData.user.last_name
+                    });
+                } else {
+                    console.log('⚠️ initDataUnsafe.user tidak ditemukan');
+                    console.log('📦 initDataUnsafe keys:', initData ? Object.keys(initData) : 'undefined');
+                }
+            } else {
+                console.log('❌ Telegram.WebApp tidak tersedia (dibuka di browser biasa)');
+            }
+            
+            // 2. Fallback: cek dari URL parameter (jika ada)
+            if (userId === 0) {
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlUserId = urlParams.get('user_id');
+                if (urlUserId) {
+                    userId = parseInt(urlUserId);
+                    console.log('👤 User ID dari URL parameter:', userId);
+                }
+            }
+            
+            // 3. Fallback: cek dari localStorage (testing mode)
+            if (userId === 0) {
+                const savedUserId = localStorage.getItem('fontStudioUserId');
+                if (savedUserId) {
+                    userId = parseInt(savedUserId);
+                    console.log('👤 User ID dari localStorage (testing mode):', userId);
+                }
+            }
+            
+            // 4. Jika masih 0, coba ambil dari Telegram WebApp dengan cara lain
+            if (userId === 0 && window.Telegram && window.Telegram.WebApp) {
+                try {
+                    // Coba akses melalui webAppData
+                    const webAppData = window.Telegram.WebApp.initData;
+                    console.log('📦 WebAppData:', webAppData);
+                    
+                    // Parse initData jika perlu
+                    if (webAppData) {
+                        const params = new URLSearchParams(webAppData);
+                        const userStr = params.get('user');
+                        if (userStr) {
+                            const userObj = JSON.parse(decodeURIComponent(userStr));
+                            if (userObj && userObj.id) {
+                                userId = userObj.id;
+                                console.log('👤 User ID dari parsed initData:', userId);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Gagal parse initData:', e);
+                }
+            }
+            
+            // Simpan user ID ke localStorage untuk penggunaan berikutnya
+            if (userId > 0) {
+                localStorage.setItem('fontStudioUserId', userId);
+                console.log('💾 User ID disimpan ke localStorage:', userId);
+            } else {
+                console.warn('⚠️ User ID tidak ditemukan! Tombol hapus tidak akan muncul.');
+            }
+            
+            // Simpan ke hidden input jika ada
+            const hiddenUserId = document.getElementById('telegramUserId');
+            if (hiddenUserId) {
+                hiddenUserId.value = userId;
+            }
+            
+            // Log final user ID
+            console.log('🎯 Final User ID:', userId);
+            
+            // Simpan ke global variable untuk digunakan di fungsi lain
+            window.currentFontStudioUserId = userId;
+            
+            // Update preview
             updatePreview();
             setupEventListeners();
             initSectionToggles();
             
+            // Inisialisasi Telegram WebApp
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg = window.Telegram.WebApp;
                 tg.expand();
                 tg.ready();
+                console.log('📱 Telegram WebApp siap, theme:', tg.colorScheme);
+            } else {
+                console.log('🌐 Running in browser mode');
+                // Jika di browser, bisa set testing user ID
+                if (userId === 0) {
+                    // Untuk testing, bisa diisi manual
+                    // userId = 7998861975; // Uncomment untuk testing
+                    // localStorage.setItem('fontStudioUserId', userId);
+                    console.log('💡 Untuk testing, set user ID manual di localStorage:');
+                    console.log('   localStorage.setItem("fontStudioUserId", "7998861975");');
+                }
             }
             
             // Test koneksi ke API
@@ -906,6 +1158,7 @@
                 });
             
             showToast('Font Studio siap!', 'success');
+            
         } catch (error) {
             console.error('Init error:', error);
             showToast('Gagal memuat studio', 'error');
