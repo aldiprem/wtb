@@ -301,20 +301,32 @@ def get_website_templates(website_id):
 def save_website_template(website_id):
     try:
         data = request.json
-        name = data.get('name', 'Default Name')
+        print(f"📥 Saving template data: {data.keys()}")  # Debug
+        
+        # Perbaiki: ambil template_name, bukan name
+        template_name = data.get('template_name', 'Default Name')
+        template_code = data.get('template_code')
         template_data = data.get('template_data')
         
         if not template_data:
             return jsonify({'success': False, 'error': 'Data template kosong'}), 400
-            
+        
+        if not template_code:
+            return jsonify({'success': False, 'error': 'Template code diperlukan'}), 400
+        
+        print(f"📝 Saving template: {template_name} ({template_code})")
+        
         # Gunakan fungsi yang sudah diperbaiki di tmp.py
-        success = tmp.save_website_template(website_id, name, template_data)
+        success = tmp.save_website_template(website_id, template_code, template_name, template_data)
         
         if success:
-            return jsonify({'success': True})
+            return jsonify({'success': True, 'message': 'Template saved'})
         else:
             return jsonify({'success': False, 'error': 'Gagal simpan ke DB'}), 500
     except Exception as e:
+        print(f"❌ Error saving template: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/templates/<int:template_id>', methods=['DELETE'])

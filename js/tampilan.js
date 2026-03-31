@@ -1310,10 +1310,16 @@
         savedTemplates.forEach(template => {
             const templateData = template.template_data || {};
             const fontFamily = templateData.font_family || 'Inter';
-            options += `<option value="${template.template_code}" data-font="${fontFamily}" data-anim="${templateData.animation_type || 'none'}">${escapeHtml(template.template_name)} (${fontFamily})</option>`;
+            // Pastikan template_name tidak undefined
+            const templateName = template.template_name || 'Template';
+            
+            options += `<option value="${template.template_code}" data-font="${fontFamily}" data-anim="${templateData.animation_type || 'none'}">
+                ${escapeHtml(templateName)} (${fontFamily})
+            </option>`;
         });
         
         elements.applyFontTemplateSelect.innerHTML = options;
+        console.log(`📋 Populated select with ${savedTemplates.length} templates`);
     }
 
     function renderSavedTemplates() {

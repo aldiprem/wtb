@@ -903,24 +903,22 @@ def delete_promo(website_id):
 
 # ==================== FUNGSI UNTUK TEMPLATE PER WEBSITE ====================
 
-def save_website_template(website_id, name, template_data):
-    """Fungsi simpan template website (untuk route /templates)"""
+def save_website_template(website_id, template_code, template_name, template_data):
+    """Simpan template untuk website tertentu"""
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Pastikan template_data adalah dictionary dan memiliki template_code
-        if isinstance(template_data, dict):
-            template_code = template_data.get('template_code')
-            if not template_code:
-                template_code = f"TMP-{website_id}-{name[:10]}"
+        # Pastikan template_data adalah JSON string
+        if isinstance(template_data, (dict, list)):
             template_data_json = json.dumps(template_data)
         else:
             template_data_json = template_data
-            template_code = f"TMP-{website_id}-{name[:10]}"
         
-        # Gunakan INSERT dengan ON DUPLICATE KEY UPDATE
+        print(f"📝 Saving to DB: website_id={website_id}, code={template_code}, name={template_name}")
+        
+        # Insert atau update
         cursor.execute('''
             INSERT INTO website_templates (website_id, template_code, template_name, template_data)
             VALUES (%s, %s, %s, %s)
@@ -928,14 +926,18 @@ def save_website_template(website_id, name, template_data):
                 template_name = VALUES(template_name), 
                 template_data = VALUES(template_data),
                 updated_at = CURRENT_TIMESTAMP
-        ''', (website_id, template_code, name, template_data_json))
+        ''', (website_id, template_code, template_name, template_data_json))
         
         conn.commit()
+        print(f"✅ Template saved successfully: {template_name}")
         return True
+        
     except Exception as e:
         print(f"❌ Error saving website template: {e}")
         import traceback
         traceback.print_exc()
+        if conn:
+            conn.rollback()
         return False
     finally:
         if conn:
@@ -947,7 +949,8 @@ def get_website_templates(website_id):
     cursor = conn.cursor(dictionary=True)
     
     cursor.execute('''
-    SELECT * FROM website_templates 
+    SELECT id, website_id, template_code, template_name, template_data, created_at, updated_at
+    FROM website_templates 
     WHERE website_id = %s 
     ORDER BY created_at DESC
     ''', (website_id,))
@@ -958,13 +961,18 @@ def get_website_templates(website_id):
     templates = []
     for row in rows:
         template = dict(row)
+        # Parse template_data dari JSON string ke dict
         try:
             if isinstance(template['template_data'], str):
                 template['template_data'] = json.loads(template['template_data'])
+            # Pastikan template_data memiliki font_family untuk ditampilkan di select
+            if 'font_family' not in template['template_data']:
+                template['template_data']['font_family'] = 'Inter'
         except:
-            template['template_data'] = {}
+            template['template_data'] = {'font_family': 'Inter'}
         templates.append(template)
     
+    print(f"📋 Loaded {len(templates)} templates for website {website_id}")
     return templates
 
 def delete_website_template(template_id):
