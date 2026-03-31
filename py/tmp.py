@@ -87,10 +87,10 @@ def init_db():
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS website_templates (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        website_id LONGTEXT NOT NULL,
+        website_id INT NOT NULL,  # ← Ubah dari LONGTEXT menjadi INT
         template_code VARCHAR(100) NOT NULL,
         template_name VARCHAR(255) NOT NULL,
-        template_data TEXT NOT NULL,
+        template_data LONGTEXT NOT NULL,  # ← Ubah dari TEXT menjadi LONGTEXT
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
@@ -910,23 +910,32 @@ def save_website_template(website_id, name, template_data):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        template_code = f"TMP-{website_id}-{name[:10]}" # Contoh generate code sederhana
+        # Pastikan template_data adalah dictionary dan memiliki template_code
+        if isinstance(template_data, dict):
+            template_code = template_data.get('template_code')
+            if not template_code:
+                template_code = f"TMP-{website_id}-{name[:10]}"
+            template_data_json = json.dumps(template_data)
+        else:
+            template_data_json = template_data
+            template_code = f"TMP-{website_id}-{name[:10]}"
         
-        if isinstance(template_data, (dict, list)):
-            template_data = json.dumps(template_data)
-
-        sql = '''
+        # Gunakan INSERT dengan ON DUPLICATE KEY UPDATE
+        cursor.execute('''
             INSERT INTO website_templates (website_id, template_code, template_name, template_data)
             VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE 
-                template_name=VALUES(template_name), 
-                template_data=VALUES(template_data)
-        '''
-        cursor.execute(sql, (website_id, template_code, name, template_data))
+                template_name = VALUES(template_name), 
+                template_data = VALUES(template_data),
+                updated_at = CURRENT_TIMESTAMP
+        ''', (website_id, template_code, name, template_data_json))
+        
         conn.commit()
         return True
     except Exception as e:
         print(f"❌ Error saving website template: {e}")
+        import traceback
+        traceback.print_exc()
         return False
     finally:
         if conn:
@@ -950,7 +959,8 @@ def get_website_templates(website_id):
     for row in rows:
         template = dict(row)
         try:
-            template['template_data'] = json.loads(template['template_data'])
+            if isinstance(template['template_data'], str):
+                template['template_data'] = json.loads(template['template_data'])
         except:
             template['template_data'] = {}
         templates.append(template)
