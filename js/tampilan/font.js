@@ -494,31 +494,27 @@
         elements.allTemplatesGrid.innerHTML = '<div class="template-loading"><i class="fas fa-spinner fa-spin"></i><span>Memuat template...</span></div>';
         
         try {
-            // ==================== AMBIL WEBSITE ID DARI URL (SYNC) ====================
+            // ==================== AMBIL WEBSITE ID DARI URL (WAIT SAMPAI SELESAI) ====================
             const urlParams = new URLSearchParams(window.location.search);
             const websiteParam = urlParams.get('website');
             let currentWebsiteId = null;
             
             console.log('🌐 Website endpoint dari URL:', websiteParam);
             
+            // WAIT sampai website_id didapat
             if (websiteParam) {
                 try {
-                    // WAIT sampai data website_id didapat
                     const websiteResponse = await fetch(`${API_BASE_URL}/api/websites/endpoint/${websiteParam}`);
                     const websiteData = await websiteResponse.json();
                     if (websiteData.success && websiteData.website) {
                         currentWebsiteId = websiteData.website.id;
                         console.log('🌐 Current Website ID:', currentWebsiteId);
-                        window.currentWebsiteId = currentWebsiteId;
-                        window.currentWebsiteEndpoint = websiteParam;
                     } else {
-                        console.warn('⚠️ Gagal mendapatkan website_id untuk endpoint:', websiteParam);
+                        console.warn('⚠️ Gagal mendapatkan website_id');
                     }
                 } catch (e) {
                     console.error('❌ Error fetching website_id:', e);
                 }
-            } else {
-                console.log('⚠️ Tidak ada parameter website di URL');
             }
             
             // ==================== AMBIL SEMUA TEMPLATE ====================
@@ -527,54 +523,30 @@
                 url += `&search=${encodeURIComponent(search)}`;
             }
             
-            console.log('📡 Fetching templates from:', url);
-            
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                mode: 'cors'
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
+            const response = await fetch(url);
             const data = await response.json();
-            console.log('📥 Response data:', data);
             
             if (data.success) {
                 savedTemplates = data.templates || [];
                 console.log(`✅ Loaded ${savedTemplates.length} templates`);
                 
-                // Inject font untuk setiap template
+                // Inject font untuk preview
                 for (const template of savedTemplates) {
                     if (template.font_file_data) {
                         injectFontForPreview(template.font_family, template.font_file_data);
                     }
                 }
                 
-                // Render dengan website_id yang sudah didapat (SUDAH ADA NILAINYA)
+                // RENDER DENGAN WEBSITE_ID YANG SUDAH DIDAPAT
                 renderAllTemplatesByWebsite(savedTemplates, currentWebsiteId);
             } else {
                 throw new Error(data.error || 'Gagal memuat template');
             }
         } catch (error) {
             console.error('❌ Error loading templates:', error);
-            
-            let errorMessage = error.message;
-            if (error.message.includes('Failed to fetch')) {
-                errorMessage = 'Tidak dapat terhubung ke server. Pastikan Flask berjalan di http://localhost:5050';
-            }
-            
             elements.allTemplatesGrid.innerHTML = `<div class="template-loading error">
                 <i class="fas fa-exclamation-circle"></i>
-                <span>Gagal memuat template: ${errorMessage}</span>
-                <button onclick="window.location.reload()" style="margin-top:10px; padding:8px 16px; background:#40a7e3; border:none; border-radius:8px; color:white; cursor:pointer;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+                <span>Gagal memuat template: ${error.message}</span>
             </div>`;
         }
     }
@@ -587,7 +559,9 @@
             return;
         }
         
-        console.log('🎯 Rendering with currentWebsiteId:', currentWebsiteId);
+        console.log('🎯 Rendering templates...');
+        console.log('📌 Current Website ID:', currentWebsiteId);
+        console.log('📦 Templates data:', templates.map(t => ({ name: t.template_name, website_id: t.website_id })));
         
         let html = '';
         templates.forEach(template => {
@@ -599,45 +573,39 @@
             // CEK KEPEMILIKAN - PASTIKAN PERBANDINGAN ANGKA
             const isOwner = (template.website_id !== null && template.website_id === currentWebsiteId);
             
-            console.log(`📋 Template: ${template.template_name}, website_id: ${template.website_id}, current: ${currentWebsiteId}, isOwner: ${isOwner}`);
+            console.log(`📋 ${template.template_name}: website_id=${template.website_id}, current=${currentWebsiteId}, isOwner=${isOwner}`);
             
-            // Badge untuk menunjukkan kepemilikan
             let ownerBadge = '';
             if (isOwner) {
-                ownerBadge = '<span class="owner-badge"><i class="fas fa-store"></i> Milik Website Ini</span>';
-            } else if (template.website_id) {
-                ownerBadge = `<span class="other-badge"><i class="fas fa-globe"></i> Website ID: ${template.website_id}</span>`;
+                ownerBadge = '<span class="owner-badge" style="background:#10b981; padding:2px 8px; border-radius:12px; font-size:10px;"><i class="fas fa-check-circle"></i> Milik Website Ini</span>';
             }
             
             html += `
-                <div class="template-card" data-code="${template.template_code}" data-font="${fontFamily}" data-website="${template.website_id || 0}">
+                <div class="template-card" data-code="${template.template_code}" data-font="${fontFamily}">
                     <div class="template-preview" style="background: linear-gradient(135deg, #1a1a1a, #2a2a2a);">
                         <div class="template-preview-text" style="font-family: '${fontFamily}', sans-serif; animation: ${animType}Anim 2s infinite; font-size: 24px; color: ${template.text_color || '#ffffff'};">
                             ${escapeHtml(previewText)}
                         </div>
                     </div>
                     <div class="template-info">
-                        <div class="template-name">
+                        <div class="template-name" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             ${escapeHtml(template.template_name)}
                             ${ownerBadge}
                         </div>
-                        <div class="template-code" onclick="window.fontStudio.copyTemplateCode('${template.template_code}')">
+                        <div class="template-code" onclick="window.fontStudio.copyTemplateCode('${template.template_code}')" style="cursor:pointer; background:rgba(0,0,0,0.3); padding:8px; border-radius:6px; margin:8px 0; display:flex; justify-content:space-between;">
                             <code>${shortCode}</code>
                             <i class="fas fa-copy"></i>
                         </div>
-                        <div class="template-actions">
-                            <button class="template-btn load" onclick="window.fontStudio.loadTemplate('${template.template_code}')">
+                        <div class="template-actions" style="display: flex; gap: 8px; margin-top: 12px;">
+                            <button class="template-btn load" onclick="window.fontStudio.loadTemplate('${template.template_code}')" style="flex:1; padding:8px; background: #40a7e3; border:none; border-radius:6px; color:white; cursor:pointer;">
                                 <i class="fas fa-download"></i> Load
-                            </button>
-            `;
+                            </button>`;
             
-            // TOMBOL HAPUS HANYA UNTUK PEMILIK WEBSITE
             if (isOwner) {
                 html += `
-                            <button class="template-btn delete" onclick="window.fontStudio.deleteTemplate('${template.template_code}', '${escapeHtml(template.template_name)}')">
+                            <button class="template-btn delete" onclick="window.fontStudio.deleteTemplate('${template.template_code}', '${escapeHtml(template.template_name)}')" style="flex:1; padding:8px; background: #ef4444; border:none; border-radius:6px; color:white; cursor:pointer;">
                                 <i class="fas fa-trash-alt"></i> Hapus
-                            </button>
-                `;
+                            </button>`;
             }
             
             html += `
@@ -648,15 +616,6 @@
         });
         
         elements.allTemplatesGrid.innerHTML = html;
-        
-        // Verifikasi font
-        document.querySelectorAll('.template-card').forEach(card => {
-            const fontFamily = card.dataset.font;
-            const previewDiv = card.querySelector('.template-preview-text');
-            if (previewDiv) {
-                previewDiv.style.fontFamily = `'${fontFamily}', sans-serif`;
-            }
-        });
     }
 
     function renderAllTemplates(templates) {
@@ -1094,16 +1053,20 @@
         if (userId) localStorage.setItem('fontStudioUserId', userId);
     }
 
-    // ==================== DELETE TEMPLATE ====================
     async function deleteTemplate(templateCode, templateName) {
         if (!confirm(`Hapus template "${templateName}"? Tindakan ini tidak dapat dibatalkan!`)) {
+            console.log('❌ Hapus dibatalkan');
             return;
         }
         
+        console.log(`🗑️ Menghapus template: ${templateCode} - ${templateName}`);
         showLoading(true);
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/font-templates/${templateCode}`, {
+            const url = `${API_BASE_URL}/api/font-templates/${templateCode}`;
+            console.log('📡 DELETE request to:', url);
+            
+            const response = await fetch(url, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1111,23 +1074,26 @@
                 mode: 'cors'
             });
             
+            console.log('📥 Response status:', response.status);
+            
             const result = await response.json();
+            console.log('📥 Response data:', result);
             
             if (result.success) {
                 showToast(`✅ Template "${templateName}" dihapus!`, 'success');
+                
                 // Refresh daftar template
                 await loadAllTemplates(elements.modalTemplateSearch?.value || '');
             } else {
                 throw new Error(result.error || 'Gagal menghapus template');
             }
         } catch (error) {
-            console.error('Error deleting template:', error);
+            console.error('❌ Error deleting template:', error);
             showToast(error.message || 'Gagal menghapus template', 'error');
         } finally {
             showLoading(false);
         }
     }
-
     
     // ==================== INIT ====================
     function init() {
