@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halaman Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-item {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Halaman Test HTML</h1>
+        <p>Ini adalah halaman test untuk memeriksa fungsionalitas HTML, CSS, dan JavaScript.</p>
+        
+        <div class="test-item">
+            <h3>Test JavaScript</h3>
+            <button onclick="testAlert()">Test Alert</button>
+            <button onclick="testDate()">Test Tanggal</button>
+            <button onclick="testCalculation()">Test Kalkulasi</button>
+            <div id="jsResult" class="result"></div>
+        </div>
+        
+        <div class="test-item">
+            <h3>Test Form</h3>
+            <form onsubmit="testForm(event)">
+                <input type="text" id="nama" placeholder="Masukkan nama" required>
+                <input type="email" id="email" placeholder="Masukkan email" required>
+                <button type="submit">Submit</button>
+            </form>
+            <div id="formResult" class="result"></div>
+        </div>
+        
+        <div class="test-item">
+            <h3>Test CSS Animasi</h3>
+            <div class="box" id="animBox"></div>
+            <button onclick="animateBox()">Animasi Kotak</button>
+        </div>
+        
+        <div class="test-item">
+            <h3>Informasi Browser</h3>
+            <div id="browserInfo" class="result"></div>
+        </div>
+    </div>
+
+    <style>
+        .box {
+            width: 50px;
+            height: 50px;
+            background-color: #28a745;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        .box.animated {
+            transform: rotate(360deg) scale(1.5);
+            background-color: #dc3545;
+        }
+    </style>
+
+    <script>
+        function testAlert() {
+            const result = document.getElementById('jsResult');
+            result.textContent = 'Alert berhasil dijalankan pada ' + new Date().toLocaleString('id-ID');
+            console.log('Test alert berhasil');
+        }
+
+        function testDate() {
+            const result = document.getElementById('jsResult');
+            const now = new Date();
+            result.innerHTML = `
+                <strong>Tanggal & Waktu:</strong> ${now.toLocaleString('id-ID')}<br>
+                <strong>Timestamp:</strong> ${now.getTime()}<br>
+                <strong>Hari:</strong> ${now.toLocaleDateString('id-ID', { weekday: 'long' })}
+            `;
+        }
+
+        function testCalculation() {
+            const result = document.getElementById('jsResult');
+            const a = 15;
+            const b = 7;
+            result.innerHTML = `
+                <strong>Hasil Kalkulasi:</strong><br>
+                ${a} + ${b} = ${a + b}<br>
+                ${a} - ${b} = ${a - b}<br>
+                ${a} × ${b} = ${a * b}<br>
+                ${a} ÷ ${b} = ${(a / b).toFixed(2)}
+            `;
+        }
+
+        function testForm(event) {
+            event.preventDefault();
+            const nama = document.getElementById('nama').value;
+            const email = document.getElementById('email').value;
+            const result = document.getElementById('formResult');
+            
+            result.innerHTML = `
+                <strong>Form berhasil disubmit!</strong><br>
+                Nama: ${nama}<br>
+                Email: ${email}<br>
+                Waktu: ${new Date().toLocaleString('id-ID')}
+            `;
+            
+            // Reset form
+            event.target.reset();
+        }
+
+        function animateBox() {
+            const box = document.getElementById('animBox');
+            box.classList.toggle('animated');
+            setTimeout(() => {
+                box.classList.toggle('animated');
+            }, 1000);
+        }
+
+        // Tampilkan informasi browser saat halaman dimuat
+        window.onload = function() {
+            const browserInfo = document.getElementById('browserInfo');
+            browserInfo.innerHTML = `
+                <strong>Informasi Browser:</strong><br>
+                User Agent: ${navigator.userAgent}<br>
+                Platform: ${navigator.platform}<br>
+                Bahasa: ${navigator.language}<br>
+                Screen Resolution: ${screen.width} × ${screen.height}<br>
+                Viewport: ${window.innerWidth} × ${window.innerHeight}
+            `;
+        };
+    </script>
+</body>
+</html>
