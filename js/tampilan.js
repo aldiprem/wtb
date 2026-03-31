@@ -408,9 +408,35 @@
                     elements.websiteBadge.textContent = '/' + data.website.endpoint;
                 }
                 
-                // Update create template button href
+                // ==================== AMBIL USER ID DARI TELEGRAM ====================
+                let userId = 0;
+                
+                // Cek dari Telegram WebApp
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const initData = window.Telegram.WebApp.initDataUnsafe;
+                    if (initData && initData.user && initData.user.id) {
+                        userId = initData.user.id;
+                        console.log('👤 User ID dari Telegram:', userId);
+                    }
+                }
+                
+                // Fallback: dari URL parameter
+                if (userId === 0) {
+                    const urlUserId = urlParams.get('user_id');
+                    if (urlUserId) {
+                        userId = parseInt(urlUserId);
+                        console.log('👤 User ID dari URL parameter:', userId);
+                    }
+                }
+                
+                // Update create template button href dengan user_id
                 if (elements.createFontTemplateBtn) {
-                    elements.createFontTemplateBtn.href = `/html/tampilan/font.html?website=${endpoint}`;
+                    let fontUrl = `/html/tampilan/font.html?website=${endpoint}`;
+                    if (userId > 0) {
+                        fontUrl += `&user_id=${userId}`;
+                    }
+                    elements.createFontTemplateBtn.href = fontUrl;
+                    console.log('🔗 Font Studio URL:', fontUrl);
                 }
                 
                 return data.website;
