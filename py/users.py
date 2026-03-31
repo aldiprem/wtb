@@ -110,9 +110,6 @@ def init_db():
 def get_or_create_user(user_data):
     """
     Mendapatkan user yang sudah ada atau membuat baru
-    Args:
-        user_data: dict dengan keys: user_id, username, first_name, last_name, photo_url, dll
-    Returns: dict data user atau None jika gagal
     """
     conn = None
     try:
@@ -156,9 +153,9 @@ def get_or_create_user(user_data):
             log_user_activity(conn, user_id, None, 'login', 'User logged in')
             
         else:
-            # Insert user baru
+            # Insert user baru dengan handling duplicate
             cursor.execute('''
-                INSERT INTO users (
+                INSERT IGNORE INTO users (
                     id, username, first_name, last_name, photo_url, 
                     language_code, is_bot, is_premium
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -177,8 +174,16 @@ def get_or_create_user(user_data):
             cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
             user = cursor.fetchone()
             
+            if not user:
+                # Jika masih gagal, coba SELECT lagi
+                cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+                user = cursor.fetchone()
+            
             # Log activity
-            log_user_activity(conn, user_id, None, 'register', 'New user registered')
+            if user:
+                log_user_activity(conn, user_id, None, 'register', 'New user registered')
+            else:
+                print(f"⚠️ User {user_id} created but cannot be retrieved")
         
         conn.commit()
         return user
@@ -322,6 +327,16 @@ def get_user_preferences(user_id, website_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
+        # CEK DULU APAKAH USER ADA DI TABEL USERS
+        cursor.execute('SELECT id FROM users WHERE id = %s', (user_id,))
+        user_exists = cursor.fetchone()
+        
+        if not user_exists:
+            print(f"⚠️ User {user_id} tidak ditemukan di tabel users")
+            # Buat user dulu sebelum membuat preferences
+            from py import users
+            users.get_or_create_user({'user_id': user_id})
+        
         cursor.execute('''
             SELECT * FROM user_preferences
             WHERE user_id = %s AND website_id = %s
@@ -337,11 +352,12 @@ def get_user_preferences(user_id, website_id):
                 data['settings'] = {}
             return data
         else:
-            # Buat default preferences
             return create_user_preferences(user_id, website_id)
         
     except Exception as e:
         print(f"❌ Error getting user preferences: {e}")
+        import traceback
+        traceback.print_exc()
         return None
     finally:
         if conn:
@@ -356,9 +372,29 @@ def create_user_preferences(user_id, website_id):
         conn = get_db_connection()
         cursor = conn.cursor()
         
+        # PASTIKAN USER SUDAH ADA DI TABEL USERS
+        cursor.execute('SELECT id FROM users WHERE id = %s', (user_id,))
+        user_exists = cursor.fetchone()
+        
+        if not user_exists:
+            print(f"⚠️ User {user_id} tidak ditemukan, membuat user baru...")
+            # Buat user dummy terlebih dahulu
+            cursor.execute('''
+                INSERT INTO users (id, username, first_name, last_name)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE id = id
+            ''', (user_id, f'user_{user_id}', 'User', str(user_id)))
+            conn.commit()
+            print(f"✅ User {user_id} berhasil dibuat")
+        
+        # Sekarang buat preferences
         cursor.execute('''
             INSERT INTO user_preferences (user_id, website_id, balance, settings)
             VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                balance = VALUES(balance),
+                settings = VALUES(settings),
+                updated_at = CURRENT_TIMESTAMP
         ''', (user_id, website_id, 0, json.dumps({})))
         
         conn.commit()
@@ -386,15 +422,25 @@ def create_user_preferences(user_id, website_id):
 def update_user_balance(user_id, website_id, amount, operation='add', transaction_type=None):
     """
     Update balance user
-    Args:
-        operation: 'add' untuk menambah, 'subtract' untuk mengurangi
-        transaction_type: 'deposit', 'withdraw', atau None
-    Returns: balance baru atau None jika gagal
     """
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+        
+        # PASTIKAN USER SUDAH ADA DI TABEL USERS
+        cursor.execute('SELECT id FROM users WHERE id = %s', (user_id,))
+        user_exists = cursor.fetchone()
+        
+        if not user_exists:
+            print(f"⚠️ User {user_id} tidak ditemukan, membuat user baru...")
+            cursor.execute('''
+                INSERT INTO users (id, username, first_name, last_name)
+                VALUES (%s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE id = id
+            ''', (user_id, f'user_{user_id}', 'User', str(user_id)))
+            conn.commit()
+            print(f"✅ User {user_id} berhasil dibuat")
         
         # Cek apakah preferensi sudah ada
         cursor.execute('''
@@ -409,7 +455,6 @@ def update_user_balance(user_id, website_id, amount, operation='add', transactio
             
             if operation == 'add':
                 new_balance = current_balance + amount
-                # Update balance dan total_deposit
                 cursor.execute('''
                     UPDATE user_preferences SET
                         balance = %s,
@@ -458,17 +503,6 @@ def update_user_balance(user_id, website_id, amount, operation='add', transactio
         log_user_activity(conn, user_id, website_id, 'balance_update', 
                          action_desc, 
                          {'new_balance': new_balance, 'operation': operation})
-        
-        # Verifikasi balance tersimpan
-        cursor.execute('''
-            SELECT balance FROM user_preferences
-            WHERE user_id = %s AND website_id = %s
-        ''', (user_id, website_id))
-        verified = cursor.fetchone()
-        if verified and verified['balance'] == new_balance:
-            print(f"✅ Balance verified in database: {verified['balance']}")
-        else:
-            print(f"⚠️ Balance verification failed: expected {new_balance}, got {verified['balance'] if verified else 'None'}")
         
         return new_balance
         
