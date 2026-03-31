@@ -349,12 +349,26 @@ def save_layanan(website_id, data):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
+        # CEK APAKAH WEBSITE_ID VALID
+        cursor.execute("SELECT id FROM websites WHERE id = %s", (website_id,))
+        website_exists = cursor.fetchone()
+        
+        if not website_exists:
+            print(f"❌ Website ID {website_id} tidak ditemukan di tabel websites")
+            # Buat website dummy jika diperlukan
+            cursor.execute('''
+                INSERT IGNORE INTO websites (id, endpoint, bot_token, owner_id, status)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (website_id, f'website_{website_id}', 'auto_created', 0, 'active'))
+            conn.commit()
+            print(f"✅ Auto-created website with id={website_id}")
+        
         # Validasi data
         if not data.get('layanan_nama'):
             conn.close()
             return False
         
-        # Cek apakah layanan sudah ada
+        # Lanjutkan dengan insert layanan...
         cursor.execute('''
             SELECT id FROM products 
             WHERE website_id = %s AND layanan_nama = %s AND (aplikasi_nama IS NULL OR aplikasi_nama = '')
@@ -362,7 +376,7 @@ def save_layanan(website_id, data):
         existing = cursor.fetchone()
         
         if existing:
-            # Update layanan yang sudah ada
+            # Update existing
             cursor.execute('''
                 UPDATE products SET
                     layanan_gambar = %s,
@@ -380,7 +394,7 @@ def save_layanan(website_id, data):
                 data['layanan_nama']
             ))
         else:
-            # Insert layanan baru
+            # Insert new
             cursor.execute('''
                 INSERT INTO products (
                     website_id, 
