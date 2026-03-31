@@ -88,22 +88,23 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
                   preview_subtext='dengan Layanan Terbaik 24/7',
                   website_id=None, user_id=None, is_public=False):
     """
-    Menyimpan template baru
+    Menyimpan template baru ke database MySQL
     Returns: template_code jika sukses, None jika gagal
     """
     conn = None
     try:
-        # Validasi data
+        # 1. Validasi data input
         if not template_name or not font_family:
             print("❌ Validasi gagal: template_name atau font_family kosong")
             return None
         
-        # Generate kode unik
+        # 2. Generate kode unik untuk template
         template_code = generate_template_code()
         print(f"📝 Generated template code: {template_code}")
         
         conn = get_db_connection()
-        cursor = conn.cursor()
+        # PERBAIKAN: Tambahkan dictionary=True agar hasil fetch berupa dict
+        cursor = conn.cursor(dictionary=True) 
         
         # Log data yang akan disimpan
         print(f"📦 Menyimpan template: {template_name}")
@@ -112,6 +113,7 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
         print(f"  - Font size: {font_size}")
         print(f"  - Animation: {animation_type}")
         
+        # 3. Eksekusi query INSERT
         cursor.execute('''
             INSERT INTO font_templates (
                 template_code, template_name, website_id, user_id,
@@ -141,15 +143,21 @@ def save_template(template_name, font_family, font_file_data=None, font_file_nam
             1 if is_public else 0
         ))
         
+        # 4. Commit transaksi
         conn.commit()
         
-        # Verifikasi data tersimpan
+        # 5. Verifikasi data tersimpan
         cursor.execute("SELECT COUNT(*) as count FROM font_templates WHERE template_code = %s", (template_code,))
         count = cursor.fetchone()
-        print(f"✅ Verifikasi: {count['count']} record tersimpan dengan code {template_code}")
         
-        print(f"✅ Template saved with code: {template_code}")
-        return template_code
+        # Sekarang baris ini aman dari error "tuple indices must be integers"
+        if count and count['count'] > 0:
+            print(f"✅ Verifikasi: {count['count']} record tersimpan dengan code {template_code}")
+            print(f"✅ Template saved with code: {template_code}")
+            return template_code
+        else:
+            print(f"⚠️ Verifikasi gagal: Data tidak ditemukan setelah disimpan.")
+            return None
         
     except Exception as e:
         print(f"❌ Error saving template: {e}")
