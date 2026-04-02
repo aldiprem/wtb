@@ -1455,11 +1455,8 @@
                             </div>
                             
                             <div class="banner-position-controls">
-                                <div class="banner-position-indicator" id="pos-indicator-${index}">
-                                    X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
-                                </div>
                                 <div class="banner-position-hint">
-                                    <i class="fas fa-hand-pointer"></i> Tekan & tahan gambar untuk menggeser posisi
+                                    <i class="fas fa-hand-pointer"></i> Diatas adalah foto preview banner yang akan ditampilkan di website. Klik Add Banned untuk menambahkan banner jika ingin lebih dari 1 dan Simpan Banner setelah perubahan.
                                 </div>
                             </div>
                         </div>
