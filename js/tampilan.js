@@ -18,6 +18,7 @@
     
     // Banner state
     let banners = [];
+    let pendingBannerUpload = null;
     let hasUnsavedBanners = false;
     let urlChangeTimeout = null;
     
@@ -914,6 +915,249 @@
         urlChangeTimeout = setTimeout(() => {
             processBannerUrl(index, url.trim());
         }, 800);
+    }
+
+    // ==================== BANNER UPLOAD FUNCTIONS ====================
+
+    function setupBannerUpload() {
+        const uploadArea = document.getElementById('bannerUploadArea');
+        const fileInput = document.getElementById('bannerFileInput');
+        const uploadPreview = document.getElementById('bannerUploadPreview');
+        const uploadInner = document.querySelector('.banner-upload-inner');
+        const previewImg = document.getElementById('bannerPreviewImg');
+        const cancelBtn = document.getElementById('cancelBannerUploadBtn');
+        const confirmBtn = document.getElementById('confirmBannerUploadBtn');
+
+        if (!uploadArea) return;
+
+        // Klik area untuk upload
+        uploadArea.addEventListener('click', (e) => {
+            // Jangan trigger jika klik di dalam preview
+            if (e.target.closest('.banner-upload-preview')) return;
+            fileInput.click();
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleBannerFileSelect(file);
+            }
+        });
+
+        // Drag & drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('drag-over');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('drag-over');
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleBannerFileSelect(file);
+            } else {
+                showToast('File harus berupa gambar', 'error');
+            }
+        });
+
+        // Cancel button
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                resetBannerUpload();
+            });
+        }
+
+        // Confirm button
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                if (pendingBannerUpload) {
+                    addBannerFromUpload(pendingBannerUpload);
+                }
+            });
+        }
+    }
+
+    function handleBannerFileSelect(file) {
+        // Validasi tipe file
+        if (!file.type.startsWith('image/')) {
+            showToast('File harus berupa gambar', 'error');
+            return;
+        }
+
+        // Validasi ukuran (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Ukuran file maksimal 5MB', 'error');
+            return;
+        }
+
+        const uploadArea = document.getElementById('bannerUploadArea');
+        const uploadInner = document.querySelector('.banner-upload-inner');
+        const uploadPreview = document.getElementById('bannerUploadPreview');
+        const previewImg = document.getElementById('bannerPreviewImg');
+        const confirmBtn = document.getElementById('confirmBannerUploadBtn');
+
+        // Tampilkan preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (previewImg) {
+                previewImg.src = e.target.result;
+            }
+            if (uploadInner) uploadInner.style.display = 'none';
+            if (uploadPreview) uploadPreview.style.display = 'block';
+            
+            // Disable confirm button dulu, nanti di-enable setelah validasi ukuran
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="banner-upload-loading"></span> Memvalidasi ukuran...';
+            }
+            
+            // Validasi ukuran gambar
+            validateUploadedImageSize(e.target.result, file);
+        };
+        reader.readAsDataURL(file);
+        
+        pendingBannerUpload = file;
+    }
+
+    function validateUploadedImageSize(imageUrl, file) {
+        const img = new Image();
+        const confirmBtn = document.getElementById('confirmBannerUploadBtn');
+        
+        img.onload = () => {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            
+            console.log(`📏 Uploaded image dimensions: ${width}x${height}`);
+            
+            if (width === 1280 && height === 760) {
+                // Valid
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> Tambahkan Banner';
+                }
+                showToast('Ukuran gambar valid: 1280x760 ✓', 'success');
+            } else {
+                // Invalid
+                if (confirmBtn) {
+                    confirmBtn.disabled = true;
+                    confirmBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ukuran Harus 1280x760';
+                }
+                showToast(`Ukuran gambar harus 1280x760 pixel (saat ini ${width}x${height})`, 'error');
+            }
+        };
+        
+        img.onerror = () => {
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Gambar tidak valid';
+            }
+            showToast('Gagal memuat gambar untuk validasi', 'error');
+        };
+        
+        img.src = imageUrl;
+    }
+
+    function resetBannerUpload() {
+        const uploadArea = document.getElementById('bannerUploadArea');
+        const uploadInner = document.querySelector('.banner-upload-inner');
+        const uploadPreview = document.getElementById('bannerUploadPreview');
+        const fileInput = document.getElementById('bannerFileInput');
+        
+        if (uploadInner) uploadInner.style.display = 'block';
+        if (uploadPreview) uploadPreview.style.display = 'none';
+        if (fileInput) fileInput.value = '';
+        
+        pendingBannerUpload = null;
+        
+        if (uploadArea) {
+            uploadArea.classList.remove('drag-over');
+        }
+    }
+
+    async function addBannerFromUpload(file) {
+        if (!currentWebsite) {
+            showToast('Website tidak ditemukan', 'error');
+            return;
+        }
+        
+        const confirmBtn = document.getElementById('confirmBannerUploadBtn');
+        
+        // Show loading
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span class="banner-upload-loading"></span> Mengupload...';
+        }
+        
+        try {
+            // Upload image ke server
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('website_endpoint', currentWebsite.endpoint);
+            
+            const uploadResponse = await fetch(`${API_BASE_URL}/api/images/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const uploadData = await uploadResponse.json();
+            
+            if (!uploadData.success) {
+                throw new Error(uploadData.error || 'Upload gagal');
+            }
+            
+            // Tambahkan banner ke list
+            const bannerHash = uploadData.hash;
+            const bannerUrl = uploadData.url;
+            
+            // Cek apakah ada banner kosong
+            const hasEmptyBanner = banners.some(b => !b.url);
+            
+            if (hasEmptyBanner) {
+                // Isi banner kosong pertama
+                const emptyIndex = banners.findIndex(b => !b.url);
+                banners[emptyIndex] = {
+                    hash: bannerHash,
+                    url: bannerUrl,
+                    positionX: 50,
+                    positionY: 50
+                };
+            } else {
+                // Tambah banner baru
+                banners.push({
+                    hash: bannerHash,
+                    url: bannerUrl,
+                    positionX: 50,
+                    positionY: 50
+                });
+            }
+            
+            hasUnsavedBanners = true;
+            renderBannerTrack();
+            
+            // Reset upload area
+            resetBannerUpload();
+            
+            showToast('✅ Banner berhasil ditambahkan!', 'success');
+            vibrate(10);
+            
+        } catch (error) {
+            console.error('❌ Error uploading banner:', error);
+            showToast(error.message || 'Gagal mengupload banner', 'error');
+            
+            // Reset confirm button
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Tambahkan Banner';
+            }
+        }
     }
 
     function setupBannerLongPress(index) {
@@ -2654,6 +2898,9 @@
             // 3. Setup event listeners after data is loaded
             setupEventListeners();
             
+            // 4. Setup banner upload (TAMBAHKAN INI)
+            setupBannerUpload();
+
             console.log('✅ Initialization completed successfully');
             
         } catch (error) {

@@ -1075,6 +1075,149 @@ input:checked + .toggle-slider:before {
     text-align: center;
 }
 
+/* ===== BANNER UPLOAD AREA ===== */
+.banner-upload-area {
+    margin-bottom: 20px;
+    border: 2px dashed var(--border-color);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.banner-upload-area.drag-over {
+    border-color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.1);
+    transform: scale(1.01);
+}
+
+.banner-upload-inner {
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.banner-upload-inner i {
+    font-size: 48px;
+    color: var(--primary-color);
+    margin-bottom: 12px;
+    opacity: 0.7;
+}
+
+.banner-upload-inner p {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.banner-upload-inner small {
+    font-size: 11px;
+    color: var(--tg-hint-color);
+}
+
+.banner-upload-preview {
+    padding: 20px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.banner-upload-preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 16px;
+}
+
+.banner-upload-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.btn-upload-cancel {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-upload-cancel:hover {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+}
+
+.btn-upload-confirm {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border: none;
+    border-radius: 30px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-upload-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
+}
+
+.btn-upload-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.banner-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 20px 0;
+    color: var(--tg-hint-color);
+    font-size: 12px;
+}
+
+.banner-divider::before,
+.banner-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.banner-divider span {
+    margin: 0 12px;
+}
+
+/* Loading indicator untuk upload banner */
+.banner-upload-loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* ===== BANNER BUTTON CONTAINER ===== */
 .banner-button-container {
     display: flex;
