@@ -211,17 +211,18 @@
         return { hash: data.hash, url: data.url };
     }
 
-    /**
-     * Konversi hash ke URL gambar
-     */
-    function hashToUrl(hash, endpoint) {
-        if (!hash || hash.length !== 35 || !endpoint) return hash;
-        return `https://imgg.companel.shop/ii?${endpoint}=${hash}`;
+    function hashToImageUrl(hash) {
+        if (!hash) return '';
+        if (hash.startsWith('http://') || hash.startsWith('https://') || hash.startsWith('data:')) {
+            return hash;
+        }
+        if (hash.length === 35 && /^[a-f0-9]{35}$/i.test(hash)) {
+            const endpoint = currentWebsite?.endpoint || 'companel';
+            return `https://imgg.companel.shop/ii?${endpoint}=${hash}`;
+        }
+        return hash;
     }
 
-    /**
-     * Ekstrak hash dari URL
-     */
     function extractHashFromUrl(url) {
         if (!url) return null;
         const match = url.match(/[?&][^=]+=([a-f0-9]{35})/i);
@@ -229,6 +230,7 @@
         if (url.length === 35 && /^[a-f0-9]{35}$/i.test(url)) return url;
         return null;
     }
+
 
     // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
@@ -558,11 +560,21 @@
         // LOGO: konversi hash ke URL
         if (tampilanData.logo) {
             let logoValue = tampilanData.logo;
+            let displayLogoUrl = '';
+            
             if (logoValue && logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
-                logoValue = hashToUrl(logoValue, endpoint);
+                displayLogoUrl = hashToImageUrl(logoValue);
+            } else {
+                displayLogoUrl = logoValue;
             }
-            if (elements.logoImage) elements.logoImage.src = logoValue;
-            if (elements.logoUrl) elements.logoUrl.value = logoValue;
+            
+            if (elements.logoImage) elements.logoImage.src = displayLogoUrl;
+            if (elements.logoUrl) elements.logoUrl.value = displayLogoUrl;
+            
+            // TAMPILKAN LINK YANG TERSIMPAN
+            displaySavedLink(logoValue);
+        } else {
+            displaySavedLink(null);
         }
         
         // Store display name
@@ -2226,6 +2238,41 @@
         }
     }
 
+    function displaySavedLink(logoValue) {
+        const linkContainer = document.getElementById('savedLinkContainer');
+        const linkDisplay = document.getElementById('displaySavedLink');
+        const copyBtn = document.getElementById('copySavedLinkBtn');
+        
+        if (!linkContainer || !linkDisplay) return;
+        
+        let displayUrl = '';
+        
+        if (logoValue) {
+            if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
+                displayUrl = hashToImageUrl(logoValue);
+            } else if (logoValue.startsWith('http')) {
+                displayUrl = logoValue;
+            }
+        }
+        
+        if (displayUrl) {
+            linkDisplay.textContent = displayUrl;
+            linkContainer.style.display = 'block';
+            
+            if (copyBtn) {
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(displayUrl).then(() => {
+                        showToast('Link gambar berhasil disalin!', 'success');
+                    }).catch(() => {
+                        showToast('Gagal menyalin link', 'error');
+                    });
+                };
+            }
+        } else {
+            linkContainer.style.display = 'none';
+        }
+    }
+
     function disableTemplateActions(disabled = true) {
         if (elements.applyTemplateBtn) {
             elements.applyTemplateBtn.disabled = disabled;
@@ -2687,54 +2734,58 @@ function setupEventListeners() {
             }
         });
         
-        // Logo upload - PERBAIKAN OTOMATIS LINK DNS
+        // Logo upload - PERBAIKAN
         if (elements.uploadLogoBtn) {
             elements.uploadLogoBtn.addEventListener('click', () => {
-                openUploadModal(async (hash, url) => {
-                    if (!hash) {
-                        showToast('Upload gagal', 'error');
-                        return;
-                    }
-                    
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ logo_hash: hash })
-                        });
+                const fileInput = document.getElementById('logoInput');
+                if (fileInput) {
+                    fileInput.click();
+                    fileInput.onchange = async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
                         
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            // 1. Update Foto Preview
-                            if (elements.logoImage) {
-                                elements.logoImage.src = url;
-                                
-                                // 2. Buat/Update Link URL DNS di bawah foto
-                                let linkEl = document.getElementById('dns-logo-link');
-                                if (!linkEl) {
-                                    linkEl = document.createElement('div');
-                                    linkEl.id = 'dns-logo-link';
-                                    linkEl.style.marginTop = '10px';
-                                    linkEl.style.wordBreak = 'break-all';
-                                    // Masukkan tepat setelah elemen foto logo
-                                    elements.logoImage.parentNode.insertBefore(linkEl, elements.logoImage.nextSibling);
-                                }
-                                linkEl.innerHTML = `<a href="${url}" target="_blank" style="color: #40a7e3; font-size: 12px; text-decoration: underline;">Link DNS: ${url}</a>`;
-                            }
-                            
-                            if (elements.logoUrl) elements.logoUrl.value = url;
-
-                            showToast('✅ Logo berhasil diupload!', 'success');
-                            await loadTampilanData();
-                        } else {
-                            showToast(data.error || 'Gagal menyimpan', 'error');
+                        // Validasi PNG
+                        if (!file.type.includes('png')) {
+                            showToast('Logo harus berformat PNG', 'error');
+                            return;
                         }
-                    } catch (error) {
-                        console.error('Error saving logo:', error);
-                        showToast('Gagal menghubungi server', 'error');
-                    }
-                }, 'logo');
+                        
+                        showLoading(true);
+                        
+                        try {
+                            const result = await uploadImageToServer(file);
+                            if (result.hash) {
+                                // Simpan HASH ke server
+                                const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ logo_hash: result.hash })
+                                });
+                                
+                                const data = await response.json();
+                                
+                                if (data.success) {
+                                    // Update preview
+                                    if (elements.logoImage) elements.logoImage.src = result.url;
+                                    if (elements.logoUrl) elements.logoUrl.value = result.url;
+                                    
+                                    // TAMPILKAN LINK YANG TERSIMPAN
+                                    displaySavedLink(result.hash);
+                                    
+                                    showToast('✅ Logo berhasil diupload!', 'success');
+                                    await loadTampilanData();
+                                } else {
+                                    showToast(data.error || 'Gagal menyimpan', 'error');
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Upload error:', error);
+                            showToast(error.message || 'Gagal mengunggah gambar', 'error');
+                        } finally {
+                            showLoading(false);
+                        }
+                    };
+                }
             });
         }
         
