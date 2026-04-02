@@ -275,14 +275,8 @@ def test_bot(website_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
         
-# website_service.py - Perbaiki endpoint initial-data
-
 @website_bp.route('/website/<int:website_id>/initial-data', methods=['GET', 'OPTIONS'])
 def get_initial_website_data(website_id):
-    """
-    Endpoint khusus untuk initial load website
-    Menggabungkan semua data yang dibutuhkan dalam satu request
-    """
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
@@ -295,57 +289,27 @@ def get_initial_website_data(website_id):
         user_id = request.args.get('user_id', type=int)
         print(f"📥 Initial data request for website {website_id}, user {user_id}")
         
-        # Parallel query di backend
-        import concurrent.futures
+        # Ambil data tampilan TERLEBIH DAHULU (untuk logo)
+        tampilan_data = tmp.get_tampilan(website_id)
         
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            # Submit semua task
-            future_products = executor.submit(prd.get_all_data, website_id)
-            future_promos = executor.submit(tmp.get_promos, website_id)
-            future_rekening = executor.submit(pmb.get_all_rekening, website_id)
-            future_templates = executor.submit(tmp.get_website_templates, website_id)
-            
-            future_vouchers = None
-            future_activities = None
-            future_transactions = None
-            future_user_preferences = None
-            future_balance = None
-            
-            if user_id:
-                future_vouchers = executor.submit(vcr.get_user_claims, user_id, website_id, 50)
-                future_activities = executor.submit(vcr.get_activities, website_id, None, 50, 0)
-                future_transactions = executor.submit(trx.get_user_transactions, user_id, website_id, 'all', 100)
-                future_user_preferences = executor.submit(users.get_user_preferences, user_id, website_id)
-                future_balance = executor.submit(users.get_user_balance, user_id, website_id)
-            
-            # Ambil hasil
-            products_data = future_products.result()
-            promos_data = future_promos.result()
-            rekening_data = future_rekening.result()
-            templates_data = future_templates.result()
-            
-            user_vouchers = future_vouchers.result() if future_vouchers else []
-            activities_data = future_activities.result() if future_activities else []
-            transactions_data = future_transactions.result() if future_transactions else []
-            user_preferences = future_user_preferences.result() if future_user_preferences else {}
-            
-            # PRIORITAS: Ambil balance dari database langsung
-            balance = 0
-            if future_balance:
-                balance = future_balance.result()
-                print(f"💰 Balance from database: {balance}")
-            elif user_preferences and 'balance' in user_preferences:
-                balance = user_preferences['balance']
-                print(f"💰 Balance from preferences: {balance}")
-            else:
-                # Hitung dari transactions sebagai fallback
-                for t in transactions_data:
-                    if t.get('transaction_type') == 'deposit' and t.get('status') == 'success':
-                        balance += t.get('amount', 0)
-                    elif t.get('transaction_type') == 'withdraw' and t.get('status') == 'success':
-                        balance -= t.get('amount', 0)
-                print(f"💰 Balance calculated from transactions: {balance}")
+        # Ambil data lainnya
+        products_data = prd.get_all_data(website_id)
+        promos_data = tmp.get_promos(website_id)
+        rekening_data = pmb.get_all_rekening(website_id)
+        templates_data = tmp.get_website_templates(website_id)
         
+        user_vouchers = []
+        activities_data = []
+        transactions_data = []
+        balance = 0
+        
+        if user_id:
+            user_vouchers = vcr.get_user_claims(user_id, website_id, 50)
+            activities_data = vcr.get_activities(website_id, None, 50, 0)
+            transactions_data = trx.get_user_transactions(user_id, website_id, 'all', 100)
+            balance = users.get_user_balance(user_id, website_id)
+        
+        # Gabungkan tampilan data ke dalam response
         return jsonify({
             'success': True,
             'data': {
@@ -357,7 +321,7 @@ def get_initial_website_data(website_id):
                 'activities': activities_data,
                 'transactions': transactions_data,
                 'balance': balance,
-                'user_preferences': user_preferences
+                'tampilan': tampilan_data  # <-- INI PENTING UNTUK LOGO
             }
         })
         

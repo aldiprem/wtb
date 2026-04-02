@@ -531,10 +531,44 @@
                 `${API_BASE_URL}/api/website/${currentWebsite.id}/initial-data?user_id=${currentUser?.id || 0}`,
                 { method: 'GET' }
             );
-    
+
             if (response.success && response.data) {
                 const d = response.data;
                 
+                // ==================== AMBIL DATA TAMPILAN (TERMASUK LOGO) ====================
+                if (d.tampilan) {
+                    tampilanData = d.tampilan;
+                    console.log('✅ Tampilan data loaded:', tampilanData);
+                    
+                    // Update logo segera setelah data tersedia
+                    if (tampilanData.logo && elements.storeLogo) {
+                        const logoUrl = hashToImageUrl(tampilanData.logo);
+                        elements.storeLogo.src = logoUrl;
+                        console.log('🖼️ Logo URL:', logoUrl);
+                    }
+                    
+                    // Update store name
+                    if (tampilanData.store_display_name && elements.storeName) {
+                        elements.storeName.textContent = tampilanData.store_display_name;
+                    }
+                    
+                    // Apply font styles jika ada
+                    if (tampilanData.store_font_family && elements.storeName) {
+                        elements.storeName.style.fontFamily = `'${tampilanData.store_font_family}', sans-serif`;
+                    }
+                    if (tampilanData.store_font_size && elements.storeName) {
+                        elements.storeName.style.fontSize = `${tampilanData.store_font_size}px`;
+                    }
+                    
+                    // Update loading state
+                    updateLoadingState('tampilan', 'loaded');
+                } else {
+                    // Fallback: load dari endpoint terpisah jika data tampilan tidak ada di response
+                    console.log('ℹ️ No tampilan data in initial-data, loading separately...');
+                    await loadTampilan();
+                }
+                
+                // ==================== PRODUK ====================
                 if (d.products) {
                     productsData = d.products;
                     extractLayananList();
@@ -542,27 +576,32 @@
                     updateLoadingState('products', 'loaded');
                 }
                 
+                // ==================== PROMOS ====================
                 if (d.promos) {
                     promosList = d.promos;
                     updateLoadingState('promos', 'loaded');
                 }
                 
+                // ==================== REKENING ====================
                 if (d.rekening) {
                     allRekeningList = d.rekening;
                     rekeningList = allRekeningList.slice(0, 4);
                     updateLoadingState('rekening', 'loaded');
                 }
                 
+                // ==================== VOUCHER ====================
                 if (d.user_vouchers) {
                     userVouchers = d.user_vouchers;
                     updateLoadingState('vouchers', 'loaded');
                 }
                 
+                // ==================== AKTIVITAS ====================
                 if (d.activities) {
                     aktivitasList = d.activities;
                     updateLoadingState('activities', 'loaded');
                 }
                 
+                // ==================== TRANSAKSI ====================
                 if (d.transactions) {
                     transactions = d.transactions || [];
                     
@@ -582,6 +621,7 @@
                     console.log(`💰 Initial balance loaded: ${balance}`);
                 }
                 
+                // ==================== TEMPLATE FONT ====================
                 if (d.templates) {
                     for (const template of d.templates) {
                         const templateData = template.template_data || {};
@@ -591,10 +631,15 @@
                     }
                 }
                 
-                console.log('✅ Data loaded successfully');
+                console.log('✅ All data loaded successfully');
                 
                 updateAllBalanceDisplays();
                 startAutoRefresh();
+                
+                // Render ulang banner jika ada
+                if (tampilanData.banners) {
+                    renderBanners();
+                }
                 
             } else {
                 console.warn('⚠️ Failed to load initial data');
@@ -603,6 +648,7 @@
                 updateLoadingState('rekening', 'error');
                 updateLoadingState('transactions', 'error');
                 updateLoadingState('balance', 'error');
+                updateLoadingState('tampilan', 'error');
             }
         } catch (error) {
             console.error('❌ Error loading data:', error);
@@ -612,6 +658,7 @@
             updateLoadingState('rekening', 'error');
             updateLoadingState('transactions', 'error');
             updateLoadingState('balance', 'error');
+            updateLoadingState('tampilan', 'error');
         }
     }
 
