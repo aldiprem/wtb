@@ -80,9 +80,11 @@ def upload_image():
         print(f"❌ Upload error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@image_bp.route('/ii', methods=['GET'])
 def serve_image():
-    """Serve gambar berdasarkan parameter"""
+    """Fungsi untuk serving gambar (bisa dipanggil dari route manapun)"""
+    from flask import request, send_file, abort
+    import os
+    
     query_params = request.args
     
     if not query_params:
@@ -97,7 +99,9 @@ def serve_image():
     if not image_hash:
         abort(404)
     
-    # Cari file
+    IMAGE_DIR = '/var/www/images'
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    
     for ext in ALLOWED_EXTENSIONS:
         filepath = os.path.join(IMAGE_DIR, f"{image_hash}.{ext}")
         if os.path.exists(filepath):

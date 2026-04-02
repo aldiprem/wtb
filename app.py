@@ -337,6 +337,17 @@ def debug_routes():
             })
     return jsonify({'routes': routes})
 
+# ==================== ROUTE UNTUK IMAGE SERVICE (LANGSUNG) ====================
+@app.route('/ii', methods=['GET'])
+def serve_image_direct():
+    """Route untuk mengakses gambar dengan format /ii?premy=hash"""
+    try:
+        from services.image_service import serve_image
+        return serve_image()
+    except Exception as e:
+        print(f"❌ Error serving image: {e}")
+        return "Image service error", 500
+
 # ==================== STATIC ROUTES (SERVING HTML) ====================
 
 @app.route('/')
