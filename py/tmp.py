@@ -28,7 +28,7 @@ def get_website_endpoint_from_db(website_id):
 def convert_hash_to_url(image_hash, endpoint):
     """
     Konversi hash gambar (35 karakter) ke URL lengkap
-    Format: https://imgg.companel.shop/ii?{endpoint}={hash}
+    Format: https://companel.shop/ii?{endpoint}={hash}
     """
     if not image_hash or len(image_hash) != 35 or not endpoint:
         return image_hash

@@ -3,7 +3,7 @@ import mysql.connector
 from mysql.connector import pooling
 import os
 
-IMAGE_BASE_URL = "https://imgg.companel.shop/ii?"
+IMAGE_BASE_URL = "https://companel.shop/ii?"
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 

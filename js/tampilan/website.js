@@ -190,7 +190,7 @@
         // Jika hash 35 karakter
         if (hash.length === 35 && /^[a-f0-9]{35}$/i.test(hash)) {
             const endpoint = currentWebsite?.endpoint || 'companel';
-            return `https://imgg.companel.shop/ii?${endpoint}=${hash}`;
+            return `https://companel.shop/ii?${endpoint}=${hash}`;
         }
         return hash;
     }

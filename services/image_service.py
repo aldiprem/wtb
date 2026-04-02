@@ -67,7 +67,7 @@ def upload_image():
         image_hash = save_image_file(file_data, ext)
         
         # Buat URL
-        image_url = f"https://imgg.companel.shop/ii?{website_endpoint}={image_hash}"
+        image_url = f"https://companel.shop/ii?{website_endpoint}={image_hash}"
         
         return jsonify({
             'success': True,
