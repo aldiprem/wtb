@@ -82,6 +82,7 @@
                     </div>
                     <div class="card-body">
                         <div class="logo-preview-container">
+                            <label>Logo Website (PNG Only)</label>
                             <div class="logo-preview" id="logoPreview">
                                 <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
                                 <div class="logo-overlay">
@@ -93,7 +94,21 @@
                             </div>
                         </div>
 
-                        <!-- ==================== BORDER LINK UNTUK MENAMPILKAN DNS ==================== -->
+                        <!-- FORM GROUP URL LOGO dengan tombol info di kanan -->
+                        <div class="form-group" style="margin-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <label for="logoUrl" style="margin-bottom: 0;">
+                                    <i class="fas fa-link"></i> URL Logo (PNG)
+                                </label>
+                                <button type="button" id="toggleSavedLinkBtn" class="btn-info-icon" title="Lihat link gambar tersimpan">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </div>
+                            <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
+                            <small>Gunakan upload atau masukkan link gambar berformat .png</small>
+                        </div>
+
+                        <!-- BORDER LINK (Hidden by default, muncul saat klik info) -->
                         <div id="savedLinkContainer" class="saved-link-container" style="display: none;">
                             <div class="link-label">
                                 <i class="fas fa-link"></i> LINK GAMBAR TERSIMPAN
@@ -108,19 +123,9 @@
                                 <i class="fas fa-info-circle"></i> Link ini akan otomatis muncul saat logo diupload atau dimuat
                             </small>
                         </div>
-                        <!-- ==================== END BORDER LINK ==================== -->
 
-                        <div class="form-group" style="margin-top: 15px;">
-                            <label for="logoUrl">
-                                <i class="fas fa-link"></i> URL Logo (PNG)
-                            </label>
-                            <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
-                            <small>Gunakan upload atau masukkan link gambar berformat .png</small>
-                        </div>
-
-                        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-
-                        <div class="form-group">
+                        <!-- Nama Store -->
+                        <div class="form-group" style="margin-top: 20px;">
                             <label for="storeDisplayName">
                                 <i class="fas fa-store"></i> Nama Store (Disamping Logo)
                             </label>
@@ -133,11 +138,10 @@
                             <small>Nama ini akan muncul di Header jika logo tidak tersedia atau mendampingi logo.</small>
                         </div>
 
-                        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
-
-                        <div class="form-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                        <!-- TOMBOL SIMPAN - GARIS DIHAPUS -->
+                        <div class="form-actions" style="margin-top: 30px; padding-top: 20px;">
                             <button class="btn-primary" id="saveLogoBtn" style="background: #40a7e3; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;">
-                                <i class="fas fa-save"></i> Simpan Perubahan
+                                <i class="fas fa-save"></i> Simpan Identitas Website
                             </button>
                         </div>
                     </div>

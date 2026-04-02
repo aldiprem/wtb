@@ -553,6 +553,30 @@ body {
     border-color: var(--primary-color);
 }
 
+/* Tombol Info Icon */
+.btn-info-icon {
+    background: transparent;
+    border: none;
+    color: var(--tg-hint-color);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-info-icon:hover {
+    color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.1);
+}
+
+.btn-info-icon i {
+    font-size: 14px;
+}
+
 /* ===== ICON BUTTON SQUARE ===== */
 .btn-icon-square {
     width: 44px;

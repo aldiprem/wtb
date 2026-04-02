@@ -2734,6 +2734,20 @@
                 document.getElementById(`inputBy${type === 'code' ? 'Code' : 'Search'}Panel`).classList.add('active');
             });
         });
+
+        // Toggle saved link container (info button)
+        const toggleSavedLinkBtn = document.getElementById('toggleSavedLinkBtn');
+        const savedLinkContainer = document.getElementById('savedLinkContainer');
+
+        if (toggleSavedLinkBtn && savedLinkContainer) {
+            toggleSavedLinkBtn.addEventListener('click', () => {
+                if (savedLinkContainer.style.display === 'none' || savedLinkContainer.style.display === '') {
+                    savedLinkContainer.style.display = 'block';
+                } else {
+                    savedLinkContainer.style.display = 'none';
+                }
+            });
+        }
         
         const colorPairs = [
             { picker: 'primaryColor', hex: 'primaryColorHex' },
