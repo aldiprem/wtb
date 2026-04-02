@@ -21,6 +21,7 @@ from services.tmp_service import tmp_bp
 from services.tmp_font_service import tmp_font_bp
 from services.trx_service import trx_bp
 from services.users_service import user_bp
+from services.image_service import image_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -319,6 +320,7 @@ app.register_blueprint(tmp_bp, url_prefix='/api')
 app.register_blueprint(tmp_font_bp, url_prefix='/api')
 app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
+app.register_blueprint(image_bp, url_prefix='/api/images')
 
 # ==================== ROUTE DEBUG ====================
 
