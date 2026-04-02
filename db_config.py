@@ -3,6 +3,10 @@ import mysql.connector
 from mysql.connector import pooling
 import os
 
+IMAGE_BASE_URL = "https://imgg.companel.shop/ii?"
+ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
 # Konfigurasi Database
 db_config = {
     "host": "localhost",
@@ -30,3 +34,4 @@ def get_db_connection():
         # Fallback: buat koneksi biasa jika pool gagal
         return mysql.connector.connect(**db_config)
     return connection_pool.get_connection()
+    

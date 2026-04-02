@@ -188,6 +188,48 @@
         confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
     };
 
+    async function uploadImageToServer(file) {
+        if (!currentWebsite || !currentWebsite.endpoint) {
+            throw new Error('Website endpoint required');
+        }
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('website_endpoint', currentWebsite.endpoint);
+        
+        const response = await fetch(`${API_BASE_URL}/api/images/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Upload failed');
+        }
+        
+        return { hash: data.hash, url: data.url };
+    }
+
+    /**
+     * Konversi hash ke URL gambar
+     */
+    function hashToUrl(hash, endpoint) {
+        if (!hash || hash.length !== 35 || !endpoint) return hash;
+        return `https://imgg.companel.shop/ii?${endpoint}=${hash}`;
+    }
+
+    /**
+     * Ekstrak hash dari URL
+     */
+    function extractHashFromUrl(url) {
+        if (!url) return null;
+        const match = url.match(/[?&][^=]+=([a-f0-9]{35})/i);
+        if (match) return match[1];
+        if (url.length === 35 && /^[a-f0-9]{35}$/i.test(url)) return url;
+        return null;
+    }
+
     // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
@@ -510,15 +552,20 @@
         }
     }
 
-    // Update UI
     function updateUI() {
-        // Update logo
+        const endpoint = currentWebsite?.endpoint;
+        
+        // LOGO: konversi hash ke URL
         if (tampilanData.logo) {
-            if (elements.logoImage) elements.logoImage.src = tampilanData.logo;
-            if (elements.logoUrl) elements.logoUrl.value = tampilanData.logo;
+            let logoValue = tampilanData.logo;
+            if (logoValue && logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
+                logoValue = hashToUrl(logoValue, endpoint);
+            }
+            if (elements.logoImage) elements.logoImage.src = logoValue;
+            if (elements.logoUrl) elements.logoUrl.value = logoValue;
         }
         
-        // Update store display name
+        // Store display name
         if (tampilanData.store_display_name) {
             storeDisplayName = tampilanData.store_display_name;
             if (elements.storeDisplayNameInput) {
@@ -526,96 +573,84 @@
             }
         }
         
-        // Update banners
+        // BANNERS: konversi hash ke URL
         if (tampilanData.banners && Array.isArray(tampilanData.banners)) {
             banners = tampilanData.banners.map(b => {
                 if (typeof b === 'string') {
+                    if (b.length === 35 && /^[a-f0-9]{35}$/i.test(b)) {
+                        return { hash: b, url: hashToUrl(b, endpoint), positionX: 50, positionY: 50 };
+                    }
                     return { url: b, positionX: 50, positionY: 50 };
-                } else {
+                }
+                if (typeof b === 'object') {
+                    const bannerHash = b.hash || extractHashFromUrl(b.url);
+                    if (bannerHash && bannerHash.length === 35) {
+                        return {
+                            hash: bannerHash,
+                            url: hashToUrl(bannerHash, endpoint),
+                            positionX: b.positionX || 50,
+                            positionY: b.positionY || 50
+                        };
+                    }
                     return {
                         url: b.url || '',
                         positionX: b.positionX || 50,
                         positionY: b.positionY || 50
                     };
                 }
+                return { url: '', positionX: 50, positionY: 50 };
             });
             hasUnsavedBanners = false;
         } else {
             banners = [];
-            hasUnsavedBanners = false;
         }
         renderBannerTrack();
         
-        // Update promos
-        if (tampilanData.promos) {
-            console.log('📦 Raw promos data:', tampilanData.promos);
-        
-            if (Array.isArray(tampilanData.promos)) {
-                promos = tampilanData.promos.map(promo => ({
+        // PROMOS: konversi banner hash ke URL
+        if (tampilanData.promos && Array.isArray(tampilanData.promos)) {
+            promos = tampilanData.promos.map(promo => {
+                let bannerUrl = promo.banner || '';
+                if (bannerUrl && bannerUrl.length === 35 && /^[a-f0-9]{35}$/i.test(bannerUrl)) {
+                    bannerUrl = hashToUrl(bannerUrl, endpoint);
+                }
+                return {
                     id: promo.id || Date.now() + Math.random(),
                     title: promo.title || '',
-                    banner: promo.banner || '',
+                    banner: bannerUrl,
                     description: promo.description || '',
                     end_date: promo.end_date || '',
                     end_time: promo.end_time || '',
                     never_end: promo.never_end || false,
                     notes: promo.notes || '',
                     active: promo.active !== false
-                }));
-                hasUnsavedPromos = false;
-            } else if (typeof tampilanData.promos === 'string') {
-                try {
-                    const parsed = JSON.parse(tampilanData.promos);
-                    if (Array.isArray(parsed)) {
-                        promos = parsed.map(promo => ({
-                            id: promo.id || Date.now() + Math.random(),
-                            title: promo.title || '',
-                            banner: promo.banner || '',
-                            description: promo.description || '',
-                            end_date: promo.end_date || '',
-                            end_time: promo.end_time || '',
-                            never_end: promo.never_end || false,
-                            notes: promo.notes || '',
-                            active: promo.active !== false
-                        }));
-                    } else {
-                        promos = [];
-                    }
-                } catch (e) {
-                    console.error('❌ Error parsing promos:', e);
-                    promos = [];
-                }
-                hasUnsavedPromos = false;
-            } else {
-                promos = [];
-                hasUnsavedPromos = false;
-            }
+                };
+            });
+            hasUnsavedPromos = false;
         } else if (tampilanData.promo) {
-            const oldPromo = tampilanData.promo;
+            let bannerUrl = tampilanData.promo.banner || '';
+            if (bannerUrl && bannerUrl.length === 35 && /^[a-f0-9]{35}$/i.test(bannerUrl)) {
+                bannerUrl = hashToUrl(bannerUrl, endpoint);
+            }
             promos = [{
                 id: Date.now(),
-                title: oldPromo.title || 'Promo',
-                banner: oldPromo.banner || '',
-                description: oldPromo.description || '',
-                end_date: oldPromo.end_date || '',
-                end_time: oldPromo.end_time || '',
-                never_end: oldPromo.never_end || false,
-                notes: oldPromo.notes || '',
-                active: oldPromo.active !== false
+                title: tampilanData.promo.title || 'Promo',
+                banner: bannerUrl,
+                description: tampilanData.promo.description || '',
+                end_date: tampilanData.promo.end_date || '',
+                end_time: tampilanData.promo.end_time || '',
+                never_end: tampilanData.promo.never_end || false,
+                notes: tampilanData.promo.notes || '',
+                active: tampilanData.promo.active !== false
             }];
             hasUnsavedPromos = true;
         } else {
             promos = [];
-            hasUnsavedPromos = false;
         }
-        
-        console.log('📦 Processed promos:', promos);
         renderPromos();
         
-        // Update colors
+        // Colors (sama seperti sebelumnya)
         if (tampilanData.colors) {
             const colors = tampilanData.colors;
-        
             if (elements.primaryColor) {
                 elements.primaryColor.value = colors.primary || '#40a7e3';
                 elements.primaryColorHex.value = colors.primary || '#40a7e3';
@@ -1108,7 +1143,7 @@
         e.preventDefault();
         
         const title = elements.promoTitle.value.trim();
-        const banner = elements.promoBannerUrl.value.trim();
+        let bannerValue = elements.promoBannerUrl.value.trim();
         const description = elements.promoDescription.value.trim();
         const endDate = elements.promoNeverEnd.checked ? null : elements.promoEndDate.value;
         const endTime = elements.promoNeverEnd.checked ? null : elements.promoEndTime.value;
@@ -1122,20 +1157,32 @@
             return;
         }
         
-        if (!banner) {
-            showToast('URL banner promosi wajib diisi', 'warning');
+        if (!bannerValue) {
+            showToast('Banner promosi wajib diisi', 'warning');
             elements.promoBannerUrl.focus();
             return;
         }
         
-        const isValid = await validatePromoBanner(banner);
+        // EKSTRAK HASH dari URL
+        let bannerHash = bannerValue;
+        if (bannerValue.length !== 35 || !/^[a-f0-9]{35}$/i.test(bannerValue)) {
+            bannerHash = extractHashFromUrl(bannerValue);
+            if (!bannerHash) {
+                showToast('Banner tidak valid. Upload ulang gambar.', 'error');
+                return;
+            }
+        }
+        
+        // Validasi ukuran
+        const bannerUrl = hashToUrl(bannerHash, currentWebsite?.endpoint);
+        const isValid = await validatePromoBanner(bannerUrl);
         if (!isValid) {
-            showToast('Banner tidak valid. Periksa URL dan ukuran gambar (harus 1280x760)', 'error');
+            showToast('Banner tidak valid. Periksa ukuran (1280x760)', 'error');
             return;
         }
         
         if (!neverEnd && !endDate) {
-            showToast('Tanggal berakhir wajib diisi jika tidak memilih "Tidak ada batas waktu"', 'warning');
+            showToast('Tanggal berakhir wajib diisi', 'warning');
             elements.promoEndDate.focus();
             return;
         }
@@ -1143,7 +1190,7 @@
         const promoData = {
             id: currentPromoId || Date.now() + Math.random(),
             title: title,
-            banner: banner,
+            banner: bannerHash, // SIMPAN HASH
             description: description,
             end_date: endDate,
             end_time: endTime,
@@ -1154,9 +1201,7 @@
         
         if (currentPromoId) {
             const index = promos.findIndex(p => p.id == currentPromoId);
-            if (index !== -1) {
-                promos[index] = promoData;
-            }
+            if (index !== -1) promos[index] = promoData;
         } else {
             promos.push(promoData);
         }
@@ -1283,29 +1328,32 @@
         showLoading(true);
         
         try {
-            const cleanPromos = promos.map(promo => ({
-                id: promo.id,
-                title: promo.title,
-                banner: promo.banner,
-                description: promo.description || '',
-                end_date: promo.end_date || null,
-                end_time: promo.end_time || null,
-                never_end: promo.never_end || false,
-                notes: promo.notes || '',
-                active: promo.active !== false
-            }));
-        
-            console.log('📤 Saving promos:', cleanPromos);
-        
+            // Konversi promo ke format HASH
+            const cleanPromos = promos.map(promo => {
+                let bannerHash = promo.banner;
+                if (bannerHash && (bannerHash.length !== 35 || !/^[a-f0-9]{35}$/i.test(bannerHash))) {
+                    bannerHash = extractHashFromUrl(bannerHash);
+                }
+                return {
+                    id: promo.id,
+                    title: promo.title,
+                    banner: bannerHash || '',
+                    description: promo.description || '',
+                    end_date: promo.end_date || null,
+                    end_time: promo.end_time || null,
+                    never_end: promo.never_end || false,
+                    notes: promo.notes || '',
+                    active: promo.active !== false
+                };
+            }).filter(p => p.banner && p.banner.length === 35);
+            
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/promos`, {
                 method: 'POST',
                 body: JSON.stringify({ promos: cleanPromos })
             });
-        
-            console.log('📥 Save response:', response);
-        
+            
             if (response.success) {
-                showToast(`✅ ${promos.length} promosi disimpan!`, 'success');
+                showToast(`✅ ${cleanPromos.length} promosi disimpan!`, 'success');
                 hasUnsavedPromos = false;
                 await loadTampilanData();
             } else {
@@ -2296,36 +2344,38 @@
         }
     }
 
-    // ==================== SAVE FUNCTIONS ====================
     async function saveLogo() {
         if (!currentWebsite) {
             showToast('Website tidak ditemukan', 'error');
             return;
         }
         
-        const logoUrl = elements.logoUrl?.value || elements.logoImage?.src || '';
+        const logoValue = elements.logoUrl?.value || elements.logoImage?.src || '';
         const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
         
-        if (logoUrl && !logoUrl.toLowerCase().endsWith('.png') && !logoUrl.startsWith('data:image/png')) {
-            showToast('Logo harus berformat PNG', 'error');
-            return;
+        // EKSTRAK HASH dari URL jika ada
+        let logoHash = null;
+        if (logoValue) {
+            if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
+                logoHash = logoValue;
+            } else {
+                logoHash = extractHashFromUrl(logoValue);
+            }
         }
         
         showLoading(true);
         
         try {
-            // Save logo
+            // Kirim HASH (bukan URL)
             const logoResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
                 method: 'POST',
-                body: JSON.stringify({ url: logoUrl })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ logo_hash: logoHash || '' })
             });
             
-            // Save store name
             const storeResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-anim`, {
                 method: 'POST',
-                body: JSON.stringify({
-                    store_display_name: storeName
-                })
+                body: JSON.stringify({ store_display_name: storeName })
             });
             
             if (logoResponse.success && storeResponse.success) {
@@ -2348,29 +2398,35 @@
             return;
         }
         
-        const validBanners = banners.filter(b => b.url && b.url.trim() !== '');
+        // Konversi banner ke format HASH
+        const bannersToSave = banners.map(b => {
+            let bannerHash = b.hash;
+            if (!bannerHash && b.url) {
+                bannerHash = extractHashFromUrl(b.url);
+            }
+            return {
+                hash: bannerHash || '',
+                positionX: b.positionX || 50,
+                positionY: b.positionY || 50
+            };
+        }).filter(b => b.hash && b.hash.length === 35);
         
-        if (validBanners.length === 0) {
-            showToast('Minimal 1 banner dengan URL gambar yang valid diperlukan', 'warning');
+        if (bannersToSave.length === 0) {
+            showToast('Minimal 1 banner dengan gambar yang valid diperlukan', 'warning');
             return;
         }
         
         showLoading(true);
         
         try {
-            const bannersToSave = validBanners.map(b => ({
-                url: b.url,
-                positionX: b.positionX || 50,
-                positionY: b.positionY || 50
-            }));
-            
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ banners: bannersToSave })
             });
             
             if (response.success) {
-                showToast(`✅ ${validBanners.length} banner disimpan!`, 'success');
+                showToast(`✅ ${bannersToSave.length} banner disimpan!`, 'success');
                 hasUnsavedBanners = false;
                 await loadTampilanData();
             } else {
@@ -2463,8 +2519,8 @@
     function handleImageUpload(file) {
         const reader = new FileReader();
         
-        reader.onload = (e) => {
-            const imageUrl = e.target.result;
+        reader.onload = async (e) => {
+            const previewUrl = e.target.result;
             
             if (elements.uploadArea) {
                 elements.uploadArea.style.display = 'none';
@@ -2474,12 +2530,24 @@
                 elements.uploadPreview.style.display = 'block';
                 const img = elements.uploadPreview.querySelector('img');
                 if (img) {
-                    img.src = imageUrl;
+                    img.src = previewUrl;
                 }
             }
             
-            if (elements.confirmUploadBtn) {
-                elements.confirmUploadBtn.disabled = false;
+            // UPLOAD KE SERVER - DAPATKAN HASH
+            if (currentUploadCallback) {
+                try {
+                    const result = await uploadImageToServer(file);
+                    if (result.hash) {
+                        currentUploadCallback(result.hash, result.url);
+                        if (elements.confirmUploadBtn) {
+                            elements.confirmUploadBtn.disabled = false;
+                        }
+                    }
+                } catch (error) {
+                    showToast(`Upload gagal: ${error.message}`, 'error');
+                    closeUploadModal();
+                }
             }
         };
         
@@ -2574,21 +2642,32 @@
             }
         });
         
-        // Logo upload
+        // Logo upload - PERBAIKAN
         if (elements.uploadLogoBtn) {
             elements.uploadLogoBtn.addEventListener('click', () => {
-                openUploadModal((imageUrl) => {
-                    if (!imageUrl.startsWith('data:image/png') && !imageUrl.toLowerCase().endsWith('.png')) {
-                        showToast('Hanya file PNG yang diperbolehkan untuk logo', 'error');
+                openUploadModal(async (hash, url) => {
+                    if (!hash) {
+                        showToast('Upload gagal', 'error');
                         return;
                     }
-                    if (elements.logoImage) {
-                        elements.logoImage.src = imageUrl;
+                    
+                    // Simpan HASH ke server
+                    const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ logo_hash: hash })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        if (elements.logoImage) elements.logoImage.src = url;
+                        if (elements.logoUrl) elements.logoUrl.value = url;
+                        showToast('✅ Logo berhasil diupload!', 'success');
+                        await loadTampilanData();
+                    } else {
+                        showToast(data.error || 'Gagal menyimpan', 'error');
                     }
-                    if (elements.logoUrl) {
-                        elements.logoUrl.value = imageUrl;
-                    }
-                    showToast('✅ Logo diperbarui!', 'success');
                 }, 'logo');
             });
         }
