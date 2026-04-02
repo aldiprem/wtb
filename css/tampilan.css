@@ -49,6 +49,74 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* ===== SAVED LINK COMPONENT (NEW) ===== */
+.saved-link-container {
+    margin: 15px 0 25px 0;
+    padding: 16px;
+    background: rgba(64, 167, 227, 0.05); /* Mengikuti --primary-color transparan */
+    border: 1px dashed var(--primary-color);
+    border-radius: 16px; /* Selaras dengan .settings-card */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    animation: fadeIn 0.3s ease;
+}
+
+.link-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.link-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary); /* Menggunakan variabel warna gelap Anda */
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+
+#displaySavedLink {
+    font-family: 'Monaco', 'Consolas', monospace;
+    font-size: 13px;
+    color: var(--text-primary);
+    word-break: break-all;
+    padding-right: 10px;
+}
+
+.copy-link-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--primary-color);
+    cursor: pointer;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.copy-link-btn:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    transform: scale(1.05);
+}
+
+.copy-link-btn:active {
+    transform: scale(0.95);
+}
+
 /* ===== LOADING OVERLAY ===== */
 .loading-overlay {
     position: fixed;

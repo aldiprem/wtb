@@ -2489,25 +2489,70 @@
     }
 
     // ==================== UPLOAD MODAL FUNCTIONS ====================
-    function openUploadModal(callback, type) {
-        currentUploadCallback = callback;
+    function openUploadModal(type, callback) {
         currentUploadType = type;
+        currentUploadCallback = callback;
         
+        // Reset modal state
+        if (elements.fileInput) elements.fileInput.value = '';
         if (elements.uploadPreview) {
+            elements.uploadPreview.src = '';
             elements.uploadPreview.style.display = 'none';
         }
-        if (elements.uploadArea) {
-            elements.uploadArea.style.display = 'flex';
-        }
-        if (elements.fileInput) {
-            elements.fileInput.value = '';
-            elements.fileInput.accept = 'image/*';
-        }
-        if (elements.confirmUploadBtn) {
-            elements.confirmUploadBtn.disabled = true;
-        }
+        if (elements.uploadArea) elements.uploadArea.style.display = 'flex';
+        if (elements.confirmUploadBtn) elements.confirmUploadBtn.disabled = true;
         
-        elements.uploadModal.classList.add('active');
+        // Tampilkan modal
+        if (elements.uploadModal) {
+            elements.uploadModal.classList.add('active');
+        }
+    }
+
+    async function handleFileSelect(e) {
+        const file = e.target.files[0] || (e.dataTransfer && e.dataTransfer.files[0]);
+        if (!file) return;
+
+        // Validasi tipe file
+        if (!file.type.startsWith('image/')) {
+            showToast('File harus berupa gambar', 'error');
+            return;
+        }
+
+        // Preview lokal
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            if (elements.uploadPreview) {
+                elements.uploadPreview.src = event.target.result;
+                elements.uploadPreview.style.display = 'block';
+            }
+            if (elements.uploadArea) elements.uploadArea.style.display = 'none';
+            if (elements.confirmUploadBtn) elements.confirmUploadBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function handleUploadConfirm() {
+        const file = elements.fileInput.files[0];
+        if (!file) return;
+
+        try {
+            showLoading(true);
+            const result = await uploadImageToServer(file); // Menggunakan fungsi uploadImageToServer yang sudah ada di kodemu
+            
+            if (currentUploadCallback) {
+                currentUploadCallback(result);
+            }
+            
+            // Tutup modal
+            if (elements.uploadModal) elements.uploadModal.classList.remove('active');
+            showToast('Gambar berhasil diunggah', 'success');
+            
+        } catch (error) {
+            console.error('Upload error:', error);
+            showToast(error.message || 'Gagal mengunggah gambar', 'error');
+        } finally {
+            showLoading(false);
+        }
     }
 
     function closeUploadModal() {
@@ -2573,7 +2618,7 @@
     }
 
     // ==================== EVENT LISTENERS ====================
-    function setupEventListeners() {
+function setupEventListeners() {
         // Back to panel
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', (e) => {
@@ -2651,22 +2696,27 @@
                         return;
                     }
                     
-                    // Simpan HASH ke server
-                    const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ logo_hash: hash })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        if (elements.logoImage) elements.logoImage.src = url;
-                        if (elements.logoUrl) elements.logoUrl.value = url;
-                        showToast('✅ Logo berhasil diupload!', 'success');
-                        await loadTampilanData();
-                    } else {
-                        showToast(data.error || 'Gagal menyimpan', 'error');
+                    try {
+                        // Simpan HASH ke server
+                        const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ logo_hash: hash })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            if (elements.logoImage) elements.logoImage.src = url;
+                            if (elements.logoUrl) elements.logoUrl.value = url;
+                            showToast('✅ Logo berhasil diupload!', 'success');
+                            await loadTampilanData();
+                        } else {
+                            showToast(data.error || 'Gagal menyimpan', 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error saving logo:', error);
+                        showToast('Gagal menghubungi server', 'error');
                     }
                 }, 'logo');
             });
@@ -2936,7 +2986,10 @@
                 if (currentUploadCallback && elements.uploadPreview) {
                     const img = elements.uploadPreview.querySelector('img');
                     if (img) {
-                        currentUploadCallback(img.src);
+                        // Pastikan meneruskan parameter yang diharapkan callback
+                        // Misalnya jika callback mengharapkan (hash, url), ambil dari dataset
+                        const hash = img.dataset.hash || '';
+                        currentUploadCallback(hash, img.src);
                     }
                 }
                 closeUploadModal();

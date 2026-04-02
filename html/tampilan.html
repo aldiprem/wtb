@@ -74,53 +74,76 @@
             </button>
         </div>
 
-        <!-- Tab Content -->
         <div class="tampilan-content">
-            <!-- Tab: Logo -->
             <div id="tab-logo" class="tab-content active">
                 <div class="settings-card">
                     <div class="card-header">
-                        <h3><i class="fas fa-image"></i> Logo Website (PNG Only)</h3>
+                        <h3><i class="fas fa-image"></i> Identitas Website</h3>
                     </div>
                     <div class="card-body">
-                        <div class="logo-preview" id="logoPreview">
-                            <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
-                            <div class="logo-overlay">
-                                <button class="btn-upload" id="uploadLogoBtn">
-                                    <i class="fas fa-cloud-upload-alt"></i> Ganti Logo (PNG)
-                                </button>
+                        <div class="logo-preview-container">
+                            <label>Logo Website (PNG Only)</label>
+                            <div class="logo-preview" id="logoPreview">
+                                <img src="https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG" alt="Logo Preview" id="logoImage">
+                                <div class="logo-overlay">
+                                    <button class="btn-upload" id="uploadLogoBtn" onclick="document.getElementById('logoInput').click()">
+                                        <i class="fas fa-cloud-upload-alt"></i> Ganti Logo (PNG)
+                                    </button>
+                                    <input type="file" id="logoInput" accept="image/png" style="display: none;">
+                                </div>
                             </div>
                         </div>
-                        <div class="form-group">
+
+                        <div class="form-group" style="margin-top: 15px;">
                             <label for="logoUrl">
                                 <i class="fas fa-link"></i> URL Logo (PNG)
                             </label>
                             <input type="url" id="logoUrl" placeholder="https://example.com/logo.png">
-                            <small>Format PNG hanya, upload atau masukkan URL</small>
+                            <small>Gunakan upload atau masukkan link gambar berformat .png</small>
                         </div>
-                        
-                        <!-- Nama Store (untuk disamping logo) -->
-                        <div class="form-group" style="margin-top: 20px;">
+
+                        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+
+                        <div class="form-group">
                             <label for="storeDisplayName">
-                                <i class="fas fa-store"></i> Nama Store (disamping logo)
+                                <i class="fas fa-store"></i> Nama Store (Disamping Logo)
                             </label>
-                            <div class="input-with-button">
-                                <input type="text" id="storeDisplayName" placeholder="Contoh: Toko Online" value="Toko Online">
-                                <button class="btn-icon-square" id="applyFontToStoreBtn" title="Terapkan font template ke nama store">
+                            <div class="input-with-button" style="display: flex; gap: 10px;">
+                                <input type="text" id="storeDisplayName" placeholder="Contoh: Toko Online" value="Toko Online" style="flex: 1;">
+                                <button class="btn-icon-square" id="applyFontToStoreBtn" title="Terapkan font template ke nama store" style="padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f8f9fa; cursor: pointer;">
                                     <i class="fas fa-paint-brush"></i>
                                 </button>
                             </div>
-                            <small>Nama yang akan tampil di samping logo website</small>
+                            <small>Nama ini akan muncul di Header jika logo tidak tersedia atau mendampingi logo.</small>
                         </div>
-                        
-                        <div class="form-actions">
-                            <button class="btn-primary" id="saveLogoBtn">
-                                <i class="fas fa-save"></i> Simpan Logo & Nama Store
+
+                        <hr style="margin: 25px 0; border: 0; border-top: 1px solid #eee;">
+
+                        <div class="form-group">
+                            <label>
+                                <i class="fas fa-icons"></i> Favicon Website (Ikon Tab Browser)
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+                                <div id="faviconPreview" style="width: 40px; height: 40px; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+                                    <img src="https://via.placeholder.com/32" id="faviconImg" style="width: 32px; height: 32px;">
+                                </div>
+                                <button class="btn-secondary" onclick="document.getElementById('faviconInput').click()" style="padding: 8px 15px; font-size: 13px; border-radius: 5px; cursor: pointer;">
+                                    Pilih Favicon
+                                </button>
+                                <input type="file" id="faviconInput" accept="image/x-icon,image/png" style="display: none;">
+                            </div>
+                            <small>Ukuran rekomendasi: 32x32px (Format: .ico atau .png)</small>
+                        </div>
+
+                        <div class="form-actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                            <button class="btn-primary" id="saveLogoBtn" style="background: #40a7e3; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;">
+                                <i class="fas fa-save"></i> Simpan Identitas Website
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
             <!-- Tab: Banner Slider -->
             <div id="tab-banner" class="tab-content">
