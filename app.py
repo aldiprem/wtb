@@ -137,9 +137,11 @@ def track_attack(ip, path):
 
 app = Flask(__name__, static_folder='.')
 
-# Konfigurasi CORS yang mendukung domain panel Anda
+# Konfigurasi CORS yang mendukung semua origin untuk development
 CORS(app, 
-     origins=['http://companel.shop', 'https://companel.shop', 'http://localhost:5050'],
+     origins=['http://companel.shop', 'https://companel.shop', 
+              'http://localhost:5050', 'http://127.0.0.1:5050',
+              'http://207.180.194.191:5050'],
      methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
      allow_headers=['*'],
      supports_credentials=True)

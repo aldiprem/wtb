@@ -5,7 +5,7 @@
     console.log('🎨 Tampilan Manager - Initializing...');
 
     // ==================== KONFIGURASI ====================
-    const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://companel.shop';
+    const API_BASE_URL = window.location.origin;
     const MAX_RETRIES = 3;
 
     // ==================== STATE ====================
