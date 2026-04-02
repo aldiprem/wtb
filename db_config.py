@@ -11,6 +11,8 @@ db_config = {
     "database": "wtb_database"
 }
 
+connection_pool = None
+
 try:
     connection_pool = mysql.connector.pooling.MySQLConnectionPool(
         pool_name="wtb_pool",
@@ -23,4 +25,8 @@ except mysql.connector.Error as err:
     print(f"❌ Error creating pool: {err}")
 
 def get_db_connection():
+    global connection_pool
+    if connection_pool is None:
+        # Fallback: buat koneksi biasa jika pool gagal
+        return mysql.connector.connect(**db_config)
     return connection_pool.get_connection()
