@@ -625,15 +625,18 @@ def save_banners(website_id, banners_data):
 
 def save_logo(website_id, logo_hash):
     """
-    Khusus menyimpan logo - menerima HASH 35 karakter
+    Khusus menyimpan logo - menerima HASH 35 karakter atau URL
+    Returns: True jika sukses
     """
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Validasi hash (harus 35 karakter)
-    if logo_hash and len(logo_hash) != 35:
-        print(f"⚠️ Invalid logo hash: {logo_hash[:20]}... (length: {len(logo_hash)})")
-        return False
+    print(f"💾 save_logo called: website_id={website_id}, logo_hash='{logo_hash[:50] if logo_hash else 'empty'}'")
+    
+    # Ambil logo lama sebelum update
+    cursor.execute('SELECT logo FROM tampilan WHERE website_id = %s', (website_id,))
+    old_data = cursor.fetchone()
+    old_logo_hash = old_data.get('logo') if old_data else None
     
     cursor.execute('SELECT id FROM tampilan WHERE website_id = %s', (website_id,))
     existing = cursor.fetchone()
@@ -645,16 +648,19 @@ def save_logo(website_id, logo_hash):
             updated_at = CURRENT_TIMESTAMP
         WHERE website_id = %s
         ''', (logo_hash, website_id))
+        print(f"✅ Logo updated for website {website_id}")
     else:
         cursor.execute('''
         INSERT INTO tampilan (website_id, logo, colors, font_family, font_size,
             store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (website_id, logo_hash, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+        print(f"✅ Logo inserted for website {website_id}")
     
     conn.commit()
     conn.close()
-    return True
+    
+    return old_logo_hash
 
 def save_font_anim(website_id, data):
     """Save font and animation settings"""
@@ -1881,33 +1887,6 @@ def save_banners(website_id, banners_data):
             store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (website_id, banners_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
-    
-    conn.commit()
-    conn.close()
-    return True
-
-def save_logo(website_id, logo_url):
-    """Khusus menyimpan logo"""
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    # Cek apakah sudah ada
-    cursor.execute('SELECT id FROM tampilan WHERE website_id = %s', (website_id,))
-    existing = cursor.fetchone()
-    
-    if existing:
-        cursor.execute('''
-        UPDATE tampilan SET
-            logo = %s,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE website_id = %s
-        ''', (logo_url, website_id))
-    else:
-        cursor.execute('''
-        INSERT INTO tampilan (website_id, logo, colors, font_family, font_size,
-            store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ''', (website_id, logo_url, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
     
     conn.commit()
     conn.close()

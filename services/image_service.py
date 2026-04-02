@@ -33,6 +33,38 @@ def save_image_file(file_data, file_extension):
     
     return image_hash
 
+def delete_image_file(image_hash):
+    """
+    Menghapus file gambar berdasarkan hash
+    Returns: True jika berhasil dihapus, False jika file tidak ditemukan
+    """
+    if not image_hash or len(image_hash) != 35:
+        return False
+    
+    deleted = False
+    for ext in ALLOWED_EXTENSIONS:
+        filepath = os.path.join(IMAGE_DIR, f"{image_hash}.{ext}")
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+                print(f"🗑️ Deleted old image file: {filepath}")
+                deleted = True
+            except Exception as e:
+                print(f"⚠️ Failed to delete old image: {e}")
+    
+    # Hapus juga metadata dari database jika ada
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM images WHERE hash = %s', (image_hash,))
+        conn.commit()
+        conn.close()
+        print(f"🗑️ Deleted image metadata for hash: {image_hash}")
+    except Exception as e:
+        print(f"⚠️ Failed to delete image metadata: {e}")
+    
+    return deleted
+
 @image_bp.route('/upload', methods=['POST'])
 def upload_image():
     """Upload gambar ke server"""

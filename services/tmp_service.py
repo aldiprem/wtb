@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 import sys
 import os
+import re
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from py import tmp
@@ -93,23 +94,49 @@ def delete_banner(website_id, banner_index):
 def save_logo(website_id):
     try:
         data = request.json
+        print(f"🎨 ========== SAVE LOGO ==========")
         print(f"🎨 Saving logo for website {website_id}")
         print(f"📦 Logo data received: {data}")
         
         # Cek apakah ada logo_hash atau logo_url
-        logo_hash = data.get('logo_hash') or data.get('hash') or data.get('url', '')
+        new_logo_hash = data.get('logo_hash') or data.get('hash') or data.get('url', '')
         
         # Jika tidak ada logo_hash, coba ekstrak dari logo_url
-        if not logo_hash and data.get('logo_url'):
-            logo_hash = data.get('logo_url')
+        if not new_logo_hash and data.get('logo_url'):
+            new_logo_hash = data.get('logo_url')
         
-        print(f"🖼️ Logo value to save: {logo_hash[:50] if logo_hash else 'empty'}...")
+        print(f"🖼️ New logo value: {new_logo_hash[:50] if new_logo_hash else 'empty'}...")
         
-        # Validasi dan simpan
-        if logo_hash:
+        # ==================== HAPUS LOGO LAMA ====================
+        # Ambil logo lama dari database sebelum diupdate
+        old_tampilan = tmp.get_tampilan(website_id)
+        old_logo_hash = old_tampilan.get('logo') if old_tampilan else None
+        
+        print(f"🗑️ Old logo hash: {old_logo_hash}")
+        
+        # Jika ada logo lama dan berbeda dengan logo baru, hapus file gambarnya
+        if old_logo_hash and old_logo_hash != new_logo_hash:
+            # Cek apakah old_logo_hash adalah hash 35 karakter (bukan URL atau base64)
+            if old_logo_hash and len(old_logo_hash) == 35 and re.match(r'^[a-f0-9]{35}$', old_logo_hash, re.IGNORECASE):
+                try:
+                    from services.image_service import delete_image_file
+                    delete_image_file(old_logo_hash)
+                    print(f"✅ Old logo file deleted: {old_logo_hash}")
+                except ImportError:
+                    print(f"⚠️ image_service not found, skipping file deletion")
+                except Exception as e:
+                    print(f"⚠️ Failed to delete old logo file: {e}")
+            else:
+                print(f"⚠️ Old logo is not a hash (maybe URL or base64), skipping file deletion")
+        
+        # ==================== SIMPAN LOGO BARU ====================
+        if new_logo_hash:
             # Simpan hash atau URL ke database
-            tmp.save_logo(website_id, logo_hash)
-            return jsonify({'success': True, 'message': 'Logo saved successfully'})
+            result = tmp.save_logo(website_id, new_logo_hash)
+            if result:
+                return jsonify({'success': True, 'message': 'Logo saved successfully', 'logo_hash': new_logo_hash})
+            else:
+                return jsonify({'success': False, 'error': 'Failed to save logo'}), 500
         else:
             # Simpan empty string jika tidak ada logo
             tmp.save_logo(website_id, '')
@@ -119,6 +146,26 @@ def save_logo(website_id):
         print(f"❌ Error saving logo: {str(e)}")
         import traceback
         traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@tmp_bp.route('/tampilan/<int:website_id>/logo/clear', methods=['POST'])
+def clear_logo(website_id):
+    """Menghapus logo website"""
+    try:
+        # Ambil logo lama
+        old_tampilan = tmp.get_tampilan(website_id)
+        old_logo_hash = old_tampilan.get('logo') if old_tampilan else None
+        
+        if old_logo_hash and len(old_logo_hash) == 35:
+            from services.image_service import delete_image_file
+            delete_image_file(old_logo_hash)
+        
+        # Kosongkan kolom logo di database
+        tmp.save_logo(website_id, '')
+        
+        return jsonify({'success': True, 'message': 'Logo cleared successfully'})
+    except Exception as e:
+        print(f"❌ Error clearing logo: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/all', methods=['GET'])
