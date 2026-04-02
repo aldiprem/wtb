@@ -2735,17 +2735,32 @@
             });
         });
 
-        // Toggle saved link container (info button)
+        // ==================== TOGGLE SAVED LINK CONTAINER ====================
         const toggleSavedLinkBtn = document.getElementById('toggleSavedLinkBtn');
         const savedLinkContainer = document.getElementById('savedLinkContainer');
 
         if (toggleSavedLinkBtn && savedLinkContainer) {
-            toggleSavedLinkBtn.addEventListener('click', () => {
-                if (savedLinkContainer.style.display === 'none' || savedLinkContainer.style.display === '') {
-                    savedLinkContainer.style.display = 'block';
-                } else {
+            // State untuk menyimpan status toggle (opsional, bisa pakai localStorage)
+            let isLinkVisible = false;
+            
+            toggleSavedLinkBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                if (isLinkVisible) {
+                    // Sembunyikan border
                     savedLinkContainer.style.display = 'none';
+                    isLinkVisible = false;
+                    toggleSavedLinkBtn.style.color = 'var(--tg-hint-color)';
+                    toggleSavedLinkBtn.style.background = 'transparent';
+                } else {
+                    // Tampilkan border
+                    savedLinkContainer.style.display = 'block';
+                    isLinkVisible = true;
+                    toggleSavedLinkBtn.style.color = 'var(--primary-color)';
+                    toggleSavedLinkBtn.style.background = 'rgba(64, 167, 227, 0.1)';
                 }
+                
+                vibrate(10);
             });
         }
         

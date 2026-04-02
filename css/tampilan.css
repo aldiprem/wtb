@@ -560,9 +560,9 @@ body {
     color: var(--tg-hint-color);
     cursor: pointer;
     font-size: 16px;
-    padding: 4px 8px;
+    padding: 6px 10px;
     border-radius: 20px;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -571,6 +571,11 @@ body {
 .btn-info-icon:hover {
     color: var(--primary-color);
     background: rgba(64, 167, 227, 0.1);
+}
+
+.btn-info-icon.active {
+    color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.15);
 }
 
 .btn-info-icon i {
