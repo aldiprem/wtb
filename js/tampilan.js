@@ -1113,16 +1113,18 @@
                 throw new Error(uploadData.error || 'Upload gagal');
             }
             
-            // Tambahkan banner ke list
+            // Dapatkan hash dan URL
             const bannerHash = uploadData.hash;
             const bannerUrl = uploadData.url;
             
+            console.log('📦 Upload result:', { bannerHash, bannerUrl });
+            
             // Cek apakah ada banner kosong
-            const hasEmptyBanner = banners.some(b => !b.url);
+            const hasEmptyBanner = banners.some(b => !b.url || b.url === '');
             
             if (hasEmptyBanner) {
                 // Isi banner kosong pertama
-                const emptyIndex = banners.findIndex(b => !b.url);
+                const emptyIndex = banners.findIndex(b => !b.url || b.url === '');
                 banners[emptyIndex] = {
                     hash: bannerHash,
                     url: bannerUrl,
@@ -2680,42 +2682,90 @@
             return;
         }
         
-        const bannersToSave = banners.map(b => {
-            let bannerHash = b.hash;
-            if (!bannerHash && b.url) {
-                bannerHash = extractHashFromUrl(b.url);
+        // Filter banner yang valid (punya URL/hash)
+        const validBanners = banners.filter(b => b.url && b.url.trim() !== '');
+        
+        if (validBanners.length === 0) {
+            showToast('Minimal 1 banner dengan gambar yang valid diperlukan', 'warning');
+            return;
+        }
+        
+        // Siapkan data untuk disimpan ke server
+        const bannersToSave = [];
+        
+        for (const banner of validBanners) {
+            let bannerHash = banner.hash;
+            
+            // Jika tidak ada hash, coba ekstrak dari URL
+            if (!bannerHash && banner.url) {
+                // Cek apakah URL sudah berupa hash
+                if (banner.url.length === 35 && /^[a-f0-9]{35}$/i.test(banner.url)) {
+                    bannerHash = banner.url;
+                } 
+                // Cek apakah URL dari companel.shop/ii
+                else if (banner.url.includes('/ii?')) {
+                    const match = banner.url.match(/=([a-f0-9]{35})/);
+                    if (match) {
+                        bannerHash = match[1];
+                    }
+                }
+                // Cek apakah URL dari imgg.companel.shop
+                else if (banner.url.includes('imgg.companel.shop')) {
+                    const match = banner.url.match(/=([a-f0-9]{35})/);
+                    if (match) {
+                        bannerHash = match[1];
+                    }
+                }
             }
-            return {
-                hash: bannerHash || '',
-                positionX: b.positionX || 50,
-                positionY: b.positionY || 50
-            };
-        }).filter(b => b.hash && b.hash.length === 35);
+            
+            // Hanya simpan banner yang memiliki hash valid
+            if (bannerHash && bannerHash.length === 35) {
+                bannersToSave.push({
+                    hash: bannerHash,
+                    positionX: banner.positionX || 50,
+                    positionY: banner.positionY || 50
+                });
+            } else if (banner.url && (banner.url.startsWith('http') || banner.url.startsWith('data:'))) {
+                // Untuk URL eksternal atau base64, kita tetap simpan sebagai string
+                // Tapi server akan menganggap ini sebagai URL langsung
+                bannersToSave.push({
+                    url: banner.url,
+                    positionX: banner.positionX || 50,
+                    positionY: banner.positionY || 50
+                });
+            }
+        }
         
         if (bannersToSave.length === 0) {
-            showToast('Minimal 1 banner dengan gambar yang valid diperlukan', 'warning');
+            showToast('Tidak ada banner valid untuk disimpan', 'warning');
             return;
         }
         
         showLoading(true);
         
         try {
+            // Kirim data ke server dengan format yang benar
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify({ banners: bannersToSave })
             });
+            
+            console.log('📤 Save banners response:', response);
             
             if (response.success) {
                 showToast(`✅ ${bannersToSave.length} banner disimpan!`, 'success');
                 hasUnsavedBanners = false;
-                await loadTampilanData();
+                // Reload data untuk mendapatkan data terbaru
+                await loadTampilanData(true);
             } else {
                 throw new Error(response.error || 'Gagal menyimpan banner');
             }
         } catch (error) {
             console.error('❌ Error saving banners:', error);
-            showToast(error.message, 'error');
+            showToast(error.message || 'Gagal menyimpan banner', 'error');
         } finally {
             showLoading(false);
         }

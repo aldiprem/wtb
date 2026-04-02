@@ -1,5 +1,6 @@
 # tmp.py - Database handler untuk tampilan website (VERSI MYSQL)
 import json
+import re
 from db_config import get_db_connection, IMAGE_BASE_URL
 
 # ==================== FUNGSI DASAR ====================
@@ -41,19 +42,56 @@ def convert_banner_hash_to_url(banner_item, endpoint):
     if not endpoint:
         return banner_item
     
+    # Jika banner adalah dictionary
     if isinstance(banner_item, dict):
         banner_hash = banner_item.get('hash', '')
+        # Jika ada hash dan panjangnya 35 karakter
         if banner_hash and len(banner_hash) == 35:
             return {
-                'url': f"{IMAGE_BASE_URL}{endpoint}={banner_hash}",
+                'hash': banner_hash,
+                'url': convert_hash_to_url(banner_hash, endpoint),
                 'positionX': banner_item.get('positionX', 50),
-                'positionY': banner_item.get('positionY', 50),
-                'hash': banner_hash  # Simpan hash asli untuk keperluan edit
+                'positionY': banner_item.get('positionY', 50)
             }
-        return banner_item
-    elif isinstance(banner_item, str) and len(banner_item) == 35:
-        return f"{IMAGE_BASE_URL}{endpoint}={banner_item}"
-    return banner_item
+        # Jika tidak ada hash tapi ada url
+        elif banner_item.get('url'):
+            return {
+                'url': banner_item.get('url'),
+                'positionX': banner_item.get('positionX', 50),
+                'positionY': banner_item.get('positionY', 50)
+            }
+        # Jika tidak ada hash dan url
+        else:
+            return {
+                'url': '',
+                'positionX': 50,
+                'positionY': 50
+            }
+    
+    # Jika banner adalah string
+    elif isinstance(banner_item, str):
+        # Jika string adalah hash 35 karakter
+        if len(banner_item) == 35:
+            return {
+                'hash': banner_item,
+                'url': convert_hash_to_url(banner_item, endpoint),
+                'positionX': 50,
+                'positionY': 50
+            }
+        # Jika string adalah URL
+        else:
+            return {
+                'url': banner_item,
+                'positionX': 50,
+                'positionY': 50
+            }
+    
+    # Default return
+    return {
+        'url': '',
+        'positionX': 50,
+        'positionY': 50
+    }
 
 # ==================== FUNGSI DASAR ====================
 
@@ -310,15 +348,16 @@ def get_tampilan(website_id):
         
         # === KONVERSI LOGO: hash -> URL ===
         logo_value = data.get('logo', '')
-        if logo_value and len(logo_value) == 35:
+        if logo_value and len(logo_value) == 35 and re.match(r'^[a-f0-9]{35}$', logo_value, re.IGNORECASE):
             data['logo'] = convert_hash_to_url(logo_value, endpoint)
         elif logo_value and logo_value.startswith(('data:', 'http')):
-            pass  # Biarkan base64 atau URL lama
+            # Biarkan base64 atau URL eksternal
+            data['logo'] = logo_value
         else:
             data['logo'] = ''
         
         # === KONVERSI BANNERS: hash -> URL ===
-        if data['banners']:
+        if data.get('banners'):
             try:
                 banners_data = json.loads(data['banners'])
                 if isinstance(banners_data, list):
@@ -329,13 +368,14 @@ def get_tampilan(website_id):
                     data['banners'] = converted_banners
                 else:
                     data['banners'] = []
-            except:
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"⚠️ Error parsing banners JSON: {e}")
                 data['banners'] = []
         else:
             data['banners'] = []
         
         # === KONVERSI PROMOS: banner hash -> URL ===
-        if data['promos']:
+        if data.get('promos'):
             try:
                 promos_data = json.loads(data['promos'])
                 if isinstance(promos_data, list):
@@ -347,72 +387,81 @@ def get_tampilan(website_id):
                     data['promos'] = promos_data
                 else:
                     data['promos'] = []
-            except:
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"⚠️ Error parsing promos JSON: {e}")
                 data['promos'] = []
         else:
             data['promos'] = []
         
-        # Parse JSON fields lainnya
-        if data['colors']:
+        # === PARSE JSON FIELDS LAINNYA ===
+        # Colors
+        if data.get('colors'):
             try:
                 data['colors'] = json.loads(data['colors'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['colors'] = {}
         else:
             data['colors'] = {}
-            
-        if data['banner_positions']:
+        
+        # Banner positions
+        if data.get('banner_positions'):
             try:
                 data['banner_positions'] = json.loads(data['banner_positions'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['banner_positions'] = []
         else:
             data['banner_positions'] = []
-            
-        if data['payment_notes']:
+        
+        # Payment notes
+        if data.get('payment_notes'):
             try:
                 data['payment_notes'] = json.loads(data['payment_notes'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['payment_notes'] = {}
         else:
             data['payment_notes'] = {}
-            
-        if data['banks']:
+        
+        # Banks
+        if data.get('banks'):
             try:
                 data['banks'] = json.loads(data['banks'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['banks'] = []
         else:
             data['banks'] = []
-            
-        if data['ewallets']:
+        
+        # Ewallets
+        if data.get('ewallets'):
             try:
                 data['ewallets'] = json.loads(data['ewallets'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['ewallets'] = []
         else:
             data['ewallets'] = []
-            
-        if data['qris']:
+        
+        # QRIS
+        if data.get('qris'):
             try:
                 data['qris'] = json.loads(data['qris'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['qris'] = {}
         else:
             data['qris'] = {}
-            
-        if data['crypto']:
+        
+        # Crypto
+        if data.get('crypto'):
             try:
                 data['crypto'] = json.loads(data['crypto'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['crypto'] = {}
         else:
             data['crypto'] = {}
         
-        if data['settings']:
+        # Settings
+        if data.get('settings'):
             try:
                 data['settings'] = json.loads(data['settings'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 data['settings'] = {}
         else:
             data['settings'] = {}
@@ -568,40 +617,47 @@ def save_colors(website_id, colors_data):
     return True
 
 def save_banners(website_id, banners_data):
-    """
-    Khusus menyimpan multiple banner dengan posisi
-    banners_data: array dari object {hash, positionX, positionY} atau array of hash string
-    """
+    """Khusus menyimpan multiple banner dengan posisi"""
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Clean banners data - simpan hanya hash (bukan URL)
+    # Validasi dan bersihkan data banners
     clean_banners = []
     for banner in banners_data:
-        if isinstance(banner, dict):
-            # Jika banner memiliki field 'url' yang berisi hash
-            banner_hash = banner.get('hash') or banner.get('url', '')
-            if banner_hash and len(banner_hash) == 35:
-                clean_banners.append({
-                    'hash': banner_hash,
-                    'positionX': banner.get('positionX', 50),
-                    'positionY': banner.get('positionY', 50)
-                })
-            elif banner.get('hash') and len(banner.get('hash')) == 35:
-                clean_banners.append({
-                    'hash': banner.get('hash'),
-                    'positionX': banner.get('positionX', 50),
-                    'positionY': banner.get('positionY', 50)
-                })
-        elif isinstance(banner, str) and len(banner) == 35:
-            clean_banners.append({
-                'hash': banner,
-                'positionX': 50,
-                'positionY': 50
-            })
+        clean_banner = {}
+        
+        # Jika banner memiliki hash
+        if 'hash' in banner and banner['hash'] and len(banner['hash']) == 35:
+            clean_banner['hash'] = banner['hash']
+            clean_banner['positionX'] = banner.get('positionX', 50)
+            clean_banner['positionY'] = banner.get('positionY', 50)
+            clean_banners.append(clean_banner)
+        # Jika banner memiliki url (bukan hash)
+        elif 'url' in banner and banner['url']:
+            # Coba ekstrak hash dari URL jika memungkinkan
+            import re
+            url = banner['url']
+            match = re.search(r'=([a-f0-9]{35})', url)
+            if match:
+                clean_banner['hash'] = match.group(1)
+                clean_banner['positionX'] = banner.get('positionX', 50)
+                clean_banner['positionY'] = banner.get('positionY', 50)
+                clean_banners.append(clean_banner)
+            else:
+                # Simpan sebagai URL string biasa
+                clean_banner['url'] = url
+                clean_banner['positionX'] = banner.get('positionX', 50)
+                clean_banner['positionY'] = banner.get('positionY', 50)
+                clean_banners.append(clean_banner)
+    
+    # Jika tidak ada banner valid, simpan array kosong
+    if not clean_banners:
+        clean_banners = []
     
     banners_json = json.dumps(clean_banners)
+    print(f"📝 Saving banners JSON: {banners_json[:200]}...")
     
+    # Cek apakah sudah ada
     cursor.execute('SELECT id FROM tampilan WHERE website_id = %s', (website_id,))
     existing = cursor.fetchone()
     
@@ -612,12 +668,14 @@ def save_banners(website_id, banners_data):
             updated_at = CURRENT_TIMESTAMP
         WHERE website_id = %s
         ''', (banners_json, website_id))
+        print(f"✅ Updated banners for website {website_id}")
     else:
         cursor.execute('''
         INSERT INTO tampilan (website_id, banners, colors, font_family, font_size,
             store_display_name, font_animation, animation_duration, animation_delay, animation_iteration)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (website_id, banners_json, '{}', 'Inter', 14, 'Toko Online', 'none', 2, 0, 'infinite'))
+        print(f"✅ Inserted banners for website {website_id}")
     
     conn.commit()
     conn.close()

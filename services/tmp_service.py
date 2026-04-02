@@ -58,14 +58,32 @@ def save_banners(website_id):
     try:
         data = request.json
         print(f"🎨 Saving banners for website {website_id}: {len(data.get('banners', []))} banners")
+        print(f"📦 Raw banners data: {data}")
         
         banners = data.get('banners', [])
-        for banner in banners:
-            if 'url' not in banner:
-                return jsonify({'success': False, 'error': 'Each banner must have a URL'}), 400
         
-        tmp.save_banners(website_id, banners)
-        return jsonify({'success': True, 'message': f'{len(banners)} banners saved successfully'})
+        # Validasi setiap banner
+        for idx, banner in enumerate(banners):
+            if 'hash' not in banner and 'url' not in banner:
+                return jsonify({
+                    'success': False, 
+                    'error': f'Banner #{idx+1} must have either hash or url'
+                }), 400
+        
+        # Simpan banners
+        success = tmp.save_banners(website_id, banners)
+        
+        if success:
+            return jsonify({
+                'success': True, 
+                'message': f'{len(banners)} banners saved successfully'
+            })
+        else:
+            return jsonify({
+                'success': False, 
+                'error': 'Failed to save banners'
+            }), 500
+            
     except Exception as e:
         print(f"❌ Error saving banners: {str(e)}")
         import traceback
