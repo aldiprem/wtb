@@ -844,7 +844,9 @@ input:checked + .toggle-slider:before {
 
 /* Banner Slide - tanpa border yang berlebihan */
 .banner-slide {
-    width: 280px;
+    width: 100%;
+    min-width: 280px;
+    max-width: 100%;
     background: var(--bg-secondary);
     border-radius: 12px;
     overflow: hidden;
@@ -940,9 +942,10 @@ input:checked + .toggle-slider:before {
 /* Banner Preview Area */
 .banner-preview-area {
     padding: 0 12px;
+    width: 100%;
 }
 
-/* Banner image wrapper untuk banner yang sudah ada */
+/* Banner image wrapper untuk banner yang sudah ada - UKURAN 358x160 */
 .banner-image-wrapper {
     width: 100%;
     aspect-ratio: 358 / 160;
