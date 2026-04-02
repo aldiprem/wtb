@@ -3022,9 +3022,6 @@
             
             // 3. Setup event listeners after data is loaded
             setupEventListeners();
-            
-            // 4. Setup banner upload (TAMBAHKAN INI)
-            setupBannerUpload();
 
             console.log('✅ Initialization completed successfully');
             
