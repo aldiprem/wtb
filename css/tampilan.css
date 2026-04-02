@@ -1201,12 +1201,15 @@ input:checked + .toggle-slider:before {
 
 /* Tombol aksi di luar border preview */
 .banner-upload-actions {
-    display: flex !important;
-    gap: 12px;
+    display: flex;
+    gap: 8px;
     justify-content: center;
-    margin-top: 12px;
-    padding: 8px 0;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    border-top: 1px solid var(--border-color-light);
+    margin-top: 0;
 }
+
 
 .btn-upload-cancel {
     flex: 1;
@@ -1221,7 +1224,7 @@ input:checked + .toggle-slider:before {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
     transition: all 0.2s;
 }
 

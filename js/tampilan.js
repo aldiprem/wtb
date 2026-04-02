@@ -1426,10 +1426,10 @@
                             </div>
                             <div class="banner-upload-actions" id="banner-upload-actions-${index}">
                                 <button class="btn-upload-cancel" id="cancel-banner-upload-${index}">
-                                    <i class="fas fa-times"></i> Batal
+                                    <i class="fas fa-times"></i> Batalkan
                                 </button>
                                 <button class="btn-upload-confirm" id="confirm-banner-upload-${index}" disabled>
-                                    <i class="fas fa-check"></i> Tambahkan Banner
+                                    <i class="fas fa-check"></i> Tambahkan
                                 </button>
                             </div>
                         </div>
