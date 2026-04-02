@@ -181,6 +181,20 @@
     // Gabungkan dengan elements yang sudah ada
     Object.assign(elements, newElements);
 
+    function hashToImageUrl(hash) {
+        if (!hash) return '';
+        // Jika sudah URL penuh atau base64
+        if (hash.startsWith('http://') || hash.startsWith('https://') || hash.startsWith('data:')) {
+            return hash;
+        }
+        // Jika hash 35 karakter
+        if (hash.length === 35 && /^[a-f0-9]{35}$/i.test(hash)) {
+            const endpoint = currentWebsite?.endpoint || 'companel';
+            return `https://imgg.companel.shop/ii?${endpoint}=${hash}`;
+        }
+        return hash;
+    }
+
     // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
@@ -801,7 +815,14 @@
         let dotsHtml = '';
         
         banners.forEach((banner, index) => {
-            const url = typeof banner === 'string' ? banner : banner.url;
+            // KONVERSI HASH KE URL
+            let url = '';
+            if (typeof banner === 'string') {
+                url = hashToImageUrl(banner);
+            } else if (typeof banner === 'object') {
+                url = hashToImageUrl(banner.url || banner.hash);
+            }
+            
             const positionX = banner.positionX || 50;
             const positionY = banner.positionY || 50;
             
@@ -828,8 +849,9 @@
 
     function applyTampilan() {
         if (isDataLoaded('tampilan')) {
+            // LOGO - KONVERSI HASH KE URL
             if (tampilanData.logo && elements.storeLogo) {
-                elements.storeLogo.src = tampilanData.logo;
+                elements.storeLogo.src = hashToImageUrl(tampilanData.logo);
             }
             
             const storeName = tampilanData.store_display_name || 'Toko Online';
@@ -953,10 +975,10 @@
         
         return layananData.map(layanan => `
             <div class="layanan-card ${!isDataLoaded('products') ? 'skeleton-card' : ''}" 
-                 onclick="${isDataLoaded('products') ? `window.website.filterByLayanan('${escapeHtml(layanan.nama)}')` : ''}">
+                onclick="${isDataLoaded('products') ? `window.website.filterByLayanan('${escapeHtml(layanan.nama)}')` : ''}">
                 <div class="layanan-icon ${!isDataLoaded('products') ? 'skeleton-icon' : ''}">
                     ${isDataLoaded('products') && layanan.gambar ? 
-                        `<img src="${escapeHtml(layanan.gambar)}" alt="${escapeHtml(layanan.nama)}">` : 
+                        `<img src="${hashToImageUrl(layanan.gambar)}" alt="${escapeHtml(layanan.nama)}">` : 
                         `<i class="fas ${isDataLoaded('products') ? 'fa-layer-group' : 'fa-spinner fa-spin'}"></i>`
                     }
                 </div>
@@ -978,19 +1000,21 @@
         return pageItems.map(item => {
             const isDummy = item.id?.toString().startsWith('dummy');
             const readyClass = item.item_ready ? 'ready' : 'sold';
-            const logo = item.aplikasi_gambar || item.layanan_gambar;
+            // KONVERSI GAMBAR PRODUK
+            const logo = item.aplikasi_gambar ? hashToImageUrl(item.aplikasi_gambar) : 
+                        (item.layanan_gambar ? hashToImageUrl(item.layanan_gambar) : '');
             const durasi = item.item_durasi_jumlah ? `${item.item_durasi_jumlah} ${item.item_durasi_satuan}` : '';
             const stokCount = item.item_stok?.length || 0;
             
             return `
                 <div class="product-card ${isDummy ? 'skeleton-card' : ''} ${!item.item_ready ? 'sold' : ''}" 
-                     onclick="${!isDummy ? `window.website.viewProduct(${item.id})` : ''}">
+                    onclick="${!isDummy ? `window.website.viewProduct(${item.id})` : ''}">
                     <div class="product-badge ${readyClass} ${isDummy ? 'skeleton-badge' : ''}">
                         ${isDummy ? 'Memuat...' : (item.item_ready ? 'Ready' : 'Sold')}
                     </div>
                     <div class="product-logo ${isDummy ? 'skeleton-image' : ''}">
                         ${!isDummy && logo ? 
-                            `<img src="${escapeHtml(logo)}" alt="${escapeHtml(item.item_nama)}">` : 
+                            `<img src="${escapeHtml(logo)}" alt="${escapeHtml(item.item_nama)}" onerror="this.src='https://via.placeholder.com/80x80/40a7e3/ffffff?text=Product';">` : 
                             `<i class="fas ${isDummy ? 'fa-spinner fa-spin' : 'fa-box'}"></i>`
                         }
                     </div>
@@ -1258,15 +1282,17 @@
         
         return promos.map(promo => {
             const isDummy = promo.id?.toString().startsWith('dummy');
+            // KONVERSI BANNER PROMO
+            const bannerUrl = hashToImageUrl(promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo');
             const expiryText = isDummy ? 'Memuat...' : 
                 (promo.never_end ? 'Tidak ada batas waktu' : `Berakhir: ${formatDate(promo.end_date + 'T' + (promo.end_time || '23:59'), true)}`);
             
             return `
                 <div class="promo-card ${isDummy ? 'skeleton-card' : ''}">
                     <div class="promo-banner ${isDummy ? 'skeleton-image' : ''}">
-                        <img src="${escapeHtml(promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo')}" 
-                             alt="${escapeHtml(promo.title)}"
-                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo';">
+                        <img src="${escapeHtml(bannerUrl)}" 
+                            alt="${escapeHtml(promo.title)}"
+                            onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Promo';">
                     </div>
                     <div class="promo-content">
                         <h3 class="promo-title ${isDummy ? 'skeleton-text' : ''}">${escapeHtml(promo.title)}</h3>
