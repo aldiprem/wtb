@@ -187,15 +187,15 @@ body {
     text-overflow: ellipsis;
 }
 
-/* ===== BANNER SLIDER - FULL WIDTH, NO CROP ===== */
+/* ===== BANNER SLIDER - UKURAN 358x160 ===== */
 .banner-slider-container {
     position: relative;
     width: 100%;
-    /* Gunakan aspect ratio 1280:760 */
-    aspect-ratio: 1280 / 760;
+    /* Rasio 358:160 = 2.2375 */
+    aspect-ratio: 358 / 160;
     margin-bottom: 20px;
     overflow: hidden;
-    border-radius: 16px;
+    border-radius: 12px;
     background: #1a1a1a;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -214,19 +214,14 @@ body {
     height: 100%;
     position: relative;
     overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-/* Ganti object-fit: cover menjadi contain agar gambar tidak terpotong */
 .banner-slide img {
     width: 100%;
     height: 100%;
     display: block;
-    object-fit: contain;  /* <-- PERUBAHAN: contain agar gambar utuh */
+    object-fit: cover;
     object-position: center;
-    background: #1a1a1a;  /* Background gelap di area kosong */
 }
 
 /* Fallback untuk background image */

@@ -742,7 +742,6 @@
         }
     }
 
-    // ==================== BANNER FUNCTIONS ====================
     async function validateImageSize(url) {
         return new Promise((resolve, reject) => {
             const img = new Image();
@@ -754,14 +753,15 @@
                 
                 console.log(`📏 Image dimensions: ${width}x${height}`);
                 
-                if (width === 1280 && height === 760) {
+                // Ubah validasi dari 1280x760 menjadi 358x160
+                if (width === 358 && height === 160) {
                     resolve({ valid: true, width, height });
                 } else {
                     reject({ 
                         valid: false, 
                         width, 
                         height,
-                        message: `Ukuran gambar harus 1280x760 pixel (saat ini ${width}x${height})`
+                        message: `Ukuran gambar harus 358x160 pixel (saat ini ${width}x${height})`
                     });
                 }
             };
@@ -1037,20 +1037,19 @@
             
             console.log(`📏 Uploaded image dimensions: ${width}x${height}`);
             
-            if (width === 1280 && height === 760) {
-                // Valid
+            // Ubah dari 1280x760 menjadi 358x160
+            if (width === 358 && height === 160) {
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
                     confirmBtn.innerHTML = '<i class="fas fa-check"></i> Tambahkan Banner';
                 }
-                showToast('Ukuran gambar valid: 1280x760 ✓', 'success');
+                showToast('Ukuran gambar valid: 358x160 ✓', 'success');
             } else {
-                // Invalid
                 if (confirmBtn) {
                     confirmBtn.disabled = true;
-                    confirmBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ukuran Harus 1280x760';
+                    confirmBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Ukuran Harus 358x160';
                 }
-                showToast(`Ukuran gambar harus 1280x760 pixel (saat ini ${width}x${height})`, 'error');
+                showToast(`Ukuran gambar harus 358x160 pixel (saat ini ${width}x${height})`, 'error');
             }
         };
         
@@ -1263,12 +1262,12 @@
             
             let validationClass = 'banner-validation-message info';
             let validationIcon = '<i class="fas fa-info-circle"></i>';
-            let validationText = 'Masukkan URL gambar (wajib 1280x760)';
-            
+            let validationText = 'Masukkan URL gambar (wajib 358x160)';
+
             if (hasValidUrl) {
                 validationClass = 'banner-validation-message success';
                 validationIcon = '<i class="fas fa-check-circle"></i>';
-                validationText = 'Ukuran valid: 1280x760 ✓';
+                validationText = 'Ukuran valid: 358x160 ✓';
             }
             
             html += `
