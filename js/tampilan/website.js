@@ -191,7 +191,7 @@
         
         // Jika sudah URL penuh atau base64
         if (hash.startsWith('http://') || hash.startsWith('https://') || hash.startsWith('data:')) {
-            console.log('✅ Already a full URL:', hash);
+            console.log('✅ Already a full URL:', hash.substring(0, 100));
             return hash;
         }
         
@@ -203,8 +203,72 @@
             return fullUrl;
         }
         
-        console.log('⚠️ Not a valid hash (length: ' + hash.length + '):', hash);
+        console.log('⚠️ Not a valid hash (length: ' + hash.length + '):', hash.substring(0, 50));
         return hash;
+    }
+
+    function applyTampilan() {
+        console.log('🎨 applyTampilan called, isDataLoaded:', isDataLoaded('tampilan'));
+        console.log('📦 tampilanData:', tampilanData);
+        
+        if (isDataLoaded('tampilan') && tampilanData) {
+            // LOGO - KONVERSI HASH KE URL
+            if (tampilanData.logo && elements.storeLogo) {
+                const rawLogo = tampilanData.logo;
+                console.log('🖼️ Raw logo from database:', rawLogo);
+                
+                const logoUrl = hashToImageUrl(rawLogo);
+                console.log('🖼️ Final logo URL:', logoUrl);
+                
+                elements.storeLogo.src = logoUrl;
+                
+                // Tambahkan event listener untuk error loading gambar
+                elements.storeLogo.onerror = () => {
+                    console.error('❌ Failed to load logo from URL:', logoUrl);
+                    elements.storeLogo.src = 'https://via.placeholder.com/48x48/40a7e3/ffffff?text=Logo';
+                };
+                
+                elements.storeLogo.onload = () => {
+                    console.log('✅ Logo loaded successfully!');
+                };
+            } else {
+                console.log('⚠️ No logo data or storeLogo element not found');
+                if (!tampilanData.logo) console.log('   - tampilanData.logo is empty or null');
+                if (!elements.storeLogo) console.log('   - storeLogo element not found');
+            }
+            
+            // Store name
+            const storeName = tampilanData.store_display_name || 'Toko Online';
+            if (elements.storeName) {
+                elements.storeName.textContent = storeName;
+                console.log('🏪 Store name set to:', storeName);
+                
+                // Apply font styles
+                if (tampilanData.store_font_family) {
+                    elements.storeName.style.fontFamily = `'${tampilanData.store_font_family}', sans-serif`;
+                } else if (tampilanData.font_family) {
+                    elements.storeName.style.fontFamily = `'${tampilanData.font_family}', sans-serif`;
+                }
+                
+                if (tampilanData.store_font_size) {
+                    elements.storeName.style.fontSize = `${tampilanData.store_font_size}px`;
+                } else if (tampilanData.font_size) {
+                    elements.storeName.style.fontSize = `${tampilanData.font_size}px`;
+                }
+                
+                if (tampilanData.colors && tampilanData.colors.text) {
+                    elements.storeName.style.color = tampilanData.colors.text;
+                }
+            }
+            
+            if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
+                elements.storeHeader.style.borderColor = tampilanData.colors.primary;
+            }
+        } else {
+            console.log('⚠️ Tampilan data not loaded yet or tampilanData is empty');
+            console.log('   isDataLoaded("tampilan"):', isDataLoaded('tampilan'));
+            console.log('   tampilanData:', tampilanData);
+        }
     }
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -556,7 +620,7 @@
                     // Update loading state
                     updateLoadingState('tampilan', 'loaded');
                     
-                    // PANGGIL APPLY TAMPILAN LANGSUNG UNTUK UPDATE LOGO
+                    // ==================== PANGGIL APPLY TAMPILAN LANGSUNG ====================
                     applyTampilan();
                     
                 } else {
@@ -633,12 +697,9 @@
                 startAutoRefresh();
                 
                 // Render ulang banner jika ada
-                if (tampilanData.banners) {
+                if (tampilanData.banners && tampilanData.banners.length > 0) {
                     renderBanners();
                 }
-                
-                // Terapkan tampilan (warna, dll)
-                applyTampilan();
                 
             } else {
                 console.warn('⚠️ Failed to load initial data');
@@ -659,7 +720,7 @@
             updateLoadingState('balance', 'error');
             updateLoadingState('tampilan', 'error');
         }
-}
+    }
 
     function injectFontStyle(fontFamily, fontData) {
         if (document.getElementById(`website-font-${fontFamily}`)) return;
@@ -894,40 +955,15 @@
     }
 
     function applyTampilan() {
-        console.log('🎨 applyTampilan called, isDataLoaded:', isDataLoaded('tampilan'));
-        console.log('📦 tampilanData:', tampilanData);
-        
         if (isDataLoaded('tampilan')) {
             // LOGO - KONVERSI HASH KE URL
             if (tampilanData.logo && elements.storeLogo) {
-                const rawLogo = tampilanData.logo;
-                console.log('🖼️ Raw logo from database:', rawLogo);
-                
-                const logoUrl = hashToImageUrl(rawLogo);
-                console.log('🖼️ Final logo URL:', logoUrl);
-                
-                elements.storeLogo.src = logoUrl;
-                
-                // Tambahkan event listener untuk error loading gambar
-                elements.storeLogo.onerror = () => {
-                    console.error('❌ Failed to load logo from URL:', logoUrl);
-                    elements.storeLogo.src = 'https://via.placeholder.com/48x48/40a7e3/ffffff?text=Logo';
-                };
-                
-                elements.storeLogo.onload = () => {
-                    console.log('✅ Logo loaded successfully!');
-                };
-            } else {
-                console.log('⚠️ No logo data or storeLogo element not found');
-                if (!tampilanData.logo) console.log('   - tampilanData.logo is empty');
-                if (!elements.storeLogo) console.log('   - storeLogo element not found');
+                elements.storeLogo.src = hashToImageUrl(tampilanData.logo);
             }
             
-            // Store name
             const storeName = tampilanData.store_display_name || 'Toko Online';
             if (elements.storeName) {
                 elements.storeName.textContent = storeName;
-                console.log('🏪 Store name set to:', storeName);
                 
                 setTimeout(() => {
                     if (tampilanData.store_font_family) {
@@ -964,8 +1000,6 @@
             if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
                 elements.storeHeader.style.borderColor = tampilanData.colors.primary;
             }
-        } else {
-            console.log('⚠️ Tampilan data not loaded yet');
         }
     }
 

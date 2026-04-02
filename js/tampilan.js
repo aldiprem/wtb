@@ -233,29 +233,42 @@
         return { hash: data.hash, url: data.url };
     }
 
-    /**
-     * Menampilkan link gambar yang tersimpan di border
-     */
     function displaySavedLink(logoValue) {
         const linkContainer = document.getElementById('savedLinkContainer');
         const linkDisplay = document.getElementById('displaySavedLink');
         const copyBtn = document.getElementById('copySavedLinkBtn');
         
-        if (!linkContainer || !linkDisplay) return;
+        console.log('🔗 displaySavedLink called with logoValue:', logoValue);
+        
+        if (!linkContainer || !linkDisplay) {
+            console.log('⚠️ Link container or display element not found');
+            return;
+        }
         
         let displayUrl = '';
         
         if (logoValue) {
+            // Cek apakah logoValue adalah hash 35 karakter
             if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
                 displayUrl = hashToImageUrl(logoValue);
+                console.log('✅ Logo is hash, converted to URL:', displayUrl);
             } else if (logoValue.startsWith('http')) {
                 displayUrl = logoValue;
+                console.log('✅ Logo is URL:', displayUrl);
+            } else if (logoValue.startsWith('data:')) {
+                displayUrl = logoValue.substring(0, 100) + '...';
+                console.log('⚠️ Logo is base64 data (too long)');
+            } else {
+                console.log('⚠️ Logo value not recognized:', logoValue);
             }
+        } else {
+            console.log('⚠️ No logo value provided');
         }
         
         if (displayUrl) {
             linkDisplay.textContent = displayUrl;
             linkContainer.style.display = 'block';
+            console.log('✅ Link container displayed with URL:', displayUrl);
             
             if (copyBtn) {
                 copyBtn.onclick = () => {
@@ -268,6 +281,7 @@
             }
         } else {
             linkContainer.style.display = 'none';
+            console.log('⚠️ Link container hidden (no valid URL)');
         }
     }
 
@@ -582,18 +596,25 @@
             let logoValue = tampilanData.logo;
             let displayLogoUrl = '';
             
+            console.log('🖼️ Logo value from DB:', logoValue);
+            
+            // Cek apakah logoValue adalah hash 35 karakter
             if (logoValue && logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
                 displayLogoUrl = hashToImageUrl(logoValue);
+                console.log('✅ Logo is hash, converted to URL:', displayLogoUrl);
             } else {
                 displayLogoUrl = logoValue;
+                console.log('⚠️ Logo is not hash, using as is:', displayLogoUrl);
             }
             
             if (elements.logoImage) elements.logoImage.src = displayLogoUrl;
             if (elements.logoUrl) elements.logoUrl.value = displayLogoUrl;
             
-            // TAMPILKAN LINK DI BORDER
+            // ==================== TAMPILKAN LINK DI BORDER (PENTING!) ====================
             displaySavedLink(logoValue);
+            
         } else {
+            console.log('⚠️ No logo data found in tampilanData');
             displaySavedLink(null);
         }
         
