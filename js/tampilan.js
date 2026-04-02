@@ -241,38 +241,24 @@
         const linkContainer = document.getElementById('savedLinkContainer');
         const linkDisplay = document.getElementById('displaySavedLink');
         const copyBtn = document.getElementById('copySavedLinkBtn');
+        const toggleBtn = document.getElementById('toggleSavedLinkBtn');
         
-        console.log('🔗 displaySavedLink called with logoValue:', logoValue);
-        
-        if (!linkContainer || !linkDisplay) {
-            console.log('⚠️ Link container or display element not found');
-            return;
-        }
+        if (!linkContainer || !linkDisplay) return;
         
         let displayUrl = '';
         
         if (logoValue) {
-            // Cek apakah logoValue adalah hash 35 karakter
             if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
                 displayUrl = hashToImageUrl(logoValue);
-                console.log('✅ Logo is hash, converted to URL:', displayUrl);
             } else if (logoValue.startsWith('http')) {
                 displayUrl = logoValue;
-                console.log('✅ Logo is URL:', displayUrl);
-            } else if (logoValue.startsWith('data:')) {
-                displayUrl = logoValue.substring(0, 100) + '...';
-                console.log('⚠️ Logo is base64 data (too long)');
-            } else {
-                console.log('⚠️ Logo value not recognized:', logoValue);
             }
-        } else {
-            console.log('⚠️ No logo value provided');
         }
         
         if (displayUrl) {
             linkDisplay.textContent = displayUrl;
-            linkContainer.style.display = 'block';
-            console.log('✅ Link container displayed with URL:', displayUrl);
+            // JANGAN otomatis tampilkan border - biarkan user yang klik tombol info
+            // linkContainer.style.display = 'block';  <- BARIS INI DIHAPUS
             
             if (copyBtn) {
                 copyBtn.onclick = () => {
@@ -283,9 +269,19 @@
                     });
                 };
             }
+            
+            // Update badge pada tombol info (opsional)
+            if (toggleBtn && displayUrl) {
+                toggleBtn.style.color = 'var(--primary-color)';
+                toggleBtn.title = 'Klik untuk lihat link gambar';
+            }
         } else {
+            // Sembunyikan border jika tidak ada logo
             linkContainer.style.display = 'none';
-            console.log('⚠️ Link container hidden (no valid URL)');
+            if (toggleBtn) {
+                toggleBtn.style.color = 'var(--tg-hint-color)';
+                toggleBtn.title = 'Belum ada link gambar';
+            }
         }
     }
 
@@ -608,52 +604,25 @@
     function updateUI() {
         const endpoint = currentWebsite?.endpoint;
         
-        console.log('🔄 updateUI called, tampilanData:', tampilanData);
-        
         // LOGO: konversi hash ke URL dan tampilkan link
         if (tampilanData && tampilanData.logo) {
             let logoValue = tampilanData.logo;
             let displayLogoUrl = '';
             
-            console.log('🖼️ Logo value from DB:', logoValue);
-            console.log('🖼️ Logo value type:', typeof logoValue);
-            console.log('🖼️ Logo value length:', logoValue?.length);
-            
-            // Cek apakah logoValue adalah hash 35 karakter
             if (logoValue && logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
                 displayLogoUrl = hashToImageUrl(logoValue);
-                console.log('✅ Logo is hash, converted to URL:', displayLogoUrl);
-            } 
-            // Cek apakah logoValue adalah URL
-            else if (logoValue && (logoValue.startsWith('http://') || logoValue.startsWith('https://'))) {
+            } else {
                 displayLogoUrl = logoValue;
-                console.log('✅ Logo is URL:', displayLogoUrl);
-            }
-            // Cek apakah logoValue adalah base64
-            else if (logoValue && logoValue.startsWith('data:')) {
-                displayLogoUrl = logoValue;
-                console.log('⚠️ Logo is base64 data (length: ' + logoValue.length + ')');
-            }
-            else {
-                displayLogoUrl = logoValue || '';
-                console.log('⚠️ Logo value not recognized:', logoValue);
             }
             
-            if (elements.logoImage && displayLogoUrl) {
-                elements.logoImage.src = displayLogoUrl;
-                console.log('🖼️ Logo image src set to:', displayLogoUrl.substring(0, 100));
-            }
-            if (elements.logoUrl) {
-                elements.logoUrl.value = displayLogoUrl;
-            }
+            if (elements.logoImage) elements.logoImage.src = displayLogoUrl;
+            if (elements.logoUrl) elements.logoUrl.value = displayLogoUrl;
             
-            // TAMPILKAN LINK DI BORDER
-            displaySavedLink(logoValue);
+            // TAMPILKAN LINK DI DATABASE (TAPI BORDER TIDAK LANGSUNG MUNCUL)
+            displaySavedLink(logoValue);  // Fungsi ini sudah diubah, tidak auto-show border
             
         } else {
-            console.log('⚠️ No logo data found in tampilanData');
             displaySavedLink(null);
-            // Set placeholder jika tidak ada logo
             if (elements.logoImage) {
                 elements.logoImage.src = 'https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG';
             }
@@ -2740,8 +2709,12 @@
         const savedLinkContainer = document.getElementById('savedLinkContainer');
 
         if (toggleSavedLinkBtn && savedLinkContainer) {
-            // State untuk menyimpan status toggle (opsional, bisa pakai localStorage)
+            // State untuk tracking
             let isLinkVisible = false;
+            
+            // Pastikan awal状態 hidden
+            savedLinkContainer.style.display = 'none';
+            isLinkVisible = false;
             
             toggleSavedLinkBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -2752,12 +2725,20 @@
                     isLinkVisible = false;
                     toggleSavedLinkBtn.style.color = 'var(--tg-hint-color)';
                     toggleSavedLinkBtn.style.background = 'transparent';
+                    toggleSavedLinkBtn.classList.remove('active');
                 } else {
-                    // Tampilkan border
-                    savedLinkContainer.style.display = 'block';
-                    isLinkVisible = true;
-                    toggleSavedLinkBtn.style.color = 'var(--primary-color)';
-                    toggleSavedLinkBtn.style.background = 'rgba(64, 167, 227, 0.1)';
+                    // Cek apakah ada link yang bisa ditampilkan
+                    const linkDisplay = document.getElementById('displaySavedLink');
+                    if (linkDisplay && linkDisplay.textContent !== '-' && linkDisplay.textContent !== '') {
+                        // Tampilkan border
+                        savedLinkContainer.style.display = 'block';
+                        isLinkVisible = true;
+                        toggleSavedLinkBtn.style.color = 'var(--primary-color)';
+                        toggleSavedLinkBtn.style.background = 'rgba(64, 167, 227, 0.1)';
+                        toggleSavedLinkBtn.classList.add('active');
+                    } else {
+                        showToast('Belum ada link gambar yang tersimpan', 'info');
+                    }
                 }
                 
                 vibrate(10);

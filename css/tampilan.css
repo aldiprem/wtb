@@ -578,6 +578,10 @@ body {
     background: rgba(64, 167, 227, 0.15);
 }
 
+.btn-info-icon.active:hover {
+    background: rgba(64, 167, 227, 0.25);
+}
+
 .btn-info-icon i {
     font-size: 14px;
 }
