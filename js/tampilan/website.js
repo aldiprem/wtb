@@ -539,12 +539,19 @@
                 if (d.tampilan) {
                     tampilanData = d.tampilan;
                     console.log('✅ Tampilan data loaded:', tampilanData);
+                    console.log('🖼️ Logo value from DB:', tampilanData.logo);
                     
                     // Update logo segera setelah data tersedia
                     if (tampilanData.logo && elements.storeLogo) {
-                        const logoUrl = hashToImageUrl(tampilanData.logo);
+                        // Konversi hash ke URL
+                        let logoUrl = tampilanData.logo;
+                        if (logoUrl.length === 35 && /^[a-f0-9]{35}$/i.test(logoUrl)) {
+                            logoUrl = hashToImageUrl(logoUrl);
+                        }
                         elements.storeLogo.src = logoUrl;
-                        console.log('🖼️ Logo URL:', logoUrl);
+                        console.log('🖼️ Logo URL setelah konversi:', logoUrl);
+                    } else {
+                        console.log('⚠️ Logo tidak ditemukan di database');
                     }
                     
                     // Update store name
@@ -563,7 +570,6 @@
                     // Update loading state
                     updateLoadingState('tampilan', 'loaded');
                 } else {
-                    // Fallback: load dari endpoint terpisah jika data tampilan tidak ada di response
                     console.log('ℹ️ No tampilan data in initial-data, loading separately...');
                     await loadTampilan();
                 }
@@ -641,6 +647,9 @@
                     renderBanners();
                 }
                 
+                // Terapkan tampilan (warna, dll)
+                applyTampilan();
+                
             } else {
                 console.warn('⚠️ Failed to load initial data');
                 updateLoadingState('products', 'error');
@@ -660,7 +669,7 @@
             updateLoadingState('balance', 'error');
             updateLoadingState('tampilan', 'error');
         }
-    }
+}
 
     function injectFontStyle(fontFamily, fontData) {
         if (document.getElementById(`website-font-${fontFamily}`)) return;

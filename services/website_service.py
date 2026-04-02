@@ -277,6 +277,10 @@ def test_bot(website_id):
         
 @website_bp.route('/website/<int:website_id>/initial-data', methods=['GET', 'OPTIONS'])
 def get_initial_website_data(website_id):
+    """
+    Endpoint khusus untuk initial load website
+    Menggabungkan semua data yang dibutuhkan dalam satu request
+    """
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
@@ -289,10 +293,29 @@ def get_initial_website_data(website_id):
         user_id = request.args.get('user_id', type=int)
         print(f"📥 Initial data request for website {website_id}, user {user_id}")
         
-        # Ambil data tampilan TERLEBIH DAHULU (untuk logo)
+        # ==================== AMBIL DATA TAMPILAN TERLEBIH DAHULU ====================
         tampilan_data = tmp.get_tampilan(website_id)
+        print(f"🎨 Tampilan data: {tampilan_data}")
         
-        # Ambil data lainnya
+        if tampilan_data:
+            print(f"🖼️ Logo value: {tampilan_data.get('logo')}")
+        else:
+            print(f"⚠️ No tampilan data for website {website_id}")
+            # Buat data default jika belum ada
+            default_data = {
+                'logo': '',
+                'banners': [],
+                'promos': [],
+                'store_display_name': 'Toko Online',
+                'font_family': 'Inter',
+                'font_size': 14,
+                'font_animation': 'none',
+                'colors': {}
+            }
+            tmp.save_tampilan(website_id, default_data)
+            tampilan_data = tmp.get_tampilan(website_id)
+        
+        # ==================== AMBIL DATA LAINNYA ====================
         products_data = prd.get_all_data(website_id)
         promos_data = tmp.get_promos(website_id)
         rekening_data = pmb.get_all_rekening(website_id)
@@ -309,7 +332,7 @@ def get_initial_website_data(website_id):
             transactions_data = trx.get_user_transactions(user_id, website_id, 'all', 100)
             balance = users.get_user_balance(user_id, website_id)
         
-        # Gabungkan tampilan data ke dalam response
+        # ==================== KEMBALIKAN SEMUA DATA ====================
         return jsonify({
             'success': True,
             'data': {
