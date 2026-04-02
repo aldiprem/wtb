@@ -182,16 +182,28 @@
     Object.assign(elements, newElements);
 
     function hashToImageUrl(hash) {
-        if (!hash) return '';
+        console.log('🔍 hashToImageUrl called with:', hash);
+        
+        if (!hash) {
+            console.log('⚠️ Hash is empty');
+            return '';
+        }
+        
         // Jika sudah URL penuh atau base64
         if (hash.startsWith('http://') || hash.startsWith('https://') || hash.startsWith('data:')) {
+            console.log('✅ Already a full URL:', hash);
             return hash;
         }
+        
         // Jika hash 35 karakter
         if (hash.length === 35 && /^[a-f0-9]{35}$/i.test(hash)) {
             const endpoint = currentWebsite?.endpoint || 'companel';
-            return `https://companel.shop/ii?${endpoint}=${hash}`;
+            const fullUrl = `https://companel.shop/ii?${endpoint}=${hash}`;
+            console.log('✅ Converted hash to URL:', fullUrl);
+            return fullUrl;
         }
+        
+        console.log('⚠️ Not a valid hash (length: ' + hash.length + '):', hash);
         return hash;
     }
 
@@ -541,34 +553,12 @@
                     console.log('✅ Tampilan data loaded:', tampilanData);
                     console.log('🖼️ Logo value from DB:', tampilanData.logo);
                     
-                    // Update logo segera setelah data tersedia
-                    if (tampilanData.logo && elements.storeLogo) {
-                        // Konversi hash ke URL
-                        let logoUrl = tampilanData.logo;
-                        if (logoUrl.length === 35 && /^[a-f0-9]{35}$/i.test(logoUrl)) {
-                            logoUrl = hashToImageUrl(logoUrl);
-                        }
-                        elements.storeLogo.src = logoUrl;
-                        console.log('🖼️ Logo URL setelah konversi:', logoUrl);
-                    } else {
-                        console.log('⚠️ Logo tidak ditemukan di database');
-                    }
-                    
-                    // Update store name
-                    if (tampilanData.store_display_name && elements.storeName) {
-                        elements.storeName.textContent = tampilanData.store_display_name;
-                    }
-                    
-                    // Apply font styles jika ada
-                    if (tampilanData.store_font_family && elements.storeName) {
-                        elements.storeName.style.fontFamily = `'${tampilanData.store_font_family}', sans-serif`;
-                    }
-                    if (tampilanData.store_font_size && elements.storeName) {
-                        elements.storeName.style.fontSize = `${tampilanData.store_font_size}px`;
-                    }
-                    
                     // Update loading state
                     updateLoadingState('tampilan', 'loaded');
+                    
+                    // PANGGIL APPLY TAMPILAN LANGSUNG UNTUK UPDATE LOGO
+                    applyTampilan();
+                    
                 } else {
                     console.log('ℹ️ No tampilan data in initial-data, loading separately...');
                     await loadTampilan();
@@ -904,15 +894,40 @@
     }
 
     function applyTampilan() {
+        console.log('🎨 applyTampilan called, isDataLoaded:', isDataLoaded('tampilan'));
+        console.log('📦 tampilanData:', tampilanData);
+        
         if (isDataLoaded('tampilan')) {
             // LOGO - KONVERSI HASH KE URL
             if (tampilanData.logo && elements.storeLogo) {
-                elements.storeLogo.src = hashToImageUrl(tampilanData.logo);
+                const rawLogo = tampilanData.logo;
+                console.log('🖼️ Raw logo from database:', rawLogo);
+                
+                const logoUrl = hashToImageUrl(rawLogo);
+                console.log('🖼️ Final logo URL:', logoUrl);
+                
+                elements.storeLogo.src = logoUrl;
+                
+                // Tambahkan event listener untuk error loading gambar
+                elements.storeLogo.onerror = () => {
+                    console.error('❌ Failed to load logo from URL:', logoUrl);
+                    elements.storeLogo.src = 'https://via.placeholder.com/48x48/40a7e3/ffffff?text=Logo';
+                };
+                
+                elements.storeLogo.onload = () => {
+                    console.log('✅ Logo loaded successfully!');
+                };
+            } else {
+                console.log('⚠️ No logo data or storeLogo element not found');
+                if (!tampilanData.logo) console.log('   - tampilanData.logo is empty');
+                if (!elements.storeLogo) console.log('   - storeLogo element not found');
             }
             
+            // Store name
             const storeName = tampilanData.store_display_name || 'Toko Online';
             if (elements.storeName) {
                 elements.storeName.textContent = storeName;
+                console.log('🏪 Store name set to:', storeName);
                 
                 setTimeout(() => {
                     if (tampilanData.store_font_family) {
@@ -949,6 +964,8 @@
             if (tampilanData.colors && tampilanData.colors.primary && elements.storeHeader) {
                 elements.storeHeader.style.borderColor = tampilanData.colors.primary;
             }
+        } else {
+            console.log('⚠️ Tampilan data not loaded yet');
         }
     }
 
