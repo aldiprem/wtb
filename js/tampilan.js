@@ -562,12 +562,17 @@
         showLoading(true);
         
         try {
+            console.log(`📡 Fetching tampilan for website ${currentWebsite.id}`);
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}`, {
                 method: 'GET'
             });
             
+            console.log('📥 Tampilan API response:', response);
+            
             if (response.success && response.tampilan) {
                 tampilanData = response.tampilan;
+                console.log('✅ Tampilan data loaded:', tampilanData);
+                console.log('🖼️ Logo from database:', tampilanData.logo);
                 updateUI();
             } else {
                 console.log('ℹ️ No tampilan data found, using defaults');
@@ -576,8 +581,10 @@
                 promos = [];
                 renderBannerTrack();
                 renderPromos();
+                updateUI(); // Tetap panggil updateUI untuk menampilkan placeholder
             }
             
+            // Load saved templates
             await loadSavedTemplates();
             
         } catch (error) {
@@ -591,35 +598,59 @@
     function updateUI() {
         const endpoint = currentWebsite?.endpoint;
         
+        console.log('🔄 updateUI called, tampilanData:', tampilanData);
+        
         // LOGO: konversi hash ke URL dan tampilkan link
-        if (tampilanData.logo) {
+        if (tampilanData && tampilanData.logo) {
             let logoValue = tampilanData.logo;
             let displayLogoUrl = '';
             
             console.log('🖼️ Logo value from DB:', logoValue);
+            console.log('🖼️ Logo value type:', typeof logoValue);
+            console.log('🖼️ Logo value length:', logoValue?.length);
             
             // Cek apakah logoValue adalah hash 35 karakter
             if (logoValue && logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
                 displayLogoUrl = hashToImageUrl(logoValue);
                 console.log('✅ Logo is hash, converted to URL:', displayLogoUrl);
-            } else {
+            } 
+            // Cek apakah logoValue adalah URL
+            else if (logoValue && (logoValue.startsWith('http://') || logoValue.startsWith('https://'))) {
                 displayLogoUrl = logoValue;
-                console.log('⚠️ Logo is not hash, using as is:', displayLogoUrl);
+                console.log('✅ Logo is URL:', displayLogoUrl);
+            }
+            // Cek apakah logoValue adalah base64
+            else if (logoValue && logoValue.startsWith('data:')) {
+                displayLogoUrl = logoValue;
+                console.log('⚠️ Logo is base64 data (length: ' + logoValue.length + ')');
+            }
+            else {
+                displayLogoUrl = logoValue || '';
+                console.log('⚠️ Logo value not recognized:', logoValue);
             }
             
-            if (elements.logoImage) elements.logoImage.src = displayLogoUrl;
-            if (elements.logoUrl) elements.logoUrl.value = displayLogoUrl;
+            if (elements.logoImage && displayLogoUrl) {
+                elements.logoImage.src = displayLogoUrl;
+                console.log('🖼️ Logo image src set to:', displayLogoUrl.substring(0, 100));
+            }
+            if (elements.logoUrl) {
+                elements.logoUrl.value = displayLogoUrl;
+            }
             
-            // ==================== TAMPILKAN LINK DI BORDER (PENTING!) ====================
+            // TAMPILKAN LINK DI BORDER
             displaySavedLink(logoValue);
             
         } else {
             console.log('⚠️ No logo data found in tampilanData');
             displaySavedLink(null);
+            // Set placeholder jika tidak ada logo
+            if (elements.logoImage) {
+                elements.logoImage.src = 'https://via.placeholder.com/200x200/40a7e3/ffffff?text=Logo+PNG';
+            }
         }
         
         // Store display name
-        if (tampilanData.store_display_name) {
+        if (tampilanData && tampilanData.store_display_name) {
             storeDisplayName = tampilanData.store_display_name;
             if (elements.storeDisplayNameInput) {
                 elements.storeDisplayNameInput.value = storeDisplayName;
@@ -2361,26 +2392,47 @@
             return;
         }
         
+        // Ambil nilai dari input URL atau image preview
         const logoValue = elements.logoUrl?.value || elements.logoImage?.src || '';
         const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
         
+        console.log('💾 saveLogo called with logoValue:', logoValue);
+        
+        // EKSTRAK HASH dari URL jika ada
         let logoHash = null;
         if (logoValue) {
+            // Cek apakah sudah hash 35 karakter
             if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
                 logoHash = logoValue;
-            } else {
+                console.log('✅ Logo value is already hash:', logoHash);
+            } 
+            // Cek apakah URL dari imgg.companel.shop atau companel.shop
+            else if (logoValue.includes('/ii?')) {
                 logoHash = extractHashFromUrl(logoValue);
+                console.log('✅ Extracted hash from URL:', logoHash);
+            }
+            // Cek apakah base64 atau URL lain
+            else if (logoValue.startsWith('data:') || logoValue.startsWith('http')) {
+                // Simpan sebagai string biasa (bisa base64 atau URL eksternal)
+                logoHash = logoValue;
+                console.log('⚠️ Logo is base64 or external URL, storing as is');
             }
         }
         
         showLoading(true);
         
         try {
+            // Kirim HASH (bukan URL) jika memungkinkan
             const logoResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ logo_hash: logoHash || '' })
+                body: JSON.stringify({ 
+                    logo_hash: logoHash,
+                    logo_url: logoValue  // Kirim juga URL asli sebagai fallback
+                })
             });
+            
+            console.log('📥 Logo save response:', logoResponse);
             
             const storeResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-anim`, {
                 method: 'POST',
@@ -2389,9 +2441,10 @@
             
             if (logoResponse.success && storeResponse.success) {
                 showToast('✅ Logo & Nama Store disimpan!', 'success');
+                // Reload data untuk menampilkan logo yang baru disimpan
                 await loadTampilanData();
             } else {
-                throw new Error('Gagal menyimpan');
+                throw new Error(logoResponse.error || 'Gagal menyimpan');
             }
         } catch (error) {
             console.error('❌ Error saving logo:', error);

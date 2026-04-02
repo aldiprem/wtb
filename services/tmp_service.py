@@ -94,15 +94,31 @@ def save_logo(website_id):
     try:
         data = request.json
         print(f"🎨 Saving logo for website {website_id}")
+        print(f"📦 Logo data received: {data}")
         
-        logo_url = data.get('url', '')
-        if logo_url and not (logo_url.lower().endswith('.png') or logo_url.startswith('data:image/png')):
-            return jsonify({'success': False, 'error': 'Logo must be PNG format'}), 400
+        # Cek apakah ada logo_hash atau logo_url
+        logo_hash = data.get('logo_hash') or data.get('hash') or data.get('url', '')
         
-        tmp.save_logo(website_id, logo_url)
-        return jsonify({'success': True, 'message': 'Logo saved successfully'})
+        # Jika tidak ada logo_hash, coba ekstrak dari logo_url
+        if not logo_hash and data.get('logo_url'):
+            logo_hash = data.get('logo_url')
+        
+        print(f"🖼️ Logo value to save: {logo_hash[:50] if logo_hash else 'empty'}...")
+        
+        # Validasi dan simpan
+        if logo_hash:
+            # Simpan hash atau URL ke database
+            tmp.save_logo(website_id, logo_hash)
+            return jsonify({'success': True, 'message': 'Logo saved successfully'})
+        else:
+            # Simpan empty string jika tidak ada logo
+            tmp.save_logo(website_id, '')
+            return jsonify({'success': True, 'message': 'Logo cleared'})
+            
     except Exception as e:
         print(f"❌ Error saving logo: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @tmp_bp.route('/tampilan/<int:website_id>/banners/reorder', methods=['POST'])
