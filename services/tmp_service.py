@@ -121,6 +121,25 @@ def save_logo(website_id):
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@tmp_bp.route('/tampilan/<int:website_id>/all', methods=['GET'])
+def get_all_tampilan_data(website_id):
+    """Endpoint gabungan untuk semua data tampilan dalam 1 request"""
+    try:
+        from py import tmp
+        
+        # Ambil semua data dalam 1 koneksi
+        tampilan_data = tmp.get_tampilan(website_id)
+        templates_data = tmp.get_website_templates(website_id)
+        
+        return jsonify({
+            'success': True,
+            'tampilan': tampilan_data,
+            'templates': templates_data
+        })
+    except Exception as e:
+        print(f"❌ Error getting all data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @tmp_bp.route('/tampilan/<int:website_id>/banners/reorder', methods=['POST'])
 def reorder_banners(website_id):
     try:

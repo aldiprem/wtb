@@ -11,6 +11,10 @@
     // ==================== STATE ====================
     let currentWebsite = null;
     let tampilanData = {};
+
+    let dataCache = null;
+    let lastFetch = 0;
+    const CACHE_DURATION = 10000;
     
     // Banner state
     let banners = [];
@@ -556,40 +560,46 @@
         window.location.href = '/html/panel.html';
     }
 
-    async function loadTampilanData() {
+    async function loadTampilanData(force = false) {
         if (!currentWebsite) return;
+        
+        // Cek cache
+        const now = Date.now();
+        if (!force && dataCache && (now - lastFetch) < CACHE_DURATION) {
+            console.log('📦 Using cached data');
+            tampilanData = dataCache.tampilan;
+            savedTemplates = dataCache.templates;
+            updateUI();
+            renderSavedTemplates();
+            populateTemplateSelect();
+            return;
+        }
         
         showLoading(true);
         
         try {
-            console.log(`📡 Fetching tampilan for website ${currentWebsite.id}`);
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}`, {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/all`, {
                 method: 'GET'
             });
             
-            console.log('📥 Tampilan API response:', response);
-            
-            if (response.success && response.tampilan) {
-                tampilanData = response.tampilan;
-                console.log('✅ Tampilan data loaded:', tampilanData);
-                console.log('🖼️ Logo from database:', tampilanData.logo);
+            if (response.success) {
+                // Simpan ke cache
+                dataCache = {
+                    tampilan: response.tampilan,
+                    templates: response.templates
+                };
+                lastFetch = now;
+                
+                // Update UI
+                tampilanData = response.tampilan || {};
+                savedTemplates = response.templates || [];
                 updateUI();
-            } else {
-                console.log('ℹ️ No tampilan data found, using defaults');
-                tampilanData = {};
-                banners = [];
-                promos = [];
-                renderBannerTrack();
-                renderPromos();
-                updateUI(); // Tetap panggil updateUI untuk menampilkan placeholder
+                renderSavedTemplates();
+                populateTemplateSelect();
             }
             
-            // Load saved templates
-            await loadSavedTemplates();
-            
         } catch (error) {
-            console.error('❌ Error loading tampilan:', error);
-            showToast('Gagal memuat data tampilan', 'error');
+            console.error('❌ Error:', error);
         } finally {
             showLoading(false);
         }
@@ -2659,21 +2669,34 @@
         showLoading(true);
         
         try {
+            // 1. Load website data
             currentWebsite = await loadWebsite();
-            if (!currentWebsite) return;
+            if (!currentWebsite) {
+                showToast('Website tidak ditemukan', 'error');
+                setTimeout(() => {
+                    window.location.href = '/html/panel.html';
+                }, 2000);
+                return;
+            }
             
+            // 2. Load all tampilan data in ONE request (includes logo, templates, promos, banners)
             await loadTampilanData();
+            
+            // 3. Setup event listeners after data is loaded
+            setupEventListeners();
+            
+            console.log('✅ Initialization completed successfully');
             
         } catch (error) {
             console.error('❌ Init error:', error);
-            showToast('Gagal memuat data', 'error');
+            showToast('Gagal memuat data: ' + (error.message || 'Terjadi kesalahan'), 'error');
         } finally {
             showLoading(false);
         }
     }
 
     // ==================== EVENT LISTENERS ====================
-function setupEventListeners() {
+    function setupEventListeners() {
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', (e) => {
                 e.preventDefault();
