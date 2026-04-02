@@ -858,29 +858,30 @@
     }
 
     function addBanner() {
-        const hasEmptyBanner = banners.some(b => !b.url);
+        // Cek apakah sudah ada banner yang sedang dalam mode upload
+        const hasUploadingBanner = banners.some(b => b.isUploading === true);
         
-        if (hasEmptyBanner) {
-            showToast('⚠️ Ada banner yang belum diisi URL. Selesaikan atau hapus terlebih dahulu.', 'warning');
+        if (hasUploadingBanner) {
+            showToast('⚠️ Selesaikan upload banner yang sedang berjalan terlebih dahulu.', 'warning');
             return;
         }
         
+        // Tambah banner baru dengan mode upload
         banners.push({
             url: '',
             positionX: 50,
-            positionY: 50
+            positionY: 50,
+            isUploading: true  // Tandai bahwa banner ini dalam mode upload
         });
         
         hasUnsavedBanners = true;
         renderBannerTrack();
         vibrate(10);
         
+        // Setup upload area untuk banner baru
         setTimeout(() => {
-            const lastBannerIndex = banners.length - 1;
-            const urlInput = document.getElementById(`banner-url-${lastBannerIndex}`);
-            if (urlInput) {
-                urlInput.focus();
-            }
+            const newIndex = banners.length - 1;
+            setupBannerUploadForIndex(newIndex);
         }, 100);
     }
 
@@ -919,31 +920,32 @@
 
     // ==================== BANNER UPLOAD FUNCTIONS ====================
 
-    function setupBannerUpload() {
-        const uploadArea = document.getElementById('bannerUploadArea');
-        const fileInput = document.getElementById('bannerFileInput');
-        const uploadPreview = document.getElementById('bannerUploadPreview');
-        const uploadInner = document.querySelector('.banner-upload-inner');
-        const previewImg = document.getElementById('bannerPreviewImg');
-        const cancelBtn = document.getElementById('cancelBannerUploadBtn');
-        const confirmBtn = document.getElementById('confirmBannerUploadBtn');
+    function setupBannerUploadForIndex(index) {
+        const uploadArea = document.getElementById(`banner-upload-area-${index}`);
+        const fileInput = document.getElementById(`banner-file-input-${index}`);
+        const uploadInner = document.querySelector(`#banner-upload-inner-${index}`);
+        const uploadPreview = document.getElementById(`banner-upload-preview-${index}`);
+        const previewImg = document.getElementById(`banner-preview-img-${index}`);
+        const cancelBtn = document.getElementById(`cancel-banner-upload-${index}`);
+        const confirmBtn = document.getElementById(`confirm-banner-upload-${index}`);
 
         if (!uploadArea) return;
 
         // Klik area untuk upload
         uploadArea.addEventListener('click', (e) => {
-            // Jangan trigger jika klik di dalam preview
             if (e.target.closest('.banner-upload-preview')) return;
-            fileInput.click();
+            if (fileInput) fileInput.click();
         });
 
         // File input change
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                handleBannerFileSelect(file);
-            }
-        });
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleBannerFileSelectForIndex(index, file);
+                }
+            });
+        }
 
         // Drag & drop
         uploadArea.addEventListener('dragover', (e) => {
@@ -962,7 +964,7 @@
             
             const file = e.dataTransfer.files[0];
             if (file && file.type.startsWith('image/')) {
-                handleBannerFileSelect(file);
+                handleBannerFileSelectForIndex(index, file);
             } else {
                 showToast('File harus berupa gambar', 'error');
             }
@@ -971,38 +973,38 @@
         // Cancel button
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
-                resetBannerUpload();
+                removeUploadingBanner(index);
             });
         }
 
         // Confirm button
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
-                if (pendingBannerUpload) {
-                    addBannerFromUpload(pendingBannerUpload);
+                const pendingFile = banners[index].pendingFile;
+                if (pendingFile) {
+                    uploadAndAddBanner(index, pendingFile);
                 }
             });
         }
     }
 
-    function handleBannerFileSelect(file) {
+    function handleBannerFileSelectForIndex(index, file) {
         // Validasi tipe file
         if (!file.type.startsWith('image/')) {
             showToast('File harus berupa gambar', 'error');
             return;
         }
 
-        // Validasi ukuran (5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            showToast('Ukuran file maksimal 5MB', 'error');
+        // Validasi ukuran (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Ukuran file maksimal 2MB', 'error');
             return;
         }
 
-        const uploadArea = document.getElementById('bannerUploadArea');
-        const uploadInner = document.querySelector('.banner-upload-inner');
-        const uploadPreview = document.getElementById('bannerUploadPreview');
-        const previewImg = document.getElementById('bannerPreviewImg');
-        const confirmBtn = document.getElementById('confirmBannerUploadBtn');
+        const uploadInner = document.querySelector(`#banner-upload-inner-${index}`);
+        const uploadPreview = document.getElementById(`banner-upload-preview-${index}`);
+        const previewImg = document.getElementById(`banner-preview-img-${index}`);
+        const confirmBtn = document.getElementById(`confirm-banner-upload-${index}`);
 
         // Tampilkan preview
         const reader = new FileReader();
@@ -1020,16 +1022,17 @@
             }
             
             // Validasi ukuran gambar
-            validateUploadedImageSize(e.target.result, file);
+            validateUploadedImageSizeForIndex(index, e.target.result, file);
         };
         reader.readAsDataURL(file);
         
-        pendingBannerUpload = file;
+        // Simpan file sementara
+        banners[index].pendingFile = file;
     }
 
-    function validateUploadedImageSize(imageUrl, file) {
+    function validateUploadedImageSizeForIndex(index, imageUrl, file) {
         const img = new Image();
-        const confirmBtn = document.getElementById('confirmBannerUploadBtn');
+        const confirmBtn = document.getElementById(`confirm-banner-upload-${index}`);
         
         img.onload = () => {
             const width = img.naturalWidth;
@@ -1037,7 +1040,6 @@
             
             console.log(`📏 Uploaded image dimensions: ${width}x${height}`);
             
-            // Ubah dari 1280x760 menjadi 358x160
             if (width === 358 && height === 160) {
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
@@ -1062,6 +1064,72 @@
         };
         
         img.src = imageUrl;
+    }
+
+    async function uploadAndAddBanner(index, file) {
+        if (!currentWebsite) {
+            showToast('Website tidak ditemukan', 'error');
+            return;
+        }
+        
+        const confirmBtn = document.getElementById(`confirm-banner-upload-${index}`);
+        
+        // Show loading
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span class="banner-upload-loading"></span> Mengupload...';
+        }
+        
+        try {
+            // Upload image ke server
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('website_endpoint', currentWebsite.endpoint);
+            
+            const uploadResponse = await fetch(`${API_BASE_URL}/api/images/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const uploadData = await uploadResponse.json();
+            
+            if (!uploadData.success) {
+                throw new Error(uploadData.error || 'Upload gagal');
+            }
+            
+            // Dapatkan hash dan URL
+            const bannerHash = uploadData.hash;
+            const bannerUrl = uploadData.url;
+            
+            console.log('📦 Upload result:', { bannerHash, bannerUrl });
+            
+            // Update banner yang sudah ada
+            banners[index] = {
+                hash: bannerHash,
+                url: bannerUrl,
+                positionX: 50,
+                positionY: 50,
+                isUploading: false
+            };
+            
+            hasUnsavedBanners = true;
+            renderBannerTrack();
+            
+            showToast('✅ Banner berhasil ditambahkan!', 'success');
+            vibrate(10);
+            
+        } catch (error) {
+            console.error('❌ Error uploading banner:', error);
+            showToast(error.message || 'Gagal mengupload banner', 'error');
+            
+            // Kembalikan ke mode upload
+            banners[index].pendingFile = null;
+            
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Tambahkan Banner';
+            }
+        }
     }
 
     function resetBannerUpload() {
@@ -1245,6 +1313,13 @@
         previewWrapper.addEventListener('touchcancel', onTouchCancel, { passive: false });
     }
 
+    function removeUploadingBanner(index) {
+        banners.splice(index, 1);
+        hasUnsavedBanners = true;
+        renderBannerTrack();
+        showToast('Banner dibatalkan', 'info');
+    }
+
     function renderBannerTrack() {
         if (!elements.bannerTrack) return;
         
@@ -1256,56 +1331,59 @@
         let html = '';
         banners.forEach((banner, index) => {
             const hasValidUrl = banner.url && banner.url.trim() !== '';
-            const previewStyle = hasValidUrl 
-                ? `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;` 
-                : 'background-color: #1a1a1a; background-image: none;';
+            const isUploading = banner.isUploading === true;
             
-            let validationClass = 'banner-validation-message info';
-            let validationIcon = '<i class="fas fa-info-circle"></i>';
-            let validationText = 'Masukkan URL gambar (wajib 358x160)';
-
-            if (hasValidUrl) {
-                validationClass = 'banner-validation-message success';
-                validationIcon = '<i class="fas fa-check-circle"></i>';
-                validationText = 'Ukuran valid: 358x160 ✓';
-            }
-            
-            html += `
-                <div class="banner-slide" data-index="${index}">
-                    <div class="banner-slide-header">
-                        <span class="banner-number">#${index + 1}</span>
-                    </div>
-                    
-                    <div class="banner-url-input-group">
-                        <div class="banner-url-input-wrapper">
-                            <i class="fas fa-link input-icon"></i>
-                            <input 
-                                type="url" 
-                                id="banner-url-${index}" 
-                                class="banner-url-input" 
-                                placeholder="https://i.imgur.com/xxxxxxx.jpg"
-                                value="${banner.url || ''}"
-                                onchange="window.tampilan.handleUrlChange(${index}, this.value)"
-                                onblur="window.tampilan.handleUrlChange(${index}, this.value)"
-                                onkeyup="window.tampilan.handleUrlChange(${index}, this.value)"
-                            >
-                        </div>
-                        <div id="banner-validation-${index}" class="${validationClass}">
-                            ${validationIcon} ${validationText}
-                        </div>
-                    </div>
-                    
-                    <div class="banner-preview-area" id="banner-preview-container-${index}">
-                        <div 
-                            class="banner-image-wrapper ${hasValidUrl ? 'has-image' : 'no-image'}" 
-                            id="banner-preview-${index}"
-                            style="${previewStyle}"
-                            data-index="${index}"
-                        >
-                            ${!hasValidUrl ? '<div class="no-image-placeholder"><i class="fas fa-image"></i><span>Preview akan tampil di sini</span></div>' : ''}
+            if (isUploading) {
+                // Tampilkan area upload untuk banner baru
+                html += `
+                    <div class="banner-slide uploading" data-index="${index}">
+                        <div class="banner-slide-header">
+                            <span class="banner-number">#${index + 1}</span>
+                            <button class="btn-icon-small delete" onclick="window.tampilan.removeUploadingBanner(${index})">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                         
-                        ${hasValidUrl ? `
+                        <div class="banner-upload-area" id="banner-upload-area-${index}">
+                            <div class="banner-upload-inner" id="banner-upload-inner-${index}">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Drag & drop atau klik untuk upload banner</p>
+                                <small>Format: JPG, PNG, GIF, WebP (Max 2MB, wajib 358x160)</small>
+                                <input type="file" id="banner-file-input-${index}" accept="image/*" style="display: none;">
+                            </div>
+                            <div class="banner-upload-preview" id="banner-upload-preview-${index}" style="display: none;">
+                                <img src="" alt="Preview Banner" id="banner-preview-img-${index}">
+                                <div class="banner-upload-actions">
+                                    <button class="btn-upload-cancel" id="cancel-banner-upload-${index}">
+                                        <i class="fas fa-times"></i> Batal
+                                    </button>
+                                    <button class="btn-upload-confirm" id="confirm-banner-upload-${index}">
+                                        <i class="fas fa-check"></i> Tambahkan Banner
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (hasValidUrl) {
+                // Tampilkan banner yang sudah ada
+                const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
+                
+                html += `
+                    <div class="banner-slide" data-index="${index}">
+                        <div class="banner-slide-header">
+                            <span class="banner-number">#${index + 1}</span>
+                        </div>
+                        
+                        <div class="banner-preview-area">
+                            <div 
+                                class="banner-image-wrapper has-image" 
+                                id="banner-preview-${index}"
+                                style="${previewStyle}"
+                                data-index="${index}"
+                            >
+                            </div>
+                            
                             <div class="banner-position-controls">
                                 <div class="banner-position-indicator" id="pos-indicator-${index}">
                                     X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
@@ -1314,28 +1392,29 @@
                                     <i class="fas fa-hand-pointer"></i> Tekan & tahan gambar untuk menggeser posisi
                                 </div>
                             </div>
-                        ` : ''}
+                        </div>
+                        
+                        <div class="banner-slide-actions-bottom">
+                            <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'left')">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'right')">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <button class="btn-icon-small delete" onclick="window.tampilan.deleteBanner(${index})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                    
-                    <div class="banner-slide-actions-bottom">
-                        <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'left')">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'right')">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button class="btn-icon-small delete" onclick="window.tampilan.deleteBanner(${index})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         });
         
         elements.bannerTrack.innerHTML = html;
         
+        // Setup long press untuk banner yang sudah ada
         banners.forEach((banner, index) => {
-            if (banner.url && banner.url.trim() !== '') {
+            if (banner.url && banner.url.trim() !== '' && !banner.isUploading) {
                 setupBannerLongPress(index);
             }
         });
@@ -3399,6 +3478,7 @@
         handleUrlChange: (index, url) => handleUrlChange(index, url),
         deleteBanner: (index) => deleteBanner(index),
         moveBanner: (index, direction) => moveBanner(index, direction),
+        removeUploadingBanner: (index) => removeUploadingBanner(index),
         
         editPromo: (id) => {
             const promo = promos.find(p => p.id == id);

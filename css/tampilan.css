@@ -943,7 +943,7 @@ input:checked + .toggle-slider:before {
 
 .banner-image-wrapper {
     width: 100%;
-    height: 150px;
+    aspect-ratio: 358 / 160;
     border-radius: 8px;
     background-color: #1a1a1a;
     background-size: cover;
@@ -1120,14 +1120,21 @@ input:checked + .toggle-slider:before {
     box-shadow: var(--shadow-glow);
 }
 
+.banner-slide.uploading {
+    width: 358px; 
+    min-width: 280px;
+    max-width: 100%;
+}
+
 /* ===== BANNER UPLOAD AREA ===== */
 .banner-upload-area {
-    margin-bottom: 20px;
+    width: 100%;
     border: 2px dashed var(--border-color);
-    border-radius: 16px;
+    border-radius: 12px;
     background: rgba(255, 255, 255, 0.02);
     transition: all 0.3s ease;
     overflow: hidden;
+    aspect-ratio: 358 / 160;  /* Rasio 358:160 */
 }
 
 .banner-upload-area.drag-over {
@@ -1137,9 +1144,16 @@ input:checked + .toggle-slider:before {
 }
 
 .banner-upload-inner {
-    padding: 30px 20px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
     text-align: center;
     cursor: pointer;
+    min-height: 160px;
 }
 
 .banner-upload-inner i {
@@ -1162,16 +1176,22 @@ input:checked + .toggle-slider:before {
 }
 
 .banner-upload-preview {
-    padding: 20px;
-    text-align: center;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
     background: rgba(0, 0, 0, 0.3);
 }
 
 .banner-upload-preview img {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 12px;
-    margin-bottom: 16px;
+    width: 100%;
+    max-height: 120px;
+    object-fit: contain;
+    border-radius: 8px;
+    margin-bottom: 12px;
 }
 
 .banner-upload-actions {
