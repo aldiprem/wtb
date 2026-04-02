@@ -187,15 +187,15 @@ body {
     text-overflow: ellipsis;
 }
 
-/* ===== BANNER SLIDER - FULL WIDTH 1280x760 ===== */
+/* ===== BANNER SLIDER - FULL WIDTH, NO CROP ===== */
 .banner-slider-container {
     position: relative;
     width: 100%;
-    /* Gunakan aspect ratio 1280:760 = 1.6842 */
+    /* Gunakan aspect ratio 1280:760 */
     aspect-ratio: 1280 / 760;
     margin-bottom: 20px;
     overflow: hidden;
-    border-radius: 16px; /* Ujung tumpul */
+    border-radius: 16px;
     background: #1a1a1a;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -214,21 +214,27 @@ body {
     height: 100%;
     position: relative;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
+/* Ganti object-fit: cover menjadi contain agar gambar tidak terpotong */
 .banner-slide img {
     width: 100%;
     height: 100%;
     display: block;
-    object-fit: cover; /* Memastikan gambar menutupi area tanpa distorsi */
+    object-fit: contain;  /* <-- PERUBAHAN: contain agar gambar utuh */
     object-position: center;
+    background: #1a1a1a;  /* Background gelap di area kosong */
 }
 
 /* Fallback untuk background image */
 .banner-slide[style*="background-image"] {
-    background-size: cover !important;
+    background-size: contain !important;  /* <-- PERUBAHAN: contain */
     background-position: center !important;
     background-repeat: no-repeat !important;
+    background-color: #1a1a1a !important;
     width: 100%;
     height: 100%;
 }
@@ -273,7 +279,7 @@ body {
     background: var(--primary-color);
 }
 
-/* Responsive - tetap mempertahankan aspect ratio */
+/* Responsive */
 @media (max-width: 768px) {
     .banner-slider-container {
         border-radius: 12px;
@@ -314,11 +320,11 @@ body {
     }
 }
 
-/* Fallback untuk browser yang tidak support aspect-ratio */
+/* Fallback untuk browser tanpa aspect-ratio */
 @supports not (aspect-ratio: 1280 / 760) {
     .banner-slider-container {
         height: auto;
-        padding-bottom: calc(760 / 1280 * 100%); /* 59.375% */
+        padding-bottom: calc(760 / 1280 * 100%);
         position: relative;
     }
     
