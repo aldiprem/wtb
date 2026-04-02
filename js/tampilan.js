@@ -980,17 +980,22 @@
     }
 
     // ==================== BANNER UPLOAD FUNCTIONS ====================
-
     function setupBannerUploadForIndex(index) {
         const uploadArea = document.getElementById(`banner-upload-area-${index}`);
         const fileInput = document.getElementById(`banner-file-input-${index}`);
         const uploadInner = document.querySelector(`#banner-upload-inner-${index}`);
         const uploadPreview = document.getElementById(`banner-upload-preview-${index}`);
+        const uploadActions = document.getElementById(`banner-upload-actions-${index}`);
         const previewImg = document.getElementById(`banner-preview-img-${index}`);
         const cancelBtn = document.getElementById(`cancel-banner-upload-${index}`);
         const confirmBtn = document.getElementById(`confirm-banner-upload-${index}`);
 
         if (!uploadArea) return;
+
+        // Pastikan actions terlihat di awal (opsional, bisa hidden dulu)
+        if (uploadActions) {
+            uploadActions.style.display = 'flex';
+        }
 
         // Klik area untuk upload
         uploadArea.addEventListener('click', (e) => {
@@ -1064,6 +1069,7 @@
 
         const uploadInner = document.querySelector(`#banner-upload-inner-${index}`);
         const uploadPreview = document.getElementById(`banner-upload-preview-${index}`);
+        const uploadActions = document.getElementById(`banner-upload-actions-${index}`);
         const previewImg = document.getElementById(`banner-preview-img-${index}`);
         const confirmBtn = document.getElementById(`confirm-banner-upload-${index}`);
 
@@ -1075,6 +1081,7 @@
             }
             if (uploadInner) uploadInner.style.display = 'none';
             if (uploadPreview) uploadPreview.style.display = 'block';
+            if (uploadActions) uploadActions.style.display = 'flex';  // PASTIKAN INI MUNCUL
             
             // Disable confirm button dulu, nanti di-enable setelah validasi ukuran
             if (confirmBtn) {
@@ -1395,7 +1402,7 @@
             const isUploading = banner.isUploading === true;
             
             if (isUploading) {
-                // Tampilkan area upload untuk banner baru dengan struktur yang benar
+                // Tampilkan area upload untuk banner baru
                 html += `
                     <div class="banner-slide uploading" data-index="${index}">
                         <div class="banner-slide-header">
@@ -1417,11 +1424,11 @@
                                     <img src="" alt="Preview Banner" id="banner-preview-img-${index}">
                                 </div>
                             </div>
-                            <div class="banner-upload-actions" id="banner-upload-actions-${index}" style="display: none;">
+                            <div class="banner-upload-actions" id="banner-upload-actions-${index}">
                                 <button class="btn-upload-cancel" id="cancel-banner-upload-${index}">
                                     <i class="fas fa-times"></i> Batal
                                 </button>
-                                <button class="btn-upload-confirm" id="confirm-banner-upload-${index}">
+                                <button class="btn-upload-confirm" id="confirm-banner-upload-${index}" disabled>
                                     <i class="fas fa-check"></i> Tambahkan Banner
                                 </button>
                             </div>
@@ -1429,7 +1436,7 @@
                     </div>
                 `;
             } else if (hasValidUrl) {
-                // Tampilkan banner yang sudah ada
+                // Tampilkan banner yang sudah ada (sama seperti sebelumnya)
                 const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
                 
                 html += `

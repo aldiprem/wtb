@@ -1201,7 +1201,7 @@ input:checked + .toggle-slider:before {
 
 /* Tombol aksi di luar border preview */
 .banner-upload-actions {
-    display: flex;
+    display: flex !important;
     gap: 12px;
     justify-content: center;
     margin-top: 12px;
