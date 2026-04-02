@@ -30,7 +30,7 @@
     let storeDisplayName = 'Toko Online';
     let allTemplates = [];
     let searchTimeout = null;
-    let injectedFonts = new Set(); // Untuk melacak font yang sudah di-inject
+    let injectedFonts = new Set();
     
     // Font Application state
     let selectedTemplateForApply = null;
@@ -188,6 +188,28 @@
         confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
     };
 
+    // ==================== HELPER FUNCTIONS ====================
+    
+    function hashToImageUrl(hash) {
+        if (!hash) return '';
+        if (hash.startsWith('http://') || hash.startsWith('https://') || hash.startsWith('data:')) {
+            return hash;
+        }
+        if (hash.length === 35 && /^[a-f0-9]{35}$/i.test(hash)) {
+            const endpoint = currentWebsite?.endpoint || 'companel';
+            return `https://imgg.companel.shop/ii?${endpoint}=${hash}`;
+        }
+        return hash;
+    }
+
+    function extractHashFromUrl(url) {
+        if (!url) return null;
+        const match = url.match(/[?&][^=]+=([a-f0-9]{35})/i);
+        if (match) return match[1];
+        if (url.length === 35 && /^[a-f0-9]{35}$/i.test(url)) return url;
+        return null;
+    }
+
     async function uploadImageToServer(file) {
         if (!currentWebsite || !currentWebsite.endpoint) {
             throw new Error('Website endpoint required');
@@ -211,26 +233,43 @@
         return { hash: data.hash, url: data.url };
     }
 
-    function hashToImageUrl(hash) {
-        if (!hash) return '';
-        if (hash.startsWith('http://') || hash.startsWith('https://') || hash.startsWith('data:')) {
-            return hash;
+    /**
+     * Menampilkan link gambar yang tersimpan di border
+     */
+    function displaySavedLink(logoValue) {
+        const linkContainer = document.getElementById('savedLinkContainer');
+        const linkDisplay = document.getElementById('displaySavedLink');
+        const copyBtn = document.getElementById('copySavedLinkBtn');
+        
+        if (!linkContainer || !linkDisplay) return;
+        
+        let displayUrl = '';
+        
+        if (logoValue) {
+            if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
+                displayUrl = hashToImageUrl(logoValue);
+            } else if (logoValue.startsWith('http')) {
+                displayUrl = logoValue;
+            }
         }
-        if (hash.length === 35 && /^[a-f0-9]{35}$/i.test(hash)) {
-            const endpoint = currentWebsite?.endpoint || 'companel';
-            return `https://imgg.companel.shop/ii?${endpoint}=${hash}`;
+        
+        if (displayUrl) {
+            linkDisplay.textContent = displayUrl;
+            linkContainer.style.display = 'block';
+            
+            if (copyBtn) {
+                copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(displayUrl).then(() => {
+                        showToast('Link gambar berhasil disalin!', 'success');
+                    }).catch(() => {
+                        showToast('Gagal menyalin link', 'error');
+                    });
+                };
+            }
+        } else {
+            linkContainer.style.display = 'none';
         }
-        return hash;
     }
-
-    function extractHashFromUrl(url) {
-        if (!url) return null;
-        const match = url.match(/[?&][^=]+=([a-f0-9]{35})/i);
-        if (match) return match[1];
-        if (url.length === 35 && /^[a-f0-9]{35}$/i.test(url)) return url;
-        return null;
-    }
-
 
     // ==================== UTILITY FUNCTIONS ====================
     function showToast(message, type = 'info', duration = 3000) {
@@ -297,9 +336,6 @@
         };
     }
 
-    /**
-     * Inject font ke halaman untuk preview
-     */
     function injectFontForPreview(fontFamily, fontData) {
         if (!fontData || injectedFonts.has(fontFamily)) return;
         
@@ -452,10 +488,9 @@
                     elements.websiteBadge.textContent = '/' + data.website.endpoint;
                 }
                 
-                // ==================== AMBIL USER ID ====================
+                // AMBIL USER ID
                 let userId = 0;
                 
-                // 1. Cek dari Telegram WebApp
                 if (window.Telegram && window.Telegram.WebApp) {
                     const initData = window.Telegram.WebApp.initDataUnsafe;
                     if (initData && initData.user && initData.user.id) {
@@ -464,7 +499,6 @@
                     }
                 }
                 
-                // 2. Fallback: dari URL parameter
                 if (userId === 0) {
                     const urlUserId = urlParams.get('user_id');
                     if (urlUserId) {
@@ -473,7 +507,6 @@
                     }
                 }
                 
-                // 3. Fallback: dari localStorage
                 if (userId === 0) {
                     const savedUserId = localStorage.getItem('fontStudioUserId');
                     if (savedUserId) {
@@ -482,21 +515,9 @@
                     }
                 }
                 
-                // ==================== UPDATE LINK BUAT TEMPLATE BARU ====================
                 if (elements.createFontTemplateBtn) {
                     let fontUrl = `/html/tampilan/font.html`;
-                    
-                    // Tambahkan user_id (WAJIB)
-                    if (userId > 0) {
-                        fontUrl += `?user_id=${userId}`;
-                    } else {
-                        // Jika tidak ada user_id, tetap buka halaman tanpa parameter
-                        fontUrl += `?user_id=0`;
-                    }
-                    
-                    // Opsional: tambahkan website untuk keperluan lain (tapi user_id sudah cukup)
-                    // fontUrl += `&website=${endpoint}`;
-                    
+                    fontUrl += `?user_id=${userId > 0 ? userId : 0}`;
                     elements.createFontTemplateBtn.href = fontUrl;
                     console.log('🔗 Font Studio URL:', fontUrl);
                 }
@@ -543,7 +564,6 @@
                 renderPromos();
             }
             
-            // Load saved templates
             await loadSavedTemplates();
             
         } catch (error) {
@@ -557,7 +577,7 @@
     function updateUI() {
         const endpoint = currentWebsite?.endpoint;
         
-        // LOGO: konversi hash ke URL
+        // LOGO: konversi hash ke URL dan tampilkan link
         if (tampilanData.logo) {
             let logoValue = tampilanData.logo;
             let displayLogoUrl = '';
@@ -571,7 +591,7 @@
             if (elements.logoImage) elements.logoImage.src = displayLogoUrl;
             if (elements.logoUrl) elements.logoUrl.value = displayLogoUrl;
             
-            // TAMPILKAN LINK YANG TERSIMPAN
+            // TAMPILKAN LINK DI BORDER
             displaySavedLink(logoValue);
         } else {
             displaySavedLink(null);
@@ -585,12 +605,12 @@
             }
         }
         
-        // BANNERS: konversi hash ke URL
+        // BANNERS
         if (tampilanData.banners && Array.isArray(tampilanData.banners)) {
             banners = tampilanData.banners.map(b => {
                 if (typeof b === 'string') {
                     if (b.length === 35 && /^[a-f0-9]{35}$/i.test(b)) {
-                        return { hash: b, url: hashToUrl(b, endpoint), positionX: 50, positionY: 50 };
+                        return { hash: b, url: hashToImageUrl(b), positionX: 50, positionY: 50 };
                     }
                     return { url: b, positionX: 50, positionY: 50 };
                 }
@@ -599,7 +619,7 @@
                     if (bannerHash && bannerHash.length === 35) {
                         return {
                             hash: bannerHash,
-                            url: hashToUrl(bannerHash, endpoint),
+                            url: hashToImageUrl(bannerHash),
                             positionX: b.positionX || 50,
                             positionY: b.positionY || 50
                         };
@@ -618,12 +638,12 @@
         }
         renderBannerTrack();
         
-        // PROMOS: konversi banner hash ke URL
+        // PROMOS
         if (tampilanData.promos && Array.isArray(tampilanData.promos)) {
             promos = tampilanData.promos.map(promo => {
                 let bannerUrl = promo.banner || '';
                 if (bannerUrl && bannerUrl.length === 35 && /^[a-f0-9]{35}$/i.test(bannerUrl)) {
-                    bannerUrl = hashToUrl(bannerUrl, endpoint);
+                    bannerUrl = hashToImageUrl(bannerUrl);
                 }
                 return {
                     id: promo.id || Date.now() + Math.random(),
@@ -641,7 +661,7 @@
         } else if (tampilanData.promo) {
             let bannerUrl = tampilanData.promo.banner || '';
             if (bannerUrl && bannerUrl.length === 35 && /^[a-f0-9]{35}$/i.test(bannerUrl)) {
-                bannerUrl = hashToUrl(bannerUrl, endpoint);
+                bannerUrl = hashToImageUrl(bannerUrl);
             }
             promos = [{
                 id: Date.now(),
@@ -660,7 +680,7 @@
         }
         renderPromos();
         
-        // Colors (sama seperti sebelumnya)
+        // COLORS
         if (tampilanData.colors) {
             const colors = tampilanData.colors;
             if (elements.primaryColor) {
@@ -727,7 +747,6 @@
 
     async function processBannerUrl(index, url) {
         const banner = banners[index];
-        const urlInput = document.getElementById(`banner-url-${index}`);
         const previewWrapper = document.getElementById(`banner-preview-${index}`);
         const validationMsg = document.getElementById(`banner-validation-${index}`);
         const indicator = document.getElementById(`pos-indicator-${index}`);
@@ -1175,7 +1194,6 @@
             return;
         }
         
-        // EKSTRAK HASH dari URL
         let bannerHash = bannerValue;
         if (bannerValue.length !== 35 || !/^[a-f0-9]{35}$/i.test(bannerValue)) {
             bannerHash = extractHashFromUrl(bannerValue);
@@ -1185,8 +1203,7 @@
             }
         }
         
-        // Validasi ukuran
-        const bannerUrl = hashToUrl(bannerHash, currentWebsite?.endpoint);
+        const bannerUrl = hashToImageUrl(bannerHash);
         const isValid = await validatePromoBanner(bannerUrl);
         if (!isValid) {
             showToast('Banner tidak valid. Periksa ukuran (1280x760)', 'error');
@@ -1202,7 +1219,7 @@
         const promoData = {
             id: currentPromoId || Date.now() + Math.random(),
             title: title,
-            banner: bannerHash, // SIMPAN HASH
+            banner: bannerHash,
             description: description,
             end_date: endDate,
             end_time: endTime,
@@ -1340,7 +1357,6 @@
         showLoading(true);
         
         try {
-            // Konversi promo ke format HASH
             const cleanPromos = promos.map(promo => {
                 let bannerHash = promo.banner;
                 if (bannerHash && (bannerHash.length !== 35 || !/^[a-f0-9]{35}$/i.test(bannerHash))) {
@@ -1414,7 +1430,6 @@
         savedTemplates.forEach(template => {
             const templateData = template.template_data || {};
             const fontFamily = templateData.font_family || 'Inter';
-            // Pastikan template_name tidak undefined
             const templateName = template.template_name || 'Template';
             
             options += `<option value="${template.template_code}" data-font="${fontFamily}" data-anim="${templateData.animation_type || 'none'}">
@@ -1453,12 +1468,10 @@
         const shortCode = templateCode.substring(0, 15) + '...';
         const createdDate = new Date(template.created_at).toLocaleDateString('id-ID');
     
-        // Inject font jika ada file font
         if (templateData.font_file_data) {
           injectFontForPreview(templateData.font_family, templateData.font_file_data);
         }
     
-        // Definisikan animasi berdasarkan jenisnya
         let animationCSS = '';
         if (animationType === 'pulse') {
           animationCSS = `animation: pulseAnim ${animDuration}s ${animDelay}s ${animIteration};`;
@@ -1531,11 +1544,9 @@
     
       elements.savedTemplatesGrid.innerHTML = html;
     
-      // Verifikasi animasi untuk setiap card
       document.querySelectorAll('.template-saved-card').forEach(card => {
         const previewDiv = card.querySelector('.template-preview-text-animated');
         if (previewDiv) {
-          // Pastikan animasi berjalan
           previewDiv.style.animationPlayState = 'running';
         }
       });
@@ -1585,7 +1596,6 @@
         showLoading(true);
         
         try {
-            // Verifikasi dulu apakah template valid
             const verifyResponse = await fetch(`${API_BASE_URL}/api/font-templates/verify/${templateCode}`);
             const verifyData = await verifyResponse.json();
             
@@ -1593,7 +1603,6 @@
                 throw new Error('Template tidak ditemukan');
             }
             
-            // Simpan ke database tampilan
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/templates`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -1606,14 +1615,11 @@
             if (response.success) {
                 showToast('✅ Template berhasil disimpan!', 'success');
                 
-                // Reset form
                 elements.templateNameInput.value = '';
                 elements.templateCodeInput.value = '';
                 
-                // Reload daftar template
                 await loadSavedTemplates();
                 
-                // Inject font styles untuk preview
                 if (verifyData.template.font_file_data) {
                     injectTemplateFont(verifyData.template.font_family, verifyData.template.font_file_data);
                 }
@@ -1645,7 +1651,6 @@
         return;
       }
     
-      // Cari template yang dipilih
       const selectedTemplate = savedTemplates.find(t => t.template_code === selectedCode);
       if (!selectedTemplate) {
         showToast('Template tidak ditemukan', 'error');
@@ -1657,13 +1662,11 @@
       showLoading(true);
     
       try {
-        // Siapkan data update berdasarkan target
         let updateData = {
           target: target,
           template_code: selectedCode
         };
     
-        // Data font dari template
         const fontData = {
           font_family: templateData.font_family,
           font_size: templateData.font_size,
@@ -1673,12 +1676,10 @@
           animation_iteration: templateData.animation_iteration
         };
     
-        // Gabungkan data
         Object.assign(updateData, fontData);
     
         console.log(`📤 Applying font style to ${target}:`, updateData);
     
-        // Simpan ke server melalui endpoint font-style
         const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-style`, {
           method: 'POST',
           body: JSON.stringify(updateData)
@@ -1687,7 +1688,6 @@
         if (response.success) {
           showToast(`✅ Font style diterapkan ke ${getTargetName(target)}`, 'success');
     
-          // Update tampilanData lokal
           if (target === 'store_name') {
             tampilanData.store_font_family = templateData.font_family;
             tampilanData.store_font_size = templateData.font_size;
@@ -1739,7 +1739,6 @@
             tampilanData.body_animation_iteration = templateData.animation_iteration;
           }
     
-          // Update preview jika sedang aktif
           if (elements.fontPreviewPanel.style.display === 'block') {
             updatePreviewWithTemplate(templateData, target);
           }
@@ -1776,7 +1775,6 @@
             return;
         }
         
-        // Cari template yang dipilih
         const selectedTemplate = savedTemplates.find(t => t.template_code === selectedCode);
         if (!selectedTemplate) {
             showToast('Template tidak ditemukan', 'error');
@@ -1786,12 +1784,10 @@
         const templateData = selectedTemplate.template_data || {};
         const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
         
-        // Inject font jika perlu
         if (templateData.font_file_data) {
             injectFontForPreview(templateData.font_family, templateData.font_file_data);
         }
         
-        // Update preview panel
         if (elements.fontPreviewPanel) {
             updatePreviewWithTemplate(templateData, target, storeName);
             elements.fontPreviewPanel.style.display = 'block';
@@ -1808,11 +1804,9 @@
         const animDelay = templateData.animation_delay || 0;
         const animIteration = templateData.animation_iteration || 'infinite';
         
-        // Base style
         const baseStyle = `font-family: '${fontFamily}', sans-serif;`;
         const animStyle = animationType !== 'none' ? `animation: ${animationType}Anim ${animDuration}s ${animDelay}s ${animIteration};` : '';
         
-        // Apply ke preview berdasarkan target
         if (target === 'store_name' || target === 'all_text') {
             if (elements.previewStoreName) {
                 elements.previewStoreName.style.cssText = `${baseStyle} font-size: 24px; font-weight: 700; ${animStyle}`;
@@ -1834,7 +1828,6 @@
             }
         }
         
-        // Update selected template info
         selectedTemplateForApply = templateData;
         currentPreviewTarget = target;
     }
@@ -1862,12 +1855,10 @@
         const templateData = selectedTemplate.template_data || {};
         const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
         
-        // Inject font jika perlu
         if (templateData.font_file_data) {
             injectFontForPreview(templateData.font_family, templateData.font_file_data);
         }
         
-        // Update modal preview
         const fontFamily = templateData.font_family || 'Inter';
         const fontSize = templateData.font_size || 24;
         const animationType = templateData.animation_type || 'none';
@@ -1895,7 +1886,6 @@
             elements.modalPreviewAnimName.textContent = animationType === 'none' ? 'None' : animationType;
         }
         
-        // Tampilkan modal
         if (elements.fontPreviewModal) {
             elements.fontPreviewModal.classList.add('active');
         }
@@ -1922,10 +1912,7 @@
             
             if (response.success) {
                 showToast('✅ Template diterapkan!', 'success');
-                
-                // Reload data tampilan untuk melihat perubahan
                 await loadTampilanData();
-                
                 vibrate();
             } else {
                 throw new Error(response.error || 'Gagal menerapkan');
@@ -2096,7 +2083,6 @@
                 elements.templateSearchResults.innerHTML = resultsHtml;
                 elements.templateSearchResults.style.display = 'block';
                 
-                // Add click handlers
                 document.querySelectorAll('.search-result-item').forEach(item => {
                     item.addEventListener('click', () => {
                         const code = item.dataset.code;
@@ -2128,7 +2114,6 @@
             elements.templateSearchInput.value = name;
         }
         
-        // Hide search results
         if (elements.templateSearchResults) {
             elements.templateSearchResults.style.display = 'none';
             elements.templateSearchResults.innerHTML = '';
@@ -2137,7 +2122,6 @@
             elements.clearSearchBtn.style.display = 'none';
         }
         
-        // Auto verify
         verifyTemplateCode(code);
     }
 
@@ -2176,7 +2160,6 @@
                 showTemplatePreview(data.template);
                 enableTemplateActions();
                 
-                // Show selected template info
                 if (elements.selectedTemplateInfo && elements.selectedTemplateName) {
                     elements.selectedTemplateName.textContent = data.template.template_name;
                     elements.selectedTemplateInfo.style.display = 'block';
@@ -2205,7 +2188,6 @@
         const fontData = template.font_data || {};
         const animData = template.animation_data || {};
         
-        // Update preview text
         if (elements.templatePreviewText) {
             elements.templatePreviewText.textContent = template.preview_data?.text || 'Toko Online';
             elements.templatePreviewText.style.fontFamily = fontData.family || 'Inter';
@@ -2214,7 +2196,6 @@
             elements.templatePreviewText.style.color = fontData.color || '#ffffff';
         }
         
-        // Update info
         if (elements.previewFontName) {
             elements.previewFontName.textContent = (fontData.family || 'Inter').split(',')[0];
         }
@@ -2235,41 +2216,6 @@
         if (elements.templateValidationMessage) {
             elements.templateValidationMessage.innerHTML = message;
             elements.templateValidationMessage.className = `validation-message ${type}`;
-        }
-    }
-
-    function displaySavedLink(logoValue) {
-        const linkContainer = document.getElementById('savedLinkContainer');
-        const linkDisplay = document.getElementById('displaySavedLink');
-        const copyBtn = document.getElementById('copySavedLinkBtn');
-        
-        if (!linkContainer || !linkDisplay) return;
-        
-        let displayUrl = '';
-        
-        if (logoValue) {
-            if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
-                displayUrl = hashToImageUrl(logoValue);
-            } else if (logoValue.startsWith('http')) {
-                displayUrl = logoValue;
-            }
-        }
-        
-        if (displayUrl) {
-            linkDisplay.textContent = displayUrl;
-            linkContainer.style.display = 'block';
-            
-            if (copyBtn) {
-                copyBtn.onclick = () => {
-                    navigator.clipboard.writeText(displayUrl).then(() => {
-                        showToast('Link gambar berhasil disalin!', 'success');
-                    }).catch(() => {
-                        showToast('Gagal menyalin link', 'error');
-                    });
-                };
-            }
-        } else {
-            linkContainer.style.display = 'none';
         }
     }
 
@@ -2334,7 +2280,6 @@
     function testTemplatePreview() {
         if (!currentTemplateData) return;
         
-        // Refresh preview
         showTemplatePreview(currentTemplateData);
         showToast('Preview diperbarui', 'success');
         vibrate();
@@ -2361,13 +2306,11 @@
         showLoading(true);
         
         try {
-            // First verify the template exists
             const verified = await verifyTemplateCode(templateCode, true);
             if (!verified) {
                 throw new Error('Template tidak valid');
             }
             
-            // Save to server
             const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/font-template`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -2400,7 +2343,6 @@
         const logoValue = elements.logoUrl?.value || elements.logoImage?.src || '';
         const storeName = elements.storeDisplayNameInput?.value || 'Toko Online';
         
-        // EKSTRAK HASH dari URL jika ada
         let logoHash = null;
         if (logoValue) {
             if (logoValue.length === 35 && /^[a-f0-9]{35}$/i.test(logoValue)) {
@@ -2413,7 +2355,6 @@
         showLoading(true);
         
         try {
-            // Kirim HASH (bukan URL)
             const logoResponse = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2445,7 +2386,6 @@
             return;
         }
         
-        // Konversi banner ke format HASH
         const bannersToSave = banners.map(b => {
             let bannerHash = b.hash;
             if (!bannerHash && b.url) {
@@ -2540,7 +2480,6 @@
         currentUploadType = type;
         currentUploadCallback = callback;
         
-        // Reset modal state
         if (elements.fileInput) elements.fileInput.value = '';
         if (elements.uploadPreview) {
             elements.uploadPreview.src = '';
@@ -2549,7 +2488,6 @@
         if (elements.uploadArea) elements.uploadArea.style.display = 'flex';
         if (elements.confirmUploadBtn) elements.confirmUploadBtn.disabled = true;
         
-        // Tampilkan modal
         if (elements.uploadModal) {
             elements.uploadModal.classList.add('active');
         }
@@ -2559,13 +2497,11 @@
         const file = e.target.files[0] || (e.dataTransfer && e.dataTransfer.files[0]);
         if (!file) return;
 
-        // Validasi tipe file
         if (!file.type.startsWith('image/')) {
             showToast('File harus berupa gambar', 'error');
             return;
         }
 
-        // Preview lokal
         const reader = new FileReader();
         reader.onload = (event) => {
             if (elements.uploadPreview) {
@@ -2584,13 +2520,12 @@
 
         try {
             showLoading(true);
-            const result = await uploadImageToServer(file); // Menggunakan fungsi uploadImageToServer yang sudah ada di kodemu
+            const result = await uploadImageToServer(file);
             
             if (currentUploadCallback) {
                 currentUploadCallback(result);
             }
             
-            // Tutup modal
             if (elements.uploadModal) elements.uploadModal.classList.remove('active');
             showToast('Gambar berhasil diunggah', 'success');
             
@@ -2626,7 +2561,6 @@
                 }
             }
             
-            // UPLOAD KE SERVER - DAPATKAN HASH
             if (currentUploadCallback) {
                 try {
                     const result = await uploadImageToServer(file);
@@ -2666,7 +2600,6 @@
 
     // ==================== EVENT LISTENERS ====================
 function setupEventListeners() {
-        // Back to panel
         if (elements.backToPanel) {
             elements.backToPanel.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -2674,7 +2607,6 @@ function setupEventListeners() {
             });
         }
         
-        // Tabs
         elements.tabButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
@@ -2691,7 +2623,6 @@ function setupEventListeners() {
             });
         });
         
-        // Template Input Tabs
         elements.templateInputTabs.forEach(tab => {
             tab.addEventListener('click', () => {
                 const type = tab.dataset.inputType;
@@ -2707,7 +2638,6 @@ function setupEventListeners() {
             });
         });
         
-        // Color picker sync
         const colorPairs = [
             { picker: 'primaryColor', hex: 'primaryColorHex' },
             { picker: 'secondaryColor', hex: 'secondaryColorHex' },
@@ -2734,7 +2664,7 @@ function setupEventListeners() {
             }
         });
         
-        // Logo upload - PERBAIKAN
+        // LOGO UPLOAD - TAMPILKAN LINK SETELAH UPLOAD
         if (elements.uploadLogoBtn) {
             elements.uploadLogoBtn.addEventListener('click', () => {
                 const fileInput = document.getElementById('logoInput');
@@ -2744,7 +2674,6 @@ function setupEventListeners() {
                         const file = e.target.files[0];
                         if (!file) return;
                         
-                        // Validasi PNG
                         if (!file.type.includes('png')) {
                             showToast('Logo harus berformat PNG', 'error');
                             return;
@@ -2755,7 +2684,6 @@ function setupEventListeners() {
                         try {
                             const result = await uploadImageToServer(file);
                             if (result.hash) {
-                                // Simpan HASH ke server
                                 const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -2765,11 +2693,10 @@ function setupEventListeners() {
                                 const data = await response.json();
                                 
                                 if (data.success) {
-                                    // Update preview
                                     if (elements.logoImage) elements.logoImage.src = result.url;
                                     if (elements.logoUrl) elements.logoUrl.value = result.url;
                                     
-                                    // TAMPILKAN LINK YANG TERSIMPAN
+                                    // TAMPILKAN LINK DI BORDER
                                     displaySavedLink(result.hash);
                                     
                                     showToast('✅ Logo berhasil diupload!', 'success');
@@ -2793,7 +2720,6 @@ function setupEventListeners() {
             elements.saveLogoBtn.addEventListener('click', saveLogo);
         }
         
-        // Apply font to store button
         if (elements.applyFontToStoreBtn) {
             elements.applyFontToStoreBtn.addEventListener('click', () => {
                 if (elements.applyFontTargetSelect) {
@@ -2803,7 +2729,6 @@ function setupEventListeners() {
             });
         }
         
-        // Store display name input
         if (elements.storeDisplayNameInput) {
             elements.storeDisplayNameInput.addEventListener('input', (e) => {
                 storeDisplayName = e.target.value || 'Toko Online';
@@ -2813,7 +2738,6 @@ function setupEventListeners() {
             });
         }
         
-        // Font Style Application
         if (elements.applyFontStyleBtn) {
             elements.applyFontStyleBtn.addEventListener('click', applyFontStyleToTarget);
         }
@@ -2830,7 +2754,6 @@ function setupEventListeners() {
             elements.closeFontPreviewModal.addEventListener('click', closeFontPreviewModal);
         }
         
-        // Banner
         if (elements.addBannerBtn) {
             elements.addBannerBtn.addEventListener('click', addBanner);
         }
@@ -2839,7 +2762,6 @@ function setupEventListeners() {
             elements.saveBannersBtn.addEventListener('click', saveBanners);
         }
         
-        // Promo
         if (elements.addPromoBtn) {
             elements.addPromoBtn.addEventListener('click', () => openPromoModal());
         }
@@ -2848,7 +2770,6 @@ function setupEventListeners() {
             elements.saveAllPromoBtn.addEventListener('click', saveAllPromos);
         }
         
-        // Promo modal
         if (elements.promoForm) {
             elements.promoForm.addEventListener('submit', savePromo);
         }
@@ -2861,7 +2782,6 @@ function setupEventListeners() {
             elements.cancelPromoBtn.addEventListener('click', closePromoModal);
         }
         
-        // Promo banner URL validation
         if (elements.promoBannerUrl) {
             let bannerTimeout;
             elements.promoBannerUrl.addEventListener('input', () => {
@@ -2872,12 +2792,10 @@ function setupEventListeners() {
             });
         }
         
-        // Promo never end toggle
         if (elements.promoNeverEnd) {
             elements.promoNeverEnd.addEventListener('change', updatePromoDateFields);
         }
         
-        // Delete modal
         if (elements.closeDeleteModal) {
             elements.closeDeleteModal.addEventListener('click', closeDeleteModal);
         }
@@ -2890,12 +2808,10 @@ function setupEventListeners() {
             elements.confirmDeleteBtn.addEventListener('click', confirmDeletePromo);
         }
         
-        // Colors
         if (elements.saveColorsBtn) {
             elements.saveColorsBtn.addEventListener('click', saveColors);
         }
         
-        // Font Template Events
         if (elements.saveTemplateToWebsiteBtn) {
             elements.saveTemplateToWebsiteBtn.addEventListener('click', saveTemplateToWebsite);
         }
@@ -2978,7 +2894,6 @@ function setupEventListeners() {
             elements.changeTemplateBtn.addEventListener('click', clearTemplateSelection);
         }
         
-        // Modal template search and filter
         if (elements.modalTemplateSearch) {
             const debouncedModalSearch = debounce((e) => {
                 loadAllTemplates('all', e.target.value);
@@ -2993,12 +2908,10 @@ function setupEventListeners() {
             });
         }
         
-        // Save All
         if (elements.saveAllBtn) {
             elements.saveAllBtn.addEventListener('click', saveAll);
         }
         
-        // Upload Modal
         if (elements.uploadArea) {
             elements.uploadArea.addEventListener('click', () => {
                 if (elements.fileInput) {
@@ -3062,7 +2975,6 @@ function setupEventListeners() {
             elements.closeUploadModal.addEventListener('click', closeUploadModal);
         }
         
-        // Click outside modal
         window.addEventListener('click', (e) => {
             if (e.target === elements.uploadModal) {
                 closeUploadModal();
@@ -3084,25 +2996,21 @@ function setupEventListeners() {
 
     // ==================== EXPOSE GLOBAL FUNCTIONS ====================
     window.tampilan = {
-        // Banner functions
         handleUrlChange: (index, url) => handleUrlChange(index, url),
         deleteBanner: (index) => deleteBanner(index),
         moveBanner: (index, direction) => moveBanner(index, direction),
         
-        // Promo functions
         editPromo: (id) => {
             const promo = promos.find(p => p.id == id);
             if (promo) openPromoModal(promo);
         },
         deletePromo: (id) => deletePromo(id),
         
-        // Template functions - Baru
         saveTemplateToWebsite: saveTemplateToWebsite,
         applyTemplate: applyTemplate,
         deleteSavedTemplate: deleteSavedTemplate,
         copyTemplateCode: copyTemplateCode,
         
-        // Template functions - Lama
         selectTemplateFromList: (code, name) => selectTemplateFromList(code, name)
     };
 
