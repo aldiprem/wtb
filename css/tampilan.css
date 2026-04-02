@@ -810,13 +810,14 @@ input:checked + .toggle-slider:before {
     font-size: 16px;
 }
 
+/* Banner Slider Container - tanpa border */
 .banner-slider-container {
     width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    margin-bottom: 20px;
+    margin: 20px 0;
     padding-bottom: 10px;
 }
 
@@ -836,23 +837,23 @@ input:checked + .toggle-slider:before {
 
 .banner-track {
     display: flex;
-    gap: 20px;
+    gap: 16px;
     padding: 4px;
     min-width: min-content;
 }
 
+/* Banner Slide - tanpa border yang berlebihan */
 .banner-slide {
     width: 280px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 16px;
-    padding: 16px;
-    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    overflow: hidden;
     flex-shrink: 0;
     transition: all 0.2s;
 }
 
 .banner-slide:hover {
-    border-color: var(--primary-color);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-sm);
 }
 
@@ -860,19 +861,21 @@ input:checked + .toggle-slider:before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    padding: 12px 12px 8px 12px;
 }
 
 .banner-number {
     font-weight: 600;
     color: var(--primary-color);
     background: rgba(64, 167, 227, 0.1);
-    padding: 4px 12px;
+    padding: 4px 10px;
     border-radius: 20px;
-    font-size: 13px;
+    font-size: 12px;
 }
 
+/* Banner URL Input Group */
 .banner-url-input-group {
+    padding: 0 12px;
     margin-bottom: 12px;
 }
 
@@ -907,6 +910,7 @@ input:checked + .toggle-slider:before {
     background: rgba(64, 167, 227, 0.1);
 }
 
+/* Banner Validation Message */
 .banner-validation-message {
     font-size: 11px;
     margin-top: 6px;
@@ -932,8 +936,9 @@ input:checked + .toggle-slider:before {
     background: rgba(239, 68, 68, 0.1);
 }
 
+/* Banner Preview Area */
 .banner-preview-area {
-    position: relative;
+    padding: 0 12px;
 }
 
 .banner-image-wrapper {
@@ -947,14 +952,13 @@ input:checked + .toggle-slider:before {
     overflow: hidden;
     cursor: grab;
     transition: all 0.2s;
-    border: 2px solid transparent;
 }
 
 .banner-image-wrapper.dragging-active {
     cursor: grabbing;
-    border-color: var(--primary-color);
+    outline: 2px solid var(--primary-color);
     transform: scale(1.02);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .banner-image-wrapper.no-image {
@@ -962,7 +966,6 @@ input:checked + .toggle-slider:before {
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-    border: 2px dashed var(--border-color);
 }
 
 .no-image-placeholder {
@@ -987,10 +990,10 @@ input:checked + .toggle-slider:before {
 }
 
 .banner-image-wrapper.has-image {
-    border: 2px solid var(--primary-color);
-    box-shadow: 0 4px 12px rgba(64, 167, 227, 0.3);
+    outline: 1px solid rgba(64, 167, 227, 0.3);
 }
 
+/* Banner Position Controls */
 .banner-position-controls {
     margin-top: 8px;
     padding: 8px;
@@ -1014,19 +1017,21 @@ input:checked + .toggle-slider:before {
     gap: 4px;
 }
 
+/* Banner Actions Bottom */
 .banner-slide-actions-bottom {
     display: flex;
     justify-content: flex-end;
     gap: 6px;
+    padding: 12px;
+    border-top: 1px solid var(--border-color-light);
     margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--border-color);
 }
 
+/* Button Icon Small */
 .btn-icon-small {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     border: none;
     background: rgba(255, 255, 255, 0.05);
     color: var(--tg-hint-color);
@@ -1051,28 +1056,68 @@ input:checked + .toggle-slider:before {
     cursor: not-allowed;
 }
 
+/* Hapus empty banner message - tidak digunakan lagi */
 .empty-banner-message {
+    display: none;
+}
+
+/* Banner Button Container */
+.banner-button-container {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+}
+
+.banner-action-btn {
+    flex: 1;
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 40px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 12px;
-    color: var(--tg-hint-color);
-    margin: 20px 0;
-    border: 2px dashed var(--border-color);
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    white-space: nowrap;
 }
 
-.empty-banner-message i {
-    font-size: 40px;
-    margin-bottom: 10px;
-    opacity: 0.5;
+.banner-add-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--tg-text-color);
+    border: 1px solid var(--border-color);
 }
 
-.empty-banner-message p {
-    font-size: 13px;
-    text-align: center;
+.banner-add-btn i {
+    color: var(--primary-color);
+}
+
+.banner-add-btn:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.banner-add-btn:hover i {
+    color: white;
+}
+
+.banner-save-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+}
+
+.banner-save-btn:hover {
+    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-glow);
 }
 
 /* ===== BANNER UPLOAD AREA ===== */
@@ -1126,7 +1171,6 @@ input:checked + .toggle-slider:before {
     max-width: 100%;
     max-height: 200px;
     border-radius: 12px;
-    border: 1px solid var(--border-color);
     margin-bottom: 16px;
 }
 
@@ -1180,26 +1224,6 @@ input:checked + .toggle-slider:before {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none;
-}
-
-.banner-divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    margin: 20px 0;
-    color: var(--tg-hint-color);
-    font-size: 12px;
-}
-
-.banner-divider::before,
-.banner-divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.banner-divider span {
-    margin: 0 12px;
 }
 
 /* Loading indicator untuk upload banner */

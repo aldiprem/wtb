@@ -1245,15 +1245,12 @@
     }
 
     function renderBannerTrack() {
-        if (!elements.bannerTrack || !elements.emptyBannerMessage) return;
+        if (!elements.bannerTrack) return;
         
         if (banners.length === 0) {
             elements.bannerTrack.innerHTML = '';
-            elements.emptyBannerMessage.style.display = 'flex';
             return;
         }
-        
-        elements.emptyBannerMessage.style.display = 'none';
         
         let html = '';
         banners.forEach((banner, index) => {
