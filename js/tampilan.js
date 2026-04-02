@@ -2687,7 +2687,7 @@ function setupEventListeners() {
             }
         });
         
-        // Logo upload - PERBAIKAN
+        // Logo upload - PERBAIKAN DENGAN LINK URL DI BAWAH PREVIEW
         if (elements.uploadLogoBtn) {
             elements.uploadLogoBtn.addEventListener('click', () => {
                 openUploadModal(async (hash, url) => {
@@ -2697,7 +2697,6 @@ function setupEventListeners() {
                     }
                     
                     try {
-                        // Simpan HASH ke server
                         const response = await fetch(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/logo`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2707,8 +2706,16 @@ function setupEventListeners() {
                         const data = await response.json();
                         
                         if (data.success) {
+                            // Update Foto Preview
                             if (elements.logoImage) elements.logoImage.src = url;
                             if (elements.logoUrl) elements.logoUrl.value = url;
+                            
+                            // UPDATE: Menampilkan link teks di bawah preview logo
+                            const linkContainer = document.getElementById('logo-link-container');
+                            if (linkContainer) {
+                                linkContainer.innerHTML = `<a href="${url}" target="_blank" style="font-size: 12px; color: var(--accent-color); text-decoration: underline;">Lihat Gambar di DNS: ${url}</a>`;
+                            }
+
                             showToast('✅ Logo berhasil diupload!', 'success');
                             await loadTampilanData();
                         } else {
@@ -2729,7 +2736,6 @@ function setupEventListeners() {
         // Apply font to store button
         if (elements.applyFontToStoreBtn) {
             elements.applyFontToStoreBtn.addEventListener('click', () => {
-                // Set target ke store_name dan buka preview
                 if (elements.applyFontTargetSelect) {
                     elements.applyFontTargetSelect.value = 'store_name';
                 }
@@ -2741,7 +2747,6 @@ function setupEventListeners() {
         if (elements.storeDisplayNameInput) {
             elements.storeDisplayNameInput.addEventListener('input', (e) => {
                 storeDisplayName = e.target.value || 'Toko Online';
-                // Update preview if active
                 if (elements.fontPreviewPanel.style.display === 'block' && selectedTemplateForApply) {
                     updatePreviewWithTemplate(selectedTemplateForApply, currentPreviewTarget, storeDisplayName);
                 }
@@ -2830,12 +2835,11 @@ function setupEventListeners() {
             elements.saveColorsBtn.addEventListener('click', saveColors);
         }
         
-        // Font Template Events - Baru
+        // Font Template Events
         if (elements.saveTemplateToWebsiteBtn) {
             elements.saveTemplateToWebsiteBtn.addEventListener('click', saveTemplateToWebsite);
         }
         
-        // Font Template Events - Lama
         if (elements.viewAllTemplatesBtn) {
             elements.viewAllTemplatesBtn.addEventListener('click', openAllTemplatesModal);
         }
@@ -2986,9 +2990,8 @@ function setupEventListeners() {
                 if (currentUploadCallback && elements.uploadPreview) {
                     const img = elements.uploadPreview.querySelector('img');
                     if (img) {
-                        // Pastikan meneruskan parameter yang diharapkan callback
-                        // Misalnya jika callback mengharapkan (hash, url), ambil dari dataset
                         const hash = img.dataset.hash || '';
+                        // Panggil callback dengan hash dan url original
                         currentUploadCallback(hash, img.src);
                     }
                 }
