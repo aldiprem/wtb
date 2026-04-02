@@ -199,227 +199,228 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Tab: Promosi -->
-            <div id="tab-promo" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3><i class="fas fa-bullhorn"></i> Pengaturan Promosi</h3>
-                        <button class="btn-add-promo" id="addPromoBtn">
-                            <i class="fas fa-plus-circle"></i> Tambah Promosi
+        <!-- Tab: Promosi -->
+        <div id="tab-promo" class="tab-content">
+            <div class="settings-card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3><i class="fas fa-bullhorn"></i> Pengaturan Promosi</h3>
+                    <button class="btn-add-promo" id="addPromoBtn">
+                        <i class="fas fa-plus-circle"></i> Tambah Promosi
+                    </button>
+                </div>
+                <div class="card-body" style="padding-top: 12px;">
+                    <!-- Promo Container -->
+                    <div class="promo-container" id="promoContainer">
+                        <!-- Promo items will be added here dynamically -->
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div class="empty-promo-message" id="emptyPromoMessage">
+                        <i class="fas fa-bullhorn"></i>
+                        <p>Belum ada promosi. Klik tombol "Tambah Promosi" untuk membuat promosi baru.</p>
+                    </div>
+
+                    <!-- Save All Promo Button -->
+                    <div class="promo-save-container">
+                        <button class="btn-primary" id="saveAllPromoBtn">
+                            <i class="fas fa-save"></i> Simpan Semua Promosi
                         </button>
                     </div>
-                    <div class="card-body" style="padding-top: 12px;">
-                        <!-- Promo Container -->
-                        <div class="promo-container" id="promoContainer">
-                            <!-- Promo items will be added here dynamically -->
-                        </div>
-                        
-                        <!-- Empty State -->
-                        <div class="empty-promo-message" id="emptyPromoMessage">
-                            <i class="fas fa-bullhorn"></i>
-                            <p>Belum ada promosi. Klik tombol "Tambah Promosi" untuk membuat promosi baru.</p>
-                        </div>
+                </div>
+            </div>
+        </div>
 
-                        <!-- Save All Promo Button -->
-                        <div class="promo-save-container">
-                            <button class="btn-primary" id="saveAllPromoBtn">
-                                <i class="fas fa-save"></i> Simpan Semua Promosi
-                            </button>
+        <!-- Tab: Warna -->
+        <div id="tab-warna" class="tab-content">
+            <div class="settings-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-palette"></i> Warna Website</h3>
+                </div>
+                <div class="card-body">
+                    <div class="color-grid-2col">
+                        <div class="color-item">
+                            <label>Primary Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="primaryColor" value="#40a7e3">
+                                <input type="text" id="primaryColorHex" value="#40a7e3" maxlength="7">
+                            </div>
                         </div>
+                        <div class="color-item">
+                            <label>Secondary Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="secondaryColor" value="#FFD700">
+                                <input type="text" id="secondaryColorHex" value="#FFD700" maxlength="7">
+                            </div>
+                        </div>
+                        <div class="color-item">
+                            <label>Background Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="bgColor" value="#0f0f0f">
+                                <input type="text" id="bgColorHex" value="#0f0f0f" maxlength="7">
+                            </div>
+                        </div>
+                        <div class="color-item">
+                            <label>Text Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="textColor" value="#ffffff">
+                                <input type="text" id="textColorHex" value="#ffffff" maxlength="7">
+                            </div>
+                        </div>
+                        <div class="color-item">
+                            <label>Card Background</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="cardColor" value="#1a1a1a">
+                                <input type="text" id="cardColorHex" value="#1a1a1a" maxlength="7">
+                            </div>
+                        </div>
+                        <div class="color-item">
+                            <label>Accent Color</label>
+                            <div class="color-picker-wrapper">
+                                <input type="color" id="accentColor" value="#10b981">
+                                <input type="text" id="accentColorHex" value="#10b981" maxlength="7">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-primary" id="saveColorsBtn">
+                            <i class="fas fa-save"></i> Simpan Warna
+                        </button>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Tab: Warna -->
-            <div id="tab-warna" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-palette"></i> Warna Website</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="color-grid-2col">
-                            <div class="color-item">
-                                <label>Primary Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="primaryColor" value="#40a7e3">
-                                    <input type="text" id="primaryColorHex" value="#40a7e3" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Secondary Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="secondaryColor" value="#FFD700">
-                                    <input type="text" id="secondaryColorHex" value="#FFD700" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Background Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="bgColor" value="#0f0f0f">
-                                    <input type="text" id="bgColorHex" value="#0f0f0f" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Text Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="textColor" value="#ffffff">
-                                    <input type="text" id="textColorHex" value="#ffffff" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Card Background</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="cardColor" value="#1a1a1a">
-                                    <input type="text" id="cardColorHex" value="#1a1a1a" maxlength="7">
-                                </div>
-                            </div>
-                            <div class="color-item">
-                                <label>Accent Color</label>
-                                <div class="color-picker-wrapper">
-                                    <input type="color" id="accentColor" value="#10b981">
-                                    <input type="text" id="accentColorHex" value="#10b981" maxlength="7">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button class="btn-primary" id="saveColorsBtn">
-                                <i class="fas fa-save"></i> Simpan Warna
-                            </button>
-                        </div>
+        <!-- Tab: Font Template -->
+        <div id="tab-font-template" class="tab-content">
+            <div class="settings-card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3><i class="fas fa-font"></i> Font Template</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="/html/tampilan/font.html" class="btn-create-template" id="createFontTemplateBtn">
+                            <i class="fas fa-plus-circle"></i> Buat Template Baru
+                        </a>
                     </div>
                 </div>
-            </div>
-
-            <!-- Tab: Font Template (REVISED WITH FONT STYLE SAVE) -->
-            <div id="tab-font-template" class="tab-content">
-                <div class="settings-card">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3><i class="fas fa-font"></i> Font Template</h3>
-                        <div style="display: flex; gap: 8px;">
-                            <a href="/html/tampilan/font.html" class="btn-create-template" id="createFontTemplateBtn">
-                                <i class="fas fa-plus-circle"></i> Buat Template Baru
-                            </a>
+                <div class="card-body">
+                    <!-- Info Message -->
+                    <div class="banner-info-message" style="margin-bottom: 20px;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Buat template font dan animasi di halaman <strong>Font Studio</strong>, kemudian simpan template untuk website ini.</span>
+                    </div>
+                    
+                    <!-- Form Tambah Template -->
+                    <div class="template-add-form" style="margin-bottom: 30px; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid var(--border-color);">
+                        <h4 style="margin-bottom: 16px; color: var(--primary-color);"><i class="fas fa-plus-circle"></i> Tambah Template Baru</h4>
+                        
+                        <div class="form-row" style="grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="templateNameInput">
+                                    <i class="fas fa-tag"></i> Nama Template
+                                </label>
+                                <input type="text" id="templateNameInput" class="styled-input" placeholder="Contoh: Squeaky Bounce">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="templateCodeInput">
+                                    <i class="fas fa-key"></i> Kode Template
+                                </label>
+                                <input type="text" id="templateCodeInput" class="styled-input" placeholder="35 karakter" maxlength="35" style="font-family: monospace;">
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0; display: flex; align-items: flex-end;">
+                                <button class="btn-primary" id="saveTemplateToWebsiteBtn" style="width: 100%;">
+                                    <i class="fas fa-save"></i> Simpan
+                                </button>
+                            </div>
+                        </div>
+                        <small class="input-hint">Masukkan kode template 35 karakter dari Font Studio dan beri nama untuk website ini</small>
+                    </div>
+                    
+                    <!-- Font Style Application Section -->
+                    <div class="font-style-application" style="margin-bottom: 30px; padding: 20px; background: rgba(64, 167, 227, 0.05); border-radius: 16px; border: 1px solid rgba(64, 167, 227, 0.2);">
+                        <h4 style="margin-bottom: 16px; color: var(--primary-color);"><i class="fas fa-paint-brush"></i> Terapkan Font Style</h4>
+                        
+                        <div class="form-row" style="grid-template-columns: 2fr 1fr 1fr 0.5fr; gap: 12px; align-items: flex-end;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="applyFontTemplateSelect">
+                                    <i class="fas fa-font"></i> Pilih Template
+                                </label>
+                                <select id="applyFontTemplateSelect" class="styled-select">
+                                    <option value="">-- Pilih Template Tersimpan --</option>
+                                    <!-- Options akan diisi oleh JavaScript -->
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label for="applyFontTargetSelect">
+                                    <i class="fas fa-bullseye"></i> Target Text
+                                </label>
+                                <select id="applyFontTargetSelect" class="styled-select">
+                                    <option value="store_name">Nama Store</option>
+                                    <option value="all_text">Semua Text Website</option>
+                                    <option value="headings">Heading (Judul)</option>
+                                    <option value="body">Body Text</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>&nbsp;</label>
+                                <button class="btn-primary" id="applyFontStyleBtn" style="width: 100%;">
+                                    <i class="fas fa-check"></i> Terapkan
+                                </button>
+                            </div>
+                            
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label>&nbsp;</label>
+                                <button class="btn-icon-square" id="previewFontStyleBtn" title="Preview hasil font">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <small class="input-hint">Terapkan gaya font dari template yang dipilih ke berbagai elemen text website</small>
+                        
+                        <!-- Preview Panel -->
+                        <div class="font-preview-panel" id="fontPreviewPanel" style="display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <h5 style="color: var(--primary-color);"><i class="fas fa-eye"></i> Preview Hasil</h5>
+                                <button class="btn-icon-small" id="closePreviewBtn" style="width: 28px; height: 28px;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="preview-content" style="text-align: center;">
+                                <div class="preview-store-name" id="previewStoreName" style="font-size: 24px; margin-bottom: 16px; font-weight: 600;">
+                                    Nama Store Example
+                                </div>
+                                <div class="preview-heading" id="previewHeading" style="font-size: 20px; margin-bottom: 12px; font-weight: 500;">
+                                    Judul Halaman Example
+                                </div>
+                                <div class="preview-body" id="previewBody" style="font-size: 14px; opacity: 0.9;">
+                                    Ini adalah contoh body text untuk melihat hasil penerapan font dan animasi.
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <!-- Info Message -->
-                        <div class="banner-info-message" style="margin-bottom: 20px;">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Buat template font dan animasi di halaman <strong>Font Studio</strong>, kemudian simpan template untuk website ini.</span>
+                    
+                    <!-- Daftar Template Tersimpan -->
+                    <div class="saved-templates-section">
+                        <h4 style="margin-bottom: 16px; color: var(--primary-color);"><i class="fas fa-list"></i> Template Tersimpan</h4>
+                        
+                        <div class="templates-grid" id="savedTemplatesGrid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                            <!-- Template items akan dirender di sini -->
                         </div>
                         
-                        <!-- Form Tambah Template -->
-                        <div class="template-add-form" style="margin-bottom: 30px; padding: 20px; background: rgba(255,255,255,0.02); border-radius: 16px; border: 1px solid var(--border-color);">
-                            <h4 style="margin-bottom: 16px; color: var(--primary-color);"><i class="fas fa-plus-circle"></i> Tambah Template Baru</h4>
-                            
-                            <div class="form-row" style="grid-template-columns: 2fr 1fr 1fr; gap: 12px;">
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="templateNameInput">
-                                        <i class="fas fa-tag"></i> Nama Template
-                                    </label>
-                                    <input type="text" id="templateNameInput" class="styled-input" placeholder="Contoh: Squeaky Bounce">
-                                </div>
-                                
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="templateCodeInput">
-                                        <i class="fas fa-key"></i> Kode Template
-                                    </label>
-                                    <input type="text" id="templateCodeInput" class="styled-input" placeholder="35 karakter" maxlength="35" style="font-family: monospace;">
-                                </div>
-                                
-                                <div class="form-group" style="margin-bottom: 0; display: flex; align-items: flex-end;">
-                                    <button class="btn-primary" id="saveTemplateToWebsiteBtn" style="width: 100%;">
-                                        <i class="fas fa-save"></i> Simpan
-                                    </button>
-                                </div>
-                            </div>
-                            <small class="input-hint">Masukkan kode template 35 karakter dari Font Studio dan beri nama untuk website ini</small>
-                        </div>
-                        
-                        <!-- Font Style Application Section -->
-                        <div class="font-style-application" style="margin-bottom: 30px; padding: 20px; background: rgba(64, 167, 227, 0.05); border-radius: 16px; border: 1px solid rgba(64, 167, 227, 0.2);">
-                            <h4 style="margin-bottom: 16px; color: var(--primary-color);"><i class="fas fa-paint-brush"></i> Terapkan Font Style</h4>
-                            
-                            <div class="form-row" style="grid-template-columns: 2fr 1fr 1fr 0.5fr; gap: 12px; align-items: flex-end;">
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="applyFontTemplateSelect">
-                                        <i class="fas fa-font"></i> Pilih Template
-                                    </label>
-                                    <select id="applyFontTemplateSelect" class="styled-select">
-                                        <option value="">-- Pilih Template Tersimpan --</option>
-                                        <!-- Options akan diisi oleh JavaScript -->
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label for="applyFontTargetSelect">
-                                        <i class="fas fa-bullseye"></i> Target Text
-                                    </label>
-                                    <select id="applyFontTargetSelect" class="styled-select">
-                                        <option value="store_name">Nama Store</option>
-                                        <option value="all_text">Semua Text Website</option>
-                                        <option value="headings">Heading (Judul)</option>
-                                        <option value="body">Body Text</option>
-                                    </select>
-                                </div>
-                                
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label>&nbsp;</label>
-                                    <button class="btn-primary" id="applyFontStyleBtn" style="width: 100%;">
-                                        <i class="fas fa-check"></i> Terapkan
-                                    </button>
-                                </div>
-                                
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label>&nbsp;</label>
-                                    <button class="btn-icon-square" id="previewFontStyleBtn" title="Preview hasil font">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <small class="input-hint">Terapkan gaya font dari template yang dipilih ke berbagai elemen text website</small>
-                            
-                            <!-- Preview Panel -->
-                            <div class="font-preview-panel" id="fontPreviewPanel" style="display: none; margin-top: 20px; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 12px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                    <h5 style="color: var(--primary-color);"><i class="fas fa-eye"></i> Preview Hasil</h5>
-                                    <button class="btn-icon-small" id="closePreviewBtn" style="width: 28px; height: 28px;">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <div class="preview-content" style="text-align: center;">
-                                    <div class="preview-store-name" id="previewStoreName" style="font-size: 24px; margin-bottom: 16px; font-weight: 600;">
-                                        Nama Store Example
-                                    </div>
-                                    <div class="preview-heading" id="previewHeading" style="font-size: 20px; margin-bottom: 12px; font-weight: 500;">
-                                        Judul Halaman Example
-                                    </div>
-                                    <div class="preview-body" id="previewBody" style="font-size: 14px; opacity: 0.9;">
-                                        Ini adalah contoh body text untuk melihat hasil penerapan font dan animasi.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Daftar Template Tersimpan -->
-                        <div class="saved-templates-section">
-                            <h4 style="margin-bottom: 16px; color: var(--primary-color);"><i class="fas fa-list"></i> Template Tersimpan</h4>
-                            
-                            <div class="templates-grid" id="savedTemplatesGrid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
-                                <!-- Template items akan dirender di sini -->
-                            </div>
-                            
-                            <div class="empty-state" id="emptySavedTemplates" style="display: none; padding: 40px;">
-                                <i class="fas fa-font"></i>
-                                <p>Belum ada template tersimpan. Tambahkan template baru di atas.</p>
-                            </div>
+                        <div class="empty-state" id="emptySavedTemplates" style="display: none; padding: 40px;">
+                            <i class="fas fa-font"></i>
+                            <p>Belum ada template tersimpan. Tambahkan template baru di atas.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <!-- MODAL: Lihat Semua Template -->
     <div class="modal" id="allTemplatesModal">
