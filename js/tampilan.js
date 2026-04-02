@@ -885,12 +885,73 @@
         }, 100);
     }
 
-    function deleteBanner(index) {
-        if (confirm('Hapus banner ini?')) {
-            banners.splice(index, 1);
-            hasUnsavedBanners = true;
-            renderBannerTrack();
-            vibrate(10);
+    async function deleteBanner(index) {
+        if (!confirm('Hapus banner ini?')) return;
+        
+        const bannerToDelete = banners[index];
+        if (!bannerToDelete) return;
+        
+        // Hapus dari state
+        banners.splice(index, 1);
+        hasUnsavedBanners = true;
+        renderBannerTrack();
+        vibrate(10);
+        
+        // Auto save ke server
+        showLoading(true);
+        try {
+            // Siapkan data banner yang tersisa untuk disimpan
+            const bannersToSave = [];
+            
+            for (const banner of banners) {
+                if (banner.url && banner.url.trim() !== '') {
+                    let bannerHash = banner.hash;
+                    
+                    if (!bannerHash && banner.url) {
+                        if (banner.url.length === 35 && /^[a-f0-9]{35}$/i.test(banner.url)) {
+                            bannerHash = banner.url;
+                        } else if (banner.url.includes('/ii?')) {
+                            const match = banner.url.match(/=([a-f0-9]{35})/);
+                            if (match) bannerHash = match[1];
+                        }
+                    }
+                    
+                    if (bannerHash && bannerHash.length === 35) {
+                        bannersToSave.push({
+                            hash: bannerHash,
+                            positionX: banner.positionX || 50,
+                            positionY: banner.positionY || 50
+                        });
+                    } else if (banner.url && (banner.url.startsWith('http') || banner.url.startsWith('data:'))) {
+                        bannersToSave.push({
+                            url: banner.url,
+                            positionX: banner.positionX || 50,
+                            positionY: banner.positionY || 50
+                        });
+                    }
+                }
+            }
+            
+            // Kirim ke server
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banners`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ banners: bannersToSave })
+            });
+            
+            if (response.success) {
+                showToast('✅ Banner berhasil dihapus!', 'success');
+                hasUnsavedBanners = false;
+            } else {
+                throw new Error(response.error || 'Gagal menyimpan perubahan');
+            }
+        } catch (error) {
+            console.error('❌ Error saving after delete:', error);
+            showToast('Gagal menyimpan perubahan, silakan coba lagi', 'error');
+            // Reload data untuk mengembalikan state yang benar
+            await loadTampilanData(true);
+        } finally {
+            showLoading(false);
         }
     }
 
