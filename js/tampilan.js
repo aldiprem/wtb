@@ -2687,7 +2687,7 @@ function setupEventListeners() {
             }
         });
         
-        // Logo upload - PERBAIKAN DENGAN LINK URL DI BAWAH PREVIEW
+        // Logo upload - PERBAIKAN OTOMATIS LINK DNS
         if (elements.uploadLogoBtn) {
             elements.uploadLogoBtn.addEventListener('click', () => {
                 openUploadModal(async (hash, url) => {
@@ -2706,15 +2706,24 @@ function setupEventListeners() {
                         const data = await response.json();
                         
                         if (data.success) {
-                            // Update Foto Preview
-                            if (elements.logoImage) elements.logoImage.src = url;
-                            if (elements.logoUrl) elements.logoUrl.value = url;
-                            
-                            // UPDATE: Menampilkan link teks di bawah preview logo
-                            const linkContainer = document.getElementById('logo-link-container');
-                            if (linkContainer) {
-                                linkContainer.innerHTML = `<a href="${url}" target="_blank" style="font-size: 12px; color: var(--accent-color); text-decoration: underline;">Lihat Gambar di DNS: ${url}</a>`;
+                            // 1. Update Foto Preview
+                            if (elements.logoImage) {
+                                elements.logoImage.src = url;
+                                
+                                // 2. Buat/Update Link URL DNS di bawah foto
+                                let linkEl = document.getElementById('dns-logo-link');
+                                if (!linkEl) {
+                                    linkEl = document.createElement('div');
+                                    linkEl.id = 'dns-logo-link';
+                                    linkEl.style.marginTop = '10px';
+                                    linkEl.style.wordBreak = 'break-all';
+                                    // Masukkan tepat setelah elemen foto logo
+                                    elements.logoImage.parentNode.insertBefore(linkEl, elements.logoImage.nextSibling);
+                                }
+                                linkEl.innerHTML = `<a href="${url}" target="_blank" style="color: #40a7e3; font-size: 12px; text-decoration: underline;">Link DNS: ${url}</a>`;
                             }
+                            
+                            if (elements.logoUrl) elements.logoUrl.value = url;
 
                             showToast('✅ Logo berhasil diupload!', 'success');
                             await loadTampilanData();
@@ -2991,7 +3000,6 @@ function setupEventListeners() {
                     const img = elements.uploadPreview.querySelector('img');
                     if (img) {
                         const hash = img.dataset.hash || '';
-                        // Panggil callback dengan hash dan url original
                         currentUploadCallback(hash, img.src);
                     }
                 }
