@@ -933,14 +933,21 @@
             const positionX = banner.positionX || 50;
             const positionY = banner.positionY || 50;
             
+            // Gunakan background-size: cover agar gambar memenuhi container
             trackHtml += `
-                <div class="banner-slide" style="background-image: url('${url}'); background-position: ${positionX}% ${positionY}%;"></div>
+                <div class="banner-slide" style="background-image: url('${url}'); background-position: ${positionX}% ${positionY}%; background-size: cover;"></div>
             `;
             dotsHtml += `<span class="banner-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`;
         });
         
         elements.bannerTrack.innerHTML = trackHtml;
         elements.bannerDots.innerHTML = dotsHtml;
+        
+        // Reset transform position
+        currentBannerIndex = 0;
+        if (elements.bannerTrack) {
+            elements.bannerTrack.style.transform = 'translateX(0)';
+        }
         
         if (banners.length > 1) {
             startBannerSlider();
