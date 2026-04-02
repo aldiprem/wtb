@@ -187,44 +187,60 @@ body {
     text-overflow: ellipsis;
 }
 
-/* ===== BANNER SLIDER ===== */
+/* ===== BANNER SLIDER - FULL WIDTH ===== */
 .banner-slider-container {
     position: relative;
     width: 100%;
-    /* Menggunakan aspect-ratio 1280:760 = 1.6842 */
-    aspect-ratio: 1280 / 760;
-    border-radius: 16px;
-    overflow: hidden;
+    /* Hapus height dan aspect-ratio tetap, biarkan gambar menentukan */
     margin-bottom: 20px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    overflow: hidden;
+    border-radius: 0;
+    background: #1a1a1a;
 }
 
 .banner-track {
     display: flex;
-    height: 100%;
+    width: 100%;
     transition: transform 0.5s ease-in-out;
     will-change: transform;
 }
 
 .banner-slide {
     flex: 0 0 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+    width: 100%;
     position: relative;
+    overflow: hidden;
+}
+
+.banner-slide img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    /* Maksimal height sesuai viewport, tapi tetap full width */
+    max-height: 50vh;
+    min-height: 180px;
+}
+
+/* Fallback untuk background image (jika menggunakan div) */
+.banner-slide[style*="background-image"] {
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    min-height: 200px;
+    width: 100%;
 }
 
 .banner-slide::after {
     content: '';
     position: absolute;
-    top: 0;
+    bottom: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    background: linear-gradient(to bottom, transparent 70%, rgba(0,0,0,0.3));
+    height: 60px;
+    background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
     pointer-events: none;
+    z-index: 1;
 }
 
 .banner-dots {
@@ -234,7 +250,7 @@ body {
     right: 0;
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     z-index: 10;
 }
 
@@ -242,34 +258,40 @@ body {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.6);
     transition: all 0.3s ease;
     cursor: pointer;
 }
 
 .banner-dot.active {
-    width: 20px;
+    width: 24px;
     border-radius: 10px;
     background: var(--primary-color);
 }
 
-/* Skeleton banner */
-.skeleton-banner {
-    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
-    background-size: 200% 100%;
-    animation: skeleton-loading 1.5s infinite;
-    width: 100%;
-    height: 100%;
+/* Responsive */
+@media (max-width: 768px) {
+    .banner-slide {
+        min-height: 160px;
+    }
+    
+    .banner-slide[style*="background-image"] {
+        min-height: 160px;
+    }
 }
 
-/* Responsive untuk banner */
 @media (max-width: 480px) {
-    .banner-slider-container {
-        border-radius: 12px;
+    .banner-slide {
+        min-height: 140px;
+    }
+    
+    .banner-slide[style*="background-image"] {
+        min-height: 140px;
     }
     
     .banner-dots {
         bottom: 8px;
+        gap: 6px;
     }
     
     .banner-dot {
@@ -278,24 +300,7 @@ body {
     }
     
     .banner-dot.active {
-        width: 16px;
-    }
-}
-
-/* Untuk browser yang tidak support aspect-ratio */
-@supports not (aspect-ratio: 1280 / 760) {
-    .banner-slider-container {
-        height: auto;
-        padding-bottom: calc(760 / 1280 * 100%); /* 59.375% */
-        position: relative;
-    }
-    
-    .banner-track {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        width: 18px;
     }
 }
 
@@ -2390,8 +2395,8 @@ select option.qris-option {
     background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
     background-size: 200% 100%;
     animation: skeleton-loading 1.5s infinite;
+    min-height: 200px;
     width: 100%;
-    height: 100%;
 }
 
 /* Hilangkan pointer events untuk skeleton */

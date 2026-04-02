@@ -912,7 +912,7 @@
         
         if (banners.length === 0) {
             elements.bannerTrack.innerHTML = `
-                <div class="banner-slide skeleton-banner" style="background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%); background-size: 200% 100%; animation: skeleton-loading 1.5s infinite;"></div>
+                <div class="banner-slide skeleton-banner"></div>
             `;
             elements.bannerDots.innerHTML = '<span class="banner-dot active"></span>';
             return;
@@ -930,12 +930,12 @@
                 url = hashToImageUrl(banner.url || banner.hash);
             }
             
-            const positionX = banner.positionX || 50;
-            const positionY = banner.positionY || 50;
-            
-            // Gunakan background-size: cover agar gambar memenuhi container
+            // Gunakan IMG tag untuk kontrol yang lebih baik
             trackHtml += `
-                <div class="banner-slide" style="background-image: url('${url}'); background-position: ${positionX}% ${positionY}%; background-size: cover;"></div>
+                <div class="banner-slide">
+                    <img src="${url}" alt="Banner ${index + 1}" 
+                        onerror="this.style.display='none'; this.parentElement.style.background='#2a2a2a';">
+                </div>
             `;
             dotsHtml += `<span class="banner-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>`;
         });
