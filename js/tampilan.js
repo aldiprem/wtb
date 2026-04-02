@@ -1395,7 +1395,7 @@
             const isUploading = banner.isUploading === true;
             
             if (isUploading) {
-                // Tampilkan area upload untuk banner baru
+                // Tampilkan area upload untuk banner baru dengan struktur yang benar
                 html += `
                     <div class="banner-slide uploading" data-index="${index}">
                         <div class="banner-slide-header">
@@ -1406,22 +1406,24 @@
                         </div>
                         
                         <div class="banner-upload-area" id="banner-upload-area-${index}">
-                            <div class="banner-upload-inner" id="banner-upload-inner-${index}">
-                                <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Drag & drop atau klik untuk upload banner</p>
-                                <small>Format: JPG, PNG, GIF, WebP (Max 2MB, wajib 358x160)</small>
-                                <input type="file" id="banner-file-input-${index}" accept="image/*" style="display: none;">
-                            </div>
-                            <div class="banner-upload-preview" id="banner-upload-preview-${index}" style="display: none;">
-                                <img src="" alt="Preview Banner" id="banner-preview-img-${index}">
-                                <div class="banner-upload-actions">
-                                    <button class="btn-upload-cancel" id="cancel-banner-upload-${index}">
-                                        <i class="fas fa-times"></i> Batal
-                                    </button>
-                                    <button class="btn-upload-confirm" id="confirm-banner-upload-${index}">
-                                        <i class="fas fa-check"></i> Tambahkan Banner
-                                    </button>
+                            <div class="banner-upload-preview-container">
+                                <div class="banner-upload-inner" id="banner-upload-inner-${index}">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Drag & drop atau klik untuk upload banner</p>
+                                    <small>Format: JPG, PNG, GIF, WebP (Max 2MB, wajib 358x160)</small>
+                                    <input type="file" id="banner-file-input-${index}" accept="image/*" style="display: none;">
                                 </div>
+                                <div class="banner-upload-preview" id="banner-upload-preview-${index}" style="display: none;">
+                                    <img src="" alt="Preview Banner" id="banner-preview-img-${index}">
+                                </div>
+                            </div>
+                            <div class="banner-upload-actions" id="banner-upload-actions-${index}" style="display: none;">
+                                <button class="btn-upload-cancel" id="cancel-banner-upload-${index}">
+                                    <i class="fas fa-times"></i> Batal
+                                </button>
+                                <button class="btn-upload-confirm" id="confirm-banner-upload-${index}">
+                                    <i class="fas fa-check"></i> Tambahkan Banner
+                                </button>
                             </div>
                         </div>
                     </div>
