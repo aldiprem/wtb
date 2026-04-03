@@ -1108,7 +1108,7 @@ input:checked + .toggle-slider:before {
     box-shadow: var(--shadow-glow);
 }
 
-/* ===== BANNER UPLOAD AREA - UKURAN 358x160 (SAMA DENGAN PREVIEW BANNER) ===== */
+/* BANNER UPLOAD AREA - UKURAN 358x160 */
 .banner-slide.uploading {
     width: 100%;
     min-width: 280px;
@@ -1123,6 +1123,7 @@ input:checked + .toggle-slider:before {
     transition: all 0.3s ease;
     overflow: hidden;
     margin-bottom: 0;
+    aspect-ratio: 358 / 160;
 }
 
 .banner-upload-area.drag-over {
@@ -1130,7 +1131,7 @@ input:checked + .toggle-slider:before {
     background: rgba(64, 167, 227, 0.1);
 }
 
-/* Container untuk preview - UKURAN 358x160 (SAMA PERSIS DENGAN BANNER YANG DISIMPAN) */
+/* Container untuk preview dengan ukuran yang sama (358x160) */
 .banner-upload-preview-container {
     width: 100%;
     aspect-ratio: 358 / 160;

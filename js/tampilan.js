@@ -1039,6 +1039,11 @@
         if (uploadActions) {
             uploadActions.style.display = 'flex';
         }
+        
+        // PASTIKAN UKURAN AREA UPLOAD SAMA DENGAN PREVIEW
+        if (uploadArea) {
+            uploadArea.style.aspectRatio = '358 / 160';
+        }
 
         // Klik area untuk upload
         uploadArea.addEventListener('click', (e) => {
@@ -1151,6 +1156,7 @@
             
             console.log(`📏 Uploaded image dimensions: ${width}x${height}`);
             
+            // VALIDASI UKURAN 358x160 (BUKAN 1280x760)
             if (width === 358 && height === 160) {
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
@@ -1445,7 +1451,7 @@
             const isUploading = banner.isUploading === true;
             
             if (isUploading) {
-                // Tampilkan area upload untuk banner baru - DENGAN DATA ATTRIBUTE UNTUK SCROLL
+                // Tampilkan area upload untuk banner baru - UKURAN 358x160
                 html += `
                     <div class="banner-slide uploading" data-upload-index="${index}" data-index="${index}">
                         <div class="banner-slide-header">
@@ -1464,7 +1470,7 @@
                                     <input type="file" id="banner-file-input-${index}" accept="image/*" style="display: none;">
                                 </div>
                                 <div class="banner-upload-preview" id="banner-upload-preview-${index}" style="display: none;">
-                                    <img src="" alt="Preview Banner" id="banner-preview-img-${index}">
+                                    <img src="" alt="Preview Banner" id="banner-preview-img-${index}" style="width: 100%; height: 100%; object-fit: cover;">
                                 </div>
                             </div>
                             <div class="banner-upload-actions" id="banner-upload-actions-${index}">
@@ -1484,7 +1490,7 @@
                 const isHidden = bannerSettings.is_hidden || false;
                 
                 // Tampilkan banner yang sudah ada
-                const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
+                const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%; background-size: cover; background-repeat: no-repeat;`;
                 
                 html += `
                     <div class="banner-slide" data-index="${index}" ${isHidden ? 'style="opacity: 0.5;"' : ''}>
@@ -1536,9 +1542,11 @@
         
         elements.bannerTrack.innerHTML = html;
         
-        // Setup long press untuk banner yang sudah ada
+        // Setup upload area untuk banner yang sedang dalam mode upload
         banners.forEach((banner, index) => {
-            if (banner.url && banner.url.trim() !== '' && !banner.isUploading) {
+            if (banner.isUploading === true) {
+                setupBannerUploadForIndex(index);
+            } else if (banner.url && banner.url.trim() !== '') {
                 setupBannerLongPress(index);
             }
         });
