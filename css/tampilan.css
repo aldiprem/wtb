@@ -493,7 +493,7 @@ body {
 /* ===== BUTTONS ===== */
 .btn-primary {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: var(--primary-color);
+    color: white;
     border: none;
     padding: 12px 24px;
     border-radius: 12px;
