@@ -792,12 +792,11 @@ input:checked + .toggle-slider:before {
     font-weight: 500;
 }
 
-/* Header layout untuk banner slide */
 .banner-slide-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 12px 8px 12px;
+    padding: 10px 12px;
 }
 
 .header-left-group {
@@ -969,21 +968,13 @@ input:checked + .toggle-slider:before {
     box-shadow: var(--shadow-sm);
 }
 
-/* Banner slide header */
-.banner-slide-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 12px 8px 12px;
-}
-
 .banner-number {
     font-weight: 600;
     color: var(--primary-color);
     background: rgba(64, 167, 227, 0.1);
     padding: 4px 10px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 11px;
 }
 
 /* Banner URL Input Group */
@@ -1234,13 +1225,13 @@ input:checked + .toggle-slider:before {
     box-shadow: var(--shadow-glow);
 }
 
+/* ===== BANNER UPLOAD AREA - DIPERKECIL ===== */
 .banner-slide.uploading {
-    width: 100%; 
+    width: 100%;
     min-width: 280px;
     max-width: 100%;
 }
 
-/* ===== BANNER UPLOAD AREA ===== */
 .banner-upload-area {
     width: 100%;
     border: 2px dashed var(--border-color);
@@ -1248,21 +1239,14 @@ input:checked + .toggle-slider:before {
     background: rgba(255, 255, 255, 0.02);
     transition: all 0.3s ease;
     overflow: hidden;
-    margin-bottom: 12px;
+    margin-bottom: 0;
 }
 
-.banner-upload-area.drag-over {
-    border-color: var(--primary-color);
-    background: rgba(64, 167, 227, 0.1);
-    transform: scale(1.01);
-}
-
-/* Container untuk preview dengan ukuran 358x160 */
+/* Container untuk preview dengan ukuran yang sama (358x160) */
 .banner-upload-preview-container {
     width: 100%;
     aspect-ratio: 358 / 160;
     background: #1a1a1a;
-    border-radius: 8px;
     overflow: hidden;
     position: relative;
 }
@@ -1276,26 +1260,26 @@ input:checked + .toggle-slider:before {
     justify-content: center;
     text-align: center;
     cursor: pointer;
-    min-height: 160px;
     background: rgba(0, 0, 0, 0.3);
+    padding: 20px;
 }
 
 .banner-upload-inner i {
-    font-size: 36px;
+    font-size: 28px;
     color: var(--primary-color);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     opacity: 0.7;
 }
 
 .banner-upload-inner p {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 500;
     margin-bottom: 4px;
     color: var(--text-primary);
 }
 
 .banner-upload-inner small {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--tg-hint-color);
 }
 
@@ -1312,26 +1296,24 @@ input:checked + .toggle-slider:before {
     background: #1a1a1a;
 }
 
-/* Tombol aksi di luar border preview */
+/* Tombol aksi - DIPERKECIL UKURANNYA seperti catatan banner */
 .banner-upload-actions {
     display: flex;
     gap: 8px;
     justify-content: center;
-    padding: 12px;
+    padding: 10px 12px;
     background: rgba(0, 0, 0, 0.2);
     border-top: 1px solid var(--border-color-light);
-    margin-top: 0;
 }
-
 
 .btn-upload-cancel {
     flex: 1;
-    padding: 6px 10px;
-    background: rgba(182, 12, 12, 0.308);
-    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: 20px;
-    color: var(--text-primary);
-    font-size: 13px;
+    color: var(--danger-color);
+    font-size: 11px;
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
@@ -1343,17 +1325,18 @@ input:checked + .toggle-slider:before {
 
 .btn-upload-cancel:hover {
     background: var(--danger-color);
+    color: white;
     border-color: var(--danger-color);
 }
 
 .btn-upload-confirm {
     flex: 1;
-    padding: 10px 16px;
+    padding: 6px 12px;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border: none;
-    border-radius: 30px;
+    border-radius: 20px;
     color: white;
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
@@ -1374,16 +1357,15 @@ input:checked + .toggle-slider:before {
     transform: none;
 }
 
-/* Loading indicator untuk upload banner */
 .banner-upload-loading {
     display: inline-block;
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
     border: 2px solid rgba(255, 255, 255, 0.3);
     border-top-color: var(--primary-color);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    margin-right: 6px;
+    margin-right: 4px;
 }
 
 @keyframes spin {

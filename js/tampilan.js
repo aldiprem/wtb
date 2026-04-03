@@ -892,11 +892,41 @@
         renderBannerTrack();
         vibrate(10);
         
-        // Setup upload area untuk banner baru
+        // AUTO SCROLL KE BANNER YANG BARU DITAMBAHKAN
         setTimeout(() => {
             const newIndex = banners.length - 1;
             setupBannerUploadForIndex(newIndex);
+            
+            // Scroll ke banner yang baru ditambahkan
+            scrollToNewBanner(newIndex);
         }, 100);
+    }
+
+    /**
+     * Scroll ke banner dengan index tertentu
+     */
+    function scrollToNewBanner(index) {
+        const bannerContainer = document.querySelector('.banner-slider-container');
+        const bannerElement = document.querySelector(`.banner-slide[data-upload-index="${index}"]`);
+        
+        if (bannerContainer && bannerElement) {
+            // Hitung posisi scroll agar banner berada di tengah/tampak
+            const containerRect = bannerContainer.getBoundingClientRect();
+            const bannerRect = bannerElement.getBoundingClientRect();
+            
+            // Scroll dengan smooth behavior
+            bannerContainer.scrollTo({
+                left: bannerElement.offsetLeft - (containerRect.width / 2) + (bannerRect.width / 2),
+                behavior: 'smooth'
+            });
+            
+            // Tambahkan efek highlight sementara
+            bannerElement.style.transition = 'all 0.3s ease';
+            bannerElement.style.boxShadow = '0 0 0 2px var(--primary-color)';
+            setTimeout(() => {
+                bannerElement.style.boxShadow = '';
+            }, 1500);
+        }
     }
 
     async function deleteBanner(index) {
@@ -993,7 +1023,6 @@
         }, 800);
     }
 
-    // ==================== BANNER UPLOAD FUNCTIONS ====================
     function setupBannerUploadForIndex(index) {
         const uploadArea = document.getElementById(`banner-upload-area-${index}`);
         const fileInput = document.getElementById(`banner-file-input-${index}`);
@@ -1006,7 +1035,7 @@
 
         if (!uploadArea) return;
 
-        // Pastikan actions terlihat di awal (opsional, bisa hidden dulu)
+        // Sembunyikan actions terlebih dahulu
         if (uploadActions) {
             uploadActions.style.display = 'flex';
         }
@@ -1095,12 +1124,12 @@
             }
             if (uploadInner) uploadInner.style.display = 'none';
             if (uploadPreview) uploadPreview.style.display = 'block';
-            if (uploadActions) uploadActions.style.display = 'flex';  // PASTIKAN INI MUNCUL
+            if (uploadActions) uploadActions.style.display = 'flex';
             
             // Disable confirm button dulu, nanti di-enable setelah validasi ukuran
             if (confirmBtn) {
                 confirmBtn.disabled = true;
-                confirmBtn.innerHTML = '<span class="banner-upload-loading"></span> Memvalidasi ukuran...';
+                confirmBtn.innerHTML = '<span class="banner-upload-loading"></span> Validasi...';
             }
             
             // Validasi ukuran gambar
@@ -1416,9 +1445,9 @@
             const isUploading = banner.isUploading === true;
             
             if (isUploading) {
-                // Tampilkan area upload untuk banner baru
+                // Tampilkan area upload untuk banner baru - DENGAN DATA ATTRIBUTE UNTUK SCROLL
                 html += `
-                    <div class="banner-slide uploading" data-index="${index}">
+                    <div class="banner-slide uploading" data-upload-index="${index}" data-index="${index}">
                         <div class="banner-slide-header">
                             <span class="banner-number">#${index + 1}</span>
                             <button class="btn-icon-small delete" onclick="window.tampilan.removeUploadingBanner(${index})">
@@ -1430,8 +1459,8 @@
                             <div class="banner-upload-preview-container">
                                 <div class="banner-upload-inner" id="banner-upload-inner-${index}">
                                     <i class="fas fa-cloud-upload-alt"></i>
-                                    <p>Drag & drop atau klik untuk upload banner</p>
-                                    <small>Format: JPG, PNG, GIF, WebP (Max 2MB, wajib 358x160)</small>
+                                    <p>Tap untuk upload banner</p>
+                                    <small>358x160 pixel (Max 2MB)</small>
                                     <input type="file" id="banner-file-input-${index}" accept="image/*" style="display: none;">
                                 </div>
                                 <div class="banner-upload-preview" id="banner-upload-preview-${index}" style="display: none;">
@@ -1454,7 +1483,7 @@
                 const bannerSettings = bannerSettingsData[index] || { catatan: '', is_hidden: false };
                 const isHidden = bannerSettings.is_hidden || false;
                 
-                // Tampilkan banner yang sudah ada - Tombol edit dan hapus di header sebaris dengan nomor
+                // Tampilkan banner yang sudah ada
                 const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
                 
                 html += `
@@ -1497,7 +1526,7 @@
                                 <span class="banner-catatan-text ${bannerSettings.catatan.length > 50 ? 'truncated' : ''}">
                                     ${escapeHtml(bannerSettings.catatan.length > 50 ? bannerSettings.catatan.substring(0, 50) + '...' : bannerSettings.catatan)}
                                 </span>
-                                ${bannerSettings.catatan.length > 50 ? '<span class="banner-catatan-expand"><i class="fas fa-expand-alt"></i> Baca</span>' : ''}
+                                ${bannerSettings.catatan.length > 50 ? '<span class="banner-catatan-expand"><i class="fas fa-expand-alt"></i></span>' : ''}
                             </div>
                         ` : ''}
                     </div>
