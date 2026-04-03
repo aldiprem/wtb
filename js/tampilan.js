@@ -16,6 +16,10 @@
     let lastFetch = 0;
     const CACHE_DURATION = 10000;
 
+    // State untuk add banner modal
+    let isAddingNewBanner = false;
+    let pendingNewBannerData = null;
+
     // ==================== BANNER SETTINGS FUNCTIONS ====================
     let bannerSettingsData = {};
     let currentEditingBannerIndex = null;
@@ -872,34 +876,191 @@
     }
 
     function addBanner() {
-        // Cek apakah sudah ada banner yang sedang dalam mode upload
-        const hasUploadingBanner = banners.some(b => b.isUploading === true);
-        
-        if (hasUploadingBanner) {
-            showToast('⚠️ Selesaikan upload banner yang sedang berjalan terlebih dahulu.', 'warning');
-            return;
-        }
-        
-        // Tambah banner baru dengan mode upload
-        banners.push({
+        // Reset state untuk banner baru
+        isAddingNewBanner = true;
+        currentEditingBannerIndex = null;
+        pendingNewBannerData = {
             url: '',
             positionX: 50,
             positionY: 50,
-            isUploading: true  // Tandai bahwa banner ini dalam mode upload
-        });
+            catatan: '',
+            is_hidden: false,
+            pendingFile: null
+        };
         
-        hasUnsavedBanners = true;
-        renderBannerTrack();
+        // Reset form modal
+        const previewImg = document.getElementById('bannerPreviewMiniImg');
+        const catatanInput = document.getElementById('bannerCatatanInput');
+        const toggleCheckbox = document.getElementById('bannerShowToggle');
+        const toggleLabel = document.getElementById('bannerShowLabel');
+        
+        if (previewImg) {
+            previewImg.src = 'https://via.placeholder.com/358x160/1a1a1a/ffffff?text=Upload+Banner';
+            previewImg.style.objectFit = 'cover';
+        }
+        if (catatanInput) catatanInput.value = '';
+        if (toggleCheckbox) {
+            toggleCheckbox.checked = true;
+            if (toggleLabel) toggleLabel.textContent = 'Ditampilkan';
+        }
+        
+        // Setup upload area di modal
+        setupModalUploadArea();
+        
+        // Tampilkan modal dengan title berbeda
+        const modalHeader = document.querySelector('#bannerSettingsModal .modal-header h2');
+        if (modalHeader) {
+            modalHeader.innerHTML = '<i class="fas fa-plus-circle"></i> Tambah Banner Baru';
+        }
+        
+        const modal = document.getElementById('bannerSettingsModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
+        
         vibrate(10);
+    }
+
+    function setupModalUploadArea() {
+        const uploadArea = document.getElementById('bannerPreviewMini');
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.style.display = 'none';
+        fileInput.id = 'modalBannerFileInput';
         
-        // AUTO SCROLL KE BANNER YANG BARU DITAMBAHKAN
-        setTimeout(() => {
-            const newIndex = banners.length - 1;
-            setupBannerUploadForIndex(newIndex);
+        // Hapus file input lama jika ada
+        const oldInput = document.getElementById('modalBannerFileInput');
+        if (oldInput) oldInput.remove();
+        
+        document.body.appendChild(fileInput);
+        
+        // Klik pada preview untuk upload
+        if (uploadArea) {
+            uploadArea.style.cursor = 'pointer';
+            uploadArea.style.position = 'relative';
             
-            // Scroll ke banner yang baru ditambahkan
-            scrollToNewBanner(newIndex);
-        }, 100);
+            // Tambahkan overlay upload jika belum ada
+            let uploadOverlay = uploadArea.querySelector('.upload-overlay');
+            if (!uploadOverlay) {
+                uploadOverlay = document.createElement('div');
+                uploadOverlay.className = 'upload-overlay';
+                uploadOverlay.innerHTML = '<i class="fas fa-cloud-upload-alt"></i><span>Klik atau drag untuk upload</span>';
+                uploadOverlay.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.6);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    color: white;
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    z-index: 10;
+                `;
+                uploadArea.style.position = 'relative';
+                uploadArea.appendChild(uploadOverlay);
+            }
+            
+            uploadArea.addEventListener('mouseenter', () => {
+                if (uploadOverlay) uploadOverlay.style.opacity = '1';
+            });
+            uploadArea.addEventListener('mouseleave', () => {
+                if (uploadOverlay && !isAddingNewBanner) uploadOverlay.style.opacity = '0';
+            });
+            
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            // Drag & drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.border = '2px solid var(--primary-color)';
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.border = '1px solid var(--border-color)';
+            });
+            
+            uploadArea.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                uploadArea.style.border = '1px solid var(--border-color)';
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    await handleModalFileSelect(file);
+                } else {
+                    showToast('File harus berupa gambar', 'error');
+                }
+            });
+        }
+        
+        fileInput.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await handleModalFileSelect(file);
+            }
+        };
+    }
+
+    async function handleModalFileSelect(file) {
+        if (!file.type.startsWith('image/')) {
+            showToast('File harus berupa gambar', 'error');
+            return;
+        }
+        
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Ukuran file maksimal 2MB', 'error');
+            return;
+        }
+        
+        // Validasi ukuran gambar 358x160
+        const img = new Image();
+        const imageUrl = URL.createObjectURL(file);
+        
+        img.onload = async () => {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            
+            if (width === 358 && height === 160) {
+                // Preview gambar
+                const previewImg = document.getElementById('bannerPreviewMiniImg');
+                if (previewImg) {
+                    previewImg.src = imageUrl;
+                    previewImg.style.objectFit = 'cover';
+                }
+                
+                // Simpan file untuk upload nanti
+                pendingNewBannerData.pendingFile = file;
+                pendingNewBannerData.url = imageUrl;
+                
+                showToast('Ukuran gambar valid: 358x160 ✓', 'success');
+                
+                // Enable tombol simpan dengan style berbeda
+                const saveBtn = document.getElementById('saveBannerSettingsBtn');
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    saveBtn.style.opacity = '1';
+                }
+            } else {
+                showToast(`Ukuran gambar harus 358x160 pixel (saat ini ${width}x${height})`, 'error');
+                URL.revokeObjectURL(imageUrl);
+            }
+        };
+        
+        img.onerror = () => {
+            showToast('Gagal memuat gambar', 'error');
+            URL.revokeObjectURL(imageUrl);
+        };
+        
+        img.src = imageUrl;
     }
 
     /**
@@ -3183,6 +3344,7 @@
             return;
         }
         
+        isAddingNewBanner = false;
         currentEditingBannerIndex = bannerIndex;
         const settings = bannerSettingsData[bannerIndex] || { catatan: '', is_hidden: false };
         
@@ -3190,6 +3352,7 @@
         const previewImg = document.getElementById('bannerPreviewMiniImg');
         if (previewImg) {
             previewImg.src = banner.url;
+            previewImg.style.objectFit = 'cover';
         }
         
         // Set catatan
@@ -3208,6 +3371,12 @@
             }
         }
         
+        // Ubah title modal
+        const modalHeader = document.querySelector('#bannerSettingsModal .modal-header h2');
+        if (modalHeader) {
+            modalHeader.innerHTML = '<i class="fas fa-sliders-h"></i> Pengaturan Banner';
+        }
+        
         // Tampilkan modal
         const modal = document.getElementById('bannerSettingsModal');
         if (modal) {
@@ -3224,6 +3393,8 @@
             modal.classList.remove('active');
         }
         currentEditingBannerIndex = null;
+        isAddingNewBanner = false;
+        pendingNewBannerData = null;
         
         // Reset form
         const catatanInput = document.getElementById('bannerCatatanInput');
@@ -3234,44 +3405,118 @@
         
         const toggleLabel = document.getElementById('bannerShowLabel');
         if (toggleLabel) toggleLabel.textContent = 'Ditampilkan';
+        
+        // Reset preview
+        const previewImg = document.getElementById('bannerPreviewMiniImg');
+        if (previewImg) {
+            previewImg.src = 'https://via.placeholder.com/358x160/1a1a1a/ffffff?text=No+Image';
+        }
+        
+        // Reset upload overlay
+        const uploadArea = document.getElementById('bannerPreviewMini');
+        if (uploadArea) {
+            const overlay = uploadArea.querySelector('.upload-overlay');
+            if (overlay) overlay.style.opacity = '0';
+            uploadArea.style.cursor = 'default';
+        }
     }
+
 
     async function saveBannerSettings() {
         console.log('🔧 saveBannerSettings called');
-        if (currentEditingBannerIndex === null) {
-            showToast('Tidak ada banner yang sedang diedit', 'warning');
-            return;
-        }
         
-        const catatanInput = document.getElementById('bannerCatatanInput');
-        const toggleCheckbox = document.getElementById('bannerShowToggle');
-        
-        const catatan = catatanInput ? catatanInput.value : '';
-        const isHidden = toggleCheckbox ? !toggleCheckbox.checked : false;
-        
-        console.log('💾 Saving banner settings:', {
-            bannerIndex: currentEditingBannerIndex,
-            catatan: catatan,
-            isHidden: isHidden
-        });
-        
-        showLoading(true);
-        
-        try {
-            const success = await saveBannerSetting(currentEditingBannerIndex, catatan, isHidden);
-            
-            if (success) {
-                showToast('✅ Pengaturan banner disimpan', 'success');
-                closeBannerSettingsModalWindow();
-                renderBannerTrack(); // Refresh tampilan
-            } else {
-                throw new Error('Gagal menyimpan');
+        if (isAddingNewBanner) {
+            // Mode ADD BANNER BARU
+            if (!pendingNewBannerData || !pendingNewBannerData.pendingFile) {
+                showToast('Pilih gambar banner terlebih dahulu', 'warning');
+                return;
             }
-        } catch (error) {
-            console.error('❌ Error saving banner settings:', error);
-            showToast(error.message || 'Gagal menyimpan pengaturan', 'error');
-        } finally {
-            showLoading(false);
+            
+            const catatanInput = document.getElementById('bannerCatatanInput');
+            const toggleCheckbox = document.getElementById('bannerShowToggle');
+            
+            const catatan = catatanInput ? catatanInput.value : '';
+            const isHidden = toggleCheckbox ? !toggleCheckbox.checked : false;
+            
+            showLoading(true);
+            
+            try {
+                // Upload gambar ke server
+                const formData = new FormData();
+                formData.append('image', pendingNewBannerData.pendingFile);
+                formData.append('website_endpoint', currentWebsite.endpoint);
+                
+                const uploadResponse = await fetch(`${API_BASE_URL}/api/images/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const uploadData = await uploadResponse.json();
+                
+                if (!uploadData.success) {
+                    throw new Error(uploadData.error || 'Upload gagal');
+                }
+                
+                // Tambah banner baru ke array
+                const newBanner = {
+                    hash: uploadData.hash,
+                    url: uploadData.url,
+                    positionX: 50,
+                    positionY: 50
+                };
+                
+                banners.push(newBanner);
+                hasUnsavedBanners = true;
+                
+                // Simpan setting catatan dan hidden
+                const newIndex = banners.length - 1;
+                await saveBannerSetting(newIndex, catatan, isHidden);
+                
+                renderBannerTrack();
+                closeBannerSettingsModalWindow();
+                showToast('✅ Banner berhasil ditambahkan!', 'success');
+                
+                // Reset state
+                isAddingNewBanner = false;
+                pendingNewBannerData = null;
+                
+            } catch (error) {
+                console.error('❌ Error adding banner:', error);
+                showToast(error.message || 'Gagal menambahkan banner', 'error');
+            } finally {
+                showLoading(false);
+            }
+        } else {
+            // Mode EDIT BANNER (existing code)
+            if (currentEditingBannerIndex === null) {
+                showToast('Tidak ada banner yang sedang diedit', 'warning');
+                return;
+            }
+            
+            const catatanInput = document.getElementById('bannerCatatanInput');
+            const toggleCheckbox = document.getElementById('bannerShowToggle');
+            
+            const catatan = catatanInput ? catatanInput.value : '';
+            const isHidden = toggleCheckbox ? !toggleCheckbox.checked : false;
+            
+            showLoading(true);
+            
+            try {
+                const success = await saveBannerSetting(currentEditingBannerIndex, catatan, isHidden);
+                
+                if (success) {
+                    showToast('✅ Pengaturan banner disimpan', 'success');
+                    closeBannerSettingsModalWindow();
+                    renderBannerTrack();
+                } else {
+                    throw new Error('Gagal menyimpan');
+                }
+            } catch (error) {
+                console.error('❌ Error saving banner settings:', error);
+                showToast(error.message || 'Gagal menyimpan pengaturan', 'error');
+            } finally {
+                showLoading(false);
+            }
         }
     }
 
