@@ -1444,19 +1444,28 @@
                 const bannerSettings = bannerSettingsData[index] || { catatan: '', is_hidden: false };
                 const isHidden = bannerSettings.is_hidden || false;
                 
-                // Tampilkan banner yang sudah ada dengan tombol edit
+                // Tampilkan banner yang sudah ada - Tombol edit dan hapus di header sebaris dengan nomor
                 const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
                 
                 html += `
                     <div class="banner-slide" data-index="${index}" ${isHidden ? 'style="opacity: 0.5;"' : ''}>
                         <div class="banner-slide-header">
-                            <span class="banner-number">#${index + 1}</span>
-                            <div class="banner-header-actions">
+                            <div class="header-left-group">
+                                <span class="banner-number">#${index + 1}</span>
+                                ${isHidden ? '<span class="status-badge hidden"><i class="fas fa-eye-slash"></i> Hidden</span>' : '<span class="status-badge visible"><i class="fas fa-eye"></i> Show</span>'}
+                            </div>
+                            <div class="header-right-group">
                                 <button class="btn-icon-small edit" onclick="window.tampilan.openBannerSettings(${index})" title="Edit Banner">
                                     <i class="fas fa-edit"></i>
                                 </button>
                                 <button class="btn-icon-small delete" onclick="window.tampilan.deleteBanner(${index})">
                                     <i class="fas fa-trash"></i>
+                                </button>
+                                <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'left')">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'right')">
+                                    <i class="fas fa-chevron-right"></i>
                                 </button>
                             </div>
                         </div>
@@ -1479,15 +1488,6 @@
                                     <i class="fas fa-hand-pointer"></i> Tekan & tahan gambar untuk menggeser posisi
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="banner-slide-actions-bottom">
-                            <button class="btn-icon-small move-left" ${index === 0 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'left')">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'right')">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
                         </div>
                         
                         ${bannerSettings.catatan ? `
@@ -3179,19 +3179,34 @@
             modal.classList.add('active');
         }
         
-        // Setup keyboard handling untuk modal
-        setupModalKeyboardHandler(modal);
-        
         vibrate(10);
     }
 
-    function closeBannerSettingsModal() {
+    function closeBannerSettingsModalWindow() {
         const modal = document.getElementById('bannerSettingsModal');
         if (modal) {
             modal.classList.remove('active');
         }
         currentEditingBannerIndex = null;
     }
+
+    // Update event listeners
+    if (closeBannerSettingsModal) {
+        closeBannerSettingsModal.addEventListener('click', closeBannerSettingsModalWindow);
+    }
+    if (cancelBannerSettingsBtn) {
+        cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModalWindow);
+    }
+    if (saveBannerSettingsBtn) {
+        saveBannerSettingsBtn.addEventListener('click', saveBannerSettings);
+    }
+
+    // Click outside modal
+    window.addEventListener('click', (e) => {
+        if (e.target === document.getElementById('bannerSettingsModal')) {
+            closeBannerSettingsModalWindow();
+        }
+    });
 
     async function saveBannerSettings() {
         if (currentEditingBannerIndex === null) {

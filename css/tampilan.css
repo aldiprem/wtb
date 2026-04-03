@@ -792,6 +792,47 @@ input:checked + .toggle-slider:before {
     font-weight: 500;
 }
 
+/* Header layout untuk banner slide */
+.banner-slide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 12px 8px 12px;
+}
+
+.header-left-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-right-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Status badge untuk show/hide */
+.status-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-badge.visible {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-color);
+}
+
+.status-badge.hidden {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+}
+
 /* ===== BANNER SETTINGS MODAL ===== */
 .banner-preview-mini {
     width: 100%;
