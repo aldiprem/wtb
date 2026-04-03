@@ -2,6 +2,7 @@
 import mysql.connector
 from mysql.connector import pooling
 import os
+import re
 
 IMAGE_BASE_URL = "https://companel.shop/ii?"
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
@@ -33,4 +34,3 @@ def get_db_connection():
     if connection_pool is None:
         return mysql.connector.connect(**db_config)
     return connection_pool.get_connection()
-    

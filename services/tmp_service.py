@@ -5,7 +5,7 @@ import re
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from py import tmp
-from db_config import get_db_connection
+from db_config import get_db_connection, IMAGE_BASE_URL
 
 tmp_bp = Blueprint('tmp', __name__)
 
