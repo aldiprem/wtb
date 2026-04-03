@@ -2194,42 +2194,41 @@
         
         elements.emptyPromoMessage.style.display = 'none';
         
-        // Dapatkan endpoint untuk konversi hash ke URL
         const endpoint = currentWebsite?.endpoint || '';
         
         let html = '';
         promos.forEach(promo => {
-            const expiryText = promo.never_end 
-                ? '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tidak ada batas waktu</span>'
-                : `<span class="promo-expiry"><i class="fas fa-clock"></i> Berakhir: ${formatDate(promo.end_date, promo.end_time)}</span>`;
-            
-            const statusClass = promo.active ? 'active' : 'inactive';
-            const statusText = promo.active ? 'Aktif' : 'Tidak Aktif';
-            
-            // KONVERSI BANNER HASH KE URL YANG BENAR
+            // Konversi banner hash ke URL
             let bannerUrl = '';
             const bannerValue = promo.banner;
             
             if (bannerValue) {
-                // Jika banner adalah hash 35 karakter
                 if (bannerValue.length === 35 && /^[a-f0-9]{35}$/i.test(bannerValue)) {
                     bannerUrl = `https://companel.shop/ii?${endpoint}=${bannerValue}`;
-                    console.log(`🖼️ Converting promo banner hash to URL: ${bannerUrl}`);
-                }
-                // Jika banner sudah berupa URL lengkap
-                else if (bannerValue.startsWith('http')) {
+                } else if (bannerValue.startsWith('http')) {
                     bannerUrl = bannerValue;
-                }
-                // Jika banner adalah base64
-                else if (bannerValue.startsWith('data:')) {
+                } else if (bannerValue.startsWith('data:')) {
                     bannerUrl = bannerValue;
-                }
-                // Fallback: placeholder
-                else {
+                } else {
                     bannerUrl = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image';
                 }
             } else {
                 bannerUrl = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image';
+            }
+            
+            // Status promo
+            const statusClass = promo.active ? 'active' : 'inactive';
+            const statusText = promo.active ? 'Aktif' : 'Tidak Aktif';
+            const statusIcon = promo.active ? 'fa-check-circle' : 'fa-times-circle';
+            
+            // Waktu berakhir
+            let expiryHtml = '';
+            if (promo.never_end) {
+                expiryHtml = '<span class="promo-expiry never"><i class="fas fa-infinity"></i> Tanpa durasi</span>';
+            } else if (promo.end_date) {
+                expiryHtml = `<span class="promo-expiry"><i class="fas fa-clock"></i> Berakhir: ${formatDate(promo.end_date, promo.end_time)}</span>`;
+            } else {
+                expiryHtml = '<span class="promo-expiry"><i class="fas fa-clock"></i> Tidak ditentukan</span>';
             }
             
             html += `
@@ -2240,25 +2239,29 @@
                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Gambar+Gagal+Dimuat';">
                     </div>
                     
-                    <div class="promo-content">
+                    <!-- Header dengan judul dan status sejajar -->
+                    <div class="promo-header">
                         <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
-                        
-                        ${promo.description ? `<p class="promo-description">${escapeHtml(promo.description)}</p>` : ''}
-                        
-                        <div class="promo-meta">
-                            ${expiryText}
-                            <span class="promo-status ${statusClass}">
-                                <i class="fas fa-${promo.active ? 'check-circle' : 'times-circle'}"></i>
-                                ${statusText}
-                            </span>
+                        <span class="promo-status ${statusClass}">
+                            <i class="fas ${statusIcon}"></i>
+                            ${statusText}
+                        </span>
+                    </div>
+                    
+                    <!-- Deskripsi promosi -->
+                    ${promo.description ? `<div class="promo-description">${escapeHtml(promo.description)}</div>` : ''}
+                    
+                    <!-- Catatan Penting (diletakkan setelah deskripsi) -->
+                    ${promo.notes ? `
+                        <div class="promo-notes">
+                            <i class="fas fa-sticky-note"></i>
+                            ${escapeHtml(promo.notes)}
                         </div>
-                        
-                        ${promo.notes ? `
-                            <div class="promo-notes">
-                                <i class="fas fa-sticky-note"></i>
-                                ${escapeHtml(promo.notes)}
-                            </div>
-                        ` : ''}
+                    ` : ''}
+                    
+                    <!-- Meta info waktu di kiri bawah -->
+                    <div class="promo-meta">
+                        ${expiryHtml}
                     </div>
                     
                     <div class="promo-actions">
