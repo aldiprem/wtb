@@ -513,11 +513,11 @@ body {
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--tg-text-color);
+    background: rgb(255 255 255 / 11%);
+    color: rgba(255, 255, 255, 0.7);
     border: 1px solid var(--border-color);
     padding: 12px 24px;
-    border-radius: 12px;
+    border-radius: 100px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -529,6 +529,27 @@ body {
 }
 
 .btn-secondary:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.btn-danger {
+    background: rgb(199 45 45 / 28%);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid var(--border-color);
+    padding: 12px 14px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background: rgb(34 172 32 / 17%);
+}
+
+.btn-danger:disable {
     opacity: 0.3;
     cursor: not-allowed;
 }
@@ -1609,13 +1630,15 @@ input#promoEndTime:disabled {
 .promo-status {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     padding: 6px 12px;
     border-radius: 20px;
     font-size: 13px;
     font-weight: 600;
     flex-shrink: 0;
     white-space: nowrap;
+    margin-left: auto;
+    margin-bottom: 1px;
 }
 
 .promo-status.active {
@@ -2175,11 +2198,11 @@ input#promoEndTime:disabled {
 }
 
 .delete-info {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 12px;
-    padding: 16px;
-    margin-bottom: 20px;
+    background: rgb(127 193 231 / 10%);
+    border: 2px solid rgb(0 161 255 / 10%);
+    border-radius: 10px;
+    padding: 13px;
+    margin-bottom: 10px;
     text-align: center;
 }
 
