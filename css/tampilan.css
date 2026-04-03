@@ -1108,7 +1108,7 @@ input:checked + .toggle-slider:before {
     box-shadow: var(--shadow-glow);
 }
 
-/* ===== BANNER UPLOAD AREA - VERSI FINAL (DIPERKECIL) ===== */
+/* ===== BANNER UPLOAD AREA - UKURAN 358x160 (SAMA DENGAN PREVIEW BANNER) ===== */
 .banner-slide.uploading {
     width: 100%;
     min-width: 280px;
@@ -1130,7 +1130,7 @@ input:checked + .toggle-slider:before {
     background: rgba(64, 167, 227, 0.1);
 }
 
-/* Container untuk preview dengan ukuran yang sama (358x160) */
+/* Container untuk preview - UKURAN 358x160 (SAMA PERSIS DENGAN BANNER YANG DISIMPAN) */
 .banner-upload-preview-container {
     width: 100%;
     aspect-ratio: 358 / 160;
@@ -1184,7 +1184,7 @@ input:checked + .toggle-slider:before {
     background: #1a1a1a;
 }
 
-/* Tombol aksi - UKURAN SANGAT KECIL */
+/* Tombol aksi - UKURAN KECIL */
 .banner-upload-actions {
     display: flex;
     gap: 4px;
@@ -1272,7 +1272,7 @@ input:checked + .toggle-slider:before {
     margin-right: 2px;
 }
 
-/* ===== BANNER SLIDE HEADER (UKURAN KECIL) ===== */
+/* ===== BANNER SLIDE HEADER (UKURAN KECIL) - HAPUS YANG LAMA ===== */
 .banner-slide-header {
     display: flex;
     justify-content: space-between;
