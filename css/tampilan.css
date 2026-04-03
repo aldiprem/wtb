@@ -149,10 +149,6 @@ body {
     font-weight: 500;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
 /* ===== TOAST NOTIFICATIONS ===== */
 .toast-container {
     position: fixed;
@@ -849,13 +845,6 @@ input:checked + .toggle-slider:before {
     object-fit: cover;
 }
 
-/* Tombol edit di header banner */
-.banner-header-actions {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-
 .btn-icon-small.edit:hover {
     background: var(--primary-color);
     color: white;
@@ -885,15 +874,6 @@ input:checked + .toggle-slider:before {
 
 .banner-hidden-overlay span {
     font-size: 12px;
-}
-
-/* Catatan banner */
-.banner-catatan {
-    padding: 8px 12px;
-    background: rgba(64, 167, 227, 0.1);
-    border-top: 1px solid var(--border-color-light);
-    font-size: 11px;
-    color: var(--tg-hint-color);
 }
 
 .banner-catatan i {
@@ -977,73 +957,9 @@ input:checked + .toggle-slider:before {
     font-size: 11px;
 }
 
-/* Banner URL Input Group */
-.banner-url-input-group {
-    padding: 0 12px;
-    margin-bottom: 12px;
-}
-
-.banner-url-input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.banner-url-input-wrapper .input-icon {
-    position: absolute;
-    left: 12px;
-    color: var(--tg-hint-color);
-    font-size: 14px;
-    z-index: 1;
-}
-
-.banner-url-input {
-    width: 100%;
-    padding: 10px 10px 10px 40px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--tg-text-color);
-    font-size: 13px;
-    outline: none;
-    transition: all 0.2s;
-}
-
 .banner-url-input:focus {
     border-color: var(--primary-color);
     background: rgba(64, 167, 227, 0.1);
-}
-
-/* Banner Validation Message */
-.banner-validation-message {
-    font-size: 11px;
-    margin-top: 6px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.banner-validation-message.info {
-    color: var(--info-color);
-    background: rgba(59, 130, 246, 0.1);
-}
-
-.banner-validation-message.success {
-    color: var(--success-color);
-    background: rgba(16, 185, 129, 0.1);
-}
-
-.banner-validation-message.error {
-    color: var(--danger-color);
-    background: rgba(239, 68, 68, 0.1);
-}
-
-/* Banner Preview Area */
-.banner-preview-area {
-    padding: 0 12px;
-    width: 100%;
 }
 
 /* Banner image wrapper untuk banner yang sudah ada - UKURAN 358x160 */
@@ -1100,38 +1016,6 @@ input:checked + .toggle-slider:before {
     outline: 1px solid rgba(64, 167, 227, 0.3);
 }
 
-.banner-position-controls {
-    margin-top: 8px;
-    padding: 8px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 6px;
-}
-
-.banner-position-indicator {
-    font-size: 10px;
-    color: var(--tg-hint-color);
-    text-align: center;
-    margin-bottom: 4px;
-}
-
-.banner-position-hint {
-    font-size: 9px;
-    color: var(--tg-hint-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-}
-
-.banner-slide-actions-bottom {
-    display: flex;
-    justify-content: flex-end;
-    gap: 6px;
-    padding: 12px;
-    border-top: 1px solid var(--border-color-light);
-    margin-top: 8px;
-}
-
 /* Button Icon Small */
 .btn-icon-small {
     width: 32px;
@@ -1159,11 +1043,6 @@ input:checked + .toggle-slider:before {
 .btn-icon-small:disabled {
     opacity: 0.3;
     cursor: not-allowed;
-}
-
-/* Hapus empty banner message - tidak digunakan lagi */
-.empty-banner-message {
-    display: none;
 }
 
 /* Banner Button Container */
@@ -1225,7 +1104,7 @@ input:checked + .toggle-slider:before {
     box-shadow: var(--shadow-glow);
 }
 
-/* ===== BANNER UPLOAD AREA - DIPERKECIL ===== */
+/* ===== BANNER UPLOAD AREA - VERSI FINAL (DIPERKECIL) ===== */
 .banner-slide.uploading {
     width: 100%;
     min-width: 280px;
@@ -1234,12 +1113,17 @@ input:checked + .toggle-slider:before {
 
 .banner-upload-area {
     width: 100%;
-    border: 2px dashed var(--border-color);
-    border-radius: 12px;
+    border: 1.5px dashed var(--border-color);
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.02);
     transition: all 0.3s ease;
     overflow: hidden;
     margin-bottom: 0;
+}
+
+.banner-upload-area.drag-over {
+    border-color: var(--primary-color);
+    background: rgba(64, 167, 227, 0.1);
 }
 
 /* Container untuk preview dengan ukuran yang sama (358x160) */
@@ -1261,25 +1145,25 @@ input:checked + .toggle-slider:before {
     text-align: center;
     cursor: pointer;
     background: rgba(0, 0, 0, 0.3);
-    padding: 20px;
+    padding: 12px;
 }
 
 .banner-upload-inner i {
-    font-size: 28px;
+    font-size: 22px;
     color: var(--primary-color);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     opacity: 0.7;
 }
 
 .banner-upload-inner p {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     color: var(--text-primary);
 }
 
 .banner-upload-inner small {
-    font-size: 9px;
+    font-size: 8px;
     color: var(--tg-hint-color);
 }
 
@@ -1299,27 +1183,27 @@ input:checked + .toggle-slider:before {
 /* Tombol aksi - DIPERKECIL UKURANNYA seperti catatan banner */
 .banner-upload-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: center;
-    padding: 10px 12px;
+    padding: 8px 10px;
     background: rgba(0, 0, 0, 0.2);
     border-top: 1px solid var(--border-color-light);
 }
 
 .btn-upload-cancel {
     flex: 1;
-    padding: 6px 12px;
+    padding: 5px 10px;
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 20px;
+    border-radius: 16px;
     color: var(--danger-color);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     transition: all 0.2s;
 }
 
@@ -1329,26 +1213,34 @@ input:checked + .toggle-slider:before {
     border-color: var(--danger-color);
 }
 
+.btn-upload-cancel:active {
+    transform: scale(0.98);
+}
+
 .btn-upload-confirm {
     flex: 1;
-    padding: 6px 12px;
+    padding: 5px 10px;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border: none;
-    border-radius: 20px;
+    border-radius: 16px;
     color: white;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
     transition: all 0.2s;
 }
 
 .btn-upload-confirm:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-glow);
+}
+
+.btn-upload-confirm:active {
+    transform: translateY(0);
 }
 
 .btn-upload-confirm:disabled {
@@ -1359,20 +1251,16 @@ input:checked + .toggle-slider:before {
 
 .banner-upload-loading {
     display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid rgba(255, 255, 255, 0.3);
     border-top-color: var(--primary-color);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    margin-right: 4px;
+    margin-right: 3px;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ===== BANNER BUTTON CONTAINER ===== */
+/* ===== BANNER BUTTON CONTAINER (TIDAK DUPLIKAT) ===== */
 .banner-button-container {
     display: flex;
     flex-direction: row;
@@ -1429,6 +1317,11 @@ input:checked + .toggle-slider:before {
     background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
     transform: translateY(-1px);
     box-shadow: var(--shadow-glow);
+}
+
+/* Animasi spin - HANYA SATU */
+@keyframes spin {
+    to { transform: rotate(360deg); }
 }
 
 /* ===== PROMO SECTION ===== */
@@ -1896,11 +1789,6 @@ input:checked + .toggle-slider:before {
     padding: 2px 8px;
     border-radius: 20px;
     flex-shrink: 0;
-}
-
-/* Hilangkan posisi indicator dan hint */
-.banner-position-controls {
-    display: none;
 }
 
 /* Update banner-slide untuk menyesuaikan */
@@ -2842,14 +2730,6 @@ input:checked + .toggle-slider:before {
     .btn-icon-square {
         width: 100%;
     }
-}
-
-/* ===== SAVED TEMPLATES STYLES ===== */
-.templates-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    margin-top: 16px;
 }
 
 /* Untuk modal all templates, gunakan selector spesifik */
