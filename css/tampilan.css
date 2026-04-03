@@ -1121,8 +1121,10 @@ input:checked + .toggle-slider:before {
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.02);
     transition: all 0.3s ease;
-    overflow: hidden;
+    overflow: visible;  /* ← GANTI dari hidden ke visible */
     margin-bottom: 0;
+    /* HAPUS aspect-ratio, GANTI DENGAN INI: */
+    min-height: 160px;
 }
 
 .banner-upload-area.drag-over {
@@ -1130,7 +1132,7 @@ input:checked + .toggle-slider:before {
     background: rgba(64, 167, 227, 0.1);
 }
 
-/* Container untuk preview - UKURAN 358x160 (SAMA PERSIS DENGAN BANNER YANG DISIMPAN) */
+/* PASTIKAN CONTAINER PREVIEW TETAP 358x160 */
 .banner-upload-preview-container {
     width: 100%;
     aspect-ratio: 358 / 160;
