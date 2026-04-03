@@ -2233,15 +2233,12 @@
             
             html += `
                 <div class="promo-card" data-id="${promo.id}">
-                    <!-- Banner Preview dengan ukuran 1280x760 yang diperkecil -->
+                    <!-- Banner -->
                     <div class="promo-banner-wrapper">
-                        <img src="${bannerUrl}" 
-                            alt="${escapeHtml(promo.title)}"
-                            loading="lazy"
-                            onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Gambar+Gagal+Dimuat';">
+                        <img src="${bannerUrl}" alt="${escapeHtml(promo.title)}">
                     </div>
                     
-                    <!-- Header dengan judul dan status sejajar (judul di kiri, status di kanan) -->
+                    <!-- 1 HEADER: Title di kiri, Status di kanan (SEBARIS) -->
                     <div class="promo-header">
                         <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
                         <span class="promo-status ${statusClass}">
@@ -2250,34 +2247,19 @@
                         </span>
                     </div>
                     
-                    <!-- Catatan Penting (diletakkan SETELAH judul, SEBELUM deskripsi) -->
-                    ${promo.notes ? `
-                        <div class="promo-notes">
-                            <i class="fas fa-sticky-note"></i>
-                            ${escapeHtml(promo.notes)}
-                        </div>
-                    ` : ''}
+                    <!-- Catatan Penting -->
+                    ${promo.notes ? `<div class="promo-notes">...</div>` : ''}
                     
-                    <!-- Deskripsi promosi (diperbesar, digabung dengan border catatan tapi diberi pembatas) -->
-                    ${promo.description ? `
-                        <div class="promo-description-wrapper">
-                            <div class="promo-description">${escapeHtml(promo.description)}</div>
-                        </div>
-                    ` : ''}
+                    <!-- Deskripsi -->
+                    ${promo.description ? `<div class="promo-description-wrapper">...</div>` : ''}
                     
-                    <!-- Meta info waktu di kiri bawah -->
-                    <div class="promo-meta">
-                        ${expiryHtml}
-                    </div>
+                    <!-- Meta waktu -->
+                    <div class="promo-meta">${expiryHtml}</div>
                     
-                    <!-- Action buttons -->
+                    <!-- Action buttons (2 tombol sebaris) -->
                     <div class="promo-actions">
-                        <button class="promo-action-btn edit" onclick="window.tampilan.editPromo('${promo.id}')" title="Edit Promosi">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="promo-action-btn delete" onclick="window.tampilan.deletePromo('${promo.id}')" title="Hapus Promosi">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <button class="promo-action-btn edit">...</button>
+                        <button class="promo-action-btn delete">...</button>
                     </div>
                 </div>
             `;
