@@ -1489,20 +1489,15 @@
                             >
                                 ${isHidden ? '<div class="banner-hidden-overlay"><i class="fas fa-eye-slash"></i><span>Tersembunyi</span></div>' : ''}
                             </div>
-                            
-                            <div class="banner-position-controls">
-                                <div class="banner-position-indicator" id="pos-indicator-${index}">
-                                    X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
-                                </div>
-                                <div class="banner-position-hint">
-                                    <i class="fas fa-hand-pointer"></i> Tekan & tahan gambar untuk menggeser posisi
-                                </div>
-                            </div>
                         </div>
                         
                         ${bannerSettings.catatan ? `
-                            <div class="banner-catatan">
-                                <i class="fas fa-sticky-note"></i> ${escapeHtml(bannerSettings.catatan)}
+                            <div class="banner-catatan" onclick="window.tampilan.showFullNote(${index})">
+                                <i class="fas fa-sticky-note"></i>
+                                <span class="banner-catatan-text ${bannerSettings.catatan.length > 50 ? 'truncated' : ''}">
+                                    ${escapeHtml(bannerSettings.catatan.length > 50 ? bannerSettings.catatan.substring(0, 50) + '...' : bannerSettings.catatan)}
+                                </span>
+                                ${bannerSettings.catatan.length > 50 ? '<span class="banner-catatan-expand"><i class="fas fa-expand-alt"></i> Baca</span>' : ''}
                             </div>
                         ` : ''}
                     </div>
@@ -3156,7 +3151,6 @@
     }
 
     function openBannerSettings(bannerIndex) {
-        console.log('🔧 openBannerSettings called with index:', bannerIndex);
         const banner = banners[bannerIndex];
         if (!banner || !banner.url) {
             showToast('Banner tidak ditemukan', 'error');
@@ -3278,6 +3272,36 @@
                 }, 300);
             });
         });
+    }
+
+    // ==================== BANNER NOTE MODAL FUNCTIONS ====================
+    function showFullNote(bannerIndex) {
+        const banner = banners[bannerIndex];
+        const settings = bannerSettingsData[bannerIndex] || { catatan: '' };
+        const catatan = settings.catatan || '';
+        
+        if (!catatan) {
+            showToast('Tidak ada catatan untuk banner ini', 'info');
+            return;
+        }
+        
+        const modal = document.getElementById('bannerNoteModal');
+        const body = document.getElementById('bannerNoteBody');
+        
+        if (modal && body) {
+            // Format catatan dengan line breaks
+            const formattedNote = catatan.replace(/\n/g, '<br>');
+            body.innerHTML = formattedNote;
+            modal.classList.add('active');
+            vibrate(10);
+        }
+    }
+
+    function closeBannerNoteModal() {
+        const modal = document.getElementById('bannerNoteModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
     }
 
     // ==================== INITIALIZATION ====================
@@ -3420,6 +3444,30 @@
                 });
             }
         });
+
+        // ==================== BANNER NOTE MODAL EVENT LISTENERS ====================
+        const closeBannerNoteBtn = document.getElementById('closeBannerNoteModal');
+        const bannerNoteModal = document.getElementById('bannerNoteModal');
+
+        if (closeBannerNoteBtn) {
+            closeBannerNoteBtn.addEventListener('click', closeBannerNoteModal);
+        }
+
+        if (bannerNoteModal) {
+            // Tutup modal saat klik di luar
+            bannerNoteModal.addEventListener('click', (e) => {
+                if (e.target === bannerNoteModal) {
+                    closeBannerNoteModal();
+                }
+            });
+            
+            // Tutup dengan tombol Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && bannerNoteModal.classList.contains('active')) {
+                    closeBannerNoteModal();
+                }
+            });
+        }
 
         // ==================== BANNER SETTINGS MODAL EVENT LISTENERS ====================
         if (elements.closeBannerSettingsModal) {
@@ -3803,6 +3851,9 @@
         applyTemplate: applyTemplate,
         deleteSavedTemplate: deleteSavedTemplate,
         copyTemplateCode: copyTemplateCode,
+
+        showFullNote: showFullNote,
+        closeBannerNoteModal: closeBannerNoteModal,
         
         selectTemplateFromList: (code, name) => selectTemplateFromList(code, name)
     };
