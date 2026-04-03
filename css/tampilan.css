@@ -1304,11 +1304,12 @@ input:checked + .toggle-slider:before {
     margin-right: 6px;
 }
 
-/* ===== TOGGLE CIRCLE (ON/OFF dengan logo lingkaran) - ALTERNATIF ===== */
+/* ===== TOGGLE CIRCLE (ON/OFF dengan logo lingkaran) ===== */
 .toggle-without-duration {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin: 8px 0;
 }
 
 .toggle-circle {
@@ -1316,11 +1317,11 @@ input:checked + .toggle-slider:before {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
+    width: 20px;
+    height: 20px;
     flex-shrink: 0;
     cursor: pointer;
-    align-self: center; /* Memastikan sejajar tengah */
+    vertical-align: middle;
 }
 
 .toggle-circle input {
@@ -1328,6 +1329,7 @@ input:checked + .toggle-slider:before {
     width: 0;
     height: 0;
     position: absolute;
+    margin: 0;
 }
 
 .toggle-circle-slider {
@@ -1343,12 +1345,15 @@ input:checked + .toggle-slider:before {
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
 }
 
 .toggle-circle-slider .check-icon {
     font-size: 18px;
     color: transparent;
     transition: all 0.3s ease;
+    display: block;
+    line-height: 1;
 }
 
 input:checked + .toggle-circle-slider {
@@ -1365,7 +1370,9 @@ input:checked + .toggle-circle-slider .check-icon {
     font-size: 14px;
     font-weight: 500;
     color: var(--tg-text-color);
-    line-height: 44px;
+    line-height: 1.4;
+    margin: 0;
+    padding: 0;
     display: inline-block;
     vertical-align: middle;
 }
