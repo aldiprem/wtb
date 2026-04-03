@@ -1445,7 +1445,7 @@
             const isUploading = banner.isUploading === true;
             
             if (isUploading) {
-                // Tampilkan area upload untuk banner baru - DENGAN DATA ATTRIBUTE UNTUK SCROLL
+                // Tampilkan area upload untuk banner baru - UKURAN SAMA DENGAN PREVIEW
                 html += `
                     <div class="banner-slide uploading" data-upload-index="${index}" data-index="${index}">
                         <div class="banner-slide-header">
@@ -1479,11 +1479,9 @@
                     </div>
                 `;
             } else if (hasValidUrl) {
-                // Dapatkan settings banner (catatan dan status hide)
+                // Tampilkan banner yang sudah ada - UKURAN 358x160
                 const bannerSettings = bannerSettingsData[index] || { catatan: '', is_hidden: false };
                 const isHidden = bannerSettings.is_hidden || false;
-                
-                // Tampilkan banner yang sudah ada
                 const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
                 
                 html += `
