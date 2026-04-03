@@ -1304,7 +1304,7 @@ input:checked + .toggle-slider:before {
     margin-right: 6px;
 }
 
-/* ===== TOGGLE CIRCLE (ON/OFF dengan logo lingkaran) ===== */
+/* ===== TOGGLE CIRCLE (ON/OFF dengan logo lingkaran) - ALTERNATIF ===== */
 .toggle-without-duration {
     display: flex;
     align-items: center;
@@ -1313,10 +1313,14 @@ input:checked + .toggle-slider:before {
 
 .toggle-circle {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 44px;
     height: 44px;
+    flex-shrink: 0;
     cursor: pointer;
+    align-self: center; /* Memastikan sejajar tengah */
 }
 
 .toggle-circle input {
@@ -1361,6 +1365,9 @@ input:checked + .toggle-circle-slider .check-icon {
     font-size: 14px;
     font-weight: 500;
     color: var(--tg-text-color);
+    line-height: 44px;
+    display: inline-block;
+    vertical-align: middle;
 }
 
 /* ===== PROMO BANNER UPLOAD AREA (PREVIEW + UPLOAD/DRAG) ===== */
