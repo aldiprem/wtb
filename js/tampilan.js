@@ -72,7 +72,6 @@
         
         // Store Display Name
         storeDisplayNameInput: document.getElementById('storeDisplayName'),
-        applyFontToStoreBtn: document.getElementById('applyFontToStoreBtn'),
         
         // Banner
         bannerTrack: document.getElementById('bannerTrack'),
@@ -3824,15 +3823,6 @@
         
         if (elements.saveLogoBtn) {
             elements.saveLogoBtn.addEventListener('click', saveLogo);
-        }
-        
-        if (elements.applyFontToStoreBtn) {
-            elements.applyFontToStoreBtn.addEventListener('click', () => {
-                if (elements.applyFontTargetSelect) {
-                    elements.applyFontTargetSelect.value = 'store_name';
-                }
-                showFontPreview();
-            });
         }
         
         if (elements.storeDisplayNameInput) {
