@@ -694,14 +694,20 @@
         // PROMOS
         if (tampilanData.promos && Array.isArray(tampilanData.promos)) {
             promos = tampilanData.promos.map(promo => {
-                let bannerUrl = promo.banner || '';
-                if (bannerUrl && bannerUrl.length === 35 && /^[a-f0-9]{35}$/i.test(bannerUrl)) {
-                    bannerUrl = hashToImageUrl(bannerUrl);
+                let bannerHash = promo.banner || '';
+                
+                // Jika banner adalah URL, ekstrak hash-nya
+                if (bannerHash && bannerHash.includes('/ii?')) {
+                    const match = bannerHash.match(/=([a-f0-9]{35})/);
+                    if (match) {
+                        bannerHash = match[1];
+                    }
                 }
+                
                 return {
                     id: promo.id || Date.now() + Math.random(),
                     title: promo.title || '',
-                    banner: bannerUrl,
+                    banner: bannerHash, // Simpan sebagai hash
                     description: promo.description || '',
                     end_date: promo.end_date || '',
                     end_time: promo.end_time || '',
@@ -2033,7 +2039,6 @@
         }, 300);
     }
 
-    // Update fungsi savePromo
     async function savePromo(e) {
         e.preventDefault();
         
@@ -2053,14 +2058,38 @@
             bannerHash = pendingPromoBannerFile.hash;
         }
         
+        // Jika bannerHash adalah URL, ekstrak hash-nya
+        if (bannerHash && bannerHash.includes('/ii?')) {
+            const match = bannerHash.match(/=([a-f0-9]{35})/);
+            if (match) {
+                bannerHash = match[1];
+                console.log('📦 Extracted hash from URL:', bannerHash);
+            }
+        }
+        
+        // Validasi hash (35 karakter hexadecimal)
+        if (bannerHash && (!bannerHash.match(/^[a-f0-9]{35}$/i))) {
+            console.warn('⚠️ Invalid banner hash format:', bannerHash);
+            // Coba ekstrak lagi
+            if (bannerHash.includes('=')) {
+                const parts = bannerHash.split('=');
+                const lastPart = parts[parts.length - 1];
+                if (lastPart.match(/^[a-f0-9]{35}$/i)) {
+                    bannerHash = lastPart;
+                    console.log('📦 Extracted hash from split:', bannerHash);
+                }
+            }
+        }
+        
         if (!title) {
             showToast('Judul promosi wajib diisi', 'warning');
             elements.promoTitle.focus();
             return;
         }
         
-        if (!bannerHash) {
-            showToast('Banner promosi wajib diupload', 'warning');
+        if (!bannerHash || bannerHash.length !== 35) {
+            showToast('Banner promosi wajib diupload dengan benar', 'warning');
+            console.error('Invalid banner hash:', bannerHash);
             return;
         }
         
@@ -2073,7 +2102,7 @@
         const promoData = {
             id: currentPromoId || Date.now() + Math.random(),
             title: title,
-            banner: bannerHash,
+            banner: bannerHash, // Simpan sebagai HASH, bukan URL
             description: description,
             end_date: endDate,
             end_time: endTime,
@@ -2081,6 +2110,8 @@
             notes: notes,
             active: active
         };
+        
+        console.log('💾 Saving promo with banner hash:', promoData.banner);
         
         if (currentPromoId) {
             const index = promos.findIndex(p => p.id == currentPromoId);
@@ -2090,7 +2121,7 @@
         }
         
         hasUnsavedPromos = true;
-        renderPromos();
+        renderPromos(); // Akan menggunakan fungsi renderPromos yang sudah diperbaiki
         closePromoModal();
         showToast(`✅ Promosi ${currentPromoId ? 'diperbarui' : 'ditambahkan'}`, 'success');
         vibrate(10);
@@ -2163,6 +2194,9 @@
         
         elements.emptyPromoMessage.style.display = 'none';
         
+        // Dapatkan endpoint untuk konversi hash ke URL
+        const endpoint = currentWebsite?.endpoint || '';
+        
         let html = '';
         promos.forEach(promo => {
             const expiryText = promo.never_end 
@@ -2172,12 +2206,38 @@
             const statusClass = promo.active ? 'active' : 'inactive';
             const statusText = promo.active ? 'Aktif' : 'Tidak Aktif';
             
+            // KONVERSI BANNER HASH KE URL YANG BENAR
+            let bannerUrl = '';
+            const bannerValue = promo.banner;
+            
+            if (bannerValue) {
+                // Jika banner adalah hash 35 karakter
+                if (bannerValue.length === 35 && /^[a-f0-9]{35}$/i.test(bannerValue)) {
+                    bannerUrl = `https://companel.shop/ii?${endpoint}=${bannerValue}`;
+                    console.log(`🖼️ Converting promo banner hash to URL: ${bannerUrl}`);
+                }
+                // Jika banner sudah berupa URL lengkap
+                else if (bannerValue.startsWith('http')) {
+                    bannerUrl = bannerValue;
+                }
+                // Jika banner adalah base64
+                else if (bannerValue.startsWith('data:')) {
+                    bannerUrl = bannerValue;
+                }
+                // Fallback: placeholder
+                else {
+                    bannerUrl = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image';
+                }
+            } else {
+                bannerUrl = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image';
+            }
+            
             html += `
                 <div class="promo-card" data-id="${promo.id}">
                     <div class="promo-banner-wrapper">
-                        <img src="${promo.banner || 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image'}" 
-                             alt="${escapeHtml(promo.title)}"
-                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=No+Image';">
+                        <img src="${bannerUrl}" 
+                            alt="${escapeHtml(promo.title)}"
+                            onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Gambar+Gagal+Dimuat';">
                     </div>
                     
                     <div class="promo-content">
