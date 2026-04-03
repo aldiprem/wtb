@@ -530,3 +530,77 @@ def get_font_preview(website_id):
     except Exception as e:
         print(f"❌ Error getting font preview: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@tmp_bp.route('/tampilan/<int:website_id>/banner-settings', methods=['GET'])
+def get_banner_settings(website_id):
+    """Mendapatkan semua pengaturan banner untuk website"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute('''
+            SELECT banner_index, catatan, is_hidden 
+            FROM banner_settings 
+            WHERE website_id = %s 
+            ORDER BY banner_index ASC
+        ''', (website_id,))
+        
+        settings = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({'success': True, 'settings': settings})
+    except Exception as e:
+        print(f"❌ Error getting banner settings: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@tmp_bp.route('/tampilan/<int:website_id>/banner-settings', methods=['POST'])
+def save_banner_settings(website_id):
+    """Menyimpan pengaturan banner (catatan dan status hide)"""
+    try:
+        data = request.json
+        banner_index = data.get('banner_index')
+        catatan = data.get('catatan', '')
+        is_hidden = data.get('is_hidden', 0)
+        
+        if banner_index is None:
+            return jsonify({'success': False, 'error': 'banner_index required'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO banner_settings (website_id, banner_index, catatan, is_hidden)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                catatan = VALUES(catatan),
+                is_hidden = VALUES(is_hidden),
+                updated_at = CURRENT_TIMESTAMP
+        ''', (website_id, banner_index, catatan, is_hidden))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Banner setting saved'})
+    except Exception as e:
+        print(f"❌ Error saving banner setting: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@tmp_bp.route('/tampilan/<int:website_id>/banner-settings/<int:banner_index>', methods=['DELETE'])
+def delete_banner_setting(website_id, banner_index):
+    """Menghapus pengaturan banner"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            DELETE FROM banner_settings 
+            WHERE website_id = %s AND banner_index = %s
+        ''', (website_id, banner_index))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Banner setting deleted'})
+    except Exception as e:
+        print(f"❌ Error deleting banner setting: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

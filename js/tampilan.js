@@ -194,7 +194,17 @@
         deleteInfo: document.getElementById('deleteInfo'),
         closeDeleteModal: document.getElementById('closeDeleteModal'),
         cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-        confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
+        confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+
+        // Banner Settings Modal
+        bannerSettingsModal: document.getElementById('bannerSettingsModal'),
+        bannerPreviewMiniImg: document.getElementById('bannerPreviewMiniImg'),
+        bannerCatatanInput: document.getElementById('bannerCatatanInput'),
+        bannerShowToggle: document.getElementById('bannerShowToggle'),
+        bannerShowLabel: document.getElementById('bannerShowLabel'),
+        closeBannerSettingsModal: document.getElementById('closeBannerSettingsModal'),
+        cancelBannerSettingsBtn: document.getElementById('cancelBannerSettingsBtn'),
+        saveBannerSettingsBtn: document.getElementById('saveBannerSettingsBtn'),
     };
 
     // ==================== HELPER FUNCTIONS ====================
@@ -3092,6 +3102,8 @@
         reader.readAsDataURL(file);
     }
 
+    // ==================== BANNER SETTINGS FUNCTIONS ====================
+
     async function loadBannerSettings() {
         if (!currentWebsite) return;
         
@@ -3108,6 +3120,7 @@
                         is_hidden: setting.is_hidden === 1
                     };
                 });
+                renderBannerTrack(); // Refresh tampilan setelah load settings
             }
         } catch (error) {
             console.error('❌ Error loading banner settings:', error);
@@ -3132,6 +3145,7 @@
                     catatan: catatan,
                     is_hidden: isHidden
                 };
+                renderBannerTrack(); // Refresh tampilan
                 return true;
             }
             return false;
@@ -3182,31 +3196,13 @@
         vibrate(10);
     }
 
-    function closeBannerSettingsModalWindowWindow() {
+    function closeBannerSettingsModalWindow() {
         const modal = document.getElementById('bannerSettingsModal');
         if (modal) {
             modal.classList.remove('active');
         }
         currentEditingBannerIndex = null;
     }
-
-    // Update event listeners
-    if (closeBannerSettingsModalWindow) {
-        closeBannerSettingsModalWindow.addEventListener('click', closeBannerSettingsModalWindowWindow);
-    }
-    if (cancelBannerSettingsBtn) {
-        cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModalWindowWindow);
-    }
-    if (saveBannerSettingsBtn) {
-        saveBannerSettingsBtn.addEventListener('click', saveBannerSettings);
-    }
-
-    // Click outside modal
-    window.addEventListener('click', (e) => {
-        if (e.target === document.getElementById('bannerSettingsModal')) {
-            closeBannerSettingsModalWindowWindow();
-        }
-    });
 
     async function saveBannerSettings() {
         if (currentEditingBannerIndex === null) {
@@ -3386,30 +3382,7 @@
             { picker: 'cardColor', hex: 'cardColorHex' },
             { picker: 'accentColor', hex: 'accentColorHex' }
         ];
-
-        const closeBannerSettingsModalWindow = document.getElementById('closeBannerSettingsModalWindow');
-        const cancelBannerSettingsBtn = document.getElementById('cancelBannerSettingsBtn');
-        const saveBannerSettingsBtn = document.getElementById('saveBannerSettingsBtn');
-
-        if (closeBannerSettingsModalWindow) {
-            closeBannerSettingsModalWindow.addEventListener('click', closeBannerSettingsModalWindow);
-        }
-        if (cancelBannerSettingsBtn) {
-            cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModalWindow);
-        }
-        if (saveBannerSettingsBtn) {
-            saveBannerSettingsBtn.addEventListener('click', saveBannerSettings);
-        }
-
-        // Click outside modal
-        if (closeBannerSettingsModalWindow) {
-            window.addEventListener('click', (e) => {
-                if (e.target === document.getElementById('bannerSettingsModal')) {
-                    closeBannerSettingsModalWindow();
-                }
-            });
-        }
-
+        
         colorPairs.forEach(pair => {
             const picker = document.getElementById(pair.picker);
             const hex = document.getElementById(pair.hex);
