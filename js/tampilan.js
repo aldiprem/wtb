@@ -2198,7 +2198,7 @@
         
         let html = '';
         promos.forEach(promo => {
-            // Konversi banner hash ke URL
+            // Konversi banner hash ke URL (ukuran 1280x760)
             let bannerUrl = '';
             const bannerValue = promo.banner;
             
@@ -2233,13 +2233,15 @@
             
             html += `
                 <div class="promo-card" data-id="${promo.id}">
+                    <!-- Banner Preview dengan ukuran 1280x760 yang diperkecil -->
                     <div class="promo-banner-wrapper">
                         <img src="${bannerUrl}" 
                             alt="${escapeHtml(promo.title)}"
+                            loading="lazy"
                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Gambar+Gagal+Dimuat';">
                     </div>
                     
-                    <!-- Header dengan judul dan status sejajar -->
+                    <!-- Header dengan judul dan status sejajar (judul di kiri, status di kanan) -->
                     <div class="promo-header">
                         <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
                         <span class="promo-status ${statusClass}">
@@ -2248,14 +2250,18 @@
                         </span>
                     </div>
                     
-                    <!-- Deskripsi promosi -->
-                    ${promo.description ? `<div class="promo-description">${escapeHtml(promo.description)}</div>` : ''}
-                    
-                    <!-- Catatan Penting (diletakkan setelah deskripsi) -->
+                    <!-- Catatan Penting (diletakkan SETELAH judul, SEBELUM deskripsi) -->
                     ${promo.notes ? `
                         <div class="promo-notes">
                             <i class="fas fa-sticky-note"></i>
                             ${escapeHtml(promo.notes)}
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Deskripsi promosi (diperbesar, digabung dengan border catatan tapi diberi pembatas) -->
+                    ${promo.description ? `
+                        <div class="promo-description-wrapper">
+                            <div class="promo-description">${escapeHtml(promo.description)}</div>
                         </div>
                     ` : ''}
                     
@@ -2264,6 +2270,7 @@
                         ${expiryHtml}
                     </div>
                     
+                    <!-- Action buttons -->
                     <div class="promo-actions">
                         <button class="promo-action-btn edit" onclick="window.tampilan.editPromo('${promo.id}')" title="Edit Promosi">
                             <i class="fas fa-edit"></i>
