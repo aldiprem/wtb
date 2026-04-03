@@ -15,7 +15,11 @@
     let dataCache = null;
     let lastFetch = 0;
     const CACHE_DURATION = 10000;
-    
+
+    // ==================== BANNER SETTINGS FUNCTIONS ====================
+    let bannerSettingsData = {};
+    let currentEditingBannerIndex = null;
+
     // Banner state
     let banners = [];
     let pendingBannerUpload = null;
@@ -1436,13 +1440,25 @@
                     </div>
                 `;
             } else if (hasValidUrl) {
-                // Tampilkan banner yang sudah ada (sama seperti sebelumnya)
+                // Dapatkan settings banner (catatan dan status hide)
+                const bannerSettings = bannerSettingsData[index] || { catatan: '', is_hidden: false };
+                const isHidden = bannerSettings.is_hidden || false;
+                
+                // Tampilkan banner yang sudah ada dengan tombol edit
                 const previewStyle = `background-image: url('${banner.url}'); background-position: ${banner.positionX || 50}% ${banner.positionY || 50}%;`;
                 
                 html += `
-                    <div class="banner-slide" data-index="${index}">
+                    <div class="banner-slide" data-index="${index}" ${isHidden ? 'style="opacity: 0.5;"' : ''}>
                         <div class="banner-slide-header">
                             <span class="banner-number">#${index + 1}</span>
+                            <div class="banner-header-actions">
+                                <button class="btn-icon-small edit" onclick="window.tampilan.openBannerSettings(${index})" title="Edit Banner">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn-icon-small delete" onclick="window.tampilan.deleteBanner(${index})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
                         
                         <div class="banner-preview-area">
@@ -1452,11 +1468,15 @@
                                 style="${previewStyle}"
                                 data-index="${index}"
                             >
+                                ${isHidden ? '<div class="banner-hidden-overlay"><i class="fas fa-eye-slash"></i><span>Tersembunyi</span></div>' : ''}
                             </div>
                             
                             <div class="banner-position-controls">
+                                <div class="banner-position-indicator" id="pos-indicator-${index}">
+                                    X: ${banner.positionX || 50}% Y: ${banner.positionY || 50}%
+                                </div>
                                 <div class="banner-position-hint">
-                                    <i class="fas fa-hand-pointer"></i> Diatas adalah foto preview banner yang akan ditampilkan di website. Klik Add Banned untuk menambahkan banner jika ingin lebih dari 1 dan Simpan Banner setelah perubahan.
+                                    <i class="fas fa-hand-pointer"></i> Tekan & tahan gambar untuk menggeser posisi
                                 </div>
                             </div>
                         </div>
@@ -1468,10 +1488,13 @@
                             <button class="btn-icon-small move-right" ${index === banners.length - 1 ? 'disabled' : ''} onclick="window.tampilan.moveBanner(${index}, 'right')">
                                 <i class="fas fa-chevron-right"></i>
                             </button>
-                            <button class="btn-icon-small delete" onclick="window.tampilan.deleteBanner(${index})">
-                                <i class="fas fa-trash"></i>
-                            </button>
                         </div>
+                        
+                        ${bannerSettings.catatan ? `
+                            <div class="banner-catatan">
+                                <i class="fas fa-sticky-note"></i> ${escapeHtml(bannerSettings.catatan)}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }
@@ -3069,6 +3092,162 @@
         reader.readAsDataURL(file);
     }
 
+    async function loadBannerSettings() {
+        if (!currentWebsite) return;
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banner-settings`, {
+                method: 'GET'
+            });
+            
+            if (response.success && response.settings) {
+                bannerSettingsData = {};
+                response.settings.forEach(setting => {
+                    bannerSettingsData[setting.banner_index] = {
+                        catatan: setting.catatan || '',
+                        is_hidden: setting.is_hidden === 1
+                    };
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error loading banner settings:', error);
+        }
+    }
+
+    async function saveBannerSetting(bannerIndex, catatan, isHidden) {
+        if (!currentWebsite) return false;
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/tampilan/${currentWebsite.id}/banner-settings`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    banner_index: bannerIndex,
+                    catatan: catatan,
+                    is_hidden: isHidden ? 1 : 0
+                })
+            });
+            
+            if (response.success) {
+                bannerSettingsData[bannerIndex] = {
+                    catatan: catatan,
+                    is_hidden: isHidden
+                };
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('❌ Error saving banner setting:', error);
+            return false;
+        }
+    }
+
+    function openBannerSettings(bannerIndex) {
+        const banner = banners[bannerIndex];
+        if (!banner || !banner.url) {
+            showToast('Banner tidak ditemukan', 'error');
+            return;
+        }
+        
+        currentEditingBannerIndex = bannerIndex;
+        const settings = bannerSettingsData[bannerIndex] || { catatan: '', is_hidden: false };
+        
+        // Set preview gambar
+        const previewImg = document.getElementById('bannerPreviewMiniImg');
+        if (previewImg) {
+            previewImg.src = banner.url;
+        }
+        
+        // Set catatan
+        const catatanInput = document.getElementById('bannerCatatanInput');
+        if (catatanInput) {
+            catatanInput.value = settings.catatan || '';
+        }
+        
+        // Set toggle
+        const toggleCheckbox = document.getElementById('bannerShowToggle');
+        const toggleLabel = document.getElementById('bannerShowLabel');
+        if (toggleCheckbox) {
+            toggleCheckbox.checked = !settings.is_hidden;
+            if (toggleLabel) {
+                toggleLabel.textContent = toggleCheckbox.checked ? 'Ditampilkan' : 'Tersembunyi';
+            }
+        }
+        
+        // Tampilkan modal
+        const modal = document.getElementById('bannerSettingsModal');
+        if (modal) {
+            modal.classList.add('active');
+        }
+        
+        // Setup keyboard handling untuk modal
+        setupModalKeyboardHandler(modal);
+        
+        vibrate(10);
+    }
+
+    function closeBannerSettingsModal() {
+        const modal = document.getElementById('bannerSettingsModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+        currentEditingBannerIndex = null;
+    }
+
+    async function saveBannerSettings() {
+        if (currentEditingBannerIndex === null) {
+            showToast('Tidak ada banner yang sedang diedit', 'warning');
+            return;
+        }
+        
+        const catatan = document.getElementById('bannerCatatanInput')?.value || '';
+        const toggleCheckbox = document.getElementById('bannerShowToggle');
+        const isHidden = toggleCheckbox ? !toggleCheckbox.checked : false;
+        
+        showLoading(true);
+        
+        try {
+            const success = await saveBannerSetting(currentEditingBannerIndex, catatan, isHidden);
+            
+            if (success) {
+                showToast('✅ Pengaturan banner disimpan', 'success');
+                closeBannerSettingsModal();
+                renderBannerTrack(); // Refresh tampilan
+            } else {
+                throw new Error('Gagal menyimpan');
+            }
+        } catch (error) {
+            console.error('❌ Error saving banner settings:', error);
+            showToast(error.message || 'Gagal menyimpan pengaturan', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function setupModalKeyboardHandler(modal) {
+        if (!modal) return;
+        
+        // Handle toggle label update
+        const toggleCheckbox = document.getElementById('bannerShowToggle');
+        const toggleLabel = document.getElementById('bannerShowLabel');
+        
+        if (toggleCheckbox && toggleLabel) {
+            const updateLabel = () => {
+                toggleLabel.textContent = toggleCheckbox.checked ? 'Ditampilkan' : 'Tersembunyi';
+            };
+            toggleCheckbox.addEventListener('change', updateLabel);
+        }
+        
+        // Setup untuk keyboard (scroll ke input saat fokus)
+        const inputs = modal.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                setTimeout(() => {
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            });
+        });
+    }
+
     // ==================== INITIALIZATION ====================
     async function init() {
         showLoading(true);
@@ -3089,6 +3268,9 @@
             
             // 3. Setup event listeners after data is loaded
             setupEventListeners();
+
+            // 3. Load banner settings
+            await loadBannerSettings();
 
             console.log('✅ Initialization completed successfully');
             
@@ -3189,7 +3371,30 @@
             { picker: 'cardColor', hex: 'cardColorHex' },
             { picker: 'accentColor', hex: 'accentColorHex' }
         ];
-        
+
+        const closeBannerSettingsModal = document.getElementById('closeBannerSettingsModal');
+        const cancelBannerSettingsBtn = document.getElementById('cancelBannerSettingsBtn');
+        const saveBannerSettingsBtn = document.getElementById('saveBannerSettingsBtn');
+
+        if (closeBannerSettingsModal) {
+            closeBannerSettingsModal.addEventListener('click', closeBannerSettingsModal);
+        }
+        if (cancelBannerSettingsBtn) {
+            cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModal);
+        }
+        if (saveBannerSettingsBtn) {
+            saveBannerSettingsBtn.addEventListener('click', saveBannerSettings);
+        }
+
+        // Click outside modal
+        if (closeBannerSettingsModal) {
+            window.addEventListener('click', (e) => {
+                if (e.target === document.getElementById('bannerSettingsModal')) {
+                    closeBannerSettingsModal();
+                }
+            });
+        }
+
         colorPairs.forEach(pair => {
             const picker = document.getElementById(pair.picker);
             const hex = document.getElementById(pair.hex);
@@ -3543,6 +3748,7 @@
         deleteBanner: (index) => deleteBanner(index),
         moveBanner: (index, direction) => moveBanner(index, direction),
         removeUploadingBanner: (index) => removeUploadingBanner(index),
+        openBannerSettings: (index) => openBannerSettings(index),
         
         editPromo: (id) => {
             const promo = promos.find(p => p.id == id);

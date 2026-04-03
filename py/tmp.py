@@ -201,6 +201,22 @@ def init_db():
     )
     ''')
 
+    # Banner setings noted & button toggle show/hide
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS banner_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        website_id INT NOT NULL,
+        banner_index INT NOT NULL,
+        catatan TEXT,
+        is_hidden BOOLEAN DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (website_id) REFERENCES websites(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_banner_index (website_id, banner_index),
+        INDEX idx_website_id (website_id)
+    );
+    ''')
+
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_website ON website_templates(website_id)')
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_website_templates_code ON website_templates(template_code)')
 
