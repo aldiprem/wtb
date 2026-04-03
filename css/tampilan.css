@@ -1123,7 +1123,6 @@ input:checked + .toggle-slider:before {
     transition: all 0.3s ease;
     overflow: hidden;
     margin-bottom: 0;
-    aspect-ratio: 358 / 160;
 }
 
 .banner-upload-area.drag-over {
