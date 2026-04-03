@@ -1035,7 +1035,7 @@
 
         if (!uploadArea) return;
 
-        // Sembunyikan actions terlebih dahulu
+        // PASTIKAN actions TIDAK DISEMBUNYIKAN
         if (uploadActions) {
             uploadActions.style.display = 'flex';
         }
@@ -1079,14 +1079,14 @@
             }
         });
 
-        // Cancel button
+        // Cancel button - HAPUS BANNER
         if (cancelBtn) {
             cancelBtn.addEventListener('click', () => {
                 removeUploadingBanner(index);
             });
         }
 
-        // Confirm button
+        // Confirm button - UPLOAD BANNER
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
                 const pendingFile = banners[index].pendingFile;
@@ -1445,7 +1445,6 @@
             const isUploading = banner.isUploading === true;
             
             if (isUploading) {
-                // Tampilkan area upload untuk banner baru - UKURAN SAMA DENGAN PREVIEW
                 html += `
                     <div class="banner-slide uploading" data-upload-index="${index}" data-index="${index}">
                         <div class="banner-slide-header">

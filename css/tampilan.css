@@ -1108,24 +1108,31 @@ input:checked + .toggle-slider:before {
     box-shadow: var(--shadow-glow);
 }
 
-/* ===== BANNER UPLOAD AREA - UKURAN 358x160 (SAMA DENGAN PREVIEW BANNER) ===== */
+/* ===== BANNER UPLOAD AREA - UKURAN 358x160 ===== */
 .banner-slide.uploading {
     width: 100%;
     min-width: 280px;
     max-width: 100%;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex !important;
+    flex-direction: column;
 }
 
 .banner-upload-area {
     width: 100%;
-    min-width: 280px;
     border: 2px dashed var(--border-color);
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.02);
     transition: all 0.3s ease;
     overflow: hidden;
-    margin-bottom: 0;
-    /* PASTIKAN UKURAN SAMA DENGAN BANNER PREVIEW */
+    margin: 0;
+    /* PENTING: Ukuran tetap 358x160 */
     aspect-ratio: 358 / 160;
+    display: flex;
+    flex-direction: column;
 }
 
 .banner-upload-area.drag-over {
@@ -1133,15 +1140,12 @@ input:checked + .toggle-slider:before {
     background: rgba(64, 167, 227, 0.1);
 }
 
-/* PASTIKAN CONTAINER PREVIEW TETAP 358x160 */
 .banner-upload-preview-container {
     width: 100%;
-    height: 100%;
+    flex: 1;
     background: #1a1a1a;
     overflow: hidden;
     position: relative;
-    display: flex;
-    flex-direction: column;
 }
 
 .banner-upload-inner {
@@ -1190,24 +1194,20 @@ input:checked + .toggle-slider:before {
     background: #1a1a1a;
 }
 
-/* Tombol aksi - UKURAN NORMAL */
 .banner-upload-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.3);
-    border-top: 1px solid var(--border-color-light);
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 .btn-upload-cancel {
     flex: 1;
-    padding: 6px 12px;
+    padding: 8px 12px;
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: 20px;
     color: var(--danger-color);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
@@ -1218,7 +1218,7 @@ input:checked + .toggle-slider:before {
 }
 
 .btn-upload-cancel i {
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .btn-upload-cancel:hover {
@@ -1227,18 +1227,14 @@ input:checked + .toggle-slider:before {
     border-color: var(--danger-color);
 }
 
-.btn-upload-cancel:active {
-    transform: scale(0.98);
-}
-
 .btn-upload-confirm {
     flex: 1;
-    padding: 6px 12px;
+    padding: 8px 12px;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border: none;
     border-radius: 20px;
     color: white;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
@@ -1249,16 +1245,12 @@ input:checked + .toggle-slider:before {
 }
 
 .btn-upload-confirm i {
-    font-size: 11px;
+    font-size: 12px;
 }
 
 .btn-upload-confirm:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-glow);
-}
-
-.btn-upload-confirm:active {
-    transform: translateY(0);
 }
 
 .btn-upload-confirm:disabled {
