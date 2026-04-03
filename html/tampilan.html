@@ -562,26 +562,29 @@
                 <form id="promoForm">
                     <input type="hidden" id="promoId">
                     
-                    <!-- Judul Promo -->
+                    <!-- Banner Promosi - PREVIEW + UPLOAD/DRAG FILE -->
+                    <div class="form-group">
+                        <label><i class="fas fa-image"></i> Banner Promosi (Wajib 1280x760)</label>
+                        <div class="promo-banner-upload-area" id="promoBannerUploadArea">
+                            <div class="promo-banner-preview" id="promoBannerPreview">
+                                <img src="https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Klik+atau+Drag+untuk+Upload" alt="Promo Banner Preview" id="promoBannerImage">
+                                <div class="promo-banner-overlay">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Klik atau drag & drop untuk upload</span>
+                                    <small>Format: JPG, PNG, GIF (Max 2MB)</small>
+                                </div>
+                            </div>
+                            <input type="file" id="promoBannerFileInput" accept="image/*" style="display: none;">
+                            <div id="promoBannerValidation" class="banner-validation-message info" style="margin-top: 8px;">
+                                <i class="fas fa-info-circle"></i> Upload gambar banner (1280x760 pixel)
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Judul Promo - DIPINDAHKAN DI BAWAH PREVIEW BANNER -->
                     <div class="form-group">
                         <label><i class="fas fa-heading"></i> Judul Promosi</label>
                         <input type="text" id="promoTitle" placeholder="Contoh: Promo Akhir Bulan, Diskon Spesial" required>
-                    </div>
-                    
-                    <!-- Banner Promosi -->
-                    <div class="form-group">
-                        <label><i class="fas fa-image"></i> Banner Promosi (Wajib 1280x760)</label>
-                        <div class="promo-banner-preview-small" id="promoBannerPreviewSmall">
-                            <img src="https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner" alt="Promo Banner Preview" id="promoBannerImageSmall">
-                        </div>
-                        <div class="banner-url-input-wrapper" style="margin-top: 8px;">
-                            <i class="fas fa-link input-icon"></i>
-                            <input type="url" id="promoBannerUrl" class="banner-url-input" placeholder="https://i.imgur.com/xxxxxxx.jpg" required>
-                        </div>
-                        <small class="hint">Gunakan link gambar (Imgur, Postimages, dll). Ukuran harus 1280x760 pixel.</small>
-                        <div id="promoBannerValidation" class="banner-validation-message info" style="margin-top: 4px;">
-                            <i class="fas fa-info-circle"></i> Masukkan URL banner
-                        </div>
                     </div>
                     
                     <!-- Deskripsi Promosi -->
@@ -590,10 +593,10 @@
                         <textarea id="promoDescription" rows="2" placeholder="Contoh: Promo spesial akhir bulan! Diskon hingga 50% untuk semua produk."></textarea>
                     </div>
                     
-                    <!-- Waktu Berakhir -->
+                    <!-- Waktu Berakhir - DENGAN TOGGLE ON/OFF -->
                     <div class="form-group">
                         <label><i class="fas fa-clock"></i> Waktu Berakhir</label>
-                        <div class="form-row" style="margin-bottom: 8px;">
+                        <div class="form-row" style="margin-bottom: 12px;">
                             <div class="form-group" style="margin-bottom: 0;">
                                 <input type="date" id="promoEndDate">
                             </div>
@@ -601,10 +604,17 @@
                                 <input type="time" id="promoEndTime">
                             </div>
                         </div>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="promoNeverEnd">
-                            <span class="checkbox-text">Tidak ada batas waktu</span>
-                        </label>
+                        
+                        <!-- Toggle Tanpa Durasi - RATA KIRI -->
+                        <div class="toggle-without-duration" style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                            <label class="toggle-circle">
+                                <input type="checkbox" id="promoWithoutDuration">
+                                <span class="toggle-circle-slider">
+                                    <i class="fas fa-check check-icon"></i>
+                                </span>
+                            </label>
+                            <span class="toggle-label-text">Tanpa durasi</span>
+                        </div>
                     </div>
                     
                     <!-- Catatan Penting -->

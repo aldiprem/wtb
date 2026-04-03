@@ -53,6 +53,10 @@
     let currentUploadCallback = null;
     let currentUploadType = null;
 
+    // State untuk upload banner promo
+    let pendingPromoBannerFile = null;
+    let isUploadingPromoBanner = false;
+
     // ==================== DOM ELEMENTS ====================
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
@@ -1738,24 +1742,238 @@
         }
     }
 
+    // ==================== PROMO FUNCTIONS (UPDATED) ====================
+    function setupPromoBannerUpload() {
+        const uploadArea = document.getElementById('promoBannerUploadArea');
+        const previewContainer = document.getElementById('promoBannerPreview');
+        const fileInput = document.getElementById('promoBannerFileInput');
+        const previewImg = document.getElementById('promoBannerImage');
+        const validationMsg = document.getElementById('promoBannerValidation');
+        
+        if (!uploadArea || !fileInput) return;
+        
+        // Klik area untuk upload
+        if (previewContainer) {
+            previewContainer.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+        
+        // File input change
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                await handlePromoBannerFile(file);
+            }
+        });
+        
+        // Drag & drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (previewContainer) {
+                previewContainer.style.borderColor = 'var(--primary-color)';
+                previewContainer.style.background = 'rgba(64, 167, 227, 0.1)';
+            }
+        });
+        
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            if (previewContainer) {
+                previewContainer.style.borderColor = 'var(--border-color)';
+                previewContainer.style.background = '';
+            }
+        });
+        
+        uploadArea.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            if (previewContainer) {
+                previewContainer.style.borderColor = 'var(--border-color)';
+                previewContainer.style.background = '';
+            }
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                await handlePromoBannerFile(file);
+            } else if (file) {
+                if (validationMsg) {
+                    validationMsg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> File harus berupa gambar';
+                    validationMsg.className = 'banner-validation-message error';
+                }
+                setTimeout(() => {
+                    if (validationMsg) {
+                        validationMsg.innerHTML = '<i class="fas fa-info-circle"></i> Upload gambar banner (1280x760 pixel)';
+                        validationMsg.className = 'banner-validation-message info';
+                    }
+                }, 3000);
+            }
+        });
+    }
+
+    async function handlePromoBannerFile(file) {
+        if (!file.type.startsWith('image/')) {
+            showToast('File harus berupa gambar', 'error');
+            return;
+        }
+        
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Ukuran file maksimal 2MB', 'error');
+            return;
+        }
+        
+        const previewImg = document.getElementById('promoBannerImage');
+        const validationMsg = document.getElementById('promoBannerValidation');
+        
+        // Tampilkan preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            if (previewImg) {
+                previewImg.src = e.target.result;
+            }
+        };
+        reader.readAsDataURL(file);
+        
+        if (validationMsg) {
+            validationMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memvalidasi ukuran gambar...';
+            validationMsg.className = 'banner-validation-message info';
+        }
+        
+        // Validasi ukuran 1280x760
+        const img = new Image();
+        const imageUrl = URL.createObjectURL(file);
+        
+        img.onload = async () => {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            
+            if (width === 1280 && height === 760) {
+                // Upload ke server
+                if (validationMsg) {
+                    validationMsg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengupload gambar...';
+                    validationMsg.className = 'banner-validation-message info';
+                }
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    formData.append('website_endpoint', currentWebsite?.endpoint || '');
+                    
+                    const uploadResponse = await fetch(`${API_BASE_URL}/api/images/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const uploadData = await uploadResponse.json();
+                    
+                    if (uploadData.success) {
+                        pendingPromoBannerFile = {
+                            hash: uploadData.hash,
+                            url: uploadData.url
+                        };
+                        
+                        if (previewImg) {
+                            previewImg.src = uploadData.url;
+                        }
+                        
+                        if (validationMsg) {
+                            validationMsg.innerHTML = '<i class="fas fa-check-circle"></i> Ukuran valid: 1280x760 ✓ Gambar berhasil diupload';
+                            validationMsg.className = 'banner-validation-message success';
+                        }
+                        
+                        // Update hidden input jika ada
+                        const bannerUrlInput = document.getElementById('promoBannerUrl');
+                        if (bannerUrlInput) {
+                            bannerUrlInput.value = uploadData.hash;
+                        }
+                        
+                        showToast('✅ Gambar berhasil diupload!', 'success');
+                    } else {
+                        throw new Error(uploadData.error || 'Upload gagal');
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    if (validationMsg) {
+                        validationMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Gagal upload: ${error.message}`;
+                        validationMsg.className = 'banner-validation-message error';
+                    }
+                    showToast('Gagal mengupload gambar', 'error');
+                }
+            } else {
+                if (validationMsg) {
+                    validationMsg.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Ukuran harus 1280x760 pixel (saat ini ${width}x${height})`;
+                    validationMsg.className = 'banner-validation-message error';
+                }
+                showToast(`Ukuran gambar harus 1280x760 pixel`, 'error');
+            }
+            
+            URL.revokeObjectURL(imageUrl);
+        };
+        
+        img.onerror = () => {
+            if (validationMsg) {
+                validationMsg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Gagal memuat gambar';
+                validationMsg.className = 'banner-validation-message error';
+            }
+            showToast('Gagal memuat gambar', 'error');
+            URL.revokeObjectURL(imageUrl);
+        };
+        
+        img.src = imageUrl;
+    }
+
+    // Update fungsi openPromoModal
     function openPromoModal(promo = null) {
+        // Setup upload area
+        setupPromoBannerUpload();
+        
+        const withoutDurationToggle = document.getElementById('promoWithoutDuration');
+        const endDateInput = document.getElementById('promoEndDate');
+        const endTimeInput = document.getElementById('promoEndTime');
+        const previewImg = document.getElementById('promoBannerImage');
+        const validationMsg = document.getElementById('promoBannerValidation');
+        const hiddenBannerUrl = document.getElementById('promoBannerUrl');
+        
         if (promo) {
             elements.promoModalTitle.textContent = 'Edit Promosi';
             elements.promoId.value = promo.id || '';
             elements.promoTitle.value = promo.title || '';
-            elements.promoBannerUrl.value = promo.banner || '';
             elements.promoDescription.value = promo.description || '';
             elements.promoEndDate.value = promo.end_date || '';
             elements.promoEndTime.value = promo.end_time || '';
-            elements.promoNeverEnd.checked = promo.never_end || false;
             elements.promoNotes.value = promo.notes || '';
             elements.promoActive.checked = promo.active !== false;
             
+            // Set toggle tanpa durasi
+            if (withoutDurationToggle) {
+                withoutDurationToggle.checked = promo.never_end || false;
+                if (endDateInput) endDateInput.disabled = withoutDurationToggle.checked;
+                if (endTimeInput) endTimeInput.disabled = withoutDurationToggle.checked;
+            }
+            
+            // Set banner preview
             if (promo.banner) {
-                elements.promoBannerImageSmall.src = promo.banner;
-                validatePromoBanner(promo.banner);
+                if (promo.banner.startsWith('http')) {
+                    previewImg.src = promo.banner;
+                } else if (promo.banner.length === 35) {
+                    const endpoint = currentWebsite?.endpoint;
+                    previewImg.src = `https://companel.shop/ii?${endpoint}=${promo.banner}`;
+                } else {
+                    previewImg.src = promo.banner;
+                }
+                
+                if (hiddenBannerUrl) {
+                    hiddenBannerUrl.value = promo.banner;
+                }
+                
+                if (validationMsg) {
+                    validationMsg.innerHTML = '<i class="fas fa-check-circle"></i> Gambar banner sudah tersedia';
+                    validationMsg.className = 'banner-validation-message success';
+                }
             } else {
-                elements.promoBannerImageSmall.src = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner';
+                previewImg.src = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Klik+atau+Drag+untuk+Upload';
+                if (validationMsg) {
+                    validationMsg.innerHTML = '<i class="fas fa-info-circle"></i> Upload gambar banner (1280x760 pixel)';
+                    validationMsg.className = 'banner-validation-message info';
+                }
             }
             
             currentPromoId = promo.id;
@@ -1763,21 +1981,49 @@
             elements.promoModalTitle.textContent = 'Tambah Promosi';
             elements.promoForm.reset();
             elements.promoId.value = '';
-            elements.promoNeverEnd.checked = false;
             elements.promoActive.checked = true;
-            elements.promoEndDate.disabled = false;
-            elements.promoEndTime.disabled = false;
-            elements.promoBannerImageSmall.src = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Preview+Promo+Banner';
             
-            if (elements.promoBannerValidation) {
-                elements.promoBannerValidation.innerHTML = '<i class="fas fa-info-circle"></i> Masukkan URL banner (wajib 1280x760)';
-                elements.promoBannerValidation.className = 'banner-validation-message info';
+            // Reset toggle tanpa durasi
+            if (withoutDurationToggle) {
+                withoutDurationToggle.checked = false;
+                if (endDateInput) endDateInput.disabled = false;
+                if (endTimeInput) endTimeInput.disabled = false;
+            }
+            
+            // Reset banner preview
+            previewImg.src = 'https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Klik+atau+Drag+untuk+Upload';
+            if (validationMsg) {
+                validationMsg.innerHTML = '<i class="fas fa-info-circle"></i> Upload gambar banner (1280x760 pixel)';
+                validationMsg.className = 'banner-validation-message info';
+            }
+            if (hiddenBannerUrl) {
+                hiddenBannerUrl.value = '';
             }
             
             currentPromoId = null;
+            pendingPromoBannerFile = null;
         }
         
-        updatePromoDateFields();
+        // Setup event listener untuk toggle tanpa durasi
+        if (withoutDurationToggle) {
+            // Hapus listener lama
+            const newToggle = withoutDurationToggle.cloneNode(true);
+            withoutDurationToggle.parentNode.replaceChild(newToggle, withoutDurationToggle);
+            
+            newToggle.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                if (endDateInput) endDateInput.disabled = isChecked;
+                if (endTimeInput) endTimeInput.disabled = isChecked;
+                
+                if (isChecked) {
+                    if (endDateInput) endDateInput.value = '';
+                    if (endTimeInput) endTimeInput.value = '';
+                }
+            });
+            
+            // Update reference
+            window.promoWithoutDurationToggle = newToggle;
+        }
         
         elements.promoModal.classList.add('active');
         vibrate(10);
@@ -1787,33 +2033,25 @@
         }, 300);
     }
 
-    function closePromoModal() {
-        elements.promoModal.classList.remove('active');
-        currentPromoId = null;
-    }
-
-    function updatePromoDateFields() {
-        const neverEnd = elements.promoNeverEnd.checked;
-        elements.promoEndDate.disabled = neverEnd;
-        elements.promoEndTime.disabled = neverEnd;
-        
-        if (neverEnd) {
-            elements.promoEndDate.value = '';
-            elements.promoEndTime.value = '';
-        }
-    }
-
+    // Update fungsi savePromo
     async function savePromo(e) {
         e.preventDefault();
         
         const title = elements.promoTitle.value.trim();
-        let bannerValue = elements.promoBannerUrl.value.trim();
         const description = elements.promoDescription.value.trim();
-        const endDate = elements.promoNeverEnd.checked ? null : elements.promoEndDate.value;
-        const endTime = elements.promoNeverEnd.checked ? null : elements.promoEndTime.value;
-        const neverEnd = elements.promoNeverEnd.checked;
+        const withoutDurationToggle = document.getElementById('promoWithoutDuration');
+        const neverEnd = withoutDurationToggle ? withoutDurationToggle.checked : false;
+        const endDate = neverEnd ? null : elements.promoEndDate.value;
+        const endTime = neverEnd ? null : elements.promoEndTime.value;
         const notes = elements.promoNotes.value.trim();
         const active = elements.promoActive.checked;
+        
+        // Ambil banner hash dari hidden input atau dari pending upload
+        let bannerHash = elements.promoBannerUrl?.value || '';
+        
+        if (!bannerHash && pendingPromoBannerFile) {
+            bannerHash = pendingPromoBannerFile.hash;
+        }
         
         if (!title) {
             showToast('Judul promosi wajib diisi', 'warning');
@@ -1821,25 +2059,8 @@
             return;
         }
         
-        if (!bannerValue) {
-            showToast('Banner promosi wajib diisi', 'warning');
-            elements.promoBannerUrl.focus();
-            return;
-        }
-        
-        let bannerHash = bannerValue;
-        if (bannerValue.length !== 35 || !/^[a-f0-9]{35}$/i.test(bannerValue)) {
-            bannerHash = extractHashFromUrl(bannerValue);
-            if (!bannerHash) {
-                showToast('Banner tidak valid. Upload ulang gambar.', 'error');
-                return;
-            }
-        }
-        
-        const bannerUrl = hashToImageUrl(bannerHash);
-        const isValid = await validatePromoBanner(bannerUrl);
-        if (!isValid) {
-            showToast('Banner tidak valid. Periksa ukuran (1280x760)', 'error');
+        if (!bannerHash) {
+            showToast('Banner promosi wajib diupload', 'warning');
             return;
         }
         
@@ -1873,6 +2094,25 @@
         closePromoModal();
         showToast(`✅ Promosi ${currentPromoId ? 'diperbarui' : 'ditambahkan'}`, 'success');
         vibrate(10);
+        
+        // Reset pending upload
+        pendingPromoBannerFile = null;
+    }
+
+    function closePromoModal() {
+        elements.promoModal.classList.remove('active');
+        currentPromoId = null;
+    }
+
+    function updatePromoDateFields() {
+        const neverEnd = elements.promoNeverEnd.checked;
+        elements.promoEndDate.disabled = neverEnd;
+        elements.promoEndTime.disabled = neverEnd;
+        
+        if (neverEnd) {
+            elements.promoEndDate.value = '';
+            elements.promoEndTime.value = '';
+        }
     }
 
     function deletePromo(id) {
@@ -3930,7 +4170,30 @@
                 }
             });
         }
-        
+
+        // Setup promo banner upload
+        if (document.getElementById('promoBannerUploadArea')) {
+            setupPromoBannerUpload();
+        }
+
+        // Setup toggle without duration
+        const withoutDurationToggle = document.getElementById('promoWithoutDuration');
+        const endDateInput = document.getElementById('promoEndDate');
+        const endTimeInput = document.getElementById('promoEndTime');
+
+        if (withoutDurationToggle && endDateInput && endTimeInput) {
+            withoutDurationToggle.addEventListener('change', (e) => {
+                const isChecked = e.target.checked;
+                endDateInput.disabled = isChecked;
+                endTimeInput.disabled = isChecked;
+                
+                if (isChecked) {
+                    endDateInput.value = '';
+                    endTimeInput.value = '';
+                }
+            });
+        }
+
         if (elements.fontTemplateCode) {
             elements.fontTemplateCode.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
