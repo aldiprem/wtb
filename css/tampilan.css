@@ -149,6 +149,10 @@ body {
     font-weight: 500;
 }
 
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 /* ===== TOAST NOTIFICATIONS ===== */
 .toast-container {
     position: fixed;
@@ -1113,8 +1117,8 @@ input:checked + .toggle-slider:before {
 
 .banner-upload-area {
     width: 100%;
-    border: 1.5px dashed var(--border-color);
-    border-radius: 10px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
     background: rgba(255, 255, 255, 0.02);
     transition: all 0.3s ease;
     overflow: hidden;
@@ -1145,25 +1149,25 @@ input:checked + .toggle-slider:before {
     text-align: center;
     cursor: pointer;
     background: rgba(0, 0, 0, 0.3);
-    padding: 12px;
+    padding: 6px;
 }
 
 .banner-upload-inner i {
-    font-size: 22px;
+    font-size: 16px;
     color: var(--primary-color);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     opacity: 0.7;
 }
 
 .banner-upload-inner p {
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 500;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
     color: var(--text-primary);
 }
 
 .banner-upload-inner small {
-    font-size: 8px;
+    font-size: 6px;
     color: var(--tg-hint-color);
 }
 
@@ -1180,31 +1184,35 @@ input:checked + .toggle-slider:before {
     background: #1a1a1a;
 }
 
-/* Tombol aksi - DIPERKECIL UKURANNYA seperti catatan banner */
+/* Tombol aksi - UKURAN SANGAT KECIL */
 .banner-upload-actions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     justify-content: center;
-    padding: 8px 10px;
+    padding: 5px 6px;
     background: rgba(0, 0, 0, 0.2);
     border-top: 1px solid var(--border-color-light);
 }
 
 .btn-upload-cancel {
     flex: 1;
-    padding: 5px 10px;
+    padding: 3px 6px;
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 16px;
+    border-radius: 12px;
     color: var(--danger-color);
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 500;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     transition: all 0.2s;
+}
+
+.btn-upload-cancel i {
+    font-size: 8px;
 }
 
 .btn-upload-cancel:hover {
@@ -1219,19 +1227,23 @@ input:checked + .toggle-slider:before {
 
 .btn-upload-confirm {
     flex: 1;
-    padding: 5px 10px;
+    padding: 3px 6px;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border: none;
-    border-radius: 16px;
+    border-radius: 12px;
     color: white;
-    font-size: 10px;
+    font-size: 8px;
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     transition: all 0.2s;
+}
+
+.btn-upload-confirm i {
+    font-size: 8px;
 }
 
 .btn-upload-confirm:hover {
@@ -1251,77 +1263,30 @@ input:checked + .toggle-slider:before {
 
 .banner-upload-loading {
     display: inline-block;
-    width: 10px;
-    height: 10px;
-    border: 1.5px solid rgba(255, 255, 255, 0.3);
+    width: 8px;
+    height: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-top-color: var(--primary-color);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
-    margin-right: 3px;
+    margin-right: 2px;
 }
 
-/* ===== BANNER BUTTON CONTAINER (TIDAK DUPLIKAT) ===== */
-.banner-button-container {
+/* ===== BANNER SLIDE HEADER (UKURAN KECIL) ===== */
+.banner-slide-header {
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-color);
-    width: 100%;
+    padding: 5px 6px;
 }
 
-.banner-action-btn {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px 20px;
-    border-radius: 30px;
-    font-size: 14px;
+.banner-number {
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-    white-space: nowrap;
-}
-
-.banner-add-btn {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--tg-text-color);
-    border: 1px solid var(--border-color);
-}
-
-.banner-add-btn i {
     color: var(--primary-color);
-}
-
-.banner-add-btn:hover {
-    background: var(--primary-color);
-    color: white;
-}
-
-.banner-add-btn:hover i {
-    color: white;
-}
-
-.banner-save-btn {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-    color: white;
-}
-
-.banner-save-btn:hover {
-    background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-glow);
-}
-
-/* Animasi spin - HANYA SATU */
-@keyframes spin {
-    to { transform: rotate(360deg); }
+    background: rgba(64, 167, 227, 0.1);
+    padding: 2px 5px;
+    border-radius: 10px;
+    font-size: 8px;
 }
 
 /* ===== PROMO SECTION ===== */
