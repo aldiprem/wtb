@@ -3182,7 +3182,7 @@
         vibrate(10);
     }
 
-    function closeBannerSettingsModalWindow() {
+    function closeBannerSettingsModalWindowWindow() {
         const modal = document.getElementById('bannerSettingsModal');
         if (modal) {
             modal.classList.remove('active');
@@ -3191,11 +3191,11 @@
     }
 
     // Update event listeners
-    if (closeBannerSettingsModal) {
-        closeBannerSettingsModal.addEventListener('click', closeBannerSettingsModalWindow);
+    if (closeBannerSettingsModalWindow) {
+        closeBannerSettingsModalWindow.addEventListener('click', closeBannerSettingsModalWindowWindow);
     }
     if (cancelBannerSettingsBtn) {
-        cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModalWindow);
+        cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModalWindowWindow);
     }
     if (saveBannerSettingsBtn) {
         saveBannerSettingsBtn.addEventListener('click', saveBannerSettings);
@@ -3204,7 +3204,7 @@
     // Click outside modal
     window.addEventListener('click', (e) => {
         if (e.target === document.getElementById('bannerSettingsModal')) {
-            closeBannerSettingsModalWindow();
+            closeBannerSettingsModalWindowWindow();
         }
     });
 
@@ -3225,7 +3225,7 @@
             
             if (success) {
                 showToast('✅ Pengaturan banner disimpan', 'success');
-                closeBannerSettingsModal();
+                closeBannerSettingsModalWindow();
                 renderBannerTrack(); // Refresh tampilan
             } else {
                 throw new Error('Gagal menyimpan');
@@ -3387,25 +3387,25 @@
             { picker: 'accentColor', hex: 'accentColorHex' }
         ];
 
-        const closeBannerSettingsModal = document.getElementById('closeBannerSettingsModal');
+        const closeBannerSettingsModalWindow = document.getElementById('closeBannerSettingsModalWindow');
         const cancelBannerSettingsBtn = document.getElementById('cancelBannerSettingsBtn');
         const saveBannerSettingsBtn = document.getElementById('saveBannerSettingsBtn');
 
-        if (closeBannerSettingsModal) {
-            closeBannerSettingsModal.addEventListener('click', closeBannerSettingsModal);
+        if (closeBannerSettingsModalWindow) {
+            closeBannerSettingsModalWindow.addEventListener('click', closeBannerSettingsModalWindow);
         }
         if (cancelBannerSettingsBtn) {
-            cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModal);
+            cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModalWindow);
         }
         if (saveBannerSettingsBtn) {
             saveBannerSettingsBtn.addEventListener('click', saveBannerSettings);
         }
 
         // Click outside modal
-        if (closeBannerSettingsModal) {
+        if (closeBannerSettingsModalWindow) {
             window.addEventListener('click', (e) => {
                 if (e.target === document.getElementById('bannerSettingsModal')) {
-                    closeBannerSettingsModal();
+                    closeBannerSettingsModalWindow();
                 }
             });
         }
