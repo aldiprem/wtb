@@ -1129,7 +1129,6 @@ input:checked + .toggle-slider:before {
     transition: all 0.3s ease;
     overflow: hidden;
     margin: 0;
-    /* PENTING: Ukuran tetap 358x160 */
     aspect-ratio: 358 / 160;
     display: flex;
     flex-direction: column;
