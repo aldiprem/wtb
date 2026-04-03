@@ -31,7 +31,6 @@ except mysql.connector.Error as err:
 def get_db_connection():
     global connection_pool
     if connection_pool is None:
-        # Fallback: buat koneksi biasa jika pool gagal
         return mysql.connector.connect(**db_config)
     return connection_pool.get_connection()
     
