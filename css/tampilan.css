@@ -1117,13 +1117,13 @@ input:checked + .toggle-slider:before {
 
 .banner-upload-area {
     width: 100%;
+    min-width: 280px;
     border: 1px dashed var(--border-color);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.02);
     transition: all 0.3s ease;
-    overflow: visible;  /* ← GANTI dari hidden ke visible */
+    overflow: visible;
     margin-bottom: 0;
-    /* HAPUS aspect-ratio, GANTI DENGAN INI: */
     min-height: 160px;
 }
 
