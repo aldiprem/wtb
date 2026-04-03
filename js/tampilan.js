@@ -3156,6 +3156,7 @@
     }
 
     function openBannerSettings(bannerIndex) {
+        console.log('🔧 openBannerSettings called with index:', bannerIndex);
         const banner = banners[bannerIndex];
         if (!banner || !banner.url) {
             showToast('Banner tidak ditemukan', 'error');
@@ -3197,22 +3198,42 @@
     }
 
     function closeBannerSettingsModalWindow() {
+        console.log('🔧 closeBannerSettingsModalWindow called');
         const modal = document.getElementById('bannerSettingsModal');
         if (modal) {
             modal.classList.remove('active');
         }
         currentEditingBannerIndex = null;
+        
+        // Reset form
+        const catatanInput = document.getElementById('bannerCatatanInput');
+        if (catatanInput) catatanInput.value = '';
+        
+        const toggleCheckbox = document.getElementById('bannerShowToggle');
+        if (toggleCheckbox) toggleCheckbox.checked = true;
+        
+        const toggleLabel = document.getElementById('bannerShowLabel');
+        if (toggleLabel) toggleLabel.textContent = 'Ditampilkan';
     }
 
     async function saveBannerSettings() {
+        console.log('🔧 saveBannerSettings called');
         if (currentEditingBannerIndex === null) {
             showToast('Tidak ada banner yang sedang diedit', 'warning');
             return;
         }
         
-        const catatan = document.getElementById('bannerCatatanInput')?.value || '';
+        const catatanInput = document.getElementById('bannerCatatanInput');
         const toggleCheckbox = document.getElementById('bannerShowToggle');
+        
+        const catatan = catatanInput ? catatanInput.value : '';
         const isHidden = toggleCheckbox ? !toggleCheckbox.checked : false;
+        
+        console.log('💾 Saving banner settings:', {
+            bannerIndex: currentEditingBannerIndex,
+            catatan: catatan,
+            isHidden: isHidden
+        });
         
         showLoading(true);
         
@@ -3382,7 +3403,7 @@
             { picker: 'cardColor', hex: 'cardColorHex' },
             { picker: 'accentColor', hex: 'accentColorHex' }
         ];
-        
+
         colorPairs.forEach(pair => {
             const picker = document.getElementById(pair.picker);
             const hex = document.getElementById(pair.hex);
@@ -3399,7 +3420,37 @@
                 });
             }
         });
-        
+
+        // ==================== BANNER SETTINGS MODAL EVENT LISTENERS ====================
+        if (elements.closeBannerSettingsModal) {
+            elements.closeBannerSettingsModal.addEventListener('click', closeBannerSettingsModalWindow);
+        }
+
+        if (elements.cancelBannerSettingsBtn) {
+            elements.cancelBannerSettingsBtn.addEventListener('click', closeBannerSettingsModalWindow);
+        }
+
+        if (elements.saveBannerSettingsBtn) {
+            elements.saveBannerSettingsBtn.addEventListener('click', saveBannerSettings);
+        }
+
+        // Update toggle label saat berubah
+        const bannerToggle = document.getElementById('bannerShowToggle');
+        const bannerToggleLabel = document.getElementById('bannerShowLabel');
+        if (bannerToggle && bannerToggleLabel) {
+            bannerToggle.addEventListener('change', function() {
+                bannerToggleLabel.textContent = this.checked ? 'Ditampilkan' : 'Tersembunyi';
+            });
+        }
+
+        // Tutup modal saat klik di luar modal
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('bannerSettingsModal');
+            if (e.target === modal) {
+                closeBannerSettingsModalWindow();
+            }
+        });
+
         // LOGO UPLOAD - TAMPILKAN LINK SETELAH UPLOAD
         if (elements.uploadLogoBtn) {
             elements.uploadLogoBtn.addEventListener('click', () => {
@@ -3737,6 +3788,10 @@
         moveBanner: (index, direction) => moveBanner(index, direction),
         removeUploadingBanner: (index) => removeUploadingBanner(index),
         openBannerSettings: (index) => openBannerSettings(index),
+        
+        // PASTIKAN FUNGSI INI ADA
+        closeBannerSettingsModal: closeBannerSettingsModalWindow,
+        saveBannerSettings: saveBannerSettings,
         
         editPromo: (id) => {
             const promo = promos.find(p => p.id == id);
