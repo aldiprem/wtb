@@ -427,11 +427,7 @@ def serve_static(path):
 @app.route('/web-dekstop')
 @app.route('/web=<endpoint>')
 def serve_web_dekstop(endpoint=None):
-    """
-    Menyediakan halaman lobby topup game dengan tema glossy transparant
-    Route: /web-dekstop atau /web=nama_endpoint
-    """
-    return send_from_directory(base_dir, 'web-dekstop.html')
+    return send_from_directory(os.path.join(base_dir, 'css'), 'web-dekstop.html')
 
 # ==================== DATABASE INIT & HEALTH CHECK ====================
 
