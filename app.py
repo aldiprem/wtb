@@ -427,7 +427,8 @@ def serve_static(path):
 @app.route('/web-dekstop')
 @app.route('/web=<endpoint>')
 def serve_web_dekstop(endpoint=None):
-    return send_from_directory(os.path.join(base_dir, 'css'), 'web-dekstop.html')
+    """Menyediakan halaman lobby topup game dari folder html/"""
+    return send_from_directory(os.path.join(base_dir, 'html'), 'web-dekstop.html')
 
 # ==================== DATABASE INIT & HEALTH CHECK ====================
 
