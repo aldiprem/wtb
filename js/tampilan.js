@@ -2051,30 +2051,32 @@
         const notes = elements.promoNotes.value.trim();
         const active = elements.promoActive.checked;
         
-        // Ambil banner hash dari hidden input atau dari pending upload
-        let bannerHash = elements.promoBannerUrl?.value || '';
+        // ============ PERBAIKAN UTAMA ============
+        // Untuk EDIT promo, ambil banner dari promo yang sedang diedit
+        let bannerHash = '';
         
-        if (!bannerHash && pendingPromoBannerFile) {
-            bannerHash = pendingPromoBannerFile.hash;
-        }
-        
-        // Jika bannerHash adalah URL, ekstrak hash-nya
-        if (bannerHash && bannerHash.includes('/ii?')) {
-            const match = bannerHash.match(/=([a-f0-9]{35})/);
-            if (match) {
-                bannerHash = match[1];
-                console.log('📦 Extracted hash from URL:', bannerHash);
-            }
-        }
-        
-        // ============ PERBAIKAN: VALIDASI BANNER ============
-        // Jika ini adalah EDIT promo (currentPromoId ada) DAN bannerHash kosong
-        // maka coba ambil banner dari promo yang sedang diedit
-        if (currentPromoId && (!bannerHash || bannerHash.length !== 35)) {
+        if (currentPromoId) {
+            // Mode EDIT: ambil banner dari promo yang sudah ada
             const existingPromo = promos.find(p => p.id == currentPromoId);
             if (existingPromo && existingPromo.banner) {
                 bannerHash = existingPromo.banner;
-                console.log('📦 Using existing banner hash from promo:', bannerHash);
+                console.log('📦 EDIT MODE - Using existing banner hash:', bannerHash);
+            }
+        } else {
+            // Mode TAMBAH BARU: ambil dari upload atau hidden input
+            bannerHash = elements.promoBannerUrl?.value || '';
+            
+            if (!bannerHash && pendingPromoBannerFile) {
+                bannerHash = pendingPromoBannerFile.hash;
+            }
+            
+            // Jika bannerHash adalah URL, ekstrak hash-nya
+            if (bannerHash && bannerHash.includes('/ii?')) {
+                const match = bannerHash.match(/=([a-f0-9]{35})/);
+                if (match) {
+                    bannerHash = match[1];
+                    console.log('📦 Extracted hash from URL:', bannerHash);
+                }
             }
         }
         
@@ -2085,9 +2087,8 @@
             return;
         }
         
-        // Validasi banner - HANYA untuk promo BARU (tanpa ID) yang tidak punya banner
-        const isNewPromo = !currentPromoId;
-        if (isNewPromo && (!bannerHash || bannerHash.length !== 35)) {
+        // Validasi banner - HANYA untuk promo BARU
+        if (!currentPromoId && (!bannerHash || bannerHash.length !== 35)) {
             showToast('Banner promosi wajib diupload dengan benar', 'warning');
             console.error('Invalid banner hash for new promo:', bannerHash);
             return;
@@ -2103,7 +2104,7 @@
         const promoData = {
             id: currentPromoId || Date.now() + Math.random(),
             title: title,
-            banner: bannerHash, // Simpan sebagai HASH, bukan URL
+            banner: bannerHash,
             description: description,
             end_date: endDate,
             end_time: endTime,
@@ -2112,14 +2113,26 @@
             active: active
         };
         
-        console.log('💾 Saving promo with banner hash:', promoData.banner);
-        console.log('📝 Mode:', currentPromoId ? 'EDIT' : 'NEW');
+        console.log('💾 Saving promo:', {
+            mode: currentPromoId ? 'EDIT' : 'NEW',
+            id: promoData.id,
+            title: promoData.title,
+            banner: promoData.banner,
+            active: promoData.active
+        });
         
         if (currentPromoId) {
             const index = promos.findIndex(p => p.id == currentPromoId);
-            if (index !== -1) promos[index] = promoData;
+            if (index !== -1) {
+                promos[index] = promoData;
+                console.log('✅ Updated existing promo at index:', index);
+            } else {
+                console.warn('⚠️ Promo not found for update, adding as new');
+                promos.push(promoData);
+            }
         } else {
             promos.push(promoData);
+            console.log('✅ Added new promo');
         }
         
         hasUnsavedPromos = true;
@@ -2128,8 +2141,10 @@
         showToast(`✅ Promosi ${currentPromoId ? 'diperbarui' : 'ditambahkan'}`, 'success');
         vibrate(10);
         
-        // Reset pending upload
-        pendingPromoBannerFile = null;
+        // Reset pending upload hanya untuk mode baru
+        if (!currentPromoId) {
+            pendingPromoBannerFile = null;
+        }
     }
 
     function closePromoModal() {
