@@ -446,6 +446,7 @@ let currentTheme = localStorage.getItem('theme') || 'system';
 
 function applyTheme(theme) {
     const root = document.documentElement;
+    const body = document.body;
     
     if (theme === 'light') {
         root.style.setProperty('--bg-gradient-start', '#f0f2f5');
@@ -453,16 +454,18 @@ function applyTheme(theme) {
         root.style.setProperty('--bg-gradient-end', '#e0e4e9');
         root.style.setProperty('--text-primary', '#1a1a2e');
         root.style.setProperty('--text-secondary', '#2d2d44');
-        document.body.style.color = '#1a1a2e';
+        body.style.color = '#1a1a2e';
         themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+        body.setAttribute('data-theme', 'light');
     } else if (theme === 'dark') {
         root.style.setProperty('--bg-gradient-start', '#0a0a0f');
         root.style.setProperty('--bg-gradient-mid', '#0d1117');
         root.style.setProperty('--bg-gradient-end', '#0a0e1a');
         root.style.setProperty('--text-primary', '#ffffff');
         root.style.setProperty('--text-secondary', '#a0b0c0');
-        document.body.style.color = '#ffffff';
+        body.style.color = '#ffffff';
         themeToggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
+        body.setAttribute('data-theme', 'dark');
     } else if (theme === 'system') {
         const darkModeMedia = window.matchMedia('(prefers-color-scheme: dark)');
         if (darkModeMedia.matches) {
@@ -471,6 +474,7 @@ function applyTheme(theme) {
             applyTheme('light');
         }
         themeToggleBtn.innerHTML = '<i class="fas fa-desktop"></i>';
+        body.setAttribute('data-theme', 'system');
         return;
     }
     
