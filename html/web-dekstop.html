@@ -55,14 +55,94 @@
                 </a>
             </div>
             <div class="nav-user">
-                <div class="user-balance">
-                    <i class="fas fa-coins"></i>
-                    <span id="user-balance">Rp 0</span>
+                <button class="theme-toggle-btn" id="themeToggleBtn">
+                    <i class="fas fa-sun"></i>
+                </button>
+                <div class="menu-toggle" id="menuToggleBtn">
+                    <i class="fas fa-bars"></i>
                 </div>
-                <div class="user-avatar">
-                    <img src="https://ui-avatars.com/api/?background=1a2a3a&color=00d4ff&bold=true&rounded=true&size=40" alt="User">
+                <div class="user-profile-wrapper">
+                    <div class="user-avatar" id="userAvatarBtn">
+                        <img src="https://ui-avatars.com/api/?background=1a2a3a&color=00d4ff&bold=true&rounded=true&size=40" alt="User">
+                    </div>
+                    
+                    <!-- Dropdown Menu -->
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="dropdown-header">
+                            <div class="dropdown-avatar">
+                                <img src="https://ui-avatars.com/api/?background=1a2a3a&color=00d4ff&bold=true&rounded=true&size=50" alt="User">
+                            </div>
+                            <div class="dropdown-user-info">
+                                <h4>Guest User</h4>
+                                <p>Belum login</p>
+                            </div>
+                        </div>
+                        <div class="dropdown-menu">
+                            <a href="#" class="dropdown-item" id="loginBtn">
+                                <i class="fas fa-sign-in-alt"></i>
+                                <span>Login</span>
+                            </a>
+                            <a href="#" class="dropdown-item" id="registerBtn">
+                                <i class="fas fa-user-plus"></i>
+                                <span>Daftar</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Sidebar Menu -->
+            <div class="sidebar-menu" id="sidebarMenu">
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">
+                        <i class="fas fa-gamepad"></i>
+                        <span>Topup<span>Lobby</span></span>
+                    </div>
+                    <button class="sidebar-close" id="sidebarCloseBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="sidebar-nav">
+                    <a href="#" class="sidebar-link active" data-page="games">
+                        <i class="fas fa-dice-d6"></i>
+                        <span>Games</span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="premium">
+                        <i class="fas fa-crown"></i>
+                        <span>Premium Apps</span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="reseller">
+                        <i class="fas fa-store"></i>
+                        <span>Reseller</span>
+                    </a>
+                    <a href="#" class="sidebar-link" data-page="history">
+                        <i class="fas fa-clock"></i>
+                        <span>History</span>
+                    </a>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="theme-sidebar">
+                        <span>Mode Tampilan</span>
+                        <div class="theme-buttons">
+                            <button class="theme-option" data-theme="light">
+                                <i class="fas fa-sun"></i>
+                                <span>Terang</span>
+                            </button>
+                            <button class="theme-option" data-theme="dark">
+                                <i class="fas fa-moon"></i>
+                                <span>Gelap</span>
+                            </button>
+                            <button class="theme-option" data-theme="system">
+                                <i class="fas fa-desktop"></i>
+                                <span>Sistem</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overlay for sidebar -->
+            <div class="sidebar-overlay" id="sidebarOverlay"></div>
         </div>
     </nav>
 

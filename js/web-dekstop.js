@@ -364,6 +364,215 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
+// ==================== User Dropdown Toggle ====================
+const userAvatarBtn = document.getElementById('userAvatarBtn');
+const userDropdown = document.getElementById('userDropdown');
+
+if (userAvatarBtn && userDropdown) {
+    userAvatarBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        userDropdown.classList.toggle('show');
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!userAvatarBtn.contains(e.target) && !userDropdown.contains(e.target)) {
+            userDropdown.classList.remove('show');
+        }
+    });
+}
+
+// ==================== Sidebar Menu Toggle ====================
+const menuToggleBtn = document.getElementById('menuToggleBtn');
+const sidebarMenu = document.getElementById('sidebarMenu');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+
+function openSidebar() {
+    sidebarMenu.classList.add('open');
+    sidebarOverlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSidebar() {
+    sidebarMenu.classList.remove('open');
+    sidebarOverlay.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+if (menuToggleBtn) {
+    menuToggleBtn.addEventListener('click', openSidebar);
+}
+
+if (sidebarCloseBtn) {
+    sidebarCloseBtn.addEventListener('click', closeSidebar);
+}
+
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', closeSidebar);
+}
+
+// Sidebar navigation links
+document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        
+        // Update active class
+        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        
+        // Also update main nav links
+        const page = link.dataset.page;
+        document.querySelectorAll('.nav-link').forEach(navLink => {
+            if (navLink.dataset.page === page) {
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                navLink.classList.add('active');
+            }
+        });
+        
+        // Render products
+        if (page) {
+            renderProducts(page);
+        }
+        
+        // Close sidebar after clicking
+        closeSidebar();
+    });
+});
+
+// ==================== Theme System ====================
+const themeToggleBtn = document.getElementById('themeToggleBtn');
+let currentTheme = localStorage.getItem('theme') || 'system';
+
+function applyTheme(theme) {
+    const root = document.documentElement;
+    
+    if (theme === 'light') {
+        root.style.setProperty('--bg-gradient-start', '#f0f2f5');
+        root.style.setProperty('--bg-gradient-mid', '#e8eaef');
+        root.style.setProperty('--bg-gradient-end', '#e0e4e9');
+        root.style.setProperty('--text-primary', '#1a1a2e');
+        root.style.setProperty('--text-secondary', '#2d2d44');
+        document.body.style.color = '#1a1a2e';
+        themeToggleBtn.innerHTML = '<i class="fas fa-sun"></i>';
+    } else if (theme === 'dark') {
+        root.style.setProperty('--bg-gradient-start', '#0a0a0f');
+        root.style.setProperty('--bg-gradient-mid', '#0d1117');
+        root.style.setProperty('--bg-gradient-end', '#0a0e1a');
+        root.style.setProperty('--text-primary', '#ffffff');
+        root.style.setProperty('--text-secondary', '#a0b0c0');
+        document.body.style.color = '#ffffff';
+        themeToggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
+    } else if (theme === 'system') {
+        const darkModeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+        if (darkModeMedia.matches) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+        themeToggleBtn.innerHTML = '<i class="fas fa-desktop"></i>';
+        return;
+    }
+    
+    localStorage.setItem('theme', theme);
+    
+    // Update active state in sidebar
+    document.querySelectorAll('.theme-option').forEach(option => {
+        if (option.dataset.theme === theme) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+}
+
+// Theme toggle button click
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        if (currentTheme === 'light') {
+            currentTheme = 'dark';
+            applyTheme('dark');
+        } else if (currentTheme === 'dark') {
+            currentTheme = 'system';
+            applyTheme('system');
+        } else {
+            currentTheme = 'light';
+            applyTheme('light');
+        }
+    });
+}
+
+// Theme options in sidebar
+document.querySelectorAll('.theme-option').forEach(option => {
+    option.addEventListener('click', () => {
+        const theme = option.dataset.theme;
+        currentTheme = theme;
+        applyTheme(theme);
+    });
+});
+
+// Initialize theme
+applyTheme(currentTheme);
+
+// Listen for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (currentTheme === 'system') {
+        if (e.matches) {
+            applyTheme('dark');
+        } else {
+            applyTheme('light');
+        }
+    }
+});
+
+// ==================== Login/Register Handlers ====================
+const loginBtn = document.getElementById('loginBtn');
+const registerBtn = document.getElementById('registerBtn');
+
+if (loginBtn) {
+    loginBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showNotification('🔐 Fitur login akan segera hadir!', 'info');
+        userDropdown.classList.remove('show');
+    });
+}
+
+if (registerBtn) {
+    registerBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showNotification('📝 Fitur registrasi akan segera hadir!', 'info');
+        userDropdown.classList.remove('show');
+    });
+}
+
+// ==================== CSS Variables for Theme ====================
+// Add CSS variables for theme support
+const styleSheet = document.createElement('style');
+styleSheet.textContent = `
+    :root {
+        --bg-gradient-start: #0a0a0f;
+        --bg-gradient-mid: #0d1117;
+        --bg-gradient-end: #0a0e1a;
+        --text-primary: #ffffff;
+        --text-secondary: #a0b0c0;
+    }
+    
+    body {
+        background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        color: var(--text-primary);
+        transition: background 0.3s ease, color 0.3s ease;
+    }
+    
+    .hero-title, .section-header h2, .category-card h3, .product-title {
+        color: var(--text-primary);
+    }
+    
+    .hero-subtitle, .section-header p, .category-card p, .product-desc {
+        color: var(--text-secondary);
+    }
+`;
+document.head.appendChild(styleSheet);
+
 // ==================== Initialize ====================
 document.addEventListener('DOMContentLoaded', () => {
     renderProducts('games');
