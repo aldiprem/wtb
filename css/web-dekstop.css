@@ -1,5 +1,3 @@
-/* CODE: file path css/web-dekstop.css name */
-
 * {
     margin: 0;
     padding: 0;
@@ -13,6 +11,21 @@ body {
     overflow-x: hidden;
     min-height: 100vh;
     position: relative;
+}
+
+/* ==================== CSS Variables for Theme ==================== */
+:root {
+    --bg-gradient-start: #0a0a0f;
+    --bg-gradient-mid: #0d1117;
+    --bg-gradient-end: #0a0e1a;
+    --text-primary: #ffffff;
+    --text-secondary: #a0b0c0;
+}
+
+body {
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+    color: var(--text-primary);
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* ==================== 3D Background Canvas ==================== */
@@ -110,7 +123,6 @@ body {
     transition: all 0.3s ease;
 }
 
-/* Optional: Add shadow on scroll */
 .glass-nav.scrolled {
     background: rgba(5, 10, 20, 0.98);
     border-bottom-color: rgba(0, 212, 255, 0.3);
@@ -126,7 +138,6 @@ body {
     margin: 0 auto;
 }
 
-/* Responsive container */
 @media (max-width: 1200px) {
     .nav-container {
         padding: 12px 24px;
@@ -223,7 +234,6 @@ body {
     gap: 12px;
 }
 
-/* Theme Toggle Button */
 .theme-toggle-btn {
     width: 40px;
     height: 40px;
@@ -245,7 +255,6 @@ body {
     transform: rotate(15deg);
 }
 
-/* Menu Toggle Button (Hamburger) */
 .menu-toggle {
     width: 40px;
     height: 40px;
@@ -266,7 +275,6 @@ body {
     color: #00d4ff;
 }
 
-/* User Profile Wrapper */
 .user-profile-wrapper {
     position: relative;
 }
@@ -292,7 +300,6 @@ body {
     object-fit: cover;
 }
 
-/* Dropdown Menu */
 .user-dropdown {
     position: absolute;
     top: calc(100% + 12px);
@@ -554,7 +561,6 @@ body {
     color: #00d4ff;
 }
 
-/* Responsive adjustments */
 @media (max-width: 768px) {
     .nav-links {
         display: none;
@@ -584,36 +590,6 @@ body {
     }
 }
 
-.user-balance i {
-    color: #ffd700;
-}
-
-.user-balance span {
-    font-weight: 600;
-    color: #ffd700;
-}
-
-.user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    overflow: hidden;
-    border: 2px solid rgba(0, 212, 255, 0.5);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.user-avatar:hover {
-    border-color: #00d4ff;
-    transform: scale(1.05);
-}
-
-.user-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
 /* ==================== Hero Banner with Animation ==================== */
 .hero-section {
     position: relative;
@@ -623,7 +599,6 @@ body {
     max-width: 1300px;
 }
 
-/* Hero Banner Container */
 .hero-banner {
     position: relative;
     background: linear-gradient(135deg, 
@@ -639,7 +614,6 @@ body {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
-/* Animated Background */
 .hero-banner::before {
     content: '';
     position: absolute;
@@ -656,15 +630,10 @@ body {
 }
 
 @keyframes rotateBg {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-/* Floating particles in hero */
 .hero-banner::after {
     content: '';
     position: absolute;
@@ -726,12 +695,8 @@ body {
 }
 
 @keyframes blink {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 .hero-title {
@@ -739,7 +704,7 @@ body {
     font-weight: 800;
     line-height: 1.2;
     margin-bottom: 20px;
-    animation: fadeInUp 0.8s ease;
+    color: var(--text-primary);
 }
 
 .gradient-text {
@@ -758,16 +723,14 @@ body {
 
 .hero-subtitle {
     font-size: 18px;
-    color: #a0b0c0;
+    color: var(--text-secondary);
     margin-bottom: 40px;
-    animation: fadeInUp 0.8s ease 0.1s both;
 }
 
 .hero-stats {
     display: flex;
     justify-content: center;
     gap: 48px;
-    animation: fadeInUp 0.8s ease 0.2s both;
 }
 
 .stat-item {
@@ -784,12 +747,8 @@ body {
 }
 
 @keyframes bounce {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-5px);
-    }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
 }
 
 .stat-item span {
@@ -807,7 +766,6 @@ body {
     color: #7080a0;
 }
 
-/* Popular Badge */
 .popular-badge {
     position: absolute;
     top: 20px;
@@ -823,22 +781,16 @@ body {
 }
 
 @keyframes wiggle {
-    0%, 100% {
-        transform: rotate(0deg);
-    }
-    25% {
-        transform: rotate(5deg);
-    }
-    75% {
-        transform: rotate(-5deg);
-    }
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(5deg); }
+    75% { transform: rotate(-5deg); }
 }
 
 .popular-badge i {
     margin-right: 6px;
 }
 
-/* ==================== Categories Section with Dynamic Background ==================== */
+/* ==================== Categories Section ==================== */
 .categories-section {
     position: relative;
     z-index: 1;
@@ -847,7 +799,6 @@ body {
     margin: 0 auto;
 }
 
-/* Dynamic background based on theme */
 .categories-section::before {
     content: '';
     position: absolute;
@@ -860,7 +811,6 @@ body {
     transition: all 0.3s ease;
 }
 
-/* Light mode background */
 body[data-theme="light"] .categories-section::before {
     background: linear-gradient(135deg, 
         rgba(0, 100, 200, 0.05) 0%, 
@@ -869,7 +819,6 @@ body[data-theme="light"] .categories-section::before {
     border: 1px solid rgba(0, 150, 255, 0.2);
 }
 
-/* Dark mode background */
 body[data-theme="dark"] .categories-section::before {
     background: linear-gradient(135deg, 
         rgba(0, 212, 255, 0.08) 0%, 
@@ -878,34 +827,6 @@ body[data-theme="dark"] .categories-section::before {
     border: 1px solid rgba(0, 212, 255, 0.15);
 }
 
-/* Products section background */
-.products-section::before {
-    content: '';
-    position: absolute;
-    top: -50px;
-    left: 5%;
-    width: 90%;
-    height: calc(100% + 100px);
-    border-radius: 60px;
-    z-index: -1;
-    transition: all 0.3s ease;
-}
-
-body[data-theme="light"] .products-section::before {
-    background: linear-gradient(135deg, 
-        rgba(0, 100, 200, 0.03) 0%, 
-        rgba(0, 150, 255, 0.05) 100%
-    );
-}
-
-body[data-theme="dark"] .products-section::before {
-    background: linear-gradient(135deg, 
-        rgba(0, 212, 255, 0.05) 0%, 
-        rgba(0, 102, 204, 0.03) 100%
-    );
-}
-
-/* Ring border effect */
 .categories-section::after {
     content: '★ POPULER ★';
     position: absolute;
@@ -934,59 +855,74 @@ body[data-theme="dark"] .products-section::before {
     }
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-    .hero-title {
-        font-size: 48px;
-    }
-    
-    .hero-banner {
-        padding: 40px 30px;
-    }
-    
-    .hero-stats {
-        gap: 30px;
-    }
-    
-    .stat-item span {
-        font-size: 22px;
-    }
+.section-header {
+    text-align: center;
+    margin-bottom: 48px;
 }
 
-@media (max-width: 768px) {
-    .hero-section {
-        padding: 100px 20px 60px;
-    }
-    
-    .hero-banner {
-        padding: 30px 20px;
-    }
-    
-    .hero-title {
-        font-size: 32px;
-    }
-    
-    .hero-subtitle {
-        font-size: 14px;
-    }
-    
-    .hero-stats {
-        flex-direction: column;
-        gap: 20px;
-    }
-    
-    .popular-badge {
-        top: 10px;
-        right: 10px;
-        font-size: 10px;
-        padding: 4px 12px;
-    }
-    
-    .categories-section::after {
-        font-size: 10px;
-        padding: 4px 16px;
-        white-space: nowrap;
-    }
+.section-header h2 {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+}
+
+.section-header p {
+    color: var(--text-secondary);
+}
+
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 24px;
+}
+
+.category-card {
+    background: rgba(20, 30, 50, 0.6);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.category-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(0, 212, 255, 0.5);
+    box-shadow: 0 10px 30px rgba(0, 212, 255, 0.15);
+}
+
+.category-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 102, 204, 0.2));
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.category-icon i,
+.category-icon img {
+    font-size: 36px;
+    color: #00d4ff;
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.category-card h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.category-card p {
+    font-size: 13px;
+    color: #7080a0;
 }
 
 /* ==================== Products Section ==================== */
@@ -996,6 +932,32 @@ body[data-theme="dark"] .products-section::before {
     padding: 40px 40px 80px;
     max-width: 1280px;
     margin: 0 auto;
+}
+
+.products-section::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: 5%;
+    width: 90%;
+    height: calc(100% + 100px);
+    border-radius: 60px;
+    z-index: -1;
+    transition: all 0.3s ease;
+}
+
+body[data-theme="light"] .products-section::before {
+    background: linear-gradient(135deg, 
+        rgba(0, 100, 200, 0.03) 0%, 
+        rgba(0, 150, 255, 0.05) 100%
+    );
+}
+
+body[data-theme="dark"] .products-section::before {
+    background: linear-gradient(135deg, 
+        rgba(0, 212, 255, 0.05) 0%, 
+        rgba(0, 102, 204, 0.03) 100%
+    );
 }
 
 .products-grid {
@@ -1057,6 +1019,7 @@ body[data-theme="dark"] .products-section::before {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 8px;
+    color: var(--text-primary);
 }
 
 .product-desc {
@@ -1170,10 +1133,34 @@ body[data-theme="dark"] .products-section::before {
     100% { transform: rotate(360deg); }
 }
 
-/* ==================== Responsive (Desktop Only) ==================== */
+/* ==================== Animations ==================== */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==================== Responsive ==================== */
 @media (max-width: 1024px) {
     .hero-title {
         font-size: 48px;
+    }
+    
+    .hero-banner {
+        padding: 40px 30px;
+    }
+    
+    .hero-stats {
+        gap: 30px;
+    }
+    
+    .stat-item span {
+        font-size: 22px;
     }
     
     .categories-grid {
@@ -1182,7 +1169,6 @@ body[data-theme="dark"] .products-section::before {
 }
 
 @media (max-width: 768px) {
-    /* Mobile toast will show, so hide content */
     body > *:not(.mobile-toast) {
         display: none;
     }
