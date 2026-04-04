@@ -353,9 +353,8 @@ def serve_image_direct():
 # ==================== STATIC ROUTES (SERVING HTML) ====================
 
 @app.route('/')
-@app.route('/dashboard')
 def serve_dashboard():
-    return send_from_directory(os.path.join(base_dir, 'html'), 'dashboard.html')
+    return send_from_directory(os.path.join(base_dir, 'html'), 'web-lobby.html')
 
 @app.route('/favicon.ico')
 def favicon():
@@ -394,7 +393,6 @@ def serve_website(endpoint):
     return send_from_directory(base_dir, 'website.html')
 
 # --- RUTE UNTUK FILE STATIS DALAM SUBFOLDER ---
-
 @app.route('/html/<path:subfolder>/<filename>')
 def serve_html_subfolder(subfolder, filename):
     """Mengambil file HTML dari subdirektori di dalam /html/"""
@@ -423,12 +421,9 @@ def serve_static(path):
     return send_from_directory(base_dir, path)
 
 # ==================== LOBBY TOPUP GAME DEDICATED ROUTE ====================
-
-@app.route('/web-dekstop')
-@app.route('/web=<endpoint>')
+@app.route('/lobby/web=<endpoint>')
 def serve_web_dekstop(endpoint=None):
-    """Menyediakan halaman lobby topup game dari folder html/"""
-    return send_from_directory(os.path.join(base_dir, 'html'), 'web-dekstop.html')
+    return send_from_directory(os.path.join(base_dir, 'html'), 'web-lobby.html')
 
 # ==================== DATABASE INIT & HEALTH CHECK ====================
 

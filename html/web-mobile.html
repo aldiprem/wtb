@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Topup Game & Premium Apps | Mobile</title>
+    <link rel="stylesheet" href="/css/web-mobile.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Mobile Navigation Bar -->
+    <nav class="mobile-nav">
+        <div class="mobile-nav-container">
+            <div class="mobile-logo">
+                <div class="logo-icon">
+                    <i class="fas fa-gamepad"></i>
+                </div>
+                <span class="logo-text">Topup<span>Lobby</span></span>
+            </div>
+            <div class="mobile-actions">
+                <button class="theme-toggle-btn-mobile" id="themeToggleBtnMobile">
+                    <i class="fas fa-sun"></i>
+                </button>
+                <button class="menu-toggle-mobile" id="menuToggleMobile">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Sidebar -->
+    <div class="mobile-sidebar" id="mobileSidebar">
+        <div class="mobile-sidebar-header">
+            <div class="mobile-sidebar-logo">
+                <i class="fas fa-gamepad"></i>
+                <span>Topup<span>Lobby</span></span>
+            </div>
+            <button class="mobile-sidebar-close" id="sidebarCloseMobile">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="mobile-sidebar-profile">
+            <div class="mobile-profile-avatar">
+                <img src="https://ui-avatars.com/api/?background=00d4ff&color=fff&bold=true&rounded=true&size=60" alt="User">
+            </div>
+            <div class="mobile-profile-info">
+                <h4>Guest User</h4>
+                <p>Belum login</p>
+            </div>
+            <div class="mobile-profile-actions">
+                <button class="mobile-login-btn" id="mobileLoginBtn">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Login</span>
+                </button>
+                <button class="mobile-register-btn" id="mobileRegisterBtn">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Daftar</span>
+                </button>
+            </div>
+        </div>
+        <div class="mobile-sidebar-menu">
+            <a href="#" class="mobile-menu-link active" data-page="games">
+                <i class="fas fa-dice-d6"></i>
+                <span>Games</span>
+            </a>
+            <a href="#" class="mobile-menu-link" data-page="premium">
+                <i class="fas fa-crown"></i>
+                <span>Premium Apps</span>
+            </a>
+            <a href="#" class="mobile-menu-link" data-page="reseller">
+                <i class="fas fa-store"></i>
+                <span>Reseller</span>
+            </a>
+            <a href="#" class="mobile-menu-link" data-page="history">
+                <i class="fas fa-clock"></i>
+                <span>History</span>
+            </a>
+        </div>
+        <div class="mobile-sidebar-footer">
+            <div class="mobile-theme-section">
+                <span>Mode Tampilan</span>
+                <div class="mobile-theme-buttons">
+                    <button class="mobile-theme-option" data-theme="light">
+                        <i class="fas fa-sun"></i>
+                        <span>Terang</span>
+                    </button>
+                    <button class="mobile-theme-option" data-theme="dark">
+                        <i class="fas fa-moon"></i>
+                        <span>Gelap</span>
+                    </button>
+                    <button class="mobile-theme-option" data-theme="system">
+                        <i class="fas fa-desktop"></i>
+                        <span>Sistem</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mobile-overlay" id="mobileOverlay"></div>
+
+    <!-- Hero Section Mobile -->
+    <section class="mobile-hero">
+        <div class="mobile-hero-banner">
+            <div class="mobile-popular-badge">
+                <i class="fas fa-fire"></i>
+                <span>Paling Populer</span>
+            </div>
+            <div class="mobile-hero-content">
+                <div class="mobile-hero-badge">
+                    <i class="fas fa-bolt"></i>
+                    <span>24/7 Instant</span>
+                </div>
+                <h1 class="mobile-hero-title">
+                    Topup Game & 
+                    <span class="mobile-gradient-text">Premium Apps</span>
+                </h1>
+                <p class="mobile-hero-subtitle">
+                    Harga termurah, proses tercepat, aman 100%
+                </p>
+                <div class="mobile-hero-stats">
+                    <div class="mobile-stat-item">
+                        <i class="fas fa-users"></i>
+                        <span>50K+</span>
+                        <small>Customers</small>
+                    </div>
+                    <div class="mobile-stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span>2-5 Menit</span>
+                        <small>Proses</small>
+                    </div>
+                    <div class="mobile-stat-item">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>100%</span>
+                        <small>Aman</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section Mobile -->
+    <section class="mobile-categories">
+        <div class="mobile-section-header">
+            <h2>Pilih Kategori</h2>
+            <p>Topup game & aplikasi favoritmu</p>
+        </div>
+        <div class="mobile-categories-grid">
+            <div class="mobile-category-card" data-cat="mlbb">
+                <div class="mobile-category-icon">
+                    <i class="fas fa-dragon"></i>
+                </div>
+                <h3>MLBB</h3>
+                <p>Diamond</p>
+            </div>
+            <div class="mobile-category-card" data-cat="ff">
+                <div class="mobile-category-icon">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <h3>Free Fire</h3>
+                <p>Diamond</p>
+            </div>
+            <div class="mobile-category-card" data-cat="genshin">
+                <div class="mobile-category-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h3>Genshin</h3>
+                <p>Crystal</p>
+            </div>
+            <div class="mobile-category-card" data-cat="valorant">
+                <div class="mobile-category-icon">
+                    <i class="fas fa-crosshairs"></i>
+                </div>
+                <h3>Valorant</h3>
+                <p>VP</p>
+            </div>
+            <div class="mobile-category-card" data-cat="pubg">
+                <div class="mobile-category-icon">
+                    <i class="fas fa-helmet-battle"></i>
+                </div>
+                <h3>PUBG</h3>
+                <p>UC</p>
+            </div>
+            <div class="mobile-category-card" data-cat="spotify">
+                <div class="mobile-category-icon">
+                    <i class="fab fa-spotify"></i>
+                </div>
+                <h3>Spotify</h3>
+                <p>Premium</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section Mobile -->
+    <section class="mobile-products">
+        <div class="mobile-section-header">
+            <h2 id="mobileSectionTitle">🔥 Popular Games</h2>
+            <p id="mobileSectionSubtitle">Topup dengan harga terbaik</p>
+        </div>
+        <div class="mobile-products-grid" id="mobileProductsGrid">
+            <!-- Products will be loaded by JS -->
+        </div>
+    </section>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav">
+        <a href="#" class="bottom-nav-item active" data-page="games">
+            <i class="fas fa-dice-d6"></i>
+            <span>Games</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="premium">
+            <i class="fas fa-crown"></i>
+            <span>Premium</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="reseller">
+            <i class="fas fa-store"></i>
+            <span>Reseller</span>
+        </a>
+        <a href="#" class="bottom-nav-item" data-page="history">
+            <i class="fas fa-clock"></i>
+            <span>History</span>
+        </a>
+    </nav>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/js/web-mobile.js"></script>
+</body>
+</html>
