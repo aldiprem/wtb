@@ -2233,7 +2233,7 @@
             
             html += `
                 <div class="promo-card" data-id="${promo.id}">
-                    <!-- Banner Preview dengan ukuran 1280x760 yang diperkecil -->
+                    <!-- Banner Preview -->
                     <div class="promo-banner-wrapper">
                         <img src="${bannerUrl}" 
                             alt="${escapeHtml(promo.title)}"
@@ -2241,7 +2241,7 @@
                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Gambar+Gagal+Dimuat';">
                     </div>
                     
-                    <!-- Header dengan judul dan status sejajar (judul di kiri, status di kanan) -->
+                    <!-- Header dengan title di kiri dan status di kanan -->
                     <div class="promo-header">
                         <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
                         <span class="promo-status ${statusClass}">
@@ -2250,7 +2250,7 @@
                         </span>
                     </div>
                     
-                    <!-- Catatan Penting (diletakkan SETELAH judul, SEBELUM deskripsi) -->
+                    <!-- Catatan Penting -->
                     ${promo.notes ? `
                         <div class="promo-notes">
                             <i class="fas fa-sticky-note"></i>
@@ -2258,7 +2258,7 @@
                         </div>
                     ` : ''}
                     
-                    <!-- Deskripsi promosi (diperbesar, digabung dengan border catatan tapi diberi pembatas) -->
+                    <!-- Deskripsi promosi -->
                     ${promo.description ? `
                         <div class="promo-description-wrapper">
                             <div class="promo-description">${escapeHtml(promo.description)}</div>

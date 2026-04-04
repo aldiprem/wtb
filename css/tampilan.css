@@ -1609,7 +1609,7 @@ input#promoEndTime:disabled {
     color: var(--success-color);
 }
 
-/* Header promo - sejajar dengan judul dan status */
+/* Promo header - title di kiri, status di kanan */
 .promo-header {
     display: flex;
     align-items: center;
@@ -1638,7 +1638,6 @@ input#promoEndTime:disabled {
     flex-shrink: 0;
     white-space: nowrap;
     margin-left: auto;
-    margin-bottom: 1px;
 }
 
 .promo-status.active {
@@ -1649,6 +1648,27 @@ input#promoEndTime:disabled {
 .promo-status.inactive {
     background: rgba(239, 68, 68, 0.15);
     color: var(--danger-color);
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+    .promo-header {
+        flex-direction: row;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .promo-title {
+        font-size: 16px;
+        flex: 1;
+        min-width: 0;
+        word-break: break-word;
+    }
+    
+    .promo-status {
+        padding: 4px 10px;
+        font-size: 11px;
+    }
 }
 
 /* Catatan Penting - border biru (diletakkan setelah judul) */
