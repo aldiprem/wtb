@@ -2241,12 +2241,11 @@
                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Gambar+Gagal+Dimuat';">
                     </div>
                     
-                    <!-- SATU HEADER dengan title di kiri dan status di kanan -->
-                    <div class="promo-header">
+                    <!-- TITLE DAN STATUS - SEBARIS DALAM SATU BARIS -->
+                    <div class="promo-title-row">
                         <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
                         <span class="promo-status ${statusClass}">
-                            <i class="fas ${statusIcon}"></i>
-                            ${statusText}
+                            <i class="fas ${statusIcon}"></i> ${statusText}
                         </span>
                     </div>
                     
@@ -2258,7 +2257,7 @@
                         </div>
                     ` : ''}
                     
-                    <!-- Deskripsi promosi -->
+                    <!-- Deskripsi -->
                     ${promo.description ? `
                         <div class="promo-description-wrapper">
                             <div class="promo-description">${escapeHtml(promo.description)}</div>
