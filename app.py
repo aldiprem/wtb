@@ -421,9 +421,13 @@ def serve_static(path):
     return send_from_directory(base_dir, path)
 
 # ==================== LOBBY TOPUP GAME DEDICATED ROUTE ====================
-@app.route('/lobby/web=<endpoint>')
+@app.route('/web=<endpoint>')
 def serve_web_dekstop(endpoint=None):
     return send_from_directory(os.path.join(base_dir, 'html'), 'web-lobby.html')
+
+@app.route('/mobile')
+def serve_web_mobile():
+    return send_from_directory(os.path.join(base_dir, 'html'), 'web-mobile.html')
 
 # ==================== DATABASE INIT & HEALTH CHECK ====================
 
