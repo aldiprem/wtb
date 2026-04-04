@@ -2067,32 +2067,33 @@
             }
         }
         
-        // Validasi hash (35 karakter hexadecimal)
-        if (bannerHash && (!bannerHash.match(/^[a-f0-9]{35}$/i))) {
-            console.warn('⚠️ Invalid banner hash format:', bannerHash);
-            // Coba ekstrak lagi
-            if (bannerHash.includes('=')) {
-                const parts = bannerHash.split('=');
-                const lastPart = parts[parts.length - 1];
-                if (lastPart.match(/^[a-f0-9]{35}$/i)) {
-                    bannerHash = lastPart;
-                    console.log('📦 Extracted hash from split:', bannerHash);
-                }
+        // ============ PERBAIKAN: VALIDASI BANNER ============
+        // Jika ini adalah EDIT promo (currentPromoId ada) DAN bannerHash kosong
+        // maka coba ambil banner dari promo yang sedang diedit
+        if (currentPromoId && (!bannerHash || bannerHash.length !== 35)) {
+            const existingPromo = promos.find(p => p.id == currentPromoId);
+            if (existingPromo && existingPromo.banner) {
+                bannerHash = existingPromo.banner;
+                console.log('📦 Using existing banner hash from promo:', bannerHash);
             }
         }
         
+        // Validasi title
         if (!title) {
             showToast('Judul promosi wajib diisi', 'warning');
             elements.promoTitle.focus();
             return;
         }
         
-        if (!bannerHash || bannerHash.length !== 35) {
+        // Validasi banner - HANYA untuk promo BARU (tanpa ID) yang tidak punya banner
+        const isNewPromo = !currentPromoId;
+        if (isNewPromo && (!bannerHash || bannerHash.length !== 35)) {
             showToast('Banner promosi wajib diupload dengan benar', 'warning');
-            console.error('Invalid banner hash:', bannerHash);
+            console.error('Invalid banner hash for new promo:', bannerHash);
             return;
         }
         
+        // Validasi tanggal - hanya jika tidak never_end
         if (!neverEnd && !endDate) {
             showToast('Tanggal berakhir wajib diisi', 'warning');
             elements.promoEndDate.focus();
@@ -2112,6 +2113,7 @@
         };
         
         console.log('💾 Saving promo with banner hash:', promoData.banner);
+        console.log('📝 Mode:', currentPromoId ? 'EDIT' : 'NEW');
         
         if (currentPromoId) {
             const index = promos.findIndex(p => p.id == currentPromoId);
@@ -2121,7 +2123,7 @@
         }
         
         hasUnsavedPromos = true;
-        renderPromos(); // Akan menggunakan fungsi renderPromos yang sudah diperbaiki
+        renderPromos();
         closePromoModal();
         showToast(`✅ Promosi ${currentPromoId ? 'diperbarui' : 'ditambahkan'}`, 'success');
         vibrate(10);
