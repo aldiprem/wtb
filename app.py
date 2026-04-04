@@ -422,6 +422,17 @@ def serve_static(path):
     """Catch-all route untuk file statis lainnya di root directory"""
     return send_from_directory(base_dir, path)
 
+# ==================== LOBBY TOPUP GAME DEDICATED ROUTE ====================
+
+@app.route('/web-dekstop')
+@app.route('/web=<endpoint>')
+def serve_web_dekstop(endpoint=None):
+    """
+    Menyediakan halaman lobby topup game dengan tema glossy transparant
+    Route: /web-dekstop atau /web=nama_endpoint
+    """
+    return send_from_directory(base_dir, 'web-dekstop.html')
+
 # ==================== DATABASE INIT & HEALTH CHECK ====================
 
 def init_mysql_tables():

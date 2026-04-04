@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Lobby Topup Game | Glossy Transparant</title>
+    <link rel="stylesheet" href="/css/web-dekstop.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <!-- Mobile Block Toast -->
+    <div id="mobile-toast" class="mobile-toast">
+        <div class="toast-content">
+            <i class="fas fa-desktop"></i>
+            <div class="toast-text">
+                <h4>Desktop Only</h4>
+                <p>Halaman ini dioptimalkan untuk desktop. Silakan buka di laptop atau PC.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3D Background Canvas -->
+    <canvas id="bg-canvas" class="bg-canvas"></canvas>
+
+    <!-- Glossy Overlay -->
+    <div class="glossy-overlay"></div>
+
+    <!-- Navigation Bar -->
+    <nav class="glass-nav">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <div class="logo-3d-icon">
+                    <i class="fas fa-gamepad"></i>
+                </div>
+                <span class="logo-text">Topup<span class="logo-highlight">Lobby</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active" data-page="games">
+                    <i class="fas fa-dice-d6"></i>
+                    <span>Games</span>
+                </a>
+                <a href="#" class="nav-link" data-page="premium">
+                    <i class="fas fa-crown"></i>
+                    <span>Premium Apps</span>
+                </a>
+                <a href="#" class="nav-link" data-page="reseller">
+                    <i class="fas fa-store"></i>
+                    <span>Reseller</span>
+                </a>
+                <a href="#" class="nav-link" data-page="history">
+                    <i class="fas fa-clock"></i>
+                    <span>History</span>
+                </a>
+            </div>
+            <div class="nav-user">
+                <div class="user-balance">
+                    <i class="fas fa-coins"></i>
+                    <span id="user-balance">Rp 0</span>
+                </div>
+                <div class="user-avatar">
+                    <img src="https://ui-avatars.com/api/?background=1a2a3a&color=00d4ff&bold=true&rounded=true&size=40" alt="User">
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-content">
+            <div class="hero-badge">
+                <i class="fas fa-bolt"></i>
+                <span>Instant Delivery 24/7</span>
+            </div>
+            <h1 class="hero-title">
+                Topup Game & 
+                <span class="gradient-text">Premium Apps</span>
+            </h1>
+            <p class="hero-subtitle">
+                Harga termurah, proses tercepat, dan aman 100%
+            </p>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <i class="fas fa-users"></i>
+                    <span>50K+</span>
+                    <small>Happy Customers</small>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-clock"></i>
+                    <span>2-5 Menit</span>
+                    <small>Proses Cepat</small>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>100%</span>
+                    <small>Transaksi Aman</small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="categories-section">
+        <div class="section-header">
+            <h2>Pilih Kategori</h2>
+            <p>Topup berbagai game dan aplikasi premium favoritmu</p>
+        </div>
+        <div class="categories-grid">
+            <div class="category-card" data-cat="mlbb">
+                <div class="category-icon">
+                    <img src="https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/mobilelegends.svg" alt="MLBB">
+                </div>
+                <h3>Mobile Legends</h3>
+                <p>Diamond & Starlight</p>
+            </div>
+            <div class="category-card" data-cat="ff">
+                <div class="category-icon">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <h3>Free Fire</h3>
+                <p>Diamond & Bundle</p>
+            </div>
+            <div class="category-card" data-cat="genshin">
+                <div class="category-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h3>Genshin Impact</h3>
+                <p>Genesis Crystal</p>
+            </div>
+            <div class="category-card" data-cat="valorant">
+                <div class="category-icon">
+                    <i class="fas fa-crosshairs"></i>
+                </div>
+                <h3>Valorant</h3>
+                <p>Valorant Points</p>
+            </div>
+            <div class="category-card" data-cat="pubg">
+                <div class="category-icon">
+                    <i class="fas fa-helmet-battle"></i>
+                </div>
+                <h3>PUBG Mobile</h3>
+                <p>UC & Pass</p>
+            </div>
+            <div class="category-card" data-cat="spotify">
+                <div class="category-icon">
+                    <i class="fab fa-spotify"></i>
+                </div>
+                <h3>Spotify</h3>
+                <p>Premium Individual</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Grid Section -->
+    <section class="products-section">
+        <div class="section-header">
+            <h2 id="section-title">🔥 Popular Games</h2>
+            <p id="section-subtitle">Topup dengan harga terbaik</p>
+        </div>
+        <div class="products-grid" id="products-grid">
+            <!-- Products will be loaded by JS -->
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="glass-footer">
+        <div class="footer-content">
+            <div class="footer-logo">
+                <i class="fas fa-gamepad"></i>
+                <span>TopupLobby</span>
+            </div>
+            <div class="footer-links">
+                <a href="#">Kebijakan Privasi</a>
+                <a href="#">Syarat & Ketentuan</a>
+                <a href="#">Bantuan</a>
+                <a href="#">Hubungi Kami</a>
+            </div>
+            <div class="footer-payment">
+                <i class="fab fa-cc-visa"></i>
+                <i class="fab fa-cc-mastercard"></i>
+                <i class="fab fa-cc-paypal"></i>
+                <i class="fas fa-mobile-alt"></i>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/js/web-dekstop.js"></script>
+</body>
+</html>
