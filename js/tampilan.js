@@ -2198,7 +2198,7 @@
         
         let html = '';
         promos.forEach(promo => {
-            // Konversi banner hash ke URL (ukuran 1280x760)
+            // Konversi banner hash ke URL
             let bannerUrl = '';
             const bannerValue = promo.banner;
             
@@ -2241,7 +2241,7 @@
                             onerror="this.src='https://via.placeholder.com/1280x760/40a7e3/ffffff?text=Gambar+Gagal+Dimuat';">
                     </div>
                     
-                    <!-- Header dengan title di kiri dan status di kanan -->
+                    <!-- SATU HEADER dengan title di kiri dan status di kanan -->
                     <div class="promo-header">
                         <h3 class="promo-title">${escapeHtml(promo.title)}</h3>
                         <span class="promo-status ${statusClass}">
@@ -2265,7 +2265,7 @@
                         </div>
                     ` : ''}
                     
-                    <!-- Meta info waktu di kiri bawah -->
+                    <!-- Meta info waktu -->
                     <div class="promo-meta">
                         ${expiryHtml}
                     </div>
