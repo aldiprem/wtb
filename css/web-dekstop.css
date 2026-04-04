@@ -1,3 +1,5 @@
+/* CODE: file path css/web-dekstop.css name */
+
 * {
     margin: 0;
     padding: 0;
@@ -93,28 +95,48 @@ body {
     line-height: 1.5;
 }
 
-/* ==================== Glass Navigation ==================== */
+/* ==================== Sticky Header Navigation ==================== */
 .glass-nav {
     position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: calc(100% - 40px);
-    max-width: 1280px;
-    background: rgba(10, 15, 25, 0.7);
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: rgba(10, 15, 25, 0.95);
     backdrop-filter: blur(20px);
-    border-radius: 60px;
-    border: 1px solid rgba(0, 212, 255, 0.2);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 212, 255, 0.1);
-    z-index: 100;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
     transition: all 0.3s ease;
+}
+
+/* Optional: Add shadow on scroll */
+.glass-nav.scrolled {
+    background: rgba(5, 10, 20, 0.98);
+    border-bottom-color: rgba(0, 212, 255, 0.3);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
 }
 
 .nav-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 24px;
+    padding: 12px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Responsive container */
+@media (max-width: 1200px) {
+    .nav-container {
+        padding: 12px 24px;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-container {
+        padding: 10px 16px;
+    }
 }
 
 .nav-logo {
@@ -155,6 +177,16 @@ body {
     background: rgba(0, 0, 0, 0.3);
     padding: 4px;
     border-radius: 40px;
+}
+
+@media (max-width: 768px) {
+    .nav-links span {
+        display: none;
+    }
+    
+    .nav-links a {
+        padding: 8px 16px;
+    }
 }
 
 .nav-link {
@@ -200,6 +232,16 @@ body {
     border: 1px solid rgba(255, 215, 0, 0.3);
 }
 
+@media (max-width: 768px) {
+    .user-balance span {
+        display: none;
+    }
+    
+    .user-balance {
+        padding: 8px 12px;
+    }
+}
+
 .user-balance i {
     color: #ffd700;
 }
@@ -215,6 +257,13 @@ body {
     border-radius: 50%;
     overflow: hidden;
     border: 2px solid rgba(0, 212, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.user-avatar:hover {
+    border-color: #00d4ff;
+    transform: scale(1.05);
 }
 
 .user-avatar img {
@@ -227,8 +276,13 @@ body {
 .hero-section {
     position: relative;
     z-index: 1;
-    padding: 140px 40px 80px;
+    padding: 100px 40px 80px;
     text-align: center;
+}
+
+.categories-section,
+.products-section {
+    scroll-margin-top: 80px;
 }
 
 .hero-content {

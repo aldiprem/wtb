@@ -1,3 +1,5 @@
+// CODE: file path js/web-dekstop.js name //
+
 // ==================== 3D Background Setup ====================
 const canvas = document.getElementById('bg-canvas');
 const scene = new THREE.Scene();
@@ -335,16 +337,31 @@ function updateBalance() {
     }, 20);
 }
 
-// ==================== Scroll Effects ====================
+// ==================== Scroll Effects for Sticky Header ====================
 window.addEventListener('scroll', () => {
     const nav = document.querySelector('.glass-nav');
-    if (window.scrollY > 50) {
-        nav.style.background = 'rgba(5, 10, 20, 0.9)';
-        nav.style.backdropFilter = 'blur(20px)';
+    if (window.scrollY > 10) {
+        nav.classList.add('scrolled');
     } else {
-        nav.style.background = 'rgba(10, 15, 25, 0.7)';
-        nav.style.backdropFilter = 'blur(20px)';
+        nav.classList.remove('scrolled');
     }
+});
+
+// Smooth scroll untuk anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href && href !== '#') {
+            e.preventDefault();
+            const target = document.querySelector(href);
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        }
+    });
 });
 
 // ==================== Initialize ====================
