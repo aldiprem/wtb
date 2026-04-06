@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 import pytz
 import os
 from pathlib import Path
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,84 @@ def init_database():
         )
     ''')
     
+    # ==================== TABEL BARU UNTUK KONFIGURASI BOT ====================
+    
+    # Tabel konfigurasi Fragment API per bot
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_fragment_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            cookies TEXT,
+            hash TEXT,
+            price_per_star REAL DEFAULT 0.01,
+            min_stars INTEGER DEFAULT 10,
+            max_stars INTEGER DEFAULT 100000,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token)
+        )
+    ''')
+    
+    # Tabel konfigurasi Wallet per bot
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_wallet_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            wallet_api_key TEXT,
+            wallet_mnemonic TEXT,
+            wallet_address TEXT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token)
+        )
+    ''')
+    
+    # Tabel konfigurasi Payment Gateway (Pakasir) per bot
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_payment_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            pakasir_slug TEXT,
+            pakasir_api_key TEXT,
+            pakasir_environment TEXT DEFAULT 'production',
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token)
+        )
+    ''')
+    
+    # Tabel konfigurasi harga per bot (template)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_price_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            stars_amount INTEGER NOT NULL,
+            price_idr REAL NOT NULL,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token, stars_amount)
+        )
+    ''')
+    
+    # Tabel konfigurasi umum per bot
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            setting_key TEXT NOT NULL,
+            setting_value TEXT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token, setting_key)
+        )
+    ''')
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bot_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,19 +221,6 @@ def init_database():
             FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token)
         )
     ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS bot_price_templates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            bot_token TEXT NOT NULL,
-            stars_amount INTEGER NOT NULL,
-            price_idr REAL NOT NULL,
-            created_at TIMESTAMP,
-            updated_at TIMESTAMP,
-            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
-            UNIQUE(bot_token, stars_amount)
-        )
-    ''')
     
     try:
         cursor.execute('ALTER TABLE deposits ADD COLUMN waiting_msg_id INTEGER')
@@ -190,55 +256,371 @@ def get_jakarta_time_iso():
 def get_jakarta_date():
     return datetime.now(JAKARTA_TZ).date().isoformat()
 
-# database/data.py - Tambahkan fungsi ini
-async def get_bot_id_by_token(bot_token: str) -> Optional[int]:
-    """Get bot ID from bot token"""
+# ===================== BOT FRAGMENT CONFIG FUNCTIONS =====================
+
+async def save_bot_fragment_config(bot_token: str, cookies: str = None, hash_val: str = None,
+                                    price_per_star: float = None, min_stars: int = None, 
+                                    max_stars: int = None) -> bool:
+    """Save Fragment API configuration for a bot"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT id FROM cloned_bots WHERE bot_token = ?", (bot_token,))
-        row = cursor.fetchone()
+        now = get_jakarta_time_iso()
+        
+        cursor.execute("SELECT * FROM bot_fragment_config WHERE bot_token = ?", (bot_token,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            updates = []
+            params = []
+            if cookies is not None:
+                updates.append("cookies = ?")
+                params.append(cookies)
+            if hash_val is not None:
+                updates.append("hash = ?")
+                params.append(hash_val)
+            if price_per_star is not None:
+                updates.append("price_per_star = ?")
+                params.append(price_per_star)
+            if min_stars is not None:
+                updates.append("min_stars = ?")
+                params.append(min_stars)
+            if max_stars is not None:
+                updates.append("max_stars = ?")
+                params.append(max_stars)
+            updates.append("updated_at = ?")
+            params.append(now)
+            params.append(bot_token)
+            
+            if updates:
+                cursor.execute(f"UPDATE bot_fragment_config SET {', '.join(updates)} WHERE bot_token = ?", params)
+        else:
+            cursor.execute("""
+                INSERT INTO bot_fragment_config (bot_token, cookies, hash, price_per_star, min_stars, max_stars, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (bot_token, cookies, hash_val, price_per_star or 0.01, min_stars or 10, max_stars or 100000, now, now))
+        
+        conn.commit()
         conn.close()
-        return row[0] if row else None
+        return True
     except Exception as e:
-        logger.error(f"Error getting bot id: {e}")
-        return None
+        logger.error(f"Error saving bot fragment config: {e}")
+        return False
 
 
-async def get_bot_token_by_id(bot_id: int) -> Optional[str]:
-    """Get bot token from bot ID"""
+async def get_bot_fragment_config(bot_token: str) -> Optional[Dict]:
+    """Get Fragment API configuration for a bot"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("SELECT bot_token FROM cloned_bots WHERE id = ?", (bot_id,))
+        cursor.execute("""
+            SELECT cookies, hash, price_per_star, min_stars, max_stars, created_at, updated_at
+            FROM bot_fragment_config WHERE bot_token = ?
+        """, (bot_token,))
         row = cursor.fetchone()
         conn.close()
-        return row[0] if row else None
-    except Exception as e:
-        logger.error(f"Error getting bot token: {e}")
-        return None
-
-
-async def get_bot_detail_by_id(bot_id: int) -> Optional[Dict]:
-    """Get bot detail by ID"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("""SELECT id, bot_token, bot_username, bot_name, status, created_by, 
-                       created_at, last_started, last_stopped, pid FROM cloned_bots 
-                       WHERE id = ?""", (bot_id,))
-        row = cursor.fetchone()
-        conn.close()
+        
         if row:
             return {
-                'id': row[0], 'bot_token': row[1], 'bot_username': row[2], 'bot_name': row[3],
-                'status': row[4], 'created_by': row[5], 'created_at': row[6],
-                'last_started': row[7], 'last_stopped': row[8], 'pid': row[9]
+                'cookies': row[0],
+                'hash': row[1],
+                'price_per_star': row[2],
+                'min_stars': row[3],
+                'max_stars': row[4],
+                'created_at': row[5],
+                'updated_at': row[6]
             }
         return None
     except Exception as e:
-        logger.error(f"Error getting bot detail: {e}")
+        logger.error(f"Error getting bot fragment config: {e}")
         return None
+
+# ===================== BOT WALLET CONFIG FUNCTIONS =====================
+
+async def save_bot_wallet_config(bot_token: str, api_key: str = None, mnemonic: list = None, 
+                                  address: str = None) -> bool:
+    """Save Wallet configuration for a bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = get_jakarta_time_iso()
+        mnemonic_json = json.dumps(mnemonic) if mnemonic else None
+        
+        cursor.execute("SELECT * FROM bot_wallet_config WHERE bot_token = ?", (bot_token,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            updates = []
+            params = []
+            if api_key is not None:
+                updates.append("wallet_api_key = ?")
+                params.append(api_key)
+            if mnemonic_json is not None:
+                updates.append("wallet_mnemonic = ?")
+                params.append(mnemonic_json)
+            if address is not None:
+                updates.append("wallet_address = ?")
+                params.append(address)
+            updates.append("updated_at = ?")
+            params.append(now)
+            params.append(bot_token)
+            
+            if updates:
+                cursor.execute(f"UPDATE bot_wallet_config SET {', '.join(updates)} WHERE bot_token = ?", params)
+        else:
+            cursor.execute("""
+                INSERT INTO bot_wallet_config (bot_token, wallet_api_key, wallet_mnemonic, wallet_address, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (bot_token, api_key, mnemonic_json, address, now, now))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error saving bot wallet config: {e}")
+        return False
+
+
+async def get_bot_wallet_config(bot_token: str) -> Optional[Dict]:
+    """Get Wallet configuration for a bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT wallet_api_key, wallet_mnemonic, wallet_address, created_at, updated_at
+            FROM bot_wallet_config WHERE bot_token = ?
+        """, (bot_token,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            mnemonic = json.loads(row[1]) if row[1] else []
+            return {
+                'wallet_api_key': row[0],
+                'wallet_mnemonic': mnemonic,
+                'wallet_address': row[2],
+                'created_at': row[3],
+                'updated_at': row[4]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error getting bot wallet config: {e}")
+        return None
+
+# ===================== BOT PAYMENT CONFIG FUNCTIONS =====================
+
+async def save_bot_payment_config(bot_token: str, pakasir_slug: str = None, 
+                                   pakasir_api_key: str = None, 
+                                   environment: str = 'production') -> bool:
+    """Save Payment Gateway configuration for a bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = get_jakarta_time_iso()
+        
+        cursor.execute("SELECT * FROM bot_payment_config WHERE bot_token = ?", (bot_token,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            updates = []
+            params = []
+            if pakasir_slug is not None:
+                updates.append("pakasir_slug = ?")
+                params.append(pakasir_slug)
+            if pakasir_api_key is not None:
+                updates.append("pakasir_api_key = ?")
+                params.append(pakasir_api_key)
+            if environment is not None:
+                updates.append("pakasir_environment = ?")
+                params.append(environment)
+            updates.append("updated_at = ?")
+            params.append(now)
+            params.append(bot_token)
+            
+            if updates:
+                cursor.execute(f"UPDATE bot_payment_config SET {', '.join(updates)} WHERE bot_token = ?", params)
+        else:
+            cursor.execute("""
+                INSERT INTO bot_payment_config (bot_token, pakasir_slug, pakasir_api_key, pakasir_environment, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (bot_token, pakasir_slug, pakasir_api_key, environment, now, now))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error saving bot payment config: {e}")
+        return False
+
+
+async def get_bot_payment_config(bot_token: str) -> Optional[Dict]:
+    """Get Payment Gateway configuration for a bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT pakasir_slug, pakasir_api_key, pakasir_environment, is_active, created_at, updated_at
+            FROM bot_payment_config WHERE bot_token = ?
+        """, (bot_token,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'pakasir_slug': row[0],
+                'pakasir_api_key': row[1],
+                'pakasir_environment': row[2],
+                'is_active': bool(row[3]) if row[3] is not None else True,
+                'created_at': row[4],
+                'updated_at': row[5]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error getting bot payment config: {e}")
+        return None
+
+# ===================== BOT SETTINGS FUNCTIONS =====================
+
+async def save_bot_setting(bot_token: str, key: str, value: str) -> bool:
+    """Save a setting for a bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = get_jakarta_time_iso()
+        
+        cursor.execute("""
+            INSERT OR REPLACE INTO bot_settings (bot_token, setting_key, setting_value, created_at, updated_at)
+            VALUES (?, ?, ?, COALESCE((SELECT created_at FROM bot_settings WHERE bot_token = ? AND setting_key = ?), ?), ?)
+        """, (bot_token, key, value, bot_token, key, now, now))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error saving bot setting: {e}")
+        return False
+
+
+async def get_bot_setting(bot_token: str, key: str) -> Optional[str]:
+    """Get a setting for a bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT setting_value FROM bot_settings 
+            WHERE bot_token = ? AND setting_key = ?
+        """, (bot_token, key))
+        row = cursor.fetchone()
+        conn.close()
+        
+        return row[0] if row else None
+    except Exception as e:
+        logger.error(f"Error getting bot setting: {e}")
+        return None
+
+
+async def get_all_bot_settings(bot_token: str) -> Dict:
+    """Get all settings for a bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT setting_key, setting_value FROM bot_settings 
+            WHERE bot_token = ?
+        """, (bot_token,))
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return {row[0]: row[1] for row in rows}
+    except Exception as e:
+        logger.error(f"Error getting bot settings: {e}")
+        return {}
+
+# ===================== BOT COMPLETE CONFIG FUNCTIONS =====================
+
+async def get_bot_complete_config(bot_token: str) -> Dict:
+    """Get complete configuration for a bot"""
+    config = {
+        'bot_info': None,
+        'fragment': None,
+        'wallet': None,
+        'payment': None,
+        'settings': {}
+    }
+    
+    # Get bot info
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, bot_token, bot_username, bot_name, status, created_by, created_at, last_started, last_stopped, pid
+        FROM cloned_bots WHERE bot_token = ?
+    """, (bot_token,))
+    row = cursor.fetchone()
+    if row:
+        config['bot_info'] = {
+            'id': row[0], 'bot_token': row[1], 'bot_username': row[2], 'bot_name': row[3],
+            'status': row[4], 'created_by': row[5], 'created_at': row[6],
+            'last_started': row[7], 'last_stopped': row[8], 'pid': row[9]
+        }
+    conn.close()
+    
+    # Get fragment config
+    config['fragment'] = await get_bot_fragment_config(bot_token)
+    
+    # Get wallet config
+    config['wallet'] = await get_bot_wallet_config(bot_token)
+    
+    # Get payment config
+    config['payment'] = await get_bot_payment_config(bot_token)
+    
+    # Get settings
+    config['settings'] = await get_all_bot_settings(bot_token)
+    
+    return config
+
+
+async def update_bot_complete_config(bot_token: str, config_data: Dict) -> bool:
+    """Update complete configuration for a bot"""
+    success = True
+    
+    if 'fragment' in config_data:
+        frag = config_data['fragment']
+        if not await save_bot_fragment_config(
+            bot_token,
+            cookies=frag.get('cookies'),
+            hash_val=frag.get('hash'),
+            price_per_star=frag.get('price_per_star'),
+            min_stars=frag.get('min_stars'),
+            max_stars=frag.get('max_stars')
+        ):
+            success = False
+    
+    if 'wallet' in config_data:
+        wallet = config_data['wallet']
+        if not await save_bot_wallet_config(
+            bot_token,
+            api_key=wallet.get('wallet_api_key'),
+            mnemonic=wallet.get('wallet_mnemonic'),
+            address=wallet.get('wallet_address')
+        ):
+            success = False
+    
+    if 'payment' in config_data:
+        payment = config_data['payment']
+        if not await save_bot_payment_config(
+            bot_token,
+            pakasir_slug=payment.get('pakasir_slug'),
+            pakasir_api_key=payment.get('pakasir_api_key'),
+            environment=payment.get('pakasir_environment', 'production')
+        ):
+            success = False
+    
+    if 'settings' in config_data:
+        for key, value in config_data['settings'].items():
+            if not await save_bot_setting(bot_token, key, value):
+                success = False
+    
+    return success
 
 # ===================== BOT PRICE CONFIG FUNCTIONS =====================
 
@@ -373,12 +755,10 @@ async def calculate_price(bot_token: str, stars: int) -> float:
     elif config['calculation_mode'] == 'interpolation' and len(templates) >= 2:
         sorted_templates = sorted(templates, key=lambda x: x['stars'])
         
-        # Jika stars sama persis dengan template
         for t in sorted_templates:
             if t['stars'] == stars:
                 return t['price']
         
-        # Cari interpolasi antara dua template
         lower = None
         upper = None
         for t in sorted_templates:
@@ -613,6 +993,12 @@ async def remove_cloned_bot(bot_token: str) -> bool:
         cursor = conn.cursor()
         cursor.execute('DELETE FROM cloned_bots WHERE bot_token = ?', (bot_token,))
         cursor.execute('DELETE FROM bot_logs WHERE bot_token = ?', (bot_token,))
+        cursor.execute('DELETE FROM bot_fragment_config WHERE bot_token = ?', (bot_token,))
+        cursor.execute('DELETE FROM bot_wallet_config WHERE bot_token = ?', (bot_token,))
+        cursor.execute('DELETE FROM bot_payment_config WHERE bot_token = ?', (bot_token,))
+        cursor.execute('DELETE FROM bot_settings WHERE bot_token = ?', (bot_token,))
+        cursor.execute('DELETE FROM bot_price_config WHERE bot_token = ?', (bot_token,))
+        cursor.execute('DELETE FROM bot_price_templates WHERE bot_token = ?', (bot_token,))
         conn.commit()
         conn.close()
         return True
@@ -640,11 +1026,9 @@ async def get_bot_stats(bot_token: str) -> Dict:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Total users yang start/interact dengan bot ini (dari activity_log)
         cursor.execute("SELECT COUNT(DISTINCT user_id) FROM activity_log WHERE bot_token = ?", (bot_token,))
         total_users = cursor.fetchone()[0] or 0
         
-        # Total purchases
         cursor.execute("""SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), 
                        COALESCE(SUM(price_idr), 0) FROM purchases 
                        WHERE bot_token = ? AND status = 'success'""", (bot_token,))
@@ -652,7 +1036,6 @@ async def get_bot_stats(bot_token: str) -> Dict:
         
         today = get_jakarta_date()
         
-        # Today's purchases
         cursor.execute("""SELECT COUNT(*), COALESCE(SUM(stars_amount), 0) FROM purchases 
                        WHERE bot_token = ? AND status = 'success' AND DATE(timestamp) = ?""", 
                       (bot_token, today))

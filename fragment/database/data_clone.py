@@ -5,11 +5,13 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 import pytz
 from pathlib import Path
+import json
 
 logger = logging.getLogger(__name__)
 
 # Database path
 DB_PATH = str(Path(__file__).parent.parent / "frag.db")
+
 
 def init_database():
     """Initialize SQLite3 database."""
@@ -93,7 +95,7 @@ def init_database():
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         )
     ''')
-
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bot_bank_accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,7 +109,7 @@ def init_database():
             FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token)
         )
     ''')
-
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bot_qris (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,6 +122,65 @@ def init_database():
             created_at TIMESTAMP,
             updated_at TIMESTAMP,
             FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token)
+        )
+    ''')
+    
+    # Tabel konfigurasi per bot
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_fragment_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            cookies TEXT,
+            hash TEXT,
+            price_per_star REAL DEFAULT 0.01,
+            min_stars INTEGER DEFAULT 10,
+            max_stars INTEGER DEFAULT 100000,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token)
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_wallet_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            wallet_api_key TEXT,
+            wallet_mnemonic TEXT,
+            wallet_address TEXT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token)
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_payment_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            pakasir_slug TEXT,
+            pakasir_api_key TEXT,
+            pakasir_environment TEXT DEFAULT 'production',
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token)
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bot_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bot_token TEXT NOT NULL,
+            setting_key TEXT NOT NULL,
+            setting_value TEXT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token),
+            UNIQUE(bot_token, setting_key)
         )
     ''')
     
@@ -144,7 +205,6 @@ def get_jakarta_date():
 # ===================== BANK ACCOUNT FUNCTIONS =====================
 
 async def add_bank_account(bot_token: str, bank_name: str, account_number: str, account_name: str) -> bool:
-    """Add bank account for bot"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -162,7 +222,6 @@ async def add_bank_account(bot_token: str, bank_name: str, account_number: str, 
 
 
 async def delete_bank_account(bot_token: str, account_id: int) -> bool:
-    """Delete bank account"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -176,7 +235,6 @@ async def delete_bank_account(bot_token: str, account_id: int) -> bool:
 
 
 async def get_bank_accounts(bot_token: str) -> List[Dict]:
-    """Get all bank accounts for bot"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -196,14 +254,11 @@ async def get_bank_accounts(bot_token: str) -> List[Dict]:
 
 
 async def set_active_bank_account(bot_token: str, account_id: int) -> bool:
-    """Set active bank account (deactivate others first)"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         now = get_jakarta_time_iso()
-        # Deactivate all
         cursor.execute("UPDATE bot_bank_accounts SET is_active = 0, updated_at = ? WHERE bot_token = ?", (now, bot_token))
-        # Activate selected
         cursor.execute("UPDATE bot_bank_accounts SET is_active = 1, updated_at = ? WHERE id = ? AND bot_token = ?", 
                       (now, account_id, bot_token))
         conn.commit()
@@ -213,35 +268,26 @@ async def set_active_bank_account(bot_token: str, account_id: int) -> bool:
         logger.error(f"Error setting active bank account: {e}")
         return False
 
-
 # ===================== QRIS FUNCTIONS =====================
 
 async def add_qris(bot_token: str, qr_string: str, qr_name: str = None) -> bool:
-    """Add or update QRIS for bot (only one QRIS per bot)"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         now = get_jakarta_time_iso()
         
-        # Cek apakah sudah ada QRIS untuk bot ini
         cursor.execute("SELECT id FROM bot_qris WHERE bot_token = ?", (bot_token,))
         existing = cursor.fetchone()
         
         if existing:
-            # Update QRIS yang sudah ada
             cursor.execute("""
-                UPDATE bot_qris 
-                SET qr_string = ?, qr_name = ?, updated_at = ? 
-                WHERE bot_token = ?
+                UPDATE bot_qris SET qr_string = ?, qr_name = ?, updated_at = ? WHERE bot_token = ?
             """, (qr_string, qr_name, now, bot_token))
-            logger.info(f"QRIS updated for bot {bot_token}")
         else:
-            # Insert QRIS baru
             cursor.execute("""
                 INSERT INTO bot_qris (bot_token, qr_string, qr_name, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?)
             """, (bot_token, qr_string, qr_name, now, now))
-            logger.info(f"QRIS added for bot {bot_token}")
         
         conn.commit()
         conn.close()
@@ -250,8 +296,8 @@ async def add_qris(bot_token: str, qr_string: str, qr_name: str = None) -> bool:
         logger.error(f"Error adding/updating QRIS: {e}")
         return False
 
+
 async def update_qris_name(bot_token: str, qris_id: int, qr_name: str) -> bool:
-    """Update QRIS name"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -268,7 +314,6 @@ async def update_qris_name(bot_token: str, qris_id: int, qr_name: str) -> bool:
 
 
 async def update_qris_note(bot_token: str, qris_id: int, note: str) -> bool:
-    """Update QRIS note"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -285,7 +330,6 @@ async def update_qris_note(bot_token: str, qris_id: int, note: str) -> bool:
 
 
 async def update_qris_fee(bot_token: str, qris_id: int, fee: float) -> bool:
-    """Update QRIS fee"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -302,7 +346,6 @@ async def update_qris_fee(bot_token: str, qris_id: int, fee: float) -> bool:
 
 
 async def delete_qris(bot_token: str, qris_id: int) -> bool:
-    """Delete QRIS"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -316,7 +359,6 @@ async def delete_qris(bot_token: str, qris_id: int) -> bool:
 
 
 async def get_qris_list(bot_token: str) -> List[Dict]:
-    """Get all QRIS for bot"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -334,8 +376,8 @@ async def get_qris_list(bot_token: str) -> List[Dict]:
         logger.error(f"Error getting QRIS list: {e}")
         return []
 
+
 async def get_active_qris(bot_token: str) -> Optional[Dict]:
-    """Get active QRIS for bot"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -355,20 +397,17 @@ async def get_active_qris(bot_token: str) -> Optional[Dict]:
         logger.error(f"Error getting active QRIS: {e}")
         return None
 
+
 async def set_active_qris(bot_token: str, qris_id: int) -> bool:
-    """Set active QRIS (deactivate others first)"""
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         now = get_jakarta_time_iso()
         
         if qris_id == 0:
-            # Nonaktifkan semua
             cursor.execute("UPDATE bot_qris SET is_active = 0, updated_at = ? WHERE bot_token = ?", (now, bot_token))
         else:
-            # Deactivate all
             cursor.execute("UPDATE bot_qris SET is_active = 0, updated_at = ? WHERE bot_token = ?", (now, bot_token))
-            # Activate selected
             cursor.execute("UPDATE bot_qris SET is_active = 1, updated_at = ? WHERE id = ? AND bot_token = ?", 
                           (now, qris_id, bot_token))
         
@@ -379,37 +418,8 @@ async def set_active_qris(bot_token: str, qris_id: int) -> bool:
         logger.error(f"Error setting active QRIS: {e}")
         return False
 
-async def toggle_qris_active(bot_token: str) -> bool:
-    """Toggle QRIS active status"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        now = get_jakarta_time_iso()
-        
-        # Cek apakah ada QRIS aktif
-        cursor.execute("SELECT id FROM bot_qris WHERE bot_token = ? AND is_active = 1", (bot_token,))
-        active = cursor.fetchone()
-        
-        if active:
-            # Jika ada yang aktif, nonaktifkan semua
-            cursor.execute("UPDATE bot_qris SET is_active = 0, updated_at = ? WHERE bot_token = ?", (now, bot_token))
-        else:
-            # Jika tidak ada yang aktif, aktifkan QRIS pertama
-            cursor.execute("SELECT id FROM bot_qris WHERE bot_token = ? ORDER BY id ASC LIMIT 1", (bot_token,))
-            first_qris = cursor.fetchone()
-            if first_qris:
-                cursor.execute("UPDATE bot_qris SET is_active = 1, updated_at = ? WHERE id = ?", (now, first_qris[0]))
-        
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        logger.error(f"Error toggling QRIS active: {e}")
-        return False
-
 # ===================== USER FUNCTIONS =====================
 
-# database/data_clone.py - Pastikan conn.close() dipanggil
 async def save_user(user_id: int, username: str = None, first_name: str = None, 
                     last_name: str = None, bot_token: str = None, admin_ids: list = None):
     try:
@@ -435,6 +445,7 @@ async def save_user(user_id: int, username: str = None, first_name: str = None,
     except Exception as e:
         logger.error(f"Error saving user: {e}")
 
+
 async def log_activity(user_id: int, action: str, details: str = None, 
                        ip: str = None, bot_token: str = None):
     try:
@@ -444,16 +455,16 @@ async def log_activity(user_id: int, action: str, details: str = None,
                        timestamp, bot_token) VALUES (?, ?, ?, ?, ?, ?)""",
                       (user_id, action, details, ip, get_jakarta_time_iso(), bot_token))
         conn.commit()
+        conn.close()
     except Exception as e:
         logger.error(f"Error logging activity: {e}")
 
-# database/data_clone.py - Perbaiki get_user_stats
+
 async def get_user_stats(user_id: int, bot_token: str = None) -> Dict:
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Get purchase stats
         if bot_token:
             cursor.execute("""SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), 
                            COALESCE(SUM(price_idr), 0) FROM purchases 
@@ -476,7 +487,6 @@ async def get_user_stats(user_id: int, bot_token: str = None) -> Dict:
                           (user_id, today))
         today_purchases = cursor.fetchone()[0]
         
-        # Get user info
         cursor.execute("SELECT username, first_name, last_name FROM users WHERE user_id = ?", (user_id,))
         user_row = cursor.fetchone()
         
@@ -544,7 +554,6 @@ async def update_deposit_status(
         cursor = conn.cursor()
         now = get_jakarta_time_iso()
         
-        # Ambil user_id dan amount sebelum update
         cursor.execute('SELECT user_id, amount FROM deposits WHERE order_id=?', (order_id,))
         deposit_data = cursor.fetchone()
         
@@ -560,7 +569,6 @@ async def update_deposit_status(
         
         conn.commit()
         
-        # If completed, update user balance
         if status == 'completed' and deposit_data:
             user_id, amount = deposit_data
             logger.info(f"Updating balance for user {user_id} with amount {amount}")
@@ -571,6 +579,7 @@ async def update_deposit_status(
     except Exception as e:
         logger.error(f"Error updating deposit status: {e}")
         return False
+
 
 async def get_deposit(order_id: str) -> Optional[Dict]:
     try:
@@ -627,7 +636,6 @@ async def get_user_deposits(user_id: int, bot_token: str = None, limit: int = 20
         logger.error(f"Error getting user deposits: {e}")
         return []
 
-
 # ===================== BALANCE FUNCTIONS =====================
 
 async def get_user_balance(user_id: int, bot_token: str = None) -> int:
@@ -650,48 +658,6 @@ async def get_user_balance(user_id: int, bot_token: str = None) -> int:
         logger.error(f"Error getting user balance: {e}")
         return 0
 
-async def get_all_stats(bot_token: str = None) -> Dict:
-    """Get all statistics for cloned bot"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) FROM users')
-        total_users = cursor.fetchone()[0]
-        today = get_jakarta_date()
-        
-        if bot_token:
-            cursor.execute("""SELECT COUNT(DISTINCT user_id) FROM activity_log 
-                           WHERE DATE(timestamp) = ? AND action != 'system' AND bot_token = ?""", 
-                          (today, bot_token))
-            active_today = cursor.fetchone()[0]
-            cursor.execute("""SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), 
-                           COALESCE(SUM(price_idr), 0) FROM purchases 
-                           WHERE status = 'success' AND bot_token = ?""", (bot_token,))
-            total_purchases, total_stars, total_volume_idr = cursor.fetchone()
-            cursor.execute("""SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), 
-                           COALESCE(SUM(price_idr), 0) FROM purchases 
-                           WHERE status = 'success' AND DATE(timestamp) = ? AND bot_token = ?""", 
-                          (today, bot_token))
-            today_purchases, today_stars, today_volume_idr = cursor.fetchone()
-        else:
-            cursor.execute("""SELECT COUNT(DISTINCT user_id) FROM activity_log 
-                           WHERE DATE(timestamp) = ? AND action != 'system'""", (today,))
-            active_today = cursor.fetchone()[0]
-            cursor.execute("""SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), 
-                           COALESCE(SUM(price_idr), 0) FROM purchases WHERE status = 'success'""")
-            total_purchases, total_stars, total_volume_idr = cursor.fetchone()
-            cursor.execute("""SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), 
-                           COALESCE(SUM(price_idr), 0) FROM purchases 
-                           WHERE status = 'success' AND DATE(timestamp) = ?""", (today,))
-            today_purchases, today_stars, today_volume_idr = cursor.fetchone()
-        
-        return {'total_users': total_users or 0, 'active_today': active_today or 0,
-                'total_purchases': total_purchases or 0, 'total_stars': total_stars or 0,
-                'total_volume_idr': total_volume_idr or 0, 'today_purchases': today_purchases or 0,
-                'today_stars': today_stars or 0, 'today_volume_idr': today_volume_idr or 0}
-    except Exception as e:
-        logger.error(f"Error getting all stats: {e}")
-        return {}
 
 async def add_user_balance(user_id: int, amount: int, bot_token: str = None) -> bool:
     try:
@@ -701,7 +667,6 @@ async def add_user_balance(user_id: int, amount: int, bot_token: str = None) -> 
         
         logger.info(f"Adding balance: user={user_id}, amount={amount}, bot_token={bot_token}")
         
-        # Check if exists
         if bot_token:
             cursor.execute("""
                 SELECT balance FROM user_balances
@@ -740,7 +705,6 @@ async def add_user_balance(user_id: int, amount: int, bot_token: str = None) -> 
         
         conn.commit()
         
-        # Verify the update
         new_balance_check = await get_user_balance(user_id, bot_token)
         logger.info(f"Verified balance after update: {new_balance_check}")
         
@@ -750,6 +714,7 @@ async def add_user_balance(user_id: int, amount: int, bot_token: str = None) -> 
     except Exception as e:
         logger.error(f"Error adding user balance: {e}")
         return False
+
 
 async def deduct_user_balance(user_id: int, amount: int, bot_token: str = None) -> bool:
     try:
