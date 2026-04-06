@@ -8,8 +8,7 @@ import pytz
 logger = logging.getLogger(__name__)
 
 # Database path
-DB_PATH = "frag.db"
-
+DB_PATH = str(Path(__file__).parent.parent / "frag.db")
 
 def init_database():
     """Initialize SQLite3 database."""

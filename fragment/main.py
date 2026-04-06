@@ -1,5 +1,9 @@
-from fragment.api import wallet
-from fragment.api import fragment
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from api import wallet
+from api import fragment
 
 # wallet
 WALLET_API_KEY = "" #try https://tonconsole.com/dashboard

@@ -20,8 +20,11 @@ from telethon import TelegramClient, events, Button
 from tonutils.client import TonapiClient
 from tonutils.wallet import WalletV5R1
 
+# Tambahkan ini untuk mengatur path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 # ===================== LOAD ENVIRONMENT VARIABLES =====================
-env_path = Path('.') / '.env'
+env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 print(f"Loading .env from: {env_path.absolute()}")
 print(f"File exists: {env_path.exists()}")
@@ -348,8 +351,7 @@ async def remove_cloned_bot(bot_token: str) -> bool:
 # ===================== BOT CLONE MANAGEMENT =====================
 
 def get_bot_script_path() -> str:
-    return os.path.abspath(__file__)
-
+    return os.path.join(os.path.dirname(__file__), "fragment_bot.py")
 
 async def start_cloned_bot(bot_token: str, bot_username: str) -> bool:
     try:
@@ -363,9 +365,9 @@ async def start_cloned_bot(bot_token: str, bot_username: str) -> bool:
         env["BOT_TOKEN"] = bot_token
         env["IS_CLONE"] = "true"
         env["MASTER_BOT_TOKEN"] = BOT_TOKEN
-        
-        proc = subprocess.Popen([sys.executable, get_bot_script_path()], env=env,
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        env["PYTHONPATH"] = str(Path(__file__).parent.parent)
+
+        proc = subprocess.Popen([sys.executable, get_bot_script_path()], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=str(Path(__file__).parent.parent))
         running_bots[bot_token] = proc
         await update_bot_status(bot_token, 'running', proc.pid)
         logger.info(f"✅ Started cloned bot: {bot_username} (PID: {proc.pid})")
