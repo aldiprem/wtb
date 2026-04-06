@@ -296,7 +296,16 @@ def fragment_login_page():
 @app.route('/fragment/dashboard')
 def fragment_dashboard_page():
     """Halaman dashboard Fragment Bot Admin"""
-    session_token = request.args.get('user') or request.cookies.get('session_token')
+    # Ambil token dari URL parameter 'user' dulu
+    session_token = request.args.get('user')
+    
+    # Jika tidak ada, coba dari cookie
+    if not session_token:
+        session_token = request.cookies.get('session_token')
+    
+    # Jika masih tidak ada, coba dari header
+    if not session_token:
+        session_token = request.headers.get('X-Session-Token')
     
     if not session_token:
         return redirect('/fragment/login')
@@ -305,7 +314,12 @@ def fragment_dashboard_page():
     if not user_session:
         return redirect('/fragment/login')
     
-    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'dashboard.html')
+    response = send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'dashboard.html')
+    
+    # Set cookie untuk下次
+    response.set_cookie('session_token', session_token, max_age=604800, path='/', httponly=False, samesite='Lax')
+    
+    return response
 
 # Fragment API Routes
 @app.route('/api/fragment/login', methods=['POST'])
