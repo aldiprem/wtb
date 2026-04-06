@@ -15,6 +15,7 @@ from flask import Flask, request, jsonify, send_from_directory, abort, redirect
 from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
+from db_config import get_db_connection
 
 # Menambahkan direktori root ke path agar modul internal terbaca dengan benar
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
