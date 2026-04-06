@@ -1284,4 +1284,3 @@ if __name__ == '__main__':
         asyncio.run(stop_all_cloned_bots())
     except Exception as e:
         logger.error(f"❌ Error fatal: {e}")
-        
