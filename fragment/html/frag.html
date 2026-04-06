@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Fragment Stars Bot - Pembelian Telegram Stars</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/css/frag.css">
+    <link rel="stylesheet" href="/css/panel.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat Fragment Bot...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="frag-container">
+        <!-- Header -->
+        <header class="frag-header">
+            <div class="header-icon">
+                <i class="fas fa-star"></i>
+            </div>
+            <div class="header-title">
+                <h1>Fragment Stars Bot</h1>
+                <span class="bot-status" id="botStatus">Online</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn-icon" id="refreshBtn" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <div class="user-profile" id="userProfile">
+                    <img src="https://ui-avatars.com/api/?name=User&size=40&background=40a7e3&color=fff" alt="User" id="userAvatar">
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-coins"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Harga per Star</span>
+                    <span class="stat-value" id="pricePerStar">0.01 TON</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Pembelian</span>
+                    <span class="stat-value" id="totalPurchases">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-star"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Stars Terjual</span>
+                    <span class="stat-value" id="totalStars">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-simple"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Volume</span>
+                    <span class="stat-value" id="totalVolume">0 TON</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Purchase Form -->
+        <div class="purchase-section">
+            <div class="section-header">
+                <h2><i class="fas fa-shopping-cart"></i> Beli Telegram Stars</h2>
+                <button class="btn-secondary" id="clearFormBtn">
+                    <i class="fas fa-eraser"></i> Clear
+                </button>
+            </div>
+            
+            <form id="purchaseForm" class="purchase-form">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Username Penerima</label>
+                    <input type="text" id="recipientUsername" placeholder="Contoh: @username atau username" class="form-input">
+                    <small class="form-hint">Masukkan username Telegram penerima stars</small>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-star"></i> Jumlah Stars</label>
+                    <div class="quantity-selector">
+                        <button type="button" class="qty-btn" data-qty="10">10</button>
+                        <button type="button" class="qty-btn" data-qty="50">50</button>
+                        <button type="button" class="qty-btn" data-qty="100">100</button>
+                        <button type="button" class="qty-btn" data-qty="500">500</button>
+                        <button type="button" class="qty-btn" data-qty="1000">1K</button>
+                        <button type="button" class="qty-btn" data-qty="5000">5K</button>
+                    </div>
+                    <input type="number" id="starsAmount" placeholder="Masukkan jumlah stars" class="form-input" min="10" max="100000">
+                    <small class="form-hint">Minimal 10 stars, maksimal 100.000 stars</small>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-credit-card"></i> Harga</label>
+                    <div class="price-display" id="priceDisplay">
+                        <span class="price-label">Total:</span>
+                        <span class="price-value" id="totalPrice">0 TON</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-user-secret"></i> Opsi Pengirim</label>
+                    <div class="sender-options">
+                        <label class="radio-label">
+                            <input type="radio" name="showSender" value="true" checked>
+                            <i class="fas fa-user-check"></i>
+                            <span>Tampilkan Nama Saya</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="showSender" value="false">
+                            <i class="fas fa-gift"></i>
+                            <span>Sembunyikan (Gift Mode)</span>
+                        </label>
+                    </div>
+                    <small class="form-hint">Gift mode akan menampilkan sebagai hadiah dari Telegram</small>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="submitPurchaseBtn">
+                        <i class="fas fa-paper-plane"></i> Beli Sekarang
+                    </button>
+                    <button type="button" class="btn-secondary" id="checkUserBtn">
+                        <i class="fas fa-search"></i> Cek User
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Recent Purchases -->
+        <div class="recent-purchases-section">
+            <div class="section-header">
+                <h2><i class="fas fa-history"></i> Pembelian Terbaru</h2>
+                <button class="btn-text" id="refreshPurchasesBtn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="purchases-list" id="purchasesList">
+                <div class="loading-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Memuat data pembelian...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bot Status Card -->
+        <div class="bot-status-card">
+            <div class="status-header">
+                <i class="fas fa-robot"></i>
+                <h3>Status Bot</h3>
+            </div>
+            <div class="status-details">
+                <div class="status-item">
+                    <span class="status-label">Fragment API:</span>
+                    <span class="status-value" id="fragmentApiStatus">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Wallet:</span>
+                    <span class="status-value" id="walletStatus">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Wallet Balance:</span>
+                    <span class="status-value" id="walletBalance">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-question-circle"></i>
+                <h3>Konfirmasi Pembelian</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                <!-- Akan diisi JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelConfirmBtn">Batal</button>
+                <button class="btn-primary" id="confirmPurchaseBtn">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Result Modal -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="resultModalHeader">
+                <i class="fas fa-check-circle"></i>
+                <h3>Hasil Transaksi</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="resultModalBody">
+                <!-- Akan diisi JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn-primary" id="closeResultBtn">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/js/frag.js"></script>
+</body>
+</html>

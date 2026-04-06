@@ -22,6 +22,7 @@ from services.tmp_font_service import tmp_font_bp
 from services.trx_service import trx_bp
 from services.users_service import user_bp
 from services.image_service import image_bp
+from services.frag_service import frag_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -323,6 +324,7 @@ app.register_blueprint(tmp_font_bp, url_prefix='/api')
 app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(image_bp, url_prefix='/api/images')
+app.register_blueprint(frag_bp)
 
 # ==================== ROUTE DEBUG ====================
 
@@ -391,6 +393,11 @@ def serve_admin_panel(endpoint):
 def serve_website(endpoint):
     """Menyediakan template utama website"""
     return send_from_directory(base_dir, 'website.html')
+
+@app.route('/fragment')
+def serve_fragment_page():
+    """Menyediakan halaman Fragment Stars Bot"""
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'frag.html')
 
 # --- RUTE UNTUK FILE STATIS DALAM SUBFOLDER ---
 @app.route('/html/<path:subfolder>/<filename>')
