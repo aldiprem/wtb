@@ -22,6 +22,6 @@ fi
 # Jalankan aplikasi
 echo -e "${GREEN}📡 Menjalankan server di port 5050...${NC}"
 python3 app.py
-python3 fragment_bot.py
+python3 /root/fragment/fragment_bot.py
 
 echo -e "${GREEN}✅ Server berhenti${NC}"
