@@ -781,7 +781,6 @@ async def deduct_user_balance(user_id: int, amount: int, bot_token: str = None) 
         logger.error(f"Error deducting user balance: {e}")
         return False
 
-
 # ===================== PURCHASE FUNCTIONS =====================
 
 async def save_purchase(user_id: int, recipient_username: str, recipient_nickname: str, 

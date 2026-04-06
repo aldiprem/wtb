@@ -1,4 +1,5 @@
-from api import fragment, wallet
+from fragment.api import wallet
+from fragment.api import fragment
 
 # wallet
 WALLET_API_KEY = "" #try https://tonconsole.com/dashboard
