@@ -1,46 +1,42 @@
-// fragment/js/frag.js - JavaScript untuk Fragment Stars Bot
+// fragment/js/frag.js - JavaScript untuk Fragment Bot Admin Panel
 
 (function() {
     'use strict';
     
-    console.log('🌟 Fragment Stars Bot - Initializing...');
+    console.log('🤖 Fragment Bot Admin Panel - Initializing...');
 
     // ==================== KONFIGURASI ====================
     const API_BASE_URL = window.ENV?.API_BASE_URL || 'https://companel.shop';
     
     // State
     let currentUser = null;
-    let config = {
-        price_per_star: 0.01,
-        min_stars: 10,
-        max_stars: 100000
-    };
-    let recentPurchases = [];
+    let allBots = [];
     let isLoading = false;
 
     // DOM Elements
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
         toastContainer: document.getElementById('toastContainer'),
-        userAvatar: document.getElementById('userAvatar'),
         refreshBtn: document.getElementById('refreshBtn'),
-        pricePerStar: document.getElementById('pricePerStar'),
-        totalPurchases: document.getElementById('totalPurchases'),
-        totalStars: document.getElementById('totalStars'),
-        totalVolume: document.getElementById('totalVolume'),
+        userAvatar: document.getElementById('userAvatar'),
+        statTotalBots: document.getElementById('statTotalBots'),
+        statRunningBots: document.getElementById('statRunningBots'),
+        statTotalUsers: document.getElementById('statTotalUsers'),
+        statTotalStars: document.getElementById('statTotalStars'),
+        statTotalVolume: document.getElementById('statTotalVolume'),
+        statWalletBalance: document.getElementById('statWalletBalance'),
         fragmentApiStatus: document.getElementById('fragmentApiStatus'),
-        walletStatus: document.getElementById('walletStatus'),
-        walletBalance: document.getElementById('walletBalance'),
-        recipientUsername: document.getElementById('recipientUsername'),
-        starsAmount: document.getElementById('starsAmount'),
-        totalPrice: document.getElementById('totalPrice'),
-        submitPurchaseBtn: document.getElementById('submitPurchaseBtn'),
-        checkUserBtn: document.getElementById('checkUserBtn'),
-        clearFormBtn: document.getElementById('clearFormBtn'),
-        refreshPurchasesBtn: document.getElementById('refreshPurchasesBtn'),
-        purchasesList: document.getElementById('purchasesList'),
-        confirmModal: document.getElementById('confirmModal'),
-        resultModal: document.getElementById('resultModal')
+        walletApiStatus: document.getElementById('walletApiStatus'),
+        addBotForm: document.getElementById('addBotForm'),
+        botToken: document.getElementById('botToken'),
+        botUsername: document.getElementById('botUsername'),
+        addBotBtn: document.getElementById('addBotBtn'),
+        refreshBotsBtn: document.getElementById('refreshBotsBtn'),
+        botsGrid: document.getElementById('botsGrid'),
+        refreshLogsBtn: document.getElementById('refreshLogsBtn'),
+        logsContainer: document.getElementById('logsContainer'),
+        botDetailModal: document.getElementById('botDetailModal'),
+        botLogModal: document.getElementById('botLogModal')
     };
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -67,19 +63,33 @@
     }
 
     function formatNumber(num) {
+        if (!num) return '0';
         return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    function formatRupiah(angka) {
-        return 'Rp ' + formatNumber(angka);
-    }
-
     function formatTon(amount) {
+        if (!amount) return '0 TON';
         return amount.toFixed(4) + ' TON';
     }
 
-    function cleanUsername(username) {
-        return username.trim().replace('@', '');
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     async function fetchAPI(endpoint, options = {}) {
@@ -106,32 +116,27 @@
     }
 
     // ==================== LOAD FUNCTIONS ====================
-    async function loadConfig() {
-        try {
-            const response = await fetchAPI('/config');
-            if (response.success) {
-                config = response.config;
-                if (elements.pricePerStar) {
-                    elements.pricePerStar.textContent = formatTon(config.price_per_star);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load config:', error);
-        }
-    }
-
     async function loadStats() {
         try {
-            const response = await fetchAPI('/stats');
+            const response = await fetchAPI('/admin/stats');
             if (response.success) {
-                if (elements.totalPurchases) {
-                    elements.totalPurchases.textContent = formatNumber(response.stats.total_purchases);
+                if (elements.statTotalBots) {
+                    elements.statTotalBots.textContent = formatNumber(response.stats.total_bots);
                 }
-                if (elements.totalStars) {
-                    elements.totalStars.textContent = formatNumber(response.stats.total_stars);
+                if (elements.statRunningBots) {
+                    elements.statRunningBots.textContent = formatNumber(response.stats.running_bots);
                 }
-                if (elements.totalVolume) {
-                    elements.totalVolume.textContent = formatTon(response.stats.total_volume);
+                if (elements.statTotalUsers) {
+                    elements.statTotalUsers.textContent = formatNumber(response.stats.total_users);
+                }
+                if (elements.statTotalStars) {
+                    elements.statTotalStars.textContent = formatNumber(response.stats.total_stars);
+                }
+                if (elements.statTotalVolume) {
+                    elements.statTotalVolume.textContent = formatTon(response.stats.total_volume);
+                }
+                if (elements.statWalletBalance) {
+                    elements.statWalletBalance.textContent = formatTon(response.stats.wallet_balance);
                 }
             }
         } catch (error) {
@@ -147,12 +152,9 @@
                     elements.fragmentApiStatus.textContent = response.status.fragment_ok ? '✅ Online' : '❌ Offline';
                     elements.fragmentApiStatus.className = `status-value ${response.status.fragment_ok ? 'online' : 'offline'}`;
                 }
-                if (elements.walletStatus) {
-                    elements.walletStatus.textContent = response.status.wallet_ok ? '✅ Online' : '❌ Offline';
-                    elements.walletStatus.className = `status-value ${response.status.wallet_ok ? 'online' : 'offline'}`;
-                }
-                if (elements.walletBalance) {
-                    elements.walletBalance.textContent = formatTon(response.status.balance);
+                if (elements.walletApiStatus) {
+                    elements.walletApiStatus.textContent = response.status.wallet_ok ? '✅ Online' : '❌ Offline';
+                    elements.walletApiStatus.className = `status-value ${response.status.wallet_ok ? 'online' : 'offline'}`;
                 }
             }
         } catch (error) {
@@ -160,358 +162,440 @@
         }
     }
 
-    async function loadRecentPurchases() {
+    async function loadBots() {
         try {
-            const response = await fetchAPI('/purchases/recent?limit=20');
+            const response = await fetchAPI('/bots');
             if (response.success) {
-                recentPurchases = response.purchases;
-                renderPurchasesList();
+                allBots = response.bots;
+                renderBotsGrid();
             }
         } catch (error) {
-            console.error('Failed to load purchases:', error);
+            console.error('Failed to load bots:', error);
+            renderBotsGrid(true);
         }
     }
 
-    function renderPurchasesList() {
-        if (!elements.purchasesList) return;
+    function renderBotsGrid(error = false) {
+        if (!elements.botsGrid) return;
         
-        if (recentPurchases.length === 0) {
-            elements.purchasesList.innerHTML = `
+        if (error) {
+            elements.botsGrid.innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-shopping-cart"></i>
-                    <p>Belum ada pembelian</p>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Gagal memuat daftar bot</p>
+                </div>
+            `;
+            return;
+        }
+        
+        if (!allBots || allBots.length === 0) {
+            elements.botsGrid.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-robot"></i>
+                    <p>Belum ada bot clone</p>
+                    <small>Gunakan form di atas untuk clone bot baru</small>
                 </div>
             `;
             return;
         }
         
         let html = '';
-        recentPurchases.forEach(purchase => {
-            const statusClass = `status-${purchase.status}`;
-            const statusText = purchase.status === 'success' ? 'Berhasil' : 
-                              purchase.status === 'pending' ? 'Diproses' : 'Gagal';
+        allBots.forEach(bot => {
+            const statusClass = bot.status === 'running' ? 'status-running' : 
+                               bot.status === 'stopped' ? 'status-stopped' : 'status-error';
+            const statusText = bot.status === 'running' ? 'Running' : 
+                              bot.status === 'stopped' ? 'Stopped' : 'Error';
             
             html += `
-                <div class="purchase-item">
-                    <div class="purchase-info">
-                        <div class="purchase-avatar">
-                            <i class="fas fa-user"></i>
+                <div class="bot-card" data-bot-id="${bot.id}">
+                    <div class="bot-header">
+                        <div class="bot-avatar">
+                            <i class="fas fa-robot"></i>
                         </div>
-                        <div class="purchase-details">
-                            <h4>@${escapeHtml(purchase.recipient_username)}</h4>
-                            <div class="purchase-meta">
-                                <span><i class="fas fa-star"></i> ${formatNumber(purchase.stars_amount)} stars</span>
-                                <span><i class="fas fa-clock"></i> ${formatDate(purchase.timestamp)}</span>
-                            </div>
+                        <div class="bot-info">
+                            <div class="bot-name">${escapeHtml(bot.bot_name || 'Fragment Bot')}</div>
+                            <div class="bot-username">@${escapeHtml(bot.bot_username || 'unknown')}</div>
+                        </div>
+                        <div>
+                            <span class="bot-status-badge ${statusClass}">${statusText}</span>
                         </div>
                     </div>
-                    <div>
-                        <span class="purchase-status ${statusClass}">${statusText}</span>
-                        <div class="purchase-amount">${formatTon(purchase.price_ton)}</div>
+                    <div class="bot-stats">
+                        <div class="bot-stat">
+                            <span class="bot-stat-value">${formatNumber(bot.total_users || 0)}</span>
+                            <span class="bot-stat-label">Users</span>
+                        </div>
+                        <div class="bot-stat">
+                            <span class="bot-stat-value">${formatNumber(bot.total_purchases || 0)}</span>
+                            <span class="bot-stat-label">Purchases</span>
+                        </div>
+                        <div class="bot-stat">
+                            <span class="bot-stat-value">${formatNumber(bot.total_stars || 0)}</span>
+                            <span class="bot-stat-label">Stars</span>
+                        </div>
+                    </div>
+                    <div class="bot-actions">
+                        ${bot.status !== 'running' ? 
+                            `<button class="bot-action-btn start" onclick="window.frag.startBot(${bot.id})">
+                                <i class="fas fa-play"></i> Start
+                            </button>` : 
+                            `<button class="bot-action-btn stop" onclick="window.frag.stopBot(${bot.id})">
+                                <i class="fas fa-stop"></i> Stop
+                            </button>`
+                        }
+                        <button class="bot-action-btn detail" onclick="window.frag.showBotDetail(${bot.id})">
+                            <i class="fas fa-info-circle"></i> Detail
+                        </button>
+                        <button class="bot-action-btn log" onclick="window.frag.showBotLogs(${bot.id})">
+                            <i class="fas fa-scroll"></i> Logs
+                        </button>
+                        <button class="bot-action-btn delete" onclick="window.frag.deleteBot(${bot.id})">
+                            <i class="fas fa-trash"></i> Hapus
+                        </button>
                     </div>
                 </div>
             `;
         });
         
-        elements.purchasesList.innerHTML = html;
+        elements.botsGrid.innerHTML = html;
     }
 
-    function formatDate(dateString) {
-        if (!dateString) return '-';
+    async function loadLogs() {
         try {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('id-ID', {
-                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-            });
-        } catch (e) {
-            return dateString;
+            const response = await fetchAPI('/logs/recent?limit=30');
+            if (response.success) {
+                renderLogs(response.logs);
+            }
+        } catch (error) {
+            console.error('Failed to load logs:', error);
         }
     }
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // ==================== PURCHASE FUNCTIONS ====================
-    function calculatePrice() {
-        const stars = parseInt(elements.starsAmount?.value) || 0;
-        const price = stars * config.price_per_star;
-        if (elements.totalPrice) {
-            elements.totalPrice.textContent = formatTon(price);
-        }
-        return price;
-    }
-
-    async function checkUser() {
-        const username = elements.recipientUsername?.value;
-        if (!username) {
-            showToast('Masukkan username terlebih dahulu', 'warning');
+    function renderLogs(logs) {
+        if (!elements.logsContainer) return;
+        
+        if (!logs || logs.length === 0) {
+            elements.logsContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <p>Belum ada log aktivitas</p>
+                </div>
+            `;
             return;
         }
         
-        const cleanName = cleanUsername(username);
+        let html = '';
+        logs.forEach(log => {
+            const levelClass = log.log_level === 'INFO' ? 'INFO' :
+                              log.log_level === 'WARNING' ? 'WARNING' : 'ERROR';
+            
+            html += `
+                <div class="log-item">
+                    <span class="log-time">${formatDate(log.timestamp)}</span>
+                    <span class="log-level ${levelClass}">${log.log_level}</span>
+                    <span class="log-message">${escapeHtml(log.message)}</span>
+                </div>
+            `;
+        });
+        
+        elements.logsContainer.innerHTML = html;
+    }
+
+    // ==================== BOT ACTIONS ====================
+    async function addBot() {
+        const token = elements.botToken?.value.trim();
+        const username = elements.botUsername?.value.trim();
+        
+        if (!token) {
+            showToast('Masukkan Bot Token', 'warning');
+            return;
+        }
+        
+        if (!token.includes(':')) {
+            showToast('Format Bot Token tidak valid', 'error');
+            return;
+        }
+        
         showLoading(true);
         
         try {
-            const response = await fetchAPI('/check-user', {
+            const response = await fetchAPI('/bots/add', {
                 method: 'POST',
-                body: JSON.stringify({ username: cleanName })
+                body: JSON.stringify({
+                    bot_token: token,
+                    bot_username: username || null
+                })
             });
             
-            if (response.success && response.user) {
-                showToast(`✅ User ditemukan: ${response.user.nickname}`, 'success');
-                if (elements.recipientUsername) {
-                    elements.recipientUsername.value = cleanName;
-                }
+            if (response.success) {
+                showToast(`✅ Bot ${response.bot_username} berhasil di-clone!`, 'success');
+                elements.botToken.value = '';
+                elements.botUsername.value = '';
+                await Promise.all([loadBots(), loadStats(), loadLogs()]);
             } else {
-                showToast(`❌ Username @${cleanName} tidak ditemukan`, 'error');
+                showToast(response.error || 'Gagal menambah bot', 'error');
             }
         } catch (error) {
-            console.error('Check user error:', error);
+            console.error('Add bot error:', error);
         } finally {
             showLoading(false);
         }
     }
 
-    async function submitPurchase() {
-        const username = elements.recipientUsername?.value;
-        const stars = parseInt(elements.starsAmount?.value);
-        const showSender = document.querySelector('input[name="showSender"]:checked')?.value === 'true';
+    async function startBot(botId) {
+        showLoading(true);
         
-        if (!username) {
-            showToast('Masukkan username penerima', 'warning');
-            return;
+        try {
+            const response = await fetchAPI(`/bots/${botId}/start`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                showToast(`✅ Bot ${response.bot_username} berhasil dijalankan`, 'success');
+                await Promise.all([loadBots(), loadStats(), loadLogs()]);
+            } else {
+                showToast(response.error || 'Gagal menjalankan bot', 'error');
+            }
+        } catch (error) {
+            console.error('Start bot error:', error);
+        } finally {
+            showLoading(false);
         }
-        
-        if (!stars || stars < config.min_stars || stars > config.max_stars) {
-            showToast(`Jumlah stars harus antara ${config.min_stars} - ${config.max_stars}`, 'warning');
-            return;
-        }
-        
-        const price = calculatePrice();
-        const cleanName = cleanUsername(username);
-        
-        // Show confirmation modal
-        showConfirmationModal({
-            username: cleanName,
-            stars: stars,
-            price: price,
-            showSender: showSender
-        });
     }
 
-    function showConfirmationModal(data) {
-        const modalBody = document.getElementById('confirmModalBody');
+    async function stopBot(botId) {
+        if (!confirm('Yakin ingin menghentikan bot ini?')) return;
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchAPI(`/bots/${botId}/stop`, {
+                method: 'POST'
+            });
+            
+            if (response.success) {
+                showToast(`✅ Bot ${response.bot_username} berhasil dihentikan`, 'success');
+                await Promise.all([loadBots(), loadStats(), loadLogs()]);
+            } else {
+                showToast(response.error || 'Gagal menghentikan bot', 'error');
+            }
+        } catch (error) {
+            console.error('Stop bot error:', error);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function deleteBot(botId) {
+        const bot = allBots.find(b => b.id === botId);
+        if (!confirm(`Yakin ingin menghapus bot @${bot?.bot_username || botId}?`)) return;
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetchAPI(`/bots/${botId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.success) {
+                showToast(`✅ Bot berhasil dihapus`, 'success');
+                await Promise.all([loadBots(), loadStats(), loadLogs()]);
+            } else {
+                showToast(response.error || 'Gagal menghapus bot', 'error');
+            }
+        } catch (error) {
+            console.error('Delete bot error:', error);
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function showBotDetail(botId) {
+        const bot = allBots.find(b => b.id === botId);
+        if (!bot) return;
+        
+        const modalBody = document.getElementById('botDetailBody');
         if (!modalBody) return;
         
         modalBody.innerHTML = `
-            <div class="confirmation-details">
+            <div class="detail-section">
+                <h4><i class="fas fa-info-circle"></i> Informasi Bot</h4>
                 <div class="detail-row">
-                    <span class="detail-label">Penerima:</span>
-                    <span class="detail-value">@${escapeHtml(data.username)}</span>
+                    <span class="detail-label">ID:</span>
+                    <span class="detail-value">#${bot.id}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Stars:</span>
-                    <span class="detail-value">${formatNumber(data.stars)} stars</span>
+                    <span class="detail-label">Nama:</span>
+                    <span class="detail-value">${escapeHtml(bot.bot_name || '-')}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Harga:</span>
-                    <span class="detail-value price">${formatTon(data.price)}</span>
+                    <span class="detail-label">Username:</span>
+                    <span class="detail-value">@${escapeHtml(bot.bot_username || '-')}</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Opsi:</span>
-                    <span class="detail-value">${data.showSender ? '👤 Tampilkan nama' : '🎁 Gift mode (anonim)'}</span>
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value">${bot.status === 'running' ? '🟢 Running' : bot.status === 'stopped' ? '🔴 Stopped' : '🟡 Error'}</span>
                 </div>
-                <div class="warning-text">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Transaksi tidak dapat dibatalkan!
+                <div class="detail-row">
+                    <span class="detail-label">Dibuat:</span>
+                    <span class="detail-value">${formatDate(bot.created_at)}</span>
+                </div>
+                ${bot.last_started ? `
+                <div class="detail-row">
+                    <span class="detail-label">Terakhir Start:</span>
+                    <span class="detail-value">${formatDate(bot.last_started)}</span>
+                </div>
+                ` : ''}
+                ${bot.last_stopped ? `
+                <div class="detail-row">
+                    <span class="detail-label">Terakhir Stop:</span>
+                    <span class="detail-value">${formatDate(bot.last_stopped)}</span>
+                </div>
+                ` : ''}
+                ${bot.pid ? `
+                <div class="detail-row">
+                    <span class="detail-label">PID:</span>
+                    <span class="detail-value">${bot.pid}</span>
+                </div>
+                ` : ''}
+            </div>
+            <div class="detail-section">
+                <h4><i class="fas fa-chart-bar"></i> Statistik</h4>
+                <div class="detail-row">
+                    <span class="detail-label">Total Users:</span>
+                    <span class="detail-value">${formatNumber(bot.total_users || 0)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Pembelian:</span>
+                    <span class="detail-value">${formatNumber(bot.total_purchases || 0)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Stars:</span>
+                    <span class="detail-value">${formatNumber(bot.total_stars || 0)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Total Volume:</span>
+                    <span class="detail-value">${formatTon(bot.total_volume || 0)}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Hari Ini:</span>
+                    <span class="detail-value">${formatNumber(bot.today_purchases || 0)} pembelian (${formatNumber(bot.today_stars || 0)} stars)</span>
                 </div>
             </div>
         `;
         
-        if (elements.confirmModal) {
-            elements.confirmModal.classList.add('active');
+        document.getElementById('modalBotName').textContent = bot.bot_name || 'Detail Bot';
+        
+        if (elements.botDetailModal) {
+            elements.botDetailModal.classList.add('active');
             
-            const confirmBtn = document.getElementById('confirmPurchaseBtn');
-            const cancelBtn = document.getElementById('cancelConfirmBtn');
-            const closeBtn = elements.confirmModal.querySelector('.modal-close');
+            const closeBtn = elements.botDetailModal.querySelector('.modal-close');
+            const closeModalBtn = document.getElementById('closeModalBtn');
             
-            const executePurchase = async () => {
-                elements.confirmModal.classList.remove('active');
-                await executePurchaseTransaction(data);
-            };
+            const closeModal = () => elements.botDetailModal.classList.remove('active');
+            if (closeBtn) closeBtn.onclick = closeModal;
+            if (closeModalBtn) closeModalBtn.onclick = closeModal;
             
-            if (confirmBtn) confirmBtn.onclick = executePurchase;
-            if (cancelBtn) cancelBtn.onclick = () => elements.confirmModal.classList.remove('active');
-            if (closeBtn) closeBtn.onclick = () => elements.confirmModal.classList.remove('active');
+            elements.botDetailModal.addEventListener('click', (e) => {
+                if (e.target === elements.botDetailModal) closeModal();
+            });
         }
     }
 
-    async function executePurchaseTransaction(data) {
+    async function showBotLogs(botId) {
+        const bot = allBots.find(b => b.id === botId);
+        if (!bot) return;
+        
         showLoading(true);
         
         try {
-            const response = await fetchAPI('/buy', {
-                method: 'POST',
-                body: JSON.stringify({
-                    username: data.username,
-                    stars: data.stars,
-                    show_sender: data.showSender
-                })
-            });
+            const response = await fetchAPI(`/bots/${botId}/logs?limit=50`);
             
-            if (response.success && response.transaction_hash) {
-                showToast('✅ Pembelian berhasil!', 'success');
-                showResultModal('success', {
-                    title: 'Pembelian Berhasil!',
-                    message: `
-                        <div class="result-details">
-                            <div class="detail-row">
-                                <span class="detail-label">Penerima:</span>
-                                <span class="detail-value">@${escapeHtml(data.username)}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Stars:</span>
-                                <span class="detail-value">${formatNumber(data.stars)} stars</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Hash:</span>
-                                <span class="detail-value hash">${response.transaction_hash}</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Explorer:</span>
-                                <span class="detail-value">
-                                    <a href="https://tonviewer.com/transaction/${response.transaction_hash}" target="_blank">
-                                        Lihat di TON Viewer <i class="fas fa-external-link-alt"></i>
-                                    </a>
-                                </span>
-                            </div>
+            const modalBody = document.getElementById('botLogBody');
+            if (!modalBody) return;
+            
+            if (response.success && response.logs && response.logs.length > 0) {
+                let logsHtml = '';
+                response.logs.forEach(log => {
+                    const levelClass = log.log_level === 'INFO' ? 'INFO' :
+                                      log.log_level === 'WARNING' ? 'WARNING' : 'ERROR';
+                    logsHtml += `
+                        <div class="log-item">
+                            <span class="log-time">${formatDate(log.timestamp)}</span>
+                            <span class="log-level ${levelClass}">${log.log_level}</span>
+                            <span class="log-message">${escapeHtml(log.message)}</span>
                         </div>
-                    `
+                    `;
                 });
-                
-                // Refresh stats and purchases
-                loadStats();
-                loadRecentPurchases();
-                loadStatus();
-                
-                // Clear form
-                if (elements.recipientUsername) elements.recipientUsername.value = '';
-                if (elements.starsAmount) elements.starsAmount.value = '';
-                calculatePrice();
-                
+                modalBody.innerHTML = logsHtml;
             } else {
-                showToast(response.error || 'Pembelian gagal', 'error');
-                showResultModal('error', {
-                    title: 'Pembelian Gagal',
-                    message: response.error || 'Terjadi kesalahan, silakan coba lagi nanti.'
+                modalBody.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-scroll"></i>
+                        <p>Belum ada log untuk bot ini</p>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('logModalTitle').textContent = `Log Bot @${bot.bot_username || bot.bot_name}`;
+            
+            if (elements.botLogModal) {
+                elements.botLogModal.classList.add('active');
+                
+                const closeBtn = elements.botLogModal.querySelector('.modal-close');
+                const closeModalBtn = document.getElementById('closeLogModalBtn');
+                
+                const closeModal = () => elements.botLogModal.classList.remove('active');
+                if (closeBtn) closeBtn.onclick = closeModal;
+                if (closeModalBtn) closeModalBtn.onclick = closeModal;
+                
+                elements.botLogModal.addEventListener('click', (e) => {
+                    if (e.target === elements.botLogModal) closeModal();
                 });
             }
         } catch (error) {
-            console.error('Purchase error:', error);
-            showToast(error.message, 'error');
-            showResultModal('error', {
-                title: 'Pembelian Gagal',
-                message: error.message || 'Terjadi kesalahan, silakan coba lagi nanti.'
-            });
+            console.error('Show logs error:', error);
+            showToast('Gagal memuat log', 'error');
         } finally {
             showLoading(false);
-        }
-    }
-
-    function showResultModal(type, data) {
-        const modal = elements.resultModal;
-        const header = document.getElementById('resultModalHeader');
-        const body = document.getElementById('resultModalBody');
-        
-        if (!modal || !header || !body) return;
-        
-        if (type === 'success') {
-            header.innerHTML = `
-                <i class="fas fa-check-circle" style="color: var(--success-color);"></i>
-                <h3>${data.title}</h3>
-                <button class="modal-close">&times;</button>
-            `;
-        } else {
-            header.innerHTML = `
-                <i class="fas fa-times-circle" style="color: var(--danger-color);"></i>
-                <h3>${data.title}</h3>
-                <button class="modal-close">&times;</button>
-            `;
-        }
-        
-        body.innerHTML = `<div class="result-content">${data.message}</div>`;
-        modal.classList.add('active');
-        
-        const closeBtn = modal.querySelector('.modal-close');
-        const closeResultBtn = document.getElementById('closeResultBtn');
-        
-        const closeModal = () => modal.classList.remove('active');
-        if (closeBtn) closeBtn.onclick = closeModal;
-        if (closeResultBtn) closeResultBtn.onclick = closeModal;
-        
-        // Auto close after 5 seconds for success
-        if (type === 'success') {
-            setTimeout(closeModal, 5000);
         }
     }
 
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
-        if (elements.submitPurchaseBtn) {
-            elements.submitPurchaseBtn.addEventListener('click', submitPurchase);
-        }
-        
-        if (elements.checkUserBtn) {
-            elements.checkUserBtn.addEventListener('click', checkUser);
-        }
-        
-        if (elements.clearFormBtn) {
-            elements.clearFormBtn.addEventListener('click', () => {
-                if (elements.recipientUsername) elements.recipientUsername.value = '';
-                if (elements.starsAmount) elements.starsAmount.value = '';
-                calculatePrice();
-                showToast('Form dibersihkan', 'info');
+        if (elements.addBotForm) {
+            elements.addBotForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                addBot();
             });
         }
-        
-        if (elements.starsAmount) {
-            elements.starsAmount.addEventListener('input', calculatePrice);
-        }
-        
-        // Quantity buttons
-        document.querySelectorAll('.qty-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const qty = parseInt(btn.dataset.qty);
-                if (elements.starsAmount) {
-                    elements.starsAmount.value = qty;
-                    calculatePrice();
-                }
-            });
-        });
         
         if (elements.refreshBtn) {
             elements.refreshBtn.addEventListener('click', async () => {
                 showToast('Memuat ulang data...', 'info');
-                await Promise.all([loadStats(), loadRecentPurchases(), loadStatus()]);
+                await Promise.all([loadStats(), loadStatus(), loadBots(), loadLogs()]);
                 showToast('Data berhasil dimuat ulang', 'success');
             });
         }
         
-        if (elements.refreshPurchasesBtn) {
-            elements.refreshPurchasesBtn.addEventListener('click', loadRecentPurchases);
+        if (elements.refreshBotsBtn) {
+            elements.refreshBotsBtn.addEventListener('click', loadBots);
         }
         
-        // Close modal on background click
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.remove('active');
+        if (elements.refreshLogsBtn) {
+            elements.refreshLogsBtn.addEventListener('click', loadLogs);
+        }
+        
+        // Close modals on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (elements.botDetailModal?.classList.contains('active')) {
+                    elements.botDetailModal.classList.remove('active');
                 }
-            });
+                if (elements.botLogModal?.classList.contains('active')) {
+                    elements.botLogModal.classList.remove('active');
+                }
+            }
         });
     }
 
@@ -522,10 +606,9 @@
             currentUser = user;
             
             if (elements.userAvatar) {
-                elements.userAvatar.src = user.photo_url || `https://ui-avatars.com/api/?name=${user.first_name}&size=40&background=40a7e3&color=fff`;
+                elements.userAvatar.src = user.photo_url || `https://ui-avatars.com/api/?name=Admin&size=40&background=40a7e3&color=fff`;
             }
             
-            // Expand WebApp
             window.Telegram.WebApp.expand();
             window.Telegram.WebApp.ready();
         }
@@ -538,20 +621,29 @@
         try {
             await loadUserData();
             await Promise.all([
-                loadConfig(),
                 loadStats(),
                 loadStatus(),
-                loadRecentPurchases()
+                loadBots(),
+                loadLogs()
             ]);
             setupEventListeners();
-            console.log('✅ Fragment Stars Bot initialized');
+            console.log('✅ Fragment Bot Admin Panel initialized');
         } catch (error) {
             console.error('❌ Init error:', error);
-            showToast('Gagal memuat data', 'error');
+            showToast('Gagal memuat panel admin', 'error');
         } finally {
             showLoading(false);
         }
     }
     
     init();
+    
+    // Expose global functions
+    window.frag = {
+        startBot,
+        stopBot,
+        deleteBot,
+        showBotDetail,
+        showBotLogs
+    };
 })();

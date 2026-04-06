@@ -1,4 +1,4 @@
-/* fragment/css/frag.css - Styling untuk Fragment Stars Bot */
+/* fragment/css/frag.css - Styling untuk Fragment Bot Admin Panel */
 
 :root {
     --primary-color: #40a7e3;
@@ -61,6 +61,12 @@ body {
     to { transform: rotate(360deg); }
 }
 
+.loading-text {
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+}
+
 /* Toast Container */
 .toast-container {
     position: fixed;
@@ -100,7 +106,7 @@ body {
 
 /* Container */
 .frag-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
 }
@@ -113,6 +119,12 @@ body {
     padding: 16px 0;
     margin-bottom: 24px;
     border-bottom: 1px solid var(--border-color);
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .header-icon {
@@ -188,7 +200,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 
 .stat-card {
@@ -199,21 +211,33 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    transition: all 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
 }
 
 .stat-icon {
     width: 48px;
     height: 48px;
-    background: rgba(64, 167, 227, 0.1);
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+.stat-icon.total-bots { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+.stat-icon.running-bots { background: linear-gradient(135deg, #10b981, #059669); }
+.stat-icon.total-users { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.stat-icon.total-stars { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-icon.total-volume { background: linear-gradient(135deg, #ec4899, #db2777); }
+.stat-icon.wallet-balance { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+
 .stat-icon i {
     font-size: 24px;
-    color: var(--primary-color);
+    color: white;
 }
 
 .stat-info {
@@ -232,8 +256,59 @@ body {
     font-weight: 700;
 }
 
-/* Purchase Section */
-.purchase-section {
+/* API Status Section */
+.api-status-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.status-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.status-header i {
+    font-size: 18px;
+    color: var(--primary-color);
+}
+
+.status-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.status-details {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.status-label {
+    color: var(--tg-hint-color);
+}
+
+.status-value.online {
+    color: var(--success-color);
+}
+
+.status-value.offline {
+    color: var(--danger-color);
+}
+
+/* Add Bot Section */
+.add-bot-section {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 20px;
@@ -245,7 +320,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
 .section-header h2 {
@@ -260,21 +335,39 @@ body {
     color: var(--primary-color);
 }
 
-/* Form */
-.purchase-form {
+.btn-text {
+    background: transparent;
+    border: none;
+    color: var(--primary-color);
+    font-size: 13px;
+    cursor: pointer;
     display: flex;
-    flex-direction: column;
-    gap: 20px;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btn-text:hover {
+    opacity: 0.8;
+}
+
+.add-bot-form {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: flex-end;
 }
 
 .form-group {
+    flex: 1;
+    min-width: 250px;
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
 .form-group label {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -306,103 +399,22 @@ body {
     color: var(--tg-hint-color);
 }
 
-/* Quantity Selector */
-.quantity-selector {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-
-.qty-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 8px 16px;
-    color: var(--tg-text-color);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.qty-btn:hover {
-    background: var(--primary-color);
-    border-color: var(--primary-color);
-}
-
-/* Price Display */
-.price-display {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    border-radius: 12px;
-    padding: 12px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.price-label {
-    font-size: 14px;
-    color: var(--tg-hint-color);
-}
-
-.price-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--success-color);
-}
-
-/* Sender Options */
-.sender-options {
-    display: flex;
-    gap: 16px;
-}
-
-.radio-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.radio-label:hover {
-    background: rgba(64, 167, 227, 0.1);
-    border-color: var(--primary-color);
-}
-
-.radio-label input {
-    accent-color: var(--primary-color);
-}
-
-.radio-label i {
-    font-size: 14px;
-}
-
-/* Form Actions */
 .form-actions {
     display: flex;
     gap: 12px;
-    margin-top: 8px;
 }
 
 .btn-primary {
-    flex: 1;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border: none;
-    border-radius: 30px;
-    padding: 14px 24px;
+    border-radius: 12px;
+    padding: 12px 24px;
     color: white;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
     transition: all 0.2s;
 }
@@ -415,15 +427,14 @@ body {
 .btn-secondary {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
-    border-radius: 30px;
-    padding: 14px 24px;
+    border-radius: 12px;
+    padding: 12px 24px;
     color: var(--tg-text-color);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
     transition: all 0.2s;
 }
@@ -432,19 +443,8 @@ body {
     background: rgba(255, 255, 255, 0.1);
 }
 
-.btn-text {
-    background: transparent;
-    border: none;
-    color: var(--primary-color);
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-/* Purchases List */
-.recent-purchases-section {
+/* Bots Grid */
+.bots-section {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 20px;
@@ -452,142 +452,232 @@ body {
     margin-bottom: 32px;
 }
 
-.purchases-list {
-    max-height: 400px;
-    overflow-y: auto;
+.bots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 16px;
 }
 
-.purchase-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+.bot-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
     padding: 16px;
-    border-bottom: 1px solid var(--border-color);
     transition: all 0.2s;
 }
 
-.purchase-item:hover {
-    background: var(--bg-card-hover);
+.bot-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
 }
 
-.purchase-info {
+.bot-header {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-bottom: 12px;
 }
 
-.purchase-avatar {
-    width: 40px;
-    height: 40px;
-    background: rgba(64, 167, 227, 0.1);
-    border-radius: 10px;
+.bot-avatar {
+    width: 48px;
+    height: 48px;
+    background: rgba(64, 167, 227, 0.15);
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.purchase-avatar i {
-    font-size: 18px;
+.bot-avatar i {
+    font-size: 24px;
     color: var(--primary-color);
 }
 
-.purchase-details h4 {
-    font-size: 14px;
+.bot-info {
+    flex: 1;
+}
+
+.bot-name {
+    font-size: 16px;
     font-weight: 600;
     margin-bottom: 4px;
 }
 
-.purchase-meta {
-    font-size: 11px;
+.bot-username {
+    font-size: 12px;
     color: var(--tg-hint-color);
-    display: flex;
-    gap: 12px;
 }
 
-.purchase-status {
+.bot-status-badge {
+    display: inline-block;
     padding: 4px 10px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: 500;
 }
 
-.status-success {
+.status-running {
     background: rgba(16, 185, 129, 0.15);
     color: var(--success-color);
 }
 
-.status-pending {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--warning-color);
-}
-
-.status-failed {
+.status-stopped {
     background: rgba(239, 68, 68, 0.15);
     color: var(--danger-color);
 }
 
-.purchase-amount {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--primary-color);
+.status-error {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning-color);
 }
 
-/* Bot Status Card */
-.bot-status-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 20px;
-}
-
-.status-header {
+.bot-stats {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    gap: 16px;
     margin-bottom: 16px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
 }
 
-.status-header i {
-    font-size: 20px;
-    color: var(--primary-color);
+.bot-stat {
+    flex: 1;
+    text-align: center;
 }
 
-.status-header h3 {
-    font-size: 16px;
-    font-weight: 600;
+.bot-stat-value {
+    font-size: 14px;
+    font-weight: 700;
+    display: block;
 }
 
-.status-details {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-}
-
-.status-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 10px;
-}
-
-.status-label {
-    font-size: 12px;
+.bot-stat-label {
+    font-size: 10px;
     color: var(--tg-hint-color);
 }
 
-.status-value {
-    font-size: 13px;
-    font-weight: 500;
+.bot-actions {
+    display: flex;
+    gap: 8px;
 }
 
-.status-value.online {
+.bot-action-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.bot-action-btn.start {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
     color: var(--success-color);
 }
 
-.status-value.offline {
+.bot-action-btn.start:hover {
+    background: var(--success-color);
+    color: white;
+}
+
+.bot-action-btn.stop {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
     color: var(--danger-color);
+}
+
+.bot-action-btn.stop:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+.bot-action-btn.delete {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--danger-color);
+}
+
+.bot-action-btn.delete:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+.bot-action-btn.detail, .bot-action-btn.log {
+    background: rgba(64, 167, 227, 0.15);
+    border: 1px solid rgba(64, 167, 227, 0.3);
+    color: var(--primary-color);
+}
+
+.bot-action-btn.detail:hover, .bot-action-btn.log:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* Logs Section */
+.logs-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 24px;
+}
+
+.logs-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.log-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 12px;
+}
+
+.log-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.log-time {
+    color: var(--tg-hint-color);
+    font-family: monospace;
+    min-width: 100px;
+}
+
+.log-level {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: center;
+}
+
+.log-level.INFO {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--info-color);
+}
+
+.log-level.WARNING {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning-color);
+}
+
+.log-level.ERROR {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger-color);
+}
+
+.log-message {
+    flex: 1;
+    word-break: break-word;
 }
 
 /* Modal */
@@ -613,11 +703,15 @@ body {
     background: var(--tg-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 20px;
-    max-width: 500px;
+    max-width: 600px;
     width: 90%;
     max-height: 80vh;
     overflow: auto;
     animation: modalIn 0.3s ease;
+}
+
+.modal-content.modal-lg {
+    max-width: 800px;
 }
 
 @keyframes modalIn {
@@ -641,6 +735,7 @@ body {
 
 .modal-header i {
     font-size: 24px;
+    color: var(--primary-color);
 }
 
 .modal-header h3 {
@@ -668,9 +763,44 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
-.modal-footer .btn-primary,
-.modal-footer .btn-secondary {
+/* Detail Bot */
+.detail-section {
+    margin-bottom: 20px;
+}
+
+.detail-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.detail-section h4 i {
+    color: var(--primary-color);
+}
+
+.detail-row {
+    display: flex;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 13px;
+}
+
+.detail-label {
+    width: 120px;
+    color: var(--tg-hint-color);
+}
+
+.detail-value {
     flex: 1;
+    word-break: break-word;
+}
+
+.detail-value.hash {
+    font-family: monospace;
+    font-size: 11px;
 }
 
 /* Loading State */
@@ -697,6 +827,10 @@ body {
     opacity: 0.5;
 }
 
+.empty-state p {
+    font-size: 14px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .frag-container {
@@ -707,16 +841,48 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .sender-options {
+    .bots-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .add-bot-form {
         flex-direction: column;
+    }
+    
+    .form-group {
+        width: 100%;
     }
     
     .form-actions {
-        flex-direction: column;
+        width: 100%;
     }
     
-    .status-details {
-        grid-template-columns: 1fr;
+    .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .bot-actions {
+        flex-wrap: wrap;
+    }
+    
+    .bot-action-btn {
+        flex: 1;
+        min-width: 70px;
+    }
+    
+    .log-item {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .detail-row {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .detail-label {
+        width: 100%;
     }
 }
 
@@ -725,13 +891,20 @@ body {
         grid-template-columns: 1fr;
     }
     
-    .quantity-selector {
-        justify-content: center;
+    .header-left {
+        gap: 8px;
     }
     
-    .purchase-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
+    .header-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .header-icon i {
+        font-size: 18px;
+    }
+    
+    .header-title h1 {
+        font-size: 16px;
     }
 }
