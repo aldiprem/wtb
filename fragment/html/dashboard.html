@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dashboard - Fragment Bot Admin</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/fragment/css/dashboard.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-robot"></i>
+                <span>Fragment Bot</span>
+            </div>
+            <button class="sidebar-close" id="sidebarClose">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="user-avatar">
+                <i class="fas fa-user-circle"></i>
+            </div>
+            <div class="user-name" id="userName">Loading...</div>
+            <div class="user-username" id="userUsername">@loading</div>
+        </div>
+        
+        <div class="sidebar-menu">
+            <div class="menu-item active" data-page="dashboard">
+                <i class="fas fa-chart-pie"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="menu-item" data-page="profile">
+                <i class="fas fa-user"></i>
+                <span>Profil</span>
+            </div>
+            <div class="menu-item" data-page="bot">
+                <i class="fas fa-robot"></i>
+                <span>Bot Clone</span>
+            </div>
+            <div class="menu-item" data-page="users">
+                <i class="fas fa-users"></i>
+                <span>User</span>
+            </div>
+            <div class="menu-item" data-page="settings">
+                <i class="fas fa-cog"></i>
+                <span>Pengaturan</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            <button class="logout-btn" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i>
+                Keluar
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content" id="mainContent">
+        <div class="header">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="page-title" id="pageTitle">Dashboard</div>
+            <div style="width: 32px;"></div>
+        </div>
+        
+        <div class="container" id="pageContainer">
+            <!-- Dashboard Page -->
+            <div id="page-dashboard" class="page">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon bots">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Bot</span>
+                            <span class="stat-value" id="statTotalBots">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon users">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total User</span>
+                            <span class="stat-value" id="statTotalUsers">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon stars">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Stars Terjual</span>
+                            <span class="stat-value" id="statTotalStars">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon volume">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Volume (TON)</span>
+                            <span class="stat-value" id="statTotalVolume">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-section">
+                    <div class="chart-title">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Grafik Penjualan 7 Hari Terakhir</span>
+                    </div>
+                    <canvas id="salesChart"></canvas>
+                </div>
+                
+                <div class="activity-section">
+                    <div class="activity-title">
+                        <i class="fas fa-history"></i>
+                        <span>Aktivitas Terbaru</span>
+                    </div>
+                    <div class="activity-list" id="activityList">
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Memuat aktivitas...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Profile Page -->
+            <div id="page-profile" class="page" style="display: none;">
+                <div class="profile-section">
+                    <div class="chart-title">
+                        <i class="fas fa-user"></i>
+                        <span>Informasi Profil</span>
+                    </div>
+                    <div id="profileInfo">
+                        <div class="loading-state">Memuat data profil...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bot Page -->
+            <div id="page-bot" class="page" style="display: none;">
+                <div class="profile-section">
+                    <div class="chart-title">
+                        <i class="fas fa-robot"></i>
+                        <span>Informasi Bot Clone</span>
+                    </div>
+                    <div id="botInfo">
+                        <div class="loading-state">Memuat data bot...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Users Page -->
+            <div id="page-users" class="page" style="display: none;">
+                <div class="profile-section">
+                    <div class="chart-title">
+                        <i class="fas fa-users"></i>
+                        <span>Daftar User</span>
+                    </div>
+                    <div id="usersList">
+                        <div class="loading-state">Memuat data user...</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Page -->
+            <div id="page-settings" class="page" style="display: none;">
+                <div class="profile-section">
+                    <div class="chart-title">
+                        <i class="fas fa-cog"></i>
+                        <span>Pengaturan</span>
+                    </div>
+                    <div id="settingsInfo">
+                        <div class="empty-state">
+                            <i class="fas fa-cog"></i>
+                            <p>Fitur pengaturan akan segera hadir</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/fragment/js/dashboard.js"></script>
+</body>
+</html>

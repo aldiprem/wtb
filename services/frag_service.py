@@ -1,6 +1,6 @@
 # services/frag_service.py - Flask Service untuk Fragment Bot Admin Panel
 
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, make_response
 import sys
 import os
 import asyncio
@@ -8,39 +8,23 @@ import logging
 import json
 import sqlite3
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
+from functools import wraps
 
-# Add path untuk import fragment modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Import fragment modules - HAPUS import wallet
-from fragment.api import fragment as frag_api
-# from fragment.api import wallet as wallet_api  # <-- HAPUS INI, TIDAK DIPERLUKAN
 from fragment.database import data as db_data
 
 frag_bp = Blueprint('fragment', __name__, url_prefix='/api/fragment')
 logger = logging.getLogger(__name__)
 
-# ==================== KONFIGURASI ====================
-# Load dari environment
-COOKIES = os.getenv("COOKIES", "")
-HASH = os.getenv("HASH", "")
-WALLET_API_KEY = os.getenv("WALLET_API_KEY", "")
-WALLET_MNEMONIC_STR = os.getenv("WALLET_MNEMONIC", "[]")
-
-try:
-    WALLET_MNEMONIC = json.loads(WALLET_MNEMONIC_STR) if isinstance(WALLET_MNEMONIC_STR, str) else WALLET_MNEMONIC_STR
-except:
-    WALLET_MNEMONIC = []
-
-PRICE_PER_STAR = float(os.getenv("PRICE_PER_STAR", 0.01))
-MIN_STARS = int(os.getenv("MIN_STARS", 10))
-MAX_STARS = int(os.getenv("MAX_STARS", 100000))
-
 # Database path
 DB_PATH = Path(__file__).parent.parent / "frag.db"
 
-# ==================== HELPER FUNCTIONS ====================
+def get_db_connection():
+    """Get SQLite database connection"""
+    return sqlite3.connect(str(DB_PATH))
+
 def run_async(coro):
     """Run async function in sync context"""
     try:
@@ -50,82 +34,201 @@ def run_async(coro):
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(coro)
 
-def get_db_connection():
-    """Get SQLite database connection"""
-    return sqlite3.connect(str(DB_PATH))
-
 def _cors_response(response):
     """Add CORS headers to response"""
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token')
     return response
 
-# ==================== GET WALLET BALANCE (OPTIONAL) ====================
-def get_wallet_balance():
-    """Get wallet balance if available, return 0 if not"""
+# ==================== AUTH MIDDLEWARE ====================
+
+def get_session_from_request():
+    """Get session token from request headers"""
+    return request.headers.get('X-Session-Token')
+
+def require_auth(f):
+    """Decorator untuk memeriksa autentikasi"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        session_token = get_session_from_request()
+        if not session_token:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+        
+        user_session = run_async(db_data.validate_panel_session(session_token))
+        if not user_session:
+            return jsonify({'success': False, 'error': 'Session expired'}), 401
+        
+        request.user_session = user_session
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ==================== AUTH ENDPOINTS ====================
+
+@frag_bp.route('/login', methods=['POST', 'OPTIONS'])
+def login():
+    """Login endpoint"""
+    if request.method == 'OPTIONS':
+        return _cors_response(jsonify({'success': True}))
+    
     try:
-        from fragment.api import wallet as wallet_api
-        if WALLET_API_KEY and WALLET_MNEMONIC:
-            return run_async(wallet_api.get_balance(WALLET_API_KEY, WALLET_MNEMONIC))
-    except ImportError:
-        pass
+        data = request.json
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        if not username or not password:
+            return jsonify({'success': False, 'error': 'Username dan password diperlukan'}), 400
+        
+        user = run_async(db_data.authenticate_panel_user(username, password))
+        if not user:
+            return jsonify({'success': False, 'error': 'Username atau password salah'}), 401
+        
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+        user_agent = request.headers.get('User-Agent')
+        
+        session_token = run_async(db_data.create_panel_session(user['id'], ip_address, user_agent))
+        if not session_token:
+            return jsonify({'success': False, 'error': 'Gagal membuat session'}), 500
+        
+        return jsonify({
+            'success': True,
+            'session_token': session_token,
+            'user': {'username': user['username']}
+        })
     except Exception as e:
-        logger.error(f"Error getting balance: {e}")
-    return 0.0
+        logger.error(f"Login error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== ADMIN STATS ENDPOINTS ====================
-
-@frag_bp.route('/status', methods=['GET', 'OPTIONS'])
-def get_status():
-    """Get bot status (Fragment API, Wallet)"""
+@frag_bp.route('/logout', methods=['POST', 'OPTIONS'])
+@require_auth
+def logout():
+    """Logout endpoint"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
-    fragment_ok = bool(COOKIES and HASH)
-    wallet_ok = bool(WALLET_API_KEY and WALLET_MNEMONIC)
-    balance = get_wallet_balance()
+    session_token = get_session_from_request()
+    if session_token:
+        run_async(db_data.delete_panel_session(session_token))
     
-    return jsonify({
-        'success': True,
-        'status': {
-            'fragment_ok': fragment_ok,
-            'wallet_ok': wallet_ok,
-            'balance': balance
-        }
-    })
+    return jsonify({'success': True})
 
-@frag_bp.route('/admin/stats', methods=['GET', 'OPTIONS'])
-def get_admin_stats():
-    """Get admin statistics"""
+@frag_bp.route('/profile', methods=['GET', 'OPTIONS'])
+@require_auth
+def get_profile():
+    """Get user profile"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
     try:
+        user_session = request.user_session
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT username, bot_token, created_at, last_login
+            FROM panel_users WHERE id = ?
+        """, (user_session['user_id'],))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return jsonify({
+                'success': True,
+                'profile': {
+                    'username': row[0],
+                    'bot_token': row[1],
+                    'created_at': row[2],
+                    'last_login': row[3]
+                }
+            })
+        return jsonify({'success': False, 'error': 'User not found'}), 404
+    except Exception as e:
+        logger.error(f"Error getting profile: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== DASHBOARD ENDPOINTS ====================
+
+@frag_bp.route('/dashboard/stats', methods=['GET', 'OPTIONS'])
+@require_auth
+def get_dashboard_stats():
+    """Get dashboard statistics with chart data"""
+    if request.method == 'OPTIONS':
+        return _cors_response(jsonify({'success': True}))
+    
+    try:
+        user_session = request.user_session
+        bot_token = user_session.get('bot_token')
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         
         # Total bots
-        cursor.execute("SELECT COUNT(*) FROM cloned_bots")
+        if bot_token:
+            cursor.execute("SELECT COUNT(*) FROM cloned_bots WHERE bot_token = ?", (bot_token,))
+        else:
+            cursor.execute("SELECT COUNT(*) FROM cloned_bots")
         total_bots = cursor.fetchone()[0] or 0
         
-        # Running bots
-        cursor.execute("SELECT COUNT(*) FROM cloned_bots WHERE status = 'running'")
-        running_bots = cursor.fetchone()[0] or 0
-        
-        # Total users (distinct)
+        # Total users
         cursor.execute("SELECT COUNT(DISTINCT user_id) FROM users")
         total_users = cursor.fetchone()[0] or 0
         
         # Total purchases
-        cursor.execute("""
-            SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_ton), 0)
-            FROM purchases WHERE status = 'success'
-        """)
+        if bot_token:
+            cursor.execute("""
+                SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_ton), 0)
+                FROM purchases WHERE status = 'success' AND bot_token = ?
+            """, (bot_token,))
+        else:
+            cursor.execute("""
+                SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_ton), 0)
+                FROM purchases WHERE status = 'success'
+            """)
         total_purchases, total_stars, total_volume = cursor.fetchone()
         
-        # Wallet balance
-        wallet_balance = get_wallet_balance()
+        # Chart data (7 days)
+        chart_labels = []
+        chart_values = []
+        
+        for i in range(6, -1, -1):
+            date = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
+            chart_labels.append((datetime.now() - timedelta(days=i)).strftime('%d/%m'))
+            
+            if bot_token:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(stars_amount), 0)
+                    FROM purchases 
+                    WHERE DATE(timestamp) = ? AND status = 'success' AND bot_token = ?
+                """, (date, bot_token))
+            else:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(stars_amount), 0)
+                    FROM purchases 
+                    WHERE DATE(timestamp) = ? AND status = 'success'
+                """, (date,))
+            chart_values.append(cursor.fetchone()[0] or 0)
+        
+        # Recent activities
+        if bot_token:
+            cursor.execute("""
+                SELECT action, details, timestamp FROM activity_log 
+                WHERE bot_token = ? OR bot_token IS NULL
+                ORDER BY timestamp DESC LIMIT 10
+            """, (bot_token,))
+        else:
+            cursor.execute("""
+                SELECT action, details, timestamp FROM activity_log 
+                ORDER BY timestamp DESC LIMIT 10
+            """)
+        
+        activities = []
+        for row in cursor.fetchall():
+            icon = 'shopping-cart' if 'purchase' in str(row[0]) else 'user' if 'user' in str(row[0]) else 'bell'
+            activities.append({
+                'icon': icon,
+                'message': str(row[1]) if row[1] else str(row[0]),
+                'timestamp': row[2]
+            })
         
         conn.close()
         
@@ -133,210 +236,99 @@ def get_admin_stats():
             'success': True,
             'stats': {
                 'total_bots': total_bots,
-                'running_bots': running_bots,
                 'total_users': total_users,
                 'total_purchases': total_purchases or 0,
                 'total_stars': total_stars or 0,
-                'total_volume': total_volume or 0,
-                'wallet_balance': wallet_balance
-            }
+                'total_volume': float(total_volume or 0)
+            },
+            'chart': {
+                'labels': chart_labels,
+                'values': chart_values
+            },
+            'activities': activities
         })
     except Exception as e:
-        logger.error(f"Error getting admin stats: {e}")
+        logger.error(f"Error getting dashboard stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== BOT MANAGEMENT ENDPOINTS ====================
-
-@frag_bp.route('/bots', methods=['GET', 'OPTIONS'])
-def get_bots():
-    """Get all cloned bots"""
+@frag_bp.route('/bot/info', methods=['GET', 'OPTIONS'])
+@require_auth
+def get_bot_info():
+    """Get bot information for current user"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
     try:
-        bots = run_async(db_data.get_cloned_bots())
-        
-        # Add stats for each bot
-        for bot in bots:
-            stats = run_async(db_data.get_bot_stats(bot['bot_token']))
-            bot.update(stats)
-        
-        return jsonify({'success': True, 'bots': bots})
-    except Exception as e:
-        logger.error(f"Error getting bots: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@frag_bp.route('/bots/add', methods=['POST', 'OPTIONS'])
-def add_bot():
-    """Add a new cloned bot"""
-    if request.method == 'OPTIONS':
-        return _cors_response(jsonify({'success': True}))
-    
-    try:
-        data = request.json
-        bot_token = data.get('bot_token', '').strip()
-        bot_username = data.get('bot_username', '').strip()
+        user_session = request.user_session
+        bot_token = user_session.get('bot_token')
         
         if not bot_token:
-            return jsonify({'success': False, 'error': 'Bot token required'}), 400
+            return jsonify({'success': True, 'bot': None})
         
-        if ':' not in bot_token:
-            return jsonify({'success': False, 'error': 'Invalid bot token format'}), 400
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT bot_token, bot_username, bot_name, status, created_at, last_started, last_stopped
+            FROM cloned_bots WHERE bot_token = ?
+        """, (bot_token,))
+        row = cursor.fetchone()
+        conn.close()
         
-        # Validate bot token
-        try:
-            from telethon import TelegramClient
-            
-            async def validate_token():
-                temp_client = TelegramClient('temp_validate', int(os.getenv("API_ID", 0)), os.getenv("API_HASH", ""))
-                await temp_client.start(bot_token=bot_token)
-                me = await temp_client.get_me()
-                await temp_client.disconnect()
-                return me
-            
-            me = run_async(validate_token())
-            bot_username = bot_username or me.username or f"bot_{me.id}"
-            bot_name = me.first_name or "Fragment Stars Bot"
-            
-        except Exception as e:
-            return jsonify({'success': False, 'error': f'Invalid bot token: {str(e)}'}), 400
-        
-        # Add to database
-        success = run_async(db_data.add_cloned_bot(bot_token, bot_username, bot_name, 1))
-        
-        if success:
+        if row:
             return jsonify({
                 'success': True,
-                'bot_username': bot_username,
-                'bot_name': bot_name,
-                'message': 'Bot added successfully'
+                'bot': {
+                    'bot_token': row[0],
+                    'bot_username': row[1],
+                    'bot_name': row[2],
+                    'status': row[3],
+                    'created_at': row[4],
+                    'last_started': row[5],
+                    'last_stopped': row[6]
+                }
             })
-        else:
-            return jsonify({'success': False, 'error': 'Failed to save bot to database'}), 500
-            
+        return jsonify({'success': True, 'bot': None})
     except Exception as e:
-        logger.error(f"Error adding bot: {e}")
+        logger.error(f"Error getting bot info: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@frag_bp.route('/bots/<int:bot_id>/start', methods=['POST', 'OPTIONS'])
-def start_bot(bot_id):
-    """Start a cloned bot"""
+@frag_bp.route('/users/list', methods=['GET', 'OPTIONS'])
+@require_auth
+def get_users_list():
+    """Get list of users with their stats"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
     try:
-        bot_detail = run_async(db_data.get_bot_detail_by_id(bot_id))
-        if not bot_detail:
-            return jsonify({'success': False, 'error': 'Bot not found'}), 404
-        
-        # Update status di database saja (bot akan dijalankan oleh master)
-        run_async(db_data.update_bot_status(bot_detail['bot_token'], 'running'))
-        
-        return jsonify({'success': True, 'bot_username': bot_detail['bot_username']})
-    except Exception as e:
-        logger.error(f"Error starting bot: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@frag_bp.route('/bots/<int:bot_id>/stop', methods=['POST', 'OPTIONS'])
-def stop_bot(bot_id):
-    """Stop a cloned bot"""
-    if request.method == 'OPTIONS':
-        return _cors_response(jsonify({'success': True}))
-    
-    try:
-        bot_detail = run_async(db_data.get_bot_detail_by_id(bot_id))
-        if not bot_detail:
-            return jsonify({'success': False, 'error': 'Bot not found'}), 404
-        
-        # Update status di database saja
-        run_async(db_data.update_bot_status(bot_detail['bot_token'], 'stopped'))
-        
-        return jsonify({'success': True, 'bot_username': bot_detail['bot_username']})
-    except Exception as e:
-        logger.error(f"Error stopping bot: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@frag_bp.route('/bots/<int:bot_id>', methods=['DELETE', 'OPTIONS'])
-def delete_bot(bot_id):
-    """Delete a cloned bot"""
-    if request.method == 'OPTIONS':
-        return _cors_response(jsonify({'success': True}))
-    
-    try:
-        bot_detail = run_async(db_data.get_bot_detail_by_id(bot_id))
-        if not bot_detail:
-            return jsonify({'success': False, 'error': 'Bot not found'}), 404
-        
-        # Remove from database
-        success = run_async(db_data.remove_cloned_bot(bot_detail['bot_token']))
-        
-        if success:
-            return jsonify({'success': True, 'message': 'Bot deleted'})
-        else:
-            return jsonify({'success': False, 'error': 'Failed to delete bot'}), 500
-            
-    except Exception as e:
-        logger.error(f"Error deleting bot: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@frag_bp.route('/bots/<int:bot_id>/logs', methods=['GET', 'OPTIONS'])
-def get_bot_logs(bot_id):
-    """Get logs for a specific bot"""
-    if request.method == 'OPTIONS':
-        return _cors_response(jsonify({'success': True}))
-    
-    try:
-        bot_detail = run_async(db_data.get_bot_detail_by_id(bot_id))
-        if not bot_detail:
-            return jsonify({'success': False, 'error': 'Bot not found'}), 404
-        
         limit = request.args.get('limit', default=50, type=int)
-        logs = run_async(db_data.get_bot_logs(bot_detail['bot_username'], limit))
-        
-        log_list = []
-        for log in logs:
-            log_list.append({
-                'log_level': log[0],
-                'message': log[1],
-                'timestamp': log[2]
-            })
-        
-        return jsonify({'success': True, 'logs': log_list})
-    except Exception as e:
-        logger.error(f"Error getting bot logs: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== LOGS ENDPOINTS ====================
-
-@frag_bp.route('/logs/recent', methods=['GET', 'OPTIONS'])
-def get_recent_logs():
-    """Get recent activity logs"""
-    if request.method == 'OPTIONS':
-        return _cors_response(jsonify({'success': True}))
-    
-    try:
-        limit = request.args.get('limit', default=30, type=int)
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT log_level, message, timestamp FROM bot_logs 
-            ORDER BY timestamp DESC LIMIT ?
+            SELECT u.user_id, u.username, u.first_name, u.last_name,
+                   COALESCE(SUM(p.stars_amount), 0) as total_stars,
+                   COUNT(p.id) as total_purchases
+            FROM users u
+            LEFT JOIN purchases p ON u.user_id = p.user_id AND p.status = 'success'
+            GROUP BY u.user_id
+            ORDER BY total_stars DESC
+            LIMIT ?
         """, (limit,))
         
-        rows = cursor.fetchall()
-        conn.close()
-        
-        logs = []
-        for row in rows:
-            logs.append({
-                'log_level': row[0],
-                'message': row[1],
-                'timestamp': row[2]
+        users = []
+        for row in cursor.fetchall():
+            users.append({
+                'user_id': row[0],
+                'username': row[1],
+                'first_name': row[2],
+                'last_name': row[3],
+                'total_stars': row[4],
+                'total_purchases': row[5]
             })
         
-        return jsonify({'success': True, 'logs': logs})
+        conn.close()
+        return jsonify({'success': True, 'users': users})
     except Exception as e:
-        logger.error(f"Error getting recent logs: {e}")
-        return jsonify({'success': True, 'logs': []})
+        logger.error(f"Error getting users list: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

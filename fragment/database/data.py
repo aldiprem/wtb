@@ -7,6 +7,9 @@ import pytz
 import os
 from pathlib import Path
 import json
+import hashlib
+import secrets
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +224,36 @@ def init_database():
             FOREIGN KEY (bot_token) REFERENCES cloned_bots(bot_token)
         )
     ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS panel_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            bot_token TEXT,
+            session_string TEXT,
+            session_expires TIMESTAMP,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            last_login TIMESTAMP
+        )
+    ''')
     
+    # Tabel untuk session tracking
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS panel_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            session_token TEXT UNIQUE NOT NULL,
+            ip_address TEXT,
+            user_agent TEXT,
+            created_at TIMESTAMP,
+            expires_at TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES panel_users(id)
+        )
+    ''')
+
     try:
         cursor.execute('ALTER TABLE deposits ADD COLUMN waiting_msg_id INTEGER')
     except sqlite3.OperationalError:
@@ -255,6 +287,275 @@ def get_jakarta_time_iso():
 
 def get_jakarta_date():
     return datetime.now(JAKARTA_TZ).date().isoformat()
+
+def hash_password(password: str) -> str:
+    """Hash password menggunakan SHA256"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verifikasi password"""
+    return hash_password(password) == hashed
+
+def generate_session_token() -> str:
+    """Generate session token"""
+    return secrets.token_urlsafe(32)
+
+async def create_panel_user(username: str, password: str, bot_token: str = None) -> Optional[int]:
+    """Create panel user (hanya untuk admin/clone bot)"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = get_jakarta_time_iso()
+        
+        hashed_pw = hash_password(password)
+        
+        cursor.execute("""
+            INSERT INTO panel_users (username, password, bot_token, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, 1, ?, ?)
+        """, (username, hashed_pw, bot_token, now, now))
+        
+        user_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return user_id
+    except Exception as e:
+        logger.error(f"Error creating panel user: {e}")
+        return None
+
+async def authenticate_panel_user(username: str, password: str) -> Optional[Dict]:
+    """Authenticate panel user"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, username, password, bot_token, is_active 
+            FROM panel_users WHERE username = ?
+        """, (username,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row and row[4] == 1 and verify_password(password, row[2]):
+            return {
+                'id': row[0],
+                'username': row[1],
+                'bot_token': row[3]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error authenticating user: {e}")
+        return None
+
+async def create_panel_session(user_id: int, ip_address: str = None, user_agent: str = None) -> Optional[str]:
+    """Create session for panel user"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = get_jakarta_time_iso()
+        expires_at = (datetime.now(JAKARTA_TZ) + timedelta(days=1)).isoformat()
+        session_token = generate_session_token()
+        
+        cursor.execute("""
+            INSERT INTO panel_sessions (user_id, session_token, ip_address, user_agent, created_at, expires_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, session_token, ip_address, user_agent, now, expires_at))
+        
+        # Update last_login
+        cursor.execute("""
+            UPDATE panel_users SET last_login = ?, updated_at = ? WHERE id = ?
+        """, (now, now, user_id))
+        
+        conn.commit()
+        conn.close()
+        return session_token
+    except Exception as e:
+        logger.error(f"Error creating session: {e}")
+        return None
+
+async def validate_panel_session(session_token: str) -> Optional[Dict]:
+    """Validate panel session"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = datetime.now(JAKARTA_TZ).isoformat()
+        
+        cursor.execute("""
+            SELECT s.user_id, s.session_token, s.expires_at, u.username, u.bot_token
+            FROM panel_sessions s
+            JOIN panel_users u ON s.user_id = u.id
+            WHERE s.session_token = ? AND s.expires_at > ? AND u.is_active = 1
+        """, (session_token, now))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'user_id': row[0],
+                'session_token': row[1],
+                'expires_at': row[2],
+                'username': row[3],
+                'bot_token': row[4]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error validating session: {e}")
+        return None
+
+async def delete_panel_session(session_token: str) -> bool:
+    """Delete panel session (logout)"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM panel_sessions WHERE session_token = ?", (session_token,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting session: {e}")
+        return False
+
+async def cleanup_expired_sessions():
+    """Cleanup expired sessions (dijalankan setiap jam 00:00)"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        now = datetime.now(JAKARTA_TZ).isoformat()
+        cursor.execute("DELETE FROM panel_sessions WHERE expires_at < ?", (now,))
+        conn.commit()
+        conn.close()
+        logger.info("✅ Expired sessions cleaned up")
+        return True
+    except Exception as e:
+        logger.error(f"Error cleaning sessions: {e}")
+        return False
+
+async def get_panel_user_by_bot_token(bot_token: str) -> Optional[Dict]:
+    """Get panel user by bot token"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, username, bot_token FROM panel_users WHERE bot_token = ?
+        """, (bot_token,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'bot_token': row[2]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error getting user by bot token: {e}")
+        return None
+
+# Tambahkan ke database/data.py
+
+async def get_chart_data(bot_token: str = None, days: int = 7) -> Dict:
+    """Get chart data for last N days"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        labels = []
+        values = []
+        
+        for i in range(days - 1, -1, -1):
+            date = (datetime.now(JAKARTA_TZ) - timedelta(days=i)).date().isoformat()
+            labels.append(date)
+            
+            if bot_token:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(stars_amount), 0) FROM purchases 
+                    WHERE status = 'success' AND DATE(timestamp) = ? AND bot_token = ?
+                """, (date, bot_token))
+            else:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(stars_amount), 0) FROM purchases 
+                    WHERE status = 'success' AND DATE(timestamp) = ?
+                """, (date,))
+            
+            values.append(cursor.fetchone()[0] or 0)
+        
+        conn.close()
+        return {'labels': labels, 'values': values}
+    except Exception as e:
+        logger.error(f"Error getting chart data: {e}")
+        return {'labels': [], 'values': []}
+
+
+async def get_recent_activities(bot_token: str = None, limit: int = 20) -> List[Dict]:
+    """Get recent activities"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        if bot_token:
+            cursor.execute("""
+                SELECT id, action, details, timestamp FROM activity_log 
+                WHERE bot_token = ? 
+                ORDER BY timestamp DESC LIMIT ?
+            """, (bot_token, limit))
+        else:
+            cursor.execute("""
+                SELECT id, action, details, timestamp FROM activity_log 
+                ORDER BY timestamp DESC LIMIT ?
+            """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [{'id': r[0], 'action': r[1], 'details': r[2], 'timestamp': r[3]} for r in rows]
+    except Exception as e:
+        logger.error(f"Error getting recent activities: {e}")
+        return []
+
+
+async def get_all_users_with_stats(bot_token: str = None, limit: int = 50) -> List[Dict]:
+    """Get all users with their stats"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        if bot_token:
+            cursor.execute("""
+                SELECT DISTINCT u.user_id, u.username, u.first_name, u.last_name,
+                       COALESCE(SUM(p.stars_amount), 0) as total_stars,
+                       COUNT(p.id) as total_purchases
+                FROM users u
+                LEFT JOIN purchases p ON u.user_id = p.user_id AND p.status = 'success' AND p.bot_token = ?
+                GROUP BY u.user_id
+                ORDER BY total_stars DESC
+                LIMIT ?
+            """, (bot_token, limit))
+        else:
+            cursor.execute("""
+                SELECT DISTINCT u.user_id, u.username, u.first_name, u.last_name,
+                       COALESCE(SUM(p.stars_amount), 0) as total_stars,
+                       COUNT(p.id) as total_purchases
+                FROM users u
+                LEFT JOIN purchases p ON u.user_id = p.user_id AND p.status = 'success'
+                GROUP BY u.user_id
+                ORDER BY total_stars DESC
+                LIMIT ?
+            """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [{
+            'user_id': r[0],
+            'username': r[1],
+            'first_name': r[2],
+            'last_name': r[3],
+            'total_stars': r[4] or 0,
+            'total_purchases': r[5] or 0
+        } for r in rows]
+    except Exception as e:
+        logger.error(f"Error getting all users: {e}")
+        return []
 
 # ===================== BOT FRAGMENT CONFIG FUNCTIONS =====================
 

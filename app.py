@@ -2,11 +2,16 @@ import os
 import sys
 import time
 import ipaddress
-from flask import Flask, request, jsonify, send_from_directory, abort
+import sqlite3
+import hashlib
+import secrets
+from datetime import datetime, timedelta
+from pathlib import Path
+from flask import Flask, request, jsonify, send_from_directory, abort, redirect, session
 from flask_cors import CORS
-from datetime import datetime
 from db_config import get_db_connection
 from collections import defaultdict, Counter
+import logging
 
 # Menambahkan direktori root ke path agar modul internal terbaca dengan benar
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -24,7 +29,26 @@ from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
 
+# Import database functions dari fragment
+from database.data import (
+    authenticate_panel_user, create_panel_session, validate_panel_session,
+    delete_panel_session, get_panel_user_by_bot_token, get_all_stats,
+    get_cloned_bots, get_bot_stats, get_bot_logs, get_user_stats,
+    get_jakarta_time_iso, get_chart_data, get_recent_activities,
+    get_all_users_with_stats
+)
+
 base_dir = os.path.abspath(os.path.dirname(__file__))
+
+# Setup logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+# Database path untuk SQLite
+DB_PATH = str(Path(__file__).parent / "frag.db")
 
 # ==================== KONFIGURASI KEAMANAN ====================
 
@@ -52,8 +76,7 @@ SUSPICIOUS_PATHS = [
     '/shell', '/cmd', '/exec', '/system'
 ]
 
-# IP ranges yang diketahui jahat (DigitalOcean, AWS, dll)
-# Hati-hati: Jangan blokir IP Cloudflare (172.x.x.x, 162.x.x.x)
+# IP ranges yang diketahui jahat
 SUSPICIOUS_IP_RANGES = [
     '164.90.0.0/16',   # DigitalOcean
     '64.225.0.0/16',   # DigitalOcean
@@ -101,14 +124,10 @@ def is_cloudflare_ip(ip):
 
 def is_ip_blocked(ip):
     """Cek apakah IP termasuk dalam blacklist"""
-    # Jangan blokir Cloudflare IP
     if is_cloudflare_ip(ip):
         return False
-    
-    # Jangan blokir localhost
     if ip in ['127.0.0.1', 'localhost']:
         return False
-    
     try:
         ip_obj = ipaddress.ip_address(ip)
         for range_str in SUSPICIOUS_IP_RANGES:
@@ -137,8 +156,9 @@ def track_attack(ip, path):
 # ==================== INISIALISASI FLASK APP ====================
 
 app = Flask(__name__, static_folder='.')
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
-# Konfigurasi CORS yang mendukung semua origin untuk development
+# Konfigurasi CORS
 CORS(app, 
      origins=['http://companel.shop', 'https://companel.shop', 
               'http://localhost:5050', 'http://127.0.0.1:5050',
@@ -151,70 +171,55 @@ CORS(app,
 
 @app.before_request
 def security_middleware():
-    """
-    Middleware keamanan terintegrasi:
-    1. Blokir path kritis
-    2. Blokir IP mencurigakan
-    3. Rate limiting
-    4. Deteksi User-Agent mencurigakan
-    """
+    """Middleware keamanan terintegrasi"""
     client_ip = request.remote_addr
     path = request.path
     method = request.method
     
-    # ===== 1. BLOCK CRITICAL PATHS (langsung 404) =====
+    # BLOCK CRITICAL PATHS
     path_lower = path.lower()
     for bad_path in CRITICAL_BLOCKED_PATHS:
         if bad_path in path_lower:
             track_attack(client_ip, path)
-            print(f"🚫 CRITICAL BLOCK: {method} {path} from {client_ip} (matched: {bad_path})")
-            abort(404)  # Return 404 seolah-olah tidak ada
+            print(f"🚫 CRITICAL BLOCK: {method} {path} from {client_ip}")
+            abort(404)
     
-    # ===== 2. BLOCK SUSPICIOUS IP RANGES =====
-    # Jangan blokir Cloudflare IP
+    # BLOCK SUSPICIOUS IP RANGES
     if not is_cloudflare_ip(client_ip):
         if is_ip_blocked(client_ip):
             track_attack(client_ip, path)
             print(f"🚫 IP BLOCKED: {client_ip} from {path}")
             abort(403)
     
-    # ===== 3. CHECK SUSPICIOUS USER-AGENT =====
+    # CHECK SUSPICIOUS USER-AGENT
     is_suspicious, bad_ua = is_suspicious_user_agent()
     if is_suspicious and not path.startswith('/api/'):
-        # Jangan blokir API requests meskipun User-Agent mencurigakan
-        # Tapi tetap track
         track_attack(client_ip, path)
         print(f"⚠️ SUSPICIOUS UA: {client_ip} -> {bad_ua} on {path}")
-        # Untuk non-API, beri rate limit ketat (akan di-handle di step 4)
     
-    # ===== 4. RATE LIMITING =====
+    # RATE LIMITING
     current_time = time.time()
     
-    # Tentukan konfigurasi rate limit berdasarkan path
     if path.startswith('/api/'):
         limit_config = RATE_LIMIT_CONFIG['api']
-    elif path.startswith(('/css/', '/js/', '/html/', '/static/')):
+    elif path.startswith(('/css/', '/js/', '/html/', '/static/', '/fragment/')):
         limit_config = RATE_LIMIT_CONFIG['static']
     elif any(bad in path_lower for bad in SUSPICIOUS_PATHS):
         limit_config = RATE_LIMIT_CONFIG['strict']
     else:
         limit_config = RATE_LIMIT_CONFIG['default']
     
-    # Bersihkan request lama
     request_counts[client_ip] = [
         t for t in request_counts[client_ip] 
         if current_time - t < limit_config['window']
     ]
     
-    # Cek rate limit
     if len(request_counts[client_ip]) > limit_config['requests']:
         track_attack(client_ip, path)
-        print(f"🚫 RATE LIMITED: {client_ip} - {len(request_counts[client_ip])} requests in {limit_config['window']}s")
+        print(f"🚫 RATE LIMITED: {client_ip}")
         abort(429)
     
     request_counts[client_ip].append(current_time)
-    
-    # ===== 5. LOG UNTUK REQUEST NORMAL =====
     print(f"📥 {method} {path} - {client_ip}")
 
 @app.after_request
@@ -230,49 +235,301 @@ def add_security_headers(response):
 
 @app.errorhandler(403)
 def forbidden_handler(e):
-    return jsonify({
-        'error': 'Access forbidden',
-        'message': 'Your IP has been blocked due to suspicious activity'
-    }), 403
+    return jsonify({'error': 'Access forbidden'}), 403
 
 @app.errorhandler(404)
 def not_found_handler(e):
-    return jsonify({
-        'error': 'Not found',
-        'message': 'The requested resource was not found'
-    }), 404
+    return jsonify({'error': 'Not found'}), 404
 
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    return jsonify({
-        'error': 'Too many requests',
-        'message': 'Please slow down and try again later',
-        'retry_after': 60
-    }), 429
+    return jsonify({'error': 'Too many requests', 'retry_after': 60}), 429
 
 @app.errorhandler(500)
 def internal_error_handler(e):
-    return jsonify({
-        'error': 'Internal server error',
-        'message': 'Something went wrong on our end'
-    }), 500
+    return jsonify({'error': 'Internal server error'}), 500
 
-# ==================== ENDPOINT MONITORING ====================
+# ==================== FRAGMENT BOT DASHBOARD ROUTES ====================
+
+# Session validation decorator
+def require_session(f):
+    """Decorator to validate panel session"""
+    def wrapper(*args, **kwargs):
+        session_token = request.headers.get('X-Session-Token')
+        if not session_token:
+            return jsonify({'success': False, 'error': 'No session token'}), 401
+        
+        user_session = validate_panel_session(session_token)
+        if not user_session:
+            return jsonify({'success': False, 'error': 'Invalid or expired session'}), 401
+        
+        request.user_session = user_session
+        return f(*args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper
+
+# Fragment static routes
+@app.route('/fragment/login')
+def fragment_login_page():
+    """Halaman login untuk Fragment Bot Admin"""
+    # Cek apakah sudah login via session cookie
+    session_token = request.cookies.get('session_token')
+    if session_token:
+        user_session = validate_panel_session(session_token)
+        if user_session:
+            return redirect('/fragment/dashboard')
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'login.html')
+
+@app.route('/fragment/dashboard')
+def fragment_dashboard_page():
+    """Halaman dashboard Fragment Bot Admin"""
+    session_token = request.args.get('user') or request.cookies.get('session_token')
+    
+    if not session_token:
+        return redirect('/fragment/login')
+    
+    user_session = validate_panel_session(session_token)
+    if not user_session:
+        return redirect('/fragment/login')
+    
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'dashboard.html')
+
+# Fragment API Routes
+@app.route('/api/fragment/login', methods=['POST'])
+def fragment_login_api():
+    """API login untuk Fragment Bot Admin"""
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'success': False, 'error': 'Username dan password wajib diisi'}), 400
+        
+        user = authenticate_panel_user(username, password)
+        if not user:
+            return jsonify({'success': False, 'error': 'Username atau password salah'}), 401
+        
+        # Create session
+        session_token = create_panel_session(
+            user['id'], 
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent')
+        )
+        
+        if not session_token:
+            return jsonify({'success': False, 'error': 'Gagal membuat session'}), 500
+        
+        return jsonify({
+            'success': True,
+            'session_token': session_token,
+            'user': {
+                'id': user['id'],
+                'username': user['username']
+            }
+        })
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/fragment/logout', methods=['POST'])
+@require_session
+def fragment_logout_api():
+    """API logout untuk Fragment Bot Admin"""
+    session_token = request.headers.get('X-Session-Token')
+    delete_panel_session(session_token)
+    return jsonify({'success': True})
+
+@app.route('/api/fragment/profile', methods=['GET'])
+@require_session
+def fragment_profile_api():
+    """API untuk mendapatkan profil user yang sedang login"""
+    user_session = request.user_session
+    return jsonify({
+        'success': True,
+        'profile': {
+            'id': user_session['user_id'],
+            'username': user_session['username'],
+            'bot_token': user_session.get('bot_token'),
+            'created_at': get_jakarta_time_iso(),
+            'last_login': get_jakarta_time_iso()
+        }
+    })
+
+@app.route('/api/fragment/dashboard/stats', methods=['GET'])
+@require_session
+def fragment_dashboard_stats_api():
+    """API untuk mendapatkan statistik dashboard"""
+    try:
+        user_session = request.user_session
+        bot_token = user_session.get('bot_token')
+        
+        # Get bot info
+        bots = get_cloned_bots()
+        total_bots = len(bots)
+        running_bots = len([b for b in bots if b.get('status') == 'running'])
+        
+        # Get overall stats
+        all_stats = get_all_stats(bot_token)
+        
+        # Get chart data (7 days)
+        chart_data = get_chart_data(bot_token, days=7)
+        
+        # Get recent activities
+        activities = get_recent_activities(bot_token, limit=20)
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_bots': total_bots,
+                'running_bots': running_bots,
+                'total_users': all_stats.get('total_users', 0),
+                'total_stars': all_stats.get('total_stars', 0),
+                'total_volume': all_stats.get('total_volume_idr', 0),
+                'total_purchases': all_stats.get('total_purchases', 0),
+                'today_purchases': all_stats.get('today_purchases', 0),
+                'today_stars': all_stats.get('today_stars', 0),
+                'today_volume': all_stats.get('today_volume_idr', 0)
+            },
+            'chart': {
+                'labels': chart_data.get('labels', []),
+                'values': chart_data.get('values', [])
+            },
+            'activities': [
+                {
+                    'id': a.get('id'),
+                    'message': a.get('details', a.get('action', '')),
+                    'timestamp': a.get('timestamp'),
+                    'icon': 'star' if 'stars' in str(a.get('details', '')) else 'user'
+                }
+                for a in activities
+            ]
+        })
+    except Exception as e:
+        logger.error(f"Error getting dashboard stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/fragment/bot/info', methods=['GET'])
+@require_session
+def fragment_bot_info_api():
+    """API untuk mendapatkan informasi bot yang terkait dengan user"""
+    try:
+        user_session = request.user_session
+        bot_token = user_session.get('bot_token')
+        
+        # Get bot info from cloned_bots
+        bots = get_cloned_bots()
+        bot_info = None
+        
+        for bot in bots:
+            if bot_token and bot.get('bot_token') == bot_token:
+                bot_info = bot
+                break
+            elif not bot_token:
+                # If no specific bot token, return first bot
+                bot_info = bot
+                break
+        
+        if bot_info:
+            stats = get_bot_stats(bot_info['bot_token'])
+            return jsonify({
+                'success': True,
+                'bot': {
+                    'id': bot_info.get('id'),
+                    'bot_token': bot_info.get('bot_token'),
+                    'bot_username': bot_info.get('bot_username'),
+                    'bot_name': bot_info.get('bot_name'),
+                    'status': bot_info.get('status'),
+                    'created_at': bot_info.get('created_at'),
+                    'last_started': bot_info.get('last_started'),
+                    'last_stopped': bot_info.get('last_stopped'),
+                    'stats': stats
+                }
+            })
+        
+        return jsonify({'success': True, 'bot': None})
+    except Exception as e:
+        logger.error(f"Error getting bot info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/fragment/users/list', methods=['GET'])
+@require_session
+def fragment_users_list_api():
+    """API untuk mendapatkan daftar user beserta statistiknya"""
+    try:
+        user_session = request.user_session
+        bot_token = user_session.get('bot_token')
+        limit = request.args.get('limit', 50, type=int)
+        
+        users = get_all_users_with_stats(bot_token, limit)
+        
+        return jsonify({
+            'success': True,
+            'users': users,
+            'total': len(users)
+        })
+    except Exception as e:
+        logger.error(f"Error getting users list: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/fragment/bots/list', methods=['GET'])
+@require_session
+def fragment_bots_list_api():
+    """API untuk mendapatkan daftar semua bot clone"""
+    try:
+        bots = get_cloned_bots()
+        
+        # Add stats for each bot
+        for bot in bots:
+            stats = get_bot_stats(bot['bot_token'])
+            bot['stats'] = stats
+        
+        return jsonify({
+            'success': True,
+            'bots': bots,
+            'total': len(bots)
+        })
+    except Exception as e:
+        logger.error(f"Error getting bots list: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/fragment/bot/logs', methods=['GET'])
+@require_session
+def fragment_bot_logs_api():
+    """API untuk mendapatkan log bot"""
+    try:
+        bot_username = request.args.get('bot_username')
+        limit = request.args.get('limit', 50, type=int)
+        
+        if not bot_username:
+            return jsonify({'success': False, 'error': 'bot_username required'}), 400
+        
+        logs = get_bot_logs(bot_username, limit)
+        
+        return jsonify({
+            'success': True,
+            'logs': [
+                {
+                    'level': log[0],
+                    'message': log[1],
+                    'timestamp': log[2]
+                }
+                for log in logs
+            ]
+        })
+    except Exception as e:
+        logger.error(f"Error getting bot logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== MONITORING ENDPOINTS ====================
 
 @app.route('/api/admin/security/stats', methods=['GET'])
 def get_security_stats():
-    """
-    Endpoint untuk melihat statistik serangan (admin only)
-    TODO: Tambahkan autentikasi admin
-    """
-    # Sementara tanpa auth untuk debugging
-    # TODO: Tambahkan API key atau session check
-    
+    """Endpoint untuk melihat statistik serangan"""
     stats = []
     now = int(time.time())
     
     for ip, data in attack_stats.items():
-        # Hanya tampilkan yang aktif dalam 1 jam terakhir
         if now - data['last_seen'] < 3600:
             stats.append({
                 'ip': ip,
@@ -282,13 +539,12 @@ def get_security_stats():
                 'top_paths': dict(data['paths'].most_common(10))
             })
     
-    # Urutkan berdasarkan total attacks terbanyak
     stats.sort(key=lambda x: x['total_attacks'], reverse=True)
     
     return jsonify({
         'success': True,
         'total_active_attackers': len(stats),
-        'attackers': stats[:50],  # Limit 50
+        'attackers': stats[:50],
         'rate_limit_stats': {
             'total_ips_in_memory': len(request_counts),
             'config': RATE_LIMIT_CONFIG
@@ -297,19 +553,11 @@ def get_security_stats():
 
 @app.route('/api/admin/security/clear', methods=['POST'])
 def clear_security_stats():
-    """
-    Reset statistik keamanan (admin only)
-    """
-    # TODO: Tambahkan autentikasi admin
-    
+    """Reset statistik keamanan"""
     global attack_stats, request_counts
     attack_stats.clear()
     request_counts.clear()
-    
-    return jsonify({
-        'success': True,
-        'message': 'Security statistics cleared'
-    })
+    return jsonify({'success': True, 'message': 'Security statistics cleared'})
 
 # ==================== ROUTE REGISTRATION ====================
 
@@ -341,7 +589,8 @@ def debug_routes():
             })
     return jsonify({'routes': routes})
 
-# ==================== ROUTE UNTUK IMAGE SERVICE (LANGSUNG) ====================
+# ==================== ROUTE UNTUK IMAGE SERVICE ====================
+
 @app.route('/ii', methods=['GET'])
 def serve_image_direct():
     """Route untuk mengakses gambar dengan format /ii?premy=hash"""
@@ -352,7 +601,7 @@ def serve_image_direct():
         print(f"❌ Error serving image: {e}")
         return "Image service error", 500
 
-# ==================== STATIC ROUTES (SERVING HTML) ====================
+# ==================== STATIC ROUTES ====================
 
 @app.route('/')
 def serve_dashboard():
@@ -364,7 +613,6 @@ def favicon():
 
 @app.route('/tampilan')
 def serve_tampilan_page():
-    """Menyediakan halaman pengaturan tampilan dengan pengecekan fallback"""
     html_dir = os.path.join(base_dir, 'html')
     if os.path.exists(os.path.join(html_dir, 'tampilan.html')):
         return send_from_directory(html_dir, 'tampilan.html')
@@ -386,48 +634,53 @@ def serve_main_format():
 
 @app.route('/admins/<string:endpoint>')
 def serve_admin_panel(endpoint):
-    """Menyediakan panel untuk admin berdasarkan endpoint tertentu"""
     return send_from_directory(os.path.join(base_dir, 'html'), 'panel.html')
 
 @app.route('/website/<string:endpoint>')
 def serve_website(endpoint):
-    """Menyediakan template utama website"""
     return send_from_directory(base_dir, 'website.html')
 
 @app.route('/fragment')
 def serve_fragment_page():
-    """Menyediakan halaman Fragment Stars Bot"""
     return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'frag.html')
 
-# --- RUTE UNTUK FILE STATIS DALAM SUBFOLDER ---
+# Static file routes untuk fragment
+@app.route('/fragment/css/<path:filename>')
+def serve_fragment_css(filename):
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'css'), filename)
+
+@app.route('/fragment/js/<path:filename>')
+def serve_fragment_js(filename):
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'js'), filename)
+
+@app.route('/fragment/html/<path:filename>')
+def serve_fragment_html(filename):
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), filename)
+
 @app.route('/html/<path:subfolder>/<filename>')
 def serve_html_subfolder(subfolder, filename):
-    """Mengambil file HTML dari subdirektori di dalam /html/"""
     target_dir = os.path.join(base_dir, 'html', subfolder)
     return send_from_directory(target_dir, filename)
 
 @app.route('/html/<filename>')
 def serve_html_root(filename):
-    """Mengambil file HTML dari root folder /html/"""
     target_dir = os.path.join(base_dir, 'html')
     return send_from_directory(target_dir, filename)
 
 @app.route('/js/<path:filename>')
 def serve_js(filename):
-    """Menyediakan file JavaScript"""
     return send_from_directory(os.path.join(base_dir, 'js'), filename)
 
 @app.route('/css/<path:filename>')
 def serve_css(filename):
-    """Menyediakan file CSS"""
     return send_from_directory(os.path.join(base_dir, 'css'), filename)
 
 @app.route('/<path:path>')
 def serve_static(path):
-    """Catch-all route untuk file statis lainnya di root directory"""
     return send_from_directory(base_dir, path)
 
-# ==================== LOBBY TOPUP GAME DEDICATED ROUTE ====================
+# ==================== LOBBY ROUTES ====================
+
 @app.route('/web=<endpoint>')
 def serve_web_dekstop(endpoint=None):
     return send_from_directory(os.path.join(base_dir, 'html'), 'web-lobby.html')
@@ -436,7 +689,7 @@ def serve_web_dekstop(endpoint=None):
 def serve_web_mobile():
     return send_from_directory(os.path.join(base_dir, 'html'), 'web-mobile.html')
 
-# ==================== DATABASE INIT & HEALTH CHECK ====================
+# ==================== DATABASE INIT ====================
 
 def init_mysql_tables():
     """Inisialisasi tabel utama MySQL jika belum tersedia"""
@@ -444,7 +697,6 @@ def init_mysql_tables():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Tabel websites
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS websites (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -456,7 +708,6 @@ def init_mysql_tables():
             )
         ''')
         
-        # Tabel untuk security log (opsional)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS security_logs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -478,29 +729,17 @@ def init_mysql_tables():
     except Exception as e:
         print(f"❌ MySQL Init Error: {e}")
 
-def log_security_event(ip, path, method, user_agent, reason):
-    """Log event keamanan ke database"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO security_logs (ip, path, method, user_agent, reason)
-            VALUES (%s, %s, %s, %s, %s)
-        ''', (ip, path[:500], method, user_agent[:255] if user_agent else None, reason))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"⚠️ Failed to log security event: {e}")
+# ==================== HEALTH CHECK ====================
 
 @app.route('/api/health')
 def health_check():
-    """Endpoint untuk memantau kesehatan server dan koneksi database"""
+    """Endpoint untuk memantau kesehatan server"""
     try:
         conn = get_db_connection()
         conn.close()
         return jsonify({
-            'status': 'healthy', 
-            'mysql': 'connected', 
+            'status': 'healthy',
+            'mysql': 'connected',
             'timestamp': datetime.now().isoformat(),
             'security': {
                 'active_rate_limits': len(request_counts),
@@ -508,34 +747,31 @@ def health_check():
             }
         })
     except Exception as e:
-        return jsonify({
-            'status': 'unhealthy', 
-            'error': str(e)
-        }), 500
+        return jsonify({'status': 'unhealthy', 'error': str(e)}), 500
 
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
-    # Jalankan inisialisasi tabel saat startup
     init_mysql_tables()
     
     PORT = 5050
     print("="*60)
     print(f"🚀 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"🔗 Public Domain: https://companel.shop")
-    print("📊 Database: MySQL (wtb_database)")
+    print("📊 Database: MySQL (wtb_database) & SQLite (frag.db)")
     print("🛡️ Security Features: Enabled")
     print("="*60)
-    print("\n📋 Registered API Routes:")
-    for rule in app.url_map.iter_rules():
-        if rule.endpoint not in ['static', 'serve_dashboard', 'serve_tampilan_page', 'serve_main_panel', 'serve_admin_panel', 'serve_website', 'serve_html_subfolder', 'serve_html_root', 'serve_js', 'serve_css', 'serve_static', 'favicon', 'handle_options', 'debug_routes', 'get_security_stats', 'clear_security_stats']:
-            print(f"   {rule.methods} {rule}")
-    print("="*60)
-    print("\n🛡️ Security Configuration:")
-    print(f"   - Critical blocked paths: {len(CRITICAL_BLOCKED_PATHS)} patterns")
-    print(f"   - Suspicious IP ranges: {len(SUSPICIOUS_IP_RANGES)} ranges")
-    print(f"   - Rate limiting: API(120/min), Default(60/min), Strict(10/min)")
+    print("\n📋 Fragment Dashboard Routes:")
+    print("   GET  /fragment/login")
+    print("   GET  /fragment/dashboard")
+    print("   POST /api/fragment/login")
+    print("   POST /api/fragment/logout")
+    print("   GET  /api/fragment/profile")
+    print("   GET  /api/fragment/dashboard/stats")
+    print("   GET  /api/fragment/bot/info")
+    print("   GET  /api/fragment/users/list")
+    print("   GET  /api/fragment/bots/list")
+    print("   GET  /api/fragment/bot/logs")
     print("="*60)
     
-    # Jalankan Flask app
-    app.run(host='0.0.0.0', port=PORT, debug=False) 
+    app.run(host='0.0.0.0', port=PORT, debug=False)
