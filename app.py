@@ -29,8 +29,8 @@ from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
 
-# Import database functions dari fragment
-from database.data import (
+# Import database functions dari fragment.database
+from fragment.database.data import (
     authenticate_panel_user, create_panel_session, validate_panel_session,
     delete_panel_session, get_panel_user_by_bot_token, get_all_stats,
     get_cloned_bots, get_bot_stats, get_bot_logs, get_user_stats,
@@ -47,8 +47,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Database path untuk SQLite
-DB_PATH = str(Path(__file__).parent / "frag.db")
+# Database path untuk SQLite - path ke fragment/frag.db
+DB_PATH = str(Path(__file__).parent / "fragment" / "frag.db")
 
 # ==================== KONFIGURASI KEAMANAN ====================
 
@@ -758,7 +758,7 @@ if __name__ == '__main__':
     print("="*60)
     print(f"🚀 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"🔗 Public Domain: https://companel.shop")
-    print("📊 Database: MySQL (wtb_database) & SQLite (frag.db)")
+    print("📊 Database: MySQL (wtb_database) & SQLite (fragment/frag.db)")
     print("🛡️ Security Features: Enabled")
     print("="*60)
     print("\n📋 Fragment Dashboard Routes:")
