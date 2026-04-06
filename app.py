@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 import time
@@ -5,16 +6,28 @@ import ipaddress
 import sqlite3
 import hashlib
 import secrets
+import asyncio
+import traceback
 from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, abort, redirect, session
+from functools import wraps
+from flask import Flask, request, jsonify, send_from_directory, abort, redirect
 from flask_cors import CORS
-from db_config import get_db_connection
 from collections import defaultdict, Counter
 import logging
 
 # Menambahkan direktori root ke path agar modul internal terbaca dengan benar
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT_DIR)
+
+# Import database functions
+from fragment.database.data import (
+    authenticate_panel_user, create_panel_session, validate_panel_session,
+    delete_panel_session, get_panel_user_by_bot_token, get_all_stats,
+    get_cloned_bots, get_bot_stats, get_bot_logs, get_user_stats,
+    get_jakarta_time_iso, get_chart_data, get_recent_activities,
+    get_all_users_with_stats
+)
 
 # Import semua blueprint dari folder services
 from services.website_service import website_bp
@@ -29,14 +42,6 @@ from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
 
-from fragment.database.data import (
-    authenticate_panel_user, create_panel_session, validate_panel_session,
-    delete_panel_session, get_panel_user_by_bot_token, get_all_stats,
-    get_cloned_bots, get_bot_stats, get_bot_logs, get_user_stats,
-    get_jakarta_time_iso, get_chart_data, get_recent_activities,
-    get_all_users_with_stats
-)
-
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
 # Setup logging
@@ -46,17 +51,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Database path untuk SQLite - path ke fragment/frag.db
+# Database path untuk SQLite
 DB_PATH = str(Path(__file__).parent / "fragment" / "frag.db")
+
+# ==================== HELPER UNTUK ASYNC ====================
+
+def run_async(async_func, *args, **kwargs):
+    """Run async function in sync context"""
+    try:
+        # Coba gunakan asyncio.run() langsung
+        return asyncio.run(async_func(*args, **kwargs))
+    except RuntimeError:
+        # Jika sudah ada event loop, buat thread baru
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(asyncio.run, async_func(*args, **kwargs))
+            return future.result()
 
 # ==================== KONFIGURASI KEAMANAN ====================
 
 # Rate limiting configuration
 RATE_LIMIT_CONFIG = {
-    'default': {'requests': 60, 'window': 60},      # 60 requests per minute
-    'api': {'requests': 120, 'window': 60},         # 120 requests per minute untuk API
-    'static': {'requests': 30, 'window': 60},       # 30 requests per minute untuk static
-    'strict': {'requests': 10, 'window': 60},       # 10 requests per minute untuk path mencurigakan
+    'default': {'requests': 60, 'window': 60},
+    'api': {'requests': 120, 'window': 60},
+    'static': {'requests': 30, 'window': 60},
+    'strict': {'requests': 10, 'window': 60},
 }
 
 # Path yang sangat mencurigakan (langsung blokir)
@@ -77,14 +96,9 @@ SUSPICIOUS_PATHS = [
 
 # IP ranges yang diketahui jahat
 SUSPICIOUS_IP_RANGES = [
-    '164.90.0.0/16',   # DigitalOcean
-    '64.225.0.0/16',   # DigitalOcean
-    '167.71.0.0/16',   # DigitalOcean
-    '209.38.0.0/16',   # DigitalOcean
-    '104.248.0.0/16',  # DigitalOcean
-    '45.55.0.0/16',    # DigitalOcean
-    '159.89.0.0/16',   # DigitalOcean
-    '138.68.0.0/16',   # DigitalOcean
+    '164.90.0.0/16', '64.225.0.0/16', '167.71.0.0/16',
+    '209.38.0.0/16', '104.248.0.0/16', '45.55.0.0/16',
+    '159.89.0.0/16', '138.68.0.0/16',
 ]
 
 # User-Agent yang mencurigakan
@@ -258,7 +272,7 @@ def require_session(f):
         if not session_token:
             return jsonify({'success': False, 'error': 'No session token'}), 401
         
-        user_session = validate_panel_session(session_token)
+        user_session = run_async(validate_panel_session, session_token)
         if not user_session:
             return jsonify({'success': False, 'error': 'Invalid or expired session'}), 401
         
@@ -271,10 +285,9 @@ def require_session(f):
 @app.route('/fragment/login')
 def fragment_login_page():
     """Halaman login untuk Fragment Bot Admin"""
-    # Cek apakah sudah login via session cookie
     session_token = request.cookies.get('session_token')
     if session_token:
-        user_session = validate_panel_session(session_token)
+        user_session = run_async(validate_panel_session, session_token)
         if user_session:
             return redirect('/fragment/dashboard')
     return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'login.html')
@@ -287,7 +300,7 @@ def fragment_dashboard_page():
     if not session_token:
         return redirect('/fragment/login')
     
-    user_session = validate_panel_session(session_token)
+    user_session = run_async(validate_panel_session, session_token)
     if not user_session:
         return redirect('/fragment/login')
     
@@ -302,18 +315,23 @@ def fragment_login_api():
         username = data.get('username')
         password = data.get('password')
         
+        print(f"🔐 Login attempt: username={username}")
+        
         if not username or not password:
             return jsonify({'success': False, 'error': 'Username dan password wajib diisi'}), 400
         
-        user = authenticate_panel_user(username, password)
+        user = run_async(authenticate_panel_user, username, password)
+        
+        print(f"🔐 Auth result: {user}")
+        
         if not user:
             return jsonify({'success': False, 'error': 'Username atau password salah'}), 401
         
-        # Create session
-        session_token = create_panel_session(
+        session_token = run_async(
+            create_panel_session, 
             user['id'], 
-            ip_address=request.remote_addr,
-            user_agent=request.headers.get('User-Agent')
+            request.remote_addr,
+            request.headers.get('User-Agent')
         )
         
         if not session_token:
@@ -328,6 +346,7 @@ def fragment_login_api():
             }
         })
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"Login error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -336,7 +355,7 @@ def fragment_login_api():
 def fragment_logout_api():
     """API logout untuk Fragment Bot Admin"""
     session_token = request.headers.get('X-Session-Token')
-    delete_panel_session(session_token)
+    run_async(delete_panel_session, session_token)
     return jsonify({'success': True})
 
 @app.route('/api/fragment/profile', methods=['GET'])
@@ -350,8 +369,8 @@ def fragment_profile_api():
             'id': user_session['user_id'],
             'username': user_session['username'],
             'bot_token': user_session.get('bot_token'),
-            'created_at': get_jakarta_time_iso(),
-            'last_login': get_jakarta_time_iso()
+            'created_at': run_async(get_jakarta_time_iso),
+            'last_login': run_async(get_jakarta_time_iso)
         }
     })
 
@@ -363,19 +382,13 @@ def fragment_dashboard_stats_api():
         user_session = request.user_session
         bot_token = user_session.get('bot_token')
         
-        # Get bot info
-        bots = get_cloned_bots()
+        bots = run_async(get_cloned_bots)
         total_bots = len(bots)
         running_bots = len([b for b in bots if b.get('status') == 'running'])
         
-        # Get overall stats
-        all_stats = get_all_stats(bot_token)
-        
-        # Get chart data (7 days)
-        chart_data = get_chart_data(bot_token, days=7)
-        
-        # Get recent activities
-        activities = get_recent_activities(bot_token, limit=20)
+        all_stats = run_async(get_all_stats, bot_token)
+        chart_data = run_async(get_chart_data, bot_token, 7)
+        activities = run_async(get_recent_activities, bot_token, 20)
         
         return jsonify({
             'success': True,
@@ -405,6 +418,7 @@ def fragment_dashboard_stats_api():
             ]
         })
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"Error getting dashboard stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -416,8 +430,7 @@ def fragment_bot_info_api():
         user_session = request.user_session
         bot_token = user_session.get('bot_token')
         
-        # Get bot info from cloned_bots
-        bots = get_cloned_bots()
+        bots = run_async(get_cloned_bots)
         bot_info = None
         
         for bot in bots:
@@ -425,12 +438,11 @@ def fragment_bot_info_api():
                 bot_info = bot
                 break
             elif not bot_token:
-                # If no specific bot token, return first bot
                 bot_info = bot
                 break
         
         if bot_info:
-            stats = get_bot_stats(bot_info['bot_token'])
+            stats = run_async(get_bot_stats, bot_info['bot_token'])
             return jsonify({
                 'success': True,
                 'bot': {
@@ -460,7 +472,7 @@ def fragment_users_list_api():
         bot_token = user_session.get('bot_token')
         limit = request.args.get('limit', 50, type=int)
         
-        users = get_all_users_with_stats(bot_token, limit)
+        users = run_async(get_all_users_with_stats, bot_token, limit)
         
         return jsonify({
             'success': True,
@@ -476,11 +488,10 @@ def fragment_users_list_api():
 def fragment_bots_list_api():
     """API untuk mendapatkan daftar semua bot clone"""
     try:
-        bots = get_cloned_bots()
+        bots = run_async(get_cloned_bots)
         
-        # Add stats for each bot
         for bot in bots:
-            stats = get_bot_stats(bot['bot_token'])
+            stats = run_async(get_bot_stats, bot['bot_token'])
             bot['stats'] = stats
         
         return jsonify({
@@ -503,7 +514,7 @@ def fragment_bot_logs_api():
         if not bot_username:
             return jsonify({'success': False, 'error': 'bot_username required'}), 400
         
-        logs = get_bot_logs(bot_username, limit)
+        logs = run_async(get_bot_logs, bot_username, limit)
         
         return jsonify({
             'success': True,
@@ -560,7 +571,6 @@ def clear_security_stats():
 
 # ==================== ROUTE REGISTRATION ====================
 
-# Register Semua Blueprints dengan Prefix /api
 app.register_blueprint(website_bp, url_prefix='/api')
 app.register_blueprint(vcr_bp, url_prefix='/api')
 app.register_blueprint(pmb_bp, url_prefix='/api')
@@ -643,7 +653,6 @@ def serve_website(endpoint):
 def serve_fragment_page():
     return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'frag.html')
 
-# Static file routes untuk fragment
 @app.route('/fragment/css/<path:filename>')
 def serve_fragment_css(filename):
     return send_from_directory(os.path.join(base_dir, 'fragment', 'css'), filename)
@@ -757,7 +766,7 @@ if __name__ == '__main__':
     print("="*60)
     print(f"🚀 Server started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"🔗 Public Domain: https://companel.shop")
-    print("📊 Database: MySQL (wtb_database) & SQLite (fragment/frag.db)")
+    print("📊 Database: MySQL & SQLite (fragment/frag.db)")
     print("🛡️ Security Features: Enabled")
     print("="*60)
     print("\n📋 Fragment Dashboard Routes:")
