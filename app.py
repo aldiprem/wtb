@@ -29,8 +29,7 @@ from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
 
-# Import database functions dari fragment.database
-from fragment.database.data import (
+from database.data import (
     authenticate_panel_user, create_panel_session, validate_panel_session,
     delete_panel_session, get_panel_user_by_bot_token, get_all_stats,
     get_cloned_bots, get_bot_stats, get_bot_logs, get_user_stats,

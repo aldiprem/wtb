@@ -451,7 +451,7 @@ async def get_panel_user_by_bot_token(bot_token: str) -> Optional[Dict]:
         logger.error(f"Error getting user by bot token: {e}")
         return None
 
-# Tambahkan ke database/data.py
+# Tambahkan di database/data.py setelah fungsi get_bot_stats
 
 async def get_chart_data(bot_token: str = None, days: int = 7) -> Dict:
     """Get chart data for last N days"""
