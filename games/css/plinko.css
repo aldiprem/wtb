@@ -272,18 +272,23 @@ body {
 /* Game Board */
 .game-board {
     background: var(--tg-bg-color);
-    border-radius: 24px;
-    padding: 24px;
+    border-radius: 30px;
+    padding: 14px;
     margin-bottom: 24px;
     border: 1px solid var(--border-color);
+    margin-top: 0px;
+    margin-bottom: 10px;
 }
 
 .multiplier-slots-container {
     position: relative;
     width: 100%;
-    margin-top: -8px;
+    margin-top: 8px;
     background: transparent;
     z-index: 10;
+    /* TAMBAHKAN DUA BARIS INI */
+    display: flex;
+    justify-content: center;
 }
 
 .multiplier-slots-wrapper {
@@ -293,11 +298,14 @@ body {
     padding: 1px 1px;
     background: var(--tg-bg-color);
     backdrop-filter: blur(8px);
-    border-radius: 0px 0px 16px 16px;
+    border-radius: 0px 0px 4px 4px;
     border-top: none;
     border-left: 1px solid rgba(255, 255, 255, 0.15);
     border-right: 1px solid rgba(255, 255, 255, 0.15);
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    width: 275px;
+    transform: translateY(50px);
+    margin-bottom: 60px;
 }
 
 .multiplier-slot {
@@ -389,7 +397,7 @@ body {
     height: 320px !important; 
     display: block;
     margin: 0 auto;
-    margin-bottom: 60px; 
+    margin-bottom: 6px; 
 }
 
 #multiplierSlotsWrapper {
