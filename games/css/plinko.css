@@ -276,22 +276,23 @@ body {
     border: 1px solid var(--border-color);
 }
 
-/* Multiplier Slots - Kotak kaca mengkilat */
 .multiplier-slots-container {
     position: relative;
-    margin-top: 0px;
+    width: 100%;
+    margin-top: -8px;
     background: transparent;
+    z-index: 10;
 }
 
 .multiplier-slots-wrapper {
     display: flex;
     gap: 4px;
     justify-content: center;
-    padding: 12px 16px;
-    background: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
     border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .multiplier-slot {
@@ -304,7 +305,7 @@ body {
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
-    cursor: pointer;
+    cursor: default;
 }
 
 /* Efek kaca mengkilat kesamping */
@@ -328,33 +329,30 @@ body {
 
 /* Warna berdasarkan nilai multiplier (Low Risk) */
 .multiplier-slot.low {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.1));
-    border: 1px solid rgba(16, 185, 129, 0.5);
-    color: #10b981;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(16, 185, 129, 0.15));
+    border: 1px solid rgba(16, 185, 129, 0.6);
+    color: #34d399;
 }
 
 /* Warna berdasarkan nilai multiplier (Medium Risk) */
 .multiplier-slot.medium {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.1));
-    border: 1px solid rgba(245, 158, 11, 0.5);
-    color: #f59e0b;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.35), rgba(245, 158, 11, 0.15));
+    border: 1px solid rgba(245, 158, 11, 0.6);
+    color: #fbbf24;
 }
 
 /* Warna berdasarkan nilai multiplier (High Risk) */
 .multiplier-slot.high {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.1));
-    border: 1px solid rgba(239, 68, 68, 0.5);
-    color: #ef4444;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(239, 68, 68, 0.15));
+    border: 1px solid rgba(239, 68, 68, 0.6);
+    color: #f87171;
 }
 
-/* Slot aktif saat bola jatuh */
-.multiplier-slot.active {
-    transform: scale(1.08);
-    box-shadow: 0 0 20px currentColor;
-    border-width: 2px;
+/* Slot zero (0x) */
+.multiplier-slot.zero {
+    background: linear-gradient(135deg, rgba(107, 114, 128, 0.35), rgba(107, 114, 128, 0.15));
+    border: 1px solid rgba(107, 114, 128, 0.5);
+    color: #9ca3af;
 }
 
 /* Animasi bounce untuk slot aktif */
@@ -372,9 +370,7 @@ body {
     border-radius: 20px;
     overflow: hidden;
     position: relative;
-    margin-bottom: 24px;
-    border-bottom: 1px solid var(--border-color); 
-    padding-bottom: 10px;
+    margin-bottom: 0px;
 }
 
 #plinkoCanvas {

@@ -9,11 +9,10 @@
     let canvas = null;
     let ctx = null;
 
-    // Risk multipliers
     const RISK_MULTIPLIERS = {
-        low: [1.2, 1.5, 2, 2.5, 3, 2.5, 2, 1.5, 1.2],
-        medium: [0.8, 1.2, 2, 3, 5, 3, 2, 1.2, 0.8],
-        high: [0.5, 0.8, 1.5, 3, 10, 3, 1.5, 0.8, 0.5]
+        low: [1.2, 1.5, 2, 2.5, 3, 2.5, 2, 1.5, 1.2, 1.5, 2, 2.5, 3, 2.5, 2],
+        medium: [0.8, 1.2, 2, 3, 5, 3, 2, 1.2, 0.8, 1.2, 2, 3, 5, 3, 2],
+        high: [0.5, 0.8, 1.5, 3, 10, 3, 1.5, 0.8, 0.5, 0.8, 1.5, 3, 10, 3, 1.5]
     };
 
     let viewCount = parseInt(localStorage.getItem('plinko_views') || '0');
@@ -212,7 +211,6 @@
         return { id: 1, first_name: 'Guest', username: 'guest' };
     }
 
-    // Render multiplier slots ke HTML
     function renderMultiplierSlots() {
         const wrapper = document.getElementById('multiplierSlotsWrapper');
         if (!wrapper) return;
@@ -224,9 +222,10 @@
             const mult = multipliers[i];
             let riskClass = '';
             
-            if (mult >= 5) riskClass = 'high';
-            else if (mult >= 2) riskClass = 'medium';
-            else riskClass = 'low';
+            if (mult >= 8) riskClass = 'high-win';
+            else if (mult >= 2.5) riskClass = 'medium-win';
+            else if (mult >= 1) riskClass = 'low-win';
+            else riskClass = 'zero';
             
             html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
                         ${mult}x
