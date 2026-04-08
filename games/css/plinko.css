@@ -382,6 +382,18 @@ body {
     animation: slotPulse 0.3s ease;
 }
 
+#plinkoCanvas {
+    /* Reduce the physical height of the element */
+    height: 350px !important; 
+    
+    /* Ensure the drawing inside doesn't get distorted */
+    display: block;
+    margin: 0 auto;
+    
+    /* If there is still too much gap at the bottom */
+    margin-bottom: -50px; 
+}
+
 .plinko-canvas-container {
     background: #0a0a0a;
     border-radius: 20px;
