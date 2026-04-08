@@ -413,6 +413,7 @@
         await loadHistory();
         updateViewCount();
         renderMultiplierSlots();
+        requestAnimationFrame(update);
 
         console.log('✅ Plinko Games Ready');
     }
