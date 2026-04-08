@@ -11,6 +11,12 @@ echo -e "${YELLOW}========================================${NC}"
 echo -e "${YELLOW}🛑 Menghentikan Server & Fragment Bot${NC}"
 echo -e "${YELLOW}========================================${NC}"
 
+# Pindah ke direktori utama
+cd "$(dirname "$0")/.."
+
+# Buat folder logs jika belum ada
+mkdir -p logs
+
 # ==================== FUNGSI MEMATIKAN PORT 5050 ====================
 kill_port_5050() {
     echo -e "${YELLOW}🔍 Memeriksa port 5050...${NC}"
@@ -74,7 +80,7 @@ stop_process_by_name() {
     local process_name=$1
     local match_pattern=$2
     
-    PIDS=$(ps aux | grep "$match_pattern" | grep -v grep | awk '{print $2}')
+    PIDS=$(ps aux | grep "$match_pattern" | grep -v grep | grep -v "stop.sh" | awk '{print $2}')
     
     if [ -n "$PIDS" ]; then
         for PID in $PIDS; do
@@ -84,7 +90,7 @@ stop_process_by_name() {
         sleep 2
         
         # Force kill jika masih berjalan
-        PIDS=$(ps aux | grep "$match_pattern" | grep -v grep | awk '{print $2}')
+        PIDS=$(ps aux | grep "$match_pattern" | grep -v grep | grep -v "stop.sh" | awk '{print $2}')
         if [ -n "$PIDS" ]; then
             for PID in $PIDS; do
                 echo -e "${YELLOW}⚠️  Memaksa menghentikan $process_name (PID: $PID)${NC}"
@@ -108,10 +114,12 @@ stop_process_by_name "Fragment Bot" "fragment_bot.py"
 # Bersihkan port 5050
 kill_port_5050
 
+# Bersihkan PID files yang mungkin tersisa
+rm -f /tmp/flask_server.pid /tmp/fragment_bot.pid 2>/dev/null
+
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ Semua server berhasil dihentikan${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 # Catat ke log
-mkdir -p logs
 echo "$(date): All servers stopped" >> logs/server.log
