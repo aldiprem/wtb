@@ -4,6 +4,7 @@
 
 import sqlite3
 import logging
+import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import pytz
@@ -274,6 +275,7 @@ def init_database():
     conn.close()
     logger.info("✅ Master database initialized successfully")
 
+_active_sessions = {}
 
 # ==================== DEFAULT SETTINGS ====================
 
@@ -1624,6 +1626,108 @@ def authenticate_panel_user(username, password):
         }
     
     return None
+
+# ==================== PANEL SESSION FUNCTIONS ====================
+
+def create_panel_session(username: str, role: str) -> dict:
+    """
+    Create a new panel session for authenticated user
+    
+    Args:
+        username (str): Username
+        role (str): User role (admin/owner/user)
+    
+    Returns:
+        dict: Session data with token
+    """
+    import uuid
+    from datetime import datetime, timedelta
+    
+    session_token = str(uuid.uuid4())
+    expires_at = datetime.now() + timedelta(hours=24)
+    
+    session_data = {
+        'token': session_token,
+        'username': username,
+        'role': role,
+        'created_at': datetime.now().isoformat(),
+        'expires_at': expires_at.isoformat()
+    }
+    
+    # Store in global _active_sessions dictionary (already defined in your file)
+    global _active_sessions
+    _active_sessions[session_token] = session_data
+    
+    return session_data
+
+
+def get_panel_session(token: str) -> dict:
+    """
+    Get panel session by token
+    
+    Args:
+        token (str): Session token
+    
+    Returns:
+        dict or None: Session data if valid
+    """
+    from datetime import datetime
+    
+    global _active_sessions
+    
+    if token in _active_sessions:
+        session = _active_sessions[token]
+        expires_at = datetime.fromisoformat(session['expires_at'])
+        
+        if expires_at > datetime.now():
+            return session
+        else:
+            # Remove expired session
+            del _active_sessions[token]
+    
+    return None
+
+
+def delete_panel_session(token: str) -> bool:
+    """
+    Delete/Invalidate panel session
+    
+    Args:
+        token (str): Session token
+    
+    Returns:
+        bool: True if deleted
+    """
+    global _active_sessions
+    
+    if token in _active_sessions:
+        del _active_sessions[token]
+        return True
+    return False
+
+
+def get_all_panel_sessions() -> list:
+    """
+    Get all active panel sessions
+    
+    Returns:
+        list: List of active sessions
+    """
+    from datetime import datetime
+    
+    global _active_sessions
+    
+    # Clean expired sessions
+    expired = []
+    for token, session in _active_sessions.items():
+        expires_at = datetime.fromisoformat(session['expires_at'])
+        if expires_at <= datetime.now():
+            expired.append(token)
+    
+    for token in expired:
+        del _active_sessions[token]
+    
+    return list(_active_sessions.values())
 
 # ==================== RENTAL FUNCTIONS ====================
 
