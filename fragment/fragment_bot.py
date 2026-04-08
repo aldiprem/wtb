@@ -613,11 +613,9 @@ async def owner_stats_handler(event):
     
     await event.respond(text, parse_mode='markdown')
 
-# Tambahkan di fragment_bot.py setelah handler sticker
-
 @bot.on(events.NewMessage)
 async def sticker_to_file_handler(event):
-    """Kirim sticker sebagai file .tgs beserta File ID"""
+    """Kirim sticker sebagai file .tgs, lalu kirim message info terpisah"""
     
     if not event.sticker:
         return
@@ -629,41 +627,61 @@ async def sticker_to_file_handler(event):
     if not is_animated:
         return
     
-    progress = await event.reply("⏳ Processing sticker...")
+    progress = await event.reply("⏳ **Processing animated sticker...**")
     
     try:
-        # Download ke temp file
         import tempfile
+        import os
+        from telethon.tl.types import DocumentAttributeFilename, DocumentAttributeSticker
+        
+        # Download ke temp file
         with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
             tmp = f.name
         
         await event.client.download_media(sticker, tmp)
         
-        # Dapatkan file ID dan info
+        # Dapatkan info sticker
         file_id = sticker.id
-        access_hash = getattr(sticker, 'access_hash', 0)
+        width = getattr(sticker, 'width', 512)
+        height = getattr(sticker, 'height', 512)
+        file_size = os.path.getsize(tmp)
         
-        # Kirim file
+        # Dapatkan emoji dari attributes
+        emoji = '-'
+        for attr in getattr(sticker, 'attributes', []):
+            if isinstance(attr, DocumentAttributeSticker):
+                emoji = getattr(attr, 'alt', '-') or '-'
+                break
+        
+        # Nama file
+        file_name = f"sticker_{file_id}.tgs"
+        
+        # Hapus pesan progress
+        await progress.delete()
+        
+        # ==================== KIRIM FILE TERLEBIH DAHULU ====================
         await event.client.send_file(
             event.chat_id,
             file=tmp,
-            caption=(
-                f"✅ **Sticker .tgs**\n\n"
-                f"📏 Resolusi: {getattr(sticker, 'width', 512)}x{getattr(sticker, 'height', 512)}\n"
-                f"📦 Size: {os.path.getsize(tmp):,} bytes\n"
-                f"🆔 **File ID:** `{file_id}`\n\n"
-                f"🌐 **Test di web:**\n"
-                f"https://companel.shop/tgs\n\n"
-                f"Masukkan File ID di atas untuk menampilkan sticker"
-            ),
-            attributes=[DocumentAttributeFilename(f"sticker_{file_id}.tgs")]
+            attributes=[DocumentAttributeFilename(file_name)]
         )
         
+        # ==================== KIRIM MESSAGE INFO TERPISAH ====================
+        await event.reply(
+            f"✅ **Sticker .tgs berhasil diekstrak!**\n\n"
+            f"📏 **Resolusi:** {width} x {height}\n"
+            f"😀 **Emoji:** {emoji}\n"
+            f"📦 **Ukuran:** {file_size:,} bytes ({file_size/1024:.1f} KB)\n"
+            f"🆔 **File ID:** `{file_id}`\n\n"
+            f"🌐 **Test di web:** https://companel.shop/tgs\n\n"
+            f"💡 **Cara pakai:** Upload file .tgs di atas ke web atau masukkan File ID"
+        )
+        
+        # Hapus file temporary
         os.unlink(tmp)
-        await progress.delete()
         
     except Exception as e:
-        await progress.edit(f"❌ Error: {e}")
+        await progress.edit(f"❌ **Error:** {str(e)[:200]}")
 
 # ==================== MAIN ====================
 
