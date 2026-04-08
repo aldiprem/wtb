@@ -1,4 +1,4 @@
-// TGS Sticker Editor - Full Features
+// TGS Sticker Editor - Full Features dengan Animasi Bergerak
 class TGSStickerEditor {
     constructor() {
         this.stickers = [];
@@ -9,6 +9,7 @@ class TGSStickerEditor {
         this.isDragging = false;
         this.dragStartX = 0;
         this.dragStartY = 0;
+        this.animations = new Map(); // Simpan instance Lottie per sticker
         
         this.init();
     }
@@ -21,11 +22,8 @@ class TGSStickerEditor {
     }
     
     setupCanvas() {
-        // Set canvas size
         this.canvas.width = 1200;
         this.canvas.height = 800;
-        
-        // Draw grid
         this.drawGrid();
     }
     
@@ -54,110 +52,31 @@ class TGSStickerEditor {
     
     renderBackground() {
         this.drawGrid();
-        // Redraw all stickers
-        this.stickers.forEach(sticker => {
-            this.renderStickerToCanvas(sticker);
-        });
+        // Canvas background only, stickers rendered as HTML elements with Lottie
     }
     
-    renderStickerToCanvas(sticker) {
-        if (!sticker.imageData) return;
-        
-        this.ctx.save();
-        this.ctx.translate(sticker.x + sticker.width / 2, sticker.y + sticker.height / 2);
-        this.ctx.rotate(sticker.rotation * Math.PI / 180);
-        this.ctx.scale(sticker.scale, sticker.scale);
-        this.ctx.drawImage(sticker.imageData, -sticker.width / 2, -sticker.height / 2, sticker.width, sticker.height);
-        this.ctx.restore();
-    }
-                      
-    async saveCompositionToServer() {
-        const composition = {
-            stickers: this.stickers.map(s => ({
-                id: s.id,
-                x: s.x,
-                y: s.y,
-                width: s.width,
-                height: s.height,
-                scale: s.scale,
-                rotation: s.rotation,
-                filename: s.file?.name
-            }))
-        };
-        
-        try {
-            const response = await fetch('/tgs/api/save-composition', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ composition: composition })
-            });
-            const data = await response.json();
-            if (data.success) {
-                alert('Composition saved! Session ID: ' + data.session_id);
-            }
-        } catch (err) {
-            console.error('Save failed:', err);
-        }
-    }
-
-    async exportAsZip() {
-        const stickersData = this.stickers.map(s => ({
-            filename: s.file?.name || `sticker_${s.id}.tgs`,
-            data: s.base64Data || null
-        })).filter(s => s.data);
-        
-        if (stickersData.length === 0) {
-            alert('No stickers to export');
-            return;
-        }
-        
-        try {
-            const response = await fetch('/tgs/api/export-zip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ stickers: stickersData })
-            });
-            
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'stickers_export.zip';
-                a.click();
-                URL.revokeObjectURL(url);
-            }
-        } catch (err) {
-            console.error('Export failed:', err);
-        }
-    }
-
     async loadSticker(file) {
         try {
             const compressed = await this.readFile(file);
             const decompressed = pako.ungzip(compressed, { to: 'string' });
             const animationData = JSON.parse(decompressed);
             
-            // Render Lottie ke canvas
-            const imageData = await this.lottieToImage(animationData);
-            
             const sticker = {
                 id: Date.now() + Math.random(),
                 file: file,
                 animationData: animationData,
-                imageData: imageData,
                 x: Math.random() * (this.canvas.width - 200),
                 y: Math.random() * (this.canvas.height - 200),
                 width: 150,
                 height: 150,
                 scale: 1,
                 rotation: 0,
-                zIndex: this.stickers.length
+                zIndex: this.stickers.length,
+                isPlaying: true
             };
             
             this.stickers.push(sticker);
-            this.createStickerElement(sticker);
-            this.renderBackground();
+            await this.createStickerElement(sticker);
             this.updateInfo();
             
             return sticker;
@@ -176,55 +95,7 @@ class TGSStickerEditor {
         });
     }
     
-    lottieToImage(animationData) {
-        return new Promise((resolve) => {
-            const container = document.createElement('div');
-            container.style.width = '150px';
-            container.style.height = '150px';
-            container.style.position = 'absolute';
-            container.style.opacity = '0';
-            document.body.appendChild(container);
-            
-            const anim = lottie.loadAnimation({
-                container: container,
-                renderer: 'svg',
-                loop: true,
-                autoplay: true,
-                animationData: animationData
-            });
-            
-            setTimeout(() => {
-                const svg = container.querySelector('svg');
-                if (svg) {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 150;
-                    canvas.height = 150;
-                    const ctx = canvas.getContext('2d');
-                    
-                    const img = new Image();
-                    const svgData = new XMLSerializer().serializeToString(svg);
-                    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                    const url = URL.createObjectURL(svgBlob);
-                    
-                    img.onload = () => {
-                        ctx.drawImage(img, 0, 0, 150, 150);
-                        URL.revokeObjectURL(url);
-                        document.body.removeChild(container);
-                        anim.destroy();
-                        resolve(canvas);
-                    };
-                    
-                    img.src = url;
-                } else {
-                    document.body.removeChild(container);
-                    anim.destroy();
-                    resolve(null);
-                }
-            }, 500);
-        });
-    }
-    
-    createStickerElement(sticker) {
+    async createStickerElement(sticker) {
         const div = document.createElement('div');
         div.className = 'sticker-item';
         div.id = `sticker-${sticker.id}`;
@@ -234,13 +105,17 @@ class TGSStickerEditor {
         div.style.height = `${sticker.height}px`;
         div.style.transform = `rotate(${sticker.rotation}deg) scale(${sticker.scale})`;
         div.style.zIndex = sticker.zIndex;
+        div.style.position = 'absolute';
+        div.style.overflow = 'hidden';
         
-        // Create img element
-        const img = document.createElement('img');
-        img.src = sticker.imageData.toDataURL();
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'contain';
+        // Container untuk Lottie animation
+        const lottieContainer = document.createElement('div');
+        lottieContainer.id = `lottie-${sticker.id}`;
+        lottieContainer.style.width = '100%';
+        lottieContainer.style.height = '100%';
+        lottieContainer.style.pointerEvents = 'none';
+        
+        div.appendChild(lottieContainer);
         
         // Create handles
         const resizeHandle = document.createElement('div');
@@ -248,7 +123,6 @@ class TGSStickerEditor {
         const rotateHandle = document.createElement('div');
         rotateHandle.className = 'rotate-handle';
         
-        div.appendChild(img);
         div.appendChild(resizeHandle);
         div.appendChild(rotateHandle);
         
@@ -258,9 +132,29 @@ class TGSStickerEditor {
         rotateHandle.addEventListener('mousedown', (e) => this.onRotateStart(e, sticker));
         
         this.stickersContainer.appendChild(div);
+        
+        // Load Lottie animation
+        const anim = lottie.loadAnimation({
+            container: lottieContainer,
+            renderer: 'svg',
+            loop: true,
+            autoplay: sticker.isPlaying,
+            animationData: sticker.animationData,
+            rendererSettings: {
+                preserveAspectRatio: 'xMidYMid meet'
+            }
+        });
+        
+        this.animations.set(sticker.id, anim);
     }
     
     onStickerMouseDown(e, sticker) {
+        // Jangan trigger jika klik di handle
+        if (e.target.classList.contains('resize-handle') || 
+            e.target.classList.contains('rotate-handle')) {
+            return;
+        }
+        
         e.stopPropagation();
         this.selectSticker(sticker.id);
         
@@ -274,7 +168,6 @@ class TGSStickerEditor {
             let newX = moveEvent.clientX - this.dragStartX;
             let newY = moveEvent.clientY - this.dragStartY;
             
-            // Boundary check
             newX = Math.max(0, Math.min(newX, this.canvas.width - sticker.width));
             newY = Math.max(0, Math.min(newY, this.canvas.height - sticker.height));
             
@@ -286,8 +179,6 @@ class TGSStickerEditor {
                 element.style.left = `${sticker.x}px`;
                 element.style.top = `${sticker.y}px`;
             }
-            
-            this.renderBackground();
         };
         
         const onMouseUp = () => {
@@ -316,8 +207,6 @@ class TGSStickerEditor {
                 element.style.width = `${sticker.width}px`;
                 element.style.height = `${sticker.height}px`;
             }
-            
-            this.renderBackground();
         };
         
         const onMouseUp = () => {
@@ -331,8 +220,9 @@ class TGSStickerEditor {
     
     onRotateStart(e, sticker) {
         e.stopPropagation();
-        const centerX = sticker.x + sticker.width / 2;
-        const centerY = sticker.y + sticker.height / 2;
+        const rect = document.getElementById(`sticker-${sticker.id}`).getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
         
         const getAngle = (clientX, clientY) => {
             const dx = clientX - centerX;
@@ -352,8 +242,6 @@ class TGSStickerEditor {
             if (element) {
                 element.style.transform = `rotate(${sticker.rotation}deg) scale(${sticker.scale})`;
             }
-            
-            this.renderBackground();
         };
         
         const onMouseUp = () => {
@@ -368,25 +256,64 @@ class TGSStickerEditor {
     selectSticker(id) {
         this.selectedStickerId = id;
         
-        // Remove selected class from all
         document.querySelectorAll('.sticker-item').forEach(el => {
             el.classList.remove('selected');
         });
         
-        // Add selected class to current
         const selectedElement = document.getElementById(`sticker-${id}`);
         if (selectedElement) {
             selectedElement.classList.add('selected');
         }
         
-        document.getElementById('selectedInfo').innerText = id;
+        document.getElementById('selectedInfo').innerText = id.toString().slice(-8);
+    }
+    
+    toggleAnimation() {
+        if (!this.selectedStickerId) {
+            alert('Pilih sticker dulu dengan klik pada sticker');
+            return;
+        }
+        
+        const sticker = this.stickers.find(s => s.id === this.selectedStickerId);
+        const anim = this.animations.get(this.selectedStickerId);
+        
+        if (sticker && anim) {
+            if (sticker.isPlaying) {
+                anim.pause();
+                sticker.isPlaying = false;
+            } else {
+                anim.play();
+                sticker.isPlaying = true;
+            }
+        }
+    }
+    
+    stopAllAnimations() {
+        this.animations.forEach((anim, id) => {
+            anim.pause();
+            const sticker = this.stickers.find(s => s.id === id);
+            if (sticker) sticker.isPlaying = false;
+        });
+    }
+    
+    playAllAnimations() {
+        this.animations.forEach((anim, id) => {
+            anim.play();
+            const sticker = this.stickers.find(s => s.id === id);
+            if (sticker) sticker.isPlaying = true;
+        });
     }
     
     clearAllStickers() {
+        // Hentikan dan hapus semua animasi
+        this.animations.forEach((anim) => {
+            anim.destroy();
+        });
+        this.animations.clear();
+        
         this.stickers = [];
         this.stickersContainer.innerHTML = '';
         this.selectedStickerId = null;
-        this.renderBackground();
         this.updateInfo();
         document.getElementById('selectedInfo').innerText = 'None';
     }
@@ -396,52 +323,50 @@ class TGSStickerEditor {
     }
     
     exportAsPNG() {
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = this.canvas.width;
-        exportCanvas.height = this.canvas.height;
-        const exportCtx = exportCanvas.getContext('2d');
-        
-        // Draw background
-        exportCtx.fillStyle = '#ffffff';
-        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-        
-        // Draw grid
-        exportCtx.strokeStyle = '#e0e0e0';
-        exportCtx.lineWidth = 1;
-        for (let x = 0; x <= exportCanvas.width; x += 20) {
-            exportCtx.beginPath();
-            exportCtx.moveTo(x, 0);
-            exportCtx.lineTo(x, exportCanvas.height);
-            exportCtx.stroke();
-        }
-        for (let y = 0; y <= exportCanvas.height; y += 20) {
-            exportCtx.beginPath();
-            exportCtx.moveTo(0, y);
-            exportCtx.lineTo(exportCanvas.width, y);
-            exportCtx.stroke();
-        }
-        
-        // Draw stickers
-        this.stickers.forEach(sticker => {
-            if (sticker.imageData) {
-                exportCtx.save();
-                exportCtx.translate(sticker.x + sticker.width / 2, sticker.y + sticker.height / 2);
-                exportCtx.rotate(sticker.rotation * Math.PI / 180);
-                exportCtx.scale(sticker.scale, sticker.scale);
-                exportCtx.drawImage(sticker.imageData, -sticker.width / 2, -sticker.height / 2, sticker.width, sticker.height);
-                exportCtx.restore();
-            }
+        // Pause semua animasi dulu
+        const wasPlaying = [];
+        this.animations.forEach((anim, id) => {
+            wasPlaying[id] = !anim.isPaused;
+            anim.pause();
         });
         
-        const link = document.createElement('a');
-        link.download = `sticker-export-${Date.now()}.png`;
-        link.href = exportCanvas.toDataURL();
-        link.click();
+        setTimeout(() => {
+            html2canvas(this.stickersContainer.parentElement, {
+                scale: 2,
+                backgroundColor: '#ffffff'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `sticker-export-${Date.now()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+                
+                // Resume animasi
+                this.animations.forEach((anim, id) => {
+                    if (wasPlaying[id]) {
+                        anim.play();
+                    }
+                });
+            });
+        }, 100);
     }
     
     setupEventListeners() {
         document.getElementById('clearAllBtn').addEventListener('click', () => this.clearAllStickers());
         document.getElementById('exportBtn').addEventListener('click', () => this.exportAsPNG());
+        
+        // Tombol Play/Pause untuk sticker yang dipilih
+        const controlPanel = document.createElement('div');
+        controlPanel.className = 'animation-controls';
+        controlPanel.innerHTML = `
+            <button id="toggleAnimBtn" class="btn btn-warning">⏯️ Play/Pause Selected</button>
+            <button id="stopAllBtn" class="btn btn-warning">⏹️ Stop All</button>
+            <button id="playAllBtn" class="btn btn-success">▶️ Play All</button>
+        `;
+        document.querySelector('.controls').appendChild(controlPanel);
+        
+        document.getElementById('toggleAnimBtn').addEventListener('click', () => this.toggleAnimation());
+        document.getElementById('stopAllBtn').addEventListener('click', () => this.stopAllAnimations());
+        document.getElementById('playAllBtn').addEventListener('click', () => this.playAllAnimations());
         
         document.getElementById('addMoreInput').addEventListener('change', async (e) => {
             const files = Array.from(e.target.files);

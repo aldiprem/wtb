@@ -231,6 +231,22 @@ h1 {
     color: #00ff88;
 }
 
+/* Animation Controls */
+.animation-controls {
+    display: flex;
+    gap: 10px;
+    margin-left: 15px;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+}
+
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(253, 160, 133, 0.4);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 10px;
