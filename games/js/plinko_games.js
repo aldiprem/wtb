@@ -130,6 +130,17 @@
                 }
             }
 
+            // Pembatas berdasarkan lebar multiplier wrapper
+            const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
+            if (multiplierWrapper && ball.y > canvas.height - 60) {
+                const wrapperWidth = multiplierWrapper.clientWidth;
+                const wrapperLeft = (canvas.width - wrapperWidth) / 2;
+                const wrapperRight = wrapperLeft + wrapperWidth;
+                
+                if (ball.x < wrapperLeft) ball.x = wrapperLeft;
+                if (ball.x > wrapperRight) ball.x = wrapperRight;
+            }
+
             // --- LOGIKA TABRAKAN PIN LAMA ANDA ---
             for (let r = 0; r < 9; r++) {
                 const dots = 3 + r;
@@ -158,7 +169,7 @@
             ctx.fill();
 
             // Cek Sampai Bawah
-            if (ball.y > canvas.height) {
+            if (ball.y > canvas.height - 20) {
                 finalizeGame(ball);
                 balls.splice(index, 1);
             }
@@ -349,6 +360,69 @@
             vy: 0,
             bet: betAmount
         });
+    }
+
+    // Fungsi untuk menentukan slot multiplier berdasarkan posisi X bola
+    function getMultiplierFromPosition(x) {
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segment = canvas.width / multipliers.length;
+        let slotIndex = Math.floor(x / segment);
+        slotIndex = Math.min(Math.max(slotIndex, 0), multipliers.length - 1);
+        return {
+            index: slotIndex,
+            multiplier: multipliers[slotIndex]
+        };
+    }
+
+    // Ganti fungsi finalizeGame
+    function finalizeGame(ball) {
+        // Cek apakah bola sudah melewati batas bawah multiplier slots
+        const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
+        const wrapperRect = multiplierWrapper?.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Konversi posisi bola ke koordinat relatif canvas
+        const ballScreenY = canvasRect.top + ball.y;
+        const wrapperTopY = wrapperRect?.top || 0;
+        
+        // Bola dianggap valid jika sudah melewati posisi Y multiplier wrapper
+        // atau sudah mencapai batas bawah canvas
+        if (ball.y >= canvas.height - 20) {
+            const result = getMultiplierFromPosition(ball.x);
+            
+            const winAmount = Math.floor(ball.bet * result.multiplier);
+            const roundHash = generateRoundHash();
+            
+            animateSlot(result.index);
+            
+            // Tampilkan hasil
+            const resultDiv = document.getElementById('resultDisplay');
+            const resultMultiplier = document.getElementById('resultMultiplier');
+            const resultWin = document.getElementById('resultWin');
+            
+            resultDiv.style.display = 'block';
+            resultMultiplier.textContent = `${result.multiplier}x`;
+            resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
+            
+            if (result.multiplier >= 5) {
+                resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+            } else if (result.multiplier >= 2) {
+                resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+            } else {
+                resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+            }
+            
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 3000);
+            
+            saveGameResult(ball.bet, result.multiplier, winAmount, roundHash);
+            return true;
+        }
+        return false;
     }
 
     // Initialize
