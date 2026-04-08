@@ -611,39 +611,38 @@ async def owner_stats_handler(event):
     
     await event.respond(text, parse_mode='markdown')
 
-@bot.on(events.NewMessage(pattern='/tgs'))
-async def tgs_command_handler(event):
-    """Handler untuk command /tgs - reply ke sticker untuk mendapatkan file"""
+# ==================== STICKER HANDLER (PALING SIMPLE) ====================
+
+@bot.on(events.NewMessage)
+async def handle_sticker(event):
+    """Handler untuk semua sticker"""
     
-    # Cek apakah ada reply message
-    reply_msg = await event.get_reply_message()
-    
-    if not reply_msg:
-        await event.reply("❌ **Gunakan:** `/tgs` sebagai reply ke animated sticker!\n\nCara: reply sticker lalu ketik /tgs")
+    if not event.sticker:
         return
     
-    # Cek apakah reply message berisi sticker
-    if not reply_msg.sticker:
-        await event.reply("❌ Reply message bukan sticker! Kirimkan sticker lalu reply dengan /tgs")
+    sticker = event.sticker
+    
+    # Kirim balik sticker yang sama
+    await event.reply(file=sticker)
+
+
+@bot.on(events.NewMessage(pattern='/sticker'))
+async def sticker_info(event):
+    """Info sticker via reply"""
+    
+    reply = await event.get_reply_message()
+    
+    if not reply or not reply.sticker:
+        await event.reply("Reply ke sticker dengan /sticker")
         return
     
-    sticker = reply_msg.sticker
+    s = reply.sticker
     
-    # Cek apakah animated sticker
-    if not sticker.is_animated:
-        await event.reply("❌ Hanya animated sticker (.tgs) yang didukung!")
-        return
-    
-    # Kirim balik file sticker
     await event.reply(
-        file=sticker,
-        caption=(
-            f"✅ **File .tgs Sticker**\n\n"
-            f"📏 Resolusi: {sticker.width}x{sticker.height}\n"
-            f"😀 Emoji: {sticker.emoji or '-'}\n"
-            f"📦 Ukuran: {sticker.size} bytes\n"
-            f"🆔 File ID: `{sticker.file_id[:30]}...`"
-        )
+        f"📋 **Info Sticker**\n"
+        f"ID: `{s.id}`\n"
+        f"Size: {s.width}x{s.height}\n"
+        f"Emoji: {getattr(s, 'emoji', '-')}"
     )
 
 # ==================== MAIN ====================
