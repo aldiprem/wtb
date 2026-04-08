@@ -222,13 +222,17 @@
             const mult = multipliers[i];
             let riskClass = '';
             
-            if (mult >= 8) riskClass = 'high-win';
-            else if (mult >= 2.5) riskClass = 'medium-win';
-            else if (mult >= 1) riskClass = 'low-win';
+            // Sesuai dengan class di CSS: low, medium, high, zero
+            if (mult >= 5) riskClass = 'high';
+            else if (mult >= 2) riskClass = 'medium';
+            else if (mult >= 1) riskClass = 'low';
             else riskClass = 'zero';
             
+            // Bulatkan angka desimal ke 1 digit kalo perlu
+            const displayValue = mult % 1 === 0 ? mult : mult.toFixed(1);
+            
             html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
-                        ${mult}
+                        ${displayValue}
                     </div>`;
         }
         
