@@ -56,23 +56,14 @@
                 const x = startX - (cols / 2) * spacingX + col * spacingX + offsetX;
                 ctx.beginPath();
                 ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.6)';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
                 ctx.fill();
                 ctx.beginPath();
                 ctx.arc(x, y, 1.5, 0, Math.PI * 2);
-                ctx.fillStyle = '#FFD700';
+                ctx.fillStyle = '#ffffff';
                 ctx.fill();
             }
         }
-        
-        // HAPUS BAGIAN INI (draw slots at bottom) - UDAH GA ADA
-        
-        // Gambar garis batas bawah aja
-        ctx.beginPath();
-        ctx.moveTo(0, h - 50);
-        ctx.lineTo(w, h - 50);
-        ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
-        ctx.stroke();
     }
 
     // Load stats from API
