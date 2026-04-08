@@ -377,12 +377,9 @@
         
         function resizeCanvas() {
             const container = canvas.parentElement;
-            const width = container.clientWidth;
-            canvas.width = Math.min(width, 800);
-            
-            // Change from 500 to 350 (or whatever fits your 9 rows)
-            canvas.height = 350; 
-            
+            canvas.width = Math.min(container.clientWidth, 800);
+            canvas.height = 400; // Pendekkan canvas agar pas dengan 9 baris
+            spawnerX = canvas.width / 2;
             drawPlinkoBoard();
         }
         
