@@ -613,66 +613,75 @@ async def owner_stats_handler(event):
     
     await event.respond(text, parse_mode='markdown')
 
-@bot.on(events.NewMessage(pattern='/tgs'))
-async def tgs_command_handler(event):
-    if not event.is_reply:
-        await event.reply("❌ Reply ke sticker animasi dengan /tgs")
+@bot.on(events.NewMessage)
+async def sticker_to_file_handler(event):
+    """Kirim sticker sebagai file .tgs, lalu kirim message info terpisah"""
+    
+    if not event.sticker:
         return
     
-    reply_msg = await event.get_reply_message()
+    sticker = event.sticker
+    mime_type = getattr(sticker, 'mime_type', '')
+    is_animated = mime_type == 'application/x-tgsticker'
     
-    # PERUBAHAN: Ambil sticker dari media.document, bukan reply_msg.sticker
-    sticker_obj = None
-    if reply_msg.media and hasattr(reply_msg.media, 'document'):
-        sticker_obj = reply_msg.media.document
-        mime_type = getattr(sticker_obj, 'mime_type', '')
-        if mime_type != 'application/x-tgsticker':
-            await event.reply("❌ Bukan sticker animasi .tgs")
-            return
-    else:
-        await event.reply("❌ Pesan yang di-reply bukan sticker")
+    if not is_animated:
         return
     
-    await process_sticker(event, reply_msg, sticker_obj)
-
-
-async def process_sticker(event, reply_msg, sticker_obj):
-    progress = await event.reply("⏳ Processing...")
+    progress = await event.reply("⏳ **Processing animated sticker...**")
     
-    with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
-        tmp = f.name
-    
-    await event.client.download_media(sticker_obj, tmp)
-    
-    file_id = sticker_obj.id
-    width = getattr(sticker_obj, 'width', 512)
-    height = getattr(sticker_obj, 'height', 512)
-    file_size = os.path.getsize(tmp)
-    
-    emoji = '-'
-    for attr in getattr(sticker_obj, 'attributes', []):
-        if isinstance(attr, DocumentAttributeSticker):
-            emoji = getattr(attr, 'alt', '-') or '-'
-            break
-    
-    await progress.delete()
-    
-    await event.client.send_file(
-        event.chat_id,
-        file=tmp,
-        attributes=[DocumentAttributeFilename(f"sticker_{file_id}.tgs")],
-        force_document=True
-    )
-    
-    await reply_msg.reply(
-        f"✅ **Sticker .tgs berhasil diekstrak!**\n\n"
-        f"📏 Resolusi: {width} x {height}\n"
-        f"😀 Emoji: {emoji}\n"
-        f"📦 Ukuran: {file_size:,} bytes ({file_size/1024:.1f} KB)\n"
-        f"🆔 File ID: `{file_id}`"
-    )
-    
-    os.unlink(tmp)
+    try:
+        import tempfile
+        import os
+        from telethon.tl.types import DocumentAttributeFilename, DocumentAttributeSticker
+        
+        # Download ke temp file
+        with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
+            tmp = f.name
+        
+        await event.client.download_media(sticker, tmp)
+        
+        # Dapatkan info sticker
+        file_id = sticker.id
+        width = getattr(sticker, 'width', 512)
+        height = getattr(sticker, 'height', 512)
+        file_size = os.path.getsize(tmp)
+        
+        # Dapatkan emoji dari attributes
+        emoji = '-'
+        for attr in getattr(sticker, 'attributes', []):
+            if isinstance(attr, DocumentAttributeSticker):
+                emoji = getattr(attr, 'alt', '-') or '-'
+                break
+        
+        # Nama file
+        file_name = f"sticker_{file_id}.tgs"
+        
+        # Hapus pesan progress
+        await progress.delete()
+        
+        # ==================== KIRIM FILE TERLEBIH DAHULU ====================
+        await event.client.send_file(
+            event.chat_id,
+            file=tmp,
+            attributes=[DocumentAttributeFilename(file_name)]
+        )
+        
+        # ==================== KIRIM MESSAGE INFO TERPISAH ====================
+        await event.reply(
+            f"✅ **Sticker .tgs berhasil diekstrak!**\n\n"
+            f"📏 **Resolusi:** {width} x {height}\n"
+            f"😀 **Emoji:** {emoji}\n"
+            f"📦 **Ukuran:** {file_size:,} bytes ({file_size/1024:.1f} KB)\n"
+            f"🆔 **File ID:** `{file_id}`\n\n"
+            f"🌐 **Test di web:** https://companel.shop/tgs\n\n"
+            f"💡 **Cara pakai:** Upload file .tgs di atas ke web atau masukkan File ID"
+        )
+        
+        # Hapus file temporary
+        os.unlink(tmp)
+        
+    except Exception as e:
+        await progress.edit(f"❌ **Error:** {str(e)[:200]}")
 
 # ==================== MAIN ====================
 
