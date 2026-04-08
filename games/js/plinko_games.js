@@ -260,7 +260,10 @@
             const container = canvas.parentElement;
             const width = container.clientWidth;
             canvas.width = Math.min(width, 800);
-            canvas.height = 500;
+            
+            // Change from 500 to 350 (or whatever fits your 9 rows)
+            canvas.height = 350; 
+            
             drawPlinkoBoard();
         }
         

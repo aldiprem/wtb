@@ -391,12 +391,21 @@ body {
 }
 
 #plinkoCanvas {
+    /* Reduce the physical height of the element */
+    height: 350px !important; 
+    
+    /* Ensure the drawing inside doesn't get distorted */
     display: block;
-    width: 100%;
-    height: auto;
-    /* Ubah dari linear-gradient biru ke transparan atau warna gelap solid */
-    background: transparent; 
-    cursor: pointer;
+    margin: 0 auto;
+    
+    /* If there is still too much gap at the bottom */
+    margin-bottom: -50px; 
+}
+
+#multiplierSlotsWrapper {
+    margin-top: -60px; /* Adjust this value until it touches the bottom pegs */
+    position: relative;
+    z-index: 10;
 }
 
 .ball-indicator {
