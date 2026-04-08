@@ -2267,3 +2267,175 @@ async def get_all_users_with_stats(bot_token: str = None, limit: int = 50) -> Li
     except Exception as e:
         logger.error(f"Error getting all users with stats: {e}")
         return []
+    
+    # Tambahkan fungsi ini ke dalam file database/data.py
+
+async def get_panel_user(user_id: int) -> Optional[Dict]:
+    """Get panel user by ID"""
+    import sqlite3
+    from . import DB_PATH
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, username, password_hash, owner_name, email, balance, created_at, expires_at
+        FROM panel_users WHERE id = ?
+    """, (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'id': row[0],
+            'username': row[1],
+            'password_hash': row[2],
+            'owner_name': row[3],
+            'email': row[4],
+            'balance': row[5],
+            'created_at': row[6],
+            'expires_at': row[7]
+        }
+    return None
+
+
+async def get_cloned_bots(status_filter: str = None) -> List[Dict]:
+    """Get all cloned bots, optionally filtered by status"""
+    import sqlite3
+    from . import DB_PATH
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    if status_filter:
+        cursor.execute("""
+            SELECT id, bot_token, bot_username, bot_name, owner_id, status, pid, created_at, expires_at
+            FROM cloned_bots WHERE status = ?
+            ORDER BY created_at DESC
+        """, (status_filter,))
+    else:
+        cursor.execute("""
+            SELECT id, bot_token, bot_username, bot_name, owner_id, status, pid, created_at, expires_at
+            FROM cloned_bots ORDER BY created_at DESC
+        """)
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    bots = []
+    for row in rows:
+        bots.append({
+            'id': row[0],
+            'bot_token': row[1],
+            'bot_username': row[2],
+            'bot_name': row[3],
+            'owner_id': row[4],
+            'status': row[5],
+            'pid': row[6],
+            'created_at': row[7],
+            'expires_at': row[8]
+        })
+    return bots
+
+
+async def get_bot_logs(bot_token: str, limit: int = 50) -> List[Dict]:
+    """Get logs for a specific bot"""
+    import sqlite3
+    from . import DB_PATH
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT timestamp, level, message FROM bot_logs 
+        WHERE bot_token = ? 
+        ORDER BY timestamp DESC LIMIT ?
+    """, (bot_token, limit))
+    rows = cursor.fetchall()
+    conn.close()
+    
+    logs = []
+    for row in rows:
+        logs.append({
+            'timestamp': row[0],
+            'level': row[1],
+            'message': row[2]
+        })
+    return logs
+
+
+def add_bot_log_sync(bot_token: str, level: str, message: str):
+    """Add bot log synchronously (for use in subprocess monitoring)"""
+    import sqlite3
+    from . import DB_PATH
+    from datetime import datetime
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO bot_logs (bot_token, timestamp, level, message)
+        VALUES (?, ?, ?, ?)
+    """, (bot_token, datetime.now().isoformat(), level, message))
+    conn.commit()
+    conn.close()
+
+
+async def get_master_stats() -> Dict:
+    """Get master statistics"""
+    import sqlite3
+    from . import DB_PATH
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Total users
+    cursor.execute("SELECT COUNT(*) FROM panel_users")
+    total_users = cursor.fetchone()[0]
+    
+    # Total bots
+    cursor.execute("SELECT COUNT(*) FROM cloned_bots")
+    total_bots = cursor.fetchone()[0]
+    
+    # Running bots
+    cursor.execute("SELECT COUNT(*) FROM cloned_bots WHERE status = 'running'")
+    running_bots = cursor.fetchone()[0]
+    
+    # Total revenue from bot rentals
+    cursor.execute("SELECT SUM(amount) FROM deposits WHERE status = 'completed'")
+    total_revenue = cursor.fetchone()[0] or 0
+    
+    conn.close()
+    
+    return {
+        'total_users': total_users,
+        'total_bots': total_bots,
+        'running_bots': running_bots,
+        'total_revenue': total_revenue,
+        'total_stars': 0,
+        'total_volume': 0
+    }
+
+
+async def get_owner_stats(owner_id: int) -> Dict:
+    """Get statistics for a specific owner"""
+    import sqlite3
+    from . import DB_PATH
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Total bots for this owner
+    cursor.execute("SELECT COUNT(*) FROM cloned_bots WHERE owner_id = ?", (owner_id,))
+    total_bots = cursor.fetchone()[0]
+    
+    # Running bots for this owner
+    cursor.execute("SELECT COUNT(*) FROM cloned_bots WHERE owner_id = ? AND status = 'running'", (owner_id,))
+    running_bots = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return {
+        'total_bots': total_bots,
+        'running_bots': running_bots,
+        'total_stars': 0,
+        'total_volume': 0,
+        'total_deposits': 0
+    }
