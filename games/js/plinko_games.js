@@ -31,7 +31,7 @@
         }
     }
 
-    // Draw Plinko board - POLA SEGITIGA SAMA KAKI (diamond shape)
+    // Draw Plinko board - POLA SEGITIGA SIKU-SIKU RATA KIRI
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
         
@@ -40,26 +40,16 @@
         
         ctx.clearRect(0, 0, w, h);
         
-        const centerX = w / 2;
+        const startX = 40;  // Mulai dari kiri (bukan tengah)
         const startY = 50;
-        const totalRows = 13; // Jumlah baris
+        const totalRows = 15;  // Jumlah baris
         
-        for (let row = 0; row <= totalRows; row++) {
+        for (let row = 0; row < totalRows; row++) {
             const y = startY + row * 28;
-            
-            // Hitung jumlah titik per baris (membentuk diamond)
-            // Baris tengah (row 6-7) paling banyak, ujung sedikit
-            let colsInRow;
-            if (row <= 6) {
-                colsInRow = 5 + row; // Baris 0:5, baris1:6, baris2:7, baris3:8, baris4:9, baris5:10, baris6:11
-            } else {
-                colsInRow = 5 + (totalRows - row); // Baris7:10, baris8:9, baris9:8, baris10:7, baris11:6, baris12:5
-            }
-            
-            const spacingX = w / (colsInRow + 1);
+            const colsInRow = 3 + row;  // Baris0:3, baris1:4, baris2:5, baris3:6, dst
             
             for (let col = 0; col < colsInRow; col++) {
-                const x = centerX - ((colsInRow - 1) / 2) * spacingX + col * spacingX;
+                const x = startX + col * 26;
                 
                 // Outer glow
                 ctx.beginPath();
