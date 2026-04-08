@@ -31,7 +31,7 @@
         }
     }
 
-    // Draw Plinko board (TANPA MULTIPLIER DI CANVAS) - POLA SEGITIGA KE ATAS
+    // Draw Plinko board - POLA SEGITIGA SAMA KAKI (diamond shape)
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
         
@@ -40,34 +40,36 @@
         
         ctx.clearRect(0, 0, w, h);
         
-        // Draw pegs - POLA SEGITIGA (baris pertama sedikit, makin bawah makin banyak)
-        const startY = 55;
-        const rows = 14; // Jumlah baris
+        const centerX = w / 2;
+        const startY = 50;
+        const totalRows = 13; // Jumlah baris
         
-        for (let row = 0; row <= rows; row++) {
+        for (let row = 0; row <= totalRows; row++) {
             const y = startY + row * 28;
-            const colsInRow = row + 5; // Baris 0: 5 titik, baris 1: 6 titik, dst
-            const startX = w / 2;
+            
+            // Hitung jumlah titik per baris (membentuk diamond)
+            // Baris tengah (row 6-7) paling banyak, ujung sedikit
+            let colsInRow;
+            if (row <= 6) {
+                colsInRow = 5 + row; // Baris 0:5, baris1:6, baris2:7, baris3:8, baris4:9, baris5:10, baris6:11
+            } else {
+                colsInRow = 5 + (totalRows - row); // Baris7:10, baris8:9, baris9:8, baris10:7, baris11:6, baris12:5
+            }
+            
             const spacingX = w / (colsInRow + 1);
             
             for (let col = 0; col < colsInRow; col++) {
-                const x = startX - ((colsInRow - 1) / 2) * spacingX + col * spacingX;
+                const x = centerX - ((colsInRow - 1) / 2) * spacingX + col * spacingX;
                 
                 // Outer glow
                 ctx.beginPath();
-                ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
                 ctx.fill();
                 
                 // Inner peg
                 ctx.beginPath();
-                ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
-                ctx.fill();
-                
-                // Core
-                ctx.beginPath();
-                ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
                 ctx.fillStyle = '#FFD700';
                 ctx.fill();
             }
