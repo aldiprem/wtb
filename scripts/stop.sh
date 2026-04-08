@@ -11,6 +11,38 @@ echo -e "${YELLOW}========================================${NC}"
 echo -e "${YELLOW}🛑 Menghentikan Server & Fragment Bot${NC}"
 echo -e "${YELLOW}========================================${NC}"
 
+# ==================== FUNGSI MEMATIKAN PORT 5050 ====================
+kill_port_5050() {
+    echo -e "${YELLOW}🔍 Memeriksa port 5050...${NC}"
+    
+    PIDS=$(lsof -ti :5050 2>/dev/null)
+    
+    if [ -n "$PIDS" ]; then
+        echo -e "${YELLOW}⚠️  Port 5050 sedang digunakan oleh PID: $PIDS${NC}"
+        
+        for PID in $PIDS; do
+            PROCESS_NAME=$(ps -p $PID -o comm= 2>/dev/null)
+            echo -e "${GREEN}📡 Menghentikan proses (PID: $PID) - $PROCESS_NAME${NC}"
+            kill -15 $PID 2>/dev/null
+        done
+        
+        sleep 2
+        
+        # Force kill jika masih berjalan
+        PIDS=$(lsof -ti :5050 2>/dev/null)
+        if [ -n "$PIDS" ]; then
+            echo -e "${YELLOW}⚠️  Memaksa menghentikan proses: $PIDS${NC}"
+            for PID in $PIDS; do
+                kill -9 $PID 2>/dev/null
+            done
+        fi
+        
+        echo -e "${GREEN}✅ Port 5050 dibersihkan${NC}"
+    else
+        echo -e "${GREEN}✅ Port 5050 sudah kosong${NC}"
+    fi
+}
+
 # Fungsi untuk menghentikan proses berdasarkan PID file
 stop_process_from_file() {
     local pid_file=$1
@@ -65,19 +97,21 @@ stop_process_by_name() {
     fi
 }
 
-# Hentikan Flask server dari PID file
+# Hentikan dari PID files
 stop_process_from_file "/tmp/flask_server.pid" "Flask Server"
-
-# Hentikan Fragment Bot dari PID file
 stop_process_from_file "/tmp/fragment_bot.pid" "Fragment Bot"
 
 # Fallback: cari berdasarkan nama proses
 stop_process_by_name "Flask Server" "python3 app.py"
 stop_process_by_name "Fragment Bot" "fragment_bot.py"
 
+# Bersihkan port 5050
+kill_port_5050
+
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ Semua server berhasil dihentikan${NC}"
 echo -e "${GREEN}========================================${NC}"
 
 # Catat ke log
-echo "$(date): All servers stopped" >> server.log
+mkdir -p logs
+echo "$(date): All servers stopped" >> logs/server.log
