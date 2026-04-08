@@ -226,7 +226,7 @@ app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(image_bp, url_prefix='/api/images')
 app.register_blueprint(frag_bp)
-app.register_blueprint(games_bp)
+app.register_blueprint(games_bp, url_prefix='')
 
 # ==================== ROUTES UNTUK GAMES ====================
 

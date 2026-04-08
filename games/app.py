@@ -1,44 +1,17 @@
-from flask import Blueprint, render_template, jsonify, request
-from flask_cors import CORS
+from flask import Blueprint, jsonify, request, send_from_directory
 import os
 
-games_bp = Blueprint('games', __name__, 
-                     template_folder='.',
-                     static_folder='.',
-                     static_url_path='/games')
+games_bp = Blueprint('games', __name__)
 
 @games_bp.route('/games')
 def games_page():
     """Halaman utama games"""
-    return render_template('games.html')
+    return send_from_directory(os.path.dirname(__file__), 'games.html')
 
-@games_bp.route('/api/games/data')
-def get_games_data():
-    """API untuk mendapatkan data games (kosong untuk sekarang)"""
-    return jsonify({
-        'success': True,
-        'message': 'Games page - Content will be added later',
-        'data': []
-    })
+@games_bp.route('/games/css/<path:filename>')
+def serve_games_css(filename):
+    return send_from_directory(os.path.join(os.path.dirname(__file__), 'css'), filename)
 
-@games_bp.route('/api/market/data')
-def get_market_data():
-    """API untuk mendapatkan data market (kosong untuk sekarang)"""
-    return jsonify({
-        'success': True,
-        'message': 'Market page - Content will be added later',
-        'data': []
-    })
-
-@games_bp.route('/api/profile/data')
-def get_profile_data():
-    """API untuk mendapatkan data profil (kosong untuk sekarang)"""
-    return jsonify({
-        'success': True,
-        'message': 'Profile page - Content will be added later',
-        'data': {
-            'username': None,
-            'telegram_id': None,
-            'is_authenticated': False
-        }
-    })
+@games_bp.route('/games/js/<path:filename>')
+def serve_games_js(filename):
+    return send_from_directory(os.path.join(os.path.dirname(__file__), 'js'), filename)
