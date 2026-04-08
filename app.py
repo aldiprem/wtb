@@ -27,6 +27,7 @@ from services.trx_service import trx_bp
 from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
+from services.tgs_service import tgs_bp
 from games.app import games_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -227,6 +228,7 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(image_bp, url_prefix='/api/images')
 app.register_blueprint(frag_bp)
 app.register_blueprint(games_bp, url_prefix='')
+app.register_blueprint(tgs_bp)
 
 # ==================== ROUTES UNTUK GAMES ====================
 

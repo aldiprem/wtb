@@ -2,68 +2,61 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>TGS Sticker Viewer - Test Animated Sticker</title>
-    <link rel="stylesheet" href="/css/tgs.css">
-    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/tgs-player.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TGS Sticker Editor - Multi Sticker</title>
+    <link rel="stylesheet" href="/static/css/tgs.css">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>🎮 TGS Sticker Viewer</h1>
-            <p>Upload file .tgs atau tempelkan URL untuk menampilkan animated sticker</p>
-        </header>
-
-        <div class="upload-section">
-            <div class="upload-card">
-                <h3>📁 Upload File</h3>
-                <div class="upload-area" id="uploadArea">
-                    <input type="file" id="fileInput" accept=".tgs" hidden>
-                    <div class="upload-icon">📤</div>
-                    <p>Klik atau drag & drop file .tgs</p>
-                    <small>Support: .tgs (Telegram Animated Sticker)</small>
-                </div>
-                <button class="btn btn-primary" id="uploadBtn">Pilih File</button>
-            </div>
-
-            <div class="upload-card">
-                <h3>🔗 URL Sticker</h3>
-                <input type="text" id="urlInput" placeholder="https://example.com/sticker.tgs" class="url-input">
-                <button class="btn btn-secondary" id="loadUrlBtn">Load from URL</button>
-                <button class="btn btn-bot" id="getFromBotBtn">📱 Ambil dari Bot</button>
+    <div class="app-container">
+        <h1>🎨 TGS Sticker Editor</h1>
+        <p class="subtitle">Upload, drag, resize, rotate & multiple stickers</p>
+        
+        <!-- Upload Area -->
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Klik atau drag & drop file .tgs</div>
+            <small>Support: .tgs (Telegram Animated Sticker) | Bisa upload banyak</small>
+        </div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <button id="clearAllBtn" class="btn btn-danger">🗑️ Clear All Stickers</button>
+            <button id="exportBtn" class="btn btn-success">📸 Export as PNG</button>
+            <label class="btn btn-primary">
+                📁 Add More Stickers
+                <input type="file" id="addMoreInput" accept=".tgs" multiple style="display:none">
+            </label>
+        </div>
+        
+        <!-- Canvas Area -->
+        <div class="canvas-container">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <canvas id="stickerCanvas" width="1200" height="800"></canvas>
+                
+                <!-- Sticker elements akan ditambahkan secara dinamis -->
+                <div id="stickerElements"></div>
             </div>
         </div>
-
-        <div class="preview-section" id="previewSection" style="display: none;">
-            <div class="preview-card">
-                <div class="preview-header">
-                    <h3>🎬 Preview</h3>
-                    <button class="btn-clear" id="clearBtn">✖</button>
-                </div>
-                <div class="sticker-container">
-                    <tgs-player id="stickerPlayer" autoplay loop mode="normal" style="width: 300px; height: 300px;"></tgs-player>
-                </div>
-                <div class="info-panel" id="infoPanel">
-                    <p><strong>📄 File:</strong> <span id="fileName">-</span></p>
-                    <p><strong>📦 Size:</strong> <span id="fileSize">-</span></p>
-                    <p><strong>📏 Dimension:</strong> <span id="fileDim">-</span></p>
-                </div>
+        
+        <!-- Info Panel -->
+        <div class="info-panel">
+            <div class="info-item">
+                <span class="info-label">📊 Total Stickers:</span>
+                <span class="info-value" id="totalStickers">0</span>
             </div>
-        </div>
-
-        <div class="bot-section" id="botSection">
-            <div class="bot-card">
-                <h3>🤖 Ambil Sticker dari Telegram Bot</h3>
-                <p>Kirim sticker animated ke bot <strong>@fragment_stars_bot</strong> lalu masukkan File ID di bawah:</p>
-                <div class="bot-input-group">
-                    <input type="text" id="botFileId" placeholder="Masukkan File ID dari bot" class="url-input">
-                    <button class="btn btn-bot" id="loadFromBotBtn">Load Sticker</button>
-                </div>
-                <p class="bot-hint">💡 Cara: Kirim sticker ke bot, bot akan membalas dengan File ID dan URL</p>
+            <div class="info-item">
+                <span class="info-label">🖱️ Current Selected:</span>
+                <span class="info-value" id="selectedInfo">None</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">💡 Tips:</span>
+                <span class="info-value">Klik sticker untuk select | Gunakan mouse wheel untuk resize | Seret sudut untuk rotate</span>
             </div>
         </div>
     </div>
-
-    <script src="/js/tgs.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="/static/js/tgs.js"></script>
 </body>
 </html>
