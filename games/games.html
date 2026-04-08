@@ -9,7 +9,6 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Header dengan logo Telegram -->
         <header class="glassy-header">
             <div class="telegram-user" id="telegramUser">
                 <img id="userAvatar" class="user-avatar" src="https://via.placeholder.com/40" alt="User Avatar">
@@ -17,17 +16,36 @@
             </div>
         </header>
 
-        <!-- Main Content Area dengan Border Scroll -->
         <main class="scroll-container" id="scrollContainer">
             <div class="content-wrapper" id="contentWrapper">
-                <div class="content-placeholder">
-                    <h2>Selamat Datang</h2>
-                    <p>Pilih menu di bawah untuk melanjutkan</p>
+                <div class="games-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 16px;">
+                    <a href="/plinko_games" class="game-card" style="background: linear-gradient(135deg, #FFD700, #CCB100); border-radius: 16px; padding: 24px; text-align: center; text-decoration: none; color: #000;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">🎲</div>
+                        <h3 style="font-weight: 700;">Plinko</h3>
+                        <p style="font-size: 12px; opacity: 0.8;">Multiplier up to 10x</p>
+                    </a>
+                    
+                    <div class="game-card" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 16px; padding: 24px; text-align: center; color: white;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📦</div>
+                        <h3 style="font-weight: 700;">Case</h3>
+                        <p style="font-size: 12px; opacity: 0.8;">Coming Soon</p>
+                    </div>
+                    
+                    <div class="game-card" style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 24px; text-align: center; color: white;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">⚔️</div>
+                        <h3 style="font-weight: 700;">PVP</h3>
+                        <p style="font-size: 12px; opacity: 0.8;">Coming Soon</p>
+                    </div>
+                    
+                    <div class="game-card" style="background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 16px; padding: 24px; text-align: center; color: white;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">💥</div>
+                        <h3 style="font-weight: 700;">Crash</h3>
+                        <p style="font-size: 12px; opacity: 0.8;">Coming Soon</p>
+                    </div>
                 </div>
             </div>
         </main>
 
-        <!-- Bottom Navigation dengan 3 Pagination -->
         <nav class="bottom-nav">
             <div class="nav-item" data-page="games">
                 <div class="nav-icon">🎮</div>

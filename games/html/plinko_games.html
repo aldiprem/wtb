@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Plinko Games - Barack Gift</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="/games/css/plinko.css">
+</head>
+<body>
+    <div class="plinko-app">
+        <!-- Header -->
+        <div class="plinko-header">
+            <div class="header-content">
+                <a href="/games" class="back-btn">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="game-title">
+                    <div class="game-icon">
+                        <i class="fas fa-circle-notch"></i>
+                    </div>
+                    <div>
+                        <h1>Plinko</h1>
+                        <span>Multiplier Game</span>
+                    </div>
+                </div>
+                <div style="width: 40px;"></div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="plinko-container">
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-label"><i class="fas fa-users"></i> Total Pemain</div>
+                    <div class="stat-value" id="totalPlayers">0</div>
+                    <div class="stat-sub">sepanjang masa</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label"><i class="fas fa-trophy"></i> Jackpot Terbesar</div>
+                    <div class="stat-value" id="biggestWin">0</div>
+                    <div class="stat-sub">x multiplier</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label"><i class="fas fa-clock"></i> Pemain Terakhir</div>
+                    <div class="stat-value" id="lastPlayer">-</div>
+                    <div class="stat-sub" id="lastTime">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label"><i class="fas fa-hashtag"></i> Round Hash</div>
+                    <div class="stat-value" id="roundHash" style="font-size: 14px;">-</div>
+                    <div class="stat-sub">Game Round</div>
+                </div>
+            </div>
+
+            <!-- Game Board -->
+            <div class="game-board">
+                <div class="plinko-canvas-container">
+                    <canvas id="plinkoCanvas" width="800" height="500"></canvas>
+                    <div id="ballDropIndicator" class="ball-indicator" style="display: none;">
+                        <i class="fas fa-circle"></i> Ball Dropping...
+                    </div>
+                </div>
+
+                <!-- Bet Controls -->
+                <div class="bet-controls">
+                    <div class="bet-input-group">
+                        <label class="bet-label">💰 Jumlah Taruhan</label>
+                        <input type="number" id="betAmount" class="bet-input" value="1000" min="100" step="100">
+                    </div>
+                    <div class="bet-input-group">
+                        <label class="bet-label">🎯 Risk Level</label>
+                        <div class="risk-selector">
+                            <button class="risk-btn low" data-risk="low">Low</button>
+                            <button class="risk-btn medium active" data-risk="medium">Medium</button>
+                            <button class="risk-btn high" data-risk="high">High</button>
+                        </div>
+                    </div>
+                    <button id="playBtn" class="play-btn">
+                        <i class="fas fa-play"></i> DROP BALL
+                    </button>
+                </div>
+
+                <!-- Result Display -->
+                <div id="resultDisplay" class="result-display" style="display: none;">
+                    <div class="result-content">
+                        <i class="fas fa-chart-line"></i>
+                        <span id="resultMultiplier">0x</span>
+                        <span id="resultWin">Win: 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Table -->
+            <div class="history-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-history"></i> Riwayat Permainan</h3>
+                    <button id="refreshHistory" class="refresh-btn"><i class="fas fa-sync-alt"></i></button>
+                </div>
+                <div class="table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Round Hash</th>
+                                <th>Pemain</th>
+                                <th>Taruhan</th>
+                                <th>Multiplier</th>
+                                <th>Kemenangan</th>
+                                <th>Waktu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/games/js/plinko_games.js"></script>
+</body>
+</html>

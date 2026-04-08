@@ -29,6 +29,7 @@ from services.image_service import image_bp
 from services.frag_service import frag_bp
 from services.tgs_service import tgs_bp
 from games.app import games_bp
+from services.plinko_games_service import plinko_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -229,6 +230,12 @@ app.register_blueprint(image_bp, url_prefix='/api/images')
 app.register_blueprint(frag_bp)
 app.register_blueprint(games_bp, url_prefix='')
 app.register_blueprint(tgs_bp)
+app.register_blueprint(plinko_bp, url_prefix='/api')
+
+@app.route('/plinko-games')
+def serve_plinko_games():
+    """Halaman Plinko Games"""
+    return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'plinko_games.html')
 
 # ==================== ROUTES UNTUK GAMES ====================
 
