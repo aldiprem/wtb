@@ -13,8 +13,6 @@ from functools import wraps
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Di frag_service.py, ubah baris import menjadi:
-
 from fragment.database.data import (
     init_database,
     authenticate_panel_user,

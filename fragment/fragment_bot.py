@@ -611,6 +611,40 @@ async def owner_stats_handler(event):
     
     await event.respond(text, parse_mode='markdown')
 
+@bot.on(events.NewMessage(pattern='/tgs'))
+async def tgs_command_handler(event):
+    """Handler untuk command /tgs - reply ke sticker untuk mendapatkan file"""
+    
+    # Cek apakah ada reply message
+    reply_msg = await event.get_reply_message()
+    
+    if not reply_msg:
+        await event.reply("❌ **Gunakan:** `/tgs` sebagai reply ke animated sticker!\n\nCara: reply sticker lalu ketik /tgs")
+        return
+    
+    # Cek apakah reply message berisi sticker
+    if not reply_msg.sticker:
+        await event.reply("❌ Reply message bukan sticker! Kirimkan sticker lalu reply dengan /tgs")
+        return
+    
+    sticker = reply_msg.sticker
+    
+    # Cek apakah animated sticker
+    if not sticker.is_animated:
+        await event.reply("❌ Hanya animated sticker (.tgs) yang didukung!")
+        return
+    
+    # Kirim balik file sticker
+    await event.reply(
+        file=sticker,
+        caption=(
+            f"✅ **File .tgs Sticker**\n\n"
+            f"📏 Resolusi: {sticker.width}x{sticker.height}\n"
+            f"😀 Emoji: {sticker.emoji or '-'}\n"
+            f"📦 Ukuran: {sticker.size} bytes\n"
+            f"🆔 File ID: `{sticker.file_id[:30]}...`"
+        )
+    )
 
 # ==================== MAIN ====================
 
