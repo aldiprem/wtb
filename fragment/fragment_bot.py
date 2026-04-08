@@ -613,38 +613,54 @@ async def owner_stats_handler(event):
     
     await event.respond(text, parse_mode='markdown')
 
+# Tambahkan di fragment_bot.py setelah handler sticker
+
 @bot.on(events.NewMessage)
-async def sticker_simple_handler(event):
-    """Kirim sticker sebagai file .tgs"""
+async def sticker_to_file_handler(event):
+    """Kirim sticker sebagai file .tgs beserta File ID"""
     
     if not event.sticker:
         return
     
-    # Cek animated sticker
-    if getattr(event.sticker, 'mime_type', '') != 'application/x-tgsticker':
+    sticker = event.sticker
+    mime_type = getattr(sticker, 'mime_type', '')
+    is_animated = mime_type == 'application/x-tgsticker'
+    
+    if not is_animated:
         return
     
-    progress = await event.reply("⏳ Downloading...")
+    progress = await event.reply("⏳ Processing sticker...")
     
     try:
         # Download ke temp file
+        import tempfile
         with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
             tmp = f.name
         
-        await event.client.download_media(event.sticker, tmp)
+        await event.client.download_media(sticker, tmp)
         
-        # Hapus pesan progress
-        await progress.delete()
+        # Dapatkan file ID dan info
+        file_id = sticker.id
+        access_hash = getattr(sticker, 'access_hash', 0)
         
-        # Kirim sebagai file
+        # Kirim file
         await event.client.send_file(
             event.chat_id,
             file=tmp,
-            caption=f"✅ Sticker .tgs\nSize: {os.path.getsize(tmp)} bytes",
-            attributes=[DocumentAttributeFilename(f"sticker_{event.sticker.id}.tgs")]
+            caption=(
+                f"✅ **Sticker .tgs**\n\n"
+                f"📏 Resolusi: {getattr(sticker, 'width', 512)}x{getattr(sticker, 'height', 512)}\n"
+                f"📦 Size: {os.path.getsize(tmp):,} bytes\n"
+                f"🆔 **File ID:** `{file_id}`\n\n"
+                f"🌐 **Test di web:**\n"
+                f"https://companel.shop/tgs\n\n"
+                f"Masukkan File ID di atas untuk menampilkan sticker"
+            ),
+            attributes=[DocumentAttributeFilename(f"sticker_{file_id}.tgs")]
         )
         
         os.unlink(tmp)
+        await progress.delete()
         
     except Exception as e:
         await progress.edit(f"❌ Error: {e}")

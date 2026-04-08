@@ -1,0 +1,35 @@
+@bot.on(events.NewMessage)
+async def sticker_simple_handler(event):
+    """Kirim sticker sebagai file .tgs"""
+    
+    if not event.sticker:
+        return
+    
+    # Cek animated sticker
+    if getattr(event.sticker, 'mime_type', '') != 'application/x-tgsticker':
+        return
+    
+    progress = await event.reply("⏳ Downloading...")
+    
+    try:
+        # Download ke temp file
+        with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
+            tmp = f.name
+        
+        await event.client.download_media(event.sticker, tmp)
+        
+        # Hapus pesan progress
+        await progress.delete()
+        
+        # Kirim sebagai file
+        await event.client.send_file(
+            event.chat_id,
+            file=tmp,
+            caption=f"✅ Sticker .tgs\nSize: {os.path.getsize(tmp)} bytes",
+            attributes=[DocumentAttributeFilename(f"sticker_{event.sticker.id}.tgs")]
+        )
+        
+        os.unlink(tmp)
+        
+    except Exception as e:
+        await progress.edit(f"❌ Error: {e}")

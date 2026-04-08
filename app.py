@@ -305,6 +305,11 @@ def serve_fragment_page():
 def fragment_login_page():
     return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'login.html')
 
+@app.route('/tgs')
+def serve_tgs_page():
+    """Halaman untuk test file .tgs"""
+    return send_from_directory(os.path.join(base_dir, 'html'), 'tgs.html')
+
 @app.route('/fragment/dashboard')
 def fragment_dashboard_page():
     return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'dashboard.html')
@@ -378,6 +383,13 @@ def get_security_stats():
             'config': RATE_LIMIT_CONFIG
         }
     })
+
+@app.route('/api/bot/sticker/<file_id>')
+def get_bot_sticker(file_id):
+    """API untuk mengambil sticker dari bot berdasarkan file_id"""
+    # Redirect ke file storage atau proxy
+    # Untuk sementara return 404
+    return jsonify({'error': 'Not implemented yet'}), 404
 
 @app.route('/api/admin/security/clear', methods=['POST'])
 def clear_security_stats():
