@@ -613,129 +613,66 @@ async def owner_stats_handler(event):
     
     await event.respond(text, parse_mode='markdown')
 
-@bot.on(events.NewMessage)
-async def sticker_auto_handler(event):
-    """Otomatis proses sticker yang dikirim langsung (tanpa perintah)"""
-    
-    if not event.sticker:
-        return
-    
-    # Cek apakah ini sticker animasi (.tgs)
-    mime_type = getattr(event.sticker, 'mime_type', '')
-    is_animated = mime_type == 'application/x-tgsticker'
-    
-    if not is_animated:
-        return
-    
-    # Proses sticker
-    await process_sticker(event)
-
-# ==================== PERINTAH /TGS (REPLY KE STICKER) ====================
 @bot.on(events.NewMessage(pattern='/tgs'))
 async def tgs_command_handler(event):
-    """Handler untuk perintah /tgs - reply ke sticker animasi"""
-    
-    # Cek apakah command di-reply ke pesan
     if not event.is_reply:
-        await event.reply("❌ **Error:** Harap reply ke sticker animasi dengan perintah `/tgs`\n\nContoh: Reply ke sticker lalu ketik `/tgs`")
+        await event.reply("❌ Reply ke sticker animasi dengan /tgs")
         return
     
-    # Ambil pesan yang di-reply
     reply_msg = await event.get_reply_message()
     
-    # Cek apakah yang di-reply adalah sticker
-    if not reply_msg.sticker:
-        await event.reply("❌ **Error:** Pesan yang di-reply bukan sticker!\nHarap reply ke sticker animasi.")
-        return
-    
-    # Cek apakah sticker animasi (.tgs)
-    mime_type = getattr(reply_msg.sticker, 'mime_type', '')
-    is_animated = mime_type == 'application/x-tgsticker'
-    
-    if not is_animated:
-        await event.reply("❌ **Error:** Sticker yang di-reply bukan sticker animasi (.tgs)!\n\nBot hanya support sticker animasi Telegram.")
-        return
-    
-    # Proses sticker
-    await process_sticker(event, reply_msg)
-
-# ==================== FUNGSI PROSES STICKER ====================
-async def process_sticker(event, sticker_msg=None):
-    """
-    Proses sticker animasi dan kirim sebagai file .tgs
-    sticker_msg: pesan yang berisi sticker (jika None, ambil dari event)
-    """
-    
-    # Ambil sticker dari pesan
-    if sticker_msg:
-        sticker = sticker_msg.sticker
-        source_event = sticker_msg
+    # PERUBAHAN: Ambil sticker dari media.document, bukan reply_msg.sticker
+    sticker_obj = None
+    if reply_msg.media and hasattr(reply_msg.media, 'document'):
+        sticker_obj = reply_msg.media.document
+        mime_type = getattr(sticker_obj, 'mime_type', '')
+        if mime_type != 'application/x-tgsticker':
+            await event.reply("❌ Bukan sticker animasi .tgs")
+            return
     else:
-        sticker = event.sticker
-        source_event = event
+        await event.reply("❌ Pesan yang di-reply bukan sticker")
+        return
     
-    # Kirim pesan progress
-    progress_msg = await source_event.reply("⏳ **Memproses sticker animasi...**")
+    await process_sticker(event, reply_msg, sticker_obj)
+
+
+async def process_sticker(event, reply_msg, sticker_obj):
+    progress = await event.reply("⏳ Processing...")
     
-    tmp_file = None
+    with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
+        tmp = f.name
     
-    try:
-        # Download sticker ke temporary file
-        with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
-            tmp_file = f.name
-        
-        await event.client.download_media(sticker, tmp_file)
-        
-        # Dapatkan info sticker
-        file_id = sticker.id
-        width = getattr(sticker, 'width', 512)
-        height = getattr(sticker, 'height', 512)
-        file_size = os.path.getsize(tmp_file)
-        
-        # Dapatkan emoji dari attributes
-        emoji = '-'
-        for attr in getattr(sticker, 'attributes', []):
-            if isinstance(attr, DocumentAttributeSticker):
-                emoji = getattr(attr, 'alt', '-') or '-'
-                break
-        
-        # Nama file
-        file_name = f"sticker_{file_id}.tgs"
-        
-        # Hapus pesan progress
-        await progress_msg.delete()
-        
-        # ==================== KIRIM FILE .TGS ====================
-        await event.client.send_file(
-            event.chat_id,
-            file=tmp_file,
-            attributes=[DocumentAttributeFilename(file_name)],
-            force_document=True  # Pasti kirim sebagai file
-        )
-        
-        # ==================== KIRIM MESSAGE INFO ====================
-        info_text = (
-            f"✅ **Sticker .tgs berhasil diekstrak!**\n\n"
-            f"📏 **Resolusi:** {width} x {height}\n"
-            f"😀 **Emoji:** {emoji}\n"
-            f"📦 **Ukuran:** {file_size:,} bytes ({file_size/1024:.1f} KB)\n"
-            f"🆔 **File ID:** `{file_id}`\n\n"
-            f"🌐 **Test di web:** https://companel.shop/tgs\n\n"
-            f"💡 **Cara pakai:** Upload file .tgs di atas ke web atau masukkan File ID"
-        )
-        
-        await source_event.reply(info_text)
-        
-    except Exception as e:
-        await progress_msg.edit(f"❌ **Error:** {str(e)[:200]}")
-        
-    finally:
-        # Bersihkan file temporary
-        if tmp_file and os.path.exists(tmp_file):
-            try:
-                os.unlink(tmp_file)
-            except:
-                pass
+    await event.client.download_media(sticker_obj, tmp)
+    
+    file_id = sticker_obj.id
+    width = getattr(sticker_obj, 'width', 512)
+    height = getattr(sticker_obj, 'height', 512)
+    file_size = os.path.getsize(tmp)
+    
+    emoji = '-'
+    for attr in getattr(sticker_obj, 'attributes', []):
+        if isinstance(attr, DocumentAttributeSticker):
+            emoji = getattr(attr, 'alt', '-') or '-'
+            break
+    
+    await progress.delete()
+    
+    await event.client.send_file(
+        event.chat_id,
+        file=tmp,
+        attributes=[DocumentAttributeFilename(f"sticker_{file_id}.tgs")],
+        force_document=True
+    )
+    
+    await reply_msg.reply(
+        f"✅ **Sticker .tgs berhasil diekstrak!**\n\n"
+        f"📏 Resolusi: {width} x {height}\n"
+        f"😀 Emoji: {emoji}\n"
+        f"📦 Ukuran: {file_size:,} bytes ({file_size/1024:.1f} KB)\n"
+        f"🆔 File ID: `{file_id}`"
+    )
+    
+    os.unlink(tmp)
 
 # ==================== MAIN ====================
 
