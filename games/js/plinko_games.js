@@ -5,20 +5,31 @@
     const API_BASE = window.location.origin;
     let currentRisk = 'medium';
     let telegramUser = null;
-    let animationFrame = null;
     let canvas = null;
     let ctx = null;
+    
+    // --- PHYSICS VARIABLES ---
+    let balls = [];
+    const GRAVITY = 0.2;
+    const BOUNCE = 0.5;
+    const PIN_RADIUS = 3;
+    const BALL_RADIUS = 5;
+    
+    // --- SPAWNER VARIABLES ---
+    let spawnerX = 0;
+    let spawnerDir = 1;
+    const spawnerSpeed = 1.5;
+    let animationId = null;
 
     const RISK_MULTIPLIERS = {
         low: [5, 4, 3, 2, 1, 0.5, 1, 2, 3, 4, 5],
         medium: [15, 10, 5, 2.5, 1, 0.2, 1, 2.5, 5, 10, 15],
-        high: [20, 10, 5, 1.5, 0.8, 0.5, 0.1, 0.0, 0.1, 0.5, 0.8, 1,5, 5, 10, 20]
+        high: [20, 10, 5, 1.5, 0.8, 0.5, 0.1, 0.0, 0.1, 0.5, 0.8, 1, 5, 5, 10, 20]
     };
 
     let viewCount = parseInt(localStorage.getItem('plinko_views') || '0');
 
     function updateViewCount() {
-        // Cek apakah user sudah di-count di session ini
         if (!sessionStorage.getItem('plinko_view_counted')) {
             viewCount++;
             localStorage.setItem('plinko_views', viewCount);
@@ -31,26 +42,33 @@
         }
     }
 
+    // Fungsi Render Cerobong
+    function drawSpawner() {
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(spawnerX - 15, 0, 30, 25);
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(spawnerX, 25, 8, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
-        
         const w = canvas.width;
         const h = canvas.height;
-        
         ctx.clearRect(0, 0, w, h);
         
-        const startY = 50;       // Vertical starting position
-        const rowSpacing = 28;   // Vertical distance between rows
-        const colSpacing = 26;   // Horizontal distance between pegs
-        const totalRows = 9;     // As per your visual example (3 dots to 11 dots)
-        const initialDots = 3;   // Starting number of dots at the top row
+        drawSpawner();
+
+        const startY = 60; 
+        const rowSpacing = 28;
+        const colSpacing = 26;
+        const totalRows = 9;
+        const initialDots = 3;
 
         for (let row = 0; row < totalRows; row++) {
             const y = startY + row * rowSpacing;
-            const dotsInRow = initialDots + row; // Row 0: 3, Row 1: 4, etc.
-            
-            // Calculate the starting X for this row to keep it centered
-            // Formula: (Canvas Width / 2) - ((Total Width of Dots in Row) / 2)
+            const dotsInRow = initialDots + row;
             const rowWidth = (dotsInRow - 1) * colSpacing;
             const rowStartX = (w / 2) - (rowWidth / 2);
             
@@ -72,6 +90,63 @@
         }
     }
 
+    // --- GAME LOOP (ANIMASI) ---
+    function update() {
+        if (!canvas || !ctx) return;
+        
+        drawPlinkoBoard();
+
+        // Gerakkan Cerobong (Hanya di antara 3 titik teratas)
+        const maxRange = 30; 
+        spawnerX += spawnerDir * spawnerSpeed;
+        if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
+
+        // Update Physics Bola
+        balls.forEach((ball, index) => {
+            ball.vy += GRAVITY;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Cek Tabrakan dengan Pin
+            const startY = 60;
+            const rowSpacing = 28;
+            const colSpacing = 26;
+            for (let r = 0; r < 9; r++) {
+                const dots = 3 + r;
+                const rowWidth = (dots - 1) * colSpacing;
+                const rowStartX = (canvas.width / 2) - (rowWidth / 2);
+                for (let c = 0; c < dots; c++) {
+                    const px = rowStartX + c * colSpacing;
+                    const py = startY + r * rowSpacing;
+                    const dx = ball.x - px;
+                    const dy = ball.y - py;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    if (dist < BALL_RADIUS + PIN_RADIUS) {
+                        const angle = Math.atan2(dy, dx);
+                        ball.vx += Math.cos(angle) * 1.5;
+                        ball.vy *= -BOUNCE;
+                        ball.y = py + Math.sin(angle) * (BALL_RADIUS + PIN_RADIUS);
+                    }
+                }
+            }
+
+            // Gambar Bola
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+
+            // Cek Sampai Bawah
+            if (ball.y > canvas.height) {
+                finalizeGame(ball);
+                balls.splice(index, 1);
+            }
+        });
+
+        animationId = requestAnimationFrame(update);
+    }
+
     // Load stats from API
     async function loadStats() {
         try {
@@ -79,7 +154,6 @@
             const data = await response.json();
             
             if (data.success) {
-                document.getElementById('totalPlayers').textContent = data.total_players || 0;
                 document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
                 document.getElementById('lastPlayer').textContent = data.last_player || '-';
                 document.getElementById('lastTime').textContent = data.last_time || '-';
@@ -99,7 +173,7 @@
             const tbody = document.getElementById('historyBody');
             
             if (!data.success || !data.history || data.history.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Belum ada riwayat</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Belum ada riwayat</td></td>';
                 return;
             }
             
@@ -155,24 +229,19 @@
         return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
     }
 
-    // Play game
-    async function playGame() {
-        const betAmount = parseInt(document.getElementById('betAmount').value);
-        
-        if (isNaN(betAmount) || betAmount < 100) {
-            alert('Minimal taruhan 100');
-            return;
-        }
-        
+    function finalizeGame(ball) {
         const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const randomIndex = Math.floor(Math.random() * multipliers.length);
-        const multiplier = multipliers[randomIndex];
-        const winAmount = Math.floor(betAmount * multiplier);
-        const roundHash = generateRoundHash();
-
-        animateSlot(randomIndex);
+        const segment = canvas.width / multipliers.length;
+        let slotIndex = Math.floor(ball.x / segment);
+        slotIndex = Math.min(Math.max(slotIndex, 0), multipliers.length - 1);
         
-        // Animate ball drop
+        const multiplier = multipliers[slotIndex];
+        const winAmount = Math.floor(ball.bet * multiplier);
+        const roundHash = generateRoundHash();
+        
+        animateSlot(slotIndex);
+        
+        // Animate ball drop result
         const resultDiv = document.getElementById('resultDisplay');
         const resultMultiplier = document.getElementById('resultMultiplier');
         const resultWin = document.getElementById('resultWin');
@@ -192,12 +261,11 @@
             resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
         }
         
-        // Save to database
-        await saveGameResult(betAmount, multiplier, winAmount, roundHash);
-        
         setTimeout(() => {
             resultDiv.style.display = 'none';
         }, 3000);
+        
+        saveGameResult(ball.bet, multiplier, winAmount, roundHash);
     }
 
     // Get Telegram user
@@ -219,13 +287,11 @@
             const mult = multipliers[i];
             let riskClass = '';
             
-            // Sesuai dengan class di CSS: low, medium, high, zero
             if (mult >= 5) riskClass = 'high';
             else if (mult >= 2) riskClass = 'medium';
             else if (mult >= 1) riskClass = 'low';
             else riskClass = 'zero';
             
-            // Bulatkan angka desimal ke 1 digit kalo perlu
             const displayValue = mult % 1 === 0 ? mult : mult.toFixed(1);
             
             html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
@@ -242,11 +308,27 @@
         if (slots[slotIndex]) {
             slots[slotIndex].classList.add('active', 'pulse');
             
-            // Hapus class setelah animasi selesai
             setTimeout(() => {
                 slots[slotIndex].classList.remove('active', 'pulse');
             }, 800);
         }
+    }
+
+    // Drop Ball (Dipicu Tombol)
+    async function playGame() {
+        const betAmount = parseInt(document.getElementById('betAmount').value);
+        if (isNaN(betAmount) || betAmount < 100) {
+            alert('Minimal taruhan 100');
+            return;
+        }
+
+        balls.push({
+            x: spawnerX,
+            y: 25,
+            vx: (Math.random() - 0.5) * 1,
+            vy: 0,
+            bet: betAmount
+        });
     }
 
     // Initialize
@@ -260,10 +342,8 @@
             const container = canvas.parentElement;
             const width = container.clientWidth;
             canvas.width = Math.min(width, 800);
-            
-            // Change from 500 to 350 (or whatever fits your 9 rows)
-            canvas.height = 350; 
-            
+            canvas.height = 400;
+            spawnerX = canvas.width / 2;
             drawPlinkoBoard();
         }
         
@@ -294,6 +374,9 @@
         await loadHistory();
         updateViewCount();
         renderMultiplierSlots();
+        
+        // Start animation loop
+        update();
 
         console.log('✅ Plinko Games Ready');
     }
