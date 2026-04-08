@@ -27,6 +27,7 @@ from services.trx_service import trx_bp
 from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
+from games.app import games_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -165,7 +166,7 @@ def security_middleware():
     
     if path.startswith('/api/'):
         limit_config = RATE_LIMIT_CONFIG['api']
-    elif path.startswith(('/css/', '/js/', '/html/', '/static/', '/fragment/')):
+    elif path.startswith(('/css/', '/js/', '/html/', '/static/', '/fragment/', '/games/')):
         limit_config = RATE_LIMIT_CONFIG['static']
     elif any(bad in path_lower for bad in SUSPICIOUS_PATHS):
         limit_config = RATE_LIMIT_CONFIG['strict']
@@ -224,7 +225,27 @@ app.register_blueprint(tmp_font_bp, url_prefix='/api')
 app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(image_bp, url_prefix='/api/images')
-app.register_blueprint(frag_bp)  # Fragment blueprint - handle semua /api/fragment/*
+app.register_blueprint(frag_bp)
+app.register_blueprint(games_bp)
+
+# ==================== ROUTES UNTUK GAMES ====================
+
+@app.route('/games')
+def serve_games_page():
+    """Halaman utama games"""
+    return send_from_directory(os.path.join(base_dir, 'games'), 'games.html')
+
+@app.route('/games/css/<path:filename>')
+def serve_games_css(filename):
+    return send_from_directory(os.path.join(base_dir, 'games', 'css'), filename)
+
+@app.route('/games/js/<path:filename>')
+def serve_games_js(filename):
+    return send_from_directory(os.path.join(base_dir, 'games', 'js'), filename)
+
+@app.route('/games/<path:filename>')
+def serve_games_static(filename):
+    return send_from_directory(os.path.join(base_dir, 'games'), filename)
 
 # ==================== ROUTE UNTUK IMAGE SERVICE ====================
 
