@@ -31,7 +31,7 @@
         }
     }
 
-    // Draw Plinko board - POLA SEGITIGA DENGAN OFFSET (seperti foto)
+    // Draw Plinko board (TANPA MULTIPLIER DI CANVAS) - POLA SEGITIGA KE ATAS
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
         
@@ -40,32 +40,34 @@
         
         ctx.clearRect(0, 0, w, h);
         
-        const startY = 50;
-        const rows = 13;
-        const maxCols = 15; // Jumlah kolom terbawah
+        // Draw pegs - POLA SEGITIGA (baris pertama sedikit, makin bawah makin banyak)
+        const startY = 55;
+        const rows = 14; // Jumlah baris
         
         for (let row = 0; row <= rows; row++) {
-            const y = startY + row * 30;
-            // Jumlah titik per baris: makin bawah makin banyak
-            const colsInRow = Math.min(5 + Math.floor(row * 0.8), maxCols);
+            const y = startY + row * 28;
+            const colsInRow = row + 5; // Baris 0: 5 titik, baris 1: 6 titik, dst
             const startX = w / 2;
             const spacingX = w / (colsInRow + 1);
             
-            // Offset untuk baris ganjil (biar selang-seling kaya foto)
-            const offsetX = (row % 2 === 0) ? 0 : spacingX / 2;
-            
             for (let col = 0; col < colsInRow; col++) {
-                const x = startX - ((colsInRow - 1) / 2) * spacingX + col * spacingX + offsetX;
+                const x = startX - ((colsInRow - 1) / 2) * spacingX + col * spacingX;
                 
-                // Peg outer
+                // Outer glow
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.4)';
+                ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
                 ctx.fill();
                 
-                // Peg inner
+                // Inner peg
                 ctx.beginPath();
-                ctx.arc(x, y, 2, 0, Math.PI * 2);
+                ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                ctx.fill();
+                
+                // Core
+                ctx.beginPath();
+                ctx.arc(x, y, 1.2, 0, Math.PI * 2);
                 ctx.fillStyle = '#FFD700';
                 ctx.fill();
             }
