@@ -387,8 +387,7 @@ body {
     height: 320px !important; 
     display: block;
     margin: 0 auto;
-    /* Hilangkan gap bawah lebih ekstrim */
-    margin-bottom: -70px; 
+    margin-bottom: 60px; 
 }
 
 #multiplierSlotsWrapper {
