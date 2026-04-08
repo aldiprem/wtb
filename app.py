@@ -230,9 +230,8 @@ app.register_blueprint(games_bp)
 
 # ==================== ROUTES UNTUK GAMES ====================
 
-@app.route('/games')
+@app.route('/fragment')
 def serve_games_page():
-    """Halaman utama games"""
     return send_from_directory(os.path.join(base_dir, 'games'), 'games.html')
 
 @app.route('/games/css/<path:filename>')
