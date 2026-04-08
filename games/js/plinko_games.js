@@ -173,6 +173,8 @@
         const multiplier = multipliers[randomIndex];
         const winAmount = Math.floor(betAmount * multiplier);
         const roundHash = generateRoundHash();
+
+        animateSlot(randomIndex);
         
         // Animate ball drop
         const resultDiv = document.getElementById('resultDisplay');
@@ -210,6 +212,43 @@
         return { id: 1, first_name: 'Guest', username: 'guest' };
     }
 
+    // Render multiplier slots ke HTML
+    function renderMultiplierSlots() {
+        const wrapper = document.getElementById('multiplierSlotsWrapper');
+        if (!wrapper) return;
+        
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        
+        let html = '';
+        for (let i = 0; i < multipliers.length; i++) {
+            const mult = multipliers[i];
+            let riskClass = '';
+            
+            if (mult >= 5) riskClass = 'high';
+            else if (mult >= 2) riskClass = 'medium';
+            else riskClass = 'low';
+            
+            html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
+                        ${mult}x
+                    </div>`;
+        }
+        
+        wrapper.innerHTML = html;
+    }
+
+    // Animasi slot saat bola jatuh
+    function animateSlot(slotIndex) {
+        const slots = document.querySelectorAll('.multiplier-slot');
+        if (slots[slotIndex]) {
+            slots[slotIndex].classList.add('active', 'pulse');
+            
+            // Hapus class setelah animasi selesai
+            setTimeout(() => {
+                slots[slotIndex].classList.remove('active', 'pulse');
+            }, 800);
+        }
+    }
+
     // Initialize
     async function init() {
         telegramUser = await getTelegramUser();
@@ -235,6 +274,7 @@
                 btn.classList.add('active');
                 currentRisk = btn.dataset.risk;
                 drawPlinkoBoard();
+                renderMultiplierSlots();
             });
         });
         
@@ -250,6 +290,8 @@
         await loadStats();
         await loadHistory();
         updateViewCount();
+        renderMultiplierSlots();
+
         console.log('✅ Plinko Games Ready');
     }
     

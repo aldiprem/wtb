@@ -276,6 +276,97 @@ body {
     border: 1px solid var(--border-color);
 }
 
+/* Multiplier Slots - Kotak kaca mengkilat */
+.multiplier-slots-container {
+    position: relative;
+    margin-top: 0px;
+    background: transparent;
+}
+
+.multiplier-slots-wrapper {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.multiplier-slot {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+/* Efek kaca mengkilat kesamping */
+.multiplier-slot::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+        transparent, 
+        rgba(255, 255, 255, 0.3), 
+        transparent);
+    transition: left 0.5s ease;
+}
+
+.multiplier-slot:hover::before {
+    left: 100%;
+}
+
+/* Warna berdasarkan nilai multiplier (Low Risk) */
+.multiplier-slot.low {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.1));
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    color: #10b981;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+}
+
+/* Warna berdasarkan nilai multiplier (Medium Risk) */
+.multiplier-slot.medium {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.1));
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    color: #f59e0b;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.1);
+}
+
+/* Warna berdasarkan nilai multiplier (High Risk) */
+.multiplier-slot.high {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(239, 68, 68, 0.1));
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+}
+
+/* Slot aktif saat bola jatuh */
+.multiplier-slot.active {
+    transform: scale(1.08);
+    box-shadow: 0 0 20px currentColor;
+    border-width: 2px;
+}
+
+/* Animasi bounce untuk slot aktif */
+@keyframes slotPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.multiplier-slot.pulse {
+    animation: slotPulse 0.3s ease;
+}
+
 .plinko-canvas-container {
     background: #0a0a0a;
     border-radius: 20px;
