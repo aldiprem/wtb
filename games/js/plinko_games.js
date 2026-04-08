@@ -18,7 +18,7 @@
     // --- SPAWNER VARIABLES ---
     let spawnerX = 0;
     let spawnerDir = 1;
-    const spawnerSpeed = 1.5;
+    const spawnerSpeed = 0.5;
     let animationId = null;
 
     const RISK_MULTIPLIERS = {
@@ -97,7 +97,7 @@
         drawPlinkoBoard();
 
         // Gerakkan Cerobong (Hanya di antara 3 titik teratas)
-        const maxRange = 30; 
+        const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
