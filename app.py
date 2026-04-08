@@ -386,9 +386,6 @@ def get_security_stats():
 
 @app.route('/api/bot/sticker/<file_id>')
 def get_bot_sticker(file_id):
-    """API untuk mengambil sticker dari bot berdasarkan file_id"""
-    # Redirect ke file storage atau proxy
-    # Untuk sementara return 404
     return jsonify({'error': 'Not implemented yet'}), 404
 
 @app.route('/api/admin/security/clear', methods=['POST'])

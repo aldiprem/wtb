@@ -1,35 +1,69 @@
-@bot.on(events.NewMessage)
-async def sticker_simple_handler(event):
-    """Kirim sticker sebagai file .tgs"""
-    
-    if not event.sticker:
-        return
-    
-    # Cek animated sticker
-    if getattr(event.sticker, 'mime_type', '') != 'application/x-tgsticker':
-        return
-    
-    progress = await event.reply("⏳ Downloading...")
-    
-    try:
-        # Download ke temp file
-        with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
-            tmp = f.name
-        
-        await event.client.download_media(event.sticker, tmp)
-        
-        # Hapus pesan progress
-        await progress.delete()
-        
-        # Kirim sebagai file
-        await event.client.send_file(
-            event.chat_id,
-            file=tmp,
-            caption=f"✅ Sticker .tgs\nSize: {os.path.getsize(tmp)} bytes",
-            attributes=[DocumentAttributeFilename(f"sticker_{event.sticker.id}.tgs")]
-        )
-        
-        os.unlink(tmp)
-        
-    except Exception as e:
-        await progress.edit(f"❌ Error: {e}")
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>TGS Sticker Viewer - Test Animated Sticker</title>
+    <link rel="stylesheet" href="/css/tgs.css">
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/tgs-player.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎮 TGS Sticker Viewer</h1>
+            <p>Upload file .tgs atau tempelkan URL untuk menampilkan animated sticker</p>
+        </header>
+
+        <div class="upload-section">
+            <div class="upload-card">
+                <h3>📁 Upload File</h3>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" accept=".tgs" hidden>
+                    <div class="upload-icon">📤</div>
+                    <p>Klik atau drag & drop file .tgs</p>
+                    <small>Support: .tgs (Telegram Animated Sticker)</small>
+                </div>
+                <button class="btn btn-primary" id="uploadBtn">Pilih File</button>
+            </div>
+
+            <div class="upload-card">
+                <h3>🔗 URL Sticker</h3>
+                <input type="text" id="urlInput" placeholder="https://example.com/sticker.tgs" class="url-input">
+                <button class="btn btn-secondary" id="loadUrlBtn">Load from URL</button>
+                <button class="btn btn-bot" id="getFromBotBtn">📱 Ambil dari Bot</button>
+            </div>
+        </div>
+
+        <div class="preview-section" id="previewSection" style="display: none;">
+            <div class="preview-card">
+                <div class="preview-header">
+                    <h3>🎬 Preview</h3>
+                    <button class="btn-clear" id="clearBtn">✖</button>
+                </div>
+                <div class="sticker-container">
+                    <tgs-player id="stickerPlayer" autoplay loop mode="normal" style="width: 300px; height: 300px;"></tgs-player>
+                </div>
+                <div class="info-panel" id="infoPanel">
+                    <p><strong>📄 File:</strong> <span id="fileName">-</span></p>
+                    <p><strong>📦 Size:</strong> <span id="fileSize">-</span></p>
+                    <p><strong>📏 Dimension:</strong> <span id="fileDim">-</span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bot-section" id="botSection">
+            <div class="bot-card">
+                <h3>🤖 Ambil Sticker dari Telegram Bot</h3>
+                <p>Kirim sticker animated ke bot <strong>@fragment_stars_bot</strong> lalu masukkan File ID di bawah:</p>
+                <div class="bot-input-group">
+                    <input type="text" id="botFileId" placeholder="Masukkan File ID dari bot" class="url-input">
+                    <button class="btn btn-bot" id="loadFromBotBtn">Load Sticker</button>
+                </div>
+                <p class="bot-hint">💡 Cara: Kirim sticker ke bot, bot akan membalas dengan File ID dan URL</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/tgs.js"></script>
+</body>
+</html>
