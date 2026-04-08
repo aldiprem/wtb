@@ -228,7 +228,7 @@
             else riskClass = 'zero';
             
             html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
-                        ${mult}x
+                        ${mult}
                     </div>`;
         }
         
