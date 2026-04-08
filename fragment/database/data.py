@@ -1922,3 +1922,297 @@ async def create_rental_record(bot_token: str, owner_id: int, rental_price: int,
     except Exception as e:
         logger.error(f"Error creating rental record: {e}")
         return False
+    
+# ==================== ADDITIONAL FUNCTIONS FOR frag_service ====================
+
+async def get_all_stats(bot_token: str = None) -> Dict:
+    """Get all statistics for dashboard"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        if bot_token:
+            cursor.execute("SELECT COUNT(*) FROM users WHERE bot_token = ?", (bot_token,))
+            total_users = cursor.fetchone()[0] or 0
+            
+            cursor.execute("""
+                SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_idr), 0)
+                FROM purchases WHERE status = 'success' AND bot_token = ?
+            """, (bot_token,))
+            row = cursor.fetchone()
+            total_purchases, total_stars, total_volume_idr = row if row else (0, 0, 0)
+            
+            today = get_jakarta_date()
+            cursor.execute("""
+                SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_idr), 0)
+                FROM purchases WHERE status = 'success' AND DATE(timestamp) = ? AND bot_token = ?
+            """, (today, bot_token))
+            row2 = cursor.fetchone()
+            today_purchases, today_stars, today_volume_idr = row2 if row2 else (0, 0, 0)
+        else:
+            # Try to get from master DB or return default
+            cursor.execute("SELECT COUNT(*) FROM users")
+            total_users = cursor.fetchone()[0] if cursor.fetchone() else 0
+            
+            cursor.execute("""
+                SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_idr), 0)
+                FROM purchases WHERE status = 'success'
+            """)
+            row = cursor.fetchone()
+            total_purchases, total_stars, total_volume_idr = row if row else (0, 0, 0)
+            
+            today = get_jakarta_date()
+            cursor.execute("""
+                SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_idr), 0)
+                FROM purchases WHERE status = 'success' AND DATE(timestamp) = ?
+            """, (today,))
+            row2 = cursor.fetchone()
+            today_purchases, today_stars, today_volume_idr = row2 if row2 else (0, 0, 0)
+        
+        conn.close()
+        
+        return {
+            'total_users': total_users or 0,
+            'total_purchases': total_purchases or 0,
+            'total_stars': total_stars or 0,
+            'total_volume_idr': float(total_volume_idr or 0),
+            'today_purchases': today_purchases or 0,
+            'today_stars': today_stars or 0,
+            'today_volume_idr': float(today_volume_idr or 0)
+        }
+    except Exception as e:
+        logger.error(f"Error getting all stats: {e}")
+        return {
+            'total_users': 0,
+            'total_purchases': 0,
+            'total_stars': 0,
+            'total_volume_idr': 0,
+            'today_purchases': 0,
+            'today_stars': 0,
+            'today_volume_idr': 0
+        }
+
+
+async def get_chart_data(bot_token: str = None, days: int = 7) -> Dict:
+    """Get chart data for dashboard"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        labels = []
+        values = []
+        
+        for i in range(days - 1, -1, -1):
+            date = (get_jakarta_time() - timedelta(days=i)).date().isoformat()
+            labels.append(date)
+            
+            if bot_token:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(price_idr), 0)
+                    FROM purchases WHERE status = 'success' AND DATE(timestamp) = ? AND bot_token = ?
+                """, (date, bot_token))
+            else:
+                cursor.execute("""
+                    SELECT COALESCE(SUM(price_idr), 0)
+                    FROM purchases WHERE status = 'success' AND DATE(timestamp) = ?
+                """, (date,))
+            
+            row = cursor.fetchone()
+            values.append(float(row[0] or 0))
+        
+        conn.close()
+        
+        return {
+            'labels': labels,
+            'values': values
+        }
+    except Exception as e:
+        logger.error(f"Error getting chart data: {e}")
+        return {'labels': [], 'values': []}
+
+
+async def get_recent_activities(bot_token: str = None, limit: int = 10) -> List[Dict]:
+    """Get recent activities"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        if bot_token:
+            cursor.execute("""
+                SELECT id, action, details, timestamp
+                FROM activity_log WHERE bot_token = ?
+                ORDER BY timestamp DESC LIMIT ?
+            """, (bot_token, limit))
+        else:
+            cursor.execute("""
+                SELECT id, action, details, timestamp
+                FROM activity_log ORDER BY timestamp DESC LIMIT ?
+            """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [{
+            'id': r[0],
+            'action': r[1],
+            'details': r[2],
+            'timestamp': r[3]
+        } for r in rows]
+    except Exception as e:
+        logger.error(f"Error getting recent activities: {e}")
+        return []
+
+
+async def get_bot_stats(bot_token: str) -> Dict:
+    """Get statistics for a specific bot"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT COUNT(*), COALESCE(SUM(stars_amount), 0), COALESCE(SUM(price_idr), 0)
+            FROM purchases WHERE status = 'success' AND bot_token = ?
+        """, (bot_token,))
+        row = cursor.fetchone()
+        total_purchases, total_stars, total_volume = row if row else (0, 0, 0)
+        
+        cursor.execute("SELECT COUNT(*) FROM users WHERE bot_token = ?", (bot_token,))
+        total_users = cursor.fetchone()[0] or 0
+        
+        conn.close()
+        
+        return {
+            'total_purchases': total_purchases or 0,
+            'total_stars': total_stars or 0,
+            'total_volume_idr': float(total_volume or 0),
+            'total_users': total_users
+        }
+    except Exception as e:
+        logger.error(f"Error getting bot stats: {e}")
+        return {
+            'total_purchases': 0,
+            'total_stars': 0,
+            'total_volume_idr': 0,
+            'total_users': 0
+        }
+
+
+async def get_all_users_with_stats(bot_token: str = None, limit: int = 50) -> List[Dict]:
+    """Get all users with their statistics"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        if bot_token:
+            cursor.execute("""
+                SELECT user_id, username, first_name, last_name, first_seen, last_seen
+                FROM users WHERE bot_token = ? ORDER BY last_seen DESC LIMIT ?
+            """, (bot_token, limit))
+        else:
+            cursor.execute("""
+                SELECT user_id, username, first_name, last_name, first_seen, last_seen
+                FROM users ORDER BY last_seen DESC LIMIT ?
+            """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        users = []
+        for row in rows:
+            stats = await get_user_stats(row[0], bot_token)
+            users.append({
+                'user_id': row[0],
+                'username': row[1],
+                'first_name': row[2],
+                'last_name': row[3],
+                'first_seen': row[4],
+                'last_seen': row[5],
+                'stats': stats
+            })
+        
+        return users
+    except Exception as e:
+        logger.error(f"Error getting all users with stats: {e}")
+        return []
+
+
+async def get_bot_logs(bot_username: str, limit: int = 50) -> List[tuple]:
+    """Get bot logs from log file"""
+    import glob
+    
+    log_files = glob.glob(f"logs/bot_{bot_username}*.log")
+    if not log_files:
+        return []
+    
+    # Get the latest log file
+    log_file = max(log_files, key=os.path.getctime)
+    
+    logs = []
+    try:
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+            for line in lines[-limit:]:
+                # Parse log line (simplified)
+                if '|' in line:
+                    parts = line.split('|')
+                    if len(parts) >= 2:
+                        logs.append(('INFO', parts[-1].strip(), parts[0].strip()))
+                    else:
+                        logs.append(('INFO', line.strip(), ''))
+                else:
+                    logs.append(('INFO', line.strip(), ''))
+    except Exception as e:
+        logger.error(f"Error reading bot logs: {e}")
+    
+    return logs
+
+
+async def get_panel_user_by_bot_token(bot_token: str) -> Optional[Dict]:
+    """Get panel user by bot token"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT o.id, o.username, o.owner_name, o.email, o.whatsapp, o.balance, o.is_active,
+                   o.created_at, o.expires_at, o.last_login
+            FROM bot_owners o
+            JOIN cloned_bots b ON o.id = b.owner_id
+            WHERE b.bot_token = ?
+        """, (bot_token,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'owner_name': row[2],
+                'email': row[3],
+                'whatsapp': row[4],
+                'balance': row[5],
+                'is_active': row[6],
+                'created_at': row[7],
+                'expires_at': row[8],
+                'last_login': row[9]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error getting panel user by bot token: {e}")
+        return None
+
+
+async def create_panel_user(username: str, password: str, email: str = None,
+                            owner_name: str = None, whatsapp: str = None,
+                            bot_token: str = None, expires_days: int = 30) -> Optional[int]:
+    """Create new panel user (alias for create_bot_owner)"""
+    owner_id = await create_bot_owner(username, password, owner_name, email, whatsapp, expires_days)
+    
+    if owner_id and bot_token:
+        # Associate bot with user
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE cloned_bots SET owner_id = ? WHERE bot_token = ?", (owner_id, bot_token))
+        conn.commit()
+        conn.close()
+    
+    return owner_id
