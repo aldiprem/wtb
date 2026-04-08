@@ -2216,3 +2216,54 @@ async def create_panel_user(username: str, password: str, email: str = None,
         conn.close()
     
     return owner_id
+
+async def get_user_stats(user_id: int, bot_token: str = None) -> Dict:
+    """
+    Wrapper for get_user_stats from data_clone
+    
+    Args:
+        user_id (int): User ID
+        bot_token (str): Bot token
+    
+    Returns:
+        dict: User statistics
+    """
+    try:
+        # Import here to avoid circular import
+        from fragment.database.data_clone import get_user_stats as _get_user_stats
+        return await _get_user_stats(user_id, bot_token)
+    except Exception as e:
+        logger.error(f"Error in get_user_stats wrapper: {e}")
+        return {
+            'total_purchases': 0,
+            'total_stars': 0,
+            'total_spent_idr': 0,
+            'today_purchases': 0,
+            'username': None,
+            'first_name': None,
+            'last_name': None
+        }
+
+
+async def get_all_users_with_stats(bot_token: str = None, limit: int = 50) -> List[Dict]:
+    """
+    Get all users with their statistics
+    
+    Args:
+        bot_token (str): Bot token
+        limit (int): Maximum number of users
+    
+    Returns:
+        list: List of users with stats
+    """
+    try:
+        users = await get_all_users(bot_token, limit)
+        
+        for user in users:
+            stats = await get_user_stats(user['user_id'], bot_token)
+            user['stats'] = stats
+        
+        return users
+    except Exception as e:
+        logger.error(f"Error getting all users with stats: {e}")
+        return []

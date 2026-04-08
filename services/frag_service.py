@@ -13,11 +13,13 @@ from functools import wraps
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Di frag_service.py, ubah baris import menjadi:
+
 from fragment.database.data import (
     init_database,
     authenticate_panel_user,
     create_panel_session,
-    get_panel_session as validate_panel_session,  # Alias
+    get_panel_session as validate_panel_session,
     get_current_user_from_session,
     get_current_admin_from_session,
     get_all_bot_owners,
@@ -41,8 +43,18 @@ from fragment.database.data import (
     log_owner_activity,
     get_owner_balance,
     add_owner_balance,
-    deduct_owner_balance
+    deduct_owner_balance,
+    get_all_stats,
+    get_chart_data,
+    get_recent_activities,
+    get_bot_stats,
+    get_all_users_with_stats,
+    get_bot_logs,
+    get_panel_user_by_bot_token,
+    create_panel_user
 )
+
+from fragment.database.data_clone import get_user_stats
 
 frag_bp = Blueprint('fragment', __name__, url_prefix='/api/fragment')
 logger = logging.getLogger(__name__)
