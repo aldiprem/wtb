@@ -16,6 +16,22 @@
         high: [0.5, 0.8, 1.5, 3, 10, 3, 1.5, 0.8, 0.5]
     };
 
+    let viewCount = parseInt(localStorage.getItem('plinko_views') || '0');
+
+    function updateViewCount() {
+        // Cek apakah user sudah di-count di session ini
+        if (!sessionStorage.getItem('plinko_view_counted')) {
+            viewCount++;
+            localStorage.setItem('plinko_views', viewCount);
+            sessionStorage.setItem('plinko_view_counted', 'true');
+        }
+        
+        const viewsElement = document.getElementById('totalViews');
+        if (viewsElement) {
+            viewsElement.textContent = viewCount;
+        }
+    }
+
     // Draw Plinko board
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
@@ -246,7 +262,7 @@
         
         await loadStats();
         await loadHistory();
-        
+        updateViewCount();
         console.log('✅ Plinko Games Ready');
     }
     

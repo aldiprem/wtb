@@ -108,12 +108,117 @@ body {
     margin-bottom: 24px;
 }
 
-.stat-card {
+/* Stats Views - Baris pertama */
+.stats-views {
+    padding: 0 20px;
+    margin-bottom: 20px;
+}
+
+.stat-views-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     background: var(--bg-card);
-    border-radius: 16px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 8px 16px;
     border: 1px solid var(--border-color);
-    backdrop-filter: blur(10px);
+    width: fit-content;
+}
+
+.stat-views-card i {
+    font-size: 16px;
+    color: var(--primary-color);
+}
+
+.stat-views-card span {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.stat-views-card small {
+    font-size: 11px;
+    color: var(--tg-hint-color);
+}
+
+/* 3 Stats Row - Jackpot, Lasted, Round */
+.stats-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.stat-jackpot,
+.stat-lasted,
+.stat-round {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stat-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--primary-color);
+}
+
+.stat-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-label {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-sub {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+    display: block;
+    margin-top: 2px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .stat-jackpot,
+    .stat-lasted,
+    .stat-round {
+        width: 100%;
+    }
+    
+    .stat-views-card {
+        width: 100%;
+        justify-content: center;
+    }
 }
 
 .stat-label {

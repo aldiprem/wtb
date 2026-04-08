@@ -30,29 +30,42 @@
             </div>
         </div>
 
+        <!-- Stats Baris Pertama - Views saja -->
+        <div class="stats-views">
+            <div class="stat-views-card">
+                <i class="fas fa-eye"></i>
+                <span id="totalViews">0</span>
+                <small>Total Views</small>
+            </div>
+        </div>
+
         <!-- Main Content -->
         <div class="plinko-container">
-            <!-- Stats Cards -->
-            <div class="stats-grid" id="statsGrid">
-                <div class="stat-card">
-                    <div class="stat-label"><i class="fas fa-users"></i> Total Pemain</div>
-                    <div class="stat-value" id="totalPlayers">0</div>
-                    <div class="stat-sub">sepanjang masa</div>
+            <!-- 3 Stats Cards: Jackpot, Lasted, Round -->
+            <div class="stats-row">
+                <div class="stat-jackpot">
+                    <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Jackpot Terbesar</span>
+                        <span class="stat-value" id="biggestWin">0x</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label"><i class="fas fa-trophy"></i> Jackpot Terbesar</div>
-                    <div class="stat-value" id="biggestWin">0</div>
-                    <div class="stat-sub">x multiplier</div>
+                
+                <div class="stat-lasted">
+                    <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Pemain Terakhir</span>
+                        <span class="stat-value" id="lastPlayer">-</span>
+                        <span class="stat-sub" id="lastTime">-</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label"><i class="fas fa-clock"></i> Pemain Terakhir</div>
-                    <div class="stat-value" id="lastPlayer">-</div>
-                    <div class="stat-sub" id="lastTime">-</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label"><i class="fas fa-hashtag"></i> Round Hash</div>
-                    <div class="stat-value" id="roundHash" style="font-size: 14px;">-</div>
-                    <div class="stat-sub">Game Round</div>
+                
+                <div class="stat-round">
+                    <div class="stat-icon"><i class="fas fa-hashtag"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-label">Round Hash</span>
+                        <span class="stat-value" id="roundHash">-</span>
+                    </div>
                 </div>
             </div>
 
