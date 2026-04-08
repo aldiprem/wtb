@@ -13,6 +13,7 @@ from pathlib import Path
 import json
 import hashlib
 import secrets
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -1812,6 +1813,92 @@ async def authenticate_panel_user_async(username: str, password: str) -> dict:
         dict or None: User data jika berhasil, None jika gagal
     """
     return authenticate_panel_user(username, password)
+
+# ==================== PANEL USER FUNCTIONS ====================
+
+async def get_panel_user_by_bot_token(bot_token: str) -> Optional[Dict]:
+    """
+    Get panel user by bot token
+    
+    Args:
+        bot_token (str): Bot token
+    
+    Returns:
+        dict or None: User data if found
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, username, owner_name, email, whatsapp, balance, is_active,
+                   created_at, expires_at, last_login
+            FROM bot_owners 
+            WHERE id IN (SELECT owner_id FROM cloned_bots WHERE bot_token = ?)
+        """, (bot_token,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'owner_name': row[2],
+                'email': row[3],
+                'whatsapp': row[4],
+                'balance': row[5],
+                'is_active': row[6],
+                'created_at': row[7],
+                'expires_at': row[8],
+                'last_login': row[9]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error getting panel user by bot token: {e}")
+        return None
+
+
+async def get_panel_user_by_username(username: str) -> Optional[Dict]:
+    """
+    Get panel user by username (alias for get_bot_owner_by_username)
+    
+    Args:
+        username (str): Username
+    
+    Returns:
+        dict or None: User data if found
+    """
+    return await get_bot_owner_by_username(username)
+
+
+async def create_panel_user(username: str, password: str, email: str = None,
+                            owner_name: str = None, whatsapp: str = None,
+                            bot_token: str = None, expires_days: int = 30) -> Optional[int]:
+    """
+    Create new panel user (alias for create_bot_owner)
+    
+    Args:
+        username (str): Username
+        password (str): Password
+        email (str): Email
+        owner_name (str): Owner name
+        whatsapp (str): WhatsApp number
+        bot_token (str): Bot token (optional)
+        expires_days (int): Expiration days
+    
+    Returns:
+        int or None: User ID if created
+    """
+    owner_id = await create_bot_owner(username, password, owner_name, email, whatsapp, expires_days)
+    
+    if owner_id and bot_token:
+        # Associate bot with user
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE cloned_bots SET owner_id = ? WHERE bot_token = ?", (owner_id, bot_token))
+        conn.commit()
+        conn.close()
+    
+    return owner_id
 
 # ==================== RENTAL FUNCTIONS ====================
 
