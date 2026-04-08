@@ -108,39 +108,43 @@ body {
     margin-bottom: 24px;
 }
 
-/* Stats Views - Baris pertama (Rata Kiri & Border Sesuai Konten) */
+/* Stats Views - Baris pertama */
 .stats-views {
     padding: 0 20px;
-    margin-bottom: 20px;
+    margin-bottom: 0px;
+    margin-block: 0px;
     display: flex;
-    justify-content: flex-start; /* Rata kiri */
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
 .stat-views-card {
-    display: inline-flex; /* Krusial: agar border selebar konten */
+    display: inline-flex;
     align-items: center;
     gap: 8px;
     background: var(--bg-card);
-    border-radius: 12px;
-    padding: 6px 14px; /* Lebih kecil & proporsional */
+    margin-top: 20px;
+    margin-bottom: 1px;
+    border-radius: 22px;
+    padding: 5px 16px;
     border: 1px solid var(--border-color);
-    width: auto; /* Pastikan tidak memaksa lebar penuh */
+    position: relative;
+    left: 0;
 }
 
 .stat-views-card i {
-    font-size: 14px;
+    font-size: 16px;
     color: var(--primary-color);
 }
 
 .stat-views-card span {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
 }
 
 .stat-views-card small {
     font-size: 11px;
     color: var(--tg-hint-color);
-    font-weight: normal;
 }
 
 /* 3 Stats Row - Jackpot, Lasted, Round */
@@ -182,6 +186,29 @@ body {
     min-width: 0;
 }
 
+.stat-label {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-sub {
+    font-size: 10px;
+    color: var(--tg-hint-color);
+    display: block;
+    margin-top: 2px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .stats-row {
@@ -193,15 +220,6 @@ body {
     .stat-lasted,
     .stat-round {
         width: 100%;
-    }
-    
-    .stats-views {
-        justify-content: center;
-    }
-    
-    .stat-views-card {
-        width: auto;
-        justify-content: flex-start;
     }
 }
 
