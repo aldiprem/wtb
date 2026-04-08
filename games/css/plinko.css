@@ -300,18 +300,15 @@ body {
 
 .multiplier-slot {
     flex: 1;
-    text-align: center;
-    padding: 5px 2px;
-    border-radius: 0px;
-    font-weight: 700;
-    font-size: 9px;
-    transition: all 0.2s ease;
-    position: relative;
-    overflow: hidden;
-    cursor: default;
-    background: transparent;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    color: #fff;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 0 0 5px 5px;
+    transition: transform 0.1s;
+    color: white;
 }
 
 .multiplier-slot:last-child {
@@ -366,10 +363,8 @@ body {
 }
 
 .multiplier-slot.active {
-    transform: scale(1.1);
-    text-shadow: 0 0 8px currentColor;
-    font-weight: 900;
-    background: rgba(255, 255, 255, 0.1);
+    transform: scaleY(1.3);
+    box-shadow: 0 0 15px currentColor;
 }
 
 /* Animasi bounce */
@@ -390,22 +385,29 @@ body {
     margin-bottom: 0px;
 }
 
+#plinkoContainer {
+    position: relative;
+    background: #0f172a; /* Warna gelap ala casino */
+    border-radius: 12px;
+    padding: 10px;
+    overflow: hidden;
+}
+
 #plinkoCanvas {
-    /* Reduce the physical height of the element */
-    height: 350px !important; 
-    
-    /* Ensure the drawing inside doesn't get distorted */
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
     display: block;
     margin: 0 auto;
-    
-    /* If there is still too much gap at the bottom */
-    margin-bottom: -50px; 
+    border-bottom: 2px solid #334155;
 }
 
 #multiplierSlotsWrapper {
-    margin-top: -60px; /* Adjust this value until it touches the bottom pegs */
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    margin-top: -15px; /* Menarik box naik agar menyentuh canvas */
+    padding: 0 5px;
     position: relative;
-    z-index: 10;
+    z-index: 5;
 }
 
 .ball-indicator {
