@@ -8,12 +8,6 @@
     let animationFrame = null;
     let canvas = null;
     let ctx = null;
-    let balls = [];
-    let spawnerX = 0;
-    let spawnerDir = 1;
-    const GRAVITY = 0.15;
-    const BOUNCE = 0.4;
-    const FRICTION = 0.98;
 
     const RISK_MULTIPLIERS = {
         low: [5, 4, 3, 2, 1, 0.5, 1, 2, 3, 4, 5],
@@ -255,119 +249,6 @@
         }
     }
 
-    // Fungsi Animasi Utama (Loop)
-    function update() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawPlinkoBoard();
-        drawSpawner();
-
-        // Update & Draw Balls
-        balls.forEach((ball, index) => {
-            ball.vy += GRAVITY;
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-            ball.vx *= FRICTION;
-
-            // Collision dengan Pin
-            checkPinCollision(ball);
-
-            // Gambar Bola
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff4757';
-            ctx.fill();
-
-            // Cek jika sampai bawah (Multiplier)
-            if (ball.y > canvas.height - 20) {
-                handleBallLand(ball);
-                balls.splice(index, 1);
-            }
-        });
-
-        // Update Spawner Position (Bergerak di antara 3 titik atas)
-        const range = 30; // Jarak gerak kanan-kiri
-        spawnerX += spawnerDir * 0.8;
-        if (Math.abs(spawnerX - canvas.width / 2) > range) {
-            spawnerDir *= -1;
-        }
-
-        requestAnimationFrame(update);
-    }
-
-    function drawSpawner() {
-        ctx.fillStyle = '#333';
-        ctx.fillRect(spawnerX - 15, 0, 30, 20); // Cerobong
-        ctx.beginPath();
-        ctx.arc(spawnerX, 20, 10, 0, Math.PI);
-        ctx.fill();
-    }
-
-    function checkPinCollision(ball) {
-        // Logika sederhana deteksi tabrakan dengan titik-titik pin
-        // Anda perlu menyimpan koordinat pin dalam array saat drawPlinkoBoard()
-        // Untuk performa, kita gunakan perhitungan matematis berdasarkan row/col
-        const rowSpacing = 28;
-        const colSpacing = 26;
-        const startY = 50;
-        
-        // Prediksi baris mana bola berada
-        const row = Math.floor((ball.y - startY) / rowSpacing);
-        if (row >= 0 && row < 15) {
-            const dotsInRow = 3 + row;
-            const rowWidth = (dotsInRow - 1) * colSpacing;
-            const rowStartX = (canvas.width / 2) - (rowWidth / 2);
-            
-            for (let col = 0; col < dotsInRow; col++) {
-                const pinX = rowStartX + col * colSpacing;
-                const pinY = startY + row * rowSpacing;
-                
-                const dx = ball.x - pinX;
-                const dy = ball.y - pinY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < 7) { // 7 = radius pin (2) + radius bola (4) + buffer
-                    const angle = Math.atan2(dy, dx);
-                    ball.vx += Math.cos(angle) * 2; // Pantulan ke samping
-                    ball.vy *= -BOUNCE; // Pantulan ke atas (melambat)
-                    
-                    // Cegah bola nempel di pin
-                    ball.x = pinX + Math.cos(angle) * 7;
-                    ball.y = pinY + Math.sin(angle) * 7;
-                }
-            }
-        }
-    }
-
-    // Fungsi saat tombol "Drop Ball" diklik
-    async function playGame() {
-        const betAmount = parseInt(document.getElementById('betAmount').value);
-        if (isNaN(betAmount) || betAmount < 100) return alert('Minimal 100');
-
-        // Tambahkan bola baru ke sistem physics
-        balls.push({
-            x: spawnerX,
-            y: 20,
-            vx: (Math.random() - 0.5) * 1, // Sedikit variasi arah awal
-            vy: 0,
-            bet: betAmount
-        });
-    }
-
-    function handleBallLand(ball) {
-        // Hitung index slot berdasarkan posisi X terakhir bola
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const sectionWidth = canvas.width / multipliers.length;
-        const index = Math.floor(ball.x / sectionWidth);
-        const safeIndex = Math.max(0, Math.min(index, multipliers.length - 1));
-        
-        const multiplier = multipliers[safeIndex];
-        const winAmount = Math.floor(ball.bet * multiplier);
-        
-        animateSlot(safeIndex);
-        showResult(multiplier, winAmount);
-        saveGameResult(ball.bet, multiplier, winAmount, generateRoundHash());
-    }
-
     // Initialize
     async function init() {
         telegramUser = await getTelegramUser();
@@ -377,9 +258,12 @@
         
         function resizeCanvas() {
             const container = canvas.parentElement;
-            canvas.width = Math.min(container.clientWidth, 800);
-            canvas.height = 400; // Pendekkan canvas agar pas dengan 9 baris
-            spawnerX = canvas.width / 2;
+            const width = container.clientWidth;
+            canvas.width = Math.min(width, 800);
+            
+            // Change from 500 to 350 (or whatever fits your 9 rows)
+            canvas.height = 350; 
+            
             drawPlinkoBoard();
         }
         
@@ -410,7 +294,6 @@
         await loadHistory();
         updateViewCount();
         renderMultiplierSlots();
-        requestAnimationFrame(update);
 
         console.log('✅ Plinko Games Ready');
     }
