@@ -32,7 +32,7 @@
         }
     }
 
-    // Draw Plinko board
+    // Draw Plinko board (TANPA MULTIPLIER DI CANVAS)
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
         
@@ -48,9 +48,6 @@
         const startY = 60;
         const spacingX = w / (cols + 1);
         const spacingY = (h - 120) / rows;
-        
-        ctx.fillStyle = '#FFD700';
-        ctx.shadowBlur = 0;
         
         for (let row = 0; row <= rows; row++) {
             const y = startY + row * spacingY;
@@ -69,24 +66,14 @@
             }
         }
         
-        // Draw slots at bottom
-        const slotY = h - 50;
-        const slotWidth = w / (RISK_MULTIPLIERS[currentRisk].length);
+        // HAPUS BAGIAN INI (draw slots at bottom) - UDAH GA ADA
         
-        for (let i = 0; i < RISK_MULTIPLIERS[currentRisk].length; i++) {
-            const x = i * slotWidth;
-            const mult = RISK_MULTIPLIERS[currentRisk][i];
-            
-            ctx.fillStyle = mult >= 5 ? 'rgba(239, 68, 68, 0.3)' : 
-                           mult >= 2 ? 'rgba(245, 158, 11, 0.3)' : 
-                           'rgba(16, 185, 129, 0.3)';
-            ctx.fillRect(x, slotY, slotWidth, 40);
-            
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 12px Inter';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${mult}x`, x + slotWidth / 2, slotY + 25);
-        }
+        // Gambar garis batas bawah aja
+        ctx.beginPath();
+        ctx.moveTo(0, h - 50);
+        ctx.lineTo(w, h - 50);
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+        ctx.stroke();
     }
 
     // Load stats from API
