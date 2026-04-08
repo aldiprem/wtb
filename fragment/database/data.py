@@ -1570,6 +1570,60 @@ async def mark_message_as_read(message_id: int) -> bool:
         logger.error(f"Error marking message as read: {e}")
         return False
 
+def authenticate_panel_user(username, password):
+    """
+    Autentikasi user untuk panel admin fragment
+    
+    Args:
+        username (str): Username
+        password (str): Password
+    
+    Returns:
+        dict or None: Data user jika berhasil, None jika gagal
+    """
+    import hashlib
+    
+    # Baca file users.json jika ada
+    users_file = os.path.join(os.path.dirname(__file__), 'users.json')
+    
+    # Default credentials untuk testing
+    default_users = {
+        'admin': {
+            'password': hashlib.sha256('admin123'.encode()).hexdigest(),
+            'role': 'admin',
+            'name': 'Administrator'
+        },
+        'owner': {
+            'password': hashlib.sha256('owner123'.encode()).hexdigest(),
+            'role': 'owner',
+            'name': 'Store Owner'
+        }
+    }
+    
+    # Coba load dari file JSON
+    if os.path.exists(users_file):
+        try:
+            import json
+            with open(users_file, 'r') as f:
+                users = json.load(f)
+        except:
+            users = default_users
+    else:
+        users = default_users
+    
+    # Hash password yang dimasukkan
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
+    
+    # Cek autentikasi
+    if username in users and users[username]['password'] == hashed_password:
+        return {
+            'username': username,
+            'role': users[username]['role'],
+            'name': users[username]['name'],
+            'authenticated': True
+        }
+    
+    return None
 
 # ==================== RENTAL FUNCTIONS ====================
 
