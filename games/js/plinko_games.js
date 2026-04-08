@@ -101,16 +101,36 @@
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
-        // Update Physics Bola
+        // Di dalam loop balls.forEach di fungsi update()
         balls.forEach((ball, index) => {
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Cek Tabrakan dengan Pin
             const startY = 60;
             const rowSpacing = 28;
             const colSpacing = 26;
+            
+            // --- TAMBAHAN: PEMBATAS SAMPING (INVISIBLE WALLS) ---
+            // Hitung baris saat ini berdasarkan posisi Y bola
+            const currentRow = Math.floor((ball.y - startY) / rowSpacing);
+            if (currentRow >= 0 && currentRow < 9) {
+                const dots = 3 + currentRow;
+                const rWidth = (dots - 1) * colSpacing;
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10; // -10 buffer
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10; // +10 buffer
+
+                // Pantulkan jika menabrak batas luar titik-titik
+                if (ball.x < leftWall) {
+                    ball.x = leftWall;
+                    ball.vx *= -BOUNCE;
+                } else if (ball.x > rightWall) {
+                    ball.x = rightWall;
+                    ball.vx *= -BOUNCE;
+                }
+            }
+
+            // --- LOGIKA TABRAKAN PIN LAMA ANDA ---
             for (let r = 0; r < 9; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -340,9 +360,9 @@
         
         function resizeCanvas() {
             const container = canvas.parentElement;
-            const width = container.clientWidth;
-            canvas.width = Math.min(width, 800);
-            canvas.height = 400;
+            canvas.width = Math.min(container.clientWidth, 800);
+            // Ubah tinggi dari 500 menjadi 320 agar sisi bawah naik
+            canvas.height = 320; 
             spawnerX = canvas.width / 2;
             drawPlinkoBoard();
         }
