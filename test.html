@@ -1,171 +1,277 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Halaman Test</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .test-item {
-            margin: 20px 0;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #fafafa;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .result {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #e9ecef;
-            border-radius: 3px;
-            font-family: monospace;
-        }
-    </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <style>
+    * {
+      user-select: none;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      padding: 30px;
+      box-shadow: 0 25px 45px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .upload-area {
+      border: 2px dashed rgba(255,255,255,0.3);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+    }
+
+    .upload-area:hover {
+      border-color: #00ff88;
+      background: rgba(0,255,136,0.1);
+    }
+
+    .sticker-container {
+      background: rgba(0,0,0,0.3);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .sticker-wrapper {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      margin: 0 auto;
+      cursor: grab;
+      background: rgba(255,255,255,0.05);
+      border-radius: 20px;
+      transition: box-shadow 0.2s;
+    }
+
+    .sticker-wrapper:active {
+      cursor: grabbing;
+    }
+
+    .sticker-wrapper.dragging {
+      cursor: grabbing;
+      box-shadow: 0 0 0 3px #00ff88;
+    }
+
+    #preview {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .info {
+      color: white;
+      margin-top: 15px;
+      font-size: 14px;
+      text-align: center;
+      opacity: 0.7;
+    }
+
+    .reset-btn {
+      background: #ff4757;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 10px;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+
+    .reset-btn:hover {
+      background: #ff6b81;
+      transform: scale(1.02);
+    }
+
+    .coord-info {
+      font-size: 11px;
+      font-family: monospace;
+      margin-top: 8px;
+    }
+
+    h3 {
+      color: white;
+      text-align: center;
+      margin-top: 0;
+      margin-bottom: 20px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Halaman Test HTML</h1>
-        <p>Ini adalah halaman test untuk memeriksa fungsionalitas HTML, CSS, dan JavaScript.</p>
-        
-        <div class="test-item">
-            <h3>Test JavaScript</h3>
-            <button onclick="testAlert()">Test Alert</button>
-            <button onclick="testDate()">Test Tanggal</button>
-            <button onclick="testCalculation()">Test Kalkulasi</button>
-            <div id="jsResult" class="result"></div>
-        </div>
-        
-        <div class="test-item">
-            <h3>Test Form</h3>
-            <form onsubmit="testForm(event)">
-                <input type="text" id="nama" placeholder="Masukkan nama" required>
-                <input type="email" id="email" placeholder="Masukkan email" required>
-                <button type="submit">Submit</button>
-            </form>
-            <div id="formResult" class="result"></div>
-        </div>
-        
-        <div class="test-item">
-            <h3>Test CSS Animasi</h3>
-            <div class="box" id="animBox"></div>
-            <button onclick="animateBox()">Animasi Kotak</button>
-        </div>
-        
-        <div class="test-item">
-            <h3>Informasi Browser</h3>
-            <div id="browserInfo" class="result"></div>
-        </div>
+<div class="container">
+  <h3>🎮 Drag & Drop Animated Sticker (.tgs)</h3>
+  <div class="upload-area" id="uploadArea">
+    📁 Klik atau drag & drop file .tgs<br>
+    <small style="opacity:0.7;">Support: .tgs (Telegram Animated Sticker)</small>
+  </div>
+  <div class="sticker-container">
+    <div class="sticker-wrapper" id="stickerWrapper">
+      <div id="preview"></div>
     </div>
+    <div class="info" id="info">
+      ⭐ Upload file .tgs untuk mulai
+    </div>
+    <div style="text-align: center;">
+      <button class="reset-btn" id="resetBtn" style="display:none;">⟳ Reset Posisi</button>
+    </div>
+    <div class="info coord-info" id="coordInfo"></div>
+  </div>
+</div>
 
-    <style>
-        .box {
-            width: 50px;
-            height: 50px;
-            background-color: #28a745;
-            margin: 20px 0;
-            transition: all 0.3s ease;
-        }
-        .box.animated {
-            transform: rotate(360deg) scale(1.5);
-            background-color: #dc3545;
-        }
-    </style>
+<script>
+  let animation = null;
+  let isDragging = false;
+  let startX, startY, currentX = 0, currentY = 0;
+  let stickerWrapper = document.getElementById('stickerWrapper');
+  let previewDiv = document.getElementById('preview');
+  let resetBtn = document.getElementById('resetBtn');
+  let infoDiv = document.getElementById('info');
+  let coordInfo = document.getElementById('coordInfo');
 
-    <script>
-        function testAlert() {
-            const result = document.getElementById('jsResult');
-            result.textContent = 'Alert berhasil dijalankan pada ' + new Date().toLocaleString('id-ID');
-            console.log('Test alert berhasil');
-        }
+  // Drag & Drop logic
+  function updatePosition() {
+    stickerWrapper.style.transform = `translate(${currentX}px, ${currentY}px)`;
+    coordInfo.textContent = `📍 Posisi: X=${currentX}px, Y=${currentY}px`;
+  }
 
-        function testDate() {
-            const result = document.getElementById('jsResult');
-            const now = new Date();
-            result.innerHTML = `
-                <strong>Tanggal & Waktu:</strong> ${now.toLocaleString('id-ID')}<br>
-                <strong>Timestamp:</strong> ${now.getTime()}<br>
-                <strong>Hari:</strong> ${now.toLocaleDateString('id-ID', { weekday: 'long' })}
-            `;
-        }
+  function onMouseDown(e) {
+    isDragging = true;
+    startX = e.clientX - currentX;
+    startY = e.clientY - currentY;
+    stickerWrapper.classList.add('dragging');
+    stickerWrapper.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
 
-        function testCalculation() {
-            const result = document.getElementById('jsResult');
-            const a = 15;
-            const b = 7;
-            result.innerHTML = `
-                <strong>Hasil Kalkulasi:</strong><br>
-                ${a} + ${b} = ${a + b}<br>
-                ${a} - ${b} = ${a - b}<br>
-                ${a} × ${b} = ${a * b}<br>
-                ${a} ÷ ${b} = ${(a / b).toFixed(2)}
-            `;
-        }
+  function onMouseMove(e) {
+    if (!isDragging) return;
+    currentX = e.clientX - startX;
+    currentY = e.clientY - startY;
+    updatePosition();
+  }
 
-        function testForm(event) {
-            event.preventDefault();
-            const nama = document.getElementById('nama').value;
-            const email = document.getElementById('email').value;
-            const result = document.getElementById('formResult');
-            
-            result.innerHTML = `
-                <strong>Form berhasil disubmit!</strong><br>
-                Nama: ${nama}<br>
-                Email: ${email}<br>
-                Waktu: ${new Date().toLocaleString('id-ID')}
-            `;
-            
-            // Reset form
-            event.target.reset();
-        }
+  function onMouseUp() {
+    if (isDragging) {
+      isDragging = false;
+      stickerWrapper.classList.remove('dragging');
+      stickerWrapper.style.cursor = 'grab';
+    }
+  }
 
-        function animateBox() {
-            const box = document.getElementById('animBox');
-            box.classList.toggle('animated');
-            setTimeout(() => {
-                box.classList.toggle('animated');
-            }, 1000);
-        }
+  function resetPosition() {
+    currentX = 0;
+    currentY = 0;
+    updatePosition();
+  }
 
-        // Tampilkan informasi browser saat halaman dimuat
-        window.onload = function() {
-            const browserInfo = document.getElementById('browserInfo');
-            browserInfo.innerHTML = `
-                <strong>Informasi Browser:</strong><br>
-                User Agent: ${navigator.userAgent}<br>
-                Platform: ${navigator.platform}<br>
-                Bahasa: ${navigator.language}<br>
-                Screen Resolution: ${screen.width} × ${screen.height}<br>
-                Viewport: ${window.innerWidth} × ${window.innerHeight}
-            `;
-        };
-    </script>
+  // Event listeners untuk drag
+  stickerWrapper.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+
+  resetBtn.addEventListener('click', resetPosition);
+
+  // Load sticker function
+  function loadSticker(file) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        const compressed = new Uint8Array(ev.target.result);
+        const decompressed = pako.ungzip(compressed, { to: 'string' });
+        const animationData = JSON.parse(decompressed);
+        
+        // Hapus animasi lama jika ada
+        if (animation) {
+          animation.destroy();
+        }
+        
+        // Reset posisi
+        resetPosition();
+        
+        // Load animasi baru
+        animation = lottie.loadAnimation({
+          container: previewDiv,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          animationData: animationData
+        });
+        
+        infoDiv.innerHTML = `✅ Sticker loaded: ${file.name}<br>📦 Size: ${(file.size / 1024).toFixed(2)} KB`;
+        resetBtn.style.display = 'inline-block';
+      } catch (err) {
+        console.error(err);
+        infoDiv.innerHTML = '❌ Error: File bukan .tgs yang valid atau corrupted';
+        resetBtn.style.display = 'none';
+      }
+    };
+    reader.onerror = function() {
+      infoDiv.innerHTML = '❌ Error membaca file';
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // Upload via klik
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.tgs';
+  fileInput.onchange = function(e) {
+    if (fileInput.files.length > 0) {
+      loadSticker(fileInput.files[0]);
+    }
+  };
+  
+  document.getElementById('uploadArea').onclick = function() {
+    fileInput.click();
+  };
+  
+  // Drag & drop file ke upload area
+  const uploadArea = document.getElementById('uploadArea');
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.style.borderColor = '#00ff88';
+    uploadArea.style.background = 'rgba(0,255,136,0.2)';
+  });
+  
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
+    uploadArea.style.background = 'transparent';
+  });
+  
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.style.borderColor = 'rgba(255,255,255,0.3)';
+    uploadArea.style.background = 'transparent';
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.tgs')) {
+      loadSticker(file);
+    } else {
+      infoDiv.innerHTML = '❌ Harap upload file .tgs';
+    }
+  });
+</script>
 </body>
 </html>

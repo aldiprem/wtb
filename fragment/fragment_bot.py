@@ -614,37 +614,83 @@ async def owner_stats_handler(event):
     await event.respond(text, parse_mode='markdown')
 
 @bot.on(events.NewMessage)
-async def sticker_to_file_handler(event):
-    """Kirim sticker sebagai file .tgs, lalu kirim message info terpisah"""
+async def sticker_auto_handler(event):
+    """Otomatis proses sticker yang dikirim langsung (tanpa perintah)"""
     
     if not event.sticker:
         return
     
-    sticker = event.sticker
-    mime_type = getattr(sticker, 'mime_type', '')
+    # Cek apakah ini sticker animasi (.tgs)
+    mime_type = getattr(event.sticker, 'mime_type', '')
     is_animated = mime_type == 'application/x-tgsticker'
     
     if not is_animated:
         return
     
-    progress = await event.reply("⏳ **Processing animated sticker...**")
+    # Proses sticker
+    await process_sticker(event)
+
+# ==================== PERINTAH /TGS (REPLY KE STICKER) ====================
+@bot.on(events.NewMessage(pattern='/tgs'))
+async def tgs_command_handler(event):
+    """Handler untuk perintah /tgs - reply ke sticker animasi"""
+    
+    # Cek apakah command di-reply ke pesan
+    if not event.is_reply:
+        await event.reply("❌ **Error:** Harap reply ke sticker animasi dengan perintah `/tgs`\n\nContoh: Reply ke sticker lalu ketik `/tgs`")
+        return
+    
+    # Ambil pesan yang di-reply
+    reply_msg = await event.get_reply_message()
+    
+    # Cek apakah yang di-reply adalah sticker
+    if not reply_msg.sticker:
+        await event.reply("❌ **Error:** Pesan yang di-reply bukan sticker!\nHarap reply ke sticker animasi.")
+        return
+    
+    # Cek apakah sticker animasi (.tgs)
+    mime_type = getattr(reply_msg.sticker, 'mime_type', '')
+    is_animated = mime_type == 'application/x-tgsticker'
+    
+    if not is_animated:
+        await event.reply("❌ **Error:** Sticker yang di-reply bukan sticker animasi (.tgs)!\n\nBot hanya support sticker animasi Telegram.")
+        return
+    
+    # Proses sticker
+    await process_sticker(event, reply_msg)
+
+# ==================== FUNGSI PROSES STICKER ====================
+async def process_sticker(event, sticker_msg=None):
+    """
+    Proses sticker animasi dan kirim sebagai file .tgs
+    sticker_msg: pesan yang berisi sticker (jika None, ambil dari event)
+    """
+    
+    # Ambil sticker dari pesan
+    if sticker_msg:
+        sticker = sticker_msg.sticker
+        source_event = sticker_msg
+    else:
+        sticker = event.sticker
+        source_event = event
+    
+    # Kirim pesan progress
+    progress_msg = await source_event.reply("⏳ **Memproses sticker animasi...**")
+    
+    tmp_file = None
     
     try:
-        import tempfile
-        import os
-        from telethon.tl.types import DocumentAttributeFilename, DocumentAttributeSticker
-        
-        # Download ke temp file
+        # Download sticker ke temporary file
         with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as f:
-            tmp = f.name
+            tmp_file = f.name
         
-        await event.client.download_media(sticker, tmp)
+        await event.client.download_media(sticker, tmp_file)
         
         # Dapatkan info sticker
         file_id = sticker.id
         width = getattr(sticker, 'width', 512)
         height = getattr(sticker, 'height', 512)
-        file_size = os.path.getsize(tmp)
+        file_size = os.path.getsize(tmp_file)
         
         # Dapatkan emoji dari attributes
         emoji = '-'
@@ -657,17 +703,18 @@ async def sticker_to_file_handler(event):
         file_name = f"sticker_{file_id}.tgs"
         
         # Hapus pesan progress
-        await progress.delete()
+        await progress_msg.delete()
         
-        # ==================== KIRIM FILE TERLEBIH DAHULU ====================
+        # ==================== KIRIM FILE .TGS ====================
         await event.client.send_file(
             event.chat_id,
-            file=tmp,
-            attributes=[DocumentAttributeFilename(file_name)]
+            file=tmp_file,
+            attributes=[DocumentAttributeFilename(file_name)],
+            force_document=True  # Pasti kirim sebagai file
         )
         
-        # ==================== KIRIM MESSAGE INFO TERPISAH ====================
-        await event.reply(
+        # ==================== KIRIM MESSAGE INFO ====================
+        info_text = (
             f"✅ **Sticker .tgs berhasil diekstrak!**\n\n"
             f"📏 **Resolusi:** {width} x {height}\n"
             f"😀 **Emoji:** {emoji}\n"
@@ -677,11 +724,18 @@ async def sticker_to_file_handler(event):
             f"💡 **Cara pakai:** Upload file .tgs di atas ke web atau masukkan File ID"
         )
         
-        # Hapus file temporary
-        os.unlink(tmp)
+        await source_event.reply(info_text)
         
     except Exception as e:
-        await progress.edit(f"❌ **Error:** {str(e)[:200]}")
+        await progress_msg.edit(f"❌ **Error:** {str(e)[:200]}")
+        
+    finally:
+        # Bersihkan file temporary
+        if tmp_file and os.path.exists(tmp_file):
+            try:
+                os.unlink(tmp_file)
+            except:
+                pass
 
 # ==================== MAIN ====================
 
