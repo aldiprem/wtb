@@ -31,7 +31,6 @@
         }
     }
 
-    // Draw Plinko board - POLA SEGITIGA SIKU-SIKU RATA KIRI
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
         
@@ -40,16 +39,23 @@
         
         ctx.clearRect(0, 0, w, h);
         
-        const startX = 40;  // Mulai dari kiri (bukan tengah)
-        const startY = 50;
-        const totalRows = 15;  // Jumlah baris
-        
+        const startY = 50;       // Vertical starting position
+        const rowSpacing = 28;   // Vertical distance between rows
+        const colSpacing = 26;   // Horizontal distance between pegs
+        const totalRows = 9;     // As per your visual example (3 dots to 11 dots)
+        const initialDots = 3;   // Starting number of dots at the top row
+
         for (let row = 0; row < totalRows; row++) {
-            const y = startY + row * 28;
-            const colsInRow = 3 + row;  // Baris0:3, baris1:4, baris2:5, baris3:6, dst
+            const y = startY + row * rowSpacing;
+            const dotsInRow = initialDots + row; // Row 0: 3, Row 1: 4, etc.
             
-            for (let col = 0; col < colsInRow; col++) {
-                const x = startX + col * 26;
+            // Calculate the starting X for this row to keep it centered
+            // Formula: (Canvas Width / 2) - ((Total Width of Dots in Row) / 2)
+            const rowWidth = (dotsInRow - 1) * colSpacing;
+            const rowStartX = (w / 2) - (rowWidth / 2);
+            
+            for (let col = 0; col < dotsInRow; col++) {
+                const x = rowStartX + col * colSpacing;
                 
                 // Outer glow
                 ctx.beginPath();
