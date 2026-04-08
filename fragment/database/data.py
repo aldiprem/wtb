@@ -1729,6 +1729,90 @@ def get_all_panel_sessions() -> list:
     
     return list(_active_sessions.values())
 
+# ==================== PANEL SESSION ALIASES (for compatibility) ====================
+
+async def validate_panel_session(token: str) -> dict:
+    """
+    Async version of get_panel_session for compatibility
+    
+    Args:
+        token (str): Session token
+    
+    Returns:
+        dict or None: Session data if valid
+    """
+    return get_panel_session(token)
+
+
+async def get_current_user_from_session(token: str) -> dict:
+    """
+    Get current user from panel session
+    
+    Args:
+        token (str): Session token
+    
+    Returns:
+        dict or None: User data if session valid
+    """
+    session = get_panel_session(token)
+    if session:
+        # Get full user data from database
+        user = await get_bot_owner_by_username(session['username'])
+        if user:
+            user['role'] = session.get('role', 'user')
+            user['authenticated'] = True
+            return user
+    return None
+
+
+async def get_current_admin_from_session(token: str) -> dict:
+    """
+    Get current admin from panel session
+    
+    Args:
+        token (str): Session token
+    
+    Returns:
+        dict or None: Admin data if session valid and user is admin
+    """
+    session = get_panel_session(token)
+    if session and session.get('role') == 'admin':
+        return session
+    return None
+
+
+async def cleanup_expired_sessions():
+    """
+    Clean up expired sessions (run periodically)
+    """
+    from datetime import datetime
+    
+    global _active_sessions
+    
+    expired = []
+    for token, session in _active_sessions.items():
+        expires_at = datetime.fromisoformat(session['expires_at'])
+        if expires_at <= datetime.now():
+            expired.append(token)
+    
+    for token in expired:
+        del _active_sessions[token]
+    
+    return len(expired)
+
+async def authenticate_panel_user_async(username: str, password: str) -> dict:
+    """
+    Async version of authenticate_panel_user
+    
+    Args:
+        username (str): Username
+        password (str): Password
+    
+    Returns:
+        dict or None: User data jika berhasil, None jika gagal
+    """
+    return authenticate_panel_user(username, password)
+
 # ==================== RENTAL FUNCTIONS ====================
 
 async def create_rental_record(bot_token: str, owner_id: int, rental_price: int,
