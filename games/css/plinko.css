@@ -108,36 +108,39 @@ body {
     margin-bottom: 24px;
 }
 
-/* Stats Views - Baris pertama */
+/* Stats Views - Baris pertama (Rata Kiri & Border Sesuai Konten) */
 .stats-views {
     padding: 0 20px;
     margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-start; /* Rata kiri */
 }
 
 .stat-views-card {
-    display: flex;
+    display: inline-flex; /* Krusial: agar border selebar konten */
     align-items: center;
     gap: 8px;
     background: var(--bg-card);
     border-radius: 12px;
-    padding: 8px 16px;
+    padding: 6px 14px; /* Lebih kecil & proporsional */
     border: 1px solid var(--border-color);
-    width: fit-content;
+    width: auto; /* Pastikan tidak memaksa lebar penuh */
 }
 
 .stat-views-card i {
-    font-size: 16px;
+    font-size: 14px;
     color: var(--primary-color);
 }
 
 .stat-views-card span {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
 }
 
 .stat-views-card small {
     font-size: 11px;
     color: var(--tg-hint-color);
+    font-weight: normal;
 }
 
 /* 3 Stats Row - Jackpot, Lasted, Round */
@@ -179,29 +182,6 @@ body {
     min-width: 0;
 }
 
-.stat-label {
-    font-size: 10px;
-    color: var(--tg-hint-color);
-    display: block;
-    margin-bottom: 4px;
-}
-
-.stat-value {
-    font-size: 16px;
-    font-weight: 700;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.stat-sub {
-    font-size: 10px;
-    color: var(--tg-hint-color);
-    display: block;
-    margin-top: 2px;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
     .stats-row {
@@ -215,9 +195,13 @@ body {
         width: 100%;
     }
     
-    .stat-views-card {
-        width: 100%;
+    .stats-views {
         justify-content: center;
+    }
+    
+    .stat-views-card {
+        width: auto;
+        justify-content: flex-start;
     }
 }
 
