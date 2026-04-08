@@ -123,6 +123,8 @@ body {
 
 /* Main Container */
 .plinko-container {
+    background: var(--bg-secondary);
+    padding: 20px;
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
@@ -269,7 +271,7 @@ body {
 
 /* Game Board */
 .game-board {
-    background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+    background: var(--tg-bg-color);
     border-radius: 24px;
     padding: 24px;
     margin-bottom: 24px;
@@ -288,8 +290,8 @@ body {
     display: flex;
     gap: 0px;
     justify-content: center;
-    padding: 8px 12px;
-    background: rgba(0, 0, 0, 0.4);
+    padding: 1px 1px;
+    background: var(--tg-bg-color);
     backdrop-filter: blur(8px);
     border-radius: 0px 0px 16px 16px;
     border-top: none;
@@ -383,7 +385,7 @@ body {
 }
 
 #plinkoCanvas {
-    /* Pastikan tinggi CSS sinkron dengan JS */
+    background: var(--tg-bg-color);
     height: 320px !important; 
     display: block;
     margin: 0 auto;
@@ -391,7 +393,6 @@ body {
 }
 
 #multiplierSlotsWrapper {
-    /* Sesuaikan agar pas menempel di bawah titik terakhir */
     margin-top: -80px; 
     position: relative;
     z-index: 10;
@@ -399,15 +400,15 @@ body {
 
 .plinko-canvas-container {
     position: relative;
-    padding-top: 10px;
-    background: #0f172a;
-    border: 2px solid var(--border-color);
+    padding-top: 0px;
+    background: var(--tg-bg-color);
+    border: px solid var(--border-color);
     border-radius: 24px;
 }
 
 /* Memastikan bola terlihat menyala */
 canvas {
-    filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.5));
+    filter: var(--tg-bg-color);
 }
 
 .ball-indicator {
