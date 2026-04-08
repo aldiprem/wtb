@@ -9,7 +9,9 @@ import sys
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
-
+from telethon.tl.types import DocumentAttributeFilename
+import tempfile
+import os
 from dotenv import load_dotenv
 from telethon import TelegramClient, events, Button
 
@@ -611,39 +613,130 @@ async def owner_stats_handler(event):
     
     await event.respond(text, parse_mode='markdown')
 
-# ==================== STICKER HANDLER (PALING SIMPLE) ====================
+# ==================== STICKER HANDLER - KIRIM SEBAGAI FILE ====================
 
 @bot.on(events.NewMessage)
-async def handle_sticker(event):
-    """Handler untuk semua sticker"""
+async def sticker_to_file_handler(event):
+    """Menerima sticker dan mengirim balik sebagai file .tgs"""
     
     if not event.sticker:
         return
     
     sticker = event.sticker
     
-    # Kirim balik sticker yang sama
-    await event.reply(file=sticker)
-
-
-@bot.on(events.NewMessage(pattern='/sticker'))
-async def sticker_info(event):
-    """Info sticker via reply"""
+    # Cek apakah animated sticker
+    is_animated = getattr(sticker, 'mime_type', '') == 'application/x-tgsticker'
     
-    reply = await event.get_reply_message()
-    
-    if not reply or not reply.sticker:
-        await event.reply("Reply ke sticker dengan /sticker")
+    if not is_animated:
+        await event.reply("❌ Kirimkan animated sticker (.tgs) yang bergerak!")
         return
     
-    s = reply.sticker
+    # Kirim pesan proses
+    progress_msg = await event.reply("⏳ **Mengunduh sticker...**")
     
-    await event.reply(
-        f"📋 **Info Sticker**\n"
-        f"ID: `{s.id}`\n"
-        f"Size: {s.width}x{s.height}\n"
-        f"Emoji: {getattr(s, 'emoji', '-')}"
-    )
+    try:
+        # Buat file temporary
+        with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as tmp_file:
+            temp_path = tmp_file.name
+        
+        # Download sticker ke file temporary
+        await event.client.download_media(sticker, temp_path)
+        
+        # Dapatkan emoji
+        emoji = getattr(sticker, 'emoji', '-')
+        if emoji and hasattr(emoji, 'text'):
+            emoji = emoji.text
+        elif emoji and isinstance(emoji, list):
+            emoji = emoji[0] if emoji else '-'
+        
+        # Nama file
+        file_name = f"sticker_{sticker.id}_{emoji}.tgs"
+        
+        # Kirim sebagai file dokumen
+        await event.reply(
+            file=temp_path,
+            caption=(
+                f"✅ **Sticker .tgs**\n\n"
+                f"📏 Resolusi: {sticker.width}x{sticker.height}\n"
+                f"😀 Emoji: {emoji}\n"
+                f"📦 Ukuran: {os.path.getsize(temp_path):,} bytes\n\n"
+                f"💾 File: `{file_name}`"
+            ),
+            attributes=[
+                DocumentAttributeFilename(file_name)
+            ]
+        )
+        
+        # Hapus file temporary
+        os.unlink(temp_path)
+        
+        # Hapus pesan proses
+        await progress_msg.delete()
+        
+    except Exception as e:
+        await progress_msg.edit(f"❌ Error: {str(e)[:100]}")
+        logger.error(f"Error processing sticker: {e}")
+
+
+@bot.on(events.NewMessage(pattern='/tgs'))
+async def tgs_command_handler(event):
+    """Command /tgs - reply ke sticker untuk dapat file"""
+    
+    reply_msg = await event.get_reply_message()
+    
+    if not reply_msg or not reply_msg.sticker:
+        await event.reply("❌ **Gunakan:** `/tgs` sebagai reply ke animated sticker!\n\nCara: reply sticker animated lalu ketik /tgs")
+        return
+    
+    sticker = reply_msg.sticker
+    
+    # Cek animated sticker
+    is_animated = getattr(sticker, 'mime_type', '') == 'application/x-tgsticker'
+    
+    if not is_animated:
+        await event.reply("❌ Hanya animated sticker (.tgs) yang didukung!")
+        return
+    
+    progress_msg = await event.reply("⏳ **Mengunduh sticker...**")
+    
+    try:
+        # Download ke temporary file
+        with tempfile.NamedTemporaryFile(suffix='.tgs', delete=False) as tmp_file:
+            temp_path = tmp_file.name
+        
+        await event.client.download_media(sticker, temp_path)
+        
+        # Dapatkan emoji
+        emoji = getattr(sticker, 'emoji', '-')
+        if emoji and hasattr(emoji, 'text'):
+            emoji = emoji.text
+        elif emoji and isinstance(emoji, list):
+            emoji = emoji[0] if emoji else '-'
+        
+        file_name = f"sticker_{sticker.id}_{emoji}.tgs"
+        file_size = os.path.getsize(temp_path)
+        
+        # Kirim sebagai file
+        await event.reply(
+            file=temp_path,
+            caption=(
+                f"✅ **File .tgs Sticker**\n\n"
+                f"📏 {sticker.width}x{sticker.height}\n"
+                f"😀 Emoji: {emoji}\n"
+                f"📦 {file_size:,} bytes ({file_size/1024:.1f} KB)\n"
+                f"🆔 ID: `{sticker.id}`\n\n"
+                f"📎 **Download:** `{file_name}`"
+            ),
+            attributes=[
+                DocumentAttributeFilename(file_name)
+            ]
+        )
+        
+        os.unlink(temp_path)
+        await progress_msg.delete()
+        
+    except Exception as e:
+        await progress_msg.edit(f"❌ Error: {str(e)[:100]}")
 
 # ==================== MAIN ====================
 
