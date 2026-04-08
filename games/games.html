@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Barack Gift</title>
+    <link rel="stylesheet" href="/games/css/games.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header dengan logo Telegram -->
+        <header class="glassy-header">
+            <div class="telegram-user" id="telegramUser">
+                <img id="userAvatar" class="user-avatar" src="https://via.placeholder.com/40" alt="User Avatar">
+                <span id="userName" class="user-name">Loading...</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area dengan Border Scroll -->
+        <main class="scroll-container" id="scrollContainer">
+            <div class="content-wrapper" id="contentWrapper">
+                <div class="content-placeholder">
+                    <h2>Selamat Datang</h2>
+                    <p>Pilih menu di bawah untuk melanjutkan</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation dengan 3 Pagination -->
+        <nav class="bottom-nav">
+            <div class="nav-item" data-page="games">
+                <div class="nav-icon">🎮</div>
+                <span>Games</span>
+            </div>
+            <div class="nav-item" data-page="market">
+                <div class="nav-icon">🛒</div>
+                <span>Market</span>
+            </div>
+            <div class="nav-item" data-page="profile">
+                <div class="nav-icon">👤</div>
+                <span>Profil</span>
+            </div>
+        </nav>
+    </div>
+
+    <script src="/games/js/games.js"></script>
+</body>
+</html>
