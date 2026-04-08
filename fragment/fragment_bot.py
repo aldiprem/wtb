@@ -663,6 +663,7 @@ async def sticker_to_file_handler(event):
         await event.client.send_file(
             event.chat_id,
             file=tmp,
+            force_document=True
             attributes=[DocumentAttributeFilename(file_name)]
         )
         
