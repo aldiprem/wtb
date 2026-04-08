@@ -33,7 +33,7 @@ if [ ! -f "games/app.py" ]; then
     exit 1
 fi
 
-if [ ! -f "games/html/base.html" ]; then
+if [ ! -f "games/games.html" ]; then
     echo -e "${RED}❌ File games/games.html tidak ditemukan!${NC}"
     exit 1
 fi
