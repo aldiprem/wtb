@@ -7,6 +7,8 @@
     let telegramUser = null;
     let canvas = null;
     let ctx = null;
+
+    let multiplierAreas = [];
     
     // --- PHYSICS VARIABLES ---
     let balls = [];
@@ -168,9 +170,17 @@
             ctx.fillStyle = '#ef4444';
             ctx.fill();
 
-            // Cek Sampai Bawah
-            if (ball.y > canvas.height - 20) {
-                finalizeGame(ball);
+            // Cek tabrakan dengan dinding multiplier
+            checkMultiplierWalls(ball);
+
+            // Cek validasi masuk slot (sebelum bola dihapus)
+            let isHit = false;
+            if (ball.y + BALL_RADIUS >= canvas.height - 20) {
+                isHit = checkMultiplierHit(ball);
+            }
+
+            // Hapus bola setelah valid atau sudah lewat batas
+            if (ball.y > canvas.height + 50 || isHit) {
                 balls.splice(index, 1);
             }
         });
@@ -425,6 +435,112 @@
         return false;
     }
 
+    // Fungsi untuk update area multiplier berdasarkan posisi di canvas
+    function updateMultiplierAreas() {
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper) return;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const startX = wrapperRect.left - canvasRect.left;
+        const width = wrapperRect.width;
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segmentWidth = width / multipliers.length;
+        
+        multiplierAreas = [];
+        for (let i = 0; i < multipliers.length; i++) {
+            multiplierAreas.push({
+                index: i,
+                multiplier: multipliers[i],
+                x: startX + (i * segmentWidth),
+                width: segmentWidth,
+                // Batas bawah area multiplier (posisi Y)
+                bottomY: canvas.height - 15
+            });
+        }
+    }
+
+    // Fungsi untuk cek tabrakan dengan dinding pemisah multiplier
+    function checkMultiplierWalls(ball) {
+        if (ball.y < canvas.height - 80) return false; // Hanya cek di area bawah
+        
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper) return false;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const leftWall = wrapperRect.left - canvasRect.left;
+        const rightWall = wrapperRect.right - canvasRect.left;
+        
+        let hit = false;
+        
+        // Cek tabrakan dengan dinding kiri
+        if (ball.x - BALL_RADIUS < leftWall && ball.vx < 0) {
+            ball.x = leftWall + BALL_RADIUS;
+            ball.vx *= -BOUNCE;
+            hit = true;
+        }
+        
+        // Cek tabrakan dengan dinding kanan
+        if (ball.x + BALL_RADIUS > rightWall && ball.vx > 0) {
+            ball.x = rightWall - BALL_RADIUS;
+            ball.vx *= -BOUNCE;
+            hit = true;
+        }
+        
+        return hit;
+    }
+
+    // Fungsi untuk cek validasi bola masuk ke multiplier slot
+    function checkMultiplierHit(ball) {
+        // Hanya cek ketika bola sudah di area bawah
+        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
+        
+        updateMultiplierAreas();
+        
+        for (const area of multiplierAreas) {
+            // Cek apakah posisi X bola berada di dalam area multiplier
+            if (ball.x >= area.x && ball.x <= area.x + area.width) {
+                // Bola dianggap valid
+                const winAmount = Math.floor(ball.bet * area.multiplier);
+                const roundHash = generateRoundHash();
+                
+                // Animasi highlight slot
+                animateSlot(area.index);
+                
+                // Tampilkan hasil
+                const resultDiv = document.getElementById('resultDisplay');
+                const resultMultiplier = document.getElementById('resultMultiplier');
+                const resultWin = document.getElementById('resultWin');
+                
+                resultDiv.style.display = 'block';
+                resultMultiplier.textContent = `${area.multiplier}x`;
+                resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
+                
+                if (area.multiplier >= 5) {
+                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                } else if (area.multiplier >= 2) {
+                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                } else {
+                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                }
+                
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 3000);
+                
+                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
+                return true; // Bola sudah diproses
+            }
+        }
+        return false;
+    }
+
     // Initialize
     async function init() {
         telegramUser = await getTelegramUser();
@@ -435,10 +551,12 @@
         function resizeCanvas() {
             const container = canvas.parentElement;
             canvas.width = Math.min(container.clientWidth, 800);
-            // Ubah tinggi dari 500 menjadi 320 agar sisi bawah naik
-            canvas.height = 320; 
+            canvas.height = 320;
             spawnerX = canvas.width / 2;
             drawPlinkoBoard();
+            updateMultiplierAreas();
+        }
+
         }
         
         window.addEventListener('resize', resizeCanvas);
