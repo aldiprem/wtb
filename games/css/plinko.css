@@ -5,18 +5,46 @@
 }
 
 :root {
+    /* Telegram & Base Colors */
+    --tg-bg-color: #0f0f0f;
+    --tg-text-color: #ffffff;
+    --tg-hint-color: #7d7d7d;
+    --tg-link-color: #6ab2f2;
+    --tg-button-color: #40a7e3;
+    --tg-button-text-color: #ffffff;
+    
+    /* Brand Colors (Gold Theme) */
     --primary-color: #FFD700;
     --primary-dark: #CCB100;
     --primary-light: #FFE55C;
+    
+    /* Semantic Colors */
     --success-color: #10b981;
     --danger-color: #ef4444;
     --warning-color: #f59e0b;
     --info-color: #3b82f6;
+    
+    /* Backgrounds & Cards */
     --bg-card: rgba(255, 255, 255, 0.05);
+    --bg-card-hover: rgba(255, 255, 255, 0.08);
+    --bg-primary: #0f0f0f;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #252525;
+    
+    /* Borders */
     --border-color: rgba(255, 255, 255, 0.1);
-    --tg-bg-color: #0f0f0f;
-    --tg-text-color: #ffffff;
-    --tg-hint-color: #7d7d7d;
+    --border-color-light: rgba(255, 255, 255, 0.05);
+    
+    /* Text States */
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --text-muted: #7d7d7d;
+    
+    /* Shadows & Glows */
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(255, 215, 0, 0.3);
 }
 
 body {
@@ -134,12 +162,13 @@ body {
 
 .stat-views-card i {
     font-size: 16px;
-    color: var(--primary-color);
+    color: var(--tg-text-color);
 }
 
 .stat-views-card span {
     font-size: 18px;
     font-weight: 700;
+    color: var(--tg-text-color);
 }
 
 .stat-views-card small {
@@ -147,58 +176,51 @@ body {
     color: var(--tg-hint-color);
 }
 
-/* 3 Stats Row - Jackpot, Lasted, Round */
+/* 3 Stats Row - Minimalist Style */
 .stats-row {
-    display: grid !important; /* Gunakan grid untuk kontrol kolom yang pasti */
-    grid-template-columns: repeat(3, 1fr) !important; /* Paksa 3 kolom ke samping */
-    gap: 8px; /* Kecilkan jarak antar kotak */
-    margin-bottom: 16px;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important; /* Paksa 3 kolom */
+    gap: 6px; /* Jarak antar kotak sangat tipis */
+    margin-bottom: 12px;
     width: 100%;
 }
 
 .stat-jackpot,
 .stat-lasted,
 .stat-round {
-    flex: none;
-    min-width: 0;
     background: var(--bg-card);
-    border-radius: 10px; /* Sedikit lebih kecil */
-    padding: 8px 10px; /* Perkecil padding dalam */
+    border-radius: 18px;
+    padding: 6px 8px; /* Padding sangat kecil */
     border: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    gap: 8px; /* Perkecil jarak ikon ke teks */
+    justify-content: center; /* Pusatkan konten */
+    gap: 6px;
+    min-width: 0;
+    color: var(--tg-text-color);
 }
 
 .stat-icon {
-    width: 28px; /* Perkecil ukuran ikon (sebelumnya 36px) */
-    height: 28px;
-    font-size: 14px; /* Perkecil ukuran font ikon */
+    width: 22px; /* Ikon lebih kecil */
+    height: 22px;
     background: rgba(255, 215, 0, 0.1);
-    border-radius: 8px;
+    border-radius: 9px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary-color);
-    flex-shrink: 0; /* Mencegah ikon gepeng */
+    font-size: 11px;
+    color: var(--tg-link-color);
+    flex-shrink: 0;
 }
 
 .stat-info {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
-}
-
-.stat-label {
-    font-size: 9px; /* Perkecil label */
-    color: var(--tg-hint-color);
-    display: block;
-    margin-bottom: 2px;
-    white-space: nowrap;
+    line-height: 1.1;
 }
 
 .stat-value {
-    font-size: 12px; /* Perkecil nilai (sebelumnya 16px/24px) */
+    font-size: 11px !important; /* Ukuran teks data sangat kecil */
     font-weight: 700;
     display: block;
     white-space: nowrap;
@@ -206,19 +228,22 @@ body {
     text-overflow: ellipsis;
 }
 
-/* Hapus atau Update Media Query yang memaksa kolom ke bawah */
+.stat-sub {
+    font-size: 8px !important; /* Ukuran teks waktu/sub-data */
+    color: var(--tg-hint-color);
+    display: block;
+}
+
+/* Mematikan paksa efek tumpuk di mobile */
 @media (max-width: 768px) {
     .stats-row {
-        flex-direction: row !important; /* Pastikan tetap baris */
         display: grid !important;
         grid-template-columns: repeat(3, 1fr) !important;
+        flex-direction: row !important;
     }
     
-    /* Timpa aturan lama yang membuat width 100% */
-    .stat-jackpot,
-    .stat-lasted,
-    .stat-round {
-        width: auto !important;
+    .stat-jackpot, .stat-lasted, .stat-round {
+        width: 100% !important;
     }
 }
 
@@ -256,14 +281,17 @@ body {
     border-radius: 20px;
     overflow: hidden;
     position: relative;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border-color); 
+    padding-bottom: 10px;
 }
 
 #plinkoCanvas {
     display: block;
     width: 100%;
     height: auto;
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    /* Ubah dari linear-gradient biru ke transparan atau warna gelap solid */
+    background: transparent; 
     cursor: pointer;
 }
 
@@ -279,12 +307,12 @@ body {
     font-weight: 600;
 }
 
-/* Bet Controls */
 .bet-controls {
     display: flex;
     gap: 16px;
     flex-wrap: wrap;
     margin-bottom: 20px;
+    padding-top: 10px; /* Tambahan sedikit ruang setelah garis */
 }
 
 .bet-input-group {
