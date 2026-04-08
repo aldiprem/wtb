@@ -24,7 +24,7 @@ show_help() {
 }
 
 check_games_module() {
-    if [ -f "games/app.py" ] && [ -f "games/games.html" ]; then
+    if [ -f "games/app.py" ] && [ -f "games/html/base.html" ]; then
         echo -e "${GREEN}✅ Games module detected${NC}"
         return 0
     else
