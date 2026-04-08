@@ -7,6 +7,11 @@ games_bp = Blueprint('games', __name__,
                      static_folder='.',
                      static_url_path='/games')
 
+@games_bp.route('/games')
+def games_page():
+    """Halaman utama games"""
+    return render_template('games.html')
+
 @games_bp.route('/api/games/data')
 def get_games_data():
     """API untuk mendapatkan data games (kosong untuk sekarang)"""
