@@ -1,4 +1,3 @@
-cat > /root/wtb/fragment/api/pakasir.py << 'EOF'
 # fragment/api/pakasir.py
 import os
 import logging
@@ -145,4 +144,3 @@ def create_pakasir_payment_url(amount: int, order_id: str, redirect_url: str = N
         params += "&qris_only=1"
     
     return base_url + params
-EOF
