@@ -604,28 +604,32 @@
                 telegram_id: parseInt(document.getElementById('slideTelegramId').value.trim()),
                 username: document.getElementById('slideUsername').value.trim().toLowerCase(),
                 password: document.getElementById('slidePassword').value,
-                price: plans[selectedPlan].price
             };
             
-            const result = await apiCall('/api/fragment/lobby/create-bot', 'POST', data);
+            // Panggil API create-order
+            const response = await fetch('/api/fragment/lobby/create-order', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            const result = await response.json();
             
             if (result.success) {
-                showToast('✅ Bot berhasil dibuat!', 'success');
+                showToast('✅ Order berhasil dibuat! Mengalihkan ke halaman pembayaran...', 'success');
                 closeSlidePanel();
                 
-                if (result.user) {
-                    currentUser = result.user;
-                    updateUserUI();
-                }
-                
-                if (document.getElementById('page-profile').classList.contains('active')) {
-                    loadProfile();
-                }
+                // Redirect ke halaman payment
+                setTimeout(() => {
+                    window.location.href = result.payment_url;
+                }, 1500);
             } else {
-                showToast(result.error || 'Gagal membuat bot', 'error');
+                showToast(result.error || 'Gagal membuat order', 'error');
             }
         } catch (error) {
-            console.error('Create bot error:', error);
+            console.error('Create order error:', error);
             showToast(error.message || 'Terjadi kesalahan', 'error');
         } finally {
             submitBtn.disabled = false;
