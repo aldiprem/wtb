@@ -83,10 +83,10 @@ def create_pakasir_payment(amount: int, order_id: str, customer_name: str = None
     return None
 
 
-def check_pakasir_payment(order_id: str) -> dict:
+def check_pakasir_payment(order_id: str, amount: int = None) -> dict:
     """
     Check payment status via Pakasir API
-    Berdasarkan dokumentasi: GET https://app.pakasir.com/api/transactiondetail
+    WAJIB mengirim amount
     """
     if not PAKASIR_API_KEY:
         logger.error("PAKASIR_API_KEY not configured")
@@ -94,13 +94,25 @@ def check_pakasir_payment(order_id: str) -> dict:
     
     try:
         url = f"{PAKASIR_BASE_URL}/transactiondetail"
+        
+        # Ambil amount dari database jika tidak dikirim
+        if not amount:
+            from fragment.database.orders import get_bot_order
+            order = get_bot_order(order_id)
+            if order:
+                amount = order.get('amount')
+            else:
+                logger.error(f"Cannot find amount for order {order_id}")
+                return None
+        
         params = {
             "project": PAKASIR_SLUG,
             "order_id": order_id,
+            "amount": amount,
             "api_key": PAKASIR_API_KEY
         }
         
-        logger.info(f"Checking payment status: {url}?project={PAKASIR_SLUG}&order_id={order_id}")
+        logger.info(f"Checking payment: {url} with params: project={PAKASIR_SLUG}, order_id={order_id}, amount={amount}")
         response = requests.get(url, params=params, timeout=30)
         
         if response.status_code == 200:
@@ -127,7 +139,6 @@ def check_pakasir_payment(order_id: str) -> dict:
     except Exception as e:
         logger.error(f"Error checking Pakasir payment: {e}")
         return None
-
 
 def create_pakasir_payment_url(amount: int, order_id: str, redirect_url: str = None, qris_only: bool = False) -> str:
     """

@@ -857,7 +857,7 @@ def lobby_check_payment():
             })
         
         # Check status via Pakasir API
-        payment_status = check_pakasir_payment(order_id)
+        payment_status = check_pakasir_payment(order_id, order.get('amount'))
         
         if payment_status and payment_status.get('data'):
             status = payment_status['data'].get('status')
