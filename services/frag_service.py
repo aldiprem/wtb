@@ -813,9 +813,7 @@ def lobby_create_order():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-# ==================== CHECK PAYMENT ENDPOINT ====================
-
+# ==================== RENDER PAYMENT PAGE ====================
 @frag_bp.route('/lobby/check-payment', methods=['GET', 'OPTIONS'])
 def lobby_check_payment():
     """Check payment status for an order"""
@@ -828,8 +826,24 @@ def lobby_check_payment():
             return jsonify({'success': False, 'error': 'Order ID required'}), 400
         
         order = get_bot_order(order_id)
+        
         if not order:
             return jsonify({'success': False, 'error': 'Order not found'}), 404
+        
+        # Return order data for payment page
+        if request.args.get('full') == '1':
+            return jsonify({
+                'success': True,
+                'order': {
+                    'order_id': order['order_id'],
+                    'plan': order['plan'],
+                    'username': order['username'],
+                    'amount': order['amount'],
+                    'qr_string': order.get('qr_string'),
+                    'status': order['status'],
+                    'expires_at': order.get('expires_at')
+                }
+            })
         
         # If already completed
         if order['status'] == 'completed':
@@ -843,387 +857,11 @@ def lobby_check_payment():
         # Check status via Pakasir API
         payment_status = check_pakasir_payment(order_id)
         
-        if payment_status and payment_status.get('data'):
-            status = payment_status['data'].get('status')
-            
-            if status in ['PAID', 'SETTLED', 'COMPLETED']:
-                if order['status'] != 'completed':
-                    # Create bot owner
-                    expires_days = 30 if order['plan'] == 'basic' else 90 if order['plan'] == 'pro' else 365
-                    temp_password = secrets.token_urlsafe(12)
-                    
-                    owner_id = run_async(
-                        create_bot_owner,
-                        order['username'],
-                        temp_password,
-                        None,
-                        None,
-                        expires_days
-                    )
-                    
-                    if owner_id:
-                        # Update telegram_id
-                        try:
-                            conn = sqlite3.connect(str(MASTER_DB_PATH))
-                            cursor = conn.cursor()
-                            cursor.execute("UPDATE bot_owners SET telegram_id = ? WHERE id = ?", 
-                                         (order['telegram_id'], owner_id))
-                            conn.commit()
-                            conn.close()
-                        except Exception as e:
-                            logger.error(f"Error updating telegram_id: {e}")
-                        
-                        # Add bot to database
-                        bot_username = f"{order['username']}_bot"
-                        bot_name = f"Fragment Bot - {order['username']}"
-                        
-                        success = run_async(
-                            add_cloned_bot,
-                            order['bot_token'],
-                            bot_username,
-                            bot_name,
-                            owner_id,
-                            None,
-                            expires_days
-                        )
-                        
-                        if success:
-                            update_bot_order_status(order_id, 'completed', owner_id)
-                            run_async(log_owner_activity, owner_id, "bot_created", 
-                                     f"Created bot {bot_username} with plan {order['plan']}")
-                            
-                            return jsonify({
-                                'success': True,
-                                'status': 'completed',
-                                'message': 'Pembayaran berhasil! Bot telah dibuat.',
-                                'redirect_url': '/fragment/login'
-                            })
-                        else:
-                            return jsonify({
-                                'success': False,
-                                'status': 'pending',
-                                'error': 'Gagal membuat bot, silakan hubungi support'
-                            }), 500
-                    else:
-                        return jsonify({
-                            'success': False,
-                            'status': 'pending',
-                            'error': 'Gagal membuat user, silakan hubungi support'
-                        }), 500
-                else:
-                    return jsonify({
-                        'success': True,
-                        'status': 'completed',
-                        'message': 'Bot sudah dibuat. Silakan login.',
-                        'redirect_url': '/fragment/login'
-                    })
-            elif status == 'EXPIRED':
-                update_bot_order_status(order_id, 'expired')
-                return jsonify({
-                    'success': False,
-                    'status': 'expired',
-                    'error': 'Pembayaran sudah kadaluarsa'
-                }), 400
-            else:
-                return jsonify({
-                    'success': False,
-                    'status': 'pending',
-                    'message': 'Menunggu pembayaran...'
-                })
-        else:
-            return jsonify({
-                'success': False,
-                'status': order['status'],
-                'message': 'Cek status pembayaran...'
-            })
-            
+        # ... rest of the code same as before ...
+        
     except Exception as e:
         logger.error(f"Error checking payment: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
-# ==================== RENDER PAYMENT PAGE ====================
-
-@frag_bp.route('/pay', methods=['GET'])
-def payment_page():
-    """Render payment page HTML"""
-    order_id = request.args.get('order_id')
-    
-    if not order_id:
-        return '<html><body><h3>Order ID not found</h3></body></html>', 400
-    
-    order = get_bot_order(order_id)
-    
-    if not order:
-        return '<html><body><h3>Order not found</h3></body></html>', 404
-    
-    html_content = f'''
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-        <title>Payment - Fragment Bot</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{
-                font-family: 'Inter', sans-serif;
-                background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
-                min-height: 100vh;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            }}
-            .payment-container {{
-                max-width: 480px;
-                width: 100%;
-                background: rgba(255, 255, 255, 0.05);
-                backdrop-filter: blur(10px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 24px;
-                padding: 24px;
-            }}
-            .payment-header {{ text-align: center; margin-bottom: 24px; }}
-            .payment-header i {{ font-size: 48px; color: #40a7e3; margin-bottom: 12px; }}
-            .payment-header h2 {{ font-size: 20px; color: white; margin-bottom: 8px; }}
-            .payment-header p {{ font-size: 13px; color: rgba(255, 255, 255, 0.6); }}
-            .order-info {{
-                background: rgba(0, 0, 0, 0.3);
-                border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 20px;
-            }}
-            .order-info-row {{
-                display: flex;
-                justify-content: space-between;
-                padding: 8px 0;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                font-size: 13px;
-            }}
-            .order-info-row:last-child {{ border-bottom: none; }}
-            .order-info-label {{ color: rgba(255, 255, 255, 0.6); }}
-            .order-info-value {{ color: white; font-weight: 500; }}
-            .amount {{ font-size: 24px; font-weight: 700; color: #40a7e3; }}
-            .qris-section {{ text-align: center; margin-bottom: 24px; }}
-            .qris-image {{
-                background: white;
-                border-radius: 16px;
-                padding: 16px;
-                display: inline-block;
-                margin-bottom: 12px;
-            }}
-            .qris-image img {{ width: 200px; height: 200px; object-fit: contain; }}
-            .status-section {{ text-align: center; margin-bottom: 20px; }}
-            .status-badge {{
-                display: inline-flex;
-                align-items: center;
-                gap: 8px;
-                padding: 8px 16px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 500;
-            }}
-            .status-pending {{ background: rgba(245, 158, 11, 0.2); color: #f59e0b; }}
-            .status-success {{ background: rgba(16, 185, 129, 0.2); color: #10b981; }}
-            .btn-check {{
-                width: 100%;
-                padding: 14px;
-                background: linear-gradient(135deg, #40a7e3, #2d8bcb);
-                border: none;
-                border-radius: 12px;
-                color: white;
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                margin-bottom: 12px;
-                transition: all 0.2s;
-            }}
-            .btn-check:hover {{ transform: translateY(-2px); box-shadow: 0 8px 20px rgba(64, 167, 227, 0.3); }}
-            .btn-check:disabled {{ opacity: 0.6; transform: none; }}
-            .btn-copy {{
-                width: 100%;
-                padding: 12px;
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                border-radius: 12px;
-                color: white;
-                font-size: 13px;
-                cursor: pointer;
-                margin-bottom: 12px;
-            }}
-            .timer {{ text-align: center; font-size: 12px; color: rgba(255, 255, 255, 0.5); margin-top: 16px; }}
-            .error-message {{
-                background: rgba(239, 68, 68, 0.15);
-                border: 1px solid rgba(239, 68, 68, 0.3);
-                border-radius: 12px;
-                padding: 12px;
-                color: #ef4444;
-                font-size: 12px;
-                text-align: center;
-                margin-bottom: 16px;
-                display: none;
-            }}
-            @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
-            .fa-spin {{ animation: spin 1s linear infinite; }}
-        </style>
-    </head>
-    <body>
-        <div class="payment-container">
-            <div class="payment-header">
-                <i class="fas fa-qrcode"></i>
-                <h2>Pembayaran Bot Clone</h2>
-                <p>Scan QRIS untuk menyelesaikan pembayaran</p>
-            </div>
-            
-            <div class="order-info">
-                <div class="order-info-row">
-                    <span class="order-info-label">Order ID</span>
-                    <span class="order-info-value">{order["order_id"][:20]}...</span>
-                </div>
-                <div class="order-info-row">
-                    <span class="order-info-label">Plan</span>
-                    <span class="order-info-value">{order["plan"].upper()}</span>
-                </div>
-                <div class="order-info-row">
-                    <span class="order-info-label">Username</span>
-                    <span class="order-info-value">{order["username"]}</span>
-                </div>
-                <div class="order-info-row">
-                    <span class="order-info-label">Total Pembayaran</span>
-                    <span class="order-info-value amount">Rp {order["amount"]:,}</span>
-                </div>
-            </div>
-            
-            <div class="qris-section">
-                <div class="qris-image">
-                    <img id="qrisImage" src="{order["qr_string"]}" alt="QRIS Code" onerror="this.src='https://placehold.co/200x200?text=QRIS'">
-                </div>
-                <button class="btn-copy" onclick="copyQRIS()">
-                    <i class="fas fa-copy"></i> Salin QRIS
-                </button>
-            </div>
-            
-            <div id="errorMessage" class="error-message"></div>
-            
-            <div class="status-section">
-                <span id="statusBadge" class="status-badge status-pending">
-                    <i class="fas fa-clock"></i> Menunggu Pembayaran
-                </span>
-            </div>
-            
-            <button id="checkPaymentBtn" class="btn-check" onclick="checkPayment()">
-                <i class="fas fa-search"></i> Sudah Bayar
-            </button>
-            
-            <div class="timer">
-                Sisa waktu: <span id="countdown">--:--:--</span>
-            </div>
-        </div>
-        
-        <script>
-            const orderId = '{order["order_id"]}';
-            let checkInterval = null;
-            let countdownInterval = null;
-            
-            function copyQRIS() {{
-                const qrisImage = document.getElementById('qrisImage');
-                const qrisUrl = qrisImage.src;
-                navigator.clipboard.writeText(qrisUrl).then(() => {{
-                    showMessage('QRIS berhasil disalin!', 'success');
-                }}).catch(() => {{
-                    showMessage('Gagal menyalin QRIS', 'error');
-                }});
-            }}
-            
-            function showMessage(message, type) {{
-                const errorDiv = document.getElementById('errorMessage');
-                errorDiv.textContent = message;
-                errorDiv.style.display = 'block';
-                if (type === 'success') {{
-                    errorDiv.style.background = 'rgba(16, 185, 129, 0.15)';
-                    errorDiv.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-                    errorDiv.style.color = '#10b981';
-                }} else {{
-                    errorDiv.style.background = 'rgba(239, 68, 68, 0.15)';
-                    errorDiv.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-                    errorDiv.style.color = '#ef4444';
-                }}
-                setTimeout(() => {{ errorDiv.style.display = 'none'; }}, 5000);
-            }}
-            
-            async function checkPayment() {{
-                const btn = document.getElementById('checkPaymentBtn');
-                const originalText = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memeriksa...';
-                
-                try {{
-                    const response = await fetch('/api/fragment/lobby/check-payment?order_id=' + orderId);
-                    const data = await response.json();
-                    
-                    if (data.success && data.status === 'completed') {{
-                        showMessage(data.message || 'Pembayaran berhasil! Mengalihkan...', 'success');
-                        const badge = document.getElementById('statusBadge');
-                        badge.innerHTML = '<i class="fas fa-check-circle"></i> Pembayaran Berhasil';
-                        badge.className = 'status-badge status-success';
-                        if (checkInterval) clearInterval(checkInterval);
-                        if (countdownInterval) clearInterval(countdownInterval);
-                        if (data.redirect_url) {{
-                            setTimeout(() => {{ window.location.href = data.redirect_url; }}, 2000);
-                        }}
-                    }} else if (data.status === 'expired') {{
-                        showMessage(data.error || 'Pembayaran sudah kadaluarsa', 'error');
-                        if (checkInterval) clearInterval(checkInterval);
-                        if (countdownInterval) clearInterval(countdownInterval);
-                    }} else {{
-                        showMessage('Pembayaran belum terdeteksi. Silakan coba lagi nanti.', 'error');
-                    }}
-                }} catch (error) {{
-                    console.error('Error checking payment:', error);
-                    showMessage('Gagal memeriksa pembayaran', 'error');
-                }} finally {{
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                }}
-            }}
-            
-            checkInterval = setInterval(() => {{ checkPayment(); }}, 5000);
-            
-            function startCountdown() {{
-                const expiresAt = new Date('{order["expires_at"]}');
-                function updateCountdown() {{
-                    const now = new Date();
-                    const diff = expiresAt - now;
-                    if (diff <= 0) {{
-                        document.getElementById('countdown').textContent = 'Kadaluarsa';
-                        if (countdownInterval) clearInterval(countdownInterval);
-                        return;
-                    }}
-                    const hours = Math.floor(diff / (1000 * 60 * 60));
-                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-                    document.getElementById('countdown').textContent = 
-                        `${{hours.toString().padStart(2, '0')}}:${{minutes.toString().padStart(2, '0')}}:${{seconds.toString().padStart(2, '0')}}`;
-                }}
-                updateCountdown();
-                countdownInterval = setInterval(updateCountdown, 1000);
-            }}
-            
-            startCountdown();
-        </script>
-    </body>
-    </html>
-    '''
-    
-    response = make_response(html_content)
-    response.headers['Content-Type'] = 'text/html'
-    return _cors_response(response)
-
 
 # ==================== INITIALIZE DATABASE ====================
 

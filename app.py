@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
-from flask import redirect
 from collections import defaultdict, Counter
 import logging
 
@@ -305,8 +304,8 @@ def serve_website(endpoint):
 
 @app.route('/fragment/pay')
 def fragment_pay_page():
-    order_id = request.args.get('order_id', '')
-    return redirect(f'/api/fragment/pay?order_id={order_id}')
+    """Halaman pembayaran QRIS"""
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'pay-lobby.html')
 
 # Route untuk fragment static files (hanya HTML/CSS/JS, BUKAN API)
 @app.route('/fragment')

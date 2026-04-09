@@ -1,0 +1,248 @@
+/* pay-lobby.css */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary: #40a7e3;
+    --primary-dark: #2d8bcb;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --dark: #0f0f0f;
+    --dark-card: rgba(255, 255, 255, 0.05);
+    --border: rgba(255, 255, 255, 0.1);
+    --text: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.6);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.payment-container {
+    max-width: 480px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 24px;
+}
+
+.payment-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.payment-header i {
+    font-size: 48px;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.payment-header h2 {
+    font-size: 20px;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.payment-header p {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.order-info {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.order-info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.order-info-row:last-child {
+    border-bottom: none;
+}
+
+.order-info-label {
+    color: var(--text-muted);
+}
+
+.order-info-value {
+    color: white;
+    font-weight: 500;
+}
+
+.amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.skeleton {
+    height: 20px;
+    background: linear-gradient(90deg, var(--dark-card) 25%, rgba(255,255,255,0.1) 50%, var(--dark-card) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.qris-section {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.qris-image {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    display: inline-block;
+    margin-bottom: 12px;
+    min-width: 200px;
+    min-height: 200px;
+}
+
+.qris-image img {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+}
+
+.qris-placeholder {
+    width: 200px;
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+.qris-placeholder i {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
+
+.status-section {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: rgba(245, 158, 11, 0.2);
+    color: var(--warning);
+}
+
+.status-success {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+}
+
+.status-expired {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.btn-check {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+}
+
+.btn-check:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(64, 167, 227, 0.3);
+}
+
+.btn-check:disabled {
+    opacity: 0.6;
+    transform: none;
+    cursor: not-allowed;
+}
+
+.btn-copy {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+}
+
+.btn-copy:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.timer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 16px;
+}
+
+.error-message {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 12px;
+    padding: 12px;
+    color: var(--danger);
+    font-size: 12px;
+    text-align: center;
+    margin-bottom: 16px;
+    display: none;
+}
+
+@media (max-width: 480px) {
+    .payment-container {
+        padding: 20px;
+    }
+    
+    .qris-image img,
+    .qris-placeholder {
+        width: 180px;
+        height: 180px;
+    }
+}
