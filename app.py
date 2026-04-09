@@ -239,10 +239,6 @@ def serve_plinko_games():
 
 # ==================== ROUTES UNTUK GAMES ====================
 
-@app.route('/fragment')
-def serve_games_page():
-    return send_from_directory(os.path.join(base_dir, 'games'), 'games.html')
-
 @app.route('/games/css/<path:filename>')
 def serve_games_css(filename):
     return send_from_directory(os.path.join(base_dir, 'games', 'css'), filename)
