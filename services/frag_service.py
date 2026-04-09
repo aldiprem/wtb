@@ -429,3 +429,403 @@ def health_check():
             'status': 'unhealthy',
             'error': str(e)
         }), 500
+
+
+def lobby_create_bot():
+    """Create new cloned bot from lobby"""
+    if request.method == 'OPTIONS':
+        return _cors_response(jsonify({'success': True}))
+    
+    try:
+        data = request.json
+        plan = data.get('plan')
+        bot_token = data.get('bot_token', '').strip()
+        telegram_id = data.get('telegram_id')
+        username = data.get('username', '').strip().lower()
+        password = data.get('password')
+        price = data.get('price', 100000)
+        
+        # Validate inputs
+        if not all([plan, bot_token, telegram_id, username, password]):
+            return jsonify({
+                'success': False, 
+                'error': 'Semua field harus diisi'
+            }), 400
+        
+        # Validate username (alphanumeric + underscore)
+        import re
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            return jsonify({
+                'success': False,
+                'error': 'Username hanya boleh berisi huruf, angka, dan underscore'
+            }), 400
+        
+        if len(username) < 3:
+            return jsonify({
+                'success': False,
+                'error': 'Username minimal 3 karakter'
+            }), 400
+        
+        if len(password) < 6:
+            return jsonify({
+                'success': False,
+                'error': 'Password minimal 6 karakter'
+            }), 400
+        
+        # Validate bot token format
+        if ':' not in bot_token:
+            return jsonify({
+                'success': False,
+                'error': 'Format bot token tidak valid'
+            }), 400
+        
+        # Check if username already exists
+        existing_user = run_async(get_bot_owner_by_username, username)
+        if existing_user:
+            return jsonify({
+                'success': False,
+                'error': f'Username "{username}" sudah digunakan'
+            }), 400
+        
+        # Check balance
+        user_session = request.user_session
+        balance = user_session.get('balance', 0)
+        
+        if balance < price:
+            return jsonify({
+                'success': False,
+                'error': f'Saldo tidak cukup. Butuh Rp {price:,}, saldo Anda Rp {balance:,}'
+            }), 400
+        
+        # Set expiration days based on plan
+        expires_days = 30 if plan == 'basic' else 90 if plan == 'pro' else 365
+        
+        # Create bot owner (panel user)
+        owner_id = run_async(
+            create_panel_user,
+            username, password, 
+            owner_name=None, 
+            email=None, 
+            expires_days=expires_days
+        )
+        
+        if not owner_id:
+            return jsonify({
+                'success': False,
+                'error': 'Gagal membuat user'
+            }), 500
+        
+        # Update telegram_id
+        try:
+            from fragment.database.data import DB_PATH as MASTER_DB_PATH
+            conn = sqlite3.connect(str(MASTER_DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE bot_owners SET telegram_id = ? WHERE id = ?",
+                (telegram_id, owner_id)
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.error(f"Error updating telegram_id: {e}")
+        
+        # Deduct balance from master owner (the one who created the bot)
+        run_async(
+            deduct_owner_balance,
+            user_session['owner_id'],
+            price,
+            f"create_bot_{username}",
+            f"Create bot for {username} (Plan: {plan})"
+        )
+        
+        # Add bot to database
+        bot_username = f"{username}_bot"
+        bot_name = f"Fragment Bot - {username}"
+        
+        success = run_async(
+            add_cloned_bot,
+            bot_token,
+            bot_username,
+            bot_name,
+            owner_id,
+            expires_days=expires_days
+        )
+        
+        if not success:
+            # Refund balance if bot creation failed
+            run_async(add_owner_balance, user_session['owner_id'], price)
+            return jsonify({
+                'success': False,
+                'error': 'Gagal menambahkan bot ke database'
+            }), 500
+        
+        # Log activity
+        run_async(log_owner_activity, owner_id, "bot_created", f"Created bot {bot_username} with plan {plan}")
+        
+        # Get updated user info
+        user = run_async(get_bot_owner, owner_id)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Bot berhasil dibuat! Username: {username}',
+            'user': {
+                'id': user.get('id'),
+                'username': user.get('username'),
+                'owner_name': user.get('owner_name'),
+                'balance': user.get('balance', 0)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating bot from lobby: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@frag_bp.route('/lobby/telegram-auth', methods=['POST', 'OPTIONS'])
+def lobby_telegram_auth():
+    """Handle Telegram WebApp authentication"""
+    if request.method == 'OPTIONS':
+        return _cors_response(jsonify({'success': True}))
+    
+    try:
+        data = request.json
+        init_data = data.get('init_data')
+        
+        if not init_data:
+            return jsonify({'success': False, 'error': 'No init data'}), 400
+        
+        # Get bot token from environment or config
+        MASTER_BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+        
+        if not MASTER_BOT_TOKEN:
+            logger.error("BOT_TOKEN not configured")
+            return jsonify({'success': False, 'error': 'Server configuration error'}), 500
+        
+        # Parse init data
+        params = {}
+        for item in init_data.split('&'):
+            if '=' in item:
+                key, value = item.split('=', 1)
+                params[key] = value
+        
+        if 'hash' not in params:
+            return jsonify({'success': False, 'error': 'Invalid auth data'}), 400
+        
+        auth_hash = params.pop('hash')
+        
+        # Sort and create check string
+        sorted_params = sorted(params.items())
+        check_string = '\n'.join(f"{k}={v}" for k, v in sorted_params)
+        
+        # Compute HMAC-SHA256
+        secret_key = hmac.new(
+            b"WebAppData",
+            MASTER_BOT_TOKEN.encode(),
+            hashlib.sha256
+        ).digest()
+        
+        computed_hash = hmac.new(
+            secret_key,
+            check_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        if computed_hash != auth_hash:
+            logger.warning(f"Telegram auth hash mismatch")
+            return jsonify({'success': False, 'error': 'Invalid hash'}), 401
+        
+        # Check expiration (24 hours)
+        auth_date = int(params.get('auth_date', 0))
+        if datetime.now().timestamp() - auth_date > 86400:
+            return jsonify({'success': False, 'error': 'Auth expired'}), 401
+        
+        # Get user data
+        user_data = json.loads(params.get('user', '{}'))
+        telegram_id = user_data.get('id')
+        
+        if not telegram_id:
+            return jsonify({'success': False, 'error': 'No user data'}), 400
+        
+        # Check if user exists
+        from fragment.database.data import DB_PATH as MASTER_DB_PATH
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, username, owner_name, email, balance, expires_at FROM bot_owners WHERE telegram_id = ?",
+            (telegram_id,)
+        )
+        row = cursor.fetchone()
+        
+        if row:
+            user = {
+                'id': row[0],
+                'username': row[1],
+                'owner_name': row[2],
+                'email': row[3],
+                'balance': row[4],
+                'expires_at': row[5]
+            }
+            conn.close()
+        else:
+            # Create new user
+            username = user_data.get('username') or f"user_{telegram_id}"
+            password = secrets.token_urlsafe(16)
+            
+            # Create user
+            owner_id = run_async(
+                create_panel_user,
+                username, password,
+                owner_name=f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip(),
+                email=None,
+                expires_days=30
+            )
+            
+            if not owner_id:
+                conn.close()
+                return jsonify({'success': False, 'error': 'Failed to create user'}), 500
+            
+            # Update telegram_id
+            cursor.execute(
+                "UPDATE bot_owners SET telegram_id = ? WHERE id = ?",
+                (telegram_id, owner_id)
+            )
+            conn.commit()
+            conn.close()
+            
+            user = run_async(get_bot_owner, owner_id)
+        
+        # Create session
+        session_token = run_async(
+            create_panel_session,
+            user['id'],
+            request.headers.get('X-Forwarded-For', request.remote_addr),
+            request.headers.get('User-Agent')
+        )
+        
+        return jsonify({
+            'success': True,
+            'session_token': session_token,
+            'user': {
+                'id': user['id'],
+                'username': user.get('username'),
+                'first_name': user_data.get('first_name'),
+                'last_name': user_data.get('last_name'),
+                'balance': user.get('balance', 0)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Telegram auth error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@frag_bp.route('/lobby/logout', methods=['POST', 'OPTIONS'])
+def lobby_logout():
+    """Logout from lobby"""
+    if request.method == 'OPTIONS':
+        return _cors_response(jsonify({'success': True}))
+    
+    session_token = get_session_from_request()
+    if session_token:
+        run_async(delete_panel_session, session_token)
+    
+    return jsonify({'success': True})
+
+
+@frag_bp.route('/lobby/dashboard/stats', methods=['GET', 'OPTIONS'])
+@require_auth
+def lobby_dashboard_stats():
+    """Get dashboard stats for lobby"""
+    if request.method == 'OPTIONS':
+        return _cors_response(jsonify({'success': True}))
+    
+    try:
+        user_session = request.user_session
+        bot_token = user_session.get('bot_token')
+        
+        # Get stats
+        stats = run_async(get_all_stats, bot_token)
+        
+        # Get chart data
+        chart = run_async(get_chart_data, bot_token, 7)
+        
+        # Get activities
+        activities = run_async(get_recent_activities, bot_token, 10)
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'total_users': stats.get('total_users', 0),
+                'total_bots': stats.get('total_bots', 0),
+                'total_stars': stats.get('total_stars', 0),
+                'total_volume': float(stats.get('total_volume_idr', 0) or 0)
+            },
+            'chart': {
+                'labels': chart.get('labels', []),
+                'values': chart.get('values', [])
+            },
+            'activities': [
+                {
+                    'id': i,
+                    'icon': 'shopping-cart',
+                    'message': a.get('details') or a.get('action', ''),
+                    'timestamp': a.get('timestamp')
+                }
+                for i, a in enumerate(activities)
+            ]
+        })
+    except Exception as e:
+        logger.error(f"Error getting lobby dashboard stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== HELPER FUNCTIONS ====================
+
+def get_bot_owner_by_username(username: str):
+    """Get bot owner by username"""
+    try:
+        from fragment.database.data import DB_PATH as MASTER_DB_PATH
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, username, owner_name, email, whatsapp, balance, is_active, created_at, expires_at
+            FROM bot_owners WHERE username = ?
+        """, (username,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'owner_name': row[2],
+                'email': row[3],
+                'whatsapp': row[4],
+                'balance': row[5],
+                'is_active': row[6],
+                'created_at': row[7],
+                'expires_at': row[8]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error getting bot owner by username: {e}")
+        return None
+
+
+def delete_panel_session(session_token: str) -> bool:
+    """Delete panel session"""
+    try:
+        from fragment.database.data import DB_PATH as MASTER_DB_PATH
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM owner_sessions WHERE session_token = ?", (session_token,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        logger.error(f"Error deleting session: {e}")
+        return False

@@ -290,6 +290,7 @@ def serve_main_panel():
         return send_from_directory(html_dir, 'panel.html')
     return send_from_directory(base_dir, 'panel.html')
 
+
 @app.route('/format')
 def serve_main_format():
     html_dir = os.path.join(base_dir, 'html')
@@ -308,7 +309,7 @@ def serve_website(endpoint):
 # Route untuk fragment static files (hanya HTML/CSS/JS, BUKAN API)
 @app.route('/fragment')
 def serve_fragment_page():
-    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'frag.html')
+    return send_from_directory(os.path.join(base_dir, 'fragment', 'html'), 'lobby.html')
 
 @app.route('/fragment/login')
 def fragment_login_page():
