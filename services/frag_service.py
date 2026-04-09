@@ -8,65 +8,51 @@ import logging
 import json
 import sqlite3
 import secrets
+import re
+import hmac
+import hashlib
 from pathlib import Path
 from datetime import datetime, timedelta
 from functools import wraps
+
+# Load .env file
+env_file = Path(__file__).parent.parent / ".env"
+if env_file.exists():
+    with open(env_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    value = value.strip().strip('"').strip("'")
+                    os.environ[key] = value
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import dari database
 from fragment.database.data import (
     init_database,
-    authenticate_panel_user,
-    create_panel_session,
-    get_panel_session as validate_panel_session,
-    get_current_user_from_session,
-    get_current_admin_from_session,
-    get_all_bot_owners,
+    authenticate_bot_owner,
+    create_owner_session,
+    validate_owner_session,
+    delete_owner_session,
     get_bot_owner,
     get_cloned_bots,
     get_bot_by_token,
-    update_bot_status,
-    remove_cloned_bot,
-    get_all_activities,
-    get_master_stats,
-    get_pending_deposits,
-    update_deposit_status,
-    get_withdrawal_requests,
-    approve_withdrawal,
-    reject_withdrawal,
-    get_payment_methods,
-    get_master_setting,
-    save_master_setting,
-    add_admin,
-    is_admin,
-    log_owner_activity,
-    get_owner_balance,
-    add_owner_balance,
-    deduct_owner_balance,
     get_all_stats,
     get_chart_data,
     get_recent_activities,
     get_bot_stats,
     get_all_users_with_stats,
-    get_bot_logs,
-    get_panel_user_by_bot_token,
-    create_panel_user,
     create_bot_owner,
-    add_cloned_bot
+    add_cloned_bot,
+    log_owner_activity,
+    get_bot_owner_by_username,
+    DB_PATH as MASTER_DB_PATH,
+    get_jakarta_time_iso,
+    hash_password
 )
 
-from fragment.database.data_clone import get_user_stats
-from fragment.database.orders import (
-    init_bot_orders_table,
-    save_bot_order,
-    get_bot_order,
-    update_bot_order_status,
-    check_bot_token_exists,
-    check_username_exists,
-    check_telegram_id_exists,
-    get_bot_owner_by_username
-)
 from fragment.api.pakasir import (
     generate_order_id,
     create_pakasir_payment,
@@ -75,14 +61,6 @@ from fragment.api.pakasir import (
 
 frag_bp = Blueprint('fragment', __name__, url_prefix='/api/fragment')
 logger = logging.getLogger(__name__)
-
-# Database path
-DB_PATH = Path(__file__).parent.parent / "fragment" / "frag.db"
-
-
-def get_db_connection():
-    """Get SQLite database connection"""
-    return sqlite3.connect(str(DB_PATH))
 
 
 def run_async(coro):
@@ -103,45 +81,191 @@ def run_async(coro):
 
 
 def _cors_response(response):
-    """Add CORS headers to response"""
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Session-Token')
     return response
 
 
-# ==================== AUTH MIDDLEWARE ====================
-
 def get_session_from_request():
-    """Get session token from request headers"""
     return request.headers.get('X-Session-Token')
 
 
-def require_auth(f):
-    """Decorator untuk memeriksa autentikasi"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.method == 'OPTIONS':
-            return _cors_response(jsonify({'success': True}))
+# ==================== FUNGSI CEK DUPLIKAT ====================
+
+def check_bot_token_exists(bot_token: str) -> bool:
+    """Check if bot token already exists in cloned_bots table"""
+    try:
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM cloned_bots WHERE bot_token = ?", (bot_token,))
+        row = cursor.fetchone()
+        conn.close()
+        return row is not None
+    except Exception as e:
+        logger.error(f"Error checking bot token: {e}")
+        return False
+
+
+def check_username_exists(username: str) -> bool:
+    """Check if username already exists in bot_owners table"""
+    try:
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM bot_owners WHERE username = ?", (username,))
+        row = cursor.fetchone()
+        conn.close()
+        return row is not None
+    except Exception as e:
+        logger.error(f"Error checking username: {e}")
+        return False
+
+
+def check_telegram_id_exists(telegram_id: int) -> bool:
+    """Check if telegram_id already exists in bot_owners table"""
+    try:
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM bot_owners WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return row is not None
+    except Exception as e:
+        logger.error(f"Error checking telegram_id: {e}")
+        return False
+
+
+# ==================== TABEL BOT ORDERS ====================
+
+def init_bot_orders_table():
+    """Initialize bot_orders table for tracking orders"""
+    try:
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bot_orders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id TEXT UNIQUE NOT NULL,
+                plan TEXT NOT NULL,
+                bot_token TEXT NOT NULL,
+                telegram_id INTEGER NOT NULL,
+                username TEXT NOT NULL,
+                password_hash TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                pakasir_payment_id TEXT,
+                qr_string TEXT,
+                created_at TIMESTAMP,
+                expires_at TIMESTAMP,
+                completed_at TIMESTAMP,
+                owner_id INTEGER,
+                FOREIGN KEY (owner_id) REFERENCES bot_owners(id)
+            )
+        ''')
+        conn.commit()
+        conn.close()
+        logger.info("✅ bot_orders table initialized")
+    except Exception as e:
+        logger.error(f"Error initializing bot_orders table: {e}")
+
+
+def save_bot_order(order_id: str, plan: str, bot_token: str, telegram_id: int,
+                   username: str, password: str, amount: int, pakasir_payment_id: str = None,
+                   qr_string: str = None) -> bool:
+    """Save bot order to database"""
+    try:
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        now = get_jakarta_time_iso()
+        expires_at = (datetime.now() + timedelta(hours=24)).isoformat()
         
-        session_token = get_session_from_request()
-        if not session_token:
-            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+        password_hash = hash_password(password)
         
-        user_session = run_async(validate_panel_session(session_token))
-        if not user_session:
-            return jsonify({'success': False, 'error': 'Session expired'}), 401
+        cursor.execute('''
+            INSERT INTO bot_orders (
+                order_id, plan, bot_token, telegram_id, username, password_hash,
+                amount, status, pakasir_payment_id, qr_string, created_at, expires_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+        ''', (order_id, plan, bot_token, telegram_id, username, password_hash,
+              amount, pakasir_payment_id, qr_string, now, expires_at))
         
-        request.user_session = user_session
-        return f(*args, **kwargs)
-    return decorated_function
+        conn.commit()
+        conn.close()
+        logger.info(f"Bot order saved: {order_id}")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving bot order: {e}")
+        return False
+
+
+def get_bot_order(order_id: str) -> dict:
+    """Get bot order by order_id"""
+    try:
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, order_id, plan, bot_token, telegram_id, username, password_hash,
+                   amount, status, pakasir_payment_id, qr_string, created_at, expires_at, 
+                   completed_at, owner_id
+            FROM bot_orders WHERE order_id = ?
+        ''', (order_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'id': row[0],
+                'order_id': row[1],
+                'plan': row[2],
+                'bot_token': row[3],
+                'telegram_id': row[4],
+                'username': row[5],
+                'password_hash': row[6],
+                'amount': row[7],
+                'status': row[8],
+                'pakasir_payment_id': row[9],
+                'qr_string': row[10],
+                'created_at': row[11],
+                'expires_at': row[12],
+                'completed_at': row[13],
+                'owner_id': row[14]
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Error getting bot order: {e}")
+        return None
+
+
+def update_bot_order_status(order_id: str, status: str, owner_id: int = None) -> bool:
+    """Update bot order status"""
+    try:
+        conn = sqlite3.connect(str(MASTER_DB_PATH))
+        cursor = conn.cursor()
+        now = get_jakarta_time_iso()
+        
+        if status == 'completed' and owner_id:
+            cursor.execute('''
+                UPDATE bot_orders SET status = ?, completed_at = ?, owner_id = ? 
+                WHERE order_id = ?
+            ''', (status, now, owner_id, order_id))
+        else:
+            cursor.execute('UPDATE bot_orders SET status = ? WHERE order_id = ?', 
+                          (status, order_id))
+        
+        conn.commit()
+        conn.close()
+        logger.info(f"Bot order {order_id} status updated to {status}")
+        return True
+    except Exception as e:
+        logger.error(f"Error updating bot order status: {e}")
+        return False
 
 
 # ==================== AUTH ENDPOINTS ====================
 
 @frag_bp.route('/login', methods=['POST', 'OPTIONS'])
 def login():
-    """Login endpoint"""
+    """Login endpoint for panel admin"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
@@ -153,24 +277,18 @@ def login():
         if not username or not password:
             return jsonify({'success': False, 'error': 'Username dan password diperlukan'}), 400
         
-        user = run_async(authenticate_panel_user(username, password))
+        user = run_async(authenticate_bot_owner(username, password))
         if not user:
             return jsonify({'success': False, 'error': 'Username atau password salah'}), 401
         
-        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
-        user_agent = request.headers.get('User-Agent')
-        
-        session_token = run_async(create_panel_session(user['id'], ip_address, user_agent))
+        session_token = run_async(create_owner_session(user['id']))
         if not session_token:
             return jsonify({'success': False, 'error': 'Gagal membuat session'}), 500
         
         return jsonify({
             'success': True,
             'session_token': session_token,
-            'user': {
-                'id': user['id'],
-                'username': user['username']
-            }
+            'user': {'id': user['id'], 'username': user['username']}
         })
     except Exception as e:
         logger.error(f"Login error: {e}")
@@ -180,7 +298,6 @@ def login():
 
 
 @frag_bp.route('/logout', methods=['POST', 'OPTIONS'])
-@require_auth
 def logout():
     """Logout endpoint"""
     if request.method == 'OPTIONS':
@@ -188,67 +305,72 @@ def logout():
     
     session_token = get_session_from_request()
     if session_token:
-        run_async(delete_panel_session(session_token))
-    
+        run_async(delete_owner_session(session_token))
     return jsonify({'success': True})
 
 
 @frag_bp.route('/profile', methods=['GET', 'OPTIONS'])
-@require_auth
 def get_profile():
-    """Get user profile"""
+    """Get user profile (requires auth)"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
-    try:
-        user_session = request.user_session
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT username, bot_token, created_at, last_login
-            FROM panel_users WHERE id = ?
-        """, (user_session['user_id'],))
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return jsonify({
-                'success': True,
-                'profile': {
-                    'id': user_session['user_id'],
-                    'username': row[0],
-                    'bot_token': row[1] or user_session.get('bot_token'),
-                    'created_at': row[2],
-                    'last_login': row[3]
-                }
-            })
+    session_token = get_session_from_request()
+    if not session_token:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    user_session = run_async(validate_owner_session(session_token))
+    if not user_session:
+        return jsonify({'success': False, 'error': 'Session expired'}), 401
+    
+    user = run_async(get_bot_owner, user_session['owner_id'])
+    if not user:
         return jsonify({'success': False, 'error': 'User not found'}), 404
-    except Exception as e:
-        logger.error(f"Error getting profile: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+    
+    return jsonify({
+        'success': True,
+        'profile': {
+            'id': user.get('id'),
+            'username': user.get('username'),
+            'owner_name': user.get('owner_name'),
+            'email': user.get('email'),
+            'whatsapp': user.get('whatsapp'),
+            'balance': user.get('balance', 0),
+            'created_at': user.get('created_at'),
+            'expires_at': user.get('expires_at'),
+            'last_login': user.get('last_login')
+        }
+    })
 
 
 # ==================== DASHBOARD ENDPOINTS ====================
 
 @frag_bp.route('/dashboard/stats', methods=['GET', 'OPTIONS'])
-@require_auth
 def get_dashboard_stats():
-    """Get dashboard statistics with chart data"""
+    """Get dashboard statistics with chart data (requires auth)"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
+    session_token = get_session_from_request()
+    if not session_token:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    user_session = run_async(validate_owner_session(session_token))
+    if not user_session:
+        return jsonify({'success': False, 'error': 'Session expired'}), 401
+    
     try:
-        user_session = request.user_session
-        bot_token = user_session.get('bot_token')
+        bot_token = None
+        user = run_async(get_bot_owner, user_session['owner_id'])
+        if user:
+            # Get bot token from user's bots
+            bots = run_async(get_cloned_bots, user['id'])
+            if bots:
+                bot_token = bots[0].get('bot_token')
         
-        bots = run_async(get_cloned_bots())
-        total_bots = len(bots)
-        
+        total_bots = len(run_async(get_cloned_bots, user_session['owner_id']))
         all_stats = run_async(get_all_stats, bot_token)
-        
         chart_data = run_async(get_chart_data, bot_token, 7)
-        
         activities = run_async(get_recent_activities, bot_token, 10)
         
         return jsonify({
@@ -279,26 +401,22 @@ def get_dashboard_stats():
 
 
 @frag_bp.route('/bot/info', methods=['GET', 'OPTIONS'])
-@require_auth
 def get_bot_info():
-    """Get bot information for current user"""
+    """Get bot information for current user (requires auth)"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
+    session_token = get_session_from_request()
+    if not session_token:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    user_session = run_async(validate_owner_session(session_token))
+    if not user_session:
+        return jsonify({'success': False, 'error': 'Session expired'}), 401
+    
     try:
-        user_session = request.user_session
-        bot_token = user_session.get('bot_token')
-        
-        bots = run_async(get_cloned_bots())
-        bot_info = None
-        
-        for bot in bots:
-            if bot_token and bot.get('bot_token') == bot_token:
-                bot_info = bot
-                break
-            elif not bot_token:
-                bot_info = bot
-                break
+        bots = run_async(get_cloned_bots, user_session['owner_id'])
+        bot_info = bots[0] if bots else None
         
         if bot_info:
             stats = run_async(get_bot_stats, bot_info['bot_token'])
@@ -324,18 +442,22 @@ def get_bot_info():
 
 
 @frag_bp.route('/users/list', methods=['GET', 'OPTIONS'])
-@require_auth
 def get_users_list():
-    """Get list of users with their stats"""
+    """Get list of users with their stats (requires auth)"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
+    session_token = get_session_from_request()
+    if not session_token:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    user_session = run_async(validate_owner_session(session_token))
+    if not user_session:
+        return jsonify({'success': False, 'error': 'Session expired'}), 401
+    
     try:
-        user_session = request.user_session
-        bot_token = user_session.get('bot_token')
         limit = request.args.get('limit', default=50, type=int)
-        
-        users = run_async(get_all_users_with_stats, bot_token, limit)
+        users = run_async(get_all_users_with_stats, None, limit)
         
         return jsonify({
             'success': True,
@@ -347,28 +469,28 @@ def get_users_list():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ==================== LOBBY ENDPOINTS ====================
+# ==================== LOBBY ENDPOINTS (NO AUTH REQUIRED FOR PUBLIC PAGES) ====================
 
 @frag_bp.route('/lobby/dashboard/stats', methods=['GET', 'OPTIONS'])
-@require_auth
 def lobby_dashboard_stats():
-    """Get dashboard stats for lobby"""
+    """Get dashboard stats for lobby (public)"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
     try:
-        user_session = request.user_session
-        bot_token = user_session.get('bot_token')
+        stats = run_async(get_all_stats, None)
+        chart = run_async(get_chart_data, None, 7)
+        activities = run_async(get_recent_activities, None, 10)
         
-        stats = run_async(get_all_stats, bot_token)
-        chart = run_async(get_chart_data, bot_token, 7)
-        activities = run_async(get_recent_activities, bot_token, 10)
+        # Get total bots count
+        bots = run_async(get_cloned_bots)
+        total_bots = len(bots)
         
         return jsonify({
             'success': True,
             'stats': {
                 'total_users': stats.get('total_users', 0),
-                'total_bots': stats.get('total_bots', 0),
+                'total_bots': total_bots,
                 'total_stars': stats.get('total_stars', 0),
                 'total_volume': float(stats.get('total_volume_idr', 0) or 0)
             },
@@ -388,18 +510,26 @@ def lobby_dashboard_stats():
         })
     except Exception as e:
         logger.error(f"Error getting lobby dashboard stats: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @frag_bp.route('/lobby/profile', methods=['GET', 'OPTIONS'])
-@require_auth
 def lobby_get_profile():
-    """Get user profile for lobby"""
+    """Get user profile for lobby (requires auth)"""
     if request.method == 'OPTIONS':
         return _cors_response(jsonify({'success': True}))
     
+    session_token = get_session_from_request()
+    if not session_token:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    user_session = run_async(validate_owner_session(session_token))
+    if not user_session:
+        return jsonify({'success': False, 'error': 'Session expired'}), 401
+    
     try:
-        user_session = request.user_session
         user = run_async(get_bot_owner, user_session['owner_id'])
         bots = run_async(get_cloned_bots, user_session['owner_id'])
         
@@ -450,14 +580,8 @@ def lobby_telegram_auth():
             return jsonify({'success': False, 'error': 'No init data'}), 400
         
         MASTER_BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
-        
         if not MASTER_BOT_TOKEN:
-            logger.error("BOT_TOKEN not configured")
             return jsonify({'success': False, 'error': 'Server configuration error'}), 500
-        
-        import hmac
-        import hashlib
-        import json
         
         params = {}
         for item in init_data.split('&'):
@@ -472,20 +596,10 @@ def lobby_telegram_auth():
         sorted_params = sorted(params.items())
         check_string = '\n'.join(f"{k}={v}" for k, v in sorted_params)
         
-        secret_key = hmac.new(
-            b"WebAppData",
-            MASTER_BOT_TOKEN.encode(),
-            hashlib.sha256
-        ).digest()
-        
-        computed_hash = hmac.new(
-            secret_key,
-            check_string.encode(),
-            hashlib.sha256
-        ).hexdigest()
+        secret_key = hmac.new(b"WebAppData", MASTER_BOT_TOKEN.encode(), hashlib.sha256).digest()
+        computed_hash = hmac.new(secret_key, check_string.encode(), hashlib.sha256).hexdigest()
         
         if computed_hash != auth_hash:
-            logger.warning(f"Telegram auth hash mismatch")
             return jsonify({'success': False, 'error': 'Invalid hash'}), 401
         
         auth_date = int(params.get('auth_date', 0))
@@ -498,58 +612,42 @@ def lobby_telegram_auth():
         if not telegram_id:
             return jsonify({'success': False, 'error': 'No user data'}), 400
         
-        from fragment.database.data import DB_PATH as MASTER_DB_PATH
-        
         conn = sqlite3.connect(str(MASTER_DB_PATH))
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, username, owner_name, email, balance, expires_at FROM bot_owners WHERE telegram_id = ?",
-            (telegram_id,)
-        )
+        
+        # Check if user exists
+        cursor.execute("SELECT id, username, owner_name, email, balance, expires_at FROM bot_owners WHERE telegram_id = ?", (telegram_id,))
         row = cursor.fetchone()
         
         if row:
-            user = {
-                'id': row[0],
-                'username': row[1],
-                'owner_name': row[2],
-                'email': row[3],
-                'balance': row[4],
-                'expires_at': row[5]
-            }
+            user = {'id': row[0], 'username': row[1], 'owner_name': row[2], 'email': row[3], 'balance': row[4], 'expires_at': row[5]}
             conn.close()
         else:
+            # Create new user
             username = user_data.get('username') or f"user_{telegram_id}"
             temp_password = secrets.token_urlsafe(16)
             
             owner_id = run_async(
-                create_bot_owner,
-                username,
+                create_bot_owner, 
+                username, 
                 temp_password,
-                owner_name=f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip(),
-                email=None,
-                expires_days=30
+                f"{user_data.get('first_name', '')} {user_data.get('last_name', '')}".strip(),
+                None,
+                30
             )
             
             if not owner_id:
                 conn.close()
                 return jsonify({'success': False, 'error': 'Failed to create user'}), 500
             
-            cursor.execute(
-                "UPDATE bot_owners SET telegram_id = ? WHERE id = ?",
-                (telegram_id, owner_id)
-            )
+            # Update telegram_id
+            cursor.execute("UPDATE bot_owners SET telegram_id = ? WHERE id = ?", (telegram_id, owner_id))
             conn.commit()
             conn.close()
-            
             user = run_async(get_bot_owner, owner_id)
         
-        session_token = run_async(
-            create_panel_session,
-            user['id'],
-            request.headers.get('X-Forwarded-For', request.remote_addr),
-            request.headers.get('User-Agent')
-        )
+        # Create session
+        session_token = run_async(create_owner_session, user['id'])
         
         return jsonify({
             'success': True,
@@ -565,6 +663,8 @@ def lobby_telegram_auth():
         
     except Exception as e:
         logger.error(f"Telegram auth error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -576,8 +676,7 @@ def lobby_logout():
     
     session_token = get_session_from_request()
     if session_token:
-        run_async(delete_panel_session, session_token)
-    
+        run_async(delete_owner_session, session_token)
     return jsonify({'success': True})
 
 
@@ -589,7 +688,7 @@ def lobby_me():
     
     session_token = get_session_from_request()
     if session_token:
-        user_session = run_async(validate_panel_session(session_token))
+        user_session = run_async(validate_owner_session(session_token))
         if user_session:
             user = run_async(get_bot_owner, user_session['owner_id'])
             if user:
@@ -616,6 +715,8 @@ def lobby_create_order():
     
     try:
         data = request.json
+        logger.info(f"Received create-order request: {data}")
+        
         plan = data.get('plan')
         bot_token = data.get('bot_token', '').strip()
         telegram_id = data.get('telegram_id')
@@ -628,13 +729,13 @@ def lobby_create_order():
             'enterprise': 500000
         }
         
+        # Validasi input
         if not all([plan, bot_token, telegram_id, username, password]):
             return jsonify({'success': False, 'error': 'Semua field harus diisi'}), 400
         
         if plan not in plan_prices:
             return jsonify({'success': False, 'error': 'Plan tidak valid'}), 400
         
-        import re
         if not re.match(r'^[a-zA-Z0-9_]+$', username):
             return jsonify({'success': False, 'error': 'Username hanya boleh berisi huruf, angka, dan underscore'}), 400
         
@@ -660,11 +761,15 @@ def lobby_create_order():
         amount = plan_prices[plan]
         order_id = generate_order_id()
         
+        # Create payment via Pakasir
+        logger.info(f"Creating payment with amount: {amount}, order_id: {order_id}")
         payment_result = create_pakasir_payment(amount, order_id, username, None)
         
         if not payment_result:
+            logger.error("Payment creation failed")
             return jsonify({'success': False, 'error': 'Gagal membuat pembayaran, silakan coba lagi'}), 500
         
+        # Extract QRIS string
         qr_string = None
         pakasir_payment_id = None
         
@@ -674,8 +779,11 @@ def lobby_create_order():
             qr_string = payment_data.get('qr_string') or payment_data.get('qris_string')
         
         if not qr_string:
+            logger.error("QRIS string not found in payment result")
             return jsonify({'success': False, 'error': 'Gagal mendapatkan QRIS payment'}), 500
         
+        # Initialize orders table and save order
+        init_bot_orders_table()
         success = save_bot_order(
             order_id=order_id,
             plan=plan,
@@ -717,15 +825,14 @@ def lobby_check_payment():
     
     try:
         order_id = request.args.get('order_id')
-        
         if not order_id:
             return jsonify({'success': False, 'error': 'Order ID required'}), 400
         
         order = get_bot_order(order_id)
-        
         if not order:
             return jsonify({'success': False, 'error': 'Order not found'}), 404
         
+        # If already completed
         if order['status'] == 'completed':
             return jsonify({
                 'success': True,
@@ -734,6 +841,7 @@ def lobby_check_payment():
                 'redirect_url': '/fragment/login'
             })
         
+        # Check status via Pakasir API
         payment_status = check_pakasir_payment(order_id)
         
         if payment_status and payment_status.get('data'):
@@ -741,8 +849,7 @@ def lobby_check_payment():
             
             if status in ['PAID', 'SETTLED', 'COMPLETED']:
                 if order['status'] != 'completed':
-                    from fragment.database.data import get_jakarta_time_iso
-                    
+                    # Create bot owner
                     expires_days = 30 if order['plan'] == 'basic' else 90 if order['plan'] == 'pro' else 365
                     temp_password = secrets.token_urlsafe(12)
                     
@@ -750,25 +857,24 @@ def lobby_check_payment():
                         create_bot_owner,
                         order['username'],
                         temp_password,
-                        owner_name=None,
-                        email=None,
-                        expires_days=expires_days
+                        None,
+                        None,
+                        expires_days
                     )
                     
                     if owner_id:
+                        # Update telegram_id
                         try:
-                            from fragment.database.data import DB_PATH as MASTER_DB_PATH
                             conn = sqlite3.connect(str(MASTER_DB_PATH))
                             cursor = conn.cursor()
-                            cursor.execute(
-                                "UPDATE bot_owners SET telegram_id = ? WHERE id = ?",
-                                (order['telegram_id'], owner_id)
-                            )
+                            cursor.execute("UPDATE bot_owners SET telegram_id = ? WHERE id = ?", 
+                                         (order['telegram_id'], owner_id))
                             conn.commit()
                             conn.close()
                         except Exception as e:
                             logger.error(f"Error updating telegram_id: {e}")
                         
+                        # Add bot to database
                         bot_username = f"{order['username']}_bot"
                         bot_name = f"Fragment Bot - {order['username']}"
                         
@@ -778,12 +884,12 @@ def lobby_check_payment():
                             bot_username,
                             bot_name,
                             owner_id,
-                            expires_days=expires_days
+                            None,
+                            expires_days
                         )
                         
                         if success:
-                            completed_at = get_jakarta_time_iso()
-                            update_bot_order_status(order_id, 'completed', owner_id, completed_at)
+                            update_bot_order_status(order_id, 'completed', owner_id)
                             run_async(log_owner_activity, owner_id, "bot_created", 
                                      f"Created bot {bot_username} with plan {order['plan']}")
                             
@@ -834,6 +940,8 @@ def lobby_check_payment():
             
     except Exception as e:
         logger.error(f"Error checking payment: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -976,25 +1084,25 @@ def payment_page():
             <div class="order-info">
                 <div class="order-info-row">
                     <span class="order-info-label">Order ID</span>
-                    <span class="order-info-value">{order['order_id'][:20]}...</span>
+                    <span class="order-info-value">{order["order_id"][:20]}...</span>
                 </div>
                 <div class="order-info-row">
                     <span class="order-info-label">Plan</span>
-                    <span class="order-info-value">{order['plan'].upper()}</span>
+                    <span class="order-info-value">{order["plan"].upper()}</span>
                 </div>
                 <div class="order-info-row">
                     <span class="order-info-label">Username</span>
-                    <span class="order-info-value">{order['username']}</span>
+                    <span class="order-info-value">{order["username"]}</span>
                 </div>
                 <div class="order-info-row">
                     <span class="order-info-label">Total Pembayaran</span>
-                    <span class="order-info-value amount">Rp {order['amount']:,}</span>
+                    <span class="order-info-value amount">Rp {order["amount"]:,}</span>
                 </div>
             </div>
             
             <div class="qris-section">
                 <div class="qris-image">
-                    <img id="qrisImage" src="{order['qr_string']}" alt="QRIS Code" onerror="this.src='https://placehold.co/200x200?text=QRIS'">
+                    <img id="qrisImage" src="{order["qr_string"]}" alt="QRIS Code" onerror="this.src='https://placehold.co/200x200?text=QRIS'">
                 </div>
                 <button class="btn-copy" onclick="copyQRIS()">
                     <i class="fas fa-copy"></i> Salin QRIS
@@ -1118,31 +1226,16 @@ def payment_page():
     return _cors_response(response)
 
 
-# ==================== DELETE SESSION HELPER ====================
+# ==================== INITIALIZE DATABASE ====================
 
-def delete_panel_session(session_token: str) -> bool:
-    """Delete panel session"""
-    try:
-        from fragment.database.data import DB_PATH as MASTER_DB_PATH
-        conn = sqlite3.connect(str(MASTER_DB_PATH))
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM owner_sessions WHERE session_token = ?", (session_token,))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        logger.error(f"Error deleting session: {e}")
-        return False
-
-
-# Initialize database tables
 def init_all_tables():
+    """Initialize all database tables"""
     try:
-        from fragment.database.data import init_database
         init_database()
         init_bot_orders_table()
         logger.info("✅ All database tables initialized")
     except Exception as e:
         logger.error(f"Error initializing tables: {e}")
 
+# Initialize tables when module loads
 init_all_tables()
