@@ -435,8 +435,8 @@
         }
     }
     
-    // ==================== MODAL FUNCTIONS ====================
-    function showCloneModal(plan) {
+    // ==================== SLIDE PANEL FUNCTIONS ====================
+    function showSlidePanel(plan) {
         if (!currentUser) {
             showToast('Silakan login terlebih dahulu', 'warning');
             handleLogin();
@@ -444,83 +444,197 @@
         }
         
         selectedPlan = plan;
-        document.getElementById('modalTitle').textContent = `Clone Bot - ${plans[plan].name}`;
-        document.getElementById('modalPlan').innerHTML = `<strong>${plans[plan].name}</strong> - ${plans[plan].price_idr}`;
         
-        document.getElementById('botToken').value = '';
-        document.getElementById('telegramId').value = currentUser.id || '';
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
-        document.getElementById('confirmPassword').value = '';
+        // Update panel title and plan
+        document.getElementById('slidePanelTitle').textContent = `Clone Bot - ${plans[plan].name}`;
+        document.getElementById('slidePanelPlan').innerHTML = `<strong>${plans[plan].name}</strong> - ${plans[plan].price_idr}`;
         
-        document.querySelectorAll('.error-text').forEach(el => el.textContent = '');
-        document.querySelectorAll('.form-input').forEach(el => el.classList.remove('error'));
+        // Clear form
+        document.getElementById('slideBotToken').value = '';
+        document.getElementById('slideTelegramId').value = currentUser.id || '';
+        document.getElementById('slideUsername').value = '';
+        document.getElementById('slidePassword').value = '';
+        document.getElementById('slideConfirmPassword').value = '';
         
-        document.getElementById('cloneModal').classList.add('active');
+        // Clear errors
+        document.querySelectorAll('#slidePanel .error-text').forEach(el => el.textContent = '');
+        document.querySelectorAll('#slidePanel .form-input').forEach(el => el.classList.remove('error'));
+        
+        // Show panel
+        document.getElementById('slidePanel').classList.add('active');
         vibrate(10);
+        
+        // Prevent body scroll
+        document.body.style.overflow = 'hidden';
+        
+        // Handle keyboard for mobile
+        setTimeout(() => {
+            const firstInput = document.getElementById('slideBotToken');
+            if (firstInput) firstInput.focus();
+            setupKeyboardForSlidePanel();
+        }, 300);
     }
-    
-    function closeModal() {
-        document.getElementById('cloneModal').classList.remove('active');
+
+    function closeSlidePanel() {
+        document.getElementById('slidePanel').classList.remove('active');
+        document.body.style.overflow = '';
         selectedPlan = null;
     }
-    
-    function validateForm() {
-        let isValid = true;
-        const botToken = document.getElementById('botToken');
-        const telegramId = document.getElementById('telegramId');
-        const username = document.getElementById('username');
-        const password = document.getElementById('password');
-        const confirmPassword = document.getElementById('confirmPassword');
+
+    function setupKeyboardForSlidePanel() {
+        const container = document.querySelector('.slide-panel-container');
+        const inputs = document.querySelectorAll('#slidePanel input');
         
+        function scrollToInput(input) {
+            const rect = input.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const keyboardHeight = window.innerHeight * 0.4;
+            
+            if (rect.bottom > window.innerHeight - keyboardHeight) {
+                const scrollY = rect.bottom - (window.innerHeight - keyboardHeight) + 20;
+                container.scrollTop = scrollY;
+            }
+        }
+        
+        inputs.forEach(input => {
+            input.removeEventListener('focus', handleFocus);
+            input.removeEventListener('blur', handleBlur);
+            input.addEventListener('focus', handleFocus);
+            input.addEventListener('blur', handleBlur);
+        });
+        
+        function handleFocus(e) {
+            setTimeout(() => scrollToInput(e.target), 300);
+            container.classList.add('keyboard-open');
+        }
+        
+        function handleBlur() {
+            container.classList.remove('keyboard-open');
+        }
+    }
+
+    function validateSlideForm() {
+        let isValid = true;
+        const botToken = document.getElementById('slideBotToken');
+        const telegramId = document.getElementById('slideTelegramId');
+        const username = document.getElementById('slideUsername');
+        const password = document.getElementById('slidePassword');
+        const confirmPassword = document.getElementById('slideConfirmPassword');
+        
+        // Bot token validation
         if (!botToken.value.trim()) {
-            showError(botToken, 'Bot token wajib');
+            showSlideError(botToken, 'Bot token wajib diisi');
             isValid = false;
         } else if (botToken.value.split(':').length !== 2) {
-            showError(botToken, 'Format tidak valid');
+            showSlideError(botToken, 'Format bot token tidak valid (contoh: 123456:ABCdef)');
             isValid = false;
         } else {
-            clearError(botToken);
+            clearSlideError(botToken);
         }
         
+        // Telegram ID validation
         if (!telegramId.value.trim()) {
-            showError(telegramId, 'Telegram ID wajib');
+            showSlideError(telegramId, 'Telegram ID wajib diisi');
             isValid = false;
         } else if (!/^\d+$/.test(telegramId.value.trim())) {
-            showError(telegramId, 'Harus angka');
+            showSlideError(telegramId, 'Telegram ID harus berupa angka');
             isValid = false;
         } else {
-            clearError(telegramId);
+            clearSlideError(telegramId);
         }
         
+        // Username validation
         if (!username.value.trim()) {
-            showError(username, 'Username wajib');
+            showSlideError(username, 'Username wajib diisi');
             isValid = false;
         } else if (username.value.length < 3) {
-            showError(username, 'Min 3 karakter');
+            showSlideError(username, 'Username minimal 3 karakter');
+            isValid = false;
+        } else if (!/^[a-zA-Z0-9_]+$/.test(username.value)) {
+            showSlideError(username, 'Username hanya boleh huruf, angka, dan underscore');
             isValid = false;
         } else {
-            clearError(username);
+            clearSlideError(username);
         }
         
+        // Password validation
         if (!password.value) {
-            showError(password, 'Password wajib');
+            showSlideError(password, 'Password wajib diisi');
             isValid = false;
         } else if (password.value.length < 6) {
-            showError(password, 'Min 6 karakter');
+            showSlideError(password, 'Password minimal 6 karakter');
             isValid = false;
         } else {
-            clearError(password);
+            clearSlideError(password);
         }
         
+        // Confirm password
         if (password.value !== confirmPassword.value) {
-            showError(confirmPassword, 'Password tidak cocok');
+            showSlideError(confirmPassword, 'Password tidak cocok');
             isValid = false;
         } else {
-            clearError(confirmPassword);
+            clearSlideError(confirmPassword);
         }
         
         return isValid;
+    }
+
+    function showSlideError(input, message) {
+        input.classList.add('error');
+        const errorSpan = input.parentElement.querySelector('.error-text');
+        if (errorSpan) errorSpan.textContent = message;
+    }
+
+    function clearSlideError(input) {
+        input.classList.remove('error');
+        const errorSpan = input.parentElement.querySelector('.error-text');
+        if (errorSpan) errorSpan.textContent = '';
+    }
+
+    async function handleSlideSubmit() {
+        if (!validateSlideForm()) return;
+        
+        const submitBtn = document.getElementById('slidePanelSubmit');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+        
+        try {
+            const data = {
+                plan: selectedPlan,
+                bot_token: document.getElementById('slideBotToken').value.trim(),
+                telegram_id: parseInt(document.getElementById('slideTelegramId').value.trim()),
+                username: document.getElementById('slideUsername').value.trim().toLowerCase(),
+                password: document.getElementById('slidePassword').value,
+                price: plans[selectedPlan].price
+            };
+            
+            const result = await apiCall('/api/fragment/lobby/create-bot', 'POST', data);
+            
+            if (result.success) {
+                showToast('✅ Bot berhasil dibuat!', 'success');
+                closeSlidePanel();
+                
+                // Refresh user data
+                if (result.user) {
+                    currentUser = result.user;
+                    updateUserUI();
+                }
+                
+                // Refresh profile if visible
+                if (document.getElementById('page-profile').classList.contains('active')) {
+                    loadProfile();
+                }
+            } else {
+                showToast(result.error || 'Gagal membuat bot', 'error');
+            }
+        } catch (error) {
+            console.error('Create bot error:', error);
+            showToast(error.message || 'Terjadi kesalahan', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+        }
     }
     
     function showError(input, msg) {
@@ -637,12 +751,21 @@
             if (e.target === document.getElementById('cloneModal')) closeModal();
         });
         
-        // Select plan buttons
+        // Select plan buttons - menggunakan slide panel
         document.querySelectorAll('.select-plan-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                showCloneModal(btn.dataset.plan);
+                const plan = btn.dataset.plan;
+                showSlidePanel(plan);
             });
         });
+
+        // Slide panel event listeners
+        document.getElementById('slidePanelClose').addEventListener('click', closeSlidePanel);
+        document.getElementById('slidePanelCancel').addEventListener('click', closeSlidePanel);
+        document.getElementById('slidePanelSubmit').addEventListener('click', handleSlideSubmit);
+
+        // Close panel when clicking overlay
+        document.querySelector('.slide-panel-overlay').addEventListener('click', closeSlidePanel);
     }
     
     // ==================== INITIALIZATION ====================

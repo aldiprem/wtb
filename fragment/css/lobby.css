@@ -927,6 +927,154 @@ body {
     }
 }
 
+/* Slide-up Panel */
+.slide-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2000;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.slide-panel.active {
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.slide-panel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(5px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.slide-panel.active .slide-panel-overlay {
+    opacity: 1;
+}
+
+.slide-panel-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: var(--dark);
+    border-radius: 24px 24px 0 0;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+}
+
+.slide-panel.active .slide-panel-container {
+    transform: translateY(0);
+}
+
+.slide-panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: var(--dark);
+    z-index: 10;
+}
+
+.slide-panel-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.slide-panel-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.slide-panel-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+}
+
+.slide-panel-body {
+    padding: 24px;
+}
+
+.slide-panel-footer {
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    position: sticky;
+    bottom: 0;
+    background: var(--dark);
+}
+
+.slide-panel-footer .btn-cancel,
+.slide-panel-footer .btn-submit {
+    flex: 1;
+    padding: 12px;
+    font-size: 14px;
+}
+
+.form-hint {
+    display: block;
+    color: var(--text-muted);
+    font-size: 10px;
+    margin-top: 4px;
+}
+
+/* Untuk keyboard mobile */
+.slide-panel-container.keyboard-open {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
+@media (max-width: 768px) {
+    .slide-panel-header {
+        padding: 16px 20px;
+    }
+    
+    .slide-panel-header h2 {
+        font-size: 16px;
+    }
+    
+    .slide-panel-body {
+        padding: 20px;
+    }
+    
+    .slide-panel-footer {
+        padding: 12px 20px 20px;
+    }
+    
+    .slide-panel-footer .btn-cancel,
+    .slide-panel-footer .btn-submit {
+        padding: 10px;
+        font-size: 13px;
+    }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;

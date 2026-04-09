@@ -281,7 +281,62 @@
             </div>
         </main>
     </div>
-    
+
+    <!-- Slide-up Panel untuk Clone Bot -->
+    <div id="slidePanel" class="slide-panel">
+        <div class="slide-panel-overlay"></div>
+        <div class="slide-panel-container">
+            <div class="slide-panel-header">
+                <h2 id="slidePanelTitle">Clone Bot</h2>
+                <button class="slide-panel-close" id="slidePanelClose">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="slide-panel-body">
+                <div class="plan-badge" id="slidePanelPlan"></div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-key"></i> Bot Token</label>
+                    <input type="text" id="slideBotToken" class="form-input" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    <span class="error-text"></span>
+                    <small class="form-hint">Dapatkan dari @BotFather di Telegram</small>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fab fa-telegram"></i> Telegram ID</label>
+                    <input type="number" id="slideTelegramId" class="form-input" placeholder="123456789">
+                    <span class="error-text"></span>
+                    <small class="form-hint">Dapatkan dari @userinfobot</small>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Username Login</label>
+                    <input type="text" id="slideUsername" class="form-input" placeholder="username">
+                    <span class="error-text"></span>
+                    <small class="form-hint">Username untuk login ke panel admin</small>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="slidePassword" class="form-input" placeholder="Minimal 6 karakter">
+                    <span class="error-text"></span>
+                </div>
+                
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Konfirmasi Password</label>
+                    <input type="password" id="slideConfirmPassword" class="form-input" placeholder="Ulangi password">
+                    <span class="error-text"></span>
+                </div>
+            </div>
+            <div class="slide-panel-footer">
+                <button class="btn-cancel" id="slidePanelCancel">Batal</button>
+                <button class="btn-submit" id="slidePanelSubmit">
+                    <i class="fas fa-credit-card"></i> Bayar & Buat Bot
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Clone Modal -->
     <div id="cloneModal" class="modal">
         <div class="modal-content">
