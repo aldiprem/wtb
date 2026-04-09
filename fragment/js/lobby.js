@@ -425,16 +425,11 @@
         }
     }
     
+    // ==================== SLIDE PANEL FUNCTIONS ====================
     function showSlidePanel(plan) {
         console.log('Menampilkan panel untuk plan:', plan);
         
-        // Cek login
-        if (!currentUser) {
-            showToast('Silakan login terlebih dahulu', 'warning');
-            window.location.href = '/fragment/login';
-            return;
-        }
-        
+        // LANGSUNG TAMPILKAN PANEL, TIDAK PERCEK LOGIN
         selectedPlan = plan;
         
         // Update title
@@ -453,7 +448,7 @@
         var confirmPasswordInput = document.getElementById('slideConfirmPassword');
         
         if (botTokenInput) botTokenInput.value = '';
-        if (telegramIdInput) telegramIdInput.value = currentUser.id || '';
+        if (telegramIdInput) telegramIdInput.value = '';
         if (usernameInput) usernameInput.value = '';
         if (passwordInput) passwordInput.value = '';
         if (confirmPasswordInput) confirmPasswordInput.value = '';
@@ -472,7 +467,6 @@
         var panel = document.getElementById('slidePanel');
         if (panel) {
             panel.classList.add('active');
-            vibrate(10);
             document.body.style.overflow = 'hidden';
         }
         
@@ -759,6 +753,7 @@
             btn._listener = newListener;
             btn.addEventListener('click', newListener);
         }
+        setupPricingButtons();
     }
     
     // ==================== INITIALIZATION ====================
