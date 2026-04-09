@@ -815,6 +815,63 @@ def get_bot_owner_by_username(username: str):
         logger.error(f"Error getting bot owner by username: {e}")
         return None
 
+@frag_bp.route('/lobby/profile', methods=['GET', 'OPTIONS'])
+@require_auth
+def lobby_get_profile():
+    """Get user profile for lobby with Telegram data"""
+    if request.method == 'OPTIONS':
+        return _cors_response(jsonify({'success': True}))
+    
+    try:
+        user_session = request.user_session
+        user = run_async(get_bot_owner, user_session['owner_id'])
+        bots = run_async(get_cloned_bots, user_session['owner_id'])
+        
+        # Get Telegram user data from session or database
+        telegram_user = {}
+        telegram_id = user.get('telegram_id')
+        
+        if telegram_id:
+            # You can store Telegram user data in a separate table or session
+            # For now, return basic info
+            telegram_user = {
+                'id': telegram_id,
+                'username': user.get('username'),
+                'first_name': user.get('owner_name'),
+                'photo_url': None
+            }
+        
+        return jsonify({
+            'success': True,
+            'profile': {
+                'id': user.get('id'),
+                'username': user.get('username'),
+                'owner_name': user.get('owner_name'),
+                'email': user.get('email'),
+                'whatsapp': user.get('whatsapp'),
+                'balance': user.get('balance', 0),
+                'created_at': user.get('created_at'),
+                'expires_at': user.get('expires_at'),
+                'last_login': user.get('last_login'),
+                'telegram_id': user.get('telegram_id')
+            },
+            'telegram_user': telegram_user,
+            'bots': [
+                {
+                    'id': b.get('id'),
+                    'bot_token': b.get('bot_token'),
+                    'bot_username': b.get('bot_username'),
+                    'bot_name': b.get('bot_name'),
+                    'status': b.get('status'),
+                    'created_at': b.get('created_at'),
+                    'expires_at': b.get('expires_at')
+                }
+                for b in bots
+            ]
+        })
+    except Exception as e:
+        logger.error(f"Error getting lobby profile: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 def delete_panel_session(session_token: str) -> bool:
     """Delete panel session"""

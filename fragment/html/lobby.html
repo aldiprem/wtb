@@ -30,7 +30,11 @@
             </div>
             
             <nav class="sidebar-nav">
-                <div class="nav-item active" data-page="pricing">
+                <div class="nav-item active" data-page="home">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </div>
+                <div class="nav-item" data-page="pricing">
                     <i class="fas fa-tag"></i>
                     <span>Pricing</span>
                 </div>
@@ -54,7 +58,7 @@
             
             <div class="sidebar-footer">
                 <div class="user-info" id="userInfo" style="display: none;">
-                    <div class="user-avatar">
+                    <div class="user-avatar" id="userAvatar">
                         <i class="fas fa-user-circle"></i>
                     </div>
                     <div class="user-details">
@@ -64,7 +68,7 @@
                 </div>
                 <button class="login-btn" id="loginBtn">
                     <i class="fab fa-telegram"></i>
-                    Login dengan Telegram
+                    Login
                 </button>
                 <button class="logout-btn" id="logoutBtn" style="display: none;">
                     <i class="fas fa-sign-out-alt"></i>
@@ -76,44 +80,104 @@
         <!-- Main Content -->
         <main class="main-content">
             <div class="container">
-                <!-- Pricing Page -->
-                <div id="page-pricing" class="page active">
-                    <div class="hero-section">
-                        <h1>Sewa Bot Telegram</h1>
-                        <p>Dapatkan bot clone Fragment Stars dengan harga terjangkau</p>
+                <!-- Home Page (Dashboard) -->
+                <div id="page-home" class="page active">
+                    <div class="hero-section" style="padding: 40px 20px;">
+                        <h1 style="font-size: 32px;">Fragment Bot</h1>
+                        <p style="font-size: 14px;">Solusi bot otomatis untuk Telegram Stars</p>
                     </div>
                     
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Total User</span>
+                                <span class="stat-value" id="statTotalUsers">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Total Bot</span>
+                                <span class="stat-value" id="statTotalBots">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Stars Terjual</span>
+                                <span class="stat-value" id="statTotalStars">0</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Volume (TON)</span>
+                                <span class="stat-value" id="statTotalVolume">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-section">
+                        <div class="chart-title">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Grafik Penjualan 7 Hari</span>
+                        </div>
+                        <canvas id="salesChart" style="max-height: 250px;"></canvas>
+                    </div>
+                    
+                    <div class="activity-section">
+                        <div class="activity-title">
+                            <i class="fas fa-history"></i>
+                            <span>Aktivitas Terbaru</span>
+                        </div>
+                        <div class="activity-list" id="activityList">
+                            <div class="loading-state">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>Memuat...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pricing Page -->
+                <div id="page-pricing" class="page">
+                    <h2 class="section-title">Harga Sewa Bot</h2>
                     <div class="pricing-grid">
                         <div class="pricing-card">
                             <div class="pricing-icon">
                                 <i class="fas fa-robot"></i>
                             </div>
-                            <h3>Basic Bot</h3>
-                            <div class="price">Rp 100.000<span>/bulan</span></div>
+                            <h3>Basic</h3>
+                            <div class="price">Rp 100K<span>/bln</span></div>
                             <ul class="pricing-features">
-                                <li><i class="fas fa-check"></i> 1 Bot Clone</li>
-                                <li><i class="fas fa-check"></i> Valid 30 hari</li>
-                                <li><i class="fas fa-check"></i> Support 24/7</li>
-                                <li><i class="fas fa-check"></i> Update gratis</li>
+                                <li><i class="fas fa-check"></i> 1 Bot</li>
+                                <li><i class="fas fa-check"></i> 30 hari</li>
+                                <li><i class="fas fa-check"></i> Support</li>
                             </ul>
-                            <button class="select-plan-btn" data-plan="basic">Pilih Paket</button>
+                            <button class="select-plan-btn" data-plan="basic">Pilih</button>
                         </div>
                         
                         <div class="pricing-card featured">
                             <div class="pricing-icon">
                                 <i class="fas fa-crown"></i>
                             </div>
-                            <h3>Pro Bot</h3>
-                            <div class="price">Rp 250.000<span>/3 bulan</span></div>
+                            <h3>Pro</h3>
+                            <div class="price">Rp 250K<span>/3 bln</span></div>
                             <ul class="pricing-features">
-                                <li><i class="fas fa-check"></i> 3 Bot Clone</li>
-                                <li><i class="fas fa-check"></i> Valid 90 hari</li>
-                                <li><i class="fas fa-check"></i> Support Priority</li>
-                                <li><i class="fas fa-check"></i> Update gratis</li>
-                                <li><i class="fas fa-check"></i> Custom fitur</li>
-                                <li><i class="fas fa-check"></i> Analytics dashboard</li>
+                                <li><i class="fas fa-check"></i> 3 Bot</li>
+                                <li><i class="fas fa-check"></i> 90 hari</li>
+                                <li><i class="fas fa-check"></i> Priority</li>
                             </ul>
-                            <button class="select-plan-btn" data-plan="pro">Pilih Paket</button>
+                            <button class="select-plan-btn" data-plan="pro">Pilih</button>
                         </div>
                         
                         <div class="pricing-card">
@@ -121,79 +185,70 @@
                                 <i class="fas fa-building"></i>
                             </div>
                             <h3>Enterprise</h3>
-                            <div class="price">Rp 500.000<span>/tahun</span></div>
+                            <div class="price">Rp 500K<span>/thn</span></div>
                             <ul class="pricing-features">
-                                <li><i class="fas fa-check"></i> 10+ Bot Clone</li>
-                                <li><i class="fas fa-check"></i> Valid 365 hari</li>
-                                <li><i class="fas fa-check"></i> Dedicated support</li>
-                                <li><i class="fas fa-check"></i> Update gratis</li>
-                                <li><i class="fas fa-check"></i> Custom development</li>
-                                <li><i class="fas fa-check"></i> API access</li>
-                                <li><i class="fas fa-check"></i> White-label option</li>
+                                <li><i class="fas fa-check"></i> 10+ Bot</li>
+                                <li><i class="fas fa-check"></i> 365 hari</li>
+                                <li><i class="fas fa-check"></i> Dedicated</li>
                             </ul>
-                            <button class="select-plan-btn" data-plan="enterprise">Pilih Paket</button>
+                            <button class="select-plan-btn" data-plan="enterprise">Pilih</button>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Penjelasan Page -->
                 <div id="page-penjelasan" class="page">
-                    <h2 class="section-title">Tentang Layanan Kami</h2>
+                    <h2 class="section-title">Tentang Layanan</h2>
                     <div class="explanation-grid">
                         <div class="explanation-card">
                             <div class="explanation-icon">
                                 <i class="fas fa-star"></i>
                             </div>
                             <h3>Fragment Stars Bot</h3>
-                            <p>Bot otomatis untuk membeli dan mengirim Telegram Stars melalui fragment.com. Support multiple user dan transaksi otomatis.</p>
+                            <p>Bot otomatis untuk beli dan kirim Telegram Stars via fragment.com</p>
                         </div>
                         <div class="explanation-card">
                             <div class="explanation-icon">
                                 <i class="fas fa-wallet"></i>
                             </div>
                             <h3>Integrasi Wallet</h3>
-                            <p>Terintegrasi dengan TON wallet untuk pembayaran otomatis. Support berbagai metode pembayaran termasuk QRIS dan transfer bank.</p>
+                            <p>Terintegrasi dengan TON wallet untuk pembayaran otomatis</p>
                         </div>
                         <div class="explanation-card">
                             <div class="explanation-icon">
                                 <i class="fas fa-chart-line"></i>
                             </div>
-                            <h3>Dashboard Analytics</h3>
-                            <p>Pantau performa bot Anda melalui dashboard lengkap dengan statistik penjualan, user, dan transaksi.</p>
+                            <h3>Dashboard</h3>
+                            <p>Pantau performa bot dengan statistik lengkap</p>
                         </div>
                         <div class="explanation-card">
                             <div class="explanation-icon">
                                 <i class="fas fa-shield-alt"></i>
                             </div>
-                            <h3>Keamanan Terjamin</h3>
-                            <p>Data user terenkripsi, sistem autentikasi yang aman, dan backup database secara berkala.</p>
+                            <h3>Keamanan</h3>
+                            <p>Data terenkripsi dan sistem autentikasi aman</p>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Support Page -->
                 <div id="page-support" class="page">
-                    <h2 class="section-title">Dukungan & Bantuan</h2>
+                    <h2 class="section-title">Dukungan</h2>
                     <div class="support-grid">
                         <a href="https://t.me/fragment_bot_support" target="_blank" class="support-card">
                             <i class="fab fa-telegram"></i>
-                            <h3>Telegram Support</h3>
-                            <p>Hubungi admin via Telegram</p>
+                            <h3>Telegram</h3>
+                            <p>@fragment_bot_support</p>
                         </a>
                         <a href="mailto:support@fragmentbot.com" class="support-card">
                             <i class="fas fa-envelope"></i>
-                            <h3>Email Support</h3>
+                            <h3>Email</h3>
                             <p>support@fragmentbot.com</p>
                         </a>
                         <div class="support-card">
                             <i class="fas fa-question-circle"></i>
                             <h3>FAQ</h3>
-                            <p>Pertanyaan yang sering diajukan</p>
-                        </div>
-                        <div class="support-card">
-                            <i class="fas fa-book"></i>
-                            <h3>Dokumentasi</h3>
-                            <p>Panduan lengkap penggunaan</p>
+                            <p>Pertanyaan umum</p>
                         </div>
                     </div>
                 </div>
@@ -202,26 +257,14 @@
                 <div id="page-privacy" class="page">
                     <h2 class="section-title">Kebijakan Privasi</h2>
                     <div class="privacy-content">
-                        <h3>1. Informasi yang Kami Kumpulkan</h3>
-                        <p>Kami mengumpulkan informasi yang Anda berikan saat mendaftar, termasuk username, password terenkripsi, dan data Telegram ID Anda.</p>
-                        
+                        <h3>1. Informasi yang Dikumpulkan</h3>
+                        <p>Username, password terenkripsi, dan data Telegram ID.</p>
                         <h3>2. Penggunaan Data</h3>
-                        <p>Data Anda digunakan untuk mengelola akun bot clone, memproses transaksi, dan memberikan layanan support.</p>
-                        
+                        <p>Untuk mengelola akun bot clone dan memproses transaksi.</p>
                         <h3>3. Keamanan Data</h3>
-                        <p>Password disimpan dalam bentuk hash menggunakan SHA-256. Data transaksi dienkripsi dan disimpan dengan aman.</p>
-                        
-                        <h3>4. Berbagi Data</h3>
-                        <p>Kami tidak menjual atau membagikan data pribadi Anda kepada pihak ketiga tanpa izin Anda.</p>
-                        
-                        <h3>5. Cookie</h3>
-                        <p>Website ini menggunakan cookie untuk menyimpan sesi login dan preferensi Anda.</p>
-                        
-                        <h3>6. Perubahan Kebijakan</h3>
-                        <p>Kebijakan privasi dapat berubah sewaktu-waktu. Perubahan akan diinformasikan melalui website.</p>
-                        
-                        <h3>7. Kontak</h3>
-                        <p>Jika Anda memiliki pertanyaan tentang kebijakan privasi, hubungi kami di support@fragmentbot.com</p>
+                        <p>Password disimpan dengan hash SHA-256.</p>
+                        <h3>4. Kontak</h3>
+                        <p>Email: support@fragmentbot.com</p>
                     </div>
                 </div>
                 
@@ -229,9 +272,9 @@
                 <div id="page-profile" class="page">
                     <h2 class="section-title">Profil Saya</h2>
                     <div id="profileContent">
-                        <div class="loading-state" style="text-align: center; padding: 60px;">
-                            <i class="fas fa-spinner fa-spin" style="font-size: 32px;"></i>
-                            <p style="margin-top: 12px;">Memuat profil...</p>
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Memuat profil...</p>
                         </div>
                     </div>
                 </div>
@@ -247,42 +290,34 @@
                 <button class="modal-close" id="modalClose">&times;</button>
             </div>
             <div class="modal-body">
-                <div style="background: rgba(64, 167, 227, 0.1); padding: 12px; border-radius: 12px; margin-bottom: 20px;">
-                    <p id="modalPlan" style="font-size: 14px;"></p>
-                </div>
+                <div class="plan-badge" id="modalPlan"></div>
                 
                 <div class="form-group">
                     <label><i class="fas fa-key"></i> Bot Token</label>
-                    <input type="text" id="botToken" class="form-input" placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz">
+                    <input type="text" id="botToken" class="form-input" placeholder="1234567890:ABCdef...">
                     <span class="error-text"></span>
-                    <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 4px;">
-                        Dapatkan dari @BotFather di Telegram
-                    </small>
                 </div>
                 
                 <div class="form-group">
                     <label><i class="fab fa-telegram"></i> Telegram ID</label>
                     <input type="number" id="telegramId" class="form-input" placeholder="123456789">
                     <span class="error-text"></span>
-                    <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 4px;">
-                        Dapatkan dari @userinfobot
-                    </small>
                 </div>
                 
                 <div class="form-group">
-                    <label><i class="fas fa-user"></i> Username Login</label>
+                    <label><i class="fas fa-user"></i> Username</label>
                     <input type="text" id="username" class="form-input" placeholder="username">
                     <span class="error-text"></span>
                 </div>
                 
                 <div class="form-group">
                     <label><i class="fas fa-lock"></i> Password</label>
-                    <input type="password" id="password" class="form-input" placeholder="Minimal 6 karakter">
+                    <input type="password" id="password" class="form-input" placeholder="Min 6 karakter">
                     <span class="error-text"></span>
                 </div>
                 
                 <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Konfirmasi Password</label>
+                    <label><i class="fas fa-lock"></i> Konfirmasi</label>
                     <input type="password" id="confirmPassword" class="form-input" placeholder="Ulangi password">
                     <span class="error-text"></span>
                 </div>
@@ -294,6 +329,7 @@
         </div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/fragment/js/lobby.js"></script>
 </body>
 </html>
