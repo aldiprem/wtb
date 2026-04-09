@@ -813,7 +813,9 @@ def lobby_create_order():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== RENDER PAYMENT PAGE ====================
+
+# ==================== CHECK PAYMENT ENDPOINT ====================
+
 @frag_bp.route('/lobby/check-payment', methods=['GET', 'OPTIONS'])
 def lobby_check_payment():
     """Check payment status for an order"""
@@ -857,13 +859,105 @@ def lobby_check_payment():
         # Check status via Pakasir API
         payment_status = check_pakasir_payment(order_id)
         
-        # ... rest of the code same as before ...
-        
+        if payment_status and payment_status.get('data'):
+            status = payment_status['data'].get('status')
+            
+            if status in ['PAID', 'SETTLED', 'COMPLETED']:
+                if order['status'] != 'completed':
+                    # Create bot owner
+                    expires_days = 30 if order['plan'] == 'basic' else 90 if order['plan'] == 'pro' else 365
+                    temp_password = secrets.token_urlsafe(12)
+                    
+                    owner_id = run_async(
+                        create_bot_owner,
+                        order['username'],
+                        temp_password,
+                        None,
+                        None,
+                        expires_days
+                    )
+                    
+                    if owner_id:
+                        # Update telegram_id
+                        try:
+                            conn = sqlite3.connect(str(MASTER_DB_PATH))
+                            cursor = conn.cursor()
+                            cursor.execute("UPDATE bot_owners SET telegram_id = ? WHERE id = ?", 
+                                         (order['telegram_id'], owner_id))
+                            conn.commit()
+                            conn.close()
+                        except Exception as e:
+                            logger.error(f"Error updating telegram_id: {e}")
+                        
+                        # Add bot to database
+                        bot_username = f"{order['username']}_bot"
+                        bot_name = f"Fragment Bot - {order['username']}"
+                        
+                        success = run_async(
+                            add_cloned_bot,
+                            order['bot_token'],
+                            bot_username,
+                            bot_name,
+                            owner_id,
+                            None,
+                            expires_days
+                        )
+                        
+                        if success:
+                            update_bot_order_status(order_id, 'completed', owner_id)
+                            run_async(log_owner_activity, owner_id, "bot_created", 
+                                     f"Created bot {bot_username} with plan {order['plan']}")
+                            
+                            return jsonify({
+                                'success': True,
+                                'status': 'completed',
+                                'message': 'Pembayaran berhasil! Bot telah dibuat.',
+                                'redirect_url': '/fragment/login'
+                            })
+                        else:
+                            return jsonify({
+                                'success': False,
+                                'status': 'pending',
+                                'error': 'Gagal membuat bot, silakan hubungi support'
+                            }), 500
+                    else:
+                        return jsonify({
+                            'success': False,
+                            'status': 'pending',
+                            'error': 'Gagal membuat user, silakan hubungi support'
+                        }), 500
+                else:
+                    return jsonify({
+                        'success': True,
+                        'status': 'completed',
+                        'message': 'Bot sudah dibuat. Silakan login.',
+                        'redirect_url': '/fragment/login'
+                    })
+            elif status == 'EXPIRED':
+                update_bot_order_status(order_id, 'expired')
+                return jsonify({
+                    'success': False,
+                    'status': 'expired',
+                    'error': 'Pembayaran sudah kadaluarsa'
+                }), 400
+            else:
+                return jsonify({
+                    'success': False,
+                    'status': 'pending',
+                    'message': 'Menunggu pembayaran...'
+                })
+        else:
+            return jsonify({
+                'success': False,
+                'status': order['status'],
+                'message': 'Cek status pembayaran...'
+            })
+            
     except Exception as e:
         logger.error(f"Error checking payment: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
-# ==================== INITIALIZE DATABASE ====================
 
 def init_all_tables():
     """Initialize all database tables"""
