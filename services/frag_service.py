@@ -5,6 +5,8 @@ import hashlib
 import secrets
 import requests
 from datetime import datetime, timedelta
+import os
+import logging
 
 # ==================== PAKASIR PAYMENT FUNCTIONS ====================
 
