@@ -232,7 +232,6 @@
                 const p = result.profile;
                 const tgUser = result.telegram_user || currentUser;
                 
-                // Get photo URL
                 const photoUrl = tgUser.photo_url || generateAvatarUrl(tgUser.first_name || p.username || 'User');
                 const fullName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || p.owner_name || p.username;
                 const username = tgUser.username || p.username;
@@ -264,7 +263,6 @@
                     </div>
                 `;
                 
-                // Load bots
                 const userBotsDiv = document.getElementById('userBots');
                 if (result.bots && result.bots.length > 0) {
                     userBotsDiv.innerHTML = result.bots.map(b => `
@@ -316,7 +314,6 @@
                 const telegramUser = webApp.initDataUnsafe.user;
                 console.log('📱 Telegram user data:', telegramUser);
                 
-                // Set current user from Telegram
                 currentUser = {
                     id: telegramUser.id,
                     first_name: telegramUser.first_name,
@@ -329,7 +326,6 @@
                 updateUserUI();
                 showToast(`Welcome, ${currentUser.first_name || currentUser.username}!`, 'success');
                 
-                // Try to authenticate with backend
                 try {
                     const initData = webApp.initData;
                     if (initData) {
@@ -342,16 +338,13 @@
                     }
                 } catch (error) {
                     console.error('Backend auth error:', error);
-                    // Still show as logged in with Telegram data
                 }
                 
-                // Load dashboard data after login
                 if (document.getElementById('page-home').classList.contains('active')) {
                     loadDashboard();
                 }
             } else {
                 console.log('📱 No user data from Telegram WebApp');
-                // Check for existing session
                 await checkExistingSession();
             }
         } else {
@@ -374,7 +367,6 @@
     }
     
     function handleLogin() {
-        // If in Telegram, trigger auth
         if (window.Telegram && window.Telegram.WebApp) {
             const webApp = window.Telegram.WebApp;
             if (webApp.initDataUnsafe && webApp.initDataUnsafe.user) {
@@ -397,7 +389,6 @@
         showToast('Logout berhasil', 'success');
         loadDashboard();
         
-        // Reload profile if visible
         if (document.getElementById('page-profile').classList.contains('active')) {
             loadProfile();
         }
@@ -422,7 +413,6 @@
             userNameSpan.textContent = displayName;
             userUsernameSpan.textContent = '@' + displayUsername;
             
-            // Update avatar
             if (currentUser.photo_url) {
                 userAvatarDiv.innerHTML = `<img src="${currentUser.photo_url}" style="width:100%;height:100%;object-fit:cover;">`;
             } else {
@@ -445,29 +435,22 @@
         
         selectedPlan = plan;
         
-        // Update panel title and plan
         document.getElementById('slidePanelTitle').textContent = `Clone Bot - ${plans[plan].name}`;
         document.getElementById('slidePanelPlan').innerHTML = `<strong>${plans[plan].name}</strong> - ${plans[plan].price_idr}`;
         
-        // Clear form
         document.getElementById('slideBotToken').value = '';
         document.getElementById('slideTelegramId').value = currentUser.id || '';
         document.getElementById('slideUsername').value = '';
         document.getElementById('slidePassword').value = '';
         document.getElementById('slideConfirmPassword').value = '';
         
-        // Clear errors
         document.querySelectorAll('#slidePanel .error-text').forEach(el => el.textContent = '');
         document.querySelectorAll('#slidePanel .form-input').forEach(el => el.classList.remove('error'));
         
-        // Show panel
         document.getElementById('slidePanel').classList.add('active');
         vibrate(10);
-        
-        // Prevent body scroll
         document.body.style.overflow = 'hidden';
         
-        // Handle keyboard for mobile
         setTimeout(() => {
             const firstInput = document.getElementById('slideBotToken');
             if (firstInput) firstInput.focus();
@@ -487,7 +470,6 @@
         
         function scrollToInput(input) {
             const rect = input.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
             const keyboardHeight = window.innerHeight * 0.4;
             
             if (rect.bottom > window.innerHeight - keyboardHeight) {
@@ -521,18 +503,16 @@
         const password = document.getElementById('slidePassword');
         const confirmPassword = document.getElementById('slideConfirmPassword');
         
-        // Bot token validation
         if (!botToken.value.trim()) {
             showSlideError(botToken, 'Bot token wajib diisi');
             isValid = false;
         } else if (botToken.value.split(':').length !== 2) {
-            showSlideError(botToken, 'Format bot token tidak valid (contoh: 123456:ABCdef)');
+            showSlideError(botToken, 'Format bot token tidak valid');
             isValid = false;
         } else {
             clearSlideError(botToken);
         }
         
-        // Telegram ID validation
         if (!telegramId.value.trim()) {
             showSlideError(telegramId, 'Telegram ID wajib diisi');
             isValid = false;
@@ -543,7 +523,6 @@
             clearSlideError(telegramId);
         }
         
-        // Username validation
         if (!username.value.trim()) {
             showSlideError(username, 'Username wajib diisi');
             isValid = false;
@@ -557,7 +536,6 @@
             clearSlideError(username);
         }
         
-        // Password validation
         if (!password.value) {
             showSlideError(password, 'Password wajib diisi');
             isValid = false;
@@ -568,7 +546,6 @@
             clearSlideError(password);
         }
         
-        // Confirm password
         if (password.value !== confirmPassword.value) {
             showSlideError(confirmPassword, 'Password tidak cocok');
             isValid = false;
@@ -615,13 +592,11 @@
                 showToast('✅ Bot berhasil dibuat!', 'success');
                 closeSlidePanel();
                 
-                // Refresh user data
                 if (result.user) {
                     currentUser = result.user;
                     updateUserUI();
                 }
                 
-                // Refresh profile if visible
                 if (document.getElementById('page-profile').classList.contains('active')) {
                     loadProfile();
                 }
@@ -637,74 +612,33 @@
         }
     }
     
-    function showError(input, msg) {
-        input.classList.add('error');
-        const span = input.parentElement.querySelector('.error-text');
-        if (span) span.textContent = msg;
+    // ==================== SIDEBAR FUNCTIONS ====================
+    function openSidebar() {
+        document.getElementById('sidebar').classList.add('mobile-open');
+        document.body.style.overflow = 'hidden';
     }
     
-    function clearError(input) {
-        input.classList.remove('error');
-        const span = input.parentElement.querySelector('.error-text');
-        if (span) span.textContent = '';
-    }
-    
-    async function handleSubmitClone() {
-        if (!validateForm()) return;
-        
-        const submitBtn = document.querySelector('.btn-submit');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        
-        try {
-            const data = {
-                plan: selectedPlan,
-                bot_token: document.getElementById('botToken').value.trim(),
-                telegram_id: parseInt(document.getElementById('telegramId').value.trim()),
-                username: document.getElementById('username').value.trim().toLowerCase(),
-                password: document.getElementById('password').value,
-                price: plans[selectedPlan].price
-            };
-            
-            const result = await apiCall('/api/fragment/lobby/create-bot', 'POST', data);
-            
-            if (result.success) {
-                showToast('Bot berhasil dibuat!', 'success');
-                closeModal();
-                if (result.user) {
-                    currentUser = result.user;
-                    updateUserUI();
-                }
-                if (document.getElementById('page-profile').classList.contains('active')) {
-                    loadProfile();
-                }
-            } else {
-                showToast(result.error || 'Gagal membuat bot', 'error');
-            }
-        } catch (error) {
-            showToast(error.message, 'error');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('mobile-open');
+        document.body.style.overflow = '';
     }
     
     // ==================== NAVIGATION ====================
     function navigateTo(page) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById(`page-${page}`).classList.add('active');
+        const targetPage = document.getElementById(`page-${page}`);
+        if (targetPage) targetPage.classList.add('active');
         
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
             if (item.dataset.page === page) item.classList.add('active');
         });
         
+        // Close sidebar on mobile after navigation
         if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('mobile-open');
+            closeSidebar();
         }
         
-        // Load data based on page
         if (page === 'home') {
             loadDashboard();
         } else if (page === 'profile') {
@@ -715,79 +649,78 @@
     // ==================== EVENT LISTENERS ====================
     function setupEventListeners() {
         // Mobile menu toggle
-        document.getElementById('mobileMenuToggle').addEventListener('click', () => {
-            document.getElementById('sidebar').classList.toggle('mobile-open');
-        });
+        const mobileToggle = document.getElementById('mobileMenuToggle');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openSidebar();
+            });
+        }
         
-        // Close sidebar on outside click (mobile)
+        // Sidebar close button
+        const sidebarClose = document.getElementById('sidebarClose');
+        if (sidebarClose) {
+            sidebarClose.addEventListener('click', closeSidebar);
+        }
+        
+        // Close sidebar when clicking outside on mobile
         document.addEventListener('click', (e) => {
             const sidebar = document.getElementById('sidebar');
             const toggle = document.getElementById('mobileMenuToggle');
-            if (window.innerWidth <= 768 && sidebar.classList.contains('mobile-open')) {
+            if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('mobile-open')) {
                 if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
-                    sidebar.classList.remove('mobile-open');
+                    closeSidebar();
                 }
             }
         });
         
-        // Navigation
+        // Navigation items
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
-                navigateTo(item.dataset.page);
+                const page = item.dataset.page;
+                if (page) navigateTo(page);
             });
         });
         
         // Login/Logout
-        document.getElementById('loginBtn').addEventListener('click', handleLogin);
-        document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+        if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
         
-        // Modal
-        document.getElementById('modalClose').addEventListener('click', closeModal);
-        document.getElementById('modalCancel').addEventListener('click', closeModal);
-        document.getElementById('modalSubmit').addEventListener('click', handleSubmitClone);
+        // Slide panel events
+        const panelClose = document.getElementById('slidePanelClose');
+        const panelCancel = document.getElementById('slidePanelCancel');
+        const panelSubmit = document.getElementById('slidePanelSubmit');
+        const panelOverlay = document.querySelector('.slide-panel-overlay');
         
-        document.getElementById('cloneModal').addEventListener('click', (e) => {
-            if (e.target === document.getElementById('cloneModal')) closeModal();
-        });
+        if (panelClose) panelClose.addEventListener('click', closeSlidePanel);
+        if (panelCancel) panelCancel.addEventListener('click', closeSlidePanel);
+        if (panelSubmit) panelSubmit.addEventListener('click', handleSlideSubmit);
+        if (panelOverlay) panelOverlay.addEventListener('click', closeSlidePanel);
         
-        // Select plan buttons - menggunakan slide panel
+        // Select plan buttons
         document.querySelectorAll('.select-plan-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const plan = btn.dataset.plan;
-                showSlidePanel(plan);
+                if (plan) showSlidePanel(plan);
             });
         });
-
-        // Slide panel event listeners
-        document.getElementById('slidePanelClose').addEventListener('click', closeSlidePanel);
-        document.getElementById('slidePanelCancel').addEventListener('click', closeSlidePanel);
-        document.getElementById('slidePanelSubmit').addEventListener('click', handleSlideSubmit);
-
-        // Close panel when clicking overlay
-        document.querySelector('.slide-panel-overlay').addEventListener('click', closeSlidePanel);
     }
     
     // ==================== INITIALIZATION ====================
     async function init() {
         console.log('🚀 Initializing Lobby...');
         setupEventListeners();
-        
-        // Initialize Telegram WebApp
         await initTelegramAuth();
-        
-        // Show home page by default
         navigateTo('home');
-        
         console.log('✅ Lobby initialized');
     }
     
     // Expose global functions
     window.navigateTo = navigateTo;
     window.handleLogin = handleLogin;
-    window.showCloneModal = showCloneModal;
-    window.closeModal = closeModal;
     
-    // Start
     init();
 })();
