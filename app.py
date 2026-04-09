@@ -302,6 +302,11 @@ def serve_admin_panel(endpoint):
 def serve_website(endpoint):
     return send_from_directory(base_dir, 'website.html')
 
+@app.route('/fragment/pay')
+def fragment_pay_redirect():
+    order_id = request.args.get('order_id')
+    return send_from_directory(f'/api/fragment/pay?order_id={order_id}')
+
 # Route untuk fragment static files (hanya HTML/CSS/JS, BUKAN API)
 @app.route('/fragment')
 def serve_fragment_page():
