@@ -425,43 +425,70 @@
         }
     }
     
-    // ==================== SLIDE PANEL FUNCTIONS ====================
     function showSlidePanel(plan) {
+        console.log('Menampilkan panel untuk plan:', plan);
+        
+        // Cek login
         if (!currentUser) {
             showToast('Silakan login terlebih dahulu', 'warning');
-            handleLogin();
+            window.location.href = '/fragment/login';
             return;
         }
         
         selectedPlan = plan;
         
-        document.getElementById('slidePanelTitle').textContent = `Clone Bot - ${plans[plan].name}`;
-        document.getElementById('slidePanelPlan').innerHTML = `<strong>${plans[plan].name}</strong> - ${plans[plan].price_idr}`;
+        // Update title
+        var titleEl = document.getElementById('slidePanelTitle');
+        if (titleEl) titleEl.textContent = 'Clone Bot - ' + plans[plan].name;
         
-        document.getElementById('slideBotToken').value = '';
-        document.getElementById('slideTelegramId').value = currentUser.id || '';
-        document.getElementById('slideUsername').value = '';
-        document.getElementById('slidePassword').value = '';
-        document.getElementById('slideConfirmPassword').value = '';
+        // Update plan badge
+        var planEl = document.getElementById('slidePanelPlan');
+        if (planEl) planEl.innerHTML = '<strong>' + plans[plan].name + '</strong> - ' + plans[plan].price_idr;
         
-        document.querySelectorAll('#slidePanel .error-text').forEach(el => el.textContent = '');
-        document.querySelectorAll('#slidePanel .form-input').forEach(el => el.classList.remove('error'));
+        // Clear form
+        var botTokenInput = document.getElementById('slideBotToken');
+        var telegramIdInput = document.getElementById('slideTelegramId');
+        var usernameInput = document.getElementById('slideUsername');
+        var passwordInput = document.getElementById('slidePassword');
+        var confirmPasswordInput = document.getElementById('slideConfirmPassword');
         
-        document.getElementById('slidePanel').classList.add('active');
-        vibrate(10);
-        document.body.style.overflow = 'hidden';
+        if (botTokenInput) botTokenInput.value = '';
+        if (telegramIdInput) telegramIdInput.value = currentUser.id || '';
+        if (usernameInput) usernameInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+        if (confirmPasswordInput) confirmPasswordInput.value = '';
         
-        setTimeout(() => {
-            const firstInput = document.getElementById('slideBotToken');
-            if (firstInput) firstInput.focus();
-            setupKeyboardForSlidePanel();
+        // Clear errors
+        var errorTexts = document.querySelectorAll('#slidePanel .error-text');
+        for (var i = 0; i < errorTexts.length; i++) {
+            errorTexts[i].textContent = '';
+        }
+        var errorInputs = document.querySelectorAll('#slidePanel .form-input');
+        for (var i = 0; i < errorInputs.length; i++) {
+            errorInputs[i].classList.remove('error');
+        }
+        
+        // Show panel
+        var panel = document.getElementById('slidePanel');
+        if (panel) {
+            panel.classList.add('active');
+            vibrate(10);
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Focus first input
+        setTimeout(function() {
+            if (botTokenInput) botTokenInput.focus();
         }, 300);
     }
 
     function closeSlidePanel() {
-        document.getElementById('slidePanel').classList.remove('active');
-        document.body.style.overflow = '';
-        selectedPlan = null;
+        var panel = document.getElementById('slidePanel');
+        if (panel) {
+            panel.classList.remove('active');
+            document.body.style.overflow = '';
+            selectedPlan = null;
+        }
     }
 
     function setupKeyboardForSlidePanel() {
@@ -646,67 +673,92 @@
         }
     }
     
-    // ==================== EVENT LISTENERS ====================
+    // ==================== SETUP EVENT LISTENERS ====================
     function setupEventListeners() {
         // Mobile menu toggle
         const mobileToggle = document.getElementById('mobileMenuToggle');
         if (mobileToggle) {
-            mobileToggle.addEventListener('click', (e) => {
+            mobileToggle.addEventListener('click', function(e) {
                 e.stopPropagation();
-                openSidebar();
+                document.getElementById('sidebar').classList.add('mobile-open');
+                document.body.style.overflow = 'hidden';
             });
         }
         
         // Sidebar close button
         const sidebarClose = document.getElementById('sidebarClose');
         if (sidebarClose) {
-            sidebarClose.addEventListener('click', closeSidebar);
+            sidebarClose.addEventListener('click', function() {
+                document.getElementById('sidebar').classList.remove('mobile-open');
+                document.body.style.overflow = '';
+            });
         }
         
         // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', (e) => {
+        document.addEventListener('click', function(e) {
             const sidebar = document.getElementById('sidebar');
             const toggle = document.getElementById('mobileMenuToggle');
             if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('mobile-open')) {
                 if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
-                    closeSidebar();
+                    document.getElementById('sidebar').classList.remove('mobile-open');
+                    document.body.style.overflow = '';
                 }
             }
         });
         
         // Navigation items
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', (e) => {
+        document.querySelectorAll('.nav-item').forEach(function(item) {
+            item.addEventListener('click', function(e) {
                 e.preventDefault();
-                const page = item.dataset.page;
+                var page = this.dataset.page;
                 if (page) navigateTo(page);
             });
         });
         
         // Login/Logout
-        const loginBtn = document.getElementById('loginBtn');
-        const logoutBtn = document.getElementById('logoutBtn');
+        var loginBtn = document.getElementById('loginBtn');
+        var logoutBtn = document.getElementById('logoutBtn');
         if (loginBtn) loginBtn.addEventListener('click', handleLogin);
         if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
         
         // Slide panel events
-        const panelClose = document.getElementById('slidePanelClose');
-        const panelCancel = document.getElementById('slidePanelCancel');
-        const panelSubmit = document.getElementById('slidePanelSubmit');
-        const panelOverlay = document.querySelector('.slide-panel-overlay');
+        var panelClose = document.getElementById('slidePanelClose');
+        var panelCancel = document.getElementById('slidePanelCancel');
+        var panelSubmit = document.getElementById('slidePanelSubmit');
+        var panelOverlay = document.querySelector('.slide-panel-overlay');
         
         if (panelClose) panelClose.addEventListener('click', closeSlidePanel);
         if (panelCancel) panelCancel.addEventListener('click', closeSlidePanel);
         if (panelSubmit) panelSubmit.addEventListener('click', handleSlideSubmit);
         if (panelOverlay) panelOverlay.addEventListener('click', closeSlidePanel);
         
-        // Select plan buttons
-        document.querySelectorAll('.select-plan-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const plan = btn.dataset.plan;
-                if (plan) showSlidePanel(plan);
-            });
-        });
+        // ========== INI YANG PENTING: TOMBOL PRICING ==========
+        var planButtons = document.querySelectorAll('.select-plan-btn');
+        console.log('Ditemukan tombol pricing:', planButtons.length);
+        
+        for (var i = 0; i < planButtons.length; i++) {
+            var btn = planButtons[i];
+            // Hapus event listener lama
+            var oldListener = btn._listener;
+            if (oldListener) {
+                btn.removeEventListener('click', oldListener);
+            }
+            // Buat event listener baru
+            function createListener(button) {
+                return function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var plan = button.getAttribute('data-plan');
+                    console.log('Tombol diklik, plan:', plan);
+                    if (plan) {
+                        showSlidePanel(plan);
+                    }
+                };
+            }
+            var newListener = createListener(btn);
+            btn._listener = newListener;
+            btn.addEventListener('click', newListener);
+        }
     }
     
     // ==================== INITIALIZATION ====================
