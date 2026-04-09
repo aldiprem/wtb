@@ -1,5 +1,5 @@
 # services/frag_service.py - Flask Service untuk Fragment Bot Admin Panel
-from flask import Blueprint, request, jsonify, make_response
+from flask import Blueprint, request, jsonify, make_response, redirect
 import sys
 import os
 import asyncio
@@ -958,6 +958,16 @@ def lobby_check_payment():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@frag_bp.route('/pay', methods=['GET'])
+def payment_page():
+    """Render payment page HTML - redirect ke halaman statis"""
+    order_id = request.args.get('order_id')
+    if not order_id:
+        return jsonify({'success': False, 'error': 'Order ID required'}), 400
+    
+    # Redirect ke halaman statis
+    return redirect(f'/fragment/pay?order_id={order_id}')
 
 def init_all_tables():
     """Initialize all database tables"""

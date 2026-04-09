@@ -623,7 +623,8 @@
                 
                 // Redirect ke halaman payment
                 setTimeout(() => {
-                    window.location.href = result.payment_url;
+                    window.location.href = `/fragment/pay?order_id=${result.order_id}`;
+
                 }, 1500);
             } else {
                 showToast(result.error || 'Gagal membuat order', 'error');
