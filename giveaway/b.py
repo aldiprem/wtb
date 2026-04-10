@@ -5,7 +5,6 @@ import string
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
-from telethon.tl.types import MessageEntityMentionName
 import sys
 
 # Add parent directory to path for database import
@@ -20,8 +19,8 @@ API_ID = int(os.getenv('API_ID'))
 API_HASH = os.getenv('API_HASH')
 BOT_TOKEN = os.getenv('GIVEAWAY_TOKEN')
 
-# Initialize bot and database
-bot = TelegramClient('giveaway_bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+# Initialize bot (tanpa .start langsung)
+bot = TelegramClient('giveaway_bot', API_ID, API_HASH)
 db = GiveawayDatabase()
 
 # Store active giveaway messages for editing
@@ -50,7 +49,7 @@ async def update_giveaway_message(giveaway_id: str):
 **Ends in:** {time_left.days}d {time_left.seconds//3600}h {(time_left.seconds//60)%60}m
 
 **How to join:**
-Click /join command in this group to participate!
+Send /join command in this group to participate!
 
 Good luck everyone! 🍀
 """
@@ -85,12 +84,6 @@ Made with ❤️ for Telegram
 @bot.on(events.NewMessage(pattern='/newgiveaway'))
 async def new_giveaway_command(event):
     """Create new giveaway (admin only)"""
-    # Check if user is admin (you can modify this check)
-    # For now, allow all users, but you can add admin check
-    
-    # In a real bot, you should check if user is admin of the group
-    # This is a simple implementation
-    
     try:
         # Ask for prize
         await event.reply("📝 **Send the prize description:**\n(Example: 1 month Telegram Premium)")
@@ -136,7 +129,7 @@ async def new_giveaway_command(event):
 **Ends at:** {end_time.strftime('%Y-%m-%d %H:%M:%S')}
 
 **How to join:**
-Type /join in this group to participate!
+Send /join in this group to participate!
 
 Good luck! 🍀
 """
@@ -156,7 +149,9 @@ Good luck! 🍀
                                 await event.reply(f"✅ **Giveaway created successfully!**\nID: `{giveaway_id}`")
                                 
                                 # Remove temporary handlers
-                                [bot.remove_event_handler(handler) for handler in [get_prize, get_winners, get_duration]]
+                                bot.remove_event_handler(get_prize)
+                                bot.remove_event_handler(get_winners)
+                                bot.remove_event_handler(get_duration)
                                 
                                 # Schedule end check
                                 asyncio.create_task(schedule_giveaway_end(giveaway_id, end_time))
@@ -164,13 +159,10 @@ Good luck! 🍀
                                 # Break the chain
                                 raise StopAsyncIteration
                         
-                        # Remove handler after getting duration
                         bot.remove_event_handler(get_duration)
                 
-                # Remove handler after getting winners
                 bot.remove_event_handler(get_winners)
         
-        # Remove handler after getting prize
         bot.remove_event_handler(get_prize)
         
     except StopAsyncIteration:
@@ -334,15 +326,23 @@ async def check_expired_giveaways():
         await asyncio.sleep(60)
 
 async def main():
-    client = TelegramClient('giveaway_bot', API_ID, API_HASH)
+    """Main function to run the bot"""
+    print("🤖 Giveaway Bot is starting...")
     
-    # Start with bot token
-    await client.start(bot_token=BOT_TOKEN)
+    # Start the bot with token (INI YANG PENTING - SEPERTI fragment_bot.py)
+    await bot.start(bot_token=BOT_TOKEN)
+    print(f"✅ Bot is now running! Bot ID: {(await bot.get_me()).id}")
     
-    print("✅ Bot connected!")
-    print(f"Bot ID: {await client.get_me()}")
+    # Start checking for expired giveaways
+    asyncio.create_task(check_expired_giveaways())
     
-    await client.disconnected()
+    # Run the bot
+    await bot.run_until_disconnected()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n🛑 Bot stopped by user")
+    except Exception as e:
+        print(f"❌ Error: {e}")
