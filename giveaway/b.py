@@ -915,7 +915,6 @@ async def handle_peer_selection(event):
                     await self.client.send_message(self.sender_id, text, buttons=buttons)
             
             fake_event = FakeEvent(user_id, bot)
-            await menu_create_giveaway(fake_event, user_id)
         else:
             await bot.send_message(user_id, f"⚠️ Chat `{chat_id}` sudah ada dalam daftar!")
             
