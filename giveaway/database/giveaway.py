@@ -707,3 +707,87 @@ class GiveawayDatabase:
         """
         link = link.strip().lower()
         return link.startswith('https://t.me/') or link.startswith('t.me/')
+
+    def add_syarat(self, giveaway_id: str, syarat: str) -> bool:
+        """
+        Add or update syarat for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+            syarat: Syarat type (None, Subscribe, Boost, Tap link)
+        Returns:
+            True if successful
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah kolom syarat sudah ada, jika tidak tambahkan
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'syarat' not in columns:
+                    cursor.execute("ALTER TABLE giveaways ADD COLUMN syarat TEXT DEFAULT 'None'")
+                
+                # Update
+                cursor.execute('''
+                    UPDATE giveaways 
+                    SET syarat = ?
+                    WHERE giveaway_id = ?
+                ''', (syarat, giveaway_id))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error adding syarat: {e}")
+            return False
+
+    def get_syarat(self, giveaway_id: str) -> str:
+        """
+        Get syarat for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            Syarat string, 'None' if not found
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek kolom
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'syarat' not in columns:
+                    return 'None'
+                
+                cursor.execute('''
+                    SELECT syarat FROM giveaways WHERE giveaway_id = ?
+                ''', (giveaway_id,))
+                row = cursor.fetchone()
+                
+                return row[0] if row and row[0] else 'None'
+        except Exception as e:
+            print(f"Error getting syarat: {e}")
+            return 'None'
+
+    def delete_syarat(self, giveaway_id: str) -> bool:
+        """
+        Delete syarat for a giveaway (set to None)
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            True if successful
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE giveaways 
+                    SET syarat = 'None'
+                    WHERE giveaway_id = ?
+                ''', (giveaway_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting syarat: {e}")
+            return False

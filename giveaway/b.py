@@ -216,7 +216,7 @@ async def menu_create_giveaway(event, user_id: int = None):
     hadiah_list = state.get('hadiah', [])
     durasi = state.get('durasi', '')
     link = state.get('link', '')
-    syarat = state.get('syarat', '')
+    syarat = state.get('syarat', 'None')
     captcha = state.get('captcha', 'Off')
     
     # Format hadiah dengan nomor urut
@@ -400,6 +400,132 @@ async def create_giveaway(event):
         del loading_message[user_id]
 
     await menu_create_giveaway(event)
+
+@bot.on(events.CallbackQuery(pattern="^add_syarat$"))
+async def add_syarat(event):
+    user_id = event.sender_id
+    
+    user_state[user_id] = user_state.get(user_id, {})
+    user_state[user_id]['action'] = 'waiting_syarat_selection'
+    user_state[user_id]['step'] = 'select_syarat'
+    
+    # Get current syarat from user_state
+    current_syarat = user_state[user_id].get('syarat', 'None')
+    
+    msg = """
+[📨](tg://emoji?id=5406631276042002796) **PENGATURAN SYARAT GIVEAWAY**
+
+Pilih syarat yang harus dipenuhi peserta untuk mengikuti giveaway:
+
+- **None** = Tidak ada syarat
+- **Subscribe** = Harus subscribe ke channel/group
+- **Boost** = Harus boost channel
+- **Tap link** = Harus tap/klik link
+
+Klik tombol di bawah untuk memilih syarat.
+"""
+
+    buttons = [
+        [
+            Button.inline(
+                f"{'✅ ' if current_syarat == 'None' else '⬜ '}None", 
+                data="syarat_none"
+            ),
+            Button.inline(
+                f"{'✅ ' if current_syarat == 'Subscribe' else '⬜ '}Subscribe", 
+                data="syarat_subscribe"
+            )
+        ],
+        [
+            Button.inline(
+                f"{'✅ ' if current_syarat == 'Boost' else '⬜ '}Boost", 
+                data="syarat_boost"
+            ),
+            Button.inline(
+                f"{'✅ ' if current_syarat == 'Tap link' else '⬜ '}Tap link", 
+                data="syarat_taplink"
+            )
+        ],
+        [
+            Button.inline("✅ KONFIRMASI", data="syarat_confirm"),
+            Button.inline("🔙 KEMBALI", data="create_giveaway")
+        ]
+    ]
+    
+    await event.delete()
+    await event.respond(msg, buttons=buttons)
+
+
+@bot.on(events.CallbackQuery(pattern="^syarat_none$"))
+async def syarat_none(event):
+    user_id = event.sender_id
+    user_state[user_id]['syarat'] = 'None'
+    await event.answer("✅ Syarat: None (Tidak ada syarat)", alert=True)
+    await add_syarat(event)
+
+
+@bot.on(events.CallbackQuery(pattern="^syarat_subscribe$"))
+async def syarat_subscribe(event):
+    user_id = event.sender_id
+    user_state[user_id]['syarat'] = 'Subscribe'
+    await event.answer("✅ Syarat: Subscribe (Harus subscribe)", alert=True)
+    await add_syarat(event)
+
+
+@bot.on(events.CallbackQuery(pattern="^syarat_boost$"))
+async def syarat_boost(event):
+    user_id = event.sender_id
+    user_state[user_id]['syarat'] = 'Boost'
+    await event.answer("✅ Syarat: Boost (Harus boost channel)", alert=True)
+    await add_syarat(event)
+
+
+@bot.on(events.CallbackQuery(pattern="^syarat_taplink$"))
+async def syarat_taplink(event):
+    user_id = event.sender_id
+    user_state[user_id]['syarat'] = 'Tap link'
+    await event.answer("✅ Syarat: Tap link (Harus tap link)", alert=True)
+    await add_syarat(event)
+
+
+@bot.on(events.CallbackQuery(pattern="^syarat_confirm$"))
+async def syarat_confirm(event):
+    user_id = event.sender_id
+    
+    # Get selected syarat
+    syarat = user_state[user_id].get('syarat', 'None')
+    
+    # Update user_state
+    user_state[user_id]['syarat'] = syarat
+    user_state[user_id]['action'] = None
+    user_state[user_id]['step'] = None
+    
+    # Hapus loading message jika ada
+    if user_id in loading_message:
+        try:
+            await bot.delete_messages(user_id, loading_message[user_id])
+        except:
+            pass
+        del loading_message[user_id]
+    
+    # Kirim notifikasi
+    await event.answer(f"✅ Syarat disimpan: {syarat}", alert=True)
+    
+    # Refresh menu
+    class FakeEvent:
+        def __init__(self, uid, b):
+            self.sender_id = uid
+            self.client = b
+            self.chat_id = uid
+        
+        async def edit(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+        
+        async def respond(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+    
+    fake_event = FakeEvent(user_id, bot)
+    await menu_create_giveaway(fake_event, user_id)
 
 @bot.on(events.CallbackQuery(pattern="^add_link$"))
 async def add_link(event):
