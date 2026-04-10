@@ -451,15 +451,36 @@ async def handle_peer_selection(event):
                 f"• Username: @{username if username else '-'}"
             )
             
+            # PERBAIKAN: Buat event tiruan untuk menu_create_giveaway
+            # Buat object sederhana dengan atribut yang diperlukan
+            class FakeEvent:
+                def __init__(self, user_id, bot):
+                    self.sender_id = user_id
+                    self.client = bot
+                    self.chat_id = user_id
+                
+                async def edit(self, text, buttons=None):
+                    # Fake edit method
+                    pass
+                
+                async def respond(self, text, buttons=None):
+                    # Fake respond method
+                    pass
+                
+                async def delete(self):
+                    # Fake delete method
+                    pass
+            
+            fake_event = FakeEvent(user_id, bot)
+            
             # Refresh menu
-            await menu_create_giveaway(event, user_id)
+            await menu_create_giveaway(fake_event, user_id)
         else:
             await bot.send_message(user_id, "⚠️ Chat sudah ada dalam daftar!")
             
     except Exception as e:
         logger.error(f"Error handling peer selection: {e}")
         await bot.send_message(user_id, f"❌ Error: {str(e)[:100]}")
-
 
 @bot.on(events.CallbackQuery(pattern="^delete_chat:"))
 async def delete_chat_handler(event):
@@ -553,46 +574,105 @@ Telegram Premium 1 Tahun`^^
     await event.delete()
     await event.respond(msg, buttons=buttons)
 
-@bot.on(events.NewMessage)
-async def handle_hadiah_input(event):
-    user_id = event.sender_id
-
-    if user_id not in user_state:
+@bot.on(events.Raw)
+async def handle_peer_selection(event):
+    """Handle peer selection from keyboard button"""
+    if not hasattr(event, 'message') or not isinstance(event.message, MessageService):
         return
     
-    state = user_state[user_id]
-    if state.get('action') != 'waiting_hadiah':
+    msg = event.message
+    if not hasattr(msg, 'action') or not msg.action:
         return
-
-    if event.sender_id != user_id:
+    
+    # Check if it's a peer selection
+    if not hasattr(msg.action, 'button_id'):
         return
-
-    text = event.raw_text.strip()
-    hadiah_list = [h.strip() for h in text.split('\n') if h.strip()]
     
-    if not hadiah_list:
-        await event.reply("⚠️ Hadiah tidak boleh kosong. Silakan kirim ulang atau klik batalkan")
+    # Get user_id from message
+    if hasattr(msg.peer_id, 'user_id'):
+        user_id = msg.peer_id.user_id
+    else:
         return
-
-    # Simpan hadiah ke user_state
-    user_state[user_id]['hadiah'] = hadiah_list
-    user_state[user_id]['action'] = None
     
-    # Kirim notifikasi sukses
-    msg_self = await event.reply("[✅](tg://emoji?id=5260463209562776385) **Hadiah berhasil disimpan!**")
+    # Check if user is in waiting state
+    if user_id not in user_state or user_state[user_id].get('action') != 'waiting_peer_selection':
+        return
     
-    # Refresh menu
-    await menu_create_giveaway(event, user_id)
+    # Get the peer from action
+    if not hasattr(msg.action, 'peers') or not msg.action.peers:
+        return
     
-    # Hapus notifikasi setelah 3 detik
-    await asyncio.sleep(3)
-    await msg_self.delete()
+    peer = msg.action.peers[0]
+    button_id = msg.action.button_id
     
-    # Hapus pesan input user
+    # Determine chat type and ID
+    chat_id = None
+    chat_type = "Unknown"
+    username = None
+    title = None
+    
     try:
-        await event.delete()
-    except:
-        pass
+        if hasattr(peer, 'channel_id'):
+            # Channel
+            chat_id = f"-100{peer.channel_id}"
+            chat_type = "Channel"
+        elif hasattr(peer, 'chat_id'):
+            # Group
+            chat_id = str(-peer.chat_id) if peer.chat_id > 0 else str(peer.chat_id)
+            chat_type = "Group"
+        else:
+            return
+        
+        # Get entity for more info
+        try:
+            entity = await bot.get_entity(int(chat_id))
+            username = getattr(entity, 'username', None)
+            title = getattr(entity, 'title', None)
+            if hasattr(entity, 'megagroup') and entity.megagroup:
+                chat_type = "Supergroup"
+        except:
+            pass
+        
+        # Save to database
+        success = db.add_chat(user_id, chat_id, chat_type, username or "", title or "")
+        
+        if success:
+            # Delete the service message
+            try:
+                await bot.delete_messages(msg.chat_id, msg.id)
+            except:
+                pass
+            
+            # Send success message
+            await bot.send_message(
+                user_id,
+                f"✅ **Berhasil Ditambahkan!**\n\n"
+                f"• Tipe: {chat_type}\n"
+                f"• ID: `{chat_id}`\n"
+                f"• Nama: {title or '-'}\n"
+                f"• Username: @{username if username else '-'}"
+            )
+            
+            # Buat event tiruan untuk memanggil menu_create_giveaway
+            class FakeEvent:
+                def __init__(self, uid, b):
+                    self.sender_id = uid
+                    self.client = b
+                
+                async def edit(self, text, buttons=None):
+                    pass
+                
+                async def respond(self, text, buttons=None):
+                    await self.client.send_message(self.sender_id, text, buttons=buttons)
+            
+            fake_event = FakeEvent(user_id, bot)
+            await menu_create_giveaway(fake_event, user_id)
+        else:
+            await bot.send_message(user_id, "⚠️ Chat sudah ada dalam daftar!")
+            
+    except Exception as e:
+        logger.error(f"Error handling peer selection: {e}")
+        await bot.send_message(user_id, f"❌ Error: {str(e)[:100]}")
 
 @bot.on(events.CallbackQuery(pattern="^kembali$"))
 async def kembali(event):
