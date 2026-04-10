@@ -201,7 +201,12 @@ async def menu_create_giveaway(event, user_id: int = None):
     else:
         username = None
 
-    msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
+    # Kirim pesan loading dengan try-except
+    msg_self = None
+    try:
+        msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
+    except Exception as e:
+        logger.warning(f"Failed to send loading message: {e}")
 
     # Get data from user_state
     state = user_state.get(user_id, {})
@@ -255,16 +260,21 @@ async def menu_create_giveaway(event, user_id: int = None):
         [Button.inline("🔙 Kembali", data="kembali"),
          Button.inline("🔊 Start Giveaway", data="start_giveaway")]
     ]
-    
-    if hasattr(event, 'edit') and callable(getattr(event, 'edit', None)):
+
+    if msg_self is not None:
         try:
             await msg_self.delete()
+        except Exception as e:
+            logger.warning(f"Failed to delete loading message: {e}")
+    
+    # Kirim pesan menu
+    if hasattr(event, 'edit') and callable(getattr(event, 'edit', None)):
+        try:
             await event.edit(msg, buttons=buttons)
-        except:
-            await msg_self.delete()
+        except Exception as e:
+            logger.warning(f"Failed to edit message: {e}")
             await event.respond(msg, buttons=buttons)
     else:
-        await msg_self.delete()
         await event.respond(msg, buttons=buttons)
 
 @bot.on(events.NewMessage(pattern="^/start$"))
@@ -1096,7 +1106,11 @@ async def kembali(event):
     user = await event.get_sender()
     user_id = user.id 
 
-    msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
+    msg_self = None
+    try:
+        msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
+    except Exception as e:
+        logger.warning(f"Failed to send loading message: {e}")
 
     if user_id in user_state:
         # Simpan saved_chats yang sudah ada sebelum dihapus
@@ -1129,7 +1143,14 @@ async def kembali(event):
         del loading_message[user_id]
 
     await event.delete()
-    await msg_self.delete()
+    
+    # Hapus pesan loading jika ada
+    if msg_self is not None:
+        try:
+            await msg_self.delete()
+        except:
+            pass
+    
     await start(event)
 
 # ==================== MAIN - SAMA PERSIS SEPERTI fragment_bot.py ====================
