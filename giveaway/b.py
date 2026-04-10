@@ -141,8 +141,8 @@ async def menu_create_giveaway(event, user_id: int = None):
     
     # Get data from user_state
     state = user_state.get(user_id, {})
-    saved_chats = state.get('saved_chats', [])  # Ambil semua chat yang tersimpan
-    chat_id = state.get('chat_id', '')  # Chat yang dipilih (default)
+    saved_chats = state.get('saved_chats', [])
+    chat_id = state.get('chat_id', '')
     chat_title = state.get('chat_title', '')
     hadiah_list = state.get('hadiah', [])
     durasi = state.get('durasi', '')
@@ -307,8 +307,29 @@ async def create_giveaway(event):
     user = await event.get_sender()
     user_id = user.id
 
-    if user_id in user_state:
-        del user_state[user_id]
+    # JANGAN hapus user_state sepenuhnya, hanya reset action
+    if user_id not in user_state:
+        user_state[user_id] = {}
+    else:
+        # Reset hanya action, pertahankan data lain
+        user_state[user_id]['action'] = None
+        user_state[user_id]['step'] = None
+    
+    # Pastikan saved_chats tetap ada dari user_chats
+    if user_id in user_chats and user_chats[user_id]:
+        user_state[user_id]['saved_chats'] = user_chats[user_id]
+        # Gunakan chat pertama sebagai default jika belum ada
+        if not user_state[user_id].get('chat_id'):
+            user_state[user_id]['chat_id'] = user_chats[user_id][0]['chat_id']
+            user_state[user_id]['chat_title'] = user_chats[user_id][0].get('title', '')
+    
+    # Hapus loading message jika ada
+    if user_id in loading_message:
+        try:
+            await bot.delete_messages(user_id, loading_message[user_id])
+        except:
+            pass
+        del loading_message[user_id]
 
     await menu_create_giveaway(event)
 
@@ -567,16 +588,20 @@ async def chat_done(event):
         del loading_message[user_id]
     
     # Clear state action
-    if user_id in user_state:
-        user_state[user_id]['action'] = None
-        # Simpan semua chat yang tersimpan ke state
-        all_chats = user_chats.get(user_id, [])
-        user_state[user_id]['saved_chats'] = all_chats
-        
-        if all_chats:
-            # Gunakan chat pertama sebagai default
-            user_state[user_id]['chat_id'] = all_chats[0]['chat_id']
-            user_state[user_id]['chat_title'] = all_chats[0].get('title', '')
+    if user_id not in user_state:
+        user_state[user_id] = {}
+    
+    user_state[user_id]['action'] = None
+    user_state[user_id]['step'] = None
+    
+    # Simpan semua chat yang tersimpan ke state
+    all_chats = user_chats.get(user_id, [])
+    user_state[user_id]['saved_chats'] = all_chats
+    
+    if all_chats:
+        # Gunakan chat pertama sebagai default
+        user_state[user_id]['chat_id'] = all_chats[0]['chat_id']
+        user_state[user_id]['chat_title'] = all_chats[0].get('title', '')
     
     # Refresh menu
     await menu_create_giveaway(event, user_id)
@@ -615,10 +640,30 @@ async def kembali(event):
     user = await event.get_sender()
     user_id = user.id 
 
+    # JANGAN HAPUS user_chats! Hanya hapus state action
     if user_id in user_state:
-        del user_state[user_id]
-    if user_id in user_chats:
-        del user_chats[user_id]
+        # Simpan saved_chats yang sudah ada sebelum dihapus
+        saved_chats = user_state[user_id].get('saved_chats', [])
+        chat_id = user_state[user_id].get('chat_id', '')
+        chat_title = user_state[user_id].get('chat_title', '')
+        hadiah_list = user_state[user_id].get('hadiah', [])
+        durasi = user_state[user_id].get('durasi', '')
+        link = user_state[user_id].get('link', '')
+        syarat = user_state[user_id].get('syarat', '')
+        captcha = user_state[user_id].get('captcha', 'Off')
+        
+        # Reset state tapi pertahankan data
+        user_state[user_id] = {
+            'saved_chats': saved_chats,
+            'chat_id': chat_id,
+            'chat_title': chat_title,
+            'hadiah': hadiah_list,
+            'durasi': durasi,
+            'link': link,
+            'syarat': syarat,
+            'captcha': captcha
+        }
+
     if user_id in loading_message:
         try:
             await bot.delete_messages(user_id, loading_message[user_id])
