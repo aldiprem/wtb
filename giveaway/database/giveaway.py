@@ -17,7 +17,7 @@ class GiveawayDatabase:
     def _get_now_datetime(self) -> datetime:
         """Get current datetime in Asia/Jakarta timezone"""
         return datetime.now(self.timezone)
-    
+
     def init_database(self):
         """Initialize database tables"""
         with sqlite3.connect(self.db_path) as conn:
@@ -35,7 +35,7 @@ class GiveawayDatabase:
                 )
             ''')
 
-            # Table for giveaways - tambahkan kolom user_id
+            # Table for giveaways
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS giveaways (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,6 +50,27 @@ class GiveawayDatabase:
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     winners TEXT DEFAULT '[]',
                     participants TEXT DEFAULT '[]'
+                )
+            ''')
+            
+            # Table for on_giveaway (giveaway yang sedang berlangsung)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS on_giveaway (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    giveaway_code TEXT UNIQUE NOT NULL,
+                    giveaway_id TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    chat_id INTEGER NOT NULL,
+                    message_id INTEGER NOT NULL,
+                    prize TEXT NOT NULL,
+                    winners_count INTEGER DEFAULT 1,
+                    start_time TEXT NOT NULL,
+                    end_time TEXT NOT NULL,
+                    status TEXT DEFAULT 'active',
+                    participants TEXT DEFAULT '[]',
+                    winners TEXT DEFAULT '[]',
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (giveaway_id) REFERENCES giveaways(giveaway_id)
                 )
             ''')
             
@@ -874,4 +895,173 @@ class GiveawayDatabase:
                 return cursor.rowcount > 0
         except Exception as e:
             print(f"Error deleting captcha: {e}")
+            return False
+
+    def generate_giveaway_code(self) -> str:
+        """Generate 15 digit numeric code for giveaway"""
+        import random
+        return ''.join(random.choices(string.digits, k=15))
+
+    def create_on_giveaway(self, giveaway_id: str, user_id: int, chat_id: int, 
+                        message_id: int, prize: str, winners_count: int, 
+                        end_time: str, start_time: str = None) -> Optional[str]:
+        """
+        Create a new on_giveaway record
+        Returns: giveaway_code if successful, None otherwise
+        """
+        try:
+            import string
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                giveaway_code = self.generate_giveaway_code()
+                
+                if start_time is None:
+                    start_time = self._get_now()
+                
+                cursor.execute('''
+                    INSERT INTO on_giveaway 
+                    (giveaway_code, giveaway_id, user_id, chat_id, message_id, prize, 
+                    winners_count, start_time, end_time, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (giveaway_code, giveaway_id, user_id, chat_id, message_id, 
+                    prize, winners_count, start_time, end_time, 'active'))
+                
+                conn.commit()
+                return giveaway_code
+        except Exception as e:
+            print(f"Error creating on_giveaway: {e}")
+            return None
+
+    def get_on_giveaway(self, giveaway_code: str) -> Optional[Dict[str, Any]]:
+        """Get on_giveaway by code"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT * FROM on_giveaway WHERE giveaway_code = ?
+                ''', (giveaway_code,))
+                row = cursor.fetchone()
+                
+                if row:
+                    columns = [description[0] for description in cursor.description]
+                    giveaway = dict(zip(columns, row))
+                    giveaway['participants'] = json.loads(giveaway['participants']) if giveaway['participants'] else []
+                    giveaway['winners'] = json.loads(giveaway['winners']) if giveaway['winners'] else []
+                    return giveaway
+                return None
+        except Exception as e:
+            print(f"Error getting on_giveaway: {e}")
+            return None
+
+    def get_active_on_giveaways(self, chat_id: int = None) -> List[Dict[str, Any]]:
+        """Get all active on_giveaways"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                if chat_id:
+                    cursor.execute('''
+                        SELECT * FROM on_giveaway 
+                        WHERE status = 'active' AND chat_id = ?
+                        ORDER BY created_at DESC
+                    ''', (chat_id,))
+                else:
+                    cursor.execute('''
+                        SELECT * FROM on_giveaway 
+                        WHERE status = 'active'
+                        ORDER BY created_at DESC
+                    ''')
+                
+                rows = cursor.fetchall()
+                giveaways = []
+                for row in rows:
+                    columns = [description[0] for description in cursor.description]
+                    giveaway = dict(zip(columns, row))
+                    giveaway['participants'] = json.loads(giveaway['participants']) if giveaway['participants'] else []
+                    giveaway['winners'] = json.loads(giveaway['winners']) if giveaway['winners'] else []
+                    giveaways.append(giveaway)
+                
+                return giveaways
+        except Exception as e:
+            print(f"Error getting active on_giveaways: {e}")
+            return []
+
+    def add_participant_to_on_giveaway(self, giveaway_code: str, user_id: int, 
+                                    username: str = "", first_name: str = "") -> bool:
+        """Add participant to on_giveaway"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Get current participants
+                cursor.execute('SELECT participants FROM on_giveaway WHERE giveaway_code = ?', (giveaway_code,))
+                result = cursor.fetchone()
+                
+                if not result:
+                    return False
+                
+                participants = json.loads(result[0]) if result[0] else []
+                
+                # Check if already participated
+                if user_id in participants:
+                    return False
+                
+                participants.append(user_id)
+                
+                cursor.execute('''
+                    UPDATE on_giveaway SET participants = ? WHERE giveaway_code = ?
+                ''', (json.dumps(participants), giveaway_code))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error adding participant to on_giveaway: {e}")
+            return False
+
+    def select_winners_from_on_giveaway(self, giveaway_code: str, winners_count: int) -> List[int]:
+        """Select winners from on_giveaway participants"""
+        import random
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT participants FROM on_giveaway WHERE giveaway_code = ?', (giveaway_code,))
+                result = cursor.fetchone()
+                
+                if not result:
+                    return []
+                
+                participants = json.loads(result[0]) if result[0] else []
+                
+                if not participants:
+                    return []
+                
+                winners_count = min(winners_count, len(participants))
+                winners = random.sample(participants, winners_count)
+                
+                cursor.execute('''
+                    UPDATE on_giveaway 
+                    SET winners = ?, status = 'ended'
+                    WHERE giveaway_code = ?
+                ''', (json.dumps(winners), giveaway_code))
+                
+                conn.commit()
+                return winners
+        except Exception as e:
+            print(f"Error selecting winners from on_giveaway: {e}")
+            return []
+
+    def end_on_giveaway(self, giveaway_code: str) -> bool:
+        """End an on_giveaway"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE on_giveaway SET status = 'ended' WHERE giveaway_code = ?
+                ''', (giveaway_code,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error ending on_giveaway: {e}")
             return False

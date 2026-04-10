@@ -181,6 +181,47 @@ async def check_bot_access(chat_id: int) -> tuple:
                 
     except Exception as e:
         return False, False, f"Bot tidak dapat mengakses chat ini: {str(e)[:100]}"
+async def check_on_giveaway_expired():
+    """Periodically check for expired on_giveaway"""
+    while True:
+        try:
+            now = get_jakarta_time().isoformat()
+            active_giveaways = db.get_active_on_giveaways()
+            
+            for giveaway in active_giveaways:
+                if giveaway['end_time'] <= now:
+                    # Pilih pemenang
+                    winners = db.select_winners_from_on_giveaway(
+                        giveaway['giveaway_code'], 
+                        giveaway['winners_count']
+                    )
+                    
+                    if winners:
+                        winner_mentions = []
+                        for winner_id in winners:
+                            try:
+                                user = await bot.get_entity(winner_id)
+                                winner_mentions.append(f"🎉 [{user.first_name}](tg://user?id={winner_id})")
+                            except:
+                                winner_mentions.append(f"🎉 User {winner_id}")
+                        
+                        winner_text = f"""
+🏆 **GIVEAWAY TELAH BERAKHIR!** 🏆
+
+**Hadiah:**
+{giveaway['prize']}
+
+**Pemenang:**
+{chr(10).join(winner_mentions)}
+
+Selamat kepada pemenang! 🎊
+"""
+                        
+                        await bot.send_message(giveaway['chat_id'], winner_text)
+        except Exception as e:
+            logger.error(f"Error checking on_giveaway expired: {e}")
+        
+        await asyncio.sleep(60)
 
 async def menu_create_giveaway(event, user_id: int = None):
     """Display the create giveaway menu with current data"""
@@ -1354,6 +1395,171 @@ async def kembali(event):
     await event.delete()
     await start(event)
 
+@bot.on(events.CallbackQuery(pattern="^start_giveaway$"))
+async def start_giveaway_handler(event):
+    user_id = event.sender_id
+    state = user_state.get(user_id, {})
+    
+    # Validasi data
+    hadiah_list = state.get('hadiah', [])
+    saved_chats = state.get('saved_chats', [])
+    durasi = state.get('durasi', '')
+    end_time_iso = state.get('end_time')
+    link = state.get('link', '')
+    syarat = state.get('syarat', 'None')
+    captcha = state.get('captcha', 'Off')
+    
+    if not hadiah_list:
+        await event.answer("❌ Hadiah belum diisi!", alert=True)
+        return
+    
+    if not saved_chats:
+        await event.answer("❌ Chat target belum dipilih!", alert=True)
+        return
+    
+    if not durasi:
+        await event.answer("❌ Durasi belum diisi!", alert=True)
+        return
+    
+    # Kirim pesan loading
+    msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Memulai giveaway...__**")
+    await event.delete()
+    
+    # Generate giveaway ID untuk database utama
+    giveaway_id = generate_giveaway_id()
+    
+    # Format prize
+    formatted_prize = '\n'.join([f"{i+1}. {h}" for i, h in enumerate(hadiah_list)])
+    
+    # Parse end time
+    if end_time_iso:
+        end_time = datetime.fromisoformat(end_time_iso)
+    else:
+        minutes = state.get('minutes', 60)
+        end_time = get_jakarta_time() + timedelta(minutes=minutes)
+    
+    # Kirim giveaway ke setiap chat yang tersimpan
+    sent_messages = []
+    success_chats = []
+    failed_chats = []
+    
+    for chat in saved_chats:
+        chat_id = int(chat.get('chat_id'))
+        chat_title = chat.get('title', 'Unknown')
+        
+        # Build message dengan format yang menarik
+        message_text = f"""
+🎉 **GIVEAWAY BERLANGSUNG!** 🎉
+
+━━━━━━━━━━━━━━━━━━━━━
+🏆 **HADIAH:**
+{formatted_prize}
+━━━━━━━━━━━━━━━━━━━━━
+👥 **JUMLAH PEMENANG:** 1
+⏰ **BERAKHIR:** {end_time.strftime('%d %B %Y %H:%M:%S WIB')}
+━━━━━━━━━━━━━━━━━━━━━
+
+**Syarat & Ketentuan:**
+{syarat if syarat != 'None' else 'Tidak ada syarat khusus'}
+
+{chr(10).join([f'🔗 {l}' for l in link.split('\n')]) if link else ''}
+
+📌 **Cara join:**
+Kirim /join di chat ini untuk berpartisipasi!
+
+🎁 Good luck everyone!
+"""
+        
+        try:
+            msg = await bot.send_message(chat_id, message_text)
+            sent_messages.append({
+                'chat_id': chat_id,
+                'message_id': msg.id,
+                'chat_title': chat_title
+            })
+            success_chats.append(chat_title)
+            
+            # Kirim notifikasi ke target chat
+            await bot.send_message(chat_id, "✅ Giveaway telah dimulai! Kirim /join untuk ikut.")
+            
+        except Exception as e:
+            failed_chats.append(f"{chat_title}: {str(e)[:50]}")
+    
+    if not sent_messages:
+        await msg_self.delete()
+        await event.respond(f"❌ **Gagal memulai giveaway!**\n\nTidak ada chat yang berhasil dikirimi pesan.\n\nError: {', '.join(failed_chats)}")
+        return
+    
+    # Simpan ke database utama (giveaways)
+    db.create_giveaway(
+        giveaway_id=giveaway_id,
+        user_id=user_id,
+        chat_id=sent_messages[0]['chat_id'],
+        message_id=sent_messages[0]['message_id'],
+        prize=formatted_prize,
+        winners_count=1,
+        end_time=end_time.isoformat()
+    )
+    
+    # Simpan ke on_giveaway untuk setiap chat
+    giveaway_codes = []
+    for msg_info in sent_messages:
+        giveaway_code = db.create_on_giveaway(
+            giveaway_id=giveaway_id,
+            user_id=user_id,
+            chat_id=msg_info['chat_id'],
+            message_id=msg_info['message_id'],
+            prize=formatted_prize,
+            winners_count=1,
+            end_time=end_time.isoformat(),
+            start_time=get_jakarta_time().isoformat()
+        )
+        if giveaway_code:
+            giveaway_codes.append(giveaway_code)
+            
+            # Simpan link dan syarat ke database
+            if link:
+                db.add_link(giveaway_id, link)
+            if syarat and syarat != 'None':
+                db.add_syarat(giveaway_id, syarat)
+            if captcha == 'On':
+                db.add_captcha(giveaway_id, captcha)
+    
+    # Hapus user_state
+    if user_id in user_state:
+        del user_state[user_id]
+    if user_id in user_chats:
+        del user_chats[user_id]
+    if user_id in loading_message:
+        try:
+            await bot.delete_messages(user_id, loading_message[user_id])
+        except:
+            pass
+        del loading_message[user_id]
+    
+    # Hapus pesan loading
+    await msg_self.delete()
+    
+    # Kirim konfirmasi ke user
+    success_msg = f"""
+✅ **GIVEAWAY BERHASIL DIMULAI!**
+
+📊 **Detail Giveaway:**
+• ID Giveaway: `{giveaway_id}`
+• Kode Giveaway: `{giveaway_codes[0] if giveaway_codes else '-'}`
+• Hadiah: {len(hadiah_list)} item
+• Berakhir: {end_time.strftime('%d %B %Y %H:%M:%S WIB')}
+
+📢 **Dikirim ke {len(success_chats)} chat:**
+{chr(10).join([f'✅ {chat}' for chat in success_chats])}
+
+{f'❌ Gagal: {chr(10).join(failed_chats)}' if failed_chats else ''}
+
+💡 Bot akan otomatis memilih pemenang saat giveaway berakhir.
+"""
+    
+    await event.respond(success_msg)
+
 # ==================== MAIN - SAMA PERSIS SEPERTI fragment_bot.py ====================
 async def main():
     logger.info("🚀 Starting Giveaway Bot...")
@@ -1361,10 +1567,13 @@ async def main():
     # Initialize database
     db.init_database()
     
-    # Start master bot - SAMA PERSIS CARANYA
+    # Start master bot
     await bot.start(bot_token=BOT_TOKEN)
     logger.info("✅ Giveaway Bot is running")
-
+    
+    # Start monitoring expired giveaways
+    asyncio.create_task(check_on_giveaway_expired())
+    
     await bot.run_until_disconnected()
 
 if __name__ == '__main__':
