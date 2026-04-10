@@ -524,7 +524,7 @@ class GiveawayDatabase:
             return False
 
     @staticmethod
-def parse_duration_text(duration_str: str) -> int:
+    def parse_duration_text(duration_str: str) -> int:
         """
         Parse human readable duration text to minutes
         Args:
