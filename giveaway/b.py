@@ -175,7 +175,8 @@ async def menu_create_giveaway(event, user_id: int = None):
 **Chat ID:**
 {chats_display}
 **Durasi:** {durasi if durasi else '-'}
-**Syarat Link:** {link if link else '-'}
+**Syarat Link:** 
+{link if link else '-'}
 **Syarat Join:** {syarat if syarat else '-'}
 **Captcha:** {captcha}
     """
@@ -344,11 +345,9 @@ __Silakan kirim input link yang ingin anda gunakan, gunakan format seperti conto
 - `https://t.me/usernamebot/MiniApp`^^
 
 **Contoh input multiple link (satu per baris):**
-^^```
-https://t.me/channel1
+^^`https://t.me/channel1
 https://t.me/channel2
-t.me/groupmember
-```^^
+t.me/groupmember`^^
 
 [⚠](tg://emoji?id=5314346928660554905) **Catatan:**
 - Setiap link harus diawali dengan `https://t.me/` atau `t.me/`
