@@ -201,7 +201,6 @@ async def menu_create_giveaway(event, user_id: int = None):
     else:
         username = None
 
-    # Kirim pesan loading dengan try-except
     msg_self = None
     try:
         msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
@@ -581,6 +580,7 @@ async def syarat_confirm(event):
             await self.client.send_message(self.sender_id, text, buttons=buttons)
     
     fake_event = FakeEvent(user_id, bot)
+    await event.delete()
     await menu_create_giveaway(fake_event, user_id)
 
 @bot.on(events.CallbackQuery(pattern="^add_link$"))
