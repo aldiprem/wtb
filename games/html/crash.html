@@ -101,8 +101,8 @@
     // 1. FETCH & EKSTRAK .TGS DARI PATH LINUX MENGGUNAKAN PAKO
     async function loadLottieFile() {
         try {
-            // Ini akan diarahkan ke /root/wtb/image/nft_PoolFloat-47614.tgs oleh app.py
-            const response = await fetch('/api/crash/assets/tgs/nft_PoolFloat-47614.tgs');
+            // Ini akan diarahkan ke /root/wtb/image/nft_StellarRocket-116542 oleh app.py
+            const response = await fetch('/api/crash/assets/tgs/nft_StellarRocket-116542');
             if (!response.ok) throw new Error("File .tgs tidak ditemukan");
             
             const arrayBuffer = await response.arrayBuffer();
