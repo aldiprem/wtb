@@ -35,11 +35,12 @@ class GiveawayDatabase:
                 )
             ''')
 
-            # Table for giveaways
+            # Table for giveaways - tambahkan kolom user_id
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS giveaways (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     giveaway_id TEXT UNIQUE NOT NULL,
+                    user_id INTEGER DEFAULT 0,
                     chat_id INTEGER NOT NULL,
                     message_id INTEGER NOT NULL,
                     prize TEXT NOT NULL,
@@ -599,3 +600,7 @@ class GiveawayDatabase:
         except Exception as e:
             print(f"Error counting user chats: {e}")
             return 0
+
+    def get_user_saved_chats(self, user_id: int) -> list:
+        """Get saved chats from user_state (not from database)"""
+        return []
