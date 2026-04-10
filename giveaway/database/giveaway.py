@@ -3,6 +3,8 @@ import json
 from datetime import datetime
 from typing import List, Dict, Optional, Any
 import pytz
+import string
+import random
 
 class GiveawayDatabase:
     def __init__(self, db_path: str = "/root/wtb/giveaway/giveaway.db"):
