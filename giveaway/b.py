@@ -334,20 +334,15 @@ async def check_expired_giveaways():
         await asyncio.sleep(60)
 
 async def main():
-    """Main function to run the bot"""
-    print("🤖 Giveaway Bot is starting...")
-    print("✅ Bot is now running!")
+    client = TelegramClient('giveaway_bot', API_ID, API_HASH)
     
-    # Start checking for expired giveaways
-    asyncio.create_task(check_expired_giveaways())
+    # Start with bot token
+    await client.start(bot_token=BOT_TOKEN)
     
-    # Run the bot
-    await bot.run_until_disconnected()
+    print("✅ Bot connected!")
+    print(f"Bot ID: {await client.get_me()}")
+    
+    await client.disconnected()
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n🛑 Bot stopped by user")
-    except Exception as e:
-        print(f"❌ Error: {e}")
+    asyncio.run(main())
