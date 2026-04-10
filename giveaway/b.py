@@ -1585,7 +1585,7 @@ Kirim /join di chat ini untuk berpartisipasi!
     # Simpan ke on_giveaway untuk setiap chat
     giveaway_codes = []
     for msg_info in sent_messages:
-        giveaway_code = db.create_on_giveaway(
+        giveaway_code = db.create_giveaway(
             giveaway_id=giveaway_id,
             user_id=user_id,
             chat_id=msg_info['chat_id'],
