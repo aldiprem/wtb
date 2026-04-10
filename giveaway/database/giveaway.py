@@ -433,3 +433,124 @@ class GiveawayDatabase:
     def get_user_saved_chats(self, user_id: int) -> list:
         """Get saved chats from user_state (not from database)"""
         return []
+
+    def add_durasi(self, giveaway_id: str, durasi_text: str, end_time: str) -> bool:
+        """
+        Add or update duration for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+            durasi_text: Human readable duration text (e.g., "1 jam", "2 hari")
+            end_time: ISO format end time string
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah kolom durasi_text dan end_time sudah ada, jika tidak tambahkan
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'durasi_text' not in columns:
+                    cursor.execute("ALTER TABLE giveaways ADD COLUMN durasi_text TEXT DEFAULT ''")
+                
+                if 'end_time' not in columns:
+                    cursor.execute("ALTER TABLE giveaways ADD COLUMN end_time TEXT DEFAULT ''")
+                
+                # Update atau insert
+                cursor.execute('''
+                    UPDATE giveaways 
+                    SET durasi_text = ?, end_time = ?
+                    WHERE giveaway_id = ?
+                ''', (durasi_text, end_time, giveaway_id))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error adding durasi: {e}")
+            return False
+
+    def get_durasi(self, giveaway_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get duration for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            Dictionary with durasi_text and end_time
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek kolom
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'durasi_text' not in columns or 'end_time' not in columns:
+                    return None
+                
+                cursor.execute('''
+                    SELECT durasi_text, end_time FROM giveaways WHERE giveaway_id = ?
+                ''', (giveaway_id,))
+                row = cursor.fetchone()
+                
+                if row:
+                    return {
+                        'durasi_text': row[0],
+                        'end_time': row[1]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting durasi: {e}")
+            return None
+
+    def delete_durasi(self, giveaway_id: str) -> bool:
+        """
+        Delete duration for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE giveaways 
+                    SET durasi_text = '', end_time = ''
+                    WHERE giveaway_id = ?
+                ''', (giveaway_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting durasi: {e}")
+            return False
+
+    def parse_duration_text(duration_str: str) -> int:
+        """
+        Parse human readable duration text to minutes
+        Args:
+            duration_str: e.g., "1 jam", "2 jam 30 menit", "3 hari"
+        Returns:
+            Total minutes
+        """
+        import re
+        
+        total_minutes = 0
+        duration_str = duration_str.lower().strip()
+        
+        # Pattern untuk matching
+        patterns = [
+            (r'(\d+)\s*(tahun|thn|th)', 525600),      # 1 tahun = 525600 menit
+            (r'(\d+)\s*(bulan|bln|bl)', 43200),       # 1 bulan = 43200 menit
+            (r'(\d+)\s*(minggu|mgg|mg)', 10080),      # 1 minggu = 10080 menit
+            (r'(\d+)\s*(hari|hr|h)', 1440),           # 1 hari = 1440 menit
+            (r'(\d+)\s*(jam|j)', 60),                 # 1 jam = 60 menit
+            (r'(\d+)\s*(menit|mnt|m)', 1),            # 1 menit = 1 menit
+            (r'(\d+)\s*(detik|dtk|d)', 1/60)          # 1 detik = 1/60 menit
+        ]
+        
+        for pattern, multiplier in patterns:
+            matches = re.findall(pattern, duration_str)
+            for match in matches:
+                value = int(match[0])
+                total_minutes += value * multiplier
+        
+        return int(total_minutes) if total_minutes > 0 else 0

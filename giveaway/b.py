@@ -158,28 +158,20 @@ async def menu_create_giveaway(event, user_id: int = None):
     
     # Tampilkan SEMUA chat yang tersimpan
     if saved_chats:
-        chats_display = ""
+        chats_display = "-"
         for i, chat in enumerate(saved_chats, 1):
             c_title = chat.get('title', '-')
             c_id = chat.get('chat_id', '-')
-            chats_display += f"{i}. {c_title} (`{c_id}`)\n"
+            chats_display += f"{i}. **{c_title}** (`{c_id}`)\n"
 
-        selected_display = f"**{chat_title}** (`{chat_id}`)" if chat_id else 'Belum dipilih'
-        chat_section = f"""
-**Chat ID:**
-^^{chats_display}^^
-"""
-    else:
-        chat_section = "-"
-    
-    # Build message
     msg = f"""
 🎁 **PENGATURAN CREATE GIVEAWAY**
 
 **Pembuat:** {mention} (@{username or '-'})
 **Hadiah:** 
 ^^{hadiah_formatted}^^
-{chat_section}
+**Chat ID:**
+{chats_display}
 **Durasi:** {durasi if durasi else '-'}
 **Syarat Link:** {link if link else '-'}
 **Syarat Join:** {syarat if syarat else '-'}
@@ -329,6 +321,146 @@ async def create_giveaway(event):
         del loading_message[user_id]
 
     await menu_create_giveaway(event)
+
+@bot.on(events.CallbackQuery(pattern="^add_durasi$"))
+async def add_durasi(event):
+    user_id = event.sender_id
+    
+    user_state[user_id] = user_state.get(user_id, {})
+    user_state[user_id]['action'] = 'waiting_durasi'
+    user_state[user_id]['step'] = 'input_durasi'
+
+    msg = """
+
+    """
+
+    msg = """
+[⏳](tg://emoji?id=5451732530048802485) **PENGATURAN DURASI GIVEAWAY**
+
+__Silakan kirim input durasi yang ingin anda menggunakan format deadline / countdown seperti contoh dibawah ini.__
+
+**Format 1 (Durasi Relatif):**
+^^Contoh: `1 jam`, `2 jam 30 menit`, `3 hari`, `1 minggu`, `2 bulan`^^
+**Format 2 (Tanggal & Waktu):**
+^^Contoh: `11.04.2026 11:00`^^
+
+__Klik Batalkan jika ingin dibatalkan.__
+"""
+
+    buttons = [
+        [Button.inline("❌ Batalkan", data="create_giveaway")]
+    ]
+    
+    await event.delete()
+    await event.respond(msg, buttons=buttons)
+
+
+@bot.on(events.NewMessage)
+async def handle_durasi_input(event):
+    user_id = event.sender_id
+
+    # Cek apakah user sedang dalam state waiting_durasi
+    if user_id not in user_state:
+        return
+    
+    state = user_state[user_id]
+    if state.get('action') != 'waiting_durasi':
+        return
+
+    # Cek apakah pesan dari user yang sama
+    if event.sender_id != user_id:
+        return
+
+    # Cek jika pesan adalah command
+    if event.raw_text.startswith('/'):
+        return
+
+    durasi_input = event.raw_text.strip()
+    
+    if not durasi_input:
+        await event.reply("[⚠](tg://emoji?id=5314346928660554905) **__Durasi tidak boleh kosong. Silakan kirim ulang atau klik batalkan.__**")
+        return
+    
+    now = get_jakarta_time()
+    end_time = None
+    durasi_text = ""
+    minutes = 0
+    
+    # Coba parse sebagai format tanggal (opsi 2)
+    import re
+    date_pattern = r'^(\d{1,2})\.(\d{1,2})\.(\d{4})\s+(\d{1,2}):(\d{2})$'
+    date_match = re.match(date_pattern, durasi_input)
+    
+    if date_match:
+        # Format: DD.MM.YYYY HH:MM
+        day = int(date_match.group(1))
+        month = int(date_match.group(2))
+        year = int(date_match.group(3))
+        hour = int(date_match.group(4))
+        minute = int(date_match.group(5))
+        
+        try:
+            # Buat datetime dengan timezone Jakarta
+            end_time = JAKARTA_TZ.localize(datetime(year, month, day, hour, minute))
+            
+            # Validasi tidak boleh waktu yang sudah lalu
+            if end_time <= now:
+                await event.reply("[⚠](tg://emoji?id=5314346928660554905) Waktu tidak boleh kurang dari atau sama dengan waktu sekarang! Silakan kirim ulang.")
+                return
+            
+            # Format durasi teks
+            durasi_text = end_time.strftime('%d.%m.%Y %H:%M WIB')
+            
+        except ValueError as e:
+            await event.reply(f"[⚠](tg://emoji?id=5314346928660554905) Tanggal tidak valid: {e}. Silakan kirim ulang.")
+            return
+    else:
+        # Coba parse sebagai durasi relatif (opsi 1)
+        minutes = db.parse_duration_text(durasi_input)
+        
+        if minutes <= 0:
+            await event.reply("[⚠](tg://emoji?id=5314346928660554905) Format durasi tidak valid. Silakan kirim ulang.\n\nContoh: `1 jam`, `2 jam 30 menit`, `3 hari`")
+            return
+        
+        # Hitung end_time
+        end_time = now + timedelta(minutes=minutes)
+        durasi_text = durasi_input
+    
+    # Simpan ke user_state
+    user_state[user_id]['durasi_raw'] = durasi_input
+    user_state[user_id]['durasi'] = durasi_text
+    user_state[user_id]['end_time'] = end_time.isoformat()
+    user_state[user_id]['minutes'] = minutes if minutes > 0 else int((end_time - now).total_seconds() / 60)
+    user_state[user_id]['action'] = None
+    user_state[user_id]['step'] = None
+    
+    # Kirim notifikasi sukses
+    msg_self = await event.reply(f"[✅](tg://emoji?id=5262880537416054812) **Durasi berhasil disimpan: `{end_time.strftime('%d %B %Y %H:%M:%S WIB')}`**")
+
+    try:
+        await event.delete()
+    except:
+        pass
+    
+    # Buat FakeEvent untuk refresh menu
+    class FakeEvent:
+        def __init__(self, uid, b):
+            self.sender_id = uid
+            self.client = b
+            self.chat_id = uid
+        
+        async def edit(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+        
+        async def respond(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+    
+    fake_event = FakeEvent(user_id, bot)
+
+    await menu_create_giveaway(fake_event, user_id)
+
+    await asyncio.sleep(3)
+    await msg_self.delete()
 
 @bot.on(events.CallbackQuery(pattern="^add_chat$"))
 async def add_chat(event):
