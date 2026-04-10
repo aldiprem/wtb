@@ -1608,7 +1608,7 @@ async def start_giveaway_handler(event):
                 correct_buttons = [[
                     Button.url(
                         text="🎁 Ikuti Giveaway",
-                        url=f"https://t.me/freebiestbot?startapp={first_giveaway_code}"
+                        url=f"https://t.me/freebiestbot/giveaway?startapp={first_giveaway_code}"
                     )
                 ]]
                 
@@ -1623,7 +1623,7 @@ async def start_giveaway_handler(event):
                 # Jika edit gagal, kirim pesan baru dengan tombol
                 await bot.send_message(
                     msg_info['chat_id'],
-                    f"🔗 **Klik link berikut untuk mengikuti giveaway:**\n\nhttps://t.me/freebiestbot?startapp={first_giveaway_code}",
+                    f"🔗 **Klik link berikut untuk mengikuti giveaway:**\n\nhttps://t.me/freebiestbot/giveaway?startapp={first_giveaway_code}",
                     buttons=correct_buttons
                 )
     
