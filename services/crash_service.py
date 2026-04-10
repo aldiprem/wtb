@@ -1,10 +1,27 @@
+import os
 import time
 import random
 import threading
 import json
-from flask import Blueprint, Response
+from flask import Blueprint, Response, send_from_directory, jsonify
 
 crash_bp = Blueprint('crash_bp', __name__)
+
+# ==========================================
+# ENDPOINT UNTUK MENYAJIKAN FILE .TGS LOTTIE
+# ==========================================
+@crash_bp.route('/assets/tgs/<path:filename>', methods=['GET'])
+def serve_tgs_assets(filename):
+    """
+    URL Endpoint ini akan menjadi: /api/crash/assets/tgs/<filename>
+    Mengambil file langsung dari direktori root server Anda.
+    """
+    directory = '/root/wtb/image'
+    try:
+        # Mengembalikan file dari folder /root/wtb/image/
+        return send_from_directory(directory, filename)
+    except FileNotFoundError:
+        return jsonify({"error": "File .tgs tidak ditemukan di server"}), 404
 
 # --- STATE GAME GLOBAL ---
 game_state = {
@@ -60,7 +77,6 @@ def stream():
     return Response(event_stream(), mimetype="text/event-stream")
 
 # --- ENDPOINT TARUHAN (MOCKUP) ---
-# Anda bisa menghubungkan ini ke database user & saldo Anda nanti
 @crash_bp.route('/bet', methods=['POST'])
 def place_bet():
     return {"status": "success", "message": "Bet placed"}
