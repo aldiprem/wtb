@@ -1,14 +1,15 @@
 #!/bin/bash
-# Script untuk menghentikan aplikasi (app.py + fragment_bot.py)
+# Script untuk menghentikan aplikasi (app.py + fragment_bot.py + giveaway/b.py)
 
 # Warna untuk output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${YELLOW}========================================${NC}"
-echo -e "${YELLOW}🛑 Menghentikan Server & Fragment Bot${NC}"
+echo -e "${YELLOW}🛑 Menghentikan Server, Fragment Bot & Giveaway Bot${NC}"
 echo -e "${YELLOW}========================================${NC}"
 
 # Pindah ke direktori utama
@@ -106,16 +107,18 @@ stop_process_by_name() {
 # Hentikan dari PID files
 stop_process_from_file "/tmp/flask_server.pid" "Flask Server"
 stop_process_from_file "/tmp/fragment_bot.pid" "Fragment Bot"
+stop_process_from_file "/tmp/giveaway_bot.pid" "Giveaway Bot"
 
 # Fallback: cari berdasarkan nama proses
 stop_process_by_name "Flask Server" "python3 app.py"
 stop_process_by_name "Fragment Bot" "fragment_bot.py"
+stop_process_by_name "Giveaway Bot" "giveaway/b.py"
 
 # Bersihkan port 5050
 kill_port_5050
 
 # Bersihkan PID files yang mungkin tersisa
-rm -f /tmp/flask_server.pid /tmp/fragment_bot.pid 2>/dev/null
+rm -f /tmp/flask_server.pid /tmp/fragment_bot.pid /tmp/giveaway_bot.pid 2>/dev/null
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ Semua server berhasil dihentikan${NC}"
