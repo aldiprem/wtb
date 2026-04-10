@@ -45,9 +45,18 @@ BOT_TOKEN = os.getenv("BOT_GIVEAWAY", "")
 
 DEFAULT_DELIMITERS['^^'] = lambda *a, **k: MessageEntityBlockquote(*a, **k, collapsed=False)
 user_state = {}
+JAKARTA_TZ = pytz.timezone('Asia/Jakarta')
 
 db = GiveawayDatabase()
 bot = TelegramClient('giveaway_bot_session', API_ID, API_HASH)
+
+def get_jakarta_time() -> datetime:
+    """Get current time in Asia/Jakarta timezone"""
+    return datetime.now(JAKARTA_TZ)
+
+def format_jakarta_time(dt: datetime) -> str:
+    """Format datetime to readable string with WIB"""
+    return dt.strftime('%d %B %Y %H:%M:%S WIB')
 
 def generate_giveaway_id():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=10))
@@ -156,12 +165,27 @@ async def profile(event):
     user = await event.get_sender()
     user_id = user.id
     
-    # Get user from database
     user_data = db.get_user(user_id)
     
     if user_data:
         first_seen = user_data.get('first_seen', 'Unknown')
         last_seen = user_data.get('last_seen', 'Unknown')
+        
+        # Format waktu ke Jakarta timezone jika bukan string kosong
+        if first_seen and first_seen != 'Unknown':
+            try:
+                dt = datetime.fromisoformat(first_seen)
+                first_seen = dt.astimezone(JAKARTA_TZ).strftime('%d %B %Y %H:%M:%S WIB')
+            except:
+                pass
+                
+        if last_seen and last_seen != 'Unknown':
+            try:
+                dt = datetime.fromisoformat(last_seen)
+                last_seen = dt.astimezone(JAKARTA_TZ).strftime('%d %B %Y %H:%M:%S WIB')
+            except:
+                pass
+        
         is_admin = "✅ Ya" if user_data.get('is_admin') else "❌ Tidak"
         
         msg = f"""
@@ -178,7 +202,9 @@ async def profile(event):
         msg = "❌ Data user tidak ditemukan"
     
     buttons = [[Button.inline("🔙 Kembali", data="kembali")]]
-    await event.edit(msg, buttons=buttons)
+
+    await event.delete()
+    await event.respond(msg, buttons=buttons)
 
 @bot.on(events.CallbackQuery(pattern="^create_giveaway$"))
 async def create_giveaway(event):
