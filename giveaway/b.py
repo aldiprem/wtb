@@ -187,7 +187,7 @@ async def create_giveaway(event):
     first_name = user.first_name or ""
     last_name = user.last_name or ""
     fullname = f"{first_name} {last_name}"
-    mention = f"[{fullname}(tg://user?id={user_id})]"
+    mention = f"[{fullname}](tg://user?id={user_id})"
 
     if user.username:
         username = user.username
