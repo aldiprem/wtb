@@ -240,7 +240,7 @@ app.register_blueprint(crash_bp, url_prefix='/api/crash')
 def serve_giveaway_page():
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
 
-@app.route('/crash')
+@app.route('/crash-game')
 def serve_giveaway_page():
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'crash.html')
 
