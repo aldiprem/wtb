@@ -902,7 +902,7 @@ class GiveawayDatabase:
         import random
         return ''.join(random.choices(string.digits, k=15))
 
-    def create_on_giveaway(self, giveaway_id: str, user_id: int, chat_id: int, 
+    def create_giveaway(self, giveaway_id: str, user_id: int, chat_id: int, 
                         message_id: int, prize: str, winners_count: int, 
                         end_time: str, start_time: str = None) -> Optional[str]:
         """
