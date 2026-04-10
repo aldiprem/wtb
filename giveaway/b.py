@@ -672,32 +672,35 @@ async def handle_hadiah_input(event):
     # Kirim notifikasi sukses
     msg_self = await event.reply("✅ Hadiah berhasil disimpan!")
     
-    # Buat event tiruan untuk refresh menu
+    # Hapus pesan input user
+    try:
+        await event.delete()
+    except:
+        pass
+    
+    # === PERBAIKAN DI SINI ===
+    # Buat FakeEvent dengan method respond yang benar
     class FakeEvent:
         def __init__(self, uid, b):
             self.sender_id = uid
             self.client = b
+            self.chat_id = uid
         
         async def edit(self, text, buttons=None):
-            pass
+            # Kirim pesan baru karena tidak bisa edit
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
         
         async def respond(self, text, buttons=None):
             await self.client.send_message(self.sender_id, text, buttons=buttons)
     
     fake_event = FakeEvent(user_id, bot)
     
-    # Refresh menu
+    # Panggil menu_create_giveaway
     await menu_create_giveaway(fake_event, user_id)
     
     # Hapus notifikasi setelah 3 detik
     await asyncio.sleep(3)
     await msg_self.delete()
-    
-    # Hapus pesan input user
-    try:
-        await event.delete()
-    except:
-        pass
 
 @bot.on(events.CallbackQuery(pattern="^kembali$"))
 async def kembali(event):
