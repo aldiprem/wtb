@@ -350,8 +350,8 @@ Klik tombol di keyboard anda untuk membagikan channel/group yang akan disimpan.
 🎉 Anda bisa menggunakan lebih dari 1 channel/group. Lakukan terus menerus untuk menambahkan!
     """
     
-    # Build reply markup
-    peer_markup = await bot.build_reply_markup(peer_buttons)
+    # Build reply markup - HAPUS AWAIT DI SINI
+    peer_markup = bot.build_reply_markup(peer_buttons)
     
     await event.delete()
     
@@ -371,7 +371,6 @@ Klik tombol di keyboard anda untuk membagikan channel/group yang akan disimpan.
         await event.respond(chats_text, buttons=inline_buttons)
     else:
         await event.respond("Belum ada chat yang tersimpan. Silakan pilih channel/group di atas.", buttons=inline_buttons)
-
 
 @bot.on(events.Raw)
 async def handle_peer_selection(event):
