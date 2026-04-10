@@ -640,15 +640,38 @@
         }
     }
 
+    function getStartParam() {
+        try {
+            // Cek dari Telegram WebApp
+            if (window.Telegram && window.Telegram.WebApp) {
+                const initData = window.Telegram.WebApp.initDataUnsafe;
+                if (initData && initData.start_param) {
+                    return initData.start_param;
+                }
+            }
+            
+            // Fallback: cek dari URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('startapp') || urlParams.get('id');
+        } catch (error) {
+            console.error('Error getting start param:', error);
+            return null;
+        }
+    }
+
     // ==================== INITIALIZATION ====================
-    
     function init() {
         showLoading(true);
         
         try {
-            // Get giveaway code from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const giveawayCode = urlParams.get('id');
+            // PRIORITAS: Ambil dari startapp (Telegram MiniApp)
+            let giveawayCode = getStartParam();
+            
+            // Jika tidak ada, coba dari URL parameter 'id'
+            if (!giveawayCode) {
+                const urlParams = new URLSearchParams(window.location.search);
+                giveawayCode = urlParams.get('id');
+            }
             
             if (!giveawayCode) {
                 showToast('Kode giveaway tidak ditemukan', 'error');

@@ -1530,6 +1530,10 @@ async def start_giveaway_handler(event):
         chat_id = int(chat.get('chat_id'))
         chat_title = chat.get('title', 'Unknown')
         
+        # 🔥 PENTING: Generate giveaway_code SEBELUM digunakan
+        # Kita akan generate sementara, nanti diupdate setelah database menyimpan
+        temp_giveaway_code = None
+        
         # Build message dengan format yang menarik
         message_text = f"""
 🎉 **GIVEAWAY BERLANGSUNG!** 🎉
@@ -1547,19 +1551,30 @@ async def start_giveaway_handler(event):
 
 {chr(10).join([f'🔗 {l}' for l in link.split('\n')]) if link else ''}
 
-📌 **Cara join:**
-Kirim /join di chat ini untuk berpartisipasi!
+📌 **Klik tombol di bawah untuk mengikuti giveaway!**
 
 🎁 Good luck everyone!
 """
         
         try:
-            msg = await bot.send_message(chat_id, message_text)
+            # 🔥 Cara 1: Mengirim pesan dengan tombol WebApp (recommended)
+            # Tombol akan terbuka di dalam Telegram (MiniApp)
+            buttons = [
+                [Button.webview(
+                    text="🎁 Ikuti Giveaway",
+                    url=f"https://companel.shop/giveaways?id={temp_giveaway_code or 'loading'}"
+                )]
+            ]
+            
+            # Kirim pesan dengan tombol
+            msg = await bot.send_message(chat_id, message_text, buttons=buttons)
+            
             sent_messages.append({
                 'chat_id': chat_id,
                 'message_id': msg.id,
                 'chat_title': chat_title,
-                'message': msg
+                'message': msg,  # 🔥 Perbaiki: tambah koma
+                'buttons': buttons
             })
             success_chats.append(chat_title)
             
@@ -1571,6 +1586,7 @@ Kirim /join di chat ini untuk berpartisipasi!
         await event.respond(f"❌ **Gagal memulai giveaway!**\n\nTidak ada chat yang berhasil dikirimi pesan.\n\nError: {', '.join(failed_chats)}")
         return
     
+    # ============ PENTING: Simpan ke database TERLEBIH DAHULU ============
     # Simpan ke database utama (giveaways)
     db.create_giveaway(
         giveaway_id=giveaway_id,
@@ -1606,6 +1622,31 @@ Kirim /join di chat ini untuk berpartisipasi!
             if captcha == 'On':
                 db.add_captcha(giveaway_id, captcha)
     
+    # ============ UPDATE PESAN DENGAN KODE GIVEAWAY YANG BENAR ============
+    if giveaway_codes:
+        first_giveaway_code = giveaway_codes[0]
+        
+        # Edit pesan yang sudah dikirim dengan kode yang benar
+        for msg_info in sent_messages:
+            try:
+                # Buat tombol dengan kode giveaway yang benar
+                correct_buttons = [
+                    [Button.webview(
+                        text="🎁 Ikuti Giveaway",
+                        url=f"https://companel.shop/giveaways?id={first_giveaway_code}"
+                    )]
+                ]
+                
+                # Edit pesan
+                await bot.edit_message(
+                    msg_info['chat_id'],
+                    msg_info['message_id'],
+                    text=message_text,  # text sama
+                    buttons=correct_buttons
+                )
+            except Exception as e:
+                print(f"Error editing message: {e}")
+    
     # Hapus user_state
     if user_id in user_state:
         del user_state[user_id]
@@ -1636,6 +1677,9 @@ Kirim /join di chat ini untuk berpartisipasi!
 {chr(10).join([f'✅ {chat}' for chat in success_chats])}
 
 {f'❌ Gagal: {chr(10).join(failed_chats)}' if failed_chats else ''}
+
+🔗 **Link MiniApp:**
+https://t.me/freebiestbot/giveaway?startapp={giveaway_codes[0] if giveaway_codes else '-'}
 
 💡 Bot akan otomatis memilih {winners_count} pemenang saat giveaway berakhir.
 """
