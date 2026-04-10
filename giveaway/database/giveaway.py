@@ -57,159 +57,157 @@ class GiveawayDatabase:
             
             conn.commit()
 
-# Tambahkan method ini di dalam class GiveawayDatabase (setelah init_database)
+    def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:
+        """Save or update user information"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah user sudah ada
+                cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
+                existing = cursor.fetchone()
+                
+                now = datetime.now().isoformat()
+                
+                if existing:
+                    # Update existing user
+                    cursor.execute('''
+                        UPDATE users 
+                        SET username = ?, first_name = ?, last_name = ?, last_seen = ?
+                        WHERE user_id = ?
+                    ''', (username, first_name, last_name, now, user_id))
+                else:
+                    # Insert new user
+                    cursor.execute('''
+                        INSERT INTO users (user_id, username, first_name, last_name, first_seen, last_seen)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (user_id, username, first_name, last_name, now, now))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving user: {e}")
+            return False
 
-def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:
-    """Save or update user information"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Cek apakah user sudah ada
-            cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
-            existing = cursor.fetchone()
-            
-            now = datetime.now().isoformat()
-            
-            if existing:
-                # Update existing user
+    def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user information by user_id"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
                 cursor.execute('''
-                    UPDATE users 
-                    SET username = ?, first_name = ?, last_name = ?, last_seen = ?
-                    WHERE user_id = ?
-                ''', (username, first_name, last_name, now, user_id))
-            else:
-                # Insert new user
+                    SELECT user_id, username, first_name, last_name, is_admin, first_seen, last_seen
+                    FROM users WHERE user_id = ?
+                ''', (user_id,))
+                row = cursor.fetchone()
+                
+                if row:
+                    return {
+                        'user_id': row[0],
+                        'username': row[1],
+                        'first_name': row[2],
+                        'last_name': row[3],
+                        'is_admin': bool(row[4]),
+                        'first_seen': row[5],
+                        'last_seen': row[6]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting user: {e}")
+            return None
+
+    def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
+        """Get user information by username"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
                 cursor.execute('''
-                    INSERT INTO users (user_id, username, first_name, last_name, first_seen, last_seen)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (user_id, username, first_name, last_name, now, now))
-            
-            conn.commit()
-            return True
-    except Exception as e:
-        print(f"Error saving user: {e}")
-        return False
-
-def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
-    """Get user information by user_id"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT user_id, username, first_name, last_name, is_admin, first_seen, last_seen
-                FROM users WHERE user_id = ?
-            ''', (user_id,))
-            row = cursor.fetchone()
-            
-            if row:
-                return {
-                    'user_id': row[0],
-                    'username': row[1],
-                    'first_name': row[2],
-                    'last_name': row[3],
-                    'is_admin': bool(row[4]),
-                    'first_seen': row[5],
-                    'last_seen': row[6]
-                }
+                    SELECT user_id, username, first_name, last_name, is_admin, first_seen, last_seen
+                    FROM users WHERE username = ?
+                ''', (username,))
+                row = cursor.fetchone()
+                
+                if row:
+                    return {
+                        'user_id': row[0],
+                        'username': row[1],
+                        'first_name': row[2],
+                        'last_name': row[3],
+                        'is_admin': bool(row[4]),
+                        'first_seen': row[5],
+                        'last_seen': row[6]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting user by username: {e}")
             return None
-    except Exception as e:
-        print(f"Error getting user: {e}")
-        return None
 
-def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
-    """Get user information by username"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT user_id, username, first_name, last_name, is_admin, first_seen, last_seen
-                FROM users WHERE username = ?
-            ''', (username,))
-            row = cursor.fetchone()
-            
-            if row:
-                return {
-                    'user_id': row[0],
-                    'username': row[1],
-                    'first_name': row[2],
-                    'last_name': row[3],
-                    'is_admin': bool(row[4]),
-                    'first_seen': row[5],
-                    'last_seen': row[6]
-                }
-            return None
-    except Exception as e:
-        print(f"Error getting user by username: {e}")
-        return None
+    def get_all_users(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
+        """Get all users with pagination"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT user_id, username, first_name, last_name, is_admin, first_seen, last_seen
+                    FROM users ORDER BY last_seen DESC LIMIT ? OFFSET ?
+                ''', (limit, offset))
+                rows = cursor.fetchall()
+                
+                users = []
+                for row in rows:
+                    users.append({
+                        'user_id': row[0],
+                        'username': row[1],
+                        'first_name': row[2],
+                        'last_name': row[3],
+                        'is_admin': bool(row[4]),
+                        'first_seen': row[5],
+                        'last_seen': row[6]
+                    })
+                return users
+        except Exception as e:
+            print(f"Error getting all users: {e}")
+            return []
 
-def get_all_users(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
-    """Get all users with pagination"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT user_id, username, first_name, last_name, is_admin, first_seen, last_seen
-                FROM users ORDER BY last_seen DESC LIMIT ? OFFSET ?
-            ''', (limit, offset))
-            rows = cursor.fetchall()
-            
-            users = []
-            for row in rows:
-                users.append({
-                    'user_id': row[0],
-                    'username': row[1],
-                    'first_name': row[2],
-                    'last_name': row[3],
-                    'is_admin': bool(row[4]),
-                    'first_seen': row[5],
-                    'last_seen': row[6]
-                })
-            return users
-    except Exception as e:
-        print(f"Error getting all users: {e}")
-        return []
+    def delete_user(self, user_id: int) -> bool:
+        """Delete user from database"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Hapus user dari tabel users
+                cursor.execute('DELETE FROM users WHERE user_id = ?', (user_id,))
+                
+                # Opsional: Hapus juga entri giveaway yang terkait
+                # cursor.execute('DELETE FROM giveaway_entries WHERE user_id = ?', (user_id,))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting user: {e}")
+            return False
 
-def delete_user(self, user_id: int) -> bool:
-    """Delete user from database"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Hapus user dari tabel users
-            cursor.execute('DELETE FROM users WHERE user_id = ?', (user_id,))
-            
-            # Opsional: Hapus juga entri giveaway yang terkait
-            # cursor.execute('DELETE FROM giveaway_entries WHERE user_id = ?', (user_id,))
-            
-            conn.commit()
-            return cursor.rowcount > 0
-    except Exception as e:
-        print(f"Error deleting user: {e}")
-        return False
+    def get_total_users_count(self) -> int:
+        """Get total number of users"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT COUNT(*) FROM users')
+                row = cursor.fetchone()
+                return row[0] if row else 0
+        except Exception as e:
+            print(f"Error getting total users count: {e}")
+            return 0
 
-def get_total_users_count(self) -> int:
-    """Get total number of users"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM users')
-            row = cursor.fetchone()
-            return row[0] if row else 0
-    except Exception as e:
-        print(f"Error getting total users count: {e}")
-        return 0
-
-def set_admin_status(self, user_id: int, is_admin: bool) -> bool:
-    """Set user as admin or remove admin status"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE users SET is_admin = ? WHERE user_id = ?
-            ''', (1 if is_admin else 0, user_id))
-            conn.commit()
-            return cursor.rowcount > 0
-    except Exception as e:
-        print(f"Error setting admin status: {e}")
-        return False
+    def set_admin_status(self, user_id: int, is_admin: bool) -> bool:
+        """Set user as admin or remove admin status"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE users SET is_admin = ? WHERE user_id = ?
+                ''', (1 if is_admin else 0, user_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error setting admin status: {e}")
+            return False
