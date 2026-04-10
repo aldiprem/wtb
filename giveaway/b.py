@@ -158,12 +158,14 @@ async def menu_create_giveaway(event, user_id: int = None):
     
     # Tampilkan SEMUA chat yang tersimpan
     if saved_chats:
-        chats_display = "-"
+        chats_display = ""
         for i, chat in enumerate(saved_chats, 1):
             c_title = chat.get('title', '-')
             c_id = chat.get('chat_id', '-')
             chats_display += f"{i}. **{c_title}** (`{c_id}`)\n"
-
+    else:
+        chats_display = "-"
+    
     msg = f"""
 🎁 **PENGATURAN CREATE GIVEAWAY**
 
