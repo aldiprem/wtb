@@ -30,6 +30,7 @@ from services.frag_service import frag_bp
 from services.tgs_service import tgs_bp
 from games.app import games_bp
 from services.plinko_games_service import plinko_bp
+from giveaway.services.giveaway_service import giveaway_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -231,6 +232,21 @@ app.register_blueprint(frag_bp)
 app.register_blueprint(games_bp, url_prefix='')
 app.register_blueprint(tgs_bp)
 app.register_blueprint(plinko_bp, url_prefix='/api')
+app.register_blueprint(giveaway_bp)
+
+@app.route('/giveaways')
+def serve_giveaway_page():
+    return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
+
+# Route untuk CSS giveaway
+@app.route('/giveaway/css/<path:filename>')
+def serve_giveaway_css(filename):
+    return send_from_directory(os.path.join(base_dir, 'giveaway', 'css'), filename)
+
+# Route untuk JS giveaway
+@app.route('/giveaway/js/<path:filename>')
+def serve_giveaway_js(filename):
+    return send_from_directory(os.path.join(base_dir, 'giveaway', 'js'), filename)
 
 @app.route('/plinko-games')
 def serve_plinko_games():
