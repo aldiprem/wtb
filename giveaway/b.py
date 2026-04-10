@@ -275,6 +275,10 @@ async def profile(event):
 async def create_giveaway(event):
     user = await event.get_sender()
     user_id = user.id
+
+    if user_id in user_state:
+        del user_state[user_id]
+
     await menu_create_giveaway(event)
 
 @bot.on(events.CallbackQuery(pattern="^add_hadiah$"))
@@ -290,7 +294,7 @@ async def add_hadiah(event):
 
 __Silakan kirim input text hadiah yang ingin anda gunakan, gunakan contoh format dibawah ini jika ingin menggunakan lebih dari 1 hadiah.__
 
-**Contoh:**
+[🚨](tg://emoji?id=4971975844042900171) **Contoh:**
 ^^``Plush Pepe
 NFT Username
 Telegram Premium 1 Bulan
@@ -298,51 +302,43 @@ Telegram Premium 1 Tahun`^^
 
 **__Klik Batalkan jika ingin dibatalkan.__**
 """
+
+    buttons = [
+        [Button.inline("❌ Batalkan", data="create_giveaway")]
+    ]
     
     await event.delete()
-    await event.respond(msg)
+    await event.respond(msg, buttons=buttons)
 
 @bot.on(events.NewMessage)
 async def handle_hadiah_input(event):
     user_id = event.sender_id
-    
-    # Cek apakah user sedang dalam state waiting_hadiah
+
     if user_id not in user_state:
         return
     
     state = user_state[user_id]
     if state.get('action') != 'waiting_hadiah':
         return
-    
-    # Cek apakah pesan dari user yang sama
+
     if event.sender_id != user_id:
         return
-    
-    # Cek apakah pesan adalah command /cancel
-    if event.raw_text.startswith('/cancel'):
-        if user_id in user_state:
-            del user_state[user_id]
-        await event.reply("❌ Input hadiah dibatalkan.")
-        return
-    
-    text = event.raw_text.strip()
 
+    msg_self = await event.reply("[✅](tg://emoji?id=5260463209562776385) **Berhasil Tersimpan!!**")
+
+    text = event.raw_text.strip()
     hadiah_list = [h.strip() for h in text.split('\n') if h.strip()]
     
     if not hadiah_list:
         await event.reply("⚠️ Hadiah tidak boleh kosong. Silakan kirim ulang atau ketik /cancel")
         return
-    
-    # Simpan hadiah ke user_state
+
     user_state[user_id]['hadiah'] = hadiah_list
     user_state[user_id]['action'] = None
 
     await menu_create_giveaway(event, user_id)
-
-    try:
-        await event.delete()
-    except:
-        pass
+    await asyncio.sleep(5)
+    await msg_self.delete()
 
 @bot.on(events.CallbackQuery(pattern="^kembali$"))
 async def kembali(event):
