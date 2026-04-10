@@ -163,29 +163,26 @@ async def menu_create_giveaway(event, user_id: int = None):
             c_title = chat.get('title', '-')
             c_id = chat.get('chat_id', '-')
             chats_display += f"{i}. {c_title} (`{c_id}`)\n"
-        
-        # Tampilkan chat yang sedang dipilih
-        selected_display = f"{chat_title} (`{chat_id}`)" if chat_id else 'Belum dipilih'
-        chat_section = f"""
-**Chat yang tersimpan:**
-{chats_display}
 
-**Chat dipilih:** {selected_display}
+        selected_display = f"**{chat_title}** (`{chat_id}`)" if chat_id else 'Belum dipilih'
+        chat_section = f"""
+**Chat ID:**
+^^{chats_display}^^
 """
     else:
-        chat_section = "**Chat Target:** (Belum diisi, klik \"📡 Chat ID\" untuk memilih)"
+        chat_section = "-"
     
     # Build message
     msg = f"""
 🎁 **PENGATURAN CREATE GIVEAWAY**
 
 **Pembuat:** {mention} (@{username or '-'})
-{chat_section}
 **Hadiah:** 
-{hadiah_formatted}
-**Durasi:** {durasi if durasi else '(Belum diisi)'}
-**Syarat Link:** {link if link else '(Tidak ada)'}
-**Syarat Join:** {syarat if syarat else '(Tidak ada)'}
+^^{hadiah_formatted}^^
+{chat_section}
+**Durasi:** {durasi if durasi else '-'}
+**Syarat Link:** {link if link else '-'}
+**Syarat Join:** {syarat if syarat else '-'}
 **Captcha:** {captcha}
     """
     
