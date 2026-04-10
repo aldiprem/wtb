@@ -1,238 +1,399 @@
 #!/bin/bash
-# Script untuk menjalankan aplikasi (app.py + fragment_bot.py + giveaway/b.py)
+# Script untuk mengelola screen session dengan opsi fleksibel
 
-# Warna untuk output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+CYAN='\033[0;36m'
+NC='\033[0m'
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}🚀 Memulai Website Management API Server${NC}"
-echo -e "${GREEN}========================================${NC}"
+# Daftar session
+declare -A SESSIONS
+SESSIONS[1]="flask_server:Flask Server (Port 5050):cd /root/wtb && source myenv/bin/activate && python3 app.py"
+SESSIONS[2]="fragment_bot:Fragment Bot:cd /root/wtb && source myenv/bin/activate && python3 fragment/fragment_bot.py"
+SESSIONS[3]="giveaway_bot:Giveaway Bot:cd /root/wtb/giveaway && source ../myenv/bin/activate && python3 b.py"
+SESSIONS[4]="games_module:Games Module (via Flask):cd /root/wtb && source myenv/bin/activate && python3 app.py"
 
-# Pindah ke direktori utama (parent dari scripts)
-cd "$(dirname "$0")/.."
+show_help() {
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}🎮 SCREEN SESSION MANAGER${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo ""
+    echo -e "${CYAN}Penggunaan: ./screen.sh [command]${NC}"
+    echo ""
+    echo "Commands:"
+    echo "  start     - Memulai session (dengan opsi)"
+    echo "  stop      - Menghentikan session (dengan opsi)"
+    echo "  restart   - Merestart session (dengan opsi)"
+    echo "  attach    - Melampirkan ke session (pilih)"
+    echo "  list      - Menampilkan daftar session aktif"
+    echo "  status    - Cek status semua service"
+    echo "  logs      - Melihat logs"
+    echo "  all       - Menjalankan semua session"
+    echo "  stopall   - Menghentikan semua session"
+    echo ""
+    echo -e "${CYAN}Contoh multi pilih:${NC}"
+    echo "  Masukkan angka: 1,2,3 atau 1-3 atau 1,2-4"
+    echo "  Contoh: '1,3' atau '1-3' atau '2,4'"
+    echo ""
+}
 
-# ==================== BUAT FOLDER LOGS ====================
-mkdir -p logs
+show_menu() {
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}📋 DAFTAR SESSION${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "  ${CYAN}1.${NC} Flask Server (Port 5050)"
+    echo -e "  ${CYAN}2.${NC} Fragment Bot"
+    echo -e "  ${CYAN}3.${NC} Giveaway Bot"
+    echo -e "  ${CYAN}4.${NC} Games Module (via Flask)"
+    echo -e "  ${CYAN}0.${NC} SEMUA SESSION"
+    echo -e "${GREEN}========================================${NC}"
+}
 
-# ==================== FUNGSI MEMATIKAN PORT 5050 ====================
-kill_port_5050() {
-    echo -e "${YELLOW}🔍 Memeriksa port 5050...${NC}"
+parse_selection() {
+    local input="$1"
+    local selected=()
     
-    # Cari proses yang menggunakan port 5050
-    PIDS=$(lsof -ti :5050 2>/dev/null)
+    if [[ "$input" == "0" ]] || [[ "$input" == "all" ]]; then
+        echo "1 2 3 4"
+        return
+    fi
     
-    if [ -n "$PIDS" ]; then
-        echo -e "${YELLOW}⚠️  Port 5050 sedang digunakan oleh PID: $PIDS${NC}"
-        
-        for PID in $PIDS; do
-            # Cek apakah proses adalah Flask
-            PROCESS_NAME=$(ps -p $PID -o comm= 2>/dev/null)
-            if [[ "$PROCESS_NAME" == *"python"* ]] || [[ "$PROCESS_NAME" == *"flask"* ]]; then
-                echo -e "${YELLOW}📡 Menghentikan proses Flask (PID: $PID)...${NC}"
-                kill -15 $PID 2>/dev/null
-                sleep 2
-                
-                # Force kill jika masih berjalan
-                if kill -0 $PID 2>/dev/null; then
-                    echo -e "${RED}🔫 Force kill PID: $PID${NC}"
-                    kill -9 $PID 2>/dev/null
-                fi
-                echo -e "${GREEN}✅ Proses PID $PID dihentikan${NC}"
-            else
-                echo -e "${YELLOW}⚠️  PID $PID bukan proses Flask ($PROCESS_NAME), tidak dihentikan${NC}"
-            fi
-        done
-        
-        # Tunggu sebentar dan cek lagi
+    IFS=',' read -ra parts <<< "$input"
+    for part in "${parts[@]}"; do
+        if [[ "$part" == *"-"* ]]; then
+            start=$(echo "$part" | cut -d'-' -f1)
+            end=$(echo "$part" | cut -d'-' -f2)
+            for i in $(seq $start $end); do
+                selected+=($i)
+            done
+        else
+            selected+=($part)
+        fi
+    done
+    
+    echo "${selected[@]}"
+}
+
+start_session() {
+    local num=$1
+    local name=$(echo "${SESSIONS[$num]}" | cut -d':' -f1)
+    local desc=$(echo "${SESSIONS[$num]}" | cut -d':' -f2)
+    local cmd=$(echo "${SESSIONS[$num]}" | cut -d':' -f3-)
+    
+    # Cek apakah session sudah berjalan
+    if screen -list | grep -q "$name"; then
+        echo -e "${YELLOW}⚠️  Session $name sudah berjalan${NC}"
+        return 1
+    fi
+    
+    echo -e "${GREEN}🚀 Menjalankan $desc...${NC}"
+    
+    # Buat command dengan handling yang baik
+    screen -dmS "$name" bash -c "$cmd; echo 'Session $name exited'; exec bash"
+    
+    sleep 2
+    if screen -list | grep -q "$name"; then
+        echo -e "${GREEN}✅ $desc berjalan (session: $name)${NC}"
+        return 0
+    else
+        echo -e "${RED}❌ Gagal menjalankan $desc${NC}"
+        return 1
+    fi
+}
+
+stop_session() {
+    local num=$1
+    local name=$(echo "${SESSIONS[$num]}" | cut -d':' -f1)
+    local desc=$(echo "${SESSIONS[$num]}" | cut -d':' -f2)
+    
+    if screen -list | grep -q "$name"; then
+        echo -e "${YELLOW}🛑 Menghentikan $desc...${NC}"
+        screen -S "$name" -X quit 2>/dev/null
+        sleep 1
+        echo -e "${GREEN}✅ $desc dihentikan${NC}"
+        return 0
+    else
+        echo -e "${YELLOW}⚠️  $desc tidak berjalan${NC}"
+        return 1
+    fi
+}
+
+restart_session() {
+    local num=$1
+    echo -e "${BLUE}🔄 Merestart session $num...${NC}"
+    stop_session "$num"
+    sleep 2
+    start_session "$num"
+}
+
+attach_session() {
+    local num=$1
+    local name=$(echo "${SESSIONS[$num]}" | cut -d':' -f1)
+    local desc=$(echo "${SESSIONS[$num]}" | cut -d':' -f2)
+    
+    if screen -list | grep -q "$name"; then
+        echo -e "${GREEN}📡 Melampirkan ke $desc...${NC}"
+        echo -e "${YELLOW}Tekan Ctrl+A, D untuk detach${NC}"
+        sleep 1
+        screen -r "$name"
+    else
+        echo -e "${RED}❌ Session $desc tidak berjalan${NC}"
+    fi
+}
+
+start_with_selection() {
+    show_menu
+    echo -e "${CYAN}Masukkan pilihan (contoh: 1,3 atau 1-3 atau 0 untuk semua):${NC}"
+    read -p "Pilihan: " selection
+    
+    selections=$(parse_selection "$selection")
+    
+    for num in $selections; do
+        start_session "$num"
+        sleep 1
+    done
+    
+    echo -e "${GREEN}✅ Selesai!${NC}"
+}
+
+stop_with_selection() {
+    show_menu
+    echo -e "${CYAN}Masukkan pilihan yang akan dihentikan (contoh: 1,3 atau 0 untuk semua):${NC}"
+    read -p "Pilihan: " selection
+    
+    selections=$(parse_selection "$selection")
+    
+    for num in $selections; do
+        stop_session "$num"
+        sleep 1
+    done
+    
+    echo -e "${GREEN}✅ Selesai!${NC}"
+}
+
+restart_with_selection() {
+    show_menu
+    echo -e "${CYAN}Masukkan pilihan yang akan direstart (contoh: 1,3 atau 0 untuk semua):${NC}"
+    read -p "Pilihan: " selection
+    
+    selections=$(parse_selection "$selection")
+    
+    for num in $selections; do
+        restart_session "$num"
         sleep 2
-        if lsof -ti :5050 > /dev/null 2>&1; then
-            echo -e "${RED}❌ Port 5050 masih digunakan! Memaksa kill semua...${NC}"
-            lsof -ti :5050 | xargs kill -9 2>/dev/null
+    done
+    
+    echo -e "${GREEN}✅ Selesai!${NC}"
+}
+
+attach_with_selection() {
+    show_menu
+    echo -e "${CYAN}Pilih session yang akan dilampiri:${NC}"
+    read -p "Nomor: " selection
+    
+    attach_session "$selection"
+}
+
+list_sessions() {
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}📋 DAFTAR SCREEN SESSION${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    screen -ls
+    echo -e "${GREEN}========================================${NC}"
+}
+
+show_status() {
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}📊 STATUS SERVICE${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    
+    for num in 1 2 3 4; do
+        local name=$(echo "${SESSIONS[$num]}" | cut -d':' -f1)
+        local desc=$(echo "${SESSIONS[$num]}" | cut -d':' -f2)
+        
+        if screen -list | grep -q "$name"; then
+            echo -e "${GREEN}✅ $desc: RUNNING${NC}"
+        else
+            echo -e "${RED}❌ $desc: STOPPED${NC}"
         fi
-    else
-        echo -e "${GREEN}✅ Port 5050 tersedia${NC}"
+    done
+    
+    echo -e "${GREEN}========================================${NC}"
+    
+    # Tambahan info untuk giveaway bot
+    if [ -f "/root/wtb/giveaway/giveaway.db" ]; then
+        echo -e "${BLUE}🎁 Giveaway Database: EXISTS${NC}"
     fi
 }
 
-# ==================== FUNGSI MEMBERSIHKAN PID FILES ====================
-clean_pid_files() {
-    if [ -f "/tmp/flask_server.pid" ]; then
-        OLD_PID=$(cat /tmp/flask_server.pid)
-        if ! kill -0 $OLD_PID 2>/dev/null; then
-            echo -e "${YELLOW}🗑️  Menghapus PID file stale: /tmp/flask_server.pid${NC}"
-            rm -f /tmp/flask_server.pid
-        fi
-    fi
+view_logs() {
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "${GREEN}📋 PILIH LOG${NC}"
+    echo -e "${GREEN}========================================${NC}"
+    echo -e "  ${CYAN}1.${NC} Flask Server Log"
+    echo -e "  ${CYAN}2.${NC} Fragment Bot Log"
+    echo -e "  ${CYAN}3.${NC} Giveaway Bot Log"
+    echo -e "  ${CYAN}4.${NC} Semua Log (multitail)"
+    echo -e "${GREEN}========================================${NC}"
+    read -p "Pilihan: " choice
     
-    if [ -f "/tmp/fragment_bot.pid" ]; then
-        OLD_PID=$(cat /tmp/fragment_bot.pid)
-        if ! kill -0 $OLD_PID 2>/dev/null; then
-            echo -e "${YELLOW}🗑️  Menghapus PID file stale: /tmp/fragment_bot.pid${NC}"
-            rm -f /tmp/fragment_bot.pid
-        fi
-    fi
-    
-    if [ -f "/tmp/giveaway_bot.pid" ]; then
-        OLD_PID=$(cat /tmp/giveaway_bot.pid)
-        if ! kill -0 $OLD_PID 2>/dev/null; then
-            echo -e "${YELLOW}🗑️  Menghapus PID file stale: /tmp/giveaway_bot.pid${NC}"
-            rm -f /tmp/giveaway_bot.pid
-        fi
-    fi
+    case $choice in
+        1)
+            if [ -f "/root/wtb/logs/flask.log" ]; then
+                tail -f /root/wtb/logs/flask.log
+            else
+                echo -e "${RED}Log file not found${NC}"
+            fi
+            ;;
+        2)
+            if [ -f "/root/wtb/logs/fragment_bot.log" ]; then
+                tail -f /root/wtb/logs/fragment_bot.log
+            else
+                echo -e "${RED}Log file not found${NC}"
+            fi
+            ;;
+        3)
+            if [ -f "/root/wtb/logs/giveaway_bot.log" ]; then
+                tail -f /root/wtb/logs/giveaway_bot.log
+            else
+                echo -e "${RED}Log file not found${NC}"
+            fi
+            ;;
+        4)
+            if command -v multitail &> /dev/null; then
+                multitail /root/wtb/logs/flask.log /root/wtb/logs/fragment_bot.log /root/wtb/logs/giveaway_bot.log
+            else
+                echo -e "${YELLOW}Multitail tidak terinstall. Install dengan: apt install multitail${NC}"
+                tail -f /root/wtb/logs/*.log
+            fi
+            ;;
+        *)
+            echo -e "${RED}Pilihan tidak valid${NC}"
+            ;;
+    esac
 }
 
-# ==================== KILL PORT 5050 SEBELUM START ====================
-kill_port_5050
-clean_pid_files
+start_all() {
+    echo -e "${GREEN}🚀 Menjalankan SEMUA session...${NC}"
+    for num in 1 2 3 4; do
+        start_session "$num"
+        sleep 2
+    done
+    echo -e "${GREEN}✅ Semua session berjalan!${NC}"
+}
 
-# Cek apakah Python sudah terinstall
-if ! command -v python3 &> /dev/null; then
-    echo -e "${RED}Python3 tidak ditemukan. Silakan install Python3 terlebih dahulu.${NC}"
-    exit 1
-fi
+stop_all() {
+    echo -e "${YELLOW}🛑 Menghentikan SEMUA session...${NC}"
+    for num in 1 2 3 4; do
+        stop_session "$num"
+        sleep 1
+    done
+    echo -e "${GREEN}✅ Semua session dihentikan!${NC}"
+}
 
-# ==================== CEK FOLDER GAMES ====================
-if [ ! -d "games" ]; then
-    echo -e "${YELLOW}⚠️  Folder games tidak ditemukan, membuat struktur folder...${NC}"
-    mkdir -p games/css games/js
-    echo -e "${GREEN}✅ Folder games created${NC}"
-fi
+# Main menu untuk interaktif
+interactive_menu() {
+    while true; do
+        echo ""
+        echo -e "${GREEN}========================================${NC}"
+        echo -e "${GREEN}🎮 SCREEN SESSION MANAGER${NC}"
+        echo -e "${GREEN}========================================${NC}"
+        echo -e "  ${CYAN}1.${NC} Start Sessions (pilih)"
+        echo -e "  ${CYAN}2.${NC} Stop Sessions (pilih)"
+        echo -e "  ${CYAN}3.${NC} Restart Sessions (pilih)"
+        echo -e "  ${CYAN}4.${NC} Attach to Session"
+        echo -e "  ${CYAN}5.${NC} List Sessions"
+        echo -e "  ${CYAN}6.${NC} Status"
+        echo -e "  ${CYAN}7.${NC} View Logs"
+        echo -e "  ${CYAN}8.${NC} Start ALL Sessions"
+        echo -e "  ${CYAN}9.${NC} Stop ALL Sessions"
+        echo -e "  ${CYAN}0.${NC} Exit"
+        echo -e "${GREEN}========================================${NC}"
+        read -p "Pilih menu: " menu_choice
+        
+        case $menu_choice in
+            1) start_with_selection ;;
+            2) stop_with_selection ;;
+            3) restart_with_selection ;;
+            4) attach_with_selection ;;
+            5) list_sessions ;;
+            6) show_status ;;
+            7) view_logs ;;
+            8) start_all ;;
+            9) stop_all ;;
+            0) echo -e "${GREEN}Bye!${NC}"; break ;;
+            *) echo -e "${RED}Pilihan tidak valid${NC}" ;;
+        esac
+    done
+}
 
-if [ ! -f "games/app.py" ]; then
-    echo -e "${RED}❌ File games/app.py tidak ditemukan!${NC}"
-    echo -e "${YELLOW}Pastikan file games/app.py sudah dibuat.${NC}"
-    exit 1
-fi
-
-if [ ! -f "games/games.html" ]; then
-    echo -e "${RED}❌ File games/games.html tidak ditemukan!${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}✅ Games module terdeteksi${NC}"
-
-# ==================== CEK FOLDER GIVEAWAY ====================
-if [ ! -d "giveaway" ]; then
-    echo -e "${YELLOW}⚠️  Folder giveaway tidak ditemukan, membuat struktur folder...${NC}"
-    mkdir -p giveaway/database
-    echo -e "${GREEN}✅ Folder giveaway created${NC}"
-fi
-
-if [ ! -f "giveaway/b.py" ]; then
-    echo -e "${RED}❌ File giveaway/b.py tidak ditemukan!${NC}"
-    echo -e "${YELLOW}Pastikan file giveaway/b.py sudah dibuat.${NC}"
-else
-    echo -e "${GREEN}✅ Giveaway module terdeteksi${NC}"
-    
-    if [ ! -f "giveaway/database/giveaway.py" ]; then
-        echo -e "${RED}❌ File giveaway/database/giveaway.py tidak ditemukan!${NC}"
-    fi
-fi
-
-# Aktifkan virtual environment
-if [ -z "$VIRTUAL_ENV" ]; then
-    echo -e "${YELLOW}⚠️  Virtual environment belum aktif. Mengaktifkan...${NC}"
-    source myenv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Gagal mengaktifkan virtual environment${NC}"
-        exit 1
-    fi
-    echo -e "${GREEN}✅ Virtual environment aktif${NC}"
-fi
-
-# ==================== CEK IMPORT BLUEPRINT DI APP.PY ====================
-if ! grep -q "from games.app import games_bp" app.py; then
-    echo -e "${YELLOW}⚠️  Blueprint games belum terdaftar di app.py${NC}"
-    echo -e "${YELLOW}Pastikan sudah menambahkan:${NC}"
-    echo -e "  1. from games.app import games_bp"
-    echo -e "  2. app.register_blueprint(games_bp)"
-    echo -e "  3. Route /games dan static files"
-fi
-
-# ==================== JALANKAN APP.PY DI BACKGROUND ====================
-echo -e "${GREEN}📡 Menjalankan Flask server di port 5050...${NC}"
-nohup python3 app.py > logs/flask.log 2>&1 &
-APP_PID=$!
-echo -e "${GREEN}✅ Flask server berjalan dengan PID: $APP_PID${NC}"
-
-# Tunggu sebentar agar Flask server siap
-sleep 5
-
-# Cek apakah Flask server masih berjalan
-if ! ps -p $APP_PID > /dev/null 2>&1; then
-    echo -e "${RED}❌ Flask server gagal berjalan! Cek logs/flask.log${NC}"
-    if [ -f logs/flask.log ]; then
-        cat logs/flask.log
-    else
-        echo -e "${RED}Log file tidak ditemukan${NC}"
-    fi
-    exit 1
-fi
-
-# Cek apakah port 5050 benar-benar terbuka
-sleep 2
-if lsof -ti :5050 > /dev/null 2>&1; then
-    echo -e "${GREEN}✅ Port 5050 berhasil dibuka${NC}"
-else
-    echo -e "${YELLOW}⚠️  Port 5050 belum terbuka, mungkin masih loading...${NC}"
-fi
-
-# ==================== JALANKAN FRAGMENT_BOT.PY DI BACKGROUND ====================
-echo -e "${GREEN}🤖 Menjalankan Fragment Bot (Telegram)...${NC}"
-if [ -f "fragment/fragment_bot.py" ]; then
-    nohup python3 fragment/fragment_bot.py > logs/fragment_bot.log 2>&1 &
-    BOT_PID=$!
-    echo -e "${GREEN}✅ Fragment Bot berjalan dengan PID: $BOT_PID${NC}"
-    echo "$BOT_PID" > /tmp/fragment_bot.pid
-else
-    echo -e "${YELLOW}⚠️  File fragment/fragment_bot.py tidak ditemukan, skip bot${NC}"
-    BOT_PID="N/A"
-fi
-
-# ==================== JALANKAN GIVEAWAY BOT DI BACKGROUND ====================
-echo -e "${BLUE}🎁 Menjalankan Giveaway Bot...${NC}"
-if [ -f "giveaway/b.py" ] && [ -f "giveaway/database/giveaway.py" ]; then
-    # Install required packages if not already installed
-    pip3 install telethon python-dotenv > /dev/null 2>&1
-    
-    # Buat folder database jika belum ada
-    mkdir -p giveaway/database
-    
-    nohup python3 giveaway/b.py > logs/giveaway_bot.log 2>&1 &
-    GIVEAWAY_PID=$!
-    echo -e "${GREEN}✅ Giveaway Bot berjalan dengan PID: $GIVEAWAY_PID${NC}"
-    echo "$GIVEAWAY_PID" > /tmp/giveaway_bot.pid
-else
-    echo -e "${YELLOW}⚠️  File giveaway/b.py atau giveaway/database/giveaway.py tidak ditemukan, skip giveaway bot${NC}"
-    GIVEAWAY_PID="N/A"
-fi
-
-# ==================== SAVE PIDS TO FILE ====================
-echo "$APP_PID" > /tmp/flask_server.pid
-
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}✅ Semua server berjalan!${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo -e "📊 Flask Server   : PID $APP_PID - Port 5050"
-echo -e "🎮 Games Module   : Terintegrasi di Flask (blueprint)"
-echo -e "🤖 Fragment Bot   : PID $BOT_PID"
-echo -e "🎁 Giveaway Bot   : PID $GIVEAWAY_PID"
-echo -e ""
-echo -e "${YELLOW}🌐 Akses: https://companel.shop${NC}"
-echo -e "${YELLOW}🌐 Akses Games: https://companel.shop/games${NC}"
-echo -e "${BLUE}🎁 Giveaway Bot commands:${NC}"
-echo -e "   /start - Start bot"
-echo -e "   /newgiveaway - Create giveaway (admin)"
-echo -e "   /join - Join active giveaway"
-echo -e ""
-echo -e "${YELLOW}📋 Log files:${NC}"
-echo -e "   Flask log:     tail -f logs/flask.log"
-echo -e "   Fragment log:  tail -f logs/fragment_bot.log"
-echo -e "   Giveaway log:  tail -f logs/giveaway_bot.log"
-echo -e ""
-echo -e "${YELLOW}Gunakan './stop.sh' untuk menghentikan semua server${NC}"
-echo -e "${GREEN}========================================${NC}"
+# Parse command line arguments
+case "$1" in
+    start)
+        if [ -n "$2" ]; then
+            # Jika ada parameter langsung
+            selections=$(parse_selection "$2")
+            for num in $selections; do
+                start_session "$num"
+            done
+        else
+            start_with_selection
+        fi
+        ;;
+    stop)
+        if [ -n "$2" ]; then
+            selections=$(parse_selection "$2")
+            for num in $selections; do
+                stop_session "$num"
+            done
+        else
+            stop_with_selection
+        fi
+        ;;
+    restart)
+        if [ -n "$2" ]; then
+            selections=$(parse_selection "$2")
+            for num in $selections; do
+                restart_session "$num"
+            done
+        else
+            restart_with_selection
+        fi
+        ;;
+    attach)
+        if [ -n "$2" ]; then
+            attach_session "$2"
+        else
+            attach_with_selection
+        fi
+        ;;
+    list)
+        list_sessions
+        ;;
+    status)
+        show_status
+        ;;
+    logs)
+        view_logs
+        ;;
+    all)
+        start_all
+        ;;
+    stopall)
+        stop_all
+        ;;
+    menu)
+        interactive_menu
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        # Jika tidak ada argumen, tampilkan help
+        show_help
+        echo ""
+        echo -e "${CYAN}Atau jalankan './screen.sh menu' untuk mode interaktif${NC}"
+        ;;
+esac
