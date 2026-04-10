@@ -182,6 +182,8 @@ async def check_bot_access(chat_id: int) -> tuple:
     except Exception as e:
         return False, False, f"Bot tidak dapat mengakses chat ini: {str(e)[:100]}"
 
+# Di b.py - Ganti fungsi check_on_giveaway_expired dengan yang ini
+
 async def check_on_giveaway_expired():
     """Periodically check for expired on_giveaway"""
     while True:
@@ -190,13 +192,25 @@ async def check_on_giveaway_expired():
             active_giveaways = db.get_active_on_giveaways()
             
             for giveaway in active_giveaways:
+                # Cek apakah sudah expired
                 if giveaway['end_time'] <= now:
                     # Pilih pemenang sesuai jumlah winners_count
                     winners_count = giveaway['winners_count']
-                    winners = db.select_winners_from_on_giveaway(
-                        giveaway['giveaway_code'], 
-                        winners_count
-                    )
+                    participants = giveaway.get('participants', [])
+                    total_participants = len(participants)
+                    
+                    # Jika peserta kurang dari jumlah hadiah, pemenang hanya sesuai jumlah peserta
+                    actual_winners_count = min(winners_count, total_participants)
+                    
+                    winners = []
+                    if actual_winners_count > 0:
+                        winners = db.select_winners_from_on_giveaway(
+                            giveaway['giveaway_code'], 
+                            actual_winners_count
+                        )
+                    
+                    # Parse prize list
+                    prize_lines = [p.strip() for p in giveaway['prize'].split('\n') if p.strip()]
                     
                     if winners:
                         winner_mentions = []
@@ -213,16 +227,18 @@ async def check_on_giveaway_expired():
                                 winner_mentions.append(f"{i}. 🎉 User {winner_id}")
                                 winner_details.append(f"{i}. User ID: `{winner_id}`")
                         
-                        # Format prize list
-                        prize_lines = giveaway['prize'].split('\n')
+                        # Buat teks pengumuman dengan hadiah yang sesuai
+                        winner_prize_text = ""
+                        for i, winner_id in enumerate(winners):
+                            prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
+                            winner_prize_text += f"• Hadiah ke-{i+1}: {prize_text} → {winner_mentions[i] if i < len(winner_mentions) else f'Pemenang {i+1}'}\n"
                         
                         winner_text = f"""
 🏆 **GIVEAWAY TELAH BERAKHIR!** 🏆
 
 ━━━━━━━━━━━━━━━━━━━━━
 **HADIAH & PEMENANG:**
-{chr(10).join([f"• Hadiah ke-{i+1}: {prize}" for i, prize in enumerate(prize_lines) if prize.strip()])}
-
+{winner_prize_text}
 ━━━━━━━━━━━━━━━━━━━━━
 **🏆 DAFTAR PEMENANG:**
 {chr(10).join(winner_mentions)}
@@ -235,14 +251,12 @@ Hadiah akan segera dikirim oleh admin.
                         
                         # Kirim pengumuman ke chat
                         try:
-                            # Reply ke pesan giveaway asli
                             await bot.send_message(
                                 giveaway['chat_id'],
                                 winner_text,
                                 reply_to=giveaway['message_id']
                             )
                         except Exception as e:
-                            # Jika reply gagal, kirim biasa
                             await bot.send_message(giveaway['chat_id'], winner_text)
                         
                         # Kirim notifikasi private ke setiap pemenang
@@ -270,13 +284,18 @@ Terima kasih telah berpartisipasi! ❤️
                                 logger.error(f"Gagal mengirim DM ke {winner_id}: {e}")
                     
                     else:
-                        # Tidak ada peserta
+                        # Tidak ada pemenang (tidak ada peserta)
                         no_winner_text = f"""
 🏆 **GIVEAWAY TELAH BERAKHIR!** 🏆
 
 ━━━━━━━━━━━━━━━━━━━━━
 **Hadiah:**
-{giveaway['prize']}
+{chr(10).join([f"• {p}" for p in prize_lines]) if prize_lines else giveaway['prize']}
+
+━━━━━━━━━━━━━━━━━━━━━
+📊 **Statistik:**
+• Total Peserta: {total_participants}
+• Jumlah Hadiah: {winners_count}
 
 ━━━━━━━━━━━━━━━━━━━━━
 😢 **Tidak ada peserta yang mengikuti giveaway ini.**
@@ -292,11 +311,16 @@ Giveaway berakhir tanpa pemenang.
                         except:
                             await bot.send_message(giveaway['chat_id'], no_winner_text)
                     
+                    # 🔥 PENTING: Mark giveaway sebagai ended
+                    db.mark_giveaway_ended(giveaway['giveaway_code'])
+                    
                     # Update status giveaway di tabel utama
                     try:
                         db.update_giveaway_status(giveaway['giveaway_id'], 'ended')
                     except:
                         pass
+                    
+                    logger.info(f"✅ Giveaway {giveaway['giveaway_code']} telah berakhir dan diproses. Peserta: {total_participants}, Pemenang: {len(winners)}")
                     
         except Exception as e:
             logger.error(f"Error checking on_giveaway expired: {e}")
@@ -1604,7 +1628,6 @@ async def start_giveaway_handler(event):
         
         for msg_info in sent_messages:
             try:
-                # 🔥 PERUBAHAN: Gunakan Button.url dengan format startapp
                 correct_buttons = [[
                     Button.url(
                         text="🎁 Ikuti Giveaway",

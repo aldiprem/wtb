@@ -72,6 +72,7 @@ class GiveawayDatabase:
                     participants TEXT DEFAULT '[]',
                     winners TEXT DEFAULT '[]',
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    is_ended INTEGER DEFAULT 0,
                     FOREIGN KEY (giveaway_id) REFERENCES giveaways(giveaway_id)
                 )
             ''')
@@ -89,7 +90,12 @@ class GiveawayDatabase:
                 )
             ''')
             
-            conn.commit()
+        cursor.execute("PRAGMA table_info(on_giveaway)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'is_ended' not in columns:
+            cursor.execute("ALTER TABLE on_giveaway ADD COLUMN is_ended INTEGER DEFAULT 0")
+        
+        conn.commit()
 
     def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:
         """Save or update user information"""
@@ -957,7 +963,7 @@ class GiveawayDatabase:
             return None
 
     def get_active_on_giveaways(self, chat_id: int = None) -> List[Dict[str, Any]]:
-        """Get all active on_giveaways"""
+        """Get all active on_giveaways that haven't been ended"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -965,13 +971,13 @@ class GiveawayDatabase:
                 if chat_id:
                     cursor.execute('''
                         SELECT * FROM on_giveaway 
-                        WHERE status = 'active' AND chat_id = ?
+                        WHERE status = 'active' AND is_ended = 0 AND chat_id = ?
                         ORDER BY created_at DESC
                     ''', (chat_id,))
                 else:
                     cursor.execute('''
                         SELECT * FROM on_giveaway 
-                        WHERE status = 'active'
+                        WHERE status = 'active' AND is_ended = 0
                         ORDER BY created_at DESC
                     ''')
                 
@@ -988,6 +994,22 @@ class GiveawayDatabase:
         except Exception as e:
             print(f"Error getting active on_giveaways: {e}")
             return []
+
+    def mark_giveaway_ended(self, giveaway_code: str) -> bool:
+        """Mark giveaway as ended so it won't be checked again"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE on_giveaway 
+                    SET is_ended = 1, status = 'ended'
+                    WHERE giveaway_code = ?
+                ''', (giveaway_code,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error marking giveaway ended: {e}")
+            return False
 
     def add_participant_to_on_giveaway(self, giveaway_code: str, user_id: int, 
                                     username: str = "", first_name: str = "") -> bool:
@@ -1039,12 +1061,14 @@ class GiveawayDatabase:
                 if not participants:
                     return []
                 
-                winners_count = min(winners_count, len(participants))
-                winners = random.sample(participants, winners_count)
+                # Jika winners_count lebih besar dari jumlah peserta, ambil semua peserta
+                actual_winners_count = min(winners_count, len(participants))
+                winners = random.sample(participants, actual_winners_count)
                 
+                # Simpan winners ke database (tapi jangan ubah status di sini)
                 cursor.execute('''
                     UPDATE on_giveaway 
-                    SET winners = ?, status = 'ended'
+                    SET winners = ?
                     WHERE giveaway_code = ?
                 ''', (json.dumps(winners), giveaway_code))
                 
@@ -1081,3 +1105,36 @@ class GiveawayDatabase:
         except Exception as e:
             print(f"Error updating giveaway status: {e}")
             return False
+
+    def get_ended_giveaways(self, chat_id: int = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get giveaways that have been ended"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                if chat_id:
+                    cursor.execute('''
+                        SELECT * FROM on_giveaway 
+                        WHERE is_ended = 1 AND chat_id = ?
+                        ORDER BY created_at DESC LIMIT ?
+                    ''', (chat_id, limit))
+                else:
+                    cursor.execute('''
+                        SELECT * FROM on_giveaway 
+                        WHERE is_ended = 1
+                        ORDER BY created_at DESC LIMIT ?
+                    ''', (limit,))
+                
+                rows = cursor.fetchall()
+                giveaways = []
+                for row in rows:
+                    columns = [description[0] for description in cursor.description]
+                    giveaway = dict(zip(columns, row))
+                    giveaway['participants'] = json.loads(giveaway['participants']) if giveaway['participants'] else []
+                    giveaway['winners'] = json.loads(giveaway['winners']) if giveaway['winners'] else []
+                    giveaways.append(giveaway)
+                
+                return giveaways
+        except Exception as e:
+            print(f"Error getting ended giveaways: {e}")
+            return []
