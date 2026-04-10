@@ -109,8 +109,74 @@ class AaycoBot:
                 entities[i] = MessageEntityTextUrl(e.offset, e.length, f'pre:{e.language}')
         return markdown.unparse(text, entities)
 
-# Set parse_mode untuk bot
 bot.parse_mode = AaycoBot()
+
+async def menu_create_giveaway(event, user_id: int = None):
+    """Display the create giveaway menu with current data"""
+    if user_id is None:
+        user_id = event.sender_id
+    
+    user = await event.client.get_entity(user_id)
+    first_name = getattr(user, 'first_name', '') or ""
+    last_name = getattr(user, 'last_name', '') or ""
+    fullname = f"{first_name} {last_name}".strip()
+    mention = f"[{fullname}](tg://user?id={user_id})"
+    
+    # Get username
+    if hasattr(user, 'username') and user.username:
+        username = user.username
+    elif hasattr(user, 'usernames') and user.usernames:
+        username = user.usernames[0].username
+    else:
+        username = None
+    
+    # Get data from user_state
+    state = user_state.get(user_id, {})
+    chat_id = state.get('chat_id', '')
+    hadiah_list = state.get('hadiah', [])
+    durasi = state.get('durasi', '')
+    link = state.get('link', '')
+    syarat = state.get('syarat', '')
+    captcha = state.get('captcha', 'Off')
+    
+    # Format hadiah
+    if hadiah_list:
+        hadiah_formatted = '\n'.join([f"{i+1}. {h}" for i, h in enumerate(hadiah_list)])
+    else:
+        hadiah_formatted = ''
+    
+    msg = f"""
+[🎁](tg://emoji?id=5199749070830197566) **PENGATURAN CREATE GIVEAWAY**
+
+**Pembuat:** {mention} (@{username or '-'})
+**Chat ID:** {f'`{chat_id}`' if chat_id else ''}
+**Hadiah:** 
+{hadiah_formatted}
+**Durasi:** {durasi}
+**Syarat Link:** {link}
+**Syarat Join:** {syarat}
+**Captcha:** {captcha}
+    """
+    
+    buttons = [
+        [Button.inline("🎁 Hadiah", data="add_hadiah"),
+         Button.inline("📡 Chat ID", data="add_chat")],
+        [Button.inline("⏳ Durasi", data="add_durasi"),
+         Button.inline("🔗 Link", data="add_link")],
+        [Button.inline("📨 Syarat", data="add_syarat"),
+         Button.inline("🛡 Captcha", data="toggle_captcha")],
+        [Button.inline("🔙 Kembali", data="kembali"),
+         Button.inline("🔊 Start Giveaway", data="start_giveaway")]
+    ]
+    
+    # Check if this is a new message or edit
+    if hasattr(event, 'edit') and callable(getattr(event, 'edit', None)):
+        try:
+            await event.edit(msg, buttons=buttons)
+        except:
+            await event.respond(msg, buttons=buttons)
+    else:
+        await event.respond(msg, buttons=buttons)
 
 @bot.on(events.NewMessage(pattern="^/start$"))
 async def start(event):
@@ -153,8 +219,7 @@ __Bot ini adalah bot create giveaway, anda dapat membuat giveaway disini dan den
         [Button.inline("📊 Statistik", data="stats"),
          Button.inline("👤 Profil", data="profil")]
     ]
-    
-    # Tambahkan button admin jika user adalah admin
+
     if is_admin:
         buttons.append([Button.inline("⚙️ Admin Panel", data="admin_panel")])
     
@@ -210,43 +275,74 @@ async def profile(event):
 async def create_giveaway(event):
     user = await event.get_sender()
     user_id = user.id
-    first_name = user.first_name or ""
-    last_name = user.last_name or ""
-    fullname = f"{first_name} {last_name}"
-    mention = f"[{fullname}](tg://user?id={user_id})"
+    await menu_create_giveaway(event)
 
-    if user.username:
-        username = user.username
-    elif getattr(user, "usernames", None):
-        username = user.usernames[0].username
-    else:
-        username = None
+@bot.on(events.CallbackQuery(pattern="^add_hadiah$"))
+async def add_hadiah(event):
+    user_id = event.sender_id
+    
+    user_state[user_id] = user_state.get(user_id, {})
+    user_state[user_id]['action'] = 'waiting_hadiah'
+    user_state[user_id]['step'] = 'input_hadiah'
+    
+    msg = """
+[🎁](tg://emoji?id=5199749070830197566) **TAMBAH HADIAH**
 
-    msg = f"""
-[🎁](tg://emoji?id=5199749070830197566) **PENGATURAN CREATE GIVEAWAY**
+__Silakan kirim input text hadiah yang ingin anda gunakan, gunakan contoh format dibawah ini jika ingin menggunakan lebih dari 1 hadiah.__
 
-**Pembuat:** {mention} (@{username})
-**Chat ID:** 
-**Hadiah:** 
-**Durasi:** 
-**Syarat Link:** 
-**Syarat Join:** 
-**Captcha:** On/Off
-    """
+**Contoh:**
+^^``Plush Pepe
+NFT Username
+Telegram Premium 1 Bulan
+Telegram Premium 1 Tahun`^^
 
-    buttons = [
-        [Button.inline("🎁 Hadiah", data="add_hadiah"),
-         Button.inline("📡 Chat ID", data="add_chat")],
-        [Button.inline("⏳ Durasi", data="add_durasi"),
-         Button.inline("🔗 Link", data="add_link")],
-        [Button.inline("📨 Syarat", data="add_syarat"),
-         Button.inline("🛡 Captcha", data="toggle_captcha")],
-        [Button.inline("🔙 Kembali", data="kembali"),
-         Button.inline("🔊 Start Giveaway", data="start_giveaway")]
-    ]
-
+**__Klik Batalkan jika ingin dibatalkan.__**
+"""
+    
     await event.delete()
-    await event.respond(msg, buttons=buttons)
+    await event.respond(msg)
+
+@bot.on(events.NewMessage)
+async def handle_hadiah_input(event):
+    user_id = event.sender_id
+    
+    # Cek apakah user sedang dalam state waiting_hadiah
+    if user_id not in user_state:
+        return
+    
+    state = user_state[user_id]
+    if state.get('action') != 'waiting_hadiah':
+        return
+    
+    # Cek apakah pesan dari user yang sama
+    if event.sender_id != user_id:
+        return
+    
+    # Cek apakah pesan adalah command /cancel
+    if event.raw_text.startswith('/cancel'):
+        if user_id in user_state:
+            del user_state[user_id]
+        await event.reply("❌ Input hadiah dibatalkan.")
+        return
+    
+    text = event.raw_text.strip()
+
+    hadiah_list = [h.strip() for h in text.split('\n') if h.strip()]
+    
+    if not hadiah_list:
+        await event.reply("⚠️ Hadiah tidak boleh kosong. Silakan kirim ulang atau ketik /cancel")
+        return
+    
+    # Simpan hadiah ke user_state
+    user_state[user_id]['hadiah'] = hadiah_list
+    user_state[user_id]['action'] = None
+
+    await menu_create_giveaway(event, user_id)
+
+    try:
+        await event.delete()
+    except:
+        pass
 
 @bot.on(events.CallbackQuery(pattern="^kembali$"))
 async def kembali(event):
