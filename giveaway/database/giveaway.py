@@ -430,15 +430,6 @@ class GiveawayDatabase:
             return 0
 
     def add_chat(self, user_id: int, chat_id: str, chat_type: str = "", username: str = "", title: str = "") -> bool:
-        """
-        Add a chat for user (for giveaway destination)
-        Args:
-            user_id: User ID who owns the chat
-            chat_id: Chat ID (can be negative for groups/channels)
-            chat_type: Type of chat (Channel, Group, Supergroup, etc.)
-            username: Chat username (if any)
-            title: Chat title/name
-        """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -457,14 +448,22 @@ class GiveawayDatabase:
                     )
                 ''')
                 
-                # Insert or ignore if exists
+                # Check if already exists
                 cursor.execute('''
-                    INSERT OR IGNORE INTO user_chats (user_id, chat_id, chat_type, username, title)
+                    SELECT 1 FROM user_chats WHERE user_id = ? AND chat_id = ?
+                ''', (user_id, chat_id))
+                
+                if cursor.fetchone():
+                    return False  # Already exists
+                
+                # Insert new chat
+                cursor.execute('''
+                    INSERT INTO user_chats (user_id, chat_id, chat_type, username, title)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (user_id, chat_id, chat_type, username, title))
                 
                 conn.commit()
-                return cursor.rowcount > 0
+                return True
         except Exception as e:
             print(f"Error adding chat: {e}")
             return False

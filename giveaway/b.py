@@ -633,42 +633,46 @@ async def handle_peer_selection(event):
         except:
             pass
         
-        # Save to database
-        success = db.add_chat(user_id, chat_id, chat_type, username or "", title or "")
-        
-        if success:
-            # Delete the service message
-            try:
-                await bot.delete_messages(msg.chat_id, msg.id)
-            except:
-                pass
+        existing_chats = db.get_user_chats(user_id)
+        already_exists = any(c['chat_id'] == chat_id for c in existing_chats)
+
+        if not already_exists:
+            success = db.add_chat(user_id, chat_id, chat_type, username or "", title or "")
             
-            # Send success message
-            await bot.send_message(
-                user_id,
-                f"✅ **Berhasil Ditambahkan!**\n\n"
-                f"• Tipe: {chat_type}\n"
-                f"• ID: `{chat_id}`\n"
-                f"• Nama: {title or '-'}\n"
-                f"• Username: @{username if username else '-'}"
-            )
-            
-            # Buat event tiruan untuk memanggil menu_create_giveaway
-            class FakeEvent:
-                def __init__(self, uid, b):
-                    self.sender_id = uid
-                    self.client = b
-                
-                async def edit(self, text, buttons=None):
+            if success:
+                # Delete the service message
+                try:
+                    await bot.delete_messages(msg.chat_id, msg.id)
+                except:
                     pass
                 
-                async def respond(self, text, buttons=None):
-                    await self.client.send_message(self.sender_id, text, buttons=buttons)
-            
-            fake_event = FakeEvent(user_id, bot)
-            await menu_create_giveaway(fake_event, user_id)
+                # Send success message
+                await bot.send_message(
+                    user_id,
+                    f"✅ **Berhasil Ditambahkan!**\n\n"
+                    f"• Tipe: {chat_type}\n"
+                    f"• ID: `{chat_id}`\n"
+                    f"• Nama: {title or '-'}\n"
+                    f"• Username: @{username if username else '-'}"
+                )
+                
+                # Refresh menu
+                class FakeEvent:
+                    def __init__(self, uid, b):
+                        self.sender_id = uid
+                        self.client = b
+                    
+                    async def edit(self, text, buttons=None):
+                        pass
+                    
+                    async def respond(self, text, buttons=None):
+                        await self.client.send_message(self.sender_id, text, buttons=buttons)
+                
+                fake_event = FakeEvent(user_id, bot)
+                await menu_create_giveaway(fake_event, user_id)
         else:
-            await bot.send_message(user_id, "⚠️ Chat sudah ada dalam daftar!")
+            # Already exists, send different message
+            await bot.send_message(user_id, f"⚠️ Chat `{chat_id}` sudah ada dalam daftar!")
             
     except Exception as e:
         logger.error(f"Error handling peer selection: {e}")
