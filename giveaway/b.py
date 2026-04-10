@@ -892,7 +892,7 @@ async def handle_peer_selection(event):
             user_state[user_id]['chat_title'] = title or ''
             user_state[user_id]['saved_chats'] = user_chats[user_id]
             
-            # Kirim pesan sukses singkat
+            # Kirim pesan sukses singkat (TANPA daftar chat)
             await bot.send_message(
                 user_id,
                 f"✅ **Berhasil Ditambahkan!**\n\n"
@@ -912,19 +912,24 @@ async def handle_peer_selection(event):
             inline_buttons.append([Button.inline("✅ SELESAI", data="chat_done"),
                                    Button.inline("🔙 KEMBALI", data="create_giveaway")])
             
-            # Tampilkan chat yang sudah tersimpan
-            if existing_chats:
-                chats_text = "📋 **Chat yang sudah tersimpan:**\n\n"
-                for i, chat in enumerate(existing_chats, 1):
-                    chat_title = chat.get('title', '-')
-                    chat_id_display = chat.get('chat_id', '-')
-                    chat_type_display = chat.get('chat_type', '-')
-                    chats_text += f"{i}. [{chat_type_display}] {chat_title}\n   `{chat_id_display}`\n"
-                
-                # Kirim pesan baru dengan button (BUKAN edit)
-                await bot.send_message(user_id, chats_text, buttons=inline_buttons)
-            else:
-                await bot.send_message(user_id, "Belum ada chat yang tersimpan. Silakan pilih channel/group di atas.", buttons=inline_buttons)
+            # Kirim menu add_chat (tanpa daftar chat)
+            menu_msg = """
+[📨](tg://emoji?id=5406631276042002796) **TAMBAH CHAT TARGET GIVEAWAY**
+
+[⚠](tg://emoji?id=5474438063637669983) **Syarat Chat yang bisa ditambahkan:**
+1. Bot harus menjadi **admin** di chat tersebut
+2. Anda harus menjadi **admin** di chat tersebut
+3. Bot harus memiliki izin **mengirim pesan**
+
+[📌](tg://emoji?id=5397782960512444700) **Cara menambahkan:**
+- Klik tombol "📢 Select Channel" untuk channel
+- Klik tombol "💬 Select Group" untuk group
+- Pilih chat yang ingin ditambahkan
+
+__Klik SELESAI jika sudah selesai menambahkan.__
+"""
+            
+            await bot.send_message(user_id, menu_msg, buttons=inline_buttons)
             
         else:
             await bot.send_message(user_id, f"⚠️ Chat `{chat_id}` sudah ada dalam daftar!")
