@@ -817,7 +817,6 @@ async def handle_peer_selection(event):
             await test_msg.delete()
             bot_has_access = True
         except Exception as e:
-            bot_has_access = False
             error_msg = f"**Bot tidak memiliki akses ke chat ini. Pastikan bot sudah menjadi admin di chat.**"
             await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
             try:
@@ -879,19 +878,7 @@ async def handle_peer_selection(event):
             except:
                 pass
             
-            # Kirim pesan sukses
-            await bot.send_message(
-                user_id,
-                f"✅ **Berhasil Ditambahkan!**\n\n"
-                f"• Tipe: {chat_type}\n"
-                f"• ID: `{chat_id}`\n"
-                f"• Nama: {title or '-'}\n"
-                f"• Username: @{username if username else '-'}\n\n"
-                f"✅ Bot memiliki akses\n"
-                f"✅ Anda adalah admin"
-            )
-            
-            # Update user_state dengan data terbaru
+            # Update user_state
             user_state[user_id]['chat_id'] = chat_id
             user_state[user_id]['chat_title'] = title or ''
             user_state[user_id]['saved_chats'] = user_chats[user_id]
@@ -904,72 +891,38 @@ async def handle_peer_selection(event):
                     pass
                 del loading_message[user_id]
             
-            # Ambil data terbaru dari user_state
-            state = user_state.get(user_id, {})
-            saved_chats = state.get('saved_chats', [])
-            hadiah_list = state.get('hadiah', [])
-            durasi = state.get('durasi', '')
-            link = state.get('link', '')
-            syarat = state.get('syarat', '')
-            captcha = state.get('captcha', 'Off')
+            # ========== REFRESH MENU ADD_CHAT (BUKAN CREATE_GIVEAWAY) ==========
+            # Kirim ulang menu add_chat dengan daftar chat terbaru
+            existing_chats = user_chats.get(user_id, [])
             
-            # Kirim menu baru
-            user = await bot.get_entity(user_id)
-            first_name = getattr(user, 'first_name', '') or ""
-            last_name = getattr(user, 'last_name', '') or ""
-            fullname = f"{first_name} {last_name}".strip()
-            mention = f"[{fullname}](tg://user?id={user_id})"
+            # Inline buttons untuk manage chats
+            inline_buttons = []
+            if existing_chats:
+                inline_buttons.append([Button.inline("🗑 HAPUS SATU", data="delete_chat:one")])
+                inline_buttons.append([Button.inline("🗑️ HAPUS SEMUA", data="delete_chat:all")])
+            inline_buttons.append([Button.inline("✅ SELESAI", data="chat_done"),
+                                   Button.inline("🔙 KEMBALI", data="create_giveaway")])
             
-            if hasattr(user, 'username') and user.username:
-                username_display = user.username
-            elif hasattr(user, 'usernames') and user.usernames:
-                username_display = user.usernames[0].username
+            # Tampilkan chat yang sudah tersimpan
+            if existing_chats:
+                chats_text = "📋 **Chat yang sudah tersimpan:**\n\n"
+                for i, chat in enumerate(existing_chats, 1):
+                    chat_title = chat.get('title', '-')
+                    chat_id_display = chat.get('chat_id', '-')
+                    chat_type_display = chat.get('chat_type', '-')
+                    chats_text += f"{i}. [{chat_type_display}] {chat_title}\n   `{chat_id_display}`\n"
+                
+                await bot.send_message(user_id, chats_text, buttons=inline_buttons)
             else:
-                username_display = None
+                await bot.send_message(user_id, "Belum ada chat yang tersimpan. Silakan pilih channel/group di atas.", buttons=inline_buttons)
             
-            # Format hadiah
-            if hadiah_list:
-                hadiah_formatted = '\n'.join([f"{i+1}. {h}" for i, h in enumerate(hadiah_list)])
-            else:
-                hadiah_formatted = '-'
-            
-            # Format chats display
-            if saved_chats:
-                chats_display = ""
-                for i, chat in enumerate(saved_chats, 1):
-                    c_title = chat.get('title', '-')
-                    c_id = chat.get('chat_id', '-')
-                    chats_display += f"{i}. **{c_title}** (`{c_id}`)\n"
-            else:
-                chats_display = "-"
-            
-            menu_msg = f"""
-🎁 **PENGATURAN CREATE GIVEAWAY**
-
-**Pembuat:** {mention} (@{username_display or '-'})
-**Hadiah:** 
-^^{hadiah_formatted}^^
-**Chat ID:**
-{chats_display}
-**Durasi:** {durasi if durasi else '-'}
-**Syarat Link:** 
-{link if link else '-'}
-**Syarat Join:** {syarat if syarat else '-'}
-**Captcha:** {captcha}
-            """
-            
-            menu_buttons = [
-                [Button.inline("🎁 Hadiah", data="add_hadiah"),
-                 Button.inline("📡 Chat ID", data="add_chat")],
-                [Button.inline("⏳ Durasi", data="add_durasi"),
-                 Button.inline("🔗 Link", data="add_link")],
-                [Button.inline("📨 Syarat", data="add_syarat"),
-                 Button.inline("🛡 Captcha", data="toggle_captcha")],
-                [Button.inline("🔙 Kembali", data="kembali"),
-                 Button.inline("🔊 Start Giveaway", data="start_giveaway")]
-            ]
-            
-            await bot.send_message(user_id, menu_msg, buttons=menu_buttons)
+            # Kirim juga pesan sukses singkat
+            await bot.send_message(
+                user_id,
+                f"✅ **Berhasil Ditambahkan!**\n\n"
+                f"• Tipe: {chat_type}\n"
+                f"• Nama: {title or '-'}"
+            )
             
         else:
             await bot.send_message(user_id, f"⚠️ Chat `{chat_id}` sudah ada dalam daftar!")
