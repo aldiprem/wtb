@@ -1480,7 +1480,7 @@ async def start_giveaway_handler(event):
     user_id = event.sender_id
     state = user_state.get(user_id, {})
     
-    # Validasi data
+    # Validasi data (sama seperti sebelumnya)
     hadiah_list = state.get('hadiah', [])
     saved_chats = state.get('saved_chats', [])
     durasi = state.get('durasi', '')
@@ -1501,27 +1501,20 @@ async def start_giveaway_handler(event):
         await event.answer("❌ Durasi belum diisi!", alert=True)
         return
     
-    # Jumlah pemenang = jumlah hadiah
     winners_count = len(hadiah_list)
     
-    # Kirim pesan loading
     msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Memulai giveaway...__**")
     await event.delete()
     
-    # Generate giveaway ID untuk database utama
     giveaway_id = generate_giveaway_id()
-    
-    # Format prize dengan nomor
     formatted_prize = '\n'.join([f"{i+1}. {h}" for i, h in enumerate(hadiah_list)])
     
-    # Parse end time
     if end_time_iso:
         end_time = datetime.fromisoformat(end_time_iso)
     else:
         minutes = state.get('minutes', 60)
         end_time = get_jakarta_time() + timedelta(minutes=minutes)
     
-    # Kirim giveaway ke setiap chat yang tersimpan
     sent_messages = []
     success_chats = []
     failed_chats = []
@@ -1530,11 +1523,6 @@ async def start_giveaway_handler(event):
         chat_id = int(chat.get('chat_id'))
         chat_title = chat.get('title', 'Unknown')
         
-        # 🔥 PENTING: Generate giveaway_code SEBELUM digunakan
-        # Kita akan generate sementara, nanti diupdate setelah database menyimpan
-        temp_giveaway_code = None
-        
-        # Build message dengan format yang menarik
         message_text = f"""
 🎉 **GIVEAWAY BERLANGSUNG!** 🎉
 
@@ -1557,24 +1545,15 @@ async def start_giveaway_handler(event):
 """
         
         try:
-            # 🔥 Cara 1: Mengirim pesan dengan tombol WebApp (recommended)
-            # Tombol akan terbuka di dalam Telegram (MiniApp)
-            buttons = [
-                [Button.webview(
-                    text="🎁 Ikuti Giveaway",
-                    url=f"https://companel.shop/giveaways?id={temp_giveaway_code or 'loading'}"
-                )]
-            ]
-            
-            # Kirim pesan dengan tombol
-            msg = await bot.send_message(chat_id, message_text, buttons=buttons)
+            # 🔥 PERUBAHAN: Gunakan Button.url dengan startapp
+            # Kirim pesan dulu tanpa tombol (karena belum punya giveaway_code)
+            msg = await bot.send_message(chat_id, message_text)
             
             sent_messages.append({
                 'chat_id': chat_id,
                 'message_id': msg.id,
                 'chat_title': chat_title,
-                'message': msg,  # 🔥 Perbaiki: tambah koma
-                'buttons': buttons
+                'message': msg
             })
             success_chats.append(chat_title)
             
@@ -1586,8 +1565,7 @@ async def start_giveaway_handler(event):
         await event.respond(f"❌ **Gagal memulai giveaway!**\n\nTidak ada chat yang berhasil dikirimi pesan.\n\nError: {', '.join(failed_chats)}")
         return
     
-    # ============ PENTING: Simpan ke database TERLEBIH DAHULU ============
-    # Simpan ke database utama (giveaways)
+    # Simpan ke database
     db.create_giveaway(
         giveaway_id=giveaway_id,
         user_id=user_id,
@@ -1598,7 +1576,6 @@ async def start_giveaway_handler(event):
         end_time=end_time.isoformat()
     )
     
-    # Simpan ke on_giveaway untuk setiap chat
     giveaway_codes = []
     for msg_info in sent_messages:
         giveaway_code = db.create_giveaway(
@@ -1614,7 +1591,6 @@ async def start_giveaway_handler(event):
         if giveaway_code:
             giveaway_codes.append(giveaway_code)
             
-            # Simpan link dan syarat ke database
             if link:
                 db.add_link(giveaway_id, link)
             if syarat and syarat != 'None':
@@ -1622,30 +1598,34 @@ async def start_giveaway_handler(event):
             if captcha == 'On':
                 db.add_captcha(giveaway_id, captcha)
     
-    # ============ UPDATE PESAN DENGAN KODE GIVEAWAY YANG BENAR ============
+    # ============ UPDATE PESAN DENGAN TOMBOL YANG BENAR ============
     if giveaway_codes:
         first_giveaway_code = giveaway_codes[0]
         
-        # Edit pesan yang sudah dikirim dengan kode yang benar
         for msg_info in sent_messages:
             try:
-                # Buat tombol dengan kode giveaway yang benar
-                correct_buttons = [
-                    [Button.webview(
+                # 🔥 PERUBAHAN: Gunakan Button.url dengan format startapp
+                correct_buttons = [[
+                    Button.url(
                         text="🎁 Ikuti Giveaway",
-                        url=f"https://companel.shop/giveaways?id={first_giveaway_code}"
-                    )]
-                ]
+                        url=f"https://t.me/freebiestbot?startapp={first_giveaway_code}"
+                    )
+                ]]
                 
-                # Edit pesan
                 await bot.edit_message(
                     msg_info['chat_id'],
                     msg_info['message_id'],
-                    text=message_text,  # text sama
+                    text=message_text,
                     buttons=correct_buttons
                 )
             except Exception as e:
                 print(f"Error editing message: {e}")
+                # Jika edit gagal, kirim pesan baru dengan tombol
+                await bot.send_message(
+                    msg_info['chat_id'],
+                    f"🔗 **Klik link berikut untuk mengikuti giveaway:**\n\nhttps://t.me/freebiestbot?startapp={first_giveaway_code}",
+                    buttons=correct_buttons
+                )
     
     # Hapus user_state
     if user_id in user_state:
@@ -1659,10 +1639,8 @@ async def start_giveaway_handler(event):
             pass
         del loading_message[user_id]
     
-    # Hapus pesan loading
     await msg_self.delete()
     
-    # Kirim konfirmasi ke user
     success_msg = f"""
 ✅ **GIVEAWAY BERHASIL DIMULAI!**
 
@@ -1679,7 +1657,7 @@ async def start_giveaway_handler(event):
 {f'❌ Gagal: {chr(10).join(failed_chats)}' if failed_chats else ''}
 
 🔗 **Link MiniApp:**
-https://t.me/freebiestbot/giveaway?startapp={giveaway_codes[0] if giveaway_codes else '-'}
+https://t.me/freebiestbot?startapp={giveaway_codes[0] if giveaway_codes else '-'}
 
 💡 Bot akan otomatis memilih {winners_count} pemenang saat giveaway berakhir.
 """
