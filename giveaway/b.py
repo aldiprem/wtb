@@ -626,7 +626,7 @@ Telegram Premium 1 Bulan
 Telegram Premium 1 Tahun`^^
 
 **__Klik Batalkan jika ingin dibatalkan.__**
-"""
+    """
 
     buttons = [
         [Button.inline("❌ Batalkan", data="create_giveaway")]
@@ -634,6 +634,70 @@ Telegram Premium 1 Tahun`^^
     
     await event.delete()
     await event.respond(msg, buttons=buttons)
+
+@bot.on(events.NewMessage)
+async def handle_hadiah_input(event):
+    user_id = event.sender_id
+
+    # Cek apakah user sedang dalam state waiting_hadiah
+    if user_id not in user_state:
+        return
+    
+    state = user_state[user_id]
+    if state.get('action') != 'waiting_hadiah':
+        return
+
+    # Cek apakah pesan dari user yang sama
+    if event.sender_id != user_id:
+        return
+
+    # Cek jika pesan adalah command (mulai dengan /)
+    if event.raw_text.startswith('/'):
+        return
+
+    text = event.raw_text.strip()
+    
+    # Pisahkan berdasarkan newline
+    hadiah_list = [h.strip() for h in text.split('\n') if h.strip()]
+    
+    if not hadiah_list:
+        await event.reply("⚠️ Hadiah tidak boleh kosong. Silakan kirim ulang atau klik batalkan")
+        return
+
+    # Simpan hadiah ke user_state
+    user_state[user_id]['hadiah'] = hadiah_list
+    user_state[user_id]['action'] = None
+    user_state[user_id]['step'] = None
+    
+    # Kirim notifikasi sukses
+    msg_self = await event.reply("✅ Hadiah berhasil disimpan!")
+    
+    # Buat event tiruan untuk refresh menu
+    class FakeEvent:
+        def __init__(self, uid, b):
+            self.sender_id = uid
+            self.client = b
+        
+        async def edit(self, text, buttons=None):
+            pass
+        
+        async def respond(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+    
+    fake_event = FakeEvent(user_id, bot)
+    
+    # Refresh menu
+    await menu_create_giveaway(fake_event, user_id)
+    
+    # Hapus notifikasi setelah 3 detik
+    await asyncio.sleep(3)
+    await msg_self.delete()
+    
+    # Hapus pesan input user
+    try:
+        await event.delete()
+    except:
+        pass
 
 @bot.on(events.CallbackQuery(pattern="^kembali$"))
 async def kembali(event):
