@@ -219,6 +219,9 @@ async def create_giveaway(event):
          Button.inline("🔊 Start Giveaway", data="start_giveaway")]
     ]
 
+    await event.delete()
+    await event.respond(msg, buttons=buttons)
+
 @bot.on(events.CallbackQuery(pattern="^kembali$"))
 async def kembali(event):
     user = await event.get_sender()
