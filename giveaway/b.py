@@ -139,22 +139,23 @@ async def menu_create_giveaway(event, user_id: int = None):
     syarat = state.get('syarat', '')
     captcha = state.get('captcha', 'Off')
     
-    # Format hadiah
+    # Format hadiah dengan nomor urut
     if hadiah_list:
         hadiah_formatted = '\n'.join([f"{i+1}. {h}" for i, h in enumerate(hadiah_list)])
     else:
-        hadiah_formatted = ''
+        hadiah_formatted = '(Belum ada hadiah, klik tombol "🎁 Hadiah" untuk menambah)'
     
+    # Build message
     msg = f"""
 [🎁](tg://emoji?id=5199749070830197566) **PENGATURAN CREATE GIVEAWAY**
 
 **Pembuat:** {mention} (@{username or '-'})
-**Chat ID:** {f'`{chat_id}`' if chat_id else ''}
+**Chat ID:** {f'`{chat_id}`' if chat_id else '(Belum diisi)'}
 **Hadiah:** 
 {hadiah_formatted}
-**Durasi:** {durasi}
-**Syarat Link:** {link}
-**Syarat Join:** {syarat}
+**Durasi:** {durasi if durasi else '(Belum diisi)'}
+**Syarat Link:** {link if link else '(Tidak ada)'}
+**Syarat Join:** {syarat if syarat else '(Tidak ada)'}
 **Captcha:** {captcha}
     """
     
@@ -310,6 +311,7 @@ Telegram Premium 1 Tahun`^^
     await event.delete()
     await event.respond(msg, buttons=buttons)
 
+
 @bot.on(events.NewMessage)
 async def handle_hadiah_input(event):
     user_id = event.sender_id
@@ -324,21 +326,32 @@ async def handle_hadiah_input(event):
     if event.sender_id != user_id:
         return
 
-    msg_self = await event.reply("[✅](tg://emoji?id=5260463209562776385) **Berhasil Tersimpan!!**")
-
     text = event.raw_text.strip()
     hadiah_list = [h.strip() for h in text.split('\n') if h.strip()]
     
     if not hadiah_list:
-        await event.reply("⚠️ Hadiah tidak boleh kosong. Silakan kirim ulang atau ketik /cancel")
+        await event.reply("⚠️ Hadiah tidak boleh kosong. Silakan kirim ulang atau klik batalkan")
         return
 
+    # Simpan hadiah ke user_state
     user_state[user_id]['hadiah'] = hadiah_list
     user_state[user_id]['action'] = None
-
+    
+    # Kirim notifikasi sukses
+    msg_self = await event.reply("[✅](tg://emoji?id=5260463209562776385) **Hadiah berhasil disimpan!**")
+    
+    # Refresh menu
     await menu_create_giveaway(event, user_id)
-    await asyncio.sleep(5)
+    
+    # Hapus notifikasi setelah 3 detik
+    await asyncio.sleep(3)
     await msg_self.delete()
+    
+    # Hapus pesan input user
+    try:
+        await event.delete()
+    except:
+        pass
 
 @bot.on(events.CallbackQuery(pattern="^kembali$"))
 async def kembali(event):
