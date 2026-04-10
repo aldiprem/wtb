@@ -201,12 +201,6 @@ async def menu_create_giveaway(event, user_id: int = None):
     else:
         username = None
 
-    msg_self = None
-    try:
-        msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
-    except Exception as e:
-        logger.warning(f"Failed to send loading message: {e}")
-
     # Get data from user_state
     state = user_state.get(user_id, {})
     saved_chats = state.get('saved_chats', [])
@@ -259,12 +253,6 @@ async def menu_create_giveaway(event, user_id: int = None):
         [Button.inline("🔙 Kembali", data="kembali"),
          Button.inline("🔊 Start Giveaway", data="start_giveaway")]
     ]
-
-    if msg_self is not None:
-        try:
-            await msg_self.delete()
-        except Exception as e:
-            logger.warning(f"Failed to delete loading message: {e}")
     
     # Kirim pesan menu
     if hasattr(event, 'edit') and callable(getattr(event, 'edit', None)):
@@ -893,7 +881,7 @@ async def add_chat(event):
         inline_buttons.append([Button.inline("🗑️ HAPUS SEMUA", data="delete_chat:all")])
     
     inline_buttons.append([Button.inline("✅ SELESAI", data="chat_done"),
-                           Button.inline("🔙 KEMBALI", data="create_giveaway")])
+                           Button.inline("🔙 KEMBALI", data="back_create_giveaway")])
     
     msg = """
 [📨](tg://emoji?id=5406631276042002796) **TAMBAH CHAT TARGET GIVEAWAY**
@@ -932,6 +920,21 @@ __Klik SELESAI jika sudah selesai menambahkan.__
         await event.respond(chats_text, buttons=inline_buttons)
     else:
         await event.respond("Belum ada chat yang tersimpan. Silakan pilih channel/group di atas.", buttons=inline_buttons)
+
+@bot.on(events.CallbackQuery(pattern="^back_create_giveaway$"))
+async def back_create_giveaway(event):
+    user = await event.get_sender()
+    user_id = user.id
+
+    # Kirim pesan loading
+    msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
+    await event.delete()
+    
+    # Refresh menu
+    await menu_create_giveaway(event, user_id)
+    
+    # Hapus pesan loading
+    await msg_self.delete()
 
 @bot.on(events.Raw)
 async def handle_peer_selection(event):
@@ -1287,12 +1290,6 @@ async def kembali(event):
     user = await event.get_sender()
     user_id = user.id 
 
-    msg_self = None
-    try:
-        msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
-    except Exception as e:
-        logger.warning(f"Failed to send loading message: {e}")
-
     if user_id in user_state:
         # Simpan saved_chats yang sudah ada sebelum dihapus
         saved_chats = user_state[user_id].get('saved_chats', [])
@@ -1324,14 +1321,6 @@ async def kembali(event):
         del loading_message[user_id]
 
     await event.delete()
-    
-    # Hapus pesan loading jika ada
-    if msg_self is not None:
-        try:
-            await msg_self.delete()
-        except:
-            pass
-    
     await start(event)
 
 # ==================== MAIN - SAMA PERSIS SEPERTI fragment_bot.py ====================
