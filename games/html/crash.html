@@ -21,15 +21,19 @@
             display: flex; flex-direction: column;
         }
         .canvas-area {
-            flex: 1; position: relative; display: flex; justify-content: center; align-items: center;
+            flex: 1; position: relative; display: flex; 
+            flex-direction: column; /* <-- Tambahkan ini agar elemen tersusun atas-bawah */
+            justify-content: center; align-items: center; 
             background: rgba(0,0,0,0.3); border-radius: 16px; overflow: hidden;
         }
         
-        /* Area Lottie */
         .sticker-wrapper {
-            position: absolute; width: 250px; height: 250px; z-index: 2;
+            /* Hapus tulisan 'position: absolute;' dari sini */
+            width: 200px; height: 200px; z-index: 2;
             transition: transform 0.1s linear;
+            margin-bottom: 10px; /* Memberi jarak antara emoji dan angka */
         }
+
         #preview { width: 100%; height: 100%; }
 
         /* UI Text */
@@ -68,12 +72,13 @@
 <div class="container">
     <div class="canvas-area">
         <div class="status" id="statusText">Memuat Server...</div>
-        <div class="multiplier" id="multiplier">1.00x</div>
         
         <!-- Wadah Lottie -->
         <div class="sticker-wrapper" id="stickerWrapper">
             <div id="preview"></div>
         </div>
+        
+        <div class="multiplier" id="multiplier">1.00x</div>
     </div>
     
     <div class="controls">
