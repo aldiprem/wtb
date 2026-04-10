@@ -200,7 +200,9 @@ async def menu_create_giveaway(event, user_id: int = None):
         username = user.usernames[0].username
     else:
         username = None
-    
+
+    msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
+
     # Get data from user_state
     state = user_state.get(user_id, {})
     saved_chats = state.get('saved_chats', [])
@@ -254,13 +256,15 @@ async def menu_create_giveaway(event, user_id: int = None):
          Button.inline("🔊 Start Giveaway", data="start_giveaway")]
     ]
     
-    # Check if this is a new message or edit
     if hasattr(event, 'edit') and callable(getattr(event, 'edit', None)):
         try:
+            await msg_self.delete()
             await event.edit(msg, buttons=buttons)
         except:
+            await msg_self.delete()
             await event.respond(msg, buttons=buttons)
     else:
+        await msg_self.delete()
         await event.respond(msg, buttons=buttons)
 
 @bot.on(events.NewMessage(pattern="^/start$"))
@@ -1092,7 +1096,8 @@ async def kembali(event):
     user = await event.get_sender()
     user_id = user.id 
 
-    # JANGAN HAPUS user_chats! Hanya hapus state action
+    msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
+
     if user_id in user_state:
         # Simpan saved_chats yang sudah ada sebelum dihapus
         saved_chats = user_state[user_id].get('saved_chats', [])
@@ -1124,6 +1129,7 @@ async def kembali(event):
         del loading_message[user_id]
 
     await event.delete()
+    await msg_self.delete()
     await start(event)
 
 # ==================== MAIN - SAMA PERSIS SEPERTI fragment_bot.py ====================
