@@ -8,7 +8,14 @@ from telethon import TelegramClient, events, Button, types
 import sys
 import logging
 from telethon.tl.functions.messages import GetStickerSetRequest
-from telethon.tl.types import InputStickerSetEmojiDefaultStatuses, InputStickerSetPremiumGifts
+from telethon.tl.types import (
+    InputStickerSetEmojiDefaultStatuses, 
+    InputStickerSetPremiumGifts,
+    KeyboardButtonRequestPeer,
+    RequestPeerTypeBroadcast,
+    RequestPeerTypeChat,
+    MessageService
+)
 from telethon.extensions import markdown
 from telethon.tl.types import (
     MessageEntityCustomEmoji, 
@@ -30,9 +37,10 @@ load_dotenv(dotenv_path=env_path)
 sys.path.append('/root/wtb')
 from giveaway.database.giveaway import GiveawayDatabase
 import pytz
-from telethon.tl.custom import KeyboardButtonRequestPeer
-from telethon.tl.types import RequestPeerTypeBroadcast, RequestPeerTypeChat, MessageService
 from telethon.tl.functions.messages import GetPeerDialogsRequest
+
+# Hapus baris ini:
+# from telethon.tl.custom import KeyboardButtonRequestPeer  # <-- HAPUS
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
