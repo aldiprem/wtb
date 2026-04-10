@@ -138,7 +138,7 @@ async def check_bot_access(chat_id: int) -> tuple:
                     await msg.delete()
                     break
         except Exception as e:
-            return False, False, f"Bot tidak memiliki akses mengirim pesan ke chat ini: {str(e)[:100]}"
+            return False, False, f"Bot tidak memiliki akses mengirim pesan ke chat ini, Dipastikan bot sudah menjadi admin dan setidaknya anda adalah sebagian dari admin atu owner dari chat ID tersebut.**"
         
         # Cek apakah user adalah admin
         try:
@@ -804,7 +804,7 @@ async def handle_peer_selection(event):
             bot_has_access = True
         except Exception as e:
             bot_has_access = False
-            error_msg = f"Bot tidak memiliki akses ke chat ini. Pastikan bot sudah menjadi admin di chat.\nError: {str(e)[:100]}"
+            error_msg = f"**Bot tidak memiliki akses ke chat ini. Pastikan bot sudah menjadi admin di chat.**"
             await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
             # Delete the service message
             try:
