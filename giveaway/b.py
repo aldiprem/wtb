@@ -30,6 +30,9 @@ load_dotenv(dotenv_path=env_path)
 sys.path.append('/root/wtb')
 from giveaway.database.giveaway import GiveawayDatabase
 import pytz
+from telethon.tl.custom import KeyboardButtonRequestPeer
+from telethon.tl.types import RequestPeerTypeBroadcast, RequestPeerTypeChat, MessageService
+from telethon.tl.functions.messages import GetPeerDialogsRequest
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
@@ -45,6 +48,7 @@ BOT_TOKEN = os.getenv("BOT_GIVEAWAY", "")
 
 DEFAULT_DELIMITERS['^^'] = lambda *a, **k: MessageEntityBlockquote(*a, **k)
 user_state = {}
+loading_message = {}
 JAKARTA_TZ = pytz.timezone('Asia/Jakarta')
 
 db = GiveawayDatabase()
@@ -133,6 +137,7 @@ async def menu_create_giveaway(event, user_id: int = None):
     # Get data from user_state
     state = user_state.get(user_id, {})
     chat_id = state.get('chat_id', '')
+    chat_title = state.get('chat_title', '')
     hadiah_list = state.get('hadiah', [])
     durasi = state.get('durasi', '')
     link = state.get('link', '')
@@ -145,12 +150,15 @@ async def menu_create_giveaway(event, user_id: int = None):
     else:
         hadiah_formatted = '(Belum ada hadiah, klik tombol "🎁 Hadiah" untuk menambah)'
     
+    # Display chat info
+    chat_display = f"{chat_title} (`{chat_id}`)" if chat_id else '(Belum diisi, klik "📡 Chat ID" untuk memilih)'
+    
     # Build message
     msg = f"""
-[🎁](tg://emoji?id=5199749070830197566) **PENGATURAN CREATE GIVEAWAY**
+🎁 **PENGATURAN CREATE GIVEAWAY**
 
 **Pembuat:** {mention} (@{username or '-'})
-**Chat ID:** {f'`{chat_id}`' if chat_id else '(Belum diisi)'}
+**Chat Target:** {chat_display}
 **Hadiah:** 
 {hadiah_formatted}
 **Durasi:** {durasi if durasi else '(Belum diisi)'}
@@ -282,6 +290,233 @@ async def create_giveaway(event):
 
     await menu_create_giveaway(event)
 
+@bot.on(events.CallbackQuery(pattern="^add_chat$"))
+async def add_chat(event):
+    if not event.is_private:
+        return await event.answer("Gunakan perintah ini di private chat.", alert=True)
+    
+    user_id = event.sender_id
+    
+    # Set state
+    if user_id not in user_state:
+        user_state[user_id] = {}
+    user_state[user_id]['action'] = 'waiting_peer_selection'
+    user_state[user_id]['step'] = 'select_chat'
+    
+    # Create peer buttons for channel and group selection
+    peer_buttons = [
+        [
+            KeyboardButtonRequestPeer(
+                text="📢 Select Channel",
+                button_id=1,
+                peer_type=RequestPeerTypeBroadcast(),
+                max_quantity=1
+            ),
+            KeyboardButtonRequestPeer(
+                text="💬 Select Group",
+                button_id=2,
+                peer_type=RequestPeerTypeChat(),
+                max_quantity=1
+            )
+        ]
+    ]
+    
+    # Get existing chats
+    existing_chats = db.get_user_chats(user_id)
+    
+    # Create inline buttons for managing chats
+    inline_buttons = []
+    
+    if existing_chats:
+        inline_buttons.append([Button.inline("🗑 HAPUS SATU", data="delete_chat:one")])
+        inline_buttons.append([Button.inline("🗑️ HAPUS SEMUA", data="delete_chat:all")])
+    
+    inline_buttons.append([Button.inline("✅ SELESAI", data="chat_done"),
+                           Button.inline("🔙 KEMBALI", data="create_giveaway")])
+    
+    msg = """
+📨 **Silahkan pilih channel/group yang ingin anda gunakan!**
+
+Klik tombol di keyboard anda untuk membagikan channel/group yang akan disimpan.
+
+🎉 Anda bisa menggunakan lebih dari 1 channel/group. Lakukan terus menerus untuk menambahkan!
+    """
+    
+    # Build reply markup
+    peer_markup = await bot.build_reply_markup(peer_buttons)
+    
+    await event.delete()
+    
+    # Send message with peer buttons
+    loading_msg = await event.respond(msg, buttons=peer_markup)
+    loading_message[user_id] = loading_msg.id
+    
+    # Show existing chats
+    if existing_chats:
+        chats_text = "📋 **Chat yang sudah tersimpan:**\n\n"
+        for i, chat in enumerate(existing_chats, 1):
+            title = chat.get('title', '-')
+            chat_id = chat.get('chat_id', '-')
+            chat_type = chat.get('chat_type', '-')
+            chats_text += f"{i}. [{chat_type}] {title}\n   `{chat_id}`\n"
+        
+        await event.respond(chats_text, buttons=inline_buttons)
+    else:
+        await event.respond("Belum ada chat yang tersimpan. Silakan pilih channel/group di atas.", buttons=inline_buttons)
+
+
+@bot.on(events.Raw)
+async def handle_peer_selection(event):
+    """Handle peer selection from keyboard button"""
+    if not hasattr(event, 'message') or not isinstance(event.message, MessageService):
+        return
+    
+    msg = event.message
+    if not hasattr(msg, 'action') or not msg.action:
+        return
+    
+    # Check if it's a peer selection
+    if not hasattr(msg.action, 'button_id'):
+        return
+    
+    # Get user_id from message
+    if hasattr(msg.peer_id, 'user_id'):
+        user_id = msg.peer_id.user_id
+    else:
+        return
+    
+    # Check if user is in waiting state
+    if user_id not in user_state or user_state[user_id].get('action') != 'waiting_peer_selection':
+        return
+    
+    # Get the peer from action
+    if not hasattr(msg.action, 'peers') or not msg.action.peers:
+        return
+    
+    peer = msg.action.peers[0]
+    button_id = msg.action.button_id
+    
+    # Determine chat type and ID
+    chat_id = None
+    chat_type = "Unknown"
+    username = None
+    title = None
+    
+    try:
+        if hasattr(peer, 'channel_id'):
+            # Channel
+            chat_id = f"-100{peer.channel_id}"
+            chat_type = "Channel"
+        elif hasattr(peer, 'chat_id'):
+            # Group
+            chat_id = str(-peer.chat_id) if peer.chat_id > 0 else str(peer.chat_id)
+            chat_type = "Group"
+        else:
+            return
+        
+        # Get entity for more info
+        try:
+            entity = await bot.get_entity(int(chat_id))
+            username = getattr(entity, 'username', None)
+            title = getattr(entity, 'title', None)
+            if hasattr(entity, 'megagroup') and entity.megagroup:
+                chat_type = "Supergroup"
+        except:
+            pass
+        
+        # Save to database
+        success = db.add_chat(user_id, chat_id, chat_type, username or "", title or "")
+        
+        if success:
+            # Delete the service message
+            try:
+                await bot.delete_messages(msg.chat_id, msg.id)
+            except:
+                pass
+            
+            # Send success message
+            await bot.send_message(
+                user_id,
+                f"✅ **Berhasil Ditambahkan!**\n\n"
+                f"• Tipe: {chat_type}\n"
+                f"• ID: `{chat_id}`\n"
+                f"• Nama: {title or '-'}\n"
+                f"• Username: @{username if username else '-'}"
+            )
+            
+            # Refresh menu
+            await menu_create_giveaway(event, user_id)
+        else:
+            await bot.send_message(user_id, "⚠️ Chat sudah ada dalam daftar!")
+            
+    except Exception as e:
+        logger.error(f"Error handling peer selection: {e}")
+        await bot.send_message(user_id, f"❌ Error: {str(e)[:100]}")
+
+
+@bot.on(events.CallbackQuery(pattern="^delete_chat:"))
+async def delete_chat_handler(event):
+    user_id = event.sender_id
+    action = event.data.decode().split(':')[1]
+    
+    existing_chats = db.get_user_chats(user_id)
+    
+    if not existing_chats:
+        await event.answer("Tidak ada chat yang tersimpan!", alert=True)
+        return
+    
+    if action == "one":
+        # Build list of chats to delete
+        buttons = []
+        for i, chat in enumerate(existing_chats, 1):
+            title = chat.get('title', '-')
+            chat_id = chat.get('chat_id', '-')
+            buttons.append([Button.inline(f"{i}. {title}", data=f"del_chat:{i}")])
+        buttons.append([Button.inline("🔙 Kembali", data="add_chat")])
+        
+        await event.edit("Pilih chat yang akan dihapus:", buttons=buttons)
+    
+    elif action == "all":
+        db.delete_all_chats(user_id)
+        await event.answer("✅ Semua chat telah dihapus!", alert=True)
+        await add_chat(event)
+
+
+@bot.on(events.CallbackQuery(pattern="^del_chat:"))
+async def confirm_delete_chat(event):
+    user_id = event.sender_id
+    index = int(event.data.decode().split(':')[1])
+    
+    existing_chats = db.get_user_chats(user_id)
+    
+    if index <= len(existing_chats):
+        chat_to_delete = existing_chats[index - 1]
+        db.delete_chat(user_id, chat_id=chat_to_delete['chat_id'])
+        await event.answer(f"✅ Chat {chat_to_delete.get('title', '-')} telah dihapus!", alert=True)
+    
+    await add_chat(event)
+
+
+@bot.on(events.CallbackQuery(pattern="^chat_done$"))
+async def chat_done(event):
+    user_id = event.sender_id
+    
+    # Clear state
+    if user_id in user_state:
+        user_state[user_id]['action'] = None
+    
+    # Get the first chat as default
+    existing_chats = db.get_user_chats(user_id)
+    
+    if existing_chats:
+        # Use the first chat as default
+        user_state[user_id]['chat_id'] = existing_chats[0]['chat_id']
+        user_state[user_id]['chat_title'] = existing_chats[0].get('title', '')
+    
+    # Refresh menu
+    await menu_create_giveaway(event, user_id)
+
+
 @bot.on(events.CallbackQuery(pattern="^add_hadiah$"))
 async def add_hadiah(event):
     user_id = event.sender_id
@@ -296,7 +531,7 @@ async def add_hadiah(event):
 __Silakan kirim input text hadiah yang ingin anda gunakan, gunakan contoh format dibawah ini jika ingin menggunakan lebih dari 1 hadiah.__
 
 [🚨](tg://emoji?id=4971975844042900171) **Contoh:**
-^^``Plush Pepe
+^^`Plush Pepe
 NFT Username
 Telegram Premium 1 Bulan
 Telegram Premium 1 Tahun`^^
