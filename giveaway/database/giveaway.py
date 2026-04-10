@@ -791,3 +791,87 @@ class GiveawayDatabase:
         except Exception as e:
             print(f"Error deleting syarat: {e}")
             return False
+
+    def add_captcha(self, giveaway_id: str, captcha_status: str) -> bool:
+        """
+        Add or update captcha status for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+            captcha_status: 'On' or 'Off'
+        Returns:
+            True if successful
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah kolom captcha sudah ada, jika tidak tambahkan
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'captcha' not in columns:
+                    cursor.execute("ALTER TABLE giveaways ADD COLUMN captcha TEXT DEFAULT 'Off'")
+                
+                # Update
+                cursor.execute('''
+                    UPDATE giveaways 
+                    SET captcha = ?
+                    WHERE giveaway_id = ?
+                ''', (captcha_status, giveaway_id))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error adding captcha: {e}")
+            return False
+
+    def get_captcha(self, giveaway_id: str) -> str:
+        """
+        Get captcha status for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            'On' or 'Off', default 'Off'
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek kolom
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'captcha' not in columns:
+                    return 'Off'
+                
+                cursor.execute('''
+                    SELECT captcha FROM giveaways WHERE giveaway_id = ?
+                ''', (giveaway_id,))
+                row = cursor.fetchone()
+                
+                return row[0] if row and row[0] else 'Off'
+        except Exception as e:
+            print(f"Error getting captcha: {e}")
+            return 'Off'
+
+    def delete_captcha(self, giveaway_id: str) -> bool:
+        """
+        Delete captcha status (set to Off)
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            True if successful
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE giveaways 
+                    SET captcha = 'Off'
+                    WHERE giveaway_id = ?
+                ''', (giveaway_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting captcha: {e}")
+            return False

@@ -240,18 +240,18 @@ async def menu_create_giveaway(event, user_id: int = None):
 **Syarat Link:** 
 {link if link else '-'}
 **Syarat Join:** {syarat if syarat else '-'}
-**Captcha:** {captcha}
+**Captcha:** {'✅ AKTIF' if captcha == 'On' else '❌ NONAKTIF'}
     """
     
     buttons = [
         [Button.inline("🎁 Hadiah", data="add_hadiah"),
-         Button.inline("📡 Chat ID", data="add_chat")],
+        Button.inline("📡 Chat ID", data="add_chat")],
         [Button.inline("⏳ Durasi", data="add_durasi"),
-         Button.inline("🔗 Link", data="add_link")],
+        Button.inline("🔗 Link", data="add_link")],
         [Button.inline("📨 Syarat", data="add_syarat"),
-         Button.inline("🛡 Captcha", data="toggle_captcha")],
+        Button.inline(f"🛡 Captcha: {'✅' if captcha == 'On' else '❌'}", data="toggle_captcha")],
         [Button.inline("🔙 Kembali", data="kembali"),
-         Button.inline("🔊 Start Giveaway", data="start_giveaway")]
+        Button.inline("🔊 Start Giveaway", data="start_giveaway")]
     ]
     
     # Kirim pesan menu
@@ -263,6 +263,39 @@ async def menu_create_giveaway(event, user_id: int = None):
             await event.respond(msg, buttons=buttons)
     else:
         await event.respond(msg, buttons=buttons)
+
+@bot.on(events.CallbackQuery(pattern="^toggle_captcha$"))
+async def toggle_captcha(event):
+    user_id = event.sender_id
+    
+    # Get current captcha status from user_state
+    current_status = user_state[user_id].get('captcha', 'Off')
+    
+    # Toggle status
+    new_status = 'On' if current_status == 'Off' else 'Off'
+    
+    # Update user_state
+    user_state[user_id]['captcha'] = new_status
+
+    if new_status == 'On':
+        await event.answer("✅ Captcha diaktifkan! Peserta harus menyelesaikan captcha.", alert=True)
+    else:
+        await event.answer("❌ Captcha dinonaktifkan.", alert=True)
+
+    class FakeEvent:
+        def __init__(self, uid, b):
+            self.sender_id = uid
+            self.client = b
+            self.chat_id = uid
+        
+        async def edit(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+        
+        async def respond(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+    
+    fake_event = FakeEvent(user_id, bot)
+    await menu_create_giveaway(fake_event, user_id)
 
 @bot.on(events.NewMessage(pattern="^/start$"))
 async def start(event):
@@ -929,11 +962,8 @@ async def back_create_giveaway(event):
     # Kirim pesan loading
     msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Wait...__**", buttons=Button.clear())
     await event.delete()
-    
-    # Refresh menu
+
     await menu_create_giveaway(event, user_id)
-    
-    # Hapus pesan loading
     await msg_self.delete()
 
 @bot.on(events.Raw)
