@@ -901,39 +901,6 @@ async def handle_peer_selection(event):
                 f"• ID: `{chat_id}`"
             )
             
-            # ========== KIRIM ULANG MENU ADD_CHAT ==========
-            existing_chats = user_chats.get(user_id, [])
-            
-            # Inline buttons untuk manage chats
-            inline_buttons = []
-            if existing_chats:
-                inline_buttons.append([Button.inline("🗑 HAPUS SATU", data="delete_chat:one")])
-                inline_buttons.append([Button.inline("🗑️ HAPUS SEMUA", data="delete_chat:all")])
-            inline_buttons.append([Button.inline("✅ SELESAI", data="chat_done"),
-                                   Button.inline("🔙 KEMBALI", data="create_giveaway")])
-            
-            # Kirim menu add_chat (tanpa daftar chat)
-            menu_msg = """
-[📨](tg://emoji?id=5406631276042002796) **TAMBAH CHAT TARGET GIVEAWAY**
-
-[⚠](tg://emoji?id=5474438063637669983) **Syarat Chat yang bisa ditambahkan:**
-1. Bot harus menjadi **admin** di chat tersebut
-2. Anda harus menjadi **admin** di chat tersebut
-3. Bot harus memiliki izin **mengirim pesan**
-
-[📌](tg://emoji?id=5397782960512444700) **Cara menambahkan:**
-- Klik tombol "📢 Select Channel" untuk channel
-- Klik tombol "💬 Select Group" untuk group
-- Pilih chat yang ingin ditambahkan
-
-__Klik SELESAI jika sudah selesai menambahkan.__
-"""
-            
-            await bot.send_message(user_id, menu_msg, buttons=inline_buttons)
-            
-        else:
-            await bot.send_message(user_id, f"⚠️ Chat `{chat_id}` sudah ada dalam daftar!")
-            
     except Exception as e:
         logger.error(f"Error handling peer selection: {e}")
         await bot.send_message(user_id, f"❌ Error: {str(e)[:100]}")
