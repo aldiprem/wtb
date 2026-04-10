@@ -817,8 +817,10 @@ async def handle_peer_selection(event):
             await test_msg.delete()
             bot_has_access = True
         except Exception as e:
+            bot_has_access = False
             error_msg = f"**Bot tidak memiliki akses ke chat ini. Pastikan bot sudah menjadi admin di chat.**"
             await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
+            # Delete the service message
             try:
                 await bot.delete_messages(msg.chat_id, msg.id)
             except:
@@ -839,6 +841,7 @@ async def handle_peer_selection(event):
             is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
             
         except Exception as e:
+            # Coba cek untuk group biasa
             try:
                 from telethon.tl.functions.messages import GetFullChatRequest
                 full_chat = await bot(GetFullChatRequest(chat_id=-int(chat_id)))
@@ -852,6 +855,7 @@ async def handle_peer_selection(event):
         if not is_admin:
             error_msg = "Anda bukan admin di chat ini! Bot hanya bisa digunakan oleh admin chat."
             await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
+            # Delete the service message
             try:
                 await bot.delete_messages(msg.chat_id, msg.id)
             except:
@@ -859,10 +863,12 @@ async def handle_peer_selection(event):
             return
         
         # ========== LANJUTKAN PENYIMPANAN ==========
+        # Get existing chats from user_chats
         existing_chats = user_chats.get(user_id, [])
         already_exists = any(c['chat_id'] == chat_id for c in existing_chats)
 
         if not already_exists:
+            # Add to user_chats
             if user_id not in user_chats:
                 user_chats[user_id] = []
             
@@ -873,33 +879,45 @@ async def handle_peer_selection(event):
                 'title': title
             })
             
-            # Delete the service message (peer selection message)
+            # Delete the service message
             try:
                 await bot.delete_messages(msg.chat_id, msg.id)
             except:
                 pass
             
-            # HAPUS PESAN LOADING (yang berisi peer buttons)
-            if user_id in loading_message:
-                try:
-                    await bot.delete_messages(user_id, loading_message[user_id])
-                except:
-                    pass
-                del loading_message[user_id]
-            
-            # Update user_state
-            user_state[user_id]['chat_id'] = chat_id
-            user_state[user_id]['chat_title'] = title or ''
-            user_state[user_id]['saved_chats'] = user_chats[user_id]
-            
-            # Kirim pesan sukses singkat (TANPA daftar chat)
+            # Send success message
             await bot.send_message(
                 user_id,
                 f"✅ **Berhasil Ditambahkan!**\n\n"
                 f"• Tipe: {chat_type}\n"
+                f"• ID: `{chat_id}`\n"
                 f"• Nama: {title or '-'}\n"
-                f"• ID: `{chat_id}`"
+                f"• Username: @{username if username else '-'}\n\n"
+                f"✅ Bot memiliki akses\n"
+                f"✅ Anda adalah admin"
             )
+            
+            # Simpan ke user_state untuk ditampilkan di menu
+            # Gunakan chat pertama sebagai default
+            user_state[user_id]['chat_id'] = chat_id
+            user_state[user_id]['chat_title'] = title or ''
+            
+            # Refresh menu
+            class FakeEvent:
+                def __init__(self, uid, b):
+                    self.sender_id = uid
+                    self.client = b
+                
+                async def edit(self, text, buttons=None):
+                    pass
+                
+                async def respond(self, text, buttons=None):
+                    await self.client.send_message(self.sender_id, text, buttons=buttons)
+            
+            fake_event = FakeEvent(user_id, bot)
+            await menu_create_giveaway(fake_event, user_id)
+        else:
+            await bot.send_message(user_id, f"⚠️ Chat `{chat_id}` sudah ada dalam daftar!")
             
     except Exception as e:
         logger.error(f"Error handling peer selection: {e}")
