@@ -240,10 +240,7 @@ async def main():
     # Start master bot - SAMA PERSIS CARANYA
     await bot.start(bot_token=BOT_TOKEN)
     logger.info("✅ Giveaway Bot is running")
-    
-    # Start checking for expired giveaways
-    asyncio.create_task(check_expired_giveaways())
-    
+
     await bot.run_until_disconnected()
 
 if __name__ == '__main__':
