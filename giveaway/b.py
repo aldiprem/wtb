@@ -120,6 +120,68 @@ class AaycoBot:
 
 bot.parse_mode = AaycoBot()
 
+async def check_bot_access(chat_id: int) -> tuple:
+    """
+    Check if bot has access to the chat and if user is admin
+    Returns: (has_access, is_admin, error_message)
+    """
+    try:
+        # Coba get entity untuk cek akses
+        entity = await bot.get_entity(chat_id)
+        
+        # Cek apakah bot bisa mengirim pesan
+        try:
+            await bot.send_message(chat_id, "test")
+            # Hapus pesan test
+            async for msg in bot.iter_messages(chat_id, limit=1):
+                if msg.text == "test":
+                    await msg.delete()
+                    break
+        except Exception as e:
+            return False, False, f"Bot tidak memiliki akses mengirim pesan ke chat ini: {str(e)[:100]}"
+        
+        # Cek apakah user adalah admin
+        try:
+            # Coba dapatkan participant info
+            from telethon.tl.functions.channels import GetParticipantRequest
+            from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
+            
+            participant = await bot(GetParticipantRequest(
+                channel=chat_id,
+                participant=entity  # Atau bisa pakai user_id
+            ))
+            
+            is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
+            
+            if not is_admin:
+                return True, False, "Anda bukan admin di chat ini! Bot hanya bisa digunakan oleh admin chat."
+            
+            return True, True, "OK"
+            
+        except Exception as e:
+            # Mungkin group biasa tanpa channel
+            try:
+                # Untuk group biasa, coba cek permisson
+                from telethon.tl.functions.messages import GetFullChatRequest
+                full_chat = await bot(GetFullChatRequest(chat_id=-chat_id))
+                
+                # Cek admin list
+                is_admin = False
+                for participant in full_chat.full_chat.participants.participants:
+                    if participant.user_id == event.sender_id:
+                        is_admin = True
+                        break
+                
+                if not is_admin:
+                    return True, False, "Anda bukan admin di group ini! Bot hanya bisa digunakan oleh admin group."
+                
+                return True, True, "OK"
+            except:
+                return True, False, "Tidak dapat memverifikasi status admin. Pastikan Anda adalah admin chat ini."
+                
+    except Exception as e:
+        return False, False, f"Bot tidak dapat mengakses chat ini: {str(e)[:100]}"
+
 async def menu_create_giveaway(event, user_id: int = None):
     """Display the create giveaway menu with current data"""
     if user_id is None:
@@ -624,7 +686,7 @@ async def add_chat(event):
         ]
     ]
     
-    # Get existing chats from user_chats (not from database)
+    # Get existing chats from user_chats
     existing_chats = user_chats.get(user_id, [])
     
     # Create inline buttons for managing chats
@@ -638,12 +700,20 @@ async def add_chat(event):
                            Button.inline("🔙 KEMBALI", data="create_giveaway")])
     
     msg = """
-📨 **Silahkan pilih channel/group yang ingin anda gunakan!**
+[📨](tg://emoji?id=5406631276042002796) **TAMBAH CHAT TARGET GIVEAWAY**
 
-Klik tombol di keyboard anda untuk membagikan channel/group yang akan disimpan.
+[⚠](tg://emoji?id=5474438063637669983) **Syarat Chat yang bisa ditambahkan:**
+1. Bot harus menjadi **admin** di chat tersebut
+2. Anda harus menjadi **admin** di chat tersebut
+3. Bot harus memiliki izin **mengirim pesan**
 
-🎉 Anda bisa menggunakan lebih dari 1 channel/group. Lakukan terus menerus untuk menambahkan!
-    """
+[📌](tg://emoji?id=5397782960512444700) **Cara menambahkan:**
+- Klik tombol "📢 Select Channel" untuk channel
+- Klik tombol "💬 Select Group" untuk group
+- Pilih chat yang ingin ditambahkan
+
+__Klik SELESAI jika sudah selesai menambahkan.__
+"""
     
     # Build reply markup
     peer_markup = bot.build_reply_markup(peer_buttons)
@@ -726,6 +796,59 @@ async def handle_peer_selection(event):
         except:
             pass
         
+        # ========== CEK AKSES BOT DAN ADMIN ==========
+        # Cek akses bot
+        try:
+            test_msg = await bot.send_message(int(chat_id), "✅ Bot sedang melakukan pengecekan akses...")
+            await test_msg.delete()
+            bot_has_access = True
+        except Exception as e:
+            bot_has_access = False
+            error_msg = f"Bot tidak memiliki akses ke chat ini. Pastikan bot sudah menjadi admin di chat.\nError: {str(e)[:100]}"
+            await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
+            # Delete the service message
+            try:
+                await bot.delete_messages(msg.chat_id, msg.id)
+            except:
+                pass
+            return
+        
+        # Cek apakah user adalah admin
+        is_admin = False
+        try:
+            from telethon.tl.functions.channels import GetParticipantRequest
+            from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
+            
+            participant = await bot(GetParticipantRequest(
+                channel=int(chat_id),
+                participant=user_id
+            ))
+            
+            is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
+            
+        except Exception as e:
+            # Coba cek untuk group biasa
+            try:
+                from telethon.tl.functions.messages import GetFullChatRequest
+                full_chat = await bot(GetFullChatRequest(chat_id=-int(chat_id)))
+                for participant in full_chat.full_chat.participants.participants:
+                    if participant.user_id == user_id:
+                        is_admin = True
+                        break
+            except:
+                is_admin = False
+        
+        if not is_admin:
+            error_msg = "Anda bukan admin di chat ini! Bot hanya bisa digunakan oleh admin chat."
+            await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
+            # Delete the service message
+            try:
+                await bot.delete_messages(msg.chat_id, msg.id)
+            except:
+                pass
+            return
+        
+        # ========== LANJUTKAN PENYIMPANAN ==========
         # Get existing chats from user_chats
         existing_chats = user_chats.get(user_id, [])
         already_exists = any(c['chat_id'] == chat_id for c in existing_chats)
@@ -755,7 +878,9 @@ async def handle_peer_selection(event):
                 f"• Tipe: {chat_type}\n"
                 f"• ID: `{chat_id}`\n"
                 f"• Nama: {title or '-'}\n"
-                f"• Username: @{username if username else '-'}"
+                f"• Username: @{username if username else '-'}\n\n"
+                f"✅ Bot memiliki akses\n"
+                f"✅ Anda adalah admin"
             )
             
             # Simpan ke user_state untuk ditampilkan di menu
