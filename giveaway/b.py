@@ -23,7 +23,7 @@ load_dotenv(dotenv_path=env_path)
 # Configuration
 API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
-BOT_TOKEN = os.getenv("GIVEAWAY_TOKEN", "8007647651:AAHrzy26yws4DaA3BWweQ8CM-oBxDzD308I")
+BOT_TOKEN = os.getenv("BOT_GIVEAWAY", "")
 
 # Add parent directory to path for database import
 sys.path.append('/root/wtb')
