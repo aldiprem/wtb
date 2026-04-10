@@ -1065,3 +1065,17 @@ class GiveawayDatabase:
         except Exception as e:
             print(f"Error ending on_giveaway: {e}")
             return False
+        
+    def update_giveaway_status(self, giveaway_id: str, status: str) -> bool:
+        """Update giveaway status"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE giveaways SET status = ? WHERE giveaway_id = ?
+                ''', (status, giveaway_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating giveaway status: {e}")
+            return False
