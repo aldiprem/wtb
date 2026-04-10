@@ -154,7 +154,7 @@ async def menu_create_giveaway(event, user_id: int = None):
     if hadiah_list:
         hadiah_formatted = '\n'.join([f"{i+1}. {h}" for i, h in enumerate(hadiah_list)])
     else:
-        hadiah_formatted = '(Belum ada hadiah, klik tombol "🎁 Hadiah" untuk menambah)'
+        hadiah_formatted = '-'
     
     # Tampilkan SEMUA chat yang tersimpan
     if saved_chats:
@@ -418,7 +418,8 @@ async def handle_durasi_input(event):
             return
     else:
         # Coba parse sebagai durasi relatif (opsi 1)
-        minutes = db.parse_duration_text(durasi_input)
+        minutes = GiveawayDatabase.parse_duration_text(durasi_input)
+
         
         if minutes <= 0:
             await event.reply("[⚠](tg://emoji?id=5314346928660554905) Format durasi tidak valid. Silakan kirim ulang.\n\nContoh: `1 jam`, `2 jam 30 menit`, `3 hari`")

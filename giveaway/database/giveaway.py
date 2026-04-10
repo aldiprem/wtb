@@ -523,7 +523,8 @@ class GiveawayDatabase:
             print(f"Error deleting durasi: {e}")
             return False
 
-    def parse_duration_text(duration_str: str) -> int:
+    @staticmethod
+def parse_duration_text(duration_str: str) -> int:
         """
         Parse human readable duration text to minutes
         Args:
