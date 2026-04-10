@@ -9,7 +9,6 @@ import sys
 import logging
 from telethon.tl.functions.messages import GetStickerSetRequest
 from telethon.tl.types import InputStickerSetEmojiDefaultStatuses, InputStickerSetPremiumGifts
-import emoji
 from telethon.extensions import markdown
 from telethon.tl.types import (
     MessageEntityCustomEmoji, 
