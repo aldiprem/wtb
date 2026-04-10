@@ -548,3 +548,162 @@ class GiveawayDatabase:
                 total_minutes += value * multiplier
         
         return int(total_minutes) if total_minutes > 0 else 0
+
+    def add_link(self, giveaway_id: str, link: str, is_append: bool = True) -> bool:
+        """
+        Add or update link for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+            link: Link to save (can be single link or multiple links separated by newline)
+            is_append: If True, append to existing links; if False, replace
+        Returns:
+            True if successful
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah kolom link sudah ada, jika tidak tambahkan
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'link' not in columns:
+                    cursor.execute("ALTER TABLE giveaways ADD COLUMN link TEXT DEFAULT ''")
+                
+                # Get current link
+                cursor.execute('SELECT link FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
+                result = cursor.fetchone()
+                current_link = result[0] if result and result[0] else ''
+                
+                if is_append and current_link:
+                    # Gabungkan link yang sudah ada dengan link baru
+                    new_link = current_link + '\n' + link
+                else:
+                    new_link = link
+                
+                # Update
+                cursor.execute('''
+                    UPDATE giveaways 
+                    SET link = ?
+                    WHERE giveaway_id = ?
+                ''', (new_link, giveaway_id))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error adding link: {e}")
+            return False
+
+    def get_link(self, giveaway_id: str) -> str:
+        """
+        Get link for a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            Link string, empty string if not found
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek kolom
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                if 'link' not in columns:
+                    return ''
+                
+                cursor.execute('''
+                    SELECT link FROM giveaways WHERE giveaway_id = ?
+                ''', (giveaway_id,))
+                row = cursor.fetchone()
+                
+                return row[0] if row and row[0] else ''
+        except Exception as e:
+            print(f"Error getting link: {e}")
+            return ''
+
+    def get_links_list(self, giveaway_id: str) -> List[str]:
+        """
+        Get all links as list from a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            List of links
+        """
+        try:
+            link_str = self.get_link(giveaway_id)
+            if not link_str:
+                return []
+            
+            # Split by newline and filter empty lines
+            links = [l.strip() for l in link_str.split('\n') if l.strip()]
+            return links
+        except Exception as e:
+            print(f"Error getting links list: {e}")
+            return []
+
+    def delete_link(self, giveaway_id: str, index: int = None) -> bool:
+        """
+        Delete link from a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+            index: Specific index to delete (1-based). If None, delete all links
+        Returns:
+            True if successful
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                if index is None:
+                    # Delete all links
+                    cursor.execute('''
+                        UPDATE giveaways 
+                        SET link = ''
+                        WHERE giveaway_id = ?
+                    ''', (giveaway_id,))
+                else:
+                    # Delete specific index
+                    links = self.get_links_list(giveaway_id)
+                    if 1 <= index <= len(links):
+                        links.pop(index - 1)
+                        new_link = '\n'.join(links)
+                        cursor.execute('''
+                            UPDATE giveaways 
+                            SET link = ?
+                            WHERE giveaway_id = ?
+                        ''', (new_link, giveaway_id))
+                    else:
+                        return False
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting link: {e}")
+            return False
+
+    def get_links_formatted(self, giveaway_id: str) -> str:
+        """
+        Get formatted links string (with numbering) from a giveaway
+        Args:
+            giveaway_id: ID of the giveaway
+        Returns:
+            Formatted string with numbered list
+        """
+        links = self.get_links_list(giveaway_id)
+        if not links:
+            return ''
+        
+        return '\n'.join([f"{i+1}. {link}" for i, link in enumerate(links)])
+
+    def validate_link(link: str) -> bool:
+        """
+        Validate if link is a valid Telegram link
+        Args:
+            link: Link to validate
+        Returns:
+            True if valid
+        """
+        link = link.strip().lower()
+        return link.startswith('https://t.me/') or link.startswith('t.me/')

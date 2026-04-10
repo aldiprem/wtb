@@ -324,6 +324,135 @@ async def create_giveaway(event):
 
     await menu_create_giveaway(event)
 
+@bot.on(events.CallbackQuery(pattern="^add_link$"))
+async def add_link(event):
+    user_id = event.sender_id
+    
+    user_state[user_id] = user_state.get(user_id, {})
+    user_state[user_id]['action'] = 'waiting_link'
+    user_state[user_id]['step'] = 'input_link'
+    
+    msg = """
+[🔗](tg://emoji?id=5199749070830197566) **PENGATURAN LINK GIVEAWAY**
+
+__Silakan kirim input link yang ingin anda gunakan, gunakan format seperti contoh dibawah ini. Setiap link harus diawali dengan `https://t.me/` atau `t.me/`.__
+
+**Format link yang valid:**
+^^- `https://t.me/username`
+- `t.me/username`
+- `https://t.me/joinchat/xxxxx`
+- `https://t.me/usernamebot/MiniApp`^^
+
+**Contoh input multiple link (satu per baris):**
+^^```
+https://t.me/channel1
+https://t.me/channel2
+t.me/groupmember
+```^^
+
+[⚠](tg://emoji?id=5314346928660554905) **Catatan:**
+- Setiap link harus diawali dengan `https://t.me/` atau `t.me/`
+- Pisahkan setiap link dengan baris baru (Enter)
+
+__Klik Batalkan jika ingin dibatalkan.__
+"""
+
+    buttons = [
+        [Button.inline("❌ Batalkan", data="create_giveaway")]
+    ]
+    
+    await event.delete()
+    await event.respond(msg, buttons=buttons)
+
+
+@bot.on(events.NewMessage)
+async def handle_link_input(event):
+    user_id = event.sender_id
+
+    # Cek apakah user sedang dalam state waiting_link
+    if user_id not in user_state:
+        return
+    
+    state = user_state[user_id]
+    if state.get('action') != 'waiting_link':
+        return
+
+    # Cek apakah pesan dari user yang sama
+    if event.sender_id != user_id:
+        return
+
+    # Cek jika pesan adalah command
+    if event.raw_text.startswith('/'):
+        return
+
+    link_input = event.raw_text.strip()
+    
+    if not link_input:
+        await event.reply("[⚠](tg://emoji?id=5314346928660554905) **Link tidak boleh kosong. Silakan kirim ulang atau klik batalkan.**")
+        return
+    
+    # Pisahkan berdasarkan newline menjadi multiple link
+    links = [l.strip() for l in link_input.split('\n') if l.strip()]
+    
+    # Validasi setiap link
+    invalid_links = []
+    valid_links = []
+    
+    for link in links:
+        if GiveawayDatabase.validate_link(link):
+            valid_links.append(link)
+        else:
+            invalid_links.append(link)
+    
+    if invalid_links:
+        invalid_msg = "\n".join(invalid_links[:5])
+        await event.reply(f"[⚠](tg://emoji?id=5314346928660554905) **Format link tidak valid!**\n\nLink berikut tidak valid:\n{invalid_msg}\n\nLink harus diawali dengan `https://t.me/` atau `t.me/`")
+        return
+    
+    if not valid_links:
+        await event.reply("[⚠](tg://emoji?id=5314346928660554905) **Tidak ada link yang valid!**\n\nPastikan setiap link diawali dengan `https://t.me/` atau `t.me/`")
+        return
+    
+    # Format link untuk disimpan (satu per baris)
+    formatted_links = '\n'.join(valid_links)
+    
+    # Simpan ke user_state
+    user_state[user_id]['link'] = formatted_links
+    user_state[user_id]['action'] = None
+    user_state[user_id]['step'] = None
+    
+    # Kirim notifikasi sukses
+    links_count = len(valid_links)
+    msg_self = await event.reply(f"[✅](tg://emoji?id=5262880537416054812) **{links_count} link berhasil disimpan!**")
+    
+    # Hapus pesan input user
+    try:
+        await event.delete()
+    except:
+        pass
+    
+    # Buat FakeEvent untuk refresh menu
+    class FakeEvent:
+        def __init__(self, uid, b):
+            self.sender_id = uid
+            self.client = b
+            self.chat_id = uid
+        
+        async def edit(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+        
+        async def respond(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+    
+    fake_event = FakeEvent(user_id, bot)
+    
+    # Panggil menu_create_giveaway
+    await menu_create_giveaway(fake_event, user_id)
+    
+    # Hapus notifikasi setelah 3 detik
+    await asyncio.sleep(3)
+    await msg_self.delete()
+
 @bot.on(events.CallbackQuery(pattern="^add_durasi$"))
 async def add_durasi(event):
     user_id = event.sender_id
