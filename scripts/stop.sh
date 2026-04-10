@@ -1,128 +1,86 @@
 #!/bin/bash
 # Script untuk menghentikan aplikasi (app.py + fragment_bot.py + giveaway/b.py)
 
-# Warna untuk output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${YELLOW}========================================${NC}"
 echo -e "${YELLOW}🛑 Menghentikan Server, Fragment Bot & Giveaway Bot${NC}"
 echo -e "${YELLOW}========================================${NC}"
 
-# Pindah ke direktori utama
 cd "$(dirname "$0")/.."
-
-# Buat folder logs jika belum ada
 mkdir -p logs
 
 # ==================== FUNGSI MEMATIKAN PORT 5050 ====================
 kill_port_5050() {
     echo -e "${YELLOW}🔍 Memeriksa port 5050...${NC}"
-    
     PIDS=$(lsof -ti :5050 2>/dev/null)
-    
     if [ -n "$PIDS" ]; then
-        echo -e "${YELLOW}⚠️  Port 5050 sedang digunakan oleh PID: $PIDS${NC}"
-        
         for PID in $PIDS; do
-            PROCESS_NAME=$(ps -p $PID -o comm= 2>/dev/null)
-            echo -e "${GREEN}📡 Menghentikan proses (PID: $PID) - $PROCESS_NAME${NC}"
-            kill -15 $PID 2>/dev/null
+            kill -9 $PID 2>/dev/null
         done
-        
-        sleep 2
-        
-        # Force kill jika masih berjalan
-        PIDS=$(lsof -ti :5050 2>/dev/null)
-        if [ -n "$PIDS" ]; then
-            echo -e "${YELLOW}⚠️  Memaksa menghentikan proses: $PIDS${NC}"
-            for PID in $PIDS; do
-                kill -9 $PID 2>/dev/null
-            done
-        fi
-        
         echo -e "${GREEN}✅ Port 5050 dibersihkan${NC}"
     else
         echo -e "${GREEN}✅ Port 5050 sudah kosong${NC}"
     fi
 }
 
-# Fungsi untuk menghentikan proses berdasarkan PID file
-stop_process_from_file() {
-    local pid_file=$1
-    local process_name=$2
+# ==================== FUNGSI MEMATIKAN FRAGMENT BOT ====================
+kill_fragment_bot() {
+    echo -e "${YELLOW}🔍 Memeriksa Fragment Bot...${NC}"
     
-    if [ -f "$pid_file" ]; then
-        PID=$(cat "$pid_file")
-        if ps -p $PID > /dev/null 2>&1; then
-            echo -e "${GREEN}📡 Menghentikan $process_name (PID: $PID)${NC}"
-            kill -15 $PID 2>/dev/null
-            sleep 2
-            
-            if ps -p $PID > /dev/null 2>&1; then
-                echo -e "${YELLOW}⚠️  $process_name tidak berhenti, memaksa penghentian...${NC}"
-                kill -9 $PID 2>/dev/null
-            fi
-            echo -e "${GREEN}✅ $process_name dihentikan${NC}"
-        else
-            echo -e "${YELLOW}⚠️  $process_name (PID: $PID) tidak berjalan${NC}"
-        fi
-        rm -f "$pid_file"
-    else
-        echo -e "${YELLOW}⚠️  File PID untuk $process_name tidak ditemukan${NC}"
+    # Kill berdasarkan PID file
+    if [ -f "/tmp/fragment_bot.pid" ]; then
+        PID=$(cat /tmp/fragment_bot.pid)
+        kill -9 $PID 2>/dev/null
+        rm -f /tmp/fragment_bot.pid
     fi
+    
+    # Kill berdasarkan nama proses
+    pkill -9 -f "fragment_bot.py" 2>/dev/null
+    
+    # Kill screen session
+    screen -S fragment_bot -X quit 2>/dev/null
+    
+    echo -e "${GREEN}✅ Fragment Bot dihentikan${NC}"
 }
 
-# Fungsi untuk menghentikan proses berdasarkan nama
-stop_process_by_name() {
-    local process_name=$1
-    local match_pattern=$2
+# ==================== FUNGSI MEMATIKAN GIVEAWAY BOT ====================
+kill_giveaway_bot() {
+    echo -e "${YELLOW}🔍 Memeriksa Giveaway Bot...${NC}"
     
-    PIDS=$(ps aux | grep "$match_pattern" | grep -v grep | grep -v "stop.sh" | awk '{print $2}')
-    
-    if [ -n "$PIDS" ]; then
-        for PID in $PIDS; do
-            echo -e "${GREEN}📡 Menghentikan $process_name (PID: $PID)${NC}"
-            kill -15 $PID 2>/dev/null
-        done
-        sleep 2
-        
-        # Force kill jika masih berjalan
-        PIDS=$(ps aux | grep "$match_pattern" | grep -v grep | grep -v "stop.sh" | awk '{print $2}')
-        if [ -n "$PIDS" ]; then
-            for PID in $PIDS; do
-                echo -e "${YELLOW}⚠️  Memaksa menghentikan $process_name (PID: $PID)${NC}"
-                kill -9 $PID 2>/dev/null
-            done
-        fi
-        echo -e "${GREEN}✅ $process_name dihentikan${NC}"
-    else
-        echo -e "${YELLOW}⚠️  Tidak ada proses $process_name yang berjalan${NC}"
+    # Kill berdasarkan PID file
+    if [ -f "/tmp/giveaway_bot.pid" ]; then
+        PID=$(cat /tmp/giveaway_bot.pid)
+        kill -9 $PID 2>/dev/null
+        rm -f /tmp/giveaway_bot.pid
     fi
+    
+    # Kill berdasarkan nama proses
+    pkill -9 -f "giveaway/b.py" 2>/dev/null
+    pkill -9 -f "giveaway_bot_session" 2>/dev/null
+    
+    # Hapus session Telethon
+    rm -f giveaway/*.session 2>/dev/null
+    
+    # Kill screen session
+    screen -S giveaway_bot -X quit 2>/dev/null
+    
+    echo -e "${GREEN}✅ Giveaway Bot dihentikan${NC}"
 }
 
-# Hentikan dari PID files
-stop_process_from_file "/tmp/flask_server.pid" "Flask Server"
-stop_process_from_file "/tmp/fragment_bot.pid" "Fragment Bot"
-stop_process_from_file "/tmp/giveaway_bot.pid" "Giveaway Bot"
-
-# Fallback: cari berdasarkan nama proses
-stop_process_by_name "Flask Server" "python3 app.py"
-stop_process_by_name "Fragment Bot" "fragment_bot.py"
-stop_process_by_name "Giveaway Bot" "giveaway/b.py"
-
-# Bersihkan port 5050
+# ==================== EKSEKUSI ====================
 kill_port_5050
+kill_fragment_bot
+kill_giveaway_bot
 
-# Bersihkan PID files yang mungkin tersisa
+# Bersihkan semua PID files
 rm -f /tmp/flask_server.pid /tmp/fragment_bot.pid /tmp/giveaway_bot.pid 2>/dev/null
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ Semua server berhasil dihentikan${NC}"
 echo -e "${GREEN}========================================${NC}"
-
-# Catat ke log
 echo "$(date): All servers stopped" >> logs/server.log

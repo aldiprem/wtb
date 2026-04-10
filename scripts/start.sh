@@ -54,6 +54,95 @@ kill_port_5050() {
     fi
 }
 
+# ==================== FUNGSI MEMATIKAN FRAGMENT BOT ====================
+kill_fragment_bot() {
+    echo -e "${YELLOW}🔍 Memeriksa Fragment Bot...${NC}"
+    
+    # Cek dari PID file
+    if [ -f "/tmp/fragment_bot.pid" ]; then
+        PID=$(cat /tmp/fragment_bot.pid)
+        if kill -0 $PID 2>/dev/null; then
+            echo -e "${YELLOW}📡 Menghentikan Fragment Bot (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 2
+            if kill -0 $PID 2>/dev/null; then
+                kill -9 $PID 2>/dev/null
+            fi
+            echo -e "${GREEN}✅ Fragment Bot dihentikan${NC}"
+        fi
+        rm -f /tmp/fragment_bot.pid
+    fi
+    
+    # Cek dari nama proses
+    PIDS=$(ps aux | grep "fragment_bot.py" | grep -v grep | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan Fragment Bot process (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 1
+            kill -9 $PID 2>/dev/null
+        done
+        echo -e "${GREEN}✅ Fragment Bot processes dihentikan${NC}"
+    fi
+    
+    # Hentikan screen session jika ada
+    if screen -list | grep -q "fragment_bot"; then
+        screen -S fragment_bot -X quit 2>/dev/null
+        echo -e "${GREEN}✅ Screen session fragment_bot dihentikan${NC}"
+    fi
+}
+
+# ==================== FUNGSI MEMATIKAN GIVEAWAY BOT ====================
+kill_giveaway_bot() {
+    echo -e "${YELLOW}🔍 Memeriksa Giveaway Bot...${NC}"
+    
+    # Cek dari PID file
+    if [ -f "/tmp/giveaway_bot.pid" ]; then
+        PID=$(cat /tmp/giveaway_bot.pid)
+        if kill -0 $PID 2>/dev/null; then
+            echo -e "${YELLOW}📡 Menghentikan Giveaway Bot (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 2
+            if kill -0 $PID 2>/dev/null; then
+                kill -9 $PID 2>/dev/null
+            fi
+            echo -e "${GREEN}✅ Giveaway Bot dihentikan${NC}"
+        fi
+        rm -f /tmp/giveaway_bot.pid
+    fi
+    
+    # Cek dari nama proses
+    PIDS=$(ps aux | grep "giveaway/b.py" | grep -v grep | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan Giveaway Bot process (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 1
+            kill -9 $PID 2>/dev/null
+        done
+        echo -e "${GREEN}✅ Giveaway Bot processes dihentikan${NC}"
+    fi
+    
+    # Cek dari session Telethon
+    PIDS=$(lsof 2>/dev/null | grep "giveaway_bot_session" | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan session Telethon (PID: $PID)...${NC}"
+            kill -9 $PID 2>/dev/null
+        done
+    fi
+    
+    # Hapus file session Telethon
+    rm -f giveaway/giveaway_bot_session.session 2>/dev/null
+    rm -f giveaway/*.session 2>/dev/null
+    
+    # Hentikan screen session jika ada
+    if screen -list | grep -q "giveaway_bot"; then
+        screen -S giveaway_bot -X quit 2>/dev/null
+        echo -e "${GREEN}✅ Screen session giveaway_bot dihentikan${NC}"
+    fi
+}
+
 # ==================== FUNGSI MEMBERSIHKAN PID FILES ====================
 clean_pid_files() {
     for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid; do
@@ -67,9 +156,15 @@ clean_pid_files() {
     done
 }
 
-# ==================== KILL PORT 5050 SEBELUM START ====================
+# ==================== KILL SEMUA PROSES SEBELUM START ====================
+echo -e "${YELLOW}🛑 Membersihkan proses yang sudah berjalan...${NC}"
 kill_port_5050
+kill_fragment_bot
+kill_giveaway_bot
 clean_pid_files
+
+# Tunggu sebentar agar proses benar-benar mati
+sleep 2
 
 # Cek Python
 if ! command -v python3 &> /dev/null; then
@@ -177,6 +272,7 @@ if [ "$GIVEAWAY_EXISTS" = true ]; then
     cd giveaway
     nohup python3 b.py > ../logs/giveaway_bot.log 2>&1 &
     GIVEAWAY_PID=$!
+    echo $GIVEAWAY_PID > ../tmp/giveaway_bot.pid
     cd ..
     echo -e "${GREEN}✅ Giveaway Bot berjalan dengan PID: $GIVEAWAY_PID${NC}"
     echo "$GIVEAWAY_PID" > /tmp/giveaway_bot.pid
@@ -186,6 +282,7 @@ else
 fi
 
 # ==================== OUTPUT STATUS ====================
+echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}✅ Semua server berjalan!${NC}"
 echo -e "${GREEN}========================================${NC}"
