@@ -891,12 +891,11 @@ async def handle_peer_selection(event):
                 f"✅ Anda adalah admin"
             )
             
-            # Update user_state
+            # Update user_state dengan data terbaru
             user_state[user_id]['chat_id'] = chat_id
             user_state[user_id]['chat_title'] = title or ''
             user_state[user_id]['saved_chats'] = user_chats[user_id]
             
-            # === PERBAIKAN: JANGAN BUAT FAKEEVENT, TETAP GUNAKAN MENU YANG SAMA ===
             # Hapus pesan loading yang mungkin ada
             if user_id in loading_message:
                 try:
@@ -905,7 +904,16 @@ async def handle_peer_selection(event):
                     pass
                 del loading_message[user_id]
             
-            # Kirim menu baru tanpa FakeEvent
+            # Ambil data terbaru dari user_state
+            state = user_state.get(user_id, {})
+            saved_chats = state.get('saved_chats', [])
+            hadiah_list = state.get('hadiah', [])
+            durasi = state.get('durasi', '')
+            link = state.get('link', '')
+            syarat = state.get('syarat', '')
+            captcha = state.get('captcha', 'Off')
+            
+            # Kirim menu baru
             user = await bot.get_entity(user_id)
             first_name = getattr(user, 'first_name', '') or ""
             last_name = getattr(user, 'last_name', '') or ""
@@ -919,18 +927,13 @@ async def handle_peer_selection(event):
             else:
                 username_display = None
             
-            state = user_state.get(user_id, {})
-            hadiah_list = state.get('hadiah', [])
-            durasi = state.get('durasi', '')
-            link = state.get('link', '')
-            syarat = state.get('syarat', '')
-            captcha = state.get('captcha', 'Off')
-            
+            # Format hadiah
             if hadiah_list:
                 hadiah_formatted = '\n'.join([f"{i+1}. {h}" for i, h in enumerate(hadiah_list)])
             else:
                 hadiah_formatted = '-'
             
+            # Format chats display
             if saved_chats:
                 chats_display = ""
                 for i, chat in enumerate(saved_chats, 1):
