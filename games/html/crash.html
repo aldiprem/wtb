@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spaceman Crash Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;
+            color: white; overflow: hidden; user-select: none;
+        }
+        .container {
+            background: rgba(255,255,255,0.05); backdrop-filter: blur(10px);
+            border-radius: 24px; padding: 30px; width: 800px; height: 500px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column;
+        }
+        .canvas-area {
+            flex: 1; position: relative; display: flex; justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.3); border-radius: 16px; overflow: hidden;
+        }
+        
+        /* Area Lottie */
+        .sticker-wrapper {
+            position: absolute; width: 250px; height: 250px; z-index: 2;
+            transition: transform 0.1s linear;
+        }
+        #preview { width: 100%; height: 100%; }
+
+        /* UI Text */
+        .multiplier {
+            font-size: 100px; font-weight: 900; z-index: 1; text-align: center;
+            font-family: monospace; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5);
+        }
+        .status {
+            position: absolute; top: 20px; font-size: 20px; font-weight: bold;
+            color: #00ff88; z-index: 3; background: rgba(0,0,0,0.6);
+            padding: 8px 20px; border-radius: 20px;
+        }
+        .crashed-text { color: #ff4757 !important; text-shadow: 0 0 20px rgba(255,71,87,0.5); }
+
+        /* Kontrol */
+        .controls {
+            margin-top: 20px; display: flex; justify-content: center; gap: 15px;
+        }
+        input {
+            padding: 15px; font-size: 18px; border-radius: 12px; border: none;
+            background: rgba(0,0,0,0.5); color: white; width: 200px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        button {
+            padding: 15px 40px; font-size: 18px; font-weight: bold; border-radius: 12px;
+            border: none; cursor: pointer; transition: 0.2s; text-transform: uppercase;
+        }
+        .btn-bet { background: #00ff88; color: #000; }
+        .btn-bet:hover { transform: scale(1.05); box-shadow: 0 0 15px #00ff88; }
+        .btn-cashout { background: #feca57; color: #000; }
+        .btn-disabled { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="canvas-area">
+        <div class="status" id="statusText">Memuat Server...</div>
+        <div class="multiplier" id="multiplier">1.00x</div>
+        
+        <!-- Wadah Lottie -->
+        <div class="sticker-wrapper" id="stickerWrapper">
+            <div id="preview"></div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <input type="number" id="betAmount" value="10000" step="1000">
+        <button id="actionBtn" class="btn-disabled" disabled onclick="handleAction()">Taruhan</button>
+    </div>
+</div>
+
+<script>
+    let animation = null;
+    let currentMultiplier = 1.00;
+    let isBetPlaced = false;
+    let betAmount = 0;
+
+    const multiplierEl = document.getElementById('multiplier');
+    const statusTextEl = document.getElementById('statusText');
+    const actionBtn = document.getElementById('actionBtn');
+    const stickerWrapper = document.getElementById('stickerWrapper');
+
+    // 1. FETCH & EKSTRAK .TGS DARI PATH LINUX MENGGUNAKAN PAKO
+    async function loadLottieFile() {
+        try {
+            // Ini akan diarahkan ke /root/wtb/image/nft_EternalRose-26737.tgs oleh app.py
+            const response = await fetch('/assets/tgs/nft_EternalRose-26737.tgs');
+            if (!response.ok) throw new Error("File .tgs tidak ditemukan");
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const compressed = new Uint8Array(arrayBuffer);
+            const decompressed = pako.ungzip(compressed, { to: 'string' });
+            const animationData = JSON.parse(decompressed);
+            
+            animation = lottie.loadAnimation({
+                container: document.getElementById('preview'),
+                renderer: 'svg',
+                loop: true,
+                autoplay: false,
+                animationData: animationData
+            });
+
+            startServerStream(); // Konek ke server game setelah aset siap
+        } catch (err) {
+            console.error(err);
+            statusTextEl.innerText = "❌ Error memuat file animasi";
+            statusTextEl.style.color = "#ff4757";
+        }
+    }
+
+    // 2. KONEKSI REAL-TIME KE FLASK (SSE)
+    function startServerStream() {
+        const source = new EventSource('/api/crash/stream');
+
+        source.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            currentMultiplier = data.multiplier;
+
+            // Update angka UI
+            multiplierEl.innerText = currentMultiplier.toFixed(2) + 'x';
+
+            // LOGIKA BERDASARKAN STATUS DARI PYTHON
+            if (data.status === 'WAITING') {
+                statusTextEl.innerText = `Menunggu Ronde: ${data.time_left}s`;
+                multiplierEl.className = 'multiplier';
+                stickerWrapper.style.transform = `translate(0px, 0px) scale(1)`;
+                
+                if (animation) animation.stop();
+
+                if (!isBetPlaced) {
+                    actionBtn.innerText = 'Pasang Taruhan';
+                    actionBtn.className = 'btn-bet';
+                    actionBtn.disabled = false;
+                }
+            } 
+            else if (data.status === 'PLAYING') {
+                statusTextEl.innerText = '🚀 Sedang Terbang!';
+                
+                if (animation && animation.isPaused) animation.play();
+
+                // Efek getar visual Lottie
+                let shakeX = (Math.random() - 0.5) * 6;
+                let shakeY = (Math.random() - 0.5) * 6;
+                let scale = Math.min(1 + (currentMultiplier * 0.02), 1.3); 
+                stickerWrapper.style.transform = `translate(${shakeX}px, ${shakeY}px) scale(${scale})`;
+
+                if (isBetPlaced) {
+                    actionBtn.innerText = `CASH OUT (${(betAmount * currentMultiplier).toFixed(0)})`;
+                    actionBtn.className = 'btn-cashout';
+                    actionBtn.disabled = false;
+                } else {
+                    actionBtn.innerText = 'Menunggu...';
+                    actionBtn.className = 'btn-disabled';
+                    actionBtn.disabled = true;
+                }
+            } 
+            else if (data.status === 'CRASHED') {
+                statusTextEl.innerText = '💥 CRASHED!';
+                multiplierEl.classList.add('crashed-text');
+                
+                if (animation) animation.stop();
+                stickerWrapper.style.transform = `translate(0px, 300px) scale(0)`; // Efek jatuh
+                
+                if (isBetPlaced) {
+                    isBetPlaced = false;
+                }
+
+                actionBtn.innerText = 'Ronde Selesai';
+                actionBtn.className = 'btn-disabled';
+                actionBtn.disabled = true;
+            }
+        };
+    }
+
+    // 3. FUNGSI TOMBOL
+    function handleAction() {
+        if (actionBtn.className.includes('btn-bet')) {
+            betAmount = parseFloat(document.getElementById('betAmount').value);
+            isBetPlaced = true;
+            
+            // Kirim request ke backend (opsional)
+            fetch('/api/crash/bet', { method: 'POST' });
+
+            actionBtn.innerText = 'Menunggu Mulai...';
+            actionBtn.className = 'btn-disabled';
+            actionBtn.disabled = true;
+        } 
+        else if (actionBtn.className.includes('btn-cashout')) {
+            isBetPlaced = false;
+            let winAmount = (betAmount * currentMultiplier).toFixed(0);
+            
+            // Kirim request cashout ke backend (opsional)
+            fetch('/api/crash/cashout', { method: 'POST' });
+
+            alert(`🎉 CASH OUT BERHASIL!\nAnda menang: Rp ${winAmount}`);
+            
+            actionBtn.innerText = 'Berhasil';
+            actionBtn.className = 'btn-disabled';
+            actionBtn.disabled = true;
+        }
+    }
+
+    // Jalankan
+    window.onload = loadLottieFile;
+</script>
+</body>
+</html>

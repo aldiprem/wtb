@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spaceman Crash Game</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #1a1a24;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .game-container {
+            width: 800px;
+            height: 500px;
+            background-color: #242434;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Lottie Container */
+        #lottie-animation {
+            width: 200px;
+            height: 200px;
+            position: absolute;
+            z-index: 2;
+            transition: transform 0.1s linear;
+        }
+        .multiplier-display {
+            font-size: 80px;
+            font-weight: bold;
+            z-index: 1;
+            text-align: center;
+        }
+        .status-text {
+            position: absolute;
+            top: 20px;
+            font-size: 24px;
+            color: #ffcc00;
+            z-index: 3;
+        }
+        .crashed-text {
+            color: #ff4c4c;
+        }
+        .controls {
+            height: 100px;
+            background-color: #1e1e2d;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            padding: 0 20px;
+        }
+        input {
+            padding: 15px;
+            font-size: 18px;
+            border-radius: 8px;
+            border: none;
+            background: #12121a;
+            color: white;
+            width: 150px;
+            text-align: center;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .btn-bet { background-color: #28a745; color: white; }
+        .btn-bet:hover { background-color: #218838; }
+        .btn-cashout { background-color: #ffcc00; color: #000; }
+        .btn-cashout:hover { background-color: #e6b800; }
+        .btn-disabled { background-color: #555; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+<div class="game-container">
+    <div class="canvas-area">
+        <div class="status-text" id="statusText">Menunggu Ronde Berikutnya...</div>
+        <div class="multiplier-display" id="multiplier">1.00x</div>
+        <!-- Wadah untuk animasi Lottie -->
+        <div id="lottie-animation"></div>
+    </div>
+    <div class="controls">
+        <input type="number" id="betAmount" placeholder="Jumlah Taruhan" value="10000">
+        <button id="actionBtn" class="btn-bet" onclick="handleAction()">Taruhan (Bet)</button>
+    </div>
+</div>
+
+<!-- Lottie Web Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+<script>
+    // Konfigurasi State Game
+    let gameState = 'WAITING'; // WAITING, PLAYING, CRASHED
+    let multiplier = 1.00;
+    let crashPoint = 0;
+    let gameInterval;
+    let isBetPlaced = false;
+    let betAmount = 0;
+
+    const multiplierEl = document.getElementById('multiplier');
+    const statusTextEl = document.getElementById('statusText');
+    const actionBtn = document.getElementById('actionBtn');
+    const lottieContainer = document.getElementById('lottie-animation');
+
+    // Inisialisasi Lottie Animation
+    const anim = lottie.loadAnimation({
+        container: lottieContainer,
+        renderer: 'svg',
+        loop: true,
+        autoplay: false,
+        path: '/assets/gile.json' // Path ke file JSON Anda melalui server
+    });
+
+    // Fungsi Mulai Ronde
+    function startRound() {
+        gameState = 'PLAYING';
+        multiplier = 1.00;
+        multiplierEl.className = 'multiplier-display';
+        statusTextEl.innerText = '';
+        anim.play(); // Jalankan animasi
+        
+        // Logika Random Crash Point (Simulasi)
+        // Di game asli, ini HARUS dihitung di server (Backend) agar tidak bisa di-hack
+        crashPoint = (Math.random() * 5 + 1.01).toFixed(2); 
+        
+        if (isBetPlaced) {
+            actionBtn.innerText = 'Cash Out';
+            actionBtn.className = 'btn-cashout';
+        } else {
+            actionBtn.innerText = 'Menunggu';
+            actionBtn.className = 'btn-disabled';
+            actionBtn.disabled = true;
+        }
+
+        let speed = 0.001;
+        gameInterval = setInterval(() => {
+            speed += 0.0001; // Semakin lama semakin cepat
+            multiplier += speed;
+            multiplierEl.innerText = multiplier.toFixed(2) + 'x';
+
+            // Efek roket bergetar/naik (opsional)
+            let shakeX = (Math.random() - 0.5) * 5;
+            let shakeY = (Math.random() - 0.5) * 5;
+            lottieContainer.style.transform = `translate(${shakeX}px, ${shakeY}px)`;
+
+            // Cek apakah meledak (Crash)
+            if (multiplier >= crashPoint) {
+                crashGame();
+            }
+        }, 50);
+    }
+
+    // Fungsi Game Berhenti / Meledak
+    function crashGame() {
+        clearInterval(gameInterval);
+        gameState = 'CRASHED';
+        multiplierEl.innerText = crashPoint + 'x';
+        multiplierEl.classList.add('crashed-text');
+        statusTextEl.innerText = 'MELEDAK / CRASHED!';
+        statusTextEl.style.color = '#ff4c4c';
+        
+        anim.stop(); // Hentikan animasi
+        lottieContainer.style.transform = `translate(0px, 0px)`; // reset posisi
+
+        if (isBetPlaced) {
+            alert('Anda Kalah! Taruhan hangus.');
+            isBetPlaced = false;
+        }
+
+        actionBtn.innerText = 'Taruhan (Ronde Berikutnya)';
+        actionBtn.className = 'btn-bet';
+        actionBtn.disabled = false;
+
+        // Mulai ronde baru setelah 5 detik
+        setTimeout(prepareRound, 5000);
+    }
+
+    // Fungsi Persiapan Ronde
+    function prepareRound() {
+        gameState = 'WAITING';
+        multiplierEl.innerText = '1.00x';
+        multiplierEl.className = 'multiplier-display';
+        statusTextEl.innerText = 'Menunggu Ronde Berikutnya...';
+        statusTextEl.style.color = '#ffcc00';
+        
+        let countdown = 5;
+        let waitInterval = setInterval(() => {
+            countdown--;
+            statusTextEl.innerText = `Ronde dimulai dalam ${countdown}s`;
+            if (countdown <= 0) {
+                clearInterval(waitInterval);
+                startRound();
+            }
+        }, 1000);
+    }
+
+    // Fungsi Tombol Taruhan / Cashout
+    function handleAction() {
+        if (gameState === 'WAITING') {
+            // Pasang Taruhan
+            const inputVal = document.getElementById('betAmount').value;
+            if (inputVal <= 0) return alert('Masukkan jumlah yang valid');
+            
+            betAmount = parseFloat(inputVal);
+            isBetPlaced = true;
+            actionBtn.innerText = 'Membatalkan...';
+            actionBtn.className = 'btn-disabled';
+        } 
+        else if (gameState === 'PLAYING' && isBetPlaced) {
+            // Cash Out (Tarik Kemenangan)
+            isBetPlaced = false;
+            let winAmount = (betAmount * multiplier).toFixed(2);
+            alert(`Selamat! Anda Cash Out di ${multiplier.toFixed(2)}x.\nMenang: ${winAmount}`);
+            
+            actionBtn.innerText = 'Berhasil ditarik';
+            actionBtn.className = 'btn-disabled';
+            actionBtn.disabled = true;
+        }
+    }
+
+    // Jalankan persiapan pertama kali
+    prepareRound();
+</script>
+</body>
+</html>
