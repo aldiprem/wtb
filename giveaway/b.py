@@ -43,7 +43,7 @@ API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_GIVEAWAY", "")
 
-DEFAULT_DELIMITERS['^^'] = lambda *a, **k: MessageEntityBlockquote(*a, **k, collapsed=False)
+DEFAULT_DELIMITERS['^^'] = lambda *a, **k: MessageEntityBlockquote(*a, **k)
 user_state = {}
 JAKARTA_TZ = pytz.timezone('Asia/Jakarta')
 
@@ -310,7 +310,6 @@ Telegram Premium 1 Tahun`^^
     
     await event.delete()
     await event.respond(msg, buttons=buttons)
-
 
 @bot.on(events.NewMessage)
 async def handle_hadiah_input(event):
