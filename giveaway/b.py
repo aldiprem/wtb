@@ -409,40 +409,48 @@ async def add_syarat(event):
     user_state[user_id]['action'] = 'waiting_syarat_selection'
     user_state[user_id]['step'] = 'select_syarat'
     
-    # Get current syarat from user_state
-    current_syarat = user_state[user_id].get('syarat', 'None')
+    # Get current syarat list from user_state (bisa multiple)
+    current_syarat_list = user_state[user_id].get('syarat_list', [])
     
     msg = """
 [📨](tg://emoji?id=5406631276042002796) **PENGATURAN SYARAT GIVEAWAY**
 
 Pilih syarat yang harus dipenuhi peserta untuk mengikuti giveaway:
 
-- **None** = Tidak ada syarat
+- **None** = Tidak ada syarat (akan menghapus semua pilihan)
 - **Subscribe** = Harus subscribe ke channel/group
 - **Boost** = Harus boost channel
 - **Tap link** = Harus tap/klik link
 
-Klik tombol di bawah untuk memilih syarat.
+💡 **Catatan:** Anda bisa memilih lebih dari 1 syarat (kecuali None)
 """
 
+    # Tentukan status setiap pilihan
+    none_selected = 'None' in current_syarat_list
+    subscribe_selected = 'Subscribe' in current_syarat_list
+    boost_selected = 'Boost' in current_syarat_list
+    taplink_selected = 'Tap link' in current_syarat_list
+    
     buttons = [
         [
             Button.inline(
-                f"{'✅ ' if current_syarat == 'None' else '⬜ '}None", 
+                f"{'✅ ' if none_selected else '⬜ '}None", 
                 data="syarat_none"
-            ),
-            Button.inline(
-                f"{'✅ ' if current_syarat == 'Subscribe' else '⬜ '}Subscribe", 
-                data="syarat_subscribe"
             )
         ],
         [
             Button.inline(
-                f"{'✅ ' if current_syarat == 'Boost' else '⬜ '}Boost", 
-                data="syarat_boost"
+                f"{'✅ ' if subscribe_selected else '⬜ '}Subscribe", 
+                data="syarat_subscribe"
             ),
             Button.inline(
-                f"{'✅ ' if current_syarat == 'Tap link' else '⬜ '}Tap link", 
+                f"{'✅ ' if boost_selected else '⬜ '}Boost", 
+                data="syarat_boost"
+            )
+        ],
+        [
+            Button.inline(
+                f"{'✅ ' if taplink_selected else '⬜ '}Tap link", 
                 data="syarat_taplink"
             )
         ],
@@ -459,32 +467,78 @@ Klik tombol di bawah untuk memilih syarat.
 @bot.on(events.CallbackQuery(pattern="^syarat_none$"))
 async def syarat_none(event):
     user_id = event.sender_id
+    
+    # Jika None dipilih, kosongkan semua pilihan
+    user_state[user_id]['syarat_list'] = []
     user_state[user_id]['syarat'] = 'None'
-    await event.answer("✅ Syarat: None (Tidak ada syarat)", alert=True)
+    
+    await event.answer("✅ Syarat: None (Semua syarat dihapus)", alert=True)
     await add_syarat(event)
 
 
 @bot.on(events.CallbackQuery(pattern="^syarat_subscribe$"))
 async def syarat_subscribe(event):
     user_id = event.sender_id
-    user_state[user_id]['syarat'] = 'Subscribe'
-    await event.answer("✅ Syarat: Subscribe (Harus subscribe)", alert=True)
+    
+    current_list = user_state[user_id].get('syarat_list', [])
+    
+    if 'Subscribe' in current_list:
+        current_list.remove('Subscribe')
+        await event.answer("❌ Subscribe dihapus dari syarat", alert=True)
+    else:
+        # Hapus None jika ada
+        if 'None' in current_list:
+            current_list.remove('None')
+        current_list.append('Subscribe')
+        await event.answer("✅ Subscribe ditambahkan ke syarat", alert=True)
+    
+    user_state[user_id]['syarat_list'] = current_list
+    user_state[user_id]['syarat'] = ', '.join(current_list) if current_list else 'None'
+    
     await add_syarat(event)
 
 
 @bot.on(events.CallbackQuery(pattern="^syarat_boost$"))
 async def syarat_boost(event):
     user_id = event.sender_id
-    user_state[user_id]['syarat'] = 'Boost'
-    await event.answer("✅ Syarat: Boost (Harus boost channel)", alert=True)
+    
+    current_list = user_state[user_id].get('syarat_list', [])
+    
+    if 'Boost' in current_list:
+        current_list.remove('Boost')
+        await event.answer("❌ Boost dihapus dari syarat", alert=True)
+    else:
+        # Hapus None jika ada
+        if 'None' in current_list:
+            current_list.remove('None')
+        current_list.append('Boost')
+        await event.answer("✅ Boost ditambahkan ke syarat", alert=True)
+    
+    user_state[user_id]['syarat_list'] = current_list
+    user_state[user_id]['syarat'] = ', '.join(current_list) if current_list else 'None'
+    
     await add_syarat(event)
 
 
 @bot.on(events.CallbackQuery(pattern="^syarat_taplink$"))
 async def syarat_taplink(event):
     user_id = event.sender_id
-    user_state[user_id]['syarat'] = 'Tap link'
-    await event.answer("✅ Syarat: Tap link (Harus tap link)", alert=True)
+    
+    current_list = user_state[user_id].get('syarat_list', [])
+    
+    if 'Tap link' in current_list:
+        current_list.remove('Tap link')
+        await event.answer("❌ Tap link dihapus dari syarat", alert=True)
+    else:
+        # Hapus None jika ada
+        if 'None' in current_list:
+            current_list.remove('None')
+        current_list.append('Tap link')
+        await event.answer("✅ Tap link ditambahkan ke syarat", alert=True)
+    
+    user_state[user_id]['syarat_list'] = current_list
+    user_state[user_id]['syarat'] = ', '.join(current_list) if current_list else 'None'
+    
     await add_syarat(event)
 
 
@@ -492,11 +546,13 @@ async def syarat_taplink(event):
 async def syarat_confirm(event):
     user_id = event.sender_id
     
-    # Get selected syarat
-    syarat = user_state[user_id].get('syarat', 'None')
+    # Get selected syarat list
+    syarat_list = user_state[user_id].get('syarat_list', [])
+    syarat_text = ', '.join(syarat_list) if syarat_list else 'None'
     
     # Update user_state
-    user_state[user_id]['syarat'] = syarat
+    user_state[user_id]['syarat'] = syarat_text
+    user_state[user_id]['syarat_list'] = syarat_list
     user_state[user_id]['action'] = None
     user_state[user_id]['step'] = None
     
@@ -509,7 +565,7 @@ async def syarat_confirm(event):
         del loading_message[user_id]
     
     # Kirim notifikasi
-    await event.answer(f"✅ Syarat disimpan: {syarat}", alert=True)
+    await event.answer(f"✅ Syarat disimpan: {syarat_text}", alert=True)
     
     # Refresh menu
     class FakeEvent:

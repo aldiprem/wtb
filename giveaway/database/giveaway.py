@@ -713,7 +713,7 @@ class GiveawayDatabase:
         Add or update syarat for a giveaway
         Args:
             giveaway_id: ID of the giveaway
-            syarat: Syarat type (None, Subscribe, Boost, Tap link)
+            syarat: Syarat string (e.g., "Subscribe, Boost" or "None")
         Returns:
             True if successful
         """
