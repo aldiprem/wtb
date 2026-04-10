@@ -295,6 +295,7 @@ async def toggle_captcha(event):
             await self.client.send_message(self.sender_id, text, buttons=buttons)
     
     fake_event = FakeEvent(user_id, bot)
+    await event.delete()
     await menu_create_giveaway(fake_event, user_id)
 
 @bot.on(events.NewMessage(pattern="^/start$"))
