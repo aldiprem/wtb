@@ -873,17 +873,13 @@ async def handle_peer_selection(event):
                 'title': title
             })
             
+            # Delete the service message (peer selection message)
             try:
                 await bot.delete_messages(msg.chat_id, msg.id)
             except:
                 pass
             
-            # Update user_state
-            user_state[user_id]['chat_id'] = chat_id
-            user_state[user_id]['chat_title'] = title or ''
-            user_state[user_id]['saved_chats'] = user_chats[user_id]
-            
-            # Hapus pesan loading yang mungkin ada
+            # HAPUS PESAN LOADING (yang berisi peer buttons)
             if user_id in loading_message:
                 try:
                     await bot.delete_messages(user_id, loading_message[user_id])
@@ -891,8 +887,21 @@ async def handle_peer_selection(event):
                     pass
                 del loading_message[user_id]
             
-            # ========== REFRESH MENU ADD_CHAT (BUKAN CREATE_GIVEAWAY) ==========
-            # Kirim ulang menu add_chat dengan daftar chat terbaru
+            # Update user_state
+            user_state[user_id]['chat_id'] = chat_id
+            user_state[user_id]['chat_title'] = title or ''
+            user_state[user_id]['saved_chats'] = user_chats[user_id]
+            
+            # Kirim pesan sukses singkat
+            await bot.send_message(
+                user_id,
+                f"✅ **Berhasil Ditambahkan!**\n\n"
+                f"• Tipe: {chat_type}\n"
+                f"• Nama: {title or '-'}\n"
+                f"• ID: `{chat_id}`"
+            )
+            
+            # ========== KIRIM ULANG MENU ADD_CHAT ==========
             existing_chats = user_chats.get(user_id, [])
             
             # Inline buttons untuk manage chats
@@ -912,17 +921,10 @@ async def handle_peer_selection(event):
                     chat_type_display = chat.get('chat_type', '-')
                     chats_text += f"{i}. [{chat_type_display}] {chat_title}\n   `{chat_id_display}`\n"
                 
+                # Kirim pesan baru dengan button (BUKAN edit)
                 await bot.send_message(user_id, chats_text, buttons=inline_buttons)
             else:
                 await bot.send_message(user_id, "Belum ada chat yang tersimpan. Silakan pilih channel/group di atas.", buttons=inline_buttons)
-            
-            # Kirim juga pesan sukses singkat
-            await bot.send_message(
-                user_id,
-                f"✅ **Berhasil Ditambahkan!**\n\n"
-                f"• Tipe: {chat_type}\n"
-                f"• Nama: {title or '-'}"
-            )
             
         else:
             await bot.send_message(user_id, f"⚠️ Chat `{chat_id}` sudah ada dalam daftar!")
