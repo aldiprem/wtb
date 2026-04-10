@@ -525,13 +525,6 @@ class GiveawayDatabase:
 
     @staticmethod
     def parse_duration_text(duration_str: str) -> int:
-        """
-        Parse human readable duration text to minutes
-        Args:
-            duration_str: e.g., "1 jam", "2 jam 30 menit", "3 hari"
-        Returns:
-            Total minutes
-        """
         import re
         
         total_minutes = 0
