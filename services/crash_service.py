@@ -12,16 +12,33 @@ crash_bp = Blueprint('crash_bp', __name__)
 # ==========================================
 @crash_bp.route('/assets/tgs/<path:filename>', methods=['GET'])
 def serve_tgs_assets(filename):
-    """
-    URL Endpoint ini akan menjadi: /api/crash/assets/tgs/<filename>
-    Mengambil file langsung dari direktori root server Anda.
-    """
     directory = '/root/wtb/image'
+    file_path = os.path.join(directory, filename)
+    
+    # 1. Cek apakah foldernya ada
+    if not os.path.exists(directory):
+        return jsonify({
+            "error": "Folder direktori tidak ditemukan di server",
+            "path_yang_dicari": directory
+        }), 404
+
+    # 2. Cek apakah file spesifiknya ada
+    if not os.path.isfile(file_path):
+        # Jika tidak ada, tampilkan daftar file yang SEBENARNYA ada di folder tersebut
+        # agar Anda tahu nama file yang benar
+        files_available = os.listdir(directory)
+        return jsonify({
+            "error": "File tidak ditemukan",
+            "file_yang_diminta": filename,
+            "path_lengkap": file_path,
+            "file_yang_tersedia_di_folder_ini": files_available
+        }), 404
+
+    # 3. Jika folder dan file ada, kirimkan filenya
     try:
-        # Mengembalikan file dari folder /root/wtb/image/
         return send_from_directory(directory, filename)
-    except FileNotFoundError:
-        return jsonify({"error": "File .tgs tidak ditemukan di server"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Gagal membaca file: {str(e)}"}), 500
 
 # --- STATE GAME GLOBAL ---
 game_state = {
