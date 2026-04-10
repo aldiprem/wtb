@@ -29,6 +29,7 @@ env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 sys.path.append('/root/wtb')
 from giveaway.database.giveaway import GiveawayDatabase
+import pytz
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
@@ -183,7 +184,7 @@ async def profile(event):
 async def create_giveaway(event):
     user = await event.get_sender()
     user_id = user.id
-    first_name = user.first_nme or ""
+    first_name = user.first_name or ""
     last_name = user.last_name or ""
     fullname = f"{first_name} {last_name}"
     mention = f"[{fullname}(tg://user?id={user_id})]"
