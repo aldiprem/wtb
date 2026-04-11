@@ -1,4 +1,4 @@
-/* games/css/games.css - LENGKAP */
+/* games/css/games.css - LENGKAP + TON LOGO */
 
 :root {
     --tg-bg-color: #0f0f0f;
@@ -91,6 +91,31 @@ body {
     gap: 8px;
     font-weight: 600;
     font-size: 14px;
+}
+
+/* TON Logo Style */
+.ton-logo {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.ton-logo-sm {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+}
+
+.ton-logo-md {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+.ton-logo-lg {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
 }
 
 .deposit-header-btn {
@@ -315,8 +340,7 @@ body {
     transform: translateY(-2px);
 }
 
-/* ==================== MODAL DEPOSIT (PERBAIKAN) ==================== */
-
+/* MODAL DEPOSIT */
 .modal {
     display: none;
     position: fixed;
@@ -395,7 +419,6 @@ body {
     padding: 20px;
 }
 
-/* Wallet Status */
 .wallet-status {
     text-align: center;
     padding: 20px 0;
@@ -407,14 +430,12 @@ body {
     margin-bottom: 16px;
 }
 
-/* Disconnect Container */
 #disconnectContainer {
     margin-bottom: 20px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--border-color);
 }
 
-/* Tombol Disconnect Wallet */
 .btn-disconnect-wallet {
     width: 100%;
     background: linear-gradient(135deg, #ef4444, #dc2626);
@@ -441,7 +462,6 @@ body {
     font-size: 14px;
 }
 
-/* Deposit Form */
 #depositForm p {
     color: var(--tg-hint-color);
     font-size: 13px;
@@ -494,7 +514,6 @@ body {
     background: rgba(255, 255, 255, 0.2);
 }
 
-/* Form Group */
 .form-group {
     margin-bottom: 20px;
 }
@@ -530,7 +549,6 @@ body {
     margin-top: 6px;
 }
 
-/* Tombol Kirim Deposit */
 .btn-process-deposit {
     width: 100%;
     background: linear-gradient(135deg, #10b981, #059669);
@@ -559,7 +577,6 @@ body {
     transform: none;
 }
 
-/* Deposit Instructions (Success) */
 .deposit-instructions {
     text-align: center;
     padding: 10px 0;
@@ -596,7 +613,6 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
-/* TON Connect Button Styling */
 #depositTonConnect {
     display: flex;
     justify-content: center;
@@ -609,7 +625,6 @@ body {
     font-weight: 600 !important;
 }
 
-/* Header Deposit Button Style */
 .deposit-header-btn {
     background: linear-gradient(135deg, #3b82f6, #1d4ed8);
     border: none;
@@ -640,7 +655,6 @@ body {
     box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
-/* Saat wallet connected (akan diubah via JS) */
 .deposit-header-btn.wallet-connected {
     background: linear-gradient(135deg, #10b981, #059669);
     width: 28px;
@@ -654,12 +668,5 @@ body {
 }
 
 .deposit-header-btn.wallet-connected span {
-    display: none;
-}
-
-/* Hapus style duplikat yang lama */
-.deposit-methods,
-.method-btn,
-.custom-amount {
     display: none;
 }
