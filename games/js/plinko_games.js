@@ -195,11 +195,11 @@
             const data = await response.json();
             
             if (data.success) {
-                // Total kemenangan (atas)
+                // Total kemenangan
                 const totalWinAmount = data.total_win_amount || 0;
                 document.getElementById('totalWinAmount').textContent = totalWinAmount.toLocaleString();
                 
-                // Biggest multiplier (bawah)
+                // Biggest multiplier
                 document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
                 
                 // Last player
@@ -208,7 +208,7 @@
                 
                 document.getElementById('lastPlayerName').textContent = lastPlayerName;
                 document.getElementById('lastPlayerMultiplier').textContent = `${lastPlayerMultiplier}x`;
-                document.getElementById('roundHash').textContent = data.current_hash ? data.current_hash.substring(0, 12) + '...' : '-';
+                document.getElementById('roundHash').textContent = data.current_hash ? data.current_hash.substring(0, 16) + '...' : '-';
             }
         } catch (error) {
             console.error('Error loading stats:', error);
@@ -666,3 +666,24 @@
     
     init();
 })();
+
+// Global function untuk copy round hash
+window.copyRoundHash = function() {
+    const hashElement = document.getElementById('roundHash');
+    if (hashElement) {
+        const hashText = hashElement.textContent;
+        if (hashText && hashText !== '-') {
+            navigator.clipboard.writeText(hashText);
+            const container = document.getElementById('roundHashContainer');
+            const originalBg = container.style.background;
+            container.style.background = 'rgba(16, 185, 129, 0.2)';
+            setTimeout(() => {
+                container.style.background = originalBg;
+            }, 300);
+            
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+        }
+    }
+};
