@@ -218,3 +218,27 @@ def verify_ton_deposit():
     except Exception as e:
         print(f"❌ Error verifying TON deposit: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
+    
+@games_bp.route('/api/user/wallet', methods=['POST'])
+def update_wallet():
+    """Update user's wallet address"""
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    wallet_address = data.get('wallet_address')
+    
+    if not telegram_id:
+        return jsonify({'success': False, 'error': 'telegram_id required'}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE users 
+            SET wallet_address = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE telegram_id = ?
+        ''', (wallet_address, telegram_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

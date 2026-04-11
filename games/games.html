@@ -131,7 +131,7 @@
 
     </div>
 
-    <!-- Modal Deposit TON -->
+    <!-- Modal Deposit TON - PASTIKAN STRUKTURNYA BENAR -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -140,13 +140,13 @@
             </div>
             <div class="modal-body">
                 <!-- Tombol Disconnect Wallet -->
-                <div id="disconnectContainer" style="display: none; margin-bottom: 16px;">
+                <div id="disconnectContainer" style="display: none;">
                     <button id="disconnectWalletBtn" class="btn-disconnect-wallet">
                         <i class="fas fa-plug"></i> Disconnect Wallet
                     </button>
                 </div>
 
-                <div class="wallet-status" id="depositWalletStatus">
+                <div id="depositWalletStatus" class="wallet-status">
                     <p>⚠️ Silakan hubungkan wallet TON Anda terlebih dahulu</p>
                     <div id="depositTonConnect" class="ton-connect-button"></div>
                 </div>
@@ -157,7 +157,7 @@
                         <div class="info-row">
                             <span class="info-label">Address:</span>
                             <code id="depositAddress" class="tx-hash"></code>
-                            <button class="icon-btn" onclick="copyDepositAddress()">📋</button>
+                            <button type="button" class="icon-btn" onclick="copyDepositAddress()">📋</button>
                         </div>
                     </div>
                     
@@ -182,7 +182,7 @@
                             <code id="depositTxHash" class="tx-hash"></code>
                         </div>
                     </div>
-                    <button class="btn-secondary btn-full" onclick="closeModal()">Tutup</button>
+                    <button type="button" class="btn-secondary btn-full" onclick="closeModal()">Tutup</button>
                 </div>
                 
                 <p class="payment-info">* Deposit akan langsung masuk ke saldo game Anda</p>

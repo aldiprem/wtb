@@ -113,54 +113,68 @@ document.addEventListener("DOMContentLoaded", () => {
                 isWalletConnected = true;
                 updateHeaderDepositButton();
                 
-                await updateUserWallet(currentUser.id, wallet.account.address);
+                // Update wallet address - jangan block jika gagal
+                try {
+                    await updateUserWallet(currentUser.id, wallet.account.address);
+                } catch (err) {
+                    console.warn('Wallet update failed but continuing:', err);
+                }
                 
-                if (walletStatus && depositForm) {
-                    walletStatus.style.display = 'none';
+                // Update modal UI
+                if (walletStatus) walletStatus.style.display = 'none';
+                if (depositForm) {
                     depositForm.style.display = 'block';
-                    document.getElementById('depositAddress').textContent = webAddress;
+                    const depositAddress = document.getElementById('depositAddress');
+                    if (depositAddress) depositAddress.textContent = webAddress;
                 }
-                
-                // Tampilkan tombol disconnect
-                if (disconnectContainer) {
-                    disconnectContainer.style.display = 'block';
-                }
+                if (disconnectContainer) disconnectContainer.style.display = 'block';
                 
                 // Setup disconnect button
                 const disconnectBtn = document.getElementById('disconnectWalletBtn');
                 if (disconnectBtn) {
-                    disconnectBtn.removeEventListener('click', disconnectWallet);
-                    disconnectBtn.addEventListener('click', disconnectWallet);
+                    // Remove old listener to avoid duplicate
+                    const newBtn = disconnectBtn.cloneNode(true);
+                    disconnectBtn.parentNode.replaceChild(newBtn, disconnectBtn);
+                    newBtn.addEventListener('click', disconnectWallet);
                 }
             } else {
                 isWalletConnected = false;
                 updateHeaderDepositButton();
                 
-                if (walletStatus && depositForm) {
-                    walletStatus.style.display = 'block';
-                    depositForm.style.display = 'none';
-                }
-                if (disconnectContainer) {
-                    disconnectContainer.style.display = 'none';
-                }
+                if (walletStatus) walletStatus.style.display = 'block';
+                if (depositForm) depositForm.style.display = 'none';
+                if (disconnectContainer) disconnectContainer.style.display = 'none';
             }
         });
     }
 
     async function updateUserWallet(telegramId, walletAddress) {
         try {
-            await fetch('/api/user/wallet', {
+            // Perbaiki URL endpoint - harus sesuai dengan route di app.py
+            const response = await fetch('/api/user/wallet', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: JSON.stringify({
                     telegram_id: telegramId.toString(),
                     wallet_address: walletAddress
                 })
             });
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ Wallet updated:', data);
+            } else {
+                console.error('❌ Wallet update failed:', response.status);
+            }
         } catch (error) {
             console.error('Error updating wallet:', error);
+            // Jangan throw error, biarkan proses lanjut
         }
     }
+
 
     function base64EncodeComment(comment) {
         try {
@@ -320,24 +334,31 @@ document.addEventListener("DOMContentLoaded", () => {
             isWalletConnected = false;
             updateHeaderDepositButton();
             
-            // Update modal
+            // Reset UI modal
             const walletStatus = document.getElementById('depositWalletStatus');
             const depositForm = document.getElementById('depositForm');
             const disconnectContainer = document.getElementById('disconnectContainer');
             
-            if (walletStatus && depositForm) {
-                walletStatus.style.display = 'block';
-                depositForm.style.display = 'none';
-            }
-            if (disconnectContainer) {
-                disconnectContainer.style.display = 'none';
+            if (walletStatus) walletStatus.style.display = 'block';
+            if (depositForm) depositForm.style.display = 'none';
+            if (disconnectContainer) disconnectContainer.style.display = 'none';
+            
+            // Reset deposit address
+            const depositAddress = document.getElementById('depositAddress');
+            if (depositAddress) depositAddress.textContent = '';
+            
+            // Tampilkan notifikasi
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
             }
             
             alert('Wallet berhasil diputuskan');
         } catch (error) {
             console.error('Disconnect error:', error);
+            alert('Gagal memutuskan wallet: ' + error.message);
         }
     }
+
 
     // ==================== HEADER BUTTON HANDLER ====================
     async function handleHeaderButtonClick() {
