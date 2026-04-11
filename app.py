@@ -282,15 +282,6 @@ def serve_profile_page():
 
 # ==================== ROUTE UNTUK ICON MANIFEST ====================
 
-@app.route('/icon.png')
-def serve_icon():
-    """Serve icon for TON Connect manifest"""
-    icon_path = os.path.join(base_dir, 'image', 'logo-manifest.jpg')
-    if os.path.exists(icon_path):
-        return send_from_directory(os.path.join(base_dir, 'image'), 'icon-manifest.jpg', mimetype='image/jpeg')
-    else:
-        return '', 404
-
 @app.route('/tonconnect-manifest.json')
 def serve_tonconnect_manifest():
     manifest = {
