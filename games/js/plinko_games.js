@@ -341,58 +341,66 @@
         
         const totalBet = currentBetAmount * ballCount;
         
-        // Check balance
+        // Check balance menggunakan endpoint yang benar
         const currentBalance = await loadUserBalance();
         if (currentBalance < totalBet) {
             alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON, dibutuhkan: ${totalBet.toFixed(2)} TON`);
             return;
         }
         
-        // Deduct balance
-        const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegram_id: telegramUser?.id,
-                amount: totalBet
-            })
-        });
-        
-        const deductData = await deductResponse.json();
-        if (!deductData.success) {
-            alert(deductData.error || 'Gagal memotong saldo');
-            return;
-        }
-        
-        await loadUserBalance();
-        
-        // Drop multiple balls dengan delay dan backend calculation
-        for (let i = 0; i < ballCount; i++) {
-            setTimeout(async () => {
-                // Get result from backend
-                const result = await playGameBackend(currentBetAmount);
-                
-                if (result) {
-                    // Save result
-                    await saveGameResult(currentBetAmount, result.multiplier, result.win_amount, result.round_hash);
+        // Deduct balance - pastikan URL benar
+        try {
+            const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    telegram_id: telegramUser?.id,
+                    amount: totalBet
+                })
+            });
+            
+            const deductData = await deductResponse.json();
+            if (!deductData.success) {
+                alert(deductData.error || 'Gagal memotong saldo');
+                return;
+            }
+            
+            await loadUserBalance();
+            
+            // Drop multiple balls dengan delay dan backend calculation
+            for (let i = 0; i < ballCount; i++) {
+                setTimeout(async () => {
+                    // Get result from backend
+                    const result = await playGameBackend(currentBetAmount);
                     
-                    // Add win to balance
-                    if (result.win_amount > 0) {
-                        await fetch(`${API_BASE}/api/plinko/add-balance`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                telegram_id: telegramUser?.id,
-                                amount: result.win_amount
-                            })
-                        });
-                        await loadUserBalance();
+                    if (result) {
+                        // Save result
+                        await saveGameResult(currentBetAmount, result.multiplier, result.win_amount, result.round_hash);
+                        
+                        // Add win to balance
+                        if (result.win_amount > 0) {
+                            await fetch(`${API_BASE}/api/plinko/add-balance`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    telegram_id: telegramUser?.id,
+                                    amount: result.win_amount
+                                })
+                            });
+                            await loadUserBalance();
+                        }
+                        
+                        // Animate ball drop
+                        animateBallDrop(result.position, result.multiplier, currentBetAmount, result.win_amount);
                     }
-                    
-                    // Animate ball drop with the calculated multiplier position
-                    animateBallDrop(result.position, result.multiplier, currentBetAmount, result.win_amount);
-                }
-            }, i * 200);
+                }, i * 200);
+            }
+        } catch (error) {
+            console.error('Error in dropBalls:', error);
+            alert('Terjadi kesalahan. Silakan coba lagi.');
         }
     }
 

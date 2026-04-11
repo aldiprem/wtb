@@ -454,5 +454,105 @@ def get_multipliers():
         "multipliers": RISK_MULTIPLIERS
     })
 
+# games/services/games_plinko_service.py - Perbaikan endpoint
+
+@plinko_bp.route('/deduct-balance', methods=['POST', 'OPTIONS'])
+def deduct_balance():
+    """Deduct user balance for bet"""
+    # Handle OPTIONS preflight request
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+    
+    telegram_id = data.get('telegram_id')
+    amount = data.get('amount', 0)
+    
+    if not telegram_id:
+        return jsonify({"success": False, "error": "telegram_id required"}), 400
+    
+    if amount <= 0:
+        return jsonify({"success": False, "error": "Invalid amount"}), 400
+    
+    try:
+        current_balance = get_user_balance(telegram_id)
+        
+        if current_balance < amount:
+            return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
+        
+        if update_user_balance(telegram_id, -amount):
+            new_balance = get_user_balance(telegram_id)
+            return jsonify({"success": True, "new_balance": new_balance})
+        
+        return jsonify({"success": False, "error": "Failed to deduct balance"}), 500
+    except Exception as e:
+        print(f"Error in deduct_balance: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@plinko_bp.route('/add-balance', methods=['POST', 'OPTIONS'])
+def add_balance():
+    """Add user balance for win"""
+    # Handle OPTIONS preflight request
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+    
+    telegram_id = data.get('telegram_id')
+    amount = data.get('amount', 0)
+    
+    if not telegram_id:
+        return jsonify({"success": False, "error": "telegram_id required"}), 400
+    
+    if amount <= 0:
+        return jsonify({"success": False, "error": "Invalid amount"}), 400
+    
+    try:
+        if update_user_balance(telegram_id, amount):
+            new_balance = get_user_balance(telegram_id)
+            return jsonify({"success": True, "new_balance": new_balance})
+        
+        return jsonify({"success": False, "error": "Failed to add balance"}), 500
+    except Exception as e:
+        print(f"Error in add_balance: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@plinko_bp.route('/balance/<int:telegram_id>', methods=['GET', 'OPTIONS'])
+def get_balance(telegram_id):
+    """Get user balance from games database"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
+    try:
+        balance = get_user_balance(telegram_id)
+        return jsonify({"success": True, "balance": balance})
+    except Exception as e:
+        print(f"Error getting balance: {e}")
+        return jsonify({"success": True, "balance": 0.0})
+
+
+def _build_cors_preflight_response():
+    """Build CORS preflight response"""
+    response = jsonify({"success": True})
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+    response.headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    return response
+
+@plinko_bp.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    return response
+
 # Initialize database on import
 init_plinko_db()
