@@ -261,8 +261,10 @@ def serve_plinko_games():
 
 # ==================== ROUTES UNTUK GAMES ====================
 
-@app.route('/games')
+@app.route('/games', strict_slashes=False)
+@app.route('/games/lobby')
 def serve_games_lobby():
+    """Halaman Utama Lobby Games"""
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'games.html')
 
 @app.route('/games/css/<path:filename>')
