@@ -1597,6 +1597,33 @@ canvas {
     border-color: transparent;
 }
 
+/* Tombol Back dengan radius besar (tidak terlalu tumpul) */
+.back-button {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: var(--tg-text-color);
+    width: 36px;
+    height: 36px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 18px;
+}
+
+.back-button:hover {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateX(-2px);
+}
+
+.back-button:active {
+    transform: translateX(-2px) scale(0.95);
+}
+
 /* Sembunyikan floating-nav lama */
 .floating-nav {
     display: none !important;
