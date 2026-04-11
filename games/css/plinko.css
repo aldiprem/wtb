@@ -683,10 +683,6 @@ canvas {
     gap: 8px;
 }
 
-.risk-trigger-btn .fa-chevron-up {
-    transition: transform 0.3s ease;
-}
-
 .risk-btn {
     flex: 1;
     padding: 10px;

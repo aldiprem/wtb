@@ -83,31 +83,20 @@
                     </div>
                 </div>
 
-                <!-- Tombol Level (Risk) - Di atas tombol Place dan Drop -->
-                <div class="risk-trigger-container">
-                    <button id="riskTriggerBtn" class="risk-trigger-btn">
-                        <i class="fas fa-chart-line"></i> Level <i class="fas fa-chevron-up"></i>
-                    </button>
-                </div>
-
-                <!-- Panel Risk Level (muncul ke atas) -->
-                <div id="riskPanel" class="risk-panel" style="display: none;">
-                    <div class="risk-panel-header">
-                        <span>Pilih Risk Level</span>
-                        <button id="closeRiskPanel" class="close-risk-panel">&times;</button>
+                <!-- Bet Controls -->
+                <div class="bet-controls">
+                    <div class="bet-input-group">
+                        <label class="bet-label">Jumlah Taruhan</label>
+                        <input type="number" id="betAmount" class="bet-input" value="1000" min="100" step="100">
                     </div>
-                    <div class="risk-selector-panel">
-                        <button class="risk-option low" data-risk="low">Low</button>
-                        <button class="risk-option medium active" data-risk="medium">Medium</button>
-                        <button class="risk-option high" data-risk="high">High</button>
+                    <div class="bet-input-group">
+                        <label class="bet-label">Risk Level</label>
+                        <div class="risk-selector">
+                            <button class="risk-btn low" data-risk="low">Low</button>
+                            <button class="risk-btn medium active" data-risk="medium">Medium</button>
+                            <button class="risk-btn high" data-risk="high">High</button>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Tombol Aksi: Place Bet dan Drop Ball -->
-                <div class="action-buttons-row">
-                    <button id="placeBetBtn" class="place-bet-btn">
-                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="ton-logo-btn"> PLACE
-                    </button>
                     <button id="playBtn" class="play-btn">
                         <i class="fas fa-play"></i> DROP BALL
                     </button>
@@ -123,55 +112,7 @@
                 </div>
             </div>
 
-            <!-- Modal Panel Place Bet (dari bawah) -->
-            <div id="placeBetModal" class="place-bet-modal">
-                <div class="place-bet-panel">
-                    <div class="place-bet-header">
-                        <div class="place-bet-tabs">
-                            <button class="tab-btn active" data-tab="gift">🎁 GIFT</button>
-                            <button class="tab-btn" data-tab="balance">💰 TON BALANCE</button>
-                        </div>
-                        <button id="closePlaceBetModal" class="close-place-bet">&times;</button>
-                    </div>
-                    
-                    <!-- Tab GIFT -->
-                    <div id="tabGift" class="tab-content active">
-                        <div class="gift-content">
-                            <i class="fas fa-gift gift-icon"></i>
-                            <h3>Coming Soon</h3>
-                            <p>Fitur Gift akan segera hadir</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Tab TON BALANCE -->
-                    <div id="tabBalance" class="tab-content">
-                        <div class="balance-info">
-                            <div class="balance-display">
-                                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="ton-logo-modal">
-                                <span id="modalUserBalance">0 TON</span>
-                            </div>
-                        </div>
-                        
-                        <div class="bet-input-container">
-                            <label>Jumlah Taruhan (TON)</label>
-                            <input type="number" id="modalBetAmount" class="modal-bet-input" value="1.0" min="0.1" step="0.1">
-                        </div>
-                        
-                        <div class="percentage-buttons">
-                            <button class="pct-btn" data-pct="25">25%</button>
-                            <button class="pct-btn" data-pct="50">50%</button>
-                            <button class="pct-btn" data-pct="75">75%</button>
-                            <button class="pct-btn" data-pct="100">MAX</button>
-                        </div>
-                        
-                        <button id="confirmBetBtn" class="confirm-bet-btn">
-                            <i class="fas fa-check-circle"></i> Konfirmasi Taruhan
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- History Section -->
+            <!-- History Section - Scrollable tanpa border pagination -->
             <div class="history-section">
                 <div class="section-header">
                     <h3><i class="fas fa-history"></i> Riwayat Permainan</h3>
