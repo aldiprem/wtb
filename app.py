@@ -296,7 +296,7 @@ def serve_tonconnect_manifest():
     manifest = {
         "url": "https://companel.shop",
         "name": "BarackGift",
-        "iconUrl": "https://companel.shop/icon.png",
+        "iconUrl": "https://companel.shop/image/logo-manifest.jpg",
         "termsOfUseUrl": "https://companel.shop/terms",
         "privacyPolicyUrl": "https://companel.shop/privacy"
     }
