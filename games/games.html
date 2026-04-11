@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>Profil - BarackGift</title>
+    <title>BarackGift - Games</title>
     
     <!-- CSS -->
-    <link rel="stylesheet" href="/games/css/profil.css">
     <link rel="stylesheet" href="/games/css/games.css">
     
     <!-- Fonts & Icons -->
@@ -19,7 +18,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <!-- App Container dengan struktur SAMA seperti games.html -->
+    <!-- App Container (Akan dibatasi lebarnya seperti layar HP) -->
     <div class="app-container">
         
         <!-- Header -->
@@ -29,108 +28,97 @@
             </div>
             <div class="balance-container">
                 <i class="fas fa-coins text-warning"></i>
-                <span id="userBalance">0</span>
+                <span id="userBalance"><i class="fas fa-spinner fa-spin"></i></span>
             </div>
         </header>
 
-        <!-- Main Content Area - Scroll di sini -->
+        <!-- Main Content Area -->
         <main class="content-area">
             
-            <!-- Profile Card -->
-            <div class="profile-card">
-                <div class="profile-avatar-wrapper">
-                    <div class="profile-avatar-large" id="profileAvatar">
-                        <img id="userAvatar" src="" alt="Profile Picture">
-                        <div class="avatar-overlay">
-                            <i class="fas fa-camera"></i>
+            <!-- TAB: HOME -->
+            <section id="tab-home" class="tab-pane">
+                <div class="empty-state">
+                    <i class="fas fa-home"></i>
+                    <h3>Halaman Home</h3>
+                    <p>Konten home akan segera hadir di sini.</p>
+                </div>
+            </section>
+
+            <!-- TAB: GAMES (Aktif Default) -->
+            <section id="tab-games" class="tab-pane active">
+                <div class="section-title">
+                    <h2><i class="fas fa-gamepad"></i> Daftar Permainan</h2>
+                    <p>Pilih permainan dan mulai menangkan koin!</p>
+                </div>
+
+                <div class="games-grid">
+                    <!-- Game Card: Plinko -->
+                    <div class="game-card" onclick="window.location.href='/plinko-games'">
+                        <div class="game-banner plinko-bg">
+                            <i class="fas fa-ball-pile"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-title-row">
+                                <h3>Plinko</h3>
+                                <span class="badge-hot">HOT</span>
+                            </div>
+                            <p>Jatuhkan bola dan menangkan multiplier besar!</p>
+                            <button class="btn-play"><i class="fas fa-play"></i> Mainkan</button>
+                        </div>
+                    </div>
+
+                    <!-- Game Card: Crash -->
+                    <div class="game-card" onclick="window.location.href='/crash'">
+                        <div class="game-banner crash-bg">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-title-row">
+                                <h3>Crash</h3>
+                                <span class="badge-new">NEW</span>
+                            </div>
+                            <p>Tarik koinmu sebelum roket meledak!</p>
+                            <button class="btn-play"><i class="fas fa-play"></i> Mainkan</button>
                         </div>
                     </div>
                 </div>
-                
-                <div class="profile-info-card">
-                    <h2 id="userFullName">Loading...</h2>
-                    <p class="profile-username" id="userUsername">@loading</p>
-                    <p class="profile-id" id="userId">ID: -</p>
-                </div>
-            </div>
+            </section>
 
-            <!-- Stats Grid -->
-            <div class="stats-grid-profile">
-                <div class="stat-box">
-                    <i class="fas fa-gift"></i>
-                    <div class="stat-box-info">
-                        <span class="stat-label">Total Gifts</span>
-                        <span class="stat-number" id="totalGifts">0</span>
-                    </div>
+            <!-- TAB: REFERRAL -->
+            <section id="tab-referral" class="tab-pane">
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Halaman Referral</h3>
+                    <p>Undang teman dan dapatkan bonus.</p>
                 </div>
-                <div class="stat-box">
-                    <i class="fas fa-coins"></i>
-                    <div class="stat-box-info">
-                        <span class="stat-label">Balance</span>
-                        <span class="stat-number" id="profileBalance">0</span>
-                    </div>
-                </div>
-                <div class="stat-box">
-                    <i class="fas fa-trophy"></i>
-                    <div class="stat-box-info">
-                        <span class="stat-label">Referral Reward</span>
-                        <span class="stat-number" id="referralReward">0</span>
-                    </div>
-                </div>
-            </div>
+            </section>
 
-            <!-- Action Buttons -->
-            <div class="action-buttons">
-                <button class="btn-deposit" id="depositBtn">
-                    <i class="fas fa-plus-circle"></i> Deposit
-                </button>
-                <button class="btn-history" id="historyBtn">
-                    <i class="fas fa-history"></i> Riwayat Game
-                </button>
-            </div>
+            <!-- TAB: PROFILE (Redirect ke halaman terpisah) -->
+            <section id="tab-profile" class="tab-pane">
+                <div class="empty-state">
+                    <i class="fas fa-user-circle"></i>
+                    <h3>Halaman Profil</h3>
+                    <p>Redirecting ke halaman profil...</p>
+                </div>
+            </section>
 
-            <!-- Game History Section -->
-            <div class="history-section-profile" id="historySection" style="display: none;">
-                <div class="section-header">
-                    <h3><i class="fas fa-gamepad"></i> Riwayat Permainan</h3>
-                    <button class="close-history" id="closeHistoryBtn">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="table-container">
-                    <table class="history-table">
-                        <thead>
-                            <tr>
-                                <th>Game</th>
-                                <th>Taruhan</th>
-                                <th>Multiplier</th>
-                                <th>Kemenangan</th>
-                                <th>Waktu</th>
-                            </tr>
-                        </thead>
-                        <tbody id="historyBodyProfile">
-                            <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </main>
 
         <!-- Floating Bottom Navigation -->
         <nav class="floating-nav">
-            <button class="nav-item" onclick="window.location.href='/games'">
+            <button class="nav-item" data-target="tab-home" data-url="">
                 <i class="fas fa-home"></i>
                 <span>Home</span>
             </button>
-            <button class="nav-item" onclick="window.location.href='/games'">
+            <button class="nav-item active" data-target="tab-games" data-url="">
                 <i class="fas fa-gamepad"></i>
                 <span>Games</span>
             </button>
-            <button class="nav-item" onclick="window.location.href='/games'">
+            <button class="nav-item" data-target="tab-referral" data-url="">
                 <i class="fas fa-user-friends"></i>
                 <span>Referral</span>
             </button>
-            <button class="nav-item active">
+            <button class="nav-item" data-target="tab-profile" data-url="/profile">
                 <i class="fas fa-user"></i>
                 <span>Profile</span>
             </button>
@@ -138,32 +126,7 @@
 
     </div>
 
-    <!-- Modal Deposit -->
-    <div id="depositModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-wallet"></i> Deposit</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p>Minimal Deposit: Rp 10.000</p>
-                <div class="deposit-methods">
-                    <button class="method-btn" data-amount="10000">Rp 10.000</button>
-                    <button class="method-btn" data-amount="25000">Rp 25.000</button>
-                    <button class="method-btn" data-amount="50000">Rp 50.000</button>
-                    <button class="method-btn" data-amount="100000">Rp 100.000</button>
-                </div>
-                <div class="custom-amount">
-                    <input type="number" id="customAmount" placeholder="Nominal lain" min="10000">
-                </div>
-                <button class="btn-process-deposit" id="processDeposit">
-                    <i class="fas fa-check-circle"></i> Proses Deposit
-                </button>
-                <p class="payment-info">Pembayaran via QRIS akan muncul setelah konfirmasi</p>
-            </div>
-        </div>
-    </div>
-
-    <script src="/games/js/profil.js"></script>
+    <!-- JavaScript -->
+    <script src="/games/js/games.js"></script>
 </body>
 </html>

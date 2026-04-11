@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
     <title>Profil - BarackGift</title>
     
     <!-- CSS -->
@@ -17,7 +19,9 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <!-- App Container dengan struktur SAMA seperti games.html -->
     <div class="app-container">
+        
         <!-- Header -->
         <header class="glass-header">
             <div class="app-title">
@@ -29,8 +33,9 @@
             </div>
         </header>
 
-        <!-- Main Profile Content -->
-        <main class="profile-content">
+        <!-- Main Content Area - Scroll di sini -->
+        <main class="content-area">
+            
             <!-- Profile Card -->
             <div class="profile-card">
                 <div class="profile-avatar-wrapper">
@@ -113,23 +118,24 @@
 
         <!-- Floating Bottom Navigation -->
         <nav class="floating-nav">
-            <button class="nav-item" data-target="tab-home" onclick="window.location.href='/games'">
+            <button class="nav-item" onclick="window.location.href='/games'">
                 <i class="fas fa-home"></i>
                 <span>Home</span>
             </button>
-            <button class="nav-item" data-target="tab-games" onclick="window.location.href='/games'">
+            <button class="nav-item" onclick="window.location.href='/games'">
                 <i class="fas fa-gamepad"></i>
                 <span>Games</span>
             </button>
-            <button class="nav-item" data-target="tab-referral" onclick="window.location.href='/games'">
+            <button class="nav-item" onclick="window.location.href='/games'">
                 <i class="fas fa-user-friends"></i>
                 <span>Referral</span>
             </button>
-            <button class="nav-item active" data-target="tab-profile">
+            <button class="nav-item active">
                 <i class="fas fa-user"></i>
                 <span>Profile</span>
             </button>
         </nav>
+
     </div>
 
     <!-- Modal Deposit -->
