@@ -163,3 +163,60 @@ def process_deposit():
         return jsonify({"success": True, "message": f"Deposit {amount} berhasil"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+    
+# Tambahkan di games/services/games_service.py
+
+@games_bp.route('/verify-ton-deposit', methods=['POST'])
+def verify_ton_deposit():
+    """Verifikasi deposit TON"""
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    transaction_hash = data.get('transaction_hash')
+    amount_ton = data.get('amount_ton')
+    from_address = data.get('from_address')
+    memo = data.get('memo', '')
+    
+    if not telegram_id or not transaction_hash:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Cek apakah transaksi sudah ada
+        cursor.execute("SELECT id FROM game_history WHERE win_amount = ? AND game_name = ?", (amount_ton * 100, 'DEPOSIT_TON'))
+        existing = cursor.fetchone()
+        
+        if existing:
+            return jsonify({"success": False, "error": "Transaction already processed"}), 400
+        
+        # Convert TON ke IDR (rate 1 TON = 10000 IDR untuk contoh)
+        amount_idr = int(amount_ton * 10000)
+        
+        # Update balance user
+        cursor.execute('''
+            UPDATE users 
+            SET balance = balance + ? 
+            WHERE telegram_id = ?
+        ''', (amount_idr, telegram_id))
+        
+        # Catat transaksi deposit
+        cursor.execute('''
+            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (telegram_id, 'DEPOSIT_TON', amount_idr, amount_idr, 1.0, get_current_time()))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ TON Deposit verified: {amount_ton} TON for user {telegram_id}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Deposit {amount_ton} TON berhasil",
+            "amount_idr": amount_idr
+        })
+        
+    except Exception as e:
+        print(f"❌ Error verifying TON deposit: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
