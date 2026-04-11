@@ -196,12 +196,40 @@
             
             if (data.success) {
                 document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
-                document.getElementById('lastPlayer').textContent = data.last_player || '-';
-                document.getElementById('lastTime').textContent = data.last_time || '-';
+                
+                // Tampilkan last player dengan avatar dari Telegram
+                const lastPlayerName = data.last_player || '-';
+                const lastPlayerMultiplier = data.last_multiplier || '0';
+                
+                document.getElementById('lastPlayerName').textContent = lastPlayerName;
+                document.getElementById('lastPlayerMultiplier').textContent = `${lastPlayerMultiplier}x`;
                 document.getElementById('roundHash').textContent = data.current_hash ? data.current_hash.substring(0, 12) + '...' : '-';
             }
         } catch (error) {
             console.error('Error loading stats:', error);
+        }
+    }
+
+    async function updateUserAvatar() {
+        try {
+            const tg = window.Telegram.WebApp;
+            const user = tg.initDataUnsafe?.user;
+            
+            if (user && user.photo_url) {
+                const avatarImg = document.getElementById('userAvatarImg');
+                if (avatarImg) {
+                    avatarImg.src = user.photo_url;
+                }
+            } else if (user && user.first_name) {
+                // Generate avatar from initial
+                const initial = user.first_name.charAt(0).toUpperCase();
+                const avatarImg = document.getElementById('userAvatarImg');
+                if (avatarImg) {
+                    avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=6c5ce7&color=fff&size=64`;
+                }
+            }
+        } catch (error) {
+            console.error('Error updating avatar:', error);
         }
     }
 
@@ -583,6 +611,7 @@
     async function init() {
         telegramUser = await getTelegramUser();
         await loadUserBalance();
+        await updateUserAvatar();
         
         canvas = document.getElementById('plinkoCanvas');
         ctx = canvas.getContext('2d');

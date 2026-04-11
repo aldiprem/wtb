@@ -81,26 +81,21 @@ def save_game_result(data):
     ))
     
     # Update stats
-    # Get unique players count
     cursor.execute('SELECT COUNT(DISTINCT user_id) FROM plinko_games WHERE user_id IS NOT NULL')
     total_players = cursor.fetchone()[0]
     
     cursor.execute('SELECT COUNT(*) FROM plinko_games')
     total_games = cursor.fetchone()[0]
     
-    # Get biggest multiplier
     cursor.execute('SELECT MAX(multiplier) FROM plinko_games')
     biggest_multiplier = cursor.fetchone()[0] or 0
     
-    # Get biggest win
     cursor.execute('SELECT MAX(win_amount) FROM plinko_games')
     biggest_win = cursor.fetchone()[0] or 0
     
-    # Get total bet and win
     cursor.execute('SELECT SUM(bet_amount), SUM(win_amount) FROM plinko_games')
     total_bet, total_win = cursor.fetchone()
     
-    # Get last player
     cursor.execute('''
         SELECT username, created_at FROM plinko_games 
         ORDER BY created_at DESC LIMIT 1
@@ -122,7 +117,7 @@ def save_game_result(data):
     ''', (
         total_players, total_games, biggest_multiplier, biggest_win,
         total_bet or 0, total_win or 0,
-        last['username'] if last else None,
+        data.get('username') or last['username'] if last else None,
         last['created_at'] if last else None,
         data['round_hash']
     ))
@@ -144,6 +139,14 @@ def get_stats():
     ''')
     
     row = cursor.fetchone()
+    
+    # Get last multiplier dari game terakhir
+    cursor.execute('''
+        SELECT multiplier, username FROM plinko_games 
+        ORDER BY created_at DESC LIMIT 1
+    ''')
+    last_game = cursor.fetchone()
+    
     conn.close()
     
     if row:
@@ -156,7 +159,8 @@ def get_stats():
             'total_win_amount': row['total_win_amount'],
             'last_player': row['last_player'],
             'last_time': row['last_time'],
-            'current_hash': row['current_hash']
+            'current_hash': row['current_hash'],
+            'last_multiplier': last_game['multiplier'] if last_game else 0
         }
     
     return {
@@ -168,7 +172,8 @@ def get_stats():
         'total_win_amount': 0,
         'last_player': None,
         'last_time': None,
-        'current_hash': None
+        'current_hash': None,
+        'last_multiplier': 0
     }
 
 def get_history(limit=50):
