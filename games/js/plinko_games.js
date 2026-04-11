@@ -1,4 +1,4 @@
-// games/js/plinko_games.js - FULL WORKING VERSION
+// games/js/plinko_games.js
 (function() {
     console.log('🎰 Plinko Games Initialized');
 
@@ -7,20 +7,21 @@
     let telegramUser = null;
     let canvas = null;
     let ctx = null;
-    let animationId = null;
 
     let multiplierAreas = [];
     
-    // PHYSICS VARIABLES
+    // --- PHYSICS VARIABLES ---
     let balls = [];
     const GRAVITY = 0.2;
-    const BOUNCE = 0.4;
-    const PIN_RADIUS = 4;
-    const BALL_RADIUS = 6;
+    const BOUNCE = 0.3;
+    const PIN_RADIUS = 3;
+    const BALL_RADIUS = 5;
     
+    // --- SPAWNER VARIABLES ---
     let spawnerX = 0;
     let spawnerDir = 1;
-    const spawnerSpeed = 0.8;
+    const spawnerSpeed = 0.5;
+    let animationId = null;
 
     const RISK_MULTIPLIERS = {
         low: [5, 4, 3, 2, 1, 0.5, 1, 2, 3, 4, 5],
@@ -36,41 +37,35 @@
             localStorage.setItem('plinko_views', viewCount);
             sessionStorage.setItem('plinko_view_counted', 'true');
         }
+        
         const viewsElement = document.getElementById('totalViews');
-        if (viewsElement) viewsElement.textContent = viewCount;
+        if (viewsElement) {
+            viewsElement.textContent = viewCount;
+        }
     }
 
-    // DRAW SPAWNER / DROPPER
+    // Fungsi Render Cerobong
     function drawSpawner() {
         ctx.fillStyle = '#334155';
-        ctx.fillRect(spawnerX - 15, 0, 30, 20);
+        ctx.fillRect(spawnerX - 15, 0, 30, 25);
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
-        ctx.arc(spawnerX, 20, 10, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(spawnerX, 18, 3, 0, Math.PI * 2);
+        ctx.arc(spawnerX, 25, 8, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // DRAW PLINKO BOARD WITH PINS
     function drawPlinkoBoard() {
         if (!canvas || !ctx) return;
         const w = canvas.width;
         const h = canvas.height;
         ctx.clearRect(0, 0, w, h);
         
-        // Background
-        ctx.fillStyle = '#0a0a0a';
-        ctx.fillRect(0, 0, w, h);
-        
         drawSpawner();
 
-        const startY = 55;
+        const startY = 60; 
         const rowSpacing = 28;
         const colSpacing = 26;
-        const totalRows = 10;
+        const totalRows = 9;
         const initialDots = 3;
 
         for (let row = 0; row < totalRows; row++) {
@@ -84,281 +79,116 @@
                 
                 // Outer glow
                 ctx.beginPath();
-                ctx.arc(x, y, PIN_RADIUS + 1, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
                 ctx.fill();
                 
                 // Inner peg
                 ctx.beginPath();
-                ctx.arc(x, y, PIN_RADIUS, 0, Math.PI * 2);
+                ctx.arc(x, y, 2, 0, Math.PI * 2);
                 ctx.fillStyle = '#FFD700';
                 ctx.fill();
-                
-                // Highlight
-                ctx.beginPath();
-                ctx.arc(x - 1, y - 1, 1.5, 0, Math.PI * 2);
-                ctx.fillStyle = '#FFF5CC';
-                ctx.fill();
             }
         }
-        
-        // Draw side walls
-        ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(10, 0);
-        ctx.lineTo(10, h - 40);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(w - 10, 0);
-        ctx.lineTo(w - 10, h - 40);
-        ctx.stroke();
     }
 
-    // COLLISION DETECTION WITH PINS
-    function handlePinCollisions(ball) {
-        const startY = 55;
-        const rowSpacing = 28;
-        const colSpacing = 26;
-        const totalRows = 10;
-        
-        for (let row = 0; row < totalRows; row++) {
-            const y = startY + row * rowSpacing;
-            const dotsInRow = 3 + row;
-            const rowWidth = (dotsInRow - 1) * colSpacing;
-            const rowStartX = (canvas.width / 2) - (rowWidth / 2);
-            
-            for (let col = 0; col < dotsInRow; col++) {
-                const px = rowStartX + col * colSpacing;
-                const py = y;
-                const dx = ball.x - px;
-                const dy = ball.y - py;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist < BALL_RADIUS + PIN_RADIUS) {
-                    const angle = Math.atan2(dy, dx);
-                    const force = 2.5;
-                    ball.vx += Math.cos(angle) * force;
-                    ball.vy = Math.abs(ball.vy) * -BOUNCE;
-                    
-                    // Reposition to avoid stuck
-                    const overlap = BALL_RADIUS + PIN_RADIUS - dist;
-                    ball.x += Math.cos(angle) * overlap;
-                    ball.y += Math.sin(angle) * overlap;
-                    
-                    // Add small random factor
-                    ball.vx += (Math.random() - 0.5) * 0.8;
-                    
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    // WALL COLLISIONS
-    function handleWallCollisions(ball) {
-        const leftWall = 15;
-        const rightWall = canvas.width - 15;
-        
-        if (ball.x - BALL_RADIUS < leftWall) {
-            ball.x = leftWall + BALL_RADIUS;
-            ball.vx = Math.abs(ball.vx) * 0.7;
-        }
-        if (ball.x + BALL_RADIUS > rightWall) {
-            ball.x = rightWall - BALL_RADIUS;
-            ball.vx = -Math.abs(ball.vx) * 0.7;
-        }
-    }
-
-    // UPDATE MULTIPLIER AREAS FROM CANVAS POSITION
-    function updateMultiplierAreas() {
-        const wrapper = document.querySelector('.multiplier-slots-wrapper');
-        if (!wrapper || !canvas) return;
-        
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        const startX = wrapperRect.left - canvasRect.left;
-        const width = wrapperRect.width;
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const segmentWidth = width / multipliers.length;
-        
-        multiplierAreas = [];
-        for (let i = 0; i < multipliers.length; i++) {
-            multiplierAreas.push({
-                index: i,
-                multiplier: multipliers[i],
-                x: startX + (i * segmentWidth),
-                width: segmentWidth,
-                bottomY: canvas.height - 25
-            });
-        }
-    }
-
-    // CHECK MULTIPLIER WALLS (BOUNDARIES BETWEEN SLOTS)
-    function checkMultiplierWalls(ball) {
-        if (ball.y < canvas.height - 70) return false;
-        
-        updateMultiplierAreas();
-        
-        for (let i = 0; i < multiplierAreas.length - 1; i++) {
-            const wallX = multiplierAreas[i].x + multiplierAreas[i].width;
-            
-            if (Math.abs(ball.x - wallX) < BALL_RADIUS + 2) {
-                if (ball.vx > 0 && ball.x > wallX) {
-                    ball.x = wallX - BALL_RADIUS;
-                    ball.vx = -Math.abs(ball.vx) * 0.5;
-                } else if (ball.vx < 0 && ball.x < wallX) {
-                    ball.x = wallX + BALL_RADIUS;
-                    ball.vx = Math.abs(ball.vx) * 0.5;
-                }
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // CHECK IF BALL HITS MULTIPLIER SLOT
-    function checkMultiplierHit(ball) {
-        if (ball.y + BALL_RADIUS < canvas.height - 35) return false;
-        
-        updateMultiplierAreas();
-        
-        for (const area of multiplierAreas) {
-            if (ball.x >= area.x && ball.x <= area.x + area.width) {
-                finalizeGame(ball, area);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // ANIMATE SLOT HIGHLIGHT
-    function animateSlot(slotIndex) {
-        const slots = document.querySelectorAll('.multiplier-slot');
-        if (slots[slotIndex]) {
-            slots[slotIndex].classList.add('active', 'pulse');
-            setTimeout(() => {
-                slots[slotIndex].classList.remove('active', 'pulse');
-            }, 600);
-        }
-    }
-
-    // GENERATE ROUND HASH
-    function generateRoundHash() {
-        return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
-    }
-
-    // SAVE GAME RESULT TO BACKEND
-    async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
-        try {
-            const response = await fetch(`${API_BASE}/api/plinko/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bet_amount: betAmount,
-                    multiplier: multiplier,
-                    win_amount: winAmount,
-                    round_hash: roundHash,
-                    risk_level: currentRisk,
-                    user_id: telegramUser?.id || null,
-                    username: telegramUser?.username || telegramUser?.first_name || 'Anonymous'
-                })
-            });
-            const data = await response.json();
-            if (data.success) {
-                loadStats();
-                loadHistory();
-            }
-        } catch (error) {
-            console.error('Error saving game:', error);
-        }
-    }
-
-    // FINALIZE GAME - SHOW RESULT
-    function finalizeGame(ball, area) {
-        const winAmount = Math.floor(ball.bet * area.multiplier);
-        const roundHash = generateRoundHash();
-        
-        animateSlot(area.index);
-        
-        const resultDiv = document.getElementById('resultDisplay');
-        const resultMultiplier = document.getElementById('resultMultiplier');
-        const resultWin = document.getElementById('resultWin');
-        
-        resultDiv.style.display = 'block';
-        resultMultiplier.textContent = `${area.multiplier}x`;
-        resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
-        
-        if (area.multiplier >= 5) {
-            resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
-            resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-        } else if (area.multiplier >= 2) {
-            resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-            resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
-        } else {
-            resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
-            resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-        }
-        
-        setTimeout(() => {
-            resultDiv.style.display = 'none';
-        }, 3000);
-        
-        saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
-    }
-
-    // ANIMATION LOOP
-    function animate() {
+    // --- GAME LOOP (ANIMASI) ---
+    function update() {
         if (!canvas || !ctx) return;
         
         drawPlinkoBoard();
-        
-        // Move spawner
-        const maxRange = 30;
+
+        // Gerakkan Cerobong (Hanya di antara 3 titik teratas)
+        const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
-        if (spawnerX > canvas.width / 2 + maxRange) spawnerDir = -1;
-        if (spawnerX < canvas.width / 2 - maxRange) spawnerDir = 1;
-        
-        // Update balls
-        for (let i = 0; i < balls.length; i++) {
-            const ball = balls[i];
-            
-            // Apply gravity
+        if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
+
+        // Di dalam loop balls.forEach di fungsi update()
+        balls.forEach((ball, index) => {
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
+
+            const startY = 60;
+            const rowSpacing = 28;
+            const colSpacing = 26;
             
-            // Check collisions
-            handlePinCollisions(ball);
-            handleWallCollisions(ball);
-            checkMultiplierWalls(ball);
-            
-            // Check if hit multiplier slot
-            let isHit = checkMultiplierHit(ball);
-            
-            // Draw ball
+            // --- TAMBAHAN: PEMBATAS SAMPING (INVISIBLE WALLS) ---
+            // Hitung baris saat ini berdasarkan posisi Y bola
+            const currentRow = Math.floor((ball.y - startY) / rowSpacing);
+            if (currentRow >= 0 && currentRow < 9) {
+                const dots = 3 + currentRow;
+                const rWidth = (dots - 1) * colSpacing;
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10; // -10 buffer
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10; // +10 buffer
+
+                // Pantulkan jika menabrak batas luar titik-titik
+                if (ball.x < leftWall) {
+                    ball.x = leftWall;
+                    ball.vx *= -BOUNCE;
+                } else if (ball.x > rightWall) {
+                    ball.x = rightWall;
+                    ball.vx *= -BOUNCE;
+                }
+            }
+
+            // Pembatas berdasarkan lebar multiplier wrapper
+            const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
+            if (multiplierWrapper && ball.y > canvas.height - 60) {
+                const wrapperWidth = multiplierWrapper.clientWidth;
+                const wrapperLeft = (canvas.width - wrapperWidth) / 2;
+                const wrapperRight = wrapperLeft + wrapperWidth;
+                
+                if (ball.x < wrapperLeft) ball.x = wrapperLeft;
+                if (ball.x > wrapperRight) ball.x = wrapperRight;
+            }
+
+            // --- LOGIKA TABRAKAN PIN LAMA ANDA ---
+            for (let r = 0; r < 9; r++) {
+                const dots = 3 + r;
+                const rowWidth = (dots - 1) * colSpacing;
+                const rowStartX = (canvas.width / 2) - (rowWidth / 2);
+                for (let c = 0; c < dots; c++) {
+                    const px = rowStartX + c * colSpacing;
+                    const py = startY + r * rowSpacing;
+                    const dx = ball.x - px;
+                    const dy = ball.y - py;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    if (dist < BALL_RADIUS + PIN_RADIUS) {
+                        const angle = Math.atan2(dy, dx);
+                        ball.vx += Math.cos(angle) * 1.5;
+                        ball.vy *= -BOUNCE;
+                        ball.y = py + Math.sin(angle) * (BALL_RADIUS + PIN_RADIUS);
+                    }
+                }
+            }
+
+            // Gambar Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             ctx.fillStyle = '#ef4444';
             ctx.fill();
-            ctx.beginPath();
-            ctx.arc(ball.x - 1.5, ball.y - 1.5, 2, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff8888';
-            ctx.fill();
-            
-            // Remove ball if out of bounds or hit
-            if (ball.y > canvas.height + 50 || isHit) {
-                balls.splice(i, 1);
-                i--;
+
+            // Cek tabrakan dengan dinding multiplier
+            checkMultiplierWalls(ball);
+
+            // Cek validasi masuk slot (sebelum bola dihapus)
+            let isHit = false;
+            if (ball.y + BALL_RADIUS >= canvas.height - 20) {
+                isHit = checkMultiplierHit(ball);
             }
-        }
-        
-        animationId = requestAnimationFrame(animate);
+
+            // Hapus bola setelah valid atau sudah lewat batas
+            if (ball.y > canvas.height + 50 || isHit) {
+                balls.splice(index, 1);
+            }
+        });
+
+        animationId = requestAnimationFrame(update);
     }
 
-    // LOAD STATS FROM API
+    // Load stats from API
     async function loadStats() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/stats`);
@@ -375,7 +205,7 @@
         }
     }
 
-    // LOAD HISTORY FROM API
+    // Load history
     async function loadHistory() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/history`);
@@ -384,7 +214,7 @@
             const tbody = document.getElementById('historyBody');
             
             if (!data.success || !data.history || data.history.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Belum ada riwayat</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Belum ada riwayat</td></td>';
                 return;
             }
             
@@ -408,7 +238,78 @@
         }
     }
 
-    // GET TELEGRAM USER
+    // Save game result
+    async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
+        try {
+            const response = await fetch(`${API_BASE}/api/plinko/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bet_amount: betAmount,
+                    multiplier: multiplier,
+                    win_amount: winAmount,
+                    round_hash: roundHash,
+                    risk_level: currentRisk,
+                    user_id: telegramUser?.id || null,
+                    username: telegramUser?.username || telegramUser?.first_name || 'Anonymous'
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                loadStats();
+                loadHistory();
+            }
+        } catch (error) {
+            console.error('Error saving game:', error);
+        }
+    }
+
+    // Generate random round hash
+    function generateRoundHash() {
+        return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+    }
+
+    function finalizeGame(ball) {
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segment = canvas.width / multipliers.length;
+        let slotIndex = Math.floor(ball.x / segment);
+        slotIndex = Math.min(Math.max(slotIndex, 0), multipliers.length - 1);
+        
+        const multiplier = multipliers[slotIndex];
+        const winAmount = Math.floor(ball.bet * multiplier);
+        const roundHash = generateRoundHash();
+        
+        animateSlot(slotIndex);
+        
+        // Animate ball drop result
+        const resultDiv = document.getElementById('resultDisplay');
+        const resultMultiplier = document.getElementById('resultMultiplier');
+        const resultWin = document.getElementById('resultWin');
+        
+        resultDiv.style.display = 'block';
+        resultMultiplier.textContent = `${multiplier}x`;
+        resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
+        
+        if (multiplier >= 5) {
+            resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+            resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+        } else if (multiplier >= 2) {
+            resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+            resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+        } else {
+            resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+            resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+        }
+        
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 3000);
+        
+        saveGameResult(ball.bet, multiplier, winAmount, roundHash);
+    }
+
+    // Get Telegram user
     async function getTelegramUser() {
         if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
             return window.Telegram.WebApp.initDataUnsafe.user;
@@ -416,7 +317,6 @@
         return { id: 1, first_name: 'Guest', username: 'guest' };
     }
 
-    // RENDER MULTIPLIER SLOTS UI
     function renderMultiplierSlots() {
         const wrapper = document.getElementById('multiplierSlotsWrapper');
         if (!wrapper) return;
@@ -427,59 +327,240 @@
         for (let i = 0; i < multipliers.length; i++) {
             const mult = multipliers[i];
             let riskClass = '';
+            
             if (mult >= 5) riskClass = 'high';
             else if (mult >= 2) riskClass = 'medium';
             else if (mult >= 1) riskClass = 'low';
             else riskClass = 'zero';
             
             const displayValue = mult % 1 === 0 ? mult : mult.toFixed(1);
-            html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">${displayValue}</div>`;
+            
+            html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
+                        ${displayValue}
+                    </div>`;
         }
+        
         wrapper.innerHTML = html;
     }
 
-    // PLAY GAME - DROP BALL
+    // Animasi slot saat bola jatuh
+    function animateSlot(slotIndex) {
+        const slots = document.querySelectorAll('.multiplier-slot');
+        if (slots[slotIndex]) {
+            slots[slotIndex].classList.add('active', 'pulse');
+            
+            setTimeout(() => {
+                slots[slotIndex].classList.remove('active', 'pulse');
+            }, 800);
+        }
+    }
+
+    // Drop Ball (Dipicu Tombol)
     async function playGame() {
         const betAmount = parseInt(document.getElementById('betAmount').value);
         if (isNaN(betAmount) || betAmount < 100) {
             alert('Minimal taruhan 100');
             return;
         }
-        
+
         balls.push({
             x: spawnerX,
-            y: 20,
-            vx: (Math.random() - 0.5) * 1.5,
-            vy: 2,
+            y: 25,
+            vx: (Math.random() - 0.5) * 1,
+            vy: 0,
             bet: betAmount
         });
     }
 
-    // RESIZE CANVAS
-    function resizeCanvas() {
-        if (!canvas) return;
-        const container = canvas.parentElement;
-        const maxWidth = Math.min(container.clientWidth, 500);
-        canvas.width = maxWidth;
-        canvas.height = 380;
-        spawnerX = canvas.width / 2;
-        drawPlinkoBoard();
-        updateMultiplierAreas();
+    // Fungsi untuk menentukan slot multiplier berdasarkan posisi X bola
+    function getMultiplierFromPosition(x) {
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segment = canvas.width / multipliers.length;
+        let slotIndex = Math.floor(x / segment);
+        slotIndex = Math.min(Math.max(slotIndex, 0), multipliers.length - 1);
+        return {
+            index: slotIndex,
+            multiplier: multipliers[slotIndex]
+        };
     }
 
-    // INITIALIZE
+    // Ganti fungsi finalizeGame
+    function finalizeGame(ball) {
+        // Cek apakah bola sudah melewati batas bawah multiplier slots
+        const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
+        const wrapperRect = multiplierWrapper?.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        // Konversi posisi bola ke koordinat relatif canvas
+        const ballScreenY = canvasRect.top + ball.y;
+        const wrapperTopY = wrapperRect?.top || 0;
+        
+        // Bola dianggap valid jika sudah melewati posisi Y multiplier wrapper
+        // atau sudah mencapai batas bawah canvas
+        if (ball.y >= canvas.height - 20) {
+            const result = getMultiplierFromPosition(ball.x);
+            
+            const winAmount = Math.floor(ball.bet * result.multiplier);
+            const roundHash = generateRoundHash();
+            
+            animateSlot(result.index);
+            
+            // Tampilkan hasil
+            const resultDiv = document.getElementById('resultDisplay');
+            const resultMultiplier = document.getElementById('resultMultiplier');
+            const resultWin = document.getElementById('resultWin');
+            
+            resultDiv.style.display = 'block';
+            resultMultiplier.textContent = `${result.multiplier}x`;
+            resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
+            
+            if (result.multiplier >= 5) {
+                resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+            } else if (result.multiplier >= 2) {
+                resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+            } else {
+                resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+            }
+            
+            setTimeout(() => {
+                resultDiv.style.display = 'none';
+            }, 3000);
+            
+            saveGameResult(ball.bet, result.multiplier, winAmount, roundHash);
+            return true;
+        }
+        return false;
+    }
+
+    // Fungsi untuk update area multiplier berdasarkan posisi di canvas
+    function updateMultiplierAreas() {
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper) return;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const startX = wrapperRect.left - canvasRect.left;
+        const width = wrapperRect.width;
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segmentWidth = width / multipliers.length;
+        
+        multiplierAreas = [];
+        for (let i = 0; i < multipliers.length; i++) {
+            multiplierAreas.push({
+                index: i,
+                multiplier: multipliers[i],
+                x: startX + (i * segmentWidth),
+                width: segmentWidth,
+                // Batas bawah area multiplier (posisi Y)
+                bottomY: canvas.height - 15
+            });
+        }
+    }
+
+    // Fungsi untuk cek tabrakan dengan dinding pemisah multiplier
+    function checkMultiplierWalls(ball) {
+        if (ball.y < canvas.height - 80) return false; // Hanya cek di area bawah
+        
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper) return false;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const leftWall = wrapperRect.left - canvasRect.left;
+        const rightWall = wrapperRect.right - canvasRect.left;
+        
+        let hit = false;
+        
+        // Cek tabrakan dengan dinding kiri
+        if (ball.x - BALL_RADIUS < leftWall && ball.vx < 0) {
+            ball.x = leftWall + BALL_RADIUS;
+            ball.vx *= -BOUNCE;
+            hit = true;
+        }
+        
+        // Cek tabrakan dengan dinding kanan
+        if (ball.x + BALL_RADIUS > rightWall && ball.vx > 0) {
+            ball.x = rightWall - BALL_RADIUS;
+            ball.vx *= -BOUNCE;
+            hit = true;
+        }
+        
+        return hit;
+    }
+
+    // Fungsi untuk cek validasi bola masuk ke multiplier slot
+    function checkMultiplierHit(ball) {
+        // Hanya cek ketika bola sudah di area bawah
+        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
+        
+        updateMultiplierAreas();
+        
+        for (const area of multiplierAreas) {
+            // Cek apakah posisi X bola berada di dalam area multiplier
+            if (ball.x >= area.x && ball.x <= area.x + area.width) {
+                // Bola dianggap valid
+                const winAmount = Math.floor(ball.bet * area.multiplier);
+                const roundHash = generateRoundHash();
+                
+                // Animasi highlight slot
+                animateSlot(area.index);
+                
+                // Tampilkan hasil
+                const resultDiv = document.getElementById('resultDisplay');
+                const resultMultiplier = document.getElementById('resultMultiplier');
+                const resultWin = document.getElementById('resultWin');
+                
+                resultDiv.style.display = 'block';
+                resultMultiplier.textContent = `${area.multiplier}x`;
+                resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
+                
+                if (area.multiplier >= 5) {
+                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                } else if (area.multiplier >= 2) {
+                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                } else {
+                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                }
+                
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 3000);
+                
+                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
+                return true; // Bola sudah diproses
+            }
+        }
+        return false;
+    }
+
+    // Initialize
     async function init() {
         telegramUser = await getTelegramUser();
         
         canvas = document.getElementById('plinkoCanvas');
-        if (!canvas) {
-            console.error('Canvas not found!');
-            return;
-        }
         ctx = canvas.getContext('2d');
         
-        resizeCanvas();
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = Math.min(container.clientWidth, 800);
+            canvas.height = 320;
+            spawnerX = canvas.width / 2;
+            drawPlinkoBoard();
+            updateMultiplierAreas();
+        }
+
+        }
+        
         window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
         
         // Risk buttons
         document.querySelectorAll('.risk-btn').forEach(btn => {
@@ -487,35 +568,29 @@
                 document.querySelectorAll('.risk-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentRisk = btn.dataset.risk;
-                renderMultiplierSlots();
                 drawPlinkoBoard();
-                updateMultiplierAreas();
+                renderMultiplierSlots();
             });
         });
         
         // Play button
-        const playBtn = document.getElementById('playBtn');
-        if (playBtn) playBtn.addEventListener('click', playGame);
+        document.getElementById('playBtn').addEventListener('click', playGame);
         
         // Refresh button
-        const refreshBtn = document.getElementById('refreshHistory');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                loadStats();
-                loadHistory();
-            });
-        }
+        document.getElementById('refreshHistory').addEventListener('click', () => {
+            loadStats();
+            loadHistory();
+        });
         
-        await loadStats();
-        await loadHistory();
+        loadStats();
+        loadHistory();
         updateViewCount();
         renderMultiplierSlots();
         
-        // Start animation
-        animate();
-        
+        // Start animation loop
+        update();
+
         console.log('✅ Plinko Games Ready');
-    }
     
     init();
 })();
