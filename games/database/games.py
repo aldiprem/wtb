@@ -65,9 +65,9 @@ def init_db():
     conn.close()
 
 def get_or_create_user(telegram_id, username, first_name, referred_by=None):
-    """Mencari user atau membuat user baru, dan memperbarui last_seen"""
+    """Mencari user atau membuat user baru dengan balance 0 (tanpa dummy)"""
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Agar hasil query bisa diakses seperti dictionary
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
     current_time = get_current_time()
@@ -76,7 +76,7 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
     user = cursor.fetchone()
     
     if user:
-        # Jika user sudah ada, perbarui nama, username, dan last_seen
+        # Update last_seen saja, balance tetap asli
         cursor.execute('''
             UPDATE users 
             SET username = ?, first_name = ?, last_seen = ? 
@@ -84,24 +84,22 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
         ''', (username, first_name, current_time, telegram_id))
         conn.commit()
         
-        # Ambil data terbaru
         cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
         updated_user = dict(cursor.fetchone())
         conn.close()
         return updated_user
     else:
-        # Jika user baru, masukkan ke database
+        # BALANCE = 0, BUKAN 1500!
         cursor.execute('''
             INSERT INTO users (telegram_id, username, first_name, balance, referred_by, created_at, last_seen) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, username, first_name, 1500, referred_by, current_time, current_time))
+        ''', (telegram_id, username, first_name, 0, referred_by, current_time, current_time))
         
-        # Logika Tambahan: Jika ada pengundang (referrer), berikan hadiah ke pengundang
         if referred_by:
             cursor.execute("SELECT balance, referral_reward FROM users WHERE telegram_id = ?", (referred_by,))
             referrer = cursor.fetchone()
             if referrer:
-                new_balance = referrer['balance'] + 500  # Bonus 500 koin untuk pengundang
+                new_balance = referrer['balance'] + 500
                 new_ref_reward = referrer['referral_reward'] + 500
                 cursor.execute('''
                     UPDATE users 
@@ -111,7 +109,6 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
         
         conn.commit()
         
-        # Ambil data yang baru dibuat
         cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
         new_user = dict(cursor.fetchone())
         conn.close()

@@ -68,7 +68,6 @@ def update_balance():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-# API untuk get user balance
 @games_bp.route('/balance/<int:telegram_id>', methods=['GET'])
 def get_balance(telegram_id):
     try:
@@ -81,6 +80,86 @@ def get_balance(telegram_id):
         if row:
             return jsonify({"success": True, "balance": row[0]})
         else:
-            return jsonify({"success": False, "error": "User not found"}), 404
+            # KALAU USER TIDAK DITEMUKAN, TETAP KIRIM 0 BUKAN ERROR
+            return jsonify({"success": True, "balance": 0})
+    except Exception as e:
+        return jsonify({"success": True, "balance": 0})
+    
+# Tambahkan ini ke games/services/games_service.py
+
+@games_bp.route('/user-stats/<int:telegram_id>', methods=['GET'])
+def get_user_stats(telegram_id):
+    """Get total gifts dan referral reward user"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT gifts, referral_reward FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return jsonify({
+                "success": True,
+                "gifts": row['gifts'] or 0,
+                "referral_reward": row['referral_reward'] or 0
+            })
+        else:
+            return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
+    except Exception as e:
+        return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
+
+@games_bp.route('/user-history/<int:telegram_id>', methods=['GET'])
+def get_user_game_history(telegram_id):
+    """Get riwayat game user dari game_history"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT game_name, bet_amount, win_amount, multiplier, played_at 
+            FROM game_history 
+            WHERE telegram_id = ? 
+            ORDER BY played_at DESC 
+            LIMIT 50
+        ''', (telegram_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        
+        history = [dict(row) for row in rows]
+        return jsonify({"success": True, "history": history})
+    except Exception as e:
+        return jsonify({"success": True, "history": []})
+
+@games_bp.route('/deposit', methods=['POST'])
+def process_deposit():
+    """Endpoint deposit (integrasi dengan payment nanti)"""
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "No data"}), 400
+    
+    telegram_id = data.get('telegram_id')
+    amount = data.get('amount')
+    
+    if not telegram_id or not amount or amount < 10000:
+        return jsonify({"success": False, "error": "Invalid amount"}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Update balance
+        cursor.execute("UPDATE users SET balance = balance + ? WHERE telegram_id = ?", (amount, telegram_id))
+        
+        # Catat transaksi
+        cursor.execute('''
+            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (telegram_id, 'DEPOSIT', amount, amount, 1.0, get_current_time()))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True, "message": f"Deposit {amount} berhasil"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Profil - BarackGift</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/games/css/profil.css">
+    <link rel="stylesheet" href="/games/css/games.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="app-title">
+                <h2>BarackGift</h2>
+            </div>
+            <div class="balance-container">
+                <i class="fas fa-coins text-warning"></i>
+                <span id="userBalance">0</span>
+            </div>
+        </header>
+
+        <!-- Main Profile Content -->
+        <main class="profile-content">
+            <!-- Profile Card -->
+            <div class="profile-card">
+                <div class="profile-avatar-wrapper">
+                    <div class="profile-avatar-large" id="profileAvatar">
+                        <img id="userAvatar" src="" alt="Profile Picture">
+                        <div class="avatar-overlay">
+                            <i class="fas fa-camera"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="profile-info-card">
+                    <h2 id="userFullName">Loading...</h2>
+                    <p class="profile-username" id="userUsername">@loading</p>
+                    <p class="profile-id" id="userId">ID: -</p>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid-profile">
+                <div class="stat-box">
+                    <i class="fas fa-gift"></i>
+                    <div class="stat-box-info">
+                        <span class="stat-label">Total Gifts</span>
+                        <span class="stat-number" id="totalGifts">0</span>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-coins"></i>
+                    <div class="stat-box-info">
+                        <span class="stat-label">Balance</span>
+                        <span class="stat-number" id="profileBalance">0</span>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <i class="fas fa-trophy"></i>
+                    <div class="stat-box-info">
+                        <span class="stat-label">Referral Reward</span>
+                        <span class="stat-number" id="referralReward">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn-deposit" id="depositBtn">
+                    <i class="fas fa-plus-circle"></i> Deposit
+                </button>
+                <button class="btn-history" id="historyBtn">
+                    <i class="fas fa-history"></i> Riwayat Game
+                </button>
+            </div>
+
+            <!-- Game History Section -->
+            <div class="history-section-profile" id="historySection" style="display: none;">
+                <div class="section-header">
+                    <h3><i class="fas fa-gamepad"></i> Riwayat Permainan</h3>
+                    <button class="close-history" id="closeHistoryBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Game</th>
+                                <th>Taruhan</th>
+                                <th>Multiplier</th>
+                                <th>Kemenangan</th>
+                                <th>Waktu</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBodyProfile">
+                            <tr><td colspan="5" style="text-align: center;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Floating Bottom Navigation -->
+        <nav class="floating-nav">
+            <button class="nav-item" data-target="tab-home" onclick="window.location.href='/games'">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item" data-target="tab-games" onclick="window.location.href='/games'">
+                <i class="fas fa-gamepad"></i>
+                <span>Games</span>
+            </button>
+            <button class="nav-item" data-target="tab-referral" onclick="window.location.href='/games'">
+                <i class="fas fa-user-friends"></i>
+                <span>Referral</span>
+            </button>
+            <button class="nav-item active" data-target="tab-profile">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Modal Deposit -->
+    <div id="depositModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-wallet"></i> Deposit</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Minimal Deposit: Rp 10.000</p>
+                <div class="deposit-methods">
+                    <button class="method-btn" data-amount="10000">Rp 10.000</button>
+                    <button class="method-btn" data-amount="25000">Rp 25.000</button>
+                    <button class="method-btn" data-amount="50000">Rp 50.000</button>
+                    <button class="method-btn" data-amount="100000">Rp 100.000</button>
+                </div>
+                <div class="custom-amount">
+                    <input type="number" id="customAmount" placeholder="Nominal lain" min="10000">
+                </div>
+                <button class="btn-process-deposit" id="processDeposit">
+                    <i class="fas fa-check-circle"></i> Proses Deposit
+                </button>
+                <p class="payment-info">Pembayaran via QRIS akan muncul setelah konfirmasi</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/games/js/profil.js"></script>
+</body>
+</html>

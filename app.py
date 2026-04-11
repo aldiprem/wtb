@@ -275,6 +275,11 @@ def serve_plinko_games():
     """Halaman Plinko Games"""
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'plinko_games.html')
 
+@app.route('/profile')
+def serve_profile_page():
+    """Halaman profil user"""
+    return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'profil.html')
+
 # ==================== ROUTE UNTUK IMAGE SERVICE ====================
 
 @app.route('/ii', methods=['GET'])
