@@ -62,10 +62,17 @@
         if (riskLabel) riskLabel.textContent = riskLabels[currentRisk];
         
         const betLabel = document.getElementById('currentBetLabel');
-        if (betLabel) betLabel.textContent = currentBetAmount.toFixed(2) + ' TON';
+        if (betLabel) {
+            if (currentBetAmount && currentBetAmount > 0) {
+                betLabel.textContent = currentBetAmount.toFixed(2) + ' TON';
+            } else {
+                betLabel.textContent = '1.00 TON';
+                currentBetAmount = 1.0;
+            }
+        }
         
         const ballLabel = document.getElementById('ballCountLabel');
-        if (ballLabel) ballLabel.textContent = ballCount + ' Bola';
+        if (ballLabel) ballLabel.textContent = (ballCount || 1) + ' Bola';
     }
 
     // Fungsi Render Cerobong
@@ -692,7 +699,15 @@
             if (chevron) chevron.className = 'fas fa-chevron-down';
             loadUserBalance();
             const betInput = document.getElementById('panelBetAmount');
-            if (betInput) betInput.value = currentBetAmount;
+            if (betInput) {
+                // TAMPILKAN currentBetAmount yang valid
+                if (currentBetAmount && currentBetAmount > 0) {
+                    betInput.value = currentBetAmount;
+                } else {
+                    betInput.value = '1.0';
+                    currentBetAmount = 1.0;
+                }
+            }
         } else {
             panel.style.display = 'none';
             if (chevron) chevron.className = 'fas fa-chevron-up';
@@ -908,21 +923,43 @@
         updateViewCount();
         renderMultiplierSlots();
         generateBallsGrid();
-
-        if (!currentBetAmount || currentBetAmount <= 0) {
-            currentBetAmount = 1.0;
-        }
-
+        
+        // PERBAIKAN: Set default bet amount ke panel input dan currentBetAmount
         const betInput = document.getElementById('panelBetAmount');
-        if (betInput && betInput.value === '1.0') {
+        if (betInput) {
+            // Ambil dari localStorage atau default 1.0
+            let savedBet = localStorage.getItem('plinko_bet_amount');
+            if (savedBet && parseFloat(savedBet) >= 0.1) {
+                currentBetAmount = parseFloat(savedBet);
+                betInput.value = currentBetAmount.toFixed(1);
+            } else {
+                currentBetAmount = 1.0;
+                betInput.value = '1.0';
+            }
+        } else {
             currentBetAmount = 1.0;
         }
+        
+        // Pastikan ballCount ada nilainya
+        if (!ballCount || ballCount < 1) {
+            ballCount = 1;
+        }
+        
+        // UPDATE LABELS
         updateUILabels();
         
-        update();
+        // Simpan ke localStorage setiap kali bet berubah
+        const originalConfirmBet = confirmBet;
+        window.confirmBet = async function() {
+            await originalConfirmBet();
+            localStorage.setItem('plinko_bet_amount', currentBetAmount);
+        };
         
         console.log('✅ Plinko Games Ready');
         console.log('Current bet amount:', currentBetAmount, 'TON');
+        console.log('Ball count:', ballCount);
+        
+        update();
     }
     
     init();
