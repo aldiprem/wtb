@@ -163,12 +163,10 @@ def process_deposit():
         return jsonify({"success": True, "message": f"Deposit {amount} berhasil"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-    
-# Tambahkan di games/services/games_service.py
 
 @games_bp.route('/verify-ton-deposit', methods=['POST'])
 def verify_ton_deposit():
-    """Verifikasi deposit TON"""
+    """Verifikasi deposit TON - REAL"""
     data = request.json
     telegram_id = data.get('telegram_id')
     transaction_hash = data.get('transaction_hash')
@@ -190,7 +188,7 @@ def verify_ton_deposit():
         if existing:
             return jsonify({"success": False, "error": "Transaction already processed"}), 400
         
-        # Convert TON ke IDR (rate 1 TON = 10000 IDR untuk contoh)
+        # Convert TON ke IDR (rate 1 TON = 10000 IDR)
         amount_idr = int(amount_ton * 10000)
         
         # Update balance user
@@ -209,7 +207,7 @@ def verify_ton_deposit():
         conn.commit()
         conn.close()
         
-        print(f"✅ TON Deposit verified: {amount_ton} TON for user {telegram_id}")
+        print(f"✅ TON Deposit verified: {amount_ton} TON for user {telegram_id} -> +{amount_idr} IDR")
         
         return jsonify({
             "success": True,

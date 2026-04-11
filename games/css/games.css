@@ -450,3 +450,26 @@ body {
 .deposit-header-btn.wallet-connected span {
     display: none;
 }
+
+/* Tombol Disconnect Wallet */
+.btn-disconnect-wallet {
+    width: 100%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    color: white;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.btn-disconnect-wallet:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}

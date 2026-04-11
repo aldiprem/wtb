@@ -102,35 +102,46 @@ document.addEventListener("DOMContentLoaded", () => {
             language: 'en'
         });
 
-        // Listener status wallet
         tonConnectUI.onStatusChange(async (wallet) => {
             console.log('Wallet status changed:', wallet);
+            
+            const walletStatus = document.getElementById('depositWalletStatus');
+            const depositForm = document.getElementById('depositForm');
+            const disconnectContainer = document.getElementById('disconnectContainer');
             
             if (wallet && currentUser) {
                 isWalletConnected = true;
                 updateHeaderDepositButton();
                 
-                // Update wallet address di database
                 await updateUserWallet(currentUser.id, wallet.account.address);
                 
-                // Update modal jika terbuka
-                const walletStatus = document.getElementById('depositWalletStatus');
-                const depositForm = document.getElementById('depositForm');
                 if (walletStatus && depositForm) {
                     walletStatus.style.display = 'none';
                     depositForm.style.display = 'block';
                     document.getElementById('depositAddress').textContent = webAddress;
                 }
+                
+                // Tampilkan tombol disconnect
+                if (disconnectContainer) {
+                    disconnectContainer.style.display = 'block';
+                }
+                
+                // Setup disconnect button
+                const disconnectBtn = document.getElementById('disconnectWalletBtn');
+                if (disconnectBtn) {
+                    disconnectBtn.removeEventListener('click', disconnectWallet);
+                    disconnectBtn.addEventListener('click', disconnectWallet);
+                }
             } else {
                 isWalletConnected = false;
                 updateHeaderDepositButton();
                 
-                // Update modal
-                const walletStatus = document.getElementById('depositWalletStatus');
-                const depositForm = document.getElementById('depositForm');
                 if (walletStatus && depositForm) {
                     walletStatus.style.display = 'block';
                     depositForm.style.display = 'none';
+                }
+                if (disconnectContainer) {
+                    disconnectContainer.style.display = 'none';
                 }
             }
         });
@@ -173,13 +184,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // ==================== DEPOSIT TON ====================
     async function processDepositTON() {
         if (!tonConnectUI || !tonConnectUI.connected) {
-            // Jika belum connect, trigger connect via modal
-            if (tonConnectUI) {
-                await tonConnectUI.openModal();
-            }
+            await tonConnectUI.openModal();
             return;
         }
 
@@ -204,12 +211,26 @@ document.addEventListener("DOMContentLoaded", () => {
             const memo = `deposit:${currentUser.id}:${Date.now()}`;
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
 
+            // Buat payload dengan format yang benar
+            const encoder = new TextEncoder();
+            const memoBytes = encoder.encode(memo);
+            const prefix = new Uint8Array([0, 0, 0, 0]);
+            const fullBytes = new Uint8Array(prefix.length + memoBytes.length);
+            fullBytes.set(prefix);
+            fullBytes.set(memoBytes, prefix.length);
+            
+            let binary = '';
+            for (let i = 0; i < fullBytes.length; i++) {
+                binary += String.fromCharCode(fullBytes[i]);
+            }
+            const payloadBase64 = btoa(binary);
+
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: webAddress,
                     amount: amountNano,
-                    payload: base64EncodeComment(memo)
+                    payload: payloadBase64
                 }]
             };
 
@@ -217,6 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
 
+            // Verifikasi deposit ke backend games
             const verifyResponse = await fetch('/api/games/verify-ton-deposit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -285,6 +307,36 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('depositForm').style.display = 'none';
         document.getElementById('depositInstructions').style.display = 'none';
         document.getElementById('depositWalletStatus').style.display = 'block';
+    }
+
+    // ==================== DISCONNECT WALLET ====================
+    async function disconnectWallet() {
+        if (!tonConnectUI) return;
+        
+        try {
+            await tonConnectUI.disconnect();
+            console.log('✅ Wallet disconnected');
+            
+            isWalletConnected = false;
+            updateHeaderDepositButton();
+            
+            // Update modal
+            const walletStatus = document.getElementById('depositWalletStatus');
+            const depositForm = document.getElementById('depositForm');
+            const disconnectContainer = document.getElementById('disconnectContainer');
+            
+            if (walletStatus && depositForm) {
+                walletStatus.style.display = 'block';
+                depositForm.style.display = 'none';
+            }
+            if (disconnectContainer) {
+                disconnectContainer.style.display = 'none';
+            }
+            
+            alert('Wallet berhasil diputuskan');
+        } catch (error) {
+            console.error('Disconnect error:', error);
+        }
     }
 
     // ==================== HEADER BUTTON HANDLER ====================
