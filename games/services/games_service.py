@@ -242,3 +242,70 @@ def update_wallet():
         return jsonify({'success': True})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+# games/services/games_service.py - TAMBAHKAN ROUTE INI
+
+@games_bp.route('/user/wallet', methods=['POST'])
+def update_user_wallet():
+    """Update user's wallet address di database games"""
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    wallet_address = data.get('wallet_address')
+    
+    if not telegram_id:
+        return jsonify({'success': False, 'error': 'telegram_id required'}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Cek apakah kolom wallet_address ada di tabel users
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        
+        if 'wallet_address' not in columns:
+            # Tambahkan kolom wallet_address jika belum ada
+            cursor.execute('ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL')
+            print("✅ Kolom wallet_address ditambahkan ke tabel users")
+        
+        # Update wallet address
+        cursor.execute('''
+            UPDATE users 
+            SET wallet_address = ?
+            WHERE telegram_id = ?
+        ''', (wallet_address, telegram_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Wallet address updated'})
+        
+    except Exception as e:
+        print(f"❌ Error updating wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@games_bp.route('/user/wallet/<int:telegram_id>', methods=['GET'])
+def get_user_wallet(telegram_id):
+    """Get user's wallet address"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Cek kolom wallet_address
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        
+        if 'wallet_address' not in columns:
+            return jsonify({'success': True, 'wallet_address': None})
+        
+        cursor.execute('SELECT wallet_address FROM users WHERE telegram_id = ?', (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        wallet_address = row[0] if row else None
+        return jsonify({'success': True, 'wallet_address': wallet_address})
+        
+    except Exception as e:
+        print(f"❌ Error getting wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

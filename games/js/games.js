@@ -150,8 +150,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function updateUserWallet(telegramId, walletAddress) {
         try {
-            // Perbaiki URL endpoint - harus sesuai dengan route di app.py
-            const response = await fetch('/api/user/wallet', {
+            // Gunakan endpoint yang benar di games_service.py
+            const response = await fetch('/api/games/user/wallet', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -171,7 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (error) {
             console.error('Error updating wallet:', error);
-            // Jangan throw error, biarkan proses lanjut
         }
     }
 
