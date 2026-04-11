@@ -28,7 +28,7 @@ from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
 from services.tgs_service import tgs_bp
-from services.plinko_games_service import plinko_bp
+from games.services.games_plinko_service import plinko_bp
 from giveaway.services.giveaway_service import giveaway_bp
 from services.crash_service import crash_bp
 from games.services.games_service import games_bp
