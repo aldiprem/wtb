@@ -11,11 +11,15 @@ from pathlib import Path
 
 # Konfigurasi path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PLINKO_DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'plinko.db'
+PLINKO_DB_PATH = os.path.join(BASE_DIR, 'database', 'plinko.db')
 GAMES_DB_PATH = os.path.join(BASE_DIR, 'database', 'games_data.db')
 
 print(f"📁 Plinko DB Path: {PLINKO_DB_PATH}")
 print(f"📁 Games DB Path: {GAMES_DB_PATH}")
+
+# Pastikan direktori database ada
+os.makedirs(os.path.dirname(PLINKO_DB_PATH), exist_ok=True)
+os.makedirs(os.path.dirname(GAMES_DB_PATH), exist_ok=True)
 
 # Membuat Blueprint untuk Plinko API
 plinko_bp = Blueprint('plinko_bp', __name__, url_prefix='/api/plinko')
@@ -25,59 +29,64 @@ def get_current_time():
 
 def get_plinko_db():
     """Get database connection for plinko.db"""
-    PLINKO_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(PLINKO_DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_plinko_db():
     """Initialize plinko database tables"""
-    conn = get_plinko_db()
-    cursor = conn.cursor()
-    
-    # Games table - menggunakan REAL untuk TON
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS plinko_games (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            round_hash TEXT UNIQUE NOT NULL,
-            user_id INTEGER,
-            username TEXT,
-            bet_amount REAL,
-            multiplier REAL,
-            win_amount REAL,
-            risk_level TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Stats table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS plinko_stats (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            total_players INTEGER DEFAULT 0,
-            total_games INTEGER DEFAULT 0,
-            biggest_multiplier REAL DEFAULT 0,
-            biggest_win REAL DEFAULT 0,
-            total_bet_amount REAL DEFAULT 0,
-            total_win_amount REAL DEFAULT 0,
-            last_player TEXT,
-            last_time TIMESTAMP,
-            current_hash TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Insert default stats if empty
-    cursor.execute('SELECT COUNT(*) FROM plinko_stats')
-    if cursor.fetchone()[0] == 0:
+    try:
+        conn = get_plinko_db()
+        cursor = conn.cursor()
+        
+        # Games table
         cursor.execute('''
-            INSERT INTO plinko_stats (total_players, total_games, current_hash)
-            VALUES (0, 0, ?)
-        ''', (datetime.now().strftime('%Y%m%d%H%M%S'),))
-    
-    conn.commit()
-    conn.close()
-    print("✅ Plinko database initialized")
+            CREATE TABLE IF NOT EXISTS plinko_games (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                round_hash TEXT UNIQUE NOT NULL,
+                user_id INTEGER,
+                username TEXT,
+                bet_amount REAL,
+                multiplier REAL,
+                win_amount REAL,
+                risk_level TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Stats table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS plinko_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                total_players INTEGER DEFAULT 0,
+                total_games INTEGER DEFAULT 0,
+                biggest_multiplier REAL DEFAULT 0,
+                biggest_win REAL DEFAULT 0,
+                total_bet_amount REAL DEFAULT 0,
+                total_win_amount REAL DEFAULT 0,
+                last_player TEXT,
+                last_time TIMESTAMP,
+                current_hash TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert default stats if empty
+        cursor.execute('SELECT COUNT(*) FROM plinko_stats')
+        if cursor.fetchone()[0] == 0:
+            cursor.execute('''
+                INSERT INTO plinko_stats (total_players, total_games, current_hash)
+                VALUES (0, 0, ?)
+            ''', (datetime.now().strftime('%Y%m%d%H%M%S'),))
+        
+        conn.commit()
+        conn.close()
+        print("✅ Plinko database initialized")
+        return True
+    except Exception as e:
+        print(f"❌ Error initializing plinko DB: {e}")
+        traceback.print_exc()
+        return False
 
 # Risk multipliers configuration
 RISK_MULTIPLIERS = {
@@ -103,69 +112,73 @@ def generate_round_hash():
 
 def save_game_to_plinko_db(data):
     """Save game result to plinko database"""
-    conn = get_plinko_db()
-    cursor = conn.cursor()
-    
-    # Insert game
-    cursor.execute('''
-        INSERT INTO plinko_games (round_hash, user_id, username, bet_amount, multiplier, win_amount, risk_level)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        data['round_hash'],
-        data.get('user_id'),
-        data.get('username'),
-        data['bet_amount'],
-        data['multiplier'],
-        data['win_amount'],
-        data['risk_level']
-    ))
-    
-    # Update stats
-    cursor.execute('SELECT COUNT(DISTINCT user_id) FROM plinko_games WHERE user_id IS NOT NULL')
-    total_players = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT COUNT(*) FROM plinko_games')
-    total_games = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT MAX(multiplier) FROM plinko_games')
-    biggest_multiplier = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT MAX(win_amount) FROM plinko_games')
-    biggest_win = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT SUM(bet_amount), SUM(win_amount) FROM plinko_games')
-    total_bet, total_win = cursor.fetchone()
-    
-    cursor.execute('''
-        SELECT username, created_at FROM plinko_games 
-        ORDER BY created_at DESC LIMIT 1
-    ''')
-    last = cursor.fetchone()
-    
-    cursor.execute('''
-        UPDATE plinko_stats SET
-            total_players = ?,
-            total_games = ?,
-            biggest_multiplier = ?,
-            biggest_win = ?,
-            total_bet_amount = ?,
-            total_win_amount = ?,
-            last_player = ?,
-            last_time = ?,
-            current_hash = ?,
-            updated_at = ?
-    ''', (
-        total_players, total_games, biggest_multiplier, biggest_win,
-        total_bet or 0, total_win or 0,
-        last['username'] if last else None,
-        last['created_at'] if last else None,
-        data['round_hash'],
-        get_current_time()
-    ))
-    
-    conn.commit()
-    conn.close()
-    return True
+    try:
+        conn = get_plinko_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO plinko_games (round_hash, user_id, username, bet_amount, multiplier, win_amount, risk_level)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['round_hash'],
+            data.get('user_id'),
+            data.get('username'),
+            data['bet_amount'],
+            data['multiplier'],
+            data['win_amount'],
+            data['risk_level']
+        ))
+        
+        # Update stats
+        cursor.execute('SELECT COUNT(DISTINCT user_id) FROM plinko_games WHERE user_id IS NOT NULL')
+        total_players = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT COUNT(*) FROM plinko_games')
+        total_games = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT MAX(multiplier) FROM plinko_games')
+        biggest_multiplier = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT MAX(win_amount) FROM plinko_games')
+        biggest_win = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT SUM(bet_amount), SUM(win_amount) FROM plinko_games')
+        total_bet, total_win = cursor.fetchone()
+        
+        cursor.execute('''
+            SELECT username, created_at FROM plinko_games 
+            ORDER BY created_at DESC LIMIT 1
+        ''')
+        last = cursor.fetchone()
+        
+        cursor.execute('''
+            UPDATE plinko_stats SET
+                total_players = ?,
+                total_games = ?,
+                biggest_multiplier = ?,
+                biggest_win = ?,
+                total_bet_amount = ?,
+                total_win_amount = ?,
+                last_player = ?,
+                last_time = ?,
+                current_hash = ?,
+                updated_at = ?
+        ''', (
+            total_players, total_games, biggest_multiplier, biggest_win,
+            total_bet or 0, total_win or 0,
+            last['username'] if last else None,
+            last['created_at'] if last else None,
+            data['round_hash'],
+            get_current_time()
+        ))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error saving to plinko DB: {e}")
+        traceback.print_exc()
+        return False
 
 def update_game_history(telegram_id, game_name, bet_amount, win_amount, multiplier):
     """Update game history in games database"""
@@ -191,7 +204,6 @@ def update_user_balance(telegram_id, amount_change):
         conn = sqlite3.connect(GAMES_DB_PATH)
         cursor = conn.cursor()
         
-        # Update balance (balance dalam TON/REAL)
         cursor.execute('''
             UPDATE users 
             SET balance = balance + ? 
@@ -221,9 +233,12 @@ def get_user_balance(telegram_id):
 
 # ==================== API ENDPOINTS ====================
 
-@plinko_bp.route('/stats', methods=['GET'])
+@plinko_bp.route('/stats', methods=['GET', 'OPTIONS'])
 def get_stats():
     """Get current plinko stats"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
     init_plinko_db()
     try:
         conn = get_plinko_db()
@@ -237,7 +252,6 @@ def get_stats():
         
         row = cursor.fetchone()
         
-        # Get last multiplier dari game terakhir
         cursor.execute('''
             SELECT multiplier, username FROM plinko_games 
             ORDER BY created_at DESC LIMIT 1
@@ -279,9 +293,12 @@ def get_stats():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
-@plinko_bp.route('/history', methods=['GET'])
+@plinko_bp.route('/history', methods=['GET', 'OPTIONS'])
 def get_history():
     """Get game history"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
     init_plinko_db()
     try:
         limit = request.args.get('limit', 50, type=int)
@@ -316,9 +333,12 @@ def get_history():
         print(f"Error getting history: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@plinko_bp.route('/save', methods=['POST'])
+@plinko_bp.route('/save', methods=['POST', 'OPTIONS'])
 def save_game():
     """Save game result"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
     init_plinko_db()
     data = request.json
     
@@ -331,18 +351,14 @@ def save_game():
             return jsonify({"success": False, "error": f"Missing field: {field}"}), 400
     
     try:
-        # Save to plinko database
         save_game_to_plinko_db(data)
         
-        # Update user balance if user_id is provided
         if data.get('user_id'):
-            # For win: add win_amount, for loss: already deducted before game
             if data['win_amount'] > 0:
                 profit = data['win_amount'] - data['bet_amount']
                 if profit > 0:
                     update_user_balance(data['user_id'], profit)
             
-            # Update game history
             update_game_history(
                 data['user_id'],
                 'Plinko',
@@ -357,9 +373,12 @@ def save_game():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
-@plinko_bp.route('/play', methods=['POST'])
+@plinko_bp.route('/play', methods=['POST', 'OPTIONS'])
 def play_game():
     """Play a plinko game - calculate result"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
     data = request.json
     
     if not data:
@@ -367,16 +386,14 @@ def play_game():
     
     bet_amount = data.get('bet_amount', 0)
     risk_level = data.get('risk_level', 'medium')
-    position = data.get('position', None)  # Optional: specific position
+    position = data.get('position', None)
     
     if bet_amount <= 0:
         return jsonify({"success": False, "error": "Invalid bet amount"}), 400
     
-    # Get multiplier
     if position is not None:
         multiplier = get_multiplier(risk_level, position)
     else:
-        # Random position
         multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
         position = random.randint(0, len(multipliers) - 1)
         multiplier = multipliers[position]
@@ -393,9 +410,12 @@ def play_game():
         "risk_level": risk_level
     })
 
-@plinko_bp.route('/balance/<int:telegram_id>', methods=['GET'])
+@plinko_bp.route('/balance/<int:telegram_id>', methods=['GET', 'OPTIONS'])
 def get_balance(telegram_id):
     """Get user balance from games database"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
     try:
         balance = get_user_balance(telegram_id)
         return jsonify({"success": True, "balance": balance})
@@ -403,63 +423,9 @@ def get_balance(telegram_id):
         print(f"Error getting balance: {e}")
         return jsonify({"success": True, "balance": 0.0})
 
-@plinko_bp.route('/deduct-balance', methods=['POST'])
-def deduct_balance():
-    """Deduct user balance for bet"""
-    data = request.json
-    telegram_id = data.get('telegram_id')
-    amount = data.get('amount', 0)
-    
-    if not telegram_id:
-        return jsonify({"success": False, "error": "telegram_id required"}), 400
-    
-    if amount <= 0:
-        return jsonify({"success": False, "error": "Invalid amount"}), 400
-    
-    current_balance = get_user_balance(telegram_id)
-    
-    if current_balance < amount:
-        return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
-    
-    if update_user_balance(telegram_id, -amount):
-        new_balance = get_user_balance(telegram_id)
-        return jsonify({"success": True, "new_balance": new_balance})
-    
-    return jsonify({"success": False, "error": "Failed to deduct balance"}), 500
-
-@plinko_bp.route('/add-balance', methods=['POST'])
-def add_balance():
-    """Add user balance for win"""
-    data = request.json
-    telegram_id = data.get('telegram_id')
-    amount = data.get('amount', 0)
-    
-    if not telegram_id:
-        return jsonify({"success": False, "error": "telegram_id required"}), 400
-    
-    if amount <= 0:
-        return jsonify({"success": False, "error": "Invalid amount"}), 400
-    
-    if update_user_balance(telegram_id, amount):
-        new_balance = get_user_balance(telegram_id)
-        return jsonify({"success": True, "new_balance": new_balance})
-    
-    return jsonify({"success": False, "error": "Failed to add balance"}), 500
-
-@plinko_bp.route('/multipliers', methods=['GET'])
-def get_multipliers():
-    """Get all risk multipliers configuration"""
-    return jsonify({
-        "success": True,
-        "multipliers": RISK_MULTIPLIERS
-    })
-
-# games/services/games_plinko_service.py - Perbaikan endpoint
-
 @plinko_bp.route('/deduct-balance', methods=['POST', 'OPTIONS'])
 def deduct_balance():
     """Deduct user balance for bet"""
-    # Handle OPTIONS preflight request
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -492,11 +458,9 @@ def deduct_balance():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
-
 @plinko_bp.route('/add-balance', methods=['POST', 'OPTIONS'])
 def add_balance():
     """Add user balance for win"""
-    # Handle OPTIONS preflight request
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -524,20 +488,16 @@ def add_balance():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-@plinko_bp.route('/balance/<int:telegram_id>', methods=['GET', 'OPTIONS'])
-def get_balance(telegram_id):
-    """Get user balance from games database"""
+@plinko_bp.route('/multipliers', methods=['GET', 'OPTIONS'])
+def get_multipliers():
+    """Get all risk multipliers configuration"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
-    try:
-        balance = get_user_balance(telegram_id)
-        return jsonify({"success": True, "balance": balance})
-    except Exception as e:
-        print(f"Error getting balance: {e}")
-        return jsonify({"success": True, "balance": 0.0})
-
+    return jsonify({
+        "success": True,
+        "multipliers": RISK_MULTIPLIERS
+    })
 
 def _build_cors_preflight_response():
     """Build CORS preflight response"""
@@ -556,3 +516,4 @@ def after_request(response):
 
 # Initialize database on import
 init_plinko_db()
+print("✅ games_plinko_service.py loaded successfully")
