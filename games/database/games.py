@@ -4,7 +4,10 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'games_data.db')
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, 'database', 'games_data.db')
+
+print(f"📁 Database path: {DB_PATH}")
 
 def get_current_time():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")

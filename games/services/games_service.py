@@ -1,26 +1,79 @@
-# games/services/games_service.py
+# games/services/games_service.py - VERSION FINAL
 
 from flask import Blueprint, jsonify, request
 import sys
 import os
 import sqlite3
-import traceback # Tambahan untuk melihat detail error di terminal
+import traceback
 
-# Tambah path biar bisa import database
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# ==================== KONFIGURASI PATH ====================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, 'database', 'games_data.db')
 
-from games.database.games import get_or_create_user, add_game_history, update_user_balance
+print(f"📁 Games DB Path: {DB_PATH}")
 
 # Membuat Blueprint untuk API
 games_bp = Blueprint('games_bp', __name__, url_prefix='/api/games')
-DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'games_data.db')
 
-# API Route untuk Authentikasi dan Sinkronisasi User Data dari Telegram
+def get_current_time():
+    from datetime import datetime
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def init_db():
+    """Pastikan database dan tabel ada"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Tabel users
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            telegram_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            balance INTEGER DEFAULT 0,
+            referred_by INTEGER DEFAULT NULL,
+            referral_reward INTEGER DEFAULT 0,
+            gifts INTEGER DEFAULT 0,
+            wallet_address TEXT DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_seen TIMESTAMP
+        )
+    ''')
+    
+    # Tabel game_history
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS game_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id INTEGER,
+            game_name TEXT,
+            bet_amount INTEGER,
+            win_amount INTEGER,
+            multiplier REAL,
+            played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Tambah kolom wallet_address jika belum ada
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'wallet_address' not in columns:
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL")
+            print("✅ Kolom wallet_address ditambahkan")
+        except:
+            pass
+    
+    conn.commit()
+    conn.close()
+    print("✅ Database siap")
+
+# ==================== AUTH ====================
 @games_bp.route('/auth', methods=['POST'])
 def auth_user():
+    init_db()
     data = request.json
     if not data:
-        return jsonify({"success": False, "error": "Tidak ada data yang dikirim"}), 400
+        return jsonify({"success": False, "error": "Tidak ada data"}), 400
         
     telegram_id = data.get('telegram_id')
     username = data.get('username', 'Unknown')
@@ -30,28 +83,202 @@ def auth_user():
         return jsonify({"success": False, "error": "telegram_id diperlukan"}), 400
     
     try:
-        # PERBAIKAN: get_or_create_user sekarang mengembalikan DICTIONARY (Data Lengkap)
-        user_data = get_or_create_user(telegram_id, username, first_name)
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        current_time = get_current_time()
+        
+        cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
+        user = cursor.fetchone()
+        
+        if user:
+            cursor.execute('''
+                UPDATE users 
+                SET username = ?, first_name = ?, last_seen = ? 
+                WHERE telegram_id = ?
+            ''', (username, first_name, current_time, telegram_id))
+            conn.commit()
+            balance = user['balance']
+        else:
+            cursor.execute('''
+                INSERT INTO users (telegram_id, username, first_name, balance, created_at, last_seen) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (telegram_id, username, first_name, 0, current_time, current_time))
+            conn.commit()
+            balance = 0
+        
+        conn.close()
         
         return jsonify({
             "success": True,
             "telegram_id": telegram_id,
             "username": username,
-            # Ambil spesifik 'balance' dari dictionary untuk ditampilkan di UI
-            "balance": user_data['balance'] 
+            "balance": balance
         })
     except Exception as e:
-        print("❌ Error DB Games Auth:")
-        traceback.print_exc() # Menampilkan error log yang sangat detail di terminal
+        print(f"❌ Error: {e}")
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
-# API untuk update balance setelah main game
+# ==================== BALANCE ====================
+@games_bp.route('/balance/<int:telegram_id>', methods=['GET'])
+def get_balance(telegram_id):
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        balance = row[0] if row else 0
+        return jsonify({"success": True, "balance": balance})
+    except Exception as e:
+        return jsonify({"success": True, "balance": 0})
+
+# ==================== WALLET ADDRESS ====================
+@games_bp.route('/user/wallet', methods=['POST'])
+def update_user_wallet():
+    init_db()
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    wallet_address = data.get('wallet_address')
+    
+    if not telegram_id:
+        return jsonify({'success': False, 'error': 'telegram_id required'}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE users 
+            SET wallet_address = ?
+            WHERE telegram_id = ?
+        ''', (wallet_address, telegram_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Wallet address updated'})
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ==================== VERIFY TON DEPOSIT ====================
+@games_bp.route('/verify-ton-deposit', methods=['POST'])
+def verify_ton_deposit():
+    init_db()
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    transaction_hash = data.get('transaction_hash')
+    amount_ton = data.get('amount_ton')
+    from_address = data.get('from_address')
+    memo = data.get('memo', '')
+    
+    if not telegram_id or not transaction_hash:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Cek apakah user ada
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        # Convert TON ke IDR (1 TON = 10000 IDR)
+        amount_idr = int(amount_ton * 10000)
+        
+        # Update balance
+        cursor.execute('''
+            UPDATE users 
+            SET balance = balance + ? 
+            WHERE telegram_id = ?
+        ''', (amount_idr, telegram_id))
+        
+        # Catat history
+        cursor.execute('''
+            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (telegram_id, 'DEPOSIT_TON', amount_idr, amount_idr, 1.0, get_current_time()))
+        
+        # Ambil balance baru
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        new_balance = cursor.fetchone()[0]
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Deposit: {amount_ton} TON -> +{amount_idr} IDR for user {telegram_id}")
+        print(f"   New balance: {new_balance} IDR")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Deposit {amount_ton} TON berhasil",
+            "amount_idr": amount_idr,
+            "new_balance": new_balance
+        })
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== USER STATS ====================
+@games_bp.route('/user-stats/<int:telegram_id>', methods=['GET'])
+def get_user_stats(telegram_id):
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT gifts, referral_reward FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return jsonify({
+                "success": True,
+                "gifts": row['gifts'] or 0,
+                "referral_reward": row['referral_reward'] or 0
+            })
+        return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
+    except Exception as e:
+        return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
+
+# ==================== USER HISTORY ====================
+@games_bp.route('/user-history/<int:telegram_id>', methods=['GET'])
+def get_user_game_history(telegram_id):
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT game_name, bet_amount, win_amount, multiplier, played_at 
+            FROM game_history 
+            WHERE telegram_id = ? 
+            ORDER BY played_at DESC 
+            LIMIT 50
+        ''', (telegram_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({"success": True, "history": [dict(row) for row in rows]})
+    except Exception as e:
+        return jsonify({"success": True, "history": []})
+
+# ==================== UPDATE BALANCE ====================
 @games_bp.route('/update-balance', methods=['POST'])
 def update_balance():
+    init_db()
     data = request.json
-    if not data:
-        return jsonify({"success": False, "error": "Tidak ada data"}), 400
-    
     telegram_id = data.get('telegram_id')
     new_balance = data.get('new_balance')
     
@@ -67,264 +294,3 @@ def update_balance():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
-
-@games_bp.route('/balance/<int:telegram_id>', methods=['GET'])
-def get_balance(telegram_id):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return jsonify({"success": True, "balance": row[0]})
-        else:
-            # KALAU USER TIDAK DITEMUKAN, TETAP KIRIM 0 BUKAN ERROR
-            return jsonify({"success": True, "balance": 0})
-    except Exception as e:
-        return jsonify({"success": True, "balance": 0})
-    
-# Tambahkan ini ke games/services/games_service.py
-
-@games_bp.route('/user-stats/<int:telegram_id>', methods=['GET'])
-def get_user_stats(telegram_id):
-    """Get total gifts dan referral reward user"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute("SELECT gifts, referral_reward FROM users WHERE telegram_id = ?", (telegram_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return jsonify({
-                "success": True,
-                "gifts": row['gifts'] or 0,
-                "referral_reward": row['referral_reward'] or 0
-            })
-        else:
-            return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
-    except Exception as e:
-        return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
-
-@games_bp.route('/user-history/<int:telegram_id>', methods=['GET'])
-def get_user_game_history(telegram_id):
-    """Get riwayat game user dari game_history"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT game_name, bet_amount, win_amount, multiplier, played_at 
-            FROM game_history 
-            WHERE telegram_id = ? 
-            ORDER BY played_at DESC 
-            LIMIT 50
-        ''', (telegram_id,))
-        rows = cursor.fetchall()
-        conn.close()
-        
-        history = [dict(row) for row in rows]
-        return jsonify({"success": True, "history": history})
-    except Exception as e:
-        return jsonify({"success": True, "history": []})
-
-@games_bp.route('/deposit', methods=['POST'])
-def process_deposit():
-    """Endpoint deposit (integrasi dengan payment nanti)"""
-    data = request.json
-    if not data:
-        return jsonify({"success": False, "error": "No data"}), 400
-    
-    telegram_id = data.get('telegram_id')
-    amount = data.get('amount')
-    
-    if not telegram_id or not amount or amount < 10000:
-        return jsonify({"success": False, "error": "Invalid amount"}), 400
-    
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Update balance
-        cursor.execute("UPDATE users SET balance = balance + ? WHERE telegram_id = ?", (amount, telegram_id))
-        
-        # Catat transaksi
-        cursor.execute('''
-            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, 'DEPOSIT', amount, amount, 1.0, get_current_time()))
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({"success": True, "message": f"Deposit {amount} berhasil"})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@games_bp.route('/verify-ton-deposit', methods=['POST'])
-def verify_ton_deposit():
-    """Verifikasi deposit TON - REAL dengan update balance"""
-    data = request.json
-    telegram_id = data.get('telegram_id')
-    transaction_hash = data.get('transaction_hash')
-    amount_ton = data.get('amount_ton')
-    from_address = data.get('from_address')
-    memo = data.get('memo', '')
-    
-    if not telegram_id or not transaction_hash:
-        return jsonify({"success": False, "error": "Missing required fields"}), 400
-    
-    try:
-        # Pastikan database terinisialisasi
-        from games.database.games import init_db
-        init_db()
-        
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Cek apakah transaksi sudah diproses (berdasarkan transaction_hash)
-        cursor.execute("SELECT id FROM game_history WHERE win_amount = ? AND game_name = ?", (amount_ton * 100, 'DEPOSIT_TON'))
-        existing = cursor.fetchone()
-        
-        if existing:
-            conn.close()
-            return jsonify({"success": False, "error": "Transaction already processed"}), 400
-        
-        # Convert TON ke IDR (rate 1 TON = 10000 IDR)
-        amount_idr = int(amount_ton * 10000)
-        
-        # Update balance user (tambah saldo)
-        cursor.execute('''
-            UPDATE users 
-            SET balance = balance + ? 
-            WHERE telegram_id = ?
-        ''', (amount_idr, telegram_id))
-        
-        # Cek apakah update berhasil
-        if cursor.rowcount == 0:
-            conn.close()
-            return jsonify({"success": False, "error": "User not found"}), 404
-        
-        # Catat transaksi deposit di game_history
-        cursor.execute('''
-            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, 'DEPOSIT_TON', amount_idr, amount_idr, 1.0, get_current_time()))
-        
-        conn.commit()
-        
-        # Ambil balance terbaru
-        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
-        new_balance = cursor.fetchone()[0]
-        
-        conn.close()
-        
-        print(f"✅ TON Deposit verified: {amount_ton} TON for user {telegram_id} -> +{amount_idr} IDR")
-        print(f"   New balance: {new_balance} IDR")
-        
-        return jsonify({
-            "success": True,
-            "message": f"Deposit {amount_ton} TON berhasil",
-            "amount_idr": amount_idr,
-            "new_balance": new_balance
-        })
-        
-    except Exception as e:
-        print(f"❌ Error verifying TON deposit: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)}), 500
-    
-@games_bp.route('/api/user/wallet', methods=['POST'])
-def update_wallet():
-    """Update user's wallet address"""
-    data = request.json
-    telegram_id = data.get('telegram_id')
-    wallet_address = data.get('wallet_address')
-    
-    if not telegram_id:
-        return jsonify({'success': False, 'error': 'telegram_id required'}), 400
-    
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE users 
-            SET wallet_address = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE telegram_id = ?
-        ''', (wallet_address, telegram_id))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-    
-# games/services/games_service.py - TAMBAHKAN ROUTE INI
-
-@games_bp.route('/user/wallet', methods=['POST'])
-def update_user_wallet():
-    """Update user's wallet address di database games"""
-    data = request.json
-    telegram_id = data.get('telegram_id')
-    wallet_address = data.get('wallet_address')
-    
-    if not telegram_id:
-        return jsonify({'success': False, 'error': 'telegram_id required'}), 400
-    
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Cek apakah kolom wallet_address ada di tabel users
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [col[1] for col in cursor.fetchall()]
-        
-        if 'wallet_address' not in columns:
-            # Tambahkan kolom wallet_address jika belum ada
-            cursor.execute('ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL')
-            print("✅ Kolom wallet_address ditambahkan ke tabel users")
-        
-        # Update wallet address
-        cursor.execute('''
-            UPDATE users 
-            SET wallet_address = ?
-            WHERE telegram_id = ?
-        ''', (wallet_address, telegram_id))
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': 'Wallet address updated'})
-        
-    except Exception as e:
-        print(f"❌ Error updating wallet: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@games_bp.route('/user/wallet/<int:telegram_id>', methods=['GET'])
-def get_user_wallet(telegram_id):
-    """Get user's wallet address"""
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Cek kolom wallet_address
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [col[1] for col in cursor.fetchall()]
-        
-        if 'wallet_address' not in columns:
-            return jsonify({'success': True, 'wallet_address': None})
-        
-        cursor.execute('SELECT wallet_address FROM users WHERE telegram_id = ?', (telegram_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        wallet_address = row[0] if row else None
-        return jsonify({'success': True, 'wallet_address': wallet_address})
-        
-    except Exception as e:
-        print(f"❌ Error getting wallet: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
