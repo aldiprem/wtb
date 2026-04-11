@@ -609,7 +609,17 @@
                 return 0;
             }
             
-            const response = await fetch(`${API_BASE}/api/plinko/balance/${user.id}`);
+            // Gunakan endpoint yang sama dengan games_service.py
+            const response = await fetch(`${API_BASE}/api/games/auth`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: user.id,
+                    username: user.username || '',
+                    first_name: user.first_name || 'User'
+                })
+            });
+            
             const data = await response.json();
             const balanceEl = document.getElementById('userBalance');
             const panelBalanceEl = document.getElementById('panelUserBalance');
