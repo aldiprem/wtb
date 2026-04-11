@@ -1,4 +1,4 @@
-# games/database/games.py - VERSION FIXED
+# games/database/games.py - VERSION TON (BUKAN IDR)
 
 import sqlite3
 import os
@@ -13,19 +13,19 @@ def get_current_time():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def init_db():
-    """Inisialisasi tabel untuk sistem Games beserta migrasi kolom baru"""
+    """Inisialisasi tabel untuk sistem Games - Balance dalam TON"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Buat Tabel Users dengan struktur baru
+    # Buat Tabel Users - balance dalam TON (float)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
             username TEXT,
             first_name TEXT,
-            balance INTEGER DEFAULT 0,
+            balance REAL DEFAULT 0,
             referred_by INTEGER DEFAULT NULL,
-            referral_reward INTEGER DEFAULT 0,
+            referral_reward REAL DEFAULT 0,
             gifts INTEGER DEFAULT 0,
             wallet_address TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -33,14 +33,14 @@ def init_db():
         )
     ''')
     
-    # Buat Tabel Riwayat Main (Plinko / Crash / Deposit)
+    # Buat Tabel Riwayat Main - amount dalam TON
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             telegram_id INTEGER,
             game_name TEXT,
-            bet_amount INTEGER,
-            win_amount INTEGER,
+            bet_amount REAL,
+            win_amount REAL,
             multiplier REAL,
             played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -52,7 +52,7 @@ def init_db():
     
     columns_to_add = {
         "referred_by": "INTEGER DEFAULT NULL",
-        "referral_reward": "INTEGER DEFAULT 0",
+        "referral_reward": "REAL DEFAULT 0",
         "gifts": "INTEGER DEFAULT 0",
         "wallet_address": "TEXT DEFAULT NULL",
         "last_seen": "TIMESTAMP"
@@ -62,17 +62,16 @@ def init_db():
         if col not in existing_columns:
             try:
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {data_type}")
-                print(f"✅ Kolom '{col}' ditambahkan ke tabel users")
-            except Exception as e:
-                print(f"⚠️ Gagal tambah kolom {col}: {e}")
+                print(f"✅ Kolom '{col}' ditambahkan")
+            except:
+                pass
     
     conn.commit()
     conn.close()
-    print("✅ Database games berhasil diinisialisasi")
+    print("✅ Database games siap (balance dalam TON)")
 
 def get_or_create_user(telegram_id, username, first_name, referred_by=None):
-    """Mencari user atau membuat user baru dengan balance 0 (tanpa dummy)"""
-    # Pastikan database terinisialisasi
+    """Mencari user atau membuat user baru dengan balance 0 TON"""
     init_db()
     
     conn = sqlite3.connect(DB_PATH)
@@ -85,7 +84,6 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
     user = cursor.fetchone()
     
     if user:
-        # Update last_seen dan username/first_name
         cursor.execute('''
             UPDATE users 
             SET username = ?, first_name = ?, last_seen = ? 
@@ -98,18 +96,17 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
         conn.close()
         return updated_user
     else:
-        # BALANCE = 0
         cursor.execute('''
             INSERT INTO users (telegram_id, username, first_name, balance, referred_by, created_at, last_seen) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, username, first_name, 0, referred_by, current_time, current_time))
+        ''', (telegram_id, username, first_name, 0.0, referred_by, current_time, current_time))
         
         if referred_by:
             cursor.execute("SELECT balance, referral_reward FROM users WHERE telegram_id = ?", (referred_by,))
             referrer = cursor.fetchone()
             if referrer:
-                new_balance = referrer['balance'] + 500
-                new_ref_reward = referrer['referral_reward'] + 500
+                new_balance = referrer['balance'] + 0.5
+                new_ref_reward = referrer['referral_reward'] + 0.5
                 cursor.execute('''
                     UPDATE users 
                     SET balance = ?, referral_reward = ? 
@@ -134,7 +131,7 @@ def get_user_data(telegram_id):
     return dict(user) if user else None
 
 def update_user_balance(telegram_id, amount_change):
-    """Update balance user (positive atau negative)"""
+    """Update balance user (dalam TON)"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -150,39 +147,8 @@ def update_user_balance(telegram_id, amount_change):
     
     return rows_affected > 0
 
-def update_user_stats(telegram_id, balance=None, referral_reward=None, gifts=None):
-    """Memperbarui nilai balance, referral, atau gifts secara dinamis"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    updates = []
-    params = []
-    
-    if balance is not None:
-        updates.append("balance = ?")
-        params.append(balance)
-    if referral_reward is not None:
-        updates.append("referral_reward = ?")
-        params.append(referral_reward)
-    if gifts is not None:
-        updates.append("gifts = ?")
-        params.append(gifts)
-        
-    if not updates:
-        return False
-        
-    params.append(telegram_id)
-    query = f"UPDATE users SET {', '.join(updates)} WHERE telegram_id = ?"
-    
-    cursor.execute(query, params)
-    rows_affected = cursor.rowcount
-    conn.commit()
-    conn.close()
-    
-    return rows_affected > 0
-
 def add_game_history(telegram_id, game_name, bet_amount, win_amount, multiplier):
-    """Menambahkan riwayat game"""
+    """Menambahkan riwayat game (dalam TON)"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -196,7 +162,7 @@ def add_game_history(telegram_id, game_name, bet_amount, win_amount, multiplier)
     return True
 
 def delete_user_data(telegram_id):
-    """Menghapus user dan riwayat gamenya dari database"""
+    """Menghapus user dan riwayat gamenya"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -209,5 +175,5 @@ def delete_user_data(telegram_id):
     
     return rows_affected > 0
 
-# Jalankan inisialisasi ketika modul di-import
+# Jalankan inisialisasi
 init_db()

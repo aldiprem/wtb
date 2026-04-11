@@ -166,9 +166,11 @@ def update_user_wallet():
         print(f"❌ Error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== VERIFY TON DEPOSIT ====================
+# games/services/games_service.py - PERBAIKAN verify_ton_deposit
+
 @games_bp.route('/verify-ton-deposit', methods=['POST'])
 def verify_ton_deposit():
+    """Verifikasi deposit TON - Balance langsung dalam TON"""
     init_db()
     data = request.json
     telegram_id = data.get('telegram_id')
@@ -192,21 +194,21 @@ def verify_ton_deposit():
             conn.close()
             return jsonify({"success": False, "error": "User not found"}), 404
         
-        # Convert TON ke IDR (1 TON = 10000 IDR)
-        amount_idr = int(amount_ton * 10000)
+        # LANGSUNG PAKAI TON, BUKAN IDR
+        amount = float(amount_ton)
         
-        # Update balance
+        # Update balance (tambah saldo dalam TON)
         cursor.execute('''
             UPDATE users 
             SET balance = balance + ? 
             WHERE telegram_id = ?
-        ''', (amount_idr, telegram_id))
+        ''', (amount, telegram_id))
         
-        # Catat history
+        # Catat history (dalam TON)
         cursor.execute('''
             INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, 'DEPOSIT_TON', amount_idr, amount_idr, 1.0, get_current_time()))
+        ''', (telegram_id, 'DEPOSIT_TON', amount, amount, 1.0, get_current_time()))
         
         # Ambil balance baru
         cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
@@ -215,13 +217,13 @@ def verify_ton_deposit():
         conn.commit()
         conn.close()
         
-        print(f"✅ Deposit: {amount_ton} TON -> +{amount_idr} IDR for user {telegram_id}")
-        print(f"   New balance: {new_balance} IDR")
+        print(f"✅ Deposit: {amount} TON for user {telegram_id}")
+        print(f"   New balance: {new_balance} TON")
         
         return jsonify({
             "success": True,
-            "message": f"Deposit {amount_ton} TON berhasil",
-            "amount_idr": amount_idr,
+            "message": f"Deposit {amount} TON berhasil",
+            "amount_ton": amount,
             "new_balance": new_balance
         })
         

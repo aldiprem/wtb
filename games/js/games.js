@@ -29,15 +29,16 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
             const balanceEl = document.getElementById('userBalance');
             if (data.success && balanceEl) {
-                balanceEl.textContent = data.balance.toLocaleString('id-ID');
+                // Tampilkan balance dalam TON dengan 2 desimal
+                balanceEl.textContent = data.balance.toFixed(2) + ' TON';
                 return data.balance;
             } else if (balanceEl) {
-                balanceEl.textContent = "0";
+                balanceEl.textContent = "0 TON";
             }
         } catch (error) {
             console.error('Error loading balance:', error);
             const balanceEl = document.getElementById('userBalance');
-            if (balanceEl) balanceEl.textContent = "0";
+            if (balanceEl) balanceEl.textContent = "0 TON";
         }
         return 0;
     }

@@ -59,8 +59,10 @@
             if (data.success) {
                 const balanceEl = document.getElementById('userBalance');
                 const profileBalanceEl = document.getElementById('profileBalance');
-                if (balanceEl) balanceEl.textContent = data.balance.toLocaleString('id-ID');
-                if (profileBalanceEl) profileBalanceEl.textContent = data.balance.toLocaleString('id-ID');
+                // Tampilkan dalam TON dengan 2 desimal
+                const balanceText = data.balance.toFixed(2) + ' TON';
+                if (balanceEl) balanceEl.textContent = balanceText;
+                if (profileBalanceEl) profileBalanceEl.textContent = balanceText;
                 return data.balance;
             }
         } catch (error) {
