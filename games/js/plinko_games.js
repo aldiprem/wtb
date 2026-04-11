@@ -308,15 +308,15 @@
         for (const area of multiplierAreas) {
             if (ball.x >= area.x && ball.x <= area.x + area.width) {
                 const winAmount = ball.bet * area.multiplier;
+                // PERBAIKAN: Net profit = winAmount (BUKAN winAmount - bet)
+                // Karena bet sudah dipotong di awal, kita hanya tambah kemenangan
                 const netChange = winAmount;
                 
-                // Accumulate net profit/loss
                 pendingBalanceUpdate += netChange;
                 
                 animateSlot(area.index);
                 showResult(area.multiplier, winAmount, netChange);
                 
-                // Simpan hasil ke backend
                 const roundHash = generateRoundHash();
                 saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
                 
@@ -334,7 +334,7 @@
         resultDiv.style.display = 'block';
         resultMultiplier.textContent = `${multiplier}x`;
         
-        // Tampilkan kemenangan bersih (yang ditambahkan ke saldo)
+        // Tampilkan kemenangan yang ditambahkan ke saldo
         const winText = winAmount > 0 ? `+${winAmount.toFixed(2)} TON` : `${winAmount.toFixed(2)} TON`;
         resultWin.textContent = winText;
         
