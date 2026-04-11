@@ -556,8 +556,6 @@
             drawPlinkoBoard();
             updateMultiplierAreas();
         }
-
-        }
         
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
@@ -582,8 +580,8 @@
             loadHistory();
         });
         
-        loadStats();
-        loadHistory();
+        await loadStats();
+        await loadHistory();
         updateViewCount();
         renderMultiplierSlots();
         
@@ -591,6 +589,7 @@
         update();
 
         console.log('✅ Plinko Games Ready');
+    }
     
     init();
 })();
