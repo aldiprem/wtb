@@ -3,21 +3,19 @@
 from flask import Blueprint, jsonify, request
 import sys
 import os
+import sqlite3
+import traceback # Tambahan untuk melihat detail error di terminal
 
 # Tambah path biar bisa import database
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from games.database.games import (
-    get_or_create_user, 
-    get_user_data, 
-    update_user_stats, 
-    delete_user_data
-)
+from games.database.games import get_or_create_user
 
 # Membuat Blueprint untuk API
 games_bp = Blueprint('games_bp', __name__, url_prefix='/api/games')
+DB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'games_data.db')
 
-# 1. API: Authentikasi / Tambah User / Update Last Seen
+# API Route untuk Authentikasi dan Sinkronisasi User Data dari Telegram
 @games_bp.route('/auth', methods=['POST'])
 def auth_user():
     data = request.json
@@ -27,72 +25,62 @@ def auth_user():
     telegram_id = data.get('telegram_id')
     username = data.get('username', 'Unknown')
     first_name = data.get('first_name', 'Guest')
-    referred_by = data.get('referred_by', None) # Untuk link undangan
     
     if not telegram_id:
         return jsonify({"success": False, "error": "telegram_id diperlukan"}), 400
     
     try:
-        # Fungsi ini otomatis update last_seen, atau buat user baru jika belum ada
-        user = get_or_create_user(telegram_id, username, first_name, referred_by)
+        # PERBAIKAN: get_or_create_user sekarang mengembalikan DICTIONARY (Data Lengkap)
+        user_data = get_or_create_user(telegram_id, username, first_name)
         
         return jsonify({
             "success": True,
-            "data": user
+            "telegram_id": telegram_id,
+            "username": username,
+            # Ambil spesifik 'balance' dari dictionary untuk ditampilkan di UI
+            "balance": user_data['balance'] 
         })
     except Exception as e:
-        print(f"❌ Error DB Games Auth: {e}")
+        print("❌ Error DB Games Auth:")
+        traceback.print_exc() # Menampilkan error log yang sangat detail di terminal
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-# 2. API: Mendapatkan Data Lengkap User
-@games_bp.route('/user/<int:telegram_id>', methods=['GET'])
-def get_user_detail(telegram_id):
-    try:
-        user = get_user_data(telegram_id)
-        if user:
-            return jsonify({"success": True, "data": user})
-        else:
-            return jsonify({"success": False, "error": "User tidak ditemukan"}), 404
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-# 3. API: Memperbarui Status User (Balance, Referral, Gifts)
-@games_bp.route('/user/update', methods=['POST'])
-def update_user():
+# API untuk update balance setelah main game
+@games_bp.route('/update-balance', methods=['POST'])
+def update_balance():
     data = request.json
     if not data:
         return jsonify({"success": False, "error": "Tidak ada data"}), 400
     
     telegram_id = data.get('telegram_id')
+    new_balance = data.get('new_balance')
     
-    if not telegram_id:
-        return jsonify({"success": False, "error": "telegram_id diperlukan"}), 400
-    
-    balance = data.get('balance')
-    referral_reward = data.get('referral_reward')
-    gifts = data.get('gifts')
+    if not telegram_id or new_balance is None:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
     
     try:
-        success = update_user_stats(telegram_id, balance=balance, referral_reward=referral_reward, gifts=gifts)
-        
-        if success:
-            return jsonify({"success": True, "message": "Data berhasil diperbarui"})
-        else:
-            return jsonify({"success": False, "error": "User tidak ditemukan atau tidak ada data yang diubah"}), 404
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET balance = ? WHERE telegram_id = ?", (new_balance, telegram_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-
-# 4. API: Menghapus User dari Database
-@games_bp.route('/user/<int:telegram_id>', methods=['DELETE'])
-def delete_user(telegram_id):
+# API untuk get user balance
+@games_bp.route('/balance/<int:telegram_id>', methods=['GET'])
+def get_balance(telegram_id):
     try:
-        success = delete_user_data(telegram_id)
-        if success:
-            return jsonify({"success": True, "message": f"User {telegram_id} berhasil dihapus"})
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return jsonify({"success": True, "balance": row[0]})
         else:
-            return jsonify({"success": False, "error": "User tidak ditemukan"}), 404
+            return jsonify({"success": False, "error": "User not found"}), 404
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
