@@ -2,44 +2,46 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Plinko Games - Barack Gift</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Plinko - BarackGift</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/games/css/games.css">
+    <link rel="stylesheet" href="/games/css/plinko.css">
+    
+    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="/games/css/plinko.css">
 </head>
 <body>
-    <div class="plinko-app">
-        <!-- Header -->
-        <div class="plinko-header">
-            <div class="header-content">
-                <a href="/games" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div class="game-title">
-                    <div class="game-icon">
-                        <i class="fas fa-circle-notch"></i>
-                    </div>
-                    <div>
-                        <h1>Plinko</h1>
-                        <span>Multiplier Game</span>
-                    </div>
+    <div class="app-container">
+        
+        <!-- Header SAMA PERSIS dengan games.html -->
+        <header class="glass-header">
+            <div class="app-title">
+                <h2>BarackGift</h2>
+            </div>
+            <div class="balance-container">
+                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="ton-logo">
+                <span id="userBalance"><i class="fas fa-spinner fa-spin"></i></span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            
+            <!-- Stats Views - Baris pertama dengan mata logo -->
+            <div class="stats-views">
+                <div class="stat-views-card">
+                    <i class="fas fa-eye"></i>
+                    <span id="totalViews">0</span>
                 </div>
-                <div style="width: 40px;"></div>
             </div>
-        </div>
 
-        <!-- Stats Baris Pertama - Views saja -->
-        <div class="stats-views">
-            <div class="stat-views-card">
-                <i class="fas fa-eye"></i>
-                <span id="totalViews">0</span>
-            </div>
-        </div>
-
-        <!-- Main Content -->
-        <div class="plinko-container">
+            <!-- 3 Stats Row -->
             <div class="stats-row">
                 <div class="stat-jackpot">
                     <div class="stat-icon"><i class="fas fa-trophy"></i></div>
@@ -72,10 +74,9 @@
                         <i class="fas fa-circle"></i> Ball Dropping...
                     </div>
                     
-                    <!-- Multiplier Slots - Kotak tempat jatuh bola -->
+                    <!-- Multiplier Slots -->
                     <div class="multiplier-slots-container" id="multiplierSlotsContainer">
-                        <div class="multiplier-slots-wrapper" id="multiplierSlotsWrapper">
-                        </div>
+                        <div class="multiplier-slots-wrapper" id="multiplierSlotsWrapper"></div>
                     </div>
                 </div>
 
@@ -108,13 +109,13 @@
                 </div>
             </div>
 
-            <!-- History Table -->
+            <!-- History Section - Scrollable -->
             <div class="history-section">
                 <div class="section-header">
                     <h3><i class="fas fa-history"></i> Riwayat Permainan</h3>
                     <button id="refreshHistory" class="refresh-btn"><i class="fas fa-sync-alt"></i></button>
                 </div>
-                <div class="table-container">
+                <div class="table-container" style="max-height: 300px; overflow-y: auto;">
                     <table class="history-table">
                         <thead>
                             <tr>
@@ -132,7 +133,29 @@
                     </table>
                 </div>
             </div>
-        </div>
+
+        </main>
+
+        <!-- Floating Bottom Navigation SAMA dengan games.html -->
+        <nav class="floating-nav">
+            <button class="nav-item" onclick="window.location.href='/games'">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item active" onclick="window.location.href='/plinko-games'">
+                <i class="fas fa-gamepad"></i>
+                <span>Games</span>
+            </button>
+            <button class="nav-item" onclick="window.location.href='/games'">
+                <i class="fas fa-user-friends"></i>
+                <span>Referral</span>
+            </button>
+            <button class="nav-item" onclick="window.location.href='/profile'">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </button>
+        </nav>
+
     </div>
 
     <script src="/games/js/plinko_games.js"></script>
