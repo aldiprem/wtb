@@ -2,14 +2,14 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     
-    // 1. Inisialisasi Telegram Web App SDK
     const tg = window.Telegram.WebApp;
-    tg.expand(); // Memperluas tampilan mini app menjadi full height
-    tg.setHeaderColor('#0f0f0f'); // Set warna header telegram menyesuaikan tema
+    tg.expand();
+    tg.setHeaderColor('#0f0f0f');
 
-    // 2. Auth & Pengambilan Data User Telegram
     const initDataUnsafe = tg.initDataUnsafe || {};
     const user = initDataUnsafe.user;
+
+    let currentUser = user;
 
     async function loadUserBalance(telegramId, username, firstName) {
         try {
@@ -24,32 +24,26 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             
             const data = await response.json();
-            if (data.success) {
-                const balanceEl = document.getElementById('userBalance');
-                if (balanceEl) {
-                    balanceEl.textContent = data.balance.toLocaleString('id-ID');
-                }
+            const balanceEl = document.getElementById('userBalance');
+            if (data.success && balanceEl) {
+                balanceEl.textContent = data.balance.toLocaleString('id-ID');
                 return data.balance;
-            } else {
-                const balanceEl = document.getElementById('userBalance');
-                if (balanceEl) balanceEl.textContent = "Error";
+            } else if (balanceEl) {
+                balanceEl.textContent = "0";
             }
         } catch (error) {
             console.error('Error loading balance:', error);
             const balanceEl = document.getElementById('userBalance');
-            if (balanceEl) balanceEl.textContent = "Error";
+            if (balanceEl) balanceEl.textContent = "0";
         }
         return 0;
     }
 
-    // Fungsi untuk redirect ke halaman external
     function redirectToPage(url) {
         if (url && url !== '') {
-            // Animasi haptic feedback dulu
             if (tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             }
-            // Redirect setelah sedikit delay biar haptic keburu
             setTimeout(() => {
                 window.location.href = url;
             }, 50);
@@ -58,18 +52,99 @@ document.addEventListener("DOMContentLoaded", () => {
         return false;
     }
 
+    // Deposit functions
+    function showDepositModal() {
+        const modal = document.getElementById('depositModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('depositModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function processDeposit(amount) {
+        if (!amount || amount < 10000) {
+            alert('Minimal deposit Rp 10.000');
+            return;
+        }
+        
+        if (!currentUser || !currentUser.id) {
+            alert('User tidak ditemukan');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/games/deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: currentUser.id,
+                    amount: amount
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(`Deposit Rp ${amount.toLocaleString()} berhasil!`);
+                closeModal();
+                const fullName = (currentUser.first_name || '') + (currentUser.last_name ? ' ' + currentUser.last_name : '');
+                loadUserBalance(currentUser.id, currentUser.username || '', fullName);
+            } else {
+                alert(data.error || 'Deposit gagal');
+            }
+        } catch (error) {
+            console.error('Deposit error:', error);
+            alert('Error processing deposit');
+        }
+    }
+
     if (user) {
-        // Jika dibuka via Telegram, daftarkan/tarik data user
-        const fullName = user.first_name + (user.last_name ? " " + user.last_name : "");
+        currentUser = user;
+        const fullName = (user.first_name || '') + (user.last_name ? ' ' + user.last_name : '');
         loadUserBalance(user.id, user.username || '', fullName);
     } else {
-        // Mode browser (fallback tanpa Telegram)
-        console.log("Dibuka di luar Telegram App. Menjalankan Mode Guest.");
         const balanceEl = document.getElementById("userBalance");
         if (balanceEl) balanceEl.textContent = "0";
     }
 
-    // 3. Logika Pagination / Bottom Navigation dengan redirect jika perlu
+    // Setup deposit button di header
+    const headerDepositBtn = document.getElementById('headerDepositBtn');
+    if (headerDepositBtn) {
+        headerDepositBtn.addEventListener('click', showDepositModal);
+    }
+
+    // Setup modal close
+    const closeModalBtn = document.querySelector('.close-modal');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', closeModal);
+    }
+
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('depositModal');
+        if (modal && e.target === modal) closeModal();
+    });
+
+    // Deposit method buttons
+    const methodBtns = document.querySelectorAll('.method-btn');
+    methodBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const amount = parseInt(btn.dataset.amount);
+            const customAmount = document.getElementById('customAmount');
+            if (customAmount) customAmount.value = amount;
+        });
+    });
+
+    const processBtn = document.getElementById('processDeposit');
+    if (processBtn) {
+        processBtn.addEventListener('click', () => {
+            let amount = parseInt(document.getElementById('customAmount').value);
+            if (isNaN(amount)) amount = 10000;
+            processDeposit(amount);
+        });
+    }
+
+    // Navigation
     const navItems = document.querySelectorAll('.nav-item');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
@@ -78,29 +153,21 @@ document.addEventListener("DOMContentLoaded", () => {
             const targetId = this.getAttribute('data-target');
             const redirectUrl = this.getAttribute('data-url');
             
-            // Cek apakah tombol ini punya URL redirect
             if (redirectUrl && redirectUrl !== '') {
-                // Redirect ke halaman yang dituju (misal /profile)
                 redirectToPage(redirectUrl);
                 return;
             }
             
-            // Jika tidak punya redirect URL, maka behave seperti tab biasa
-            // Hapus kelas aktif dari semua tombol nav
             navItems.forEach(nav => nav.classList.remove('active'));
-            // Tambahkan kelas aktif ke tombol yang diklik
             this.classList.add('active');
 
-            // Sembunyikan semua tab konten
             tabPanes.forEach(pane => pane.classList.remove('active'));
             
-            // Tampilkan tab yang dituju
             const targetPane = document.getElementById(targetId);
             if (targetPane) {
                 targetPane.classList.add('active');
             }
 
-            // Haptic Feedback (Getaran ringan) untuk Telegram
             if (tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('light');
             }
