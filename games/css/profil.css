@@ -1,12 +1,110 @@
-/* games/css/profil.css */
+/* games/css/profil.css - LENGKAP */
 
-.profile-content {
-    flex: 1;
+:root {
+    --tg-bg-color: #0f0f0f;
+    --tg-text-color: #ffffff;
+    --tg-hint-color: #7d7d7d;
+    --primary-color: #40a7e3;
+    --primary-dark: #2d8bcb;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --bg-card: rgba(255, 255, 255, 0.05);
+    --bg-secondary: #1a1a1a;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-glow: 0 0 20px rgba(64, 167, 227, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Pastikan body dan app-container punya struktur yang sama dengan games.css */
+body {
+    background: #000000;
+    color: var(--tg-text-color);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+}
+
+/* Container utama dengan scroll sendiri - SAMA PERSIS dengan games.css */
+.app-container {
+    width: 100%;
+    max-width: 480px;
+    background: var(--tg-bg-color);
+    height: 100vh;
+    position: relative;
+    padding-bottom: 90px;
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    
+    /* Fungsi scroll dalam container saja */
     overflow-y: auto;
+    /* Mencegah efek pull-to-refresh (reload browser) saat scroll mentok ke atas */
+    overscroll-behavior-y: none;
+    
+    /* Menyembunyikan scrollbar untuk Firefox, IE, dan Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* Menyembunyikan scrollbar untuk Chrome, Safari, dan Opera */
+.app-container::-webkit-scrollbar {
+    display: none;
+}
+
+/* Header Glassmorphism - SAMA dengan games.css */
+.glass-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: rgba(15, 15, 15, 0.75);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.app-title h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(135deg, var(--primary-color), var(--success-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px;
+}
+
+.balance-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.text-warning {
+    color: var(--warning-color);
+}
+
+/* Content Area - Tempat scroll */
+.content-area {
+    flex: 1;
     padding: 20px;
     padding-bottom: 100px;
 }
 
+/* Profile Card */
 .profile-card {
     background: linear-gradient(135deg, rgba(108, 92, 231, 0.2), rgba(108, 92, 231, 0.05));
     border-radius: 24px;
@@ -189,7 +287,92 @@
     cursor: pointer;
 }
 
-/* Modal */
+/* Table Styles */
+.table-container {
+    overflow-x: auto;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 500px;
+}
+
+.history-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--tg-hint-color);
+}
+
+.history-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 13px;
+}
+
+.history-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.win-positive {
+    color: var(--success-color);
+    font-weight: 600;
+}
+
+/* Floating Navigation - SAMA dengan games.css */
+.floating-nav {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+    background: rgba(25, 25, 25, 0.85);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 30px;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 10px;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.nav-item {
+    background: transparent;
+    border: none;
+    color: var(--tg-hint-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: 0.3s;
+    border-radius: 20px;
+}
+
+.nav-item i {
+    font-size: 20px;
+}
+
+.nav-item span {
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.nav-item.active {
+    color: var(--primary-color);
+}
+
+.nav-item.active i {
+    transform: translateY(-2px);
+}
+
+/* Modal Deposit */
 .modal {
     display: none;
     position: fixed;
@@ -276,4 +459,33 @@
     color: var(--tg-hint-color);
     text-align: center;
     margin-top: 12px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .stats-grid-profile {
+        gap: 8px;
+    }
+    
+    .stat-box {
+        padding: 12px;
+    }
+    
+    .stat-number {
+        font-size: 16px;
+    }
+    
+    .nav-item {
+        padding: 8px 8px;
+    }
+    
+    .nav-label {
+        font-size: 9px;
+    }
 }
