@@ -1,275 +1,286 @@
+/* games/css/games.css */
+
+:root {
+    --tg-bg-color: #0f0f0f;
+    --tg-text-color: #ffffff;
+    --tg-hint-color: #7d7d7d;
+    --primary-color: #40a7e3;
+    --primary-dark: #2d8bcb;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --bg-card: rgba(255, 255, 255, 0.05);
+    --bg-secondary: #1a1a1a;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-glow: 0 0 20px rgba(64, 167, 227, 0.3);
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
 }
 
 body {
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: #ffffff;
-    overflow: hidden;
-    height: 100vh;
+    background: var(--tg-bg-color);
+    color: var(--tg-text-color);
+    min-height: 100vh;
+    padding-bottom: 90px; /* Space for bottom nav */
 }
 
-.app-container {
-    height: 100vh;
+/* Header Glassmorphism */
+.glass-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
     display: flex;
-    flex-direction: column;
-    position: relative;
-}
-
-/* Glassy Header - Tanpa efek sudut */
-.glassy-header {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
+    justify-content: space-between;
+    align-items: center;
     padding: 15px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    position: relative;
+    background: rgba(15, 15, 15, 0.75);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
 }
 
-.telegram-user {
+.user-profile {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
     gap: 12px;
-    cursor: pointer;
-    position: relative;
-    z-index: 1;
 }
 
-.user-avatar {
-    width: 40px;
-    height: 40px;
+.avatar-container img {
+    width: 45px;
+    height: 45px;
     border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    transition: transform 0.3s ease;
+    border: 2px solid var(--primary-color);
+    object-fit: cover;
 }
 
-.user-avatar:hover {
-    transform: scale(1.05);
+.user-info h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
 }
 
-.user-name {
-    font-size: 14px;
-    font-weight: 500;
-    color: #ffffff;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+.user-info p {
+    font-size: 12px;
+    color: var(--tg-hint-color);
 }
 
-/* Scroll Container */
-.scroll-container {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-    margin: 20px;
+.balance-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
     border-radius: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    scroll-behavior: smooth;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    font-size: 14px;
 }
 
-/* Custom Scrollbar */
-.scroll-container::-webkit-scrollbar {
-    width: 8px;
+.text-warning {
+    color: var(--warning-color);
 }
 
-.scroll-container::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-}
-
-.scroll-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-}
-
-.scroll-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.content-wrapper {
-    min-height: 100%;
+/* Content Area */
+.content-area {
     padding: 20px;
-    position: relative;
 }
 
-.content-placeholder {
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Empty State */
+.empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: rgba(255, 255, 255, 0.7);
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 2px dashed var(--border-color);
+    margin-top: 20px;
 }
 
-.content-placeholder h2 {
-    font-size: 24px;
+.empty-state i {
+    font-size: 48px;
+    color: var(--primary-color);
+    opacity: 0.5;
     margin-bottom: 15px;
-    color: #ffffff;
 }
 
-/* Bottom Navigation - Tanpa efek sudut */
-.bottom-nav {
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(20px);
+/* Games Section */
+.section-title {
+    margin-bottom: 20px;
+}
+
+.section-title h2 {
+    font-size: 18px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title p {
+    font-size: 13px;
+    color: var(--tg-hint-color);
+    margin-top: 4px;
+}
+
+.games-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Game Card */
+.game-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.game-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-3px);
+}
+
+.game-banner {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    color: white;
+}
+
+.plinko-bg {
+    background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+}
+
+.crash-bg {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+}
+
+.game-info {
+    padding: 16px;
+}
+
+.game-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.game-title-row h3 {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.badge-hot {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger-color);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+.badge-new {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-color);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+.game-info p {
+    font-size: 13px;
+    color: var(--tg-hint-color);
+    margin-bottom: 16px;
+}
+
+.btn-play {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.game-card:hover .btn-play {
+    box-shadow: 0 4px 12px rgba(64, 167, 227, 0.4);
+}
+
+/* Floating Navigation */
+.floating-nav {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 400px;
+    background: rgba(25, 25, 25, 0.85);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 30px;
     display: flex;
     justify-content: space-around;
-    align-items: center;
-    padding: 12px 20px 20px;
-    margin: 0 20px 20px 20px;
-    border-radius: 30px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    position: relative;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
-
-/* Efek glow halus untuk border bottom-nav - TANPA SUDUT PERSEGI */
-.bottom-nav::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 30px;
-    padding: 2px;
-    background: linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.2) 0%,
-        rgba(255, 255, 255, 0.05) 50%,
-        rgba(255, 255, 255, 0.1) 100%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+    padding: 8px 10px;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
 .nav-item {
+    background: transparent;
+    border: none;
+    color: var(--tg-hint-color);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    padding: 8px 12px;
     cursor: pointer;
-    padding: 8px 16px;
-    border-radius: 25px;
-    transition: all 0.3s ease;
-    position: relative;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    min-width: 80px;
+    transition: 0.3s;
+    border-radius: 20px;
 }
 
-/* Efek glow halus untuk nav-item */
-.nav-item::before {
-    content: '';
-    position: absolute;
-    inset: -1px;
-    border-radius: 26px;
-    padding: 1px;
-    background: linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.15) 0%,
-        rgba(255, 255, 255, 0) 50%,
-        rgba(255, 255, 255, 0.05) 100%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}
-
-.nav-item:hover::before {
-    opacity: 0.5;
-}
-
-.nav-item.active {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-}
-
-.nav-item.active::before {
-    opacity: 0.7;
-}
-
-.nav-icon {
-    font-size: 24px;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+.nav-item i {
+    font-size: 20px;
 }
 
 .nav-item span {
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 500;
 }
 
-/* Glass Card - Efek border glow halus tanpa sudut persegi */
-.glass-card {
-    position: relative;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
+.nav-item.active {
+    color: var(--primary-color);
 }
 
-/* Efek glow untuk border glass-card - HALUS DAN RAPI */
-.glass-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 15px;
-    padding: 1px;
-    background: linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.2) 0%,
-        rgba(255, 255, 255, 0.02) 50%,
-        rgba(255, 255, 255, 0.1) 100%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    opacity: 0.6;
-}
-
-/* Hover effect untuk glass-card */
-.glass-card:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.glass-card:hover::before {
-    opacity: 1;
-    background: linear-gradient(135deg, 
-        rgba(255, 255, 255, 0.3) 0%,
-        rgba(255, 255, 255, 0.05) 50%,
-        rgba(255, 255, 255, 0.15) 100%);
-}
-
-/* Animasi loading */
-@keyframes glow {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 0.7; }
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .scroll-container {
-        margin: 15px;
-    }
-    
-    .bottom-nav {
-        margin: 0 15px 15px 15px;
-        padding: 10px 15px 15px;
-    }
-    
-    .nav-item {
-        padding: 6px 12px;
-        min-width: 70px;
-    }
-    
-    .nav-icon {
-        font-size: 20px;
-    }
-    
-    .nav-item span {
-        font-size: 11px;
-    }
-    
-    .glass-card {
-        padding: 15px;
-    }
+.nav-item.active i {
+    transform: translateY(-2px);
 }

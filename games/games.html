@@ -2,66 +2,137 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Barack Gift</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Lobby Games</title>
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="/games/css/games.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
+    <!-- App Container -->
     <div class="app-container">
-        <header class="glassy-header">
-            <div class="telegram-user" id="telegramUser">
-                <img id="userAvatar" class="user-avatar" src="https://via.placeholder.com/40" alt="User Avatar">
-                <span id="userName" class="user-name">Loading...</span>
+        
+        <!-- Header -->
+        <header class="glass-header">
+            <div class="user-profile">
+                <div class="avatar-container">
+                    <img id="userAvatar" src="https://via.placeholder.com/100" alt="Avatar">
+                </div>
+                <div class="user-info">
+                    <h2 id="userName">Guest Player</h2>
+                    <p id="userId">@username</p>
+                </div>
+            </div>
+            <div class="balance-container">
+                <i class="fas fa-coins text-warning"></i>
+                <span id="userBalance">1,500</span>
             </div>
         </header>
 
-        <main class="scroll-container" id="scrollContainer">
-            <div class="content-wrapper" id="contentWrapper">
-                <div class="games-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 16px;">
-                    <a href="/plinko-games" class="game-card" style="background: linear-gradient(135deg, #FFD700, #CCB100); border-radius: 16px; padding: 24px; text-align: center; text-decoration: none; color: #000;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">🎲</div>
-                        <h3 style="font-weight: 700;">Plinko</h3>
-                        <p style="font-size: 12px; opacity: 0.8;">Multiplier up to 10x</p>
-                    </a>
-                    
-                    <div class="game-card" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 16px; padding: 24px; text-align: center; color: white;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">📦</div>
-                        <h3 style="font-weight: 700;">Case</h3>
-                        <p style="font-size: 12px; opacity: 0.8;">Coming Soon</p>
+        <!-- Main Content Area -->
+        <main class="content-area">
+            
+            <!-- TAB: HOME (Kosong) -->
+            <section id="tab-home" class="tab-pane">
+                <div class="empty-state">
+                    <i class="fas fa-home"></i>
+                    <h3>Halaman Home</h3>
+                    <p>Konten home akan segera hadir di sini.</p>
+                </div>
+            </section>
+
+            <!-- TAB: GAMES (Aktif Default) -->
+            <section id="tab-games" class="tab-pane active">
+                <div class="section-title">
+                    <h2><i class="fas fa-gamepad"></i> Daftar Permainan</h2>
+                    <p>Pilih permainan dan mulai menangkan koin!</p>
+                </div>
+
+                <div class="games-grid">
+                    <!-- Game Card: Plinko -->
+                    <div class="game-card" onclick="window.location.href='/plinko-games'">
+                        <div class="game-banner plinko-bg">
+                            <i class="fas fa-ball-pile"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-title-row">
+                                <h3>Plinko</h3>
+                                <span class="badge-hot">HOT</span>
+                            </div>
+                            <p>Jatuhkan bola dan menangkan multiplier besar!</p>
+                            <button class="btn-play"><i class="fas fa-play"></i> Mainkan</button>
+                        </div>
                     </div>
-                    
-                    <div class="game-card" style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 16px; padding: 24px; text-align: center; color: white;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">⚔️</div>
-                        <h3 style="font-weight: 700;">PVP</h3>
-                        <p style="font-size: 12px; opacity: 0.8;">Coming Soon</p>
-                    </div>
-                    
-                    <div class="game-card" style="background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 16px; padding: 24px; text-align: center; color: white;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">💥</div>
-                        <h3 style="font-weight: 700;">Crash</h3>
-                        <p style="font-size: 12px; opacity: 0.8;">Coming Soon</p>
+
+                    <!-- Game Card: Crash -->
+                    <div class="game-card" onclick="window.location.href='/crash'">
+                        <div class="game-banner crash-bg">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <div class="game-info">
+                            <div class="game-title-row">
+                                <h3>Crash</h3>
+                                <span class="badge-new">NEW</span>
+                            </div>
+                            <p>Tarik koinmu sebelum roket meledak!</p>
+                            <button class="btn-play"><i class="fas fa-play"></i> Mainkan</button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
+
+            <!-- TAB: REFERRAL (Kosong) -->
+            <section id="tab-referral" class="tab-pane">
+                <div class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Halaman Referral</h3>
+                    <p>Undang teman dan dapatkan bonus.</p>
+                </div>
+            </section>
+
+            <!-- TAB: PROFILE (Kosong) -->
+            <section id="tab-profile" class="tab-pane">
+                <div class="empty-state">
+                    <i class="fas fa-user-circle"></i>
+                    <h3>Halaman Profil</h3>
+                    <p>Pengaturan akun dan riwayat permainan.</p>
+                </div>
+            </section>
+
         </main>
 
-        <nav class="bottom-nav">
-            <div class="nav-item" data-page="games">
-                <div class="nav-icon">🎮</div>
+        <!-- Floating Bottom Navigation -->
+        <nav class="floating-nav">
+            <button class="nav-item" data-target="tab-home">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </button>
+            <button class="nav-item active" data-target="tab-games">
+                <i class="fas fa-gamepad"></i>
                 <span>Games</span>
-            </div>
-            <div class="nav-item" data-page="market">
-                <div class="nav-icon">🛒</div>
-                <span>Market</span>
-            </div>
-            <div class="nav-item" data-page="profile">
-                <div class="nav-icon">👤</div>
-                <span>Profil</span>
-            </div>
+            </button>
+            <button class="nav-item" data-target="tab-referral">
+                <i class="fas fa-user-friends"></i>
+                <span>Referral</span>
+            </button>
+            <button class="nav-item" data-target="tab-profile">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </button>
         </nav>
+
     </div>
 
+    <!-- JavaScript -->
     <script src="/games/js/games.js"></script>
 </body>
 </html>

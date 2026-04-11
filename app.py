@@ -28,10 +28,10 @@ from services.users_service import user_bp
 from services.image_service import image_bp
 from services.frag_service import frag_bp
 from services.tgs_service import tgs_bp
-from games.app import games_bp
 from services.plinko_games_service import plinko_bp
 from giveaway.services.giveaway_service import giveaway_bp
 from services.crash_service import crash_bp
+from games.services.games_service import games_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -230,11 +230,11 @@ app.register_blueprint(trx_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(image_bp, url_prefix='/api/images')
 app.register_blueprint(frag_bp)
-app.register_blueprint(games_bp, url_prefix='')
 app.register_blueprint(tgs_bp)
 app.register_blueprint(plinko_bp, url_prefix='/api')
 app.register_blueprint(giveaway_bp)
 app.register_blueprint(crash_bp, url_prefix='/api/crash')
+app.register_blueprint(games_bp)
 
 @app.route('/giveaways')
 def serve_giveaway_page():
@@ -260,6 +260,10 @@ def serve_plinko_games():
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'plinko_games.html')
 
 # ==================== ROUTES UNTUK GAMES ====================
+
+@app.route('/games')
+def serve_games_lobby():
+    return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'games.html')
 
 @app.route('/games/css/<path:filename>')
 def serve_games_css(filename):
