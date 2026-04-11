@@ -225,7 +225,7 @@ body {
     width: 100%;
 }
 
-/* Stat Jackpot - 2 baris dalam 1 card */
+/* Ganti ini */
 .stat-jackpot {
     background: var(--bg-card);
     border-radius: 18px;
@@ -292,6 +292,54 @@ body {
     font-size: 9px !important;
     color: var(--tg-hint-color);
     display: block;
+}
+
+/* Menjadi ini */
+.stat-jackpot {
+    background: var(--bg-card);
+    border-radius: 18px;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    color: var(--tg-text-color);
+}
+
+.stat-jackpot .stat-icon {
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #000;
+    flex-shrink: 0;
+}
+
+.stat-jackpot .stat-info-vertical {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-jackpot .stat-value {
+    font-size: 18px !important;
+    font-weight: 800;
+    display: block;
+    color: var(--success-color);
+}
+
+.stat-jackpot .stat-value-multiplier {
+    font-size: 16px !important;
+    font-weight: 800;
+    display: block;
+    color: var(--primary-color);
 }
 
 /* Stat Lasted */
