@@ -25,16 +25,37 @@ document.addEventListener("DOMContentLoaded", () => {
             
             const data = await response.json();
             if (data.success) {
-                document.getElementById('userBalance').textContent = data.balance.toLocaleString('id-ID');
+                const balanceEl = document.getElementById('userBalance');
+                if (balanceEl) {
+                    balanceEl.textContent = data.balance.toLocaleString('id-ID');
+                }
                 return data.balance;
             } else {
-                document.getElementById('userBalance').textContent = "Error";
+                const balanceEl = document.getElementById('userBalance');
+                if (balanceEl) balanceEl.textContent = "Error";
             }
         } catch (error) {
             console.error('Error loading balance:', error);
-            document.getElementById('userBalance').textContent = "Error";
+            const balanceEl = document.getElementById('userBalance');
+            if (balanceEl) balanceEl.textContent = "Error";
         }
         return 0;
+    }
+
+    // Fungsi untuk redirect ke halaman external
+    function redirectToPage(url) {
+        if (url && url !== '') {
+            // Animasi haptic feedback dulu
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('light');
+            }
+            // Redirect setelah sedikit delay biar haptic keburu
+            setTimeout(() => {
+                window.location.href = url;
+            }, 50);
+            return true;
+        }
+        return false;
     }
 
     if (user) {
@@ -44,28 +65,40 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
         // Mode browser (fallback tanpa Telegram)
         console.log("Dibuka di luar Telegram App. Menjalankan Mode Guest.");
-        document.getElementById("userBalance").textContent = "1.500";
+        const balanceEl = document.getElementById("userBalance");
+        if (balanceEl) balanceEl.textContent = "0";
     }
 
-    // 3. Logika Pagination / Bottom Navigation
+    // 3. Logika Pagination / Bottom Navigation dengan redirect jika perlu
     const navItems = document.querySelectorAll('.nav-item');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
     navItems.forEach(item => {
         item.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const redirectUrl = this.getAttribute('data-url');
+            
+            // Cek apakah tombol ini punya URL redirect
+            if (redirectUrl && redirectUrl !== '') {
+                // Redirect ke halaman yang dituju (misal /profile)
+                redirectToPage(redirectUrl);
+                return;
+            }
+            
+            // Jika tidak punya redirect URL, maka behave seperti tab biasa
             // Hapus kelas aktif dari semua tombol nav
             navItems.forEach(nav => nav.classList.remove('active'));
             // Tambahkan kelas aktif ke tombol yang diklik
             this.classList.add('active');
 
-            // Ambil target tab
-            const targetId = this.getAttribute('data-target');
-
             // Sembunyikan semua tab konten
             tabPanes.forEach(pane => pane.classList.remove('active'));
             
             // Tampilkan tab yang dituju
-            document.getElementById(targetId).classList.add('active');
+            const targetPane = document.getElementById(targetId);
+            if (targetPane) {
+                targetPane.classList.add('active');
+            }
 
             // Haptic Feedback (Getaran ringan) untuk Telegram
             if (tg.HapticFeedback) {
@@ -73,5 +106,4 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
-
 });
