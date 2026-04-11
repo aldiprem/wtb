@@ -178,11 +178,6 @@ if [ ! -d "games" ]; then
     mkdir -p games/css games/js
 fi
 
-if [ ! -f "games/app.py" ]; then
-    echo -e "${RED}❌ File games/app.py tidak ditemukan!${NC}"
-    exit 1
-fi
-
 if [ ! -f "games/games.html" ]; then
     echo -e "${RED}❌ File games/games.html tidak ditemukan!${NC}"
     exit 1
