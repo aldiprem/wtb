@@ -415,6 +415,25 @@
     async function dropBalls() {
         console.log('🎯 dropBalls called - bet:', currentBetAmount, 'count:', ballCount);
         
+        // PERBAIKAN: Cek dan set default jika currentBetAmount invalid
+        if (!currentBetAmount || currentBetAmount <= 0) {
+            const betInput = document.getElementById('panelBetAmount');
+            if (betInput) {
+                currentBetAmount = parseFloat(betInput.value) || 1.0;
+            } else {
+                currentBetAmount = 1.0;
+            }
+            updateUILabels();
+            console.log('🔄 Reset bet amount to:', currentBetAmount);
+        }
+        
+        if (currentBetAmount <= 0.1) {
+            alert('Silakan atur taruhan terlebih dahulu! Klik pada bagian BET INFO.');
+            // Buka panel bet otomatis
+            toggleBetPanel();
+            return;
+        }
+        
         if (isProcessingDrop) {
             alert('Masih ada bola yang berjalan, tunggu sebentar...');
             return;
@@ -710,7 +729,9 @@
         
         if (isNaN(amount) || amount < 0.1) {
             alert('Minimal taruhan 0.1 TON');
-            return;
+            // Set ke nilai minimal jika invalid
+            amount = 0.1;
+            if (betInput) betInput.value = amount.toFixed(1);
         }
         
         currentBetAmount = amount;
@@ -722,6 +743,15 @@
         if (chevron) chevron.className = 'fas fa-chevron-up';
         
         console.log(`✅ Bet confirmed: ${amount.toFixed(2)} TON`);
+        
+        // Tampilkan notifikasi singkat bahwa bet sudah di-set
+        const betLabel = document.getElementById('currentBetLabel');
+        if (betLabel) {
+            betLabel.style.color = '#10b981';
+            setTimeout(() => {
+                betLabel.style.color = '';
+            }, 1000);
+        }
     }
 
     function setBallCount(count) {
@@ -878,6 +908,15 @@
         updateViewCount();
         renderMultiplierSlots();
         generateBallsGrid();
+
+        if (!currentBetAmount || currentBetAmount <= 0) {
+            currentBetAmount = 1.0;
+        }
+
+        const betInput = document.getElementById('panelBetAmount');
+        if (betInput && betInput.value === '1.0') {
+            currentBetAmount = 1.0;
+        }
         updateUILabels();
         
         update();
