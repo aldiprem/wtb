@@ -51,7 +51,15 @@
         return null;
     }
 
-    // Load balance terpisah (lebih akurat)
+    // Fungsi helper di awal file
+    function formatNumberWithCommas(number) {
+        let parts = number.toFixed(2).split('.');
+        let integerPart = parts[0];
+        let decimalPart = parts[1];
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return decimalPart ? integerPart + '.' + decimalPart : integerPart;
+    }
+
     async function loadBalance(telegramId) {
         try {
             const response = await fetch(`/api/games/balance/${telegramId}`);
@@ -59,8 +67,9 @@
             if (data.success) {
                 const balanceEl = document.getElementById('userBalance');
                 const profileBalanceEl = document.getElementById('profileBalance');
-                // Tampilkan dalam TON dengan 2 desimal
-                const balanceText = data.balance.toFixed(2) + ' TON';
+                // ✅ FORMAT ANGKA RIBUAN
+                const formattedBalance = formatNumberWithCommas(data.balance);
+                const balanceText = formattedBalance + ' TON';
                 if (balanceEl) balanceEl.textContent = balanceText;
                 if (profileBalanceEl) profileBalanceEl.textContent = balanceText;
                 return data.balance;

@@ -13,7 +13,15 @@ document.addEventListener("DOMContentLoaded", () => {
     let isWalletConnected = false;
     let webAddress = 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra';
 
-    // ==================== TELEGRAM USER ====================
+    // Fungsi helper di luar (taruh di awal file)
+    function formatNumberWithCommas(number) {
+        let parts = number.toFixed(2).split('.');
+        let integerPart = parts[0];
+        let decimalPart = parts[1];
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return decimalPart ? integerPart + '.' + decimalPart : integerPart;
+    }
+
     async function loadUserBalance(telegramId, username, firstName) {
         try {
             const response = await fetch('/api/games/auth', {
@@ -29,8 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await response.json();
             const balanceEl = document.getElementById('userBalance');
             if (data.success && balanceEl) {
-                // Tampilkan balance dalam TON dengan 2 desimal
-                balanceEl.textContent = data.balance.toFixed(2) + ' TON';
+                // ✅ FORMAT ANGKA RIBUAN
+                const formattedBalance = formatNumberWithCommas(data.balance);
+                balanceEl.textContent = formattedBalance + ' TON';
                 return data.balance;
             } else if (balanceEl) {
                 balanceEl.textContent = "0 TON";

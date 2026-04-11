@@ -55,7 +55,6 @@
         }
     }
 
-    // Update UI labels
     function updateUILabels() {
         const riskLabels = { low: 'Low', medium: 'Medium', high: 'High' };
         const riskLabel = document.getElementById('currentRiskLabel');
@@ -64,7 +63,7 @@
         const betLabel = document.getElementById('currentBetLabel');
         if (betLabel) {
             if (currentBetAmount && currentBetAmount > 0) {
-                betLabel.textContent = currentBetAmount.toFixed(2) + ' TON';
+                betLabel.textContent = formatNumberWithCommas(currentBetAmount) + ' TON';
             } else {
                 betLabel.textContent = '1.00 TON';
                 currentBetAmount = 1.0;
@@ -554,7 +553,20 @@
         console.log(`🎾 Ball dropped, active balls: ${balls.length}`);
     }
 
-    // ==================== BALANCE FUNCTIONS ====================
+    // Fungsi helper untuk format angka ribuan
+    function formatNumberWithCommas(number) {
+        // Pisahkan bagian integer dan desimal
+        let parts = number.toFixed(2).split('.');
+        let integerPart = parts[0];
+        let decimalPart = parts[1];
+        
+        // Format integer part dengan comma
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        
+        // Gabungkan kembali
+        return decimalPart ? integerPart + '.' + decimalPart : integerPart;
+    }
+
     async function loadUserBalance() {
         try {
             const tg = window.Telegram.WebApp;
@@ -572,7 +584,9 @@
             const panelBalanceEl = document.getElementById('panelUserBalance');
             
             if (data.success) {
-                const balanceText = data.balance.toFixed(2) + ' TON';
+                // ✅ FORMAT ANGKA RIBUAN
+                const formattedBalance = formatNumberWithCommas(data.balance);
+                const balanceText = formattedBalance + ' TON';
                 if (balanceEl) balanceEl.textContent = balanceText;
                 if (panelBalanceEl) panelBalanceEl.textContent = balanceText;
                 return data.balance;
