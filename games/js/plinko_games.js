@@ -665,4 +665,25 @@
     }
     
     init();
+
+    // Global function untuk copy round hash
+    window.copyRoundHash = function() {
+        const hashElement = document.getElementById('roundHash');
+        if (hashElement) {
+            const hashText = hashElement.textContent;
+            if (hashText && hashText !== '-') {
+                navigator.clipboard.writeText(hashText);
+                const container = document.getElementById('roundHashContainer');
+                const originalBg = container.style.background;
+                container.style.background = 'rgba(16, 185, 129, 0.2)';
+                setTimeout(() => {
+                    container.style.background = originalBg;
+                }, 300);
+                
+                if (window.Telegram?.WebApp?.HapticFeedback) {
+                    window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                }
+            }
+        }
+    };
 })();

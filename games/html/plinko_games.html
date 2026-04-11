@@ -33,39 +33,42 @@
         <!-- Main Content Area -->
         <main class="content-area">
             
-            <!-- Stats Views - Baris pertama dengan logo mata -->
-            <div class="stats-views" style="display: flex; justify-content: space-between; align-items: center;">
-                <div class="stat-views-card">
-                    <i class="fas fa-eye"></i>
-                    <span id="totalViews">0</span>
+            <!-- Stats Header - Baris atas dengan views dan hash -->
+            <div class="stats-header">
+                <div class="stats-views">
+                    <div class="stat-views-card">
+                        <i class="fas fa-eye"></i>
+                        <span id="totalViews">0</span>
+                    </div>
+                </div>
+                <div class="stat-round-header" id="roundHashContainer" onclick="copyRoundHash()">
+                    <i class="fas fa-hashtag"></i>
+                    <code id="roundHash" class="round-hash-code">-</code>
+                    <i class="fas fa-copy copy-icon"></i>
                 </div>
             </div>
 
-            <!-- 3 Stats Row -->
-            <div class="stats-row">
+            <!-- 2 Stats Row - Jackpot dan Lasted dalam 1 baris -->
+            <div class="stats-two-row">
                 <div class="stat-jackpot">
                     <div class="stat-icon"><i class="fas fa-trophy"></i></div>
                     <div class="stat-info">
                         <span class="stat-value" id="totalWinAmount">0</span>
-                        <span class="stat-sub" id="biggestWin">0x</span>
+                        <span class="stat-sub">Total Win</span>
+                    </div>
+                    <div class="stat-multiplier">
+                        <span class="multiplier-value" id="biggestWin">0x</span>
+                        <span class="multiplier-label">Biggest Multiplier</span>
                     </div>
                 </div>
                 
                 <div class="stat-lasted" id="statLasted">
                     <div class="stat-avatar" id="userAvatarStat">
-                        <img id="userAvatarImg" src="" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                        <img id="userAvatarImg" src="" alt="Avatar">
                     </div>
                     <div class="stat-info">
                         <span class="stat-value" id="lastPlayerName">-</span>
                         <span class="stat-sub" id="lastPlayerMultiplier">0x</span>
-                    </div>
-                </div>
-                
-                <div class="stat-round">
-                    <div class="stat-icon"><i class="fas fa-hashtag"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="roundHash">-</span>
-                        <span class="stat-sub">Round Hash</span>
                     </div>
                 </div>
             </div>
