@@ -1,4 +1,4 @@
-# games/database/games.py
+# games/database/games.py - VERSION FIXED
 
 import sqlite3
 import os
@@ -20,34 +20,17 @@ def init_db():
             telegram_id INTEGER PRIMARY KEY,
             username TEXT,
             first_name TEXT,
-            balance INTEGER DEFAULT 1500,
+            balance INTEGER DEFAULT 0,
             referred_by INTEGER DEFAULT NULL,
             referral_reward INTEGER DEFAULT 0,
             gifts INTEGER DEFAULT 0,
+            wallet_address TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_seen TIMESTAMP
         )
     ''')
     
-    # --- MIGRASI OTOMATIS: PERBAIKAN PADA 'last_seen' ---
-    # SQLite tidak mengizinkan DEFAULT CURRENT_TIMESTAMP pada ALTER TABLE, 
-    # jadi kita gunakan tipe data TIMESTAMP saja (akan berisi NULL awalnya)
-    new_columns = {
-        "referred_by": "INTEGER DEFAULT NULL",
-        "referral_reward": "INTEGER DEFAULT 0",
-        "gifts": "INTEGER DEFAULT 0",
-        "last_seen": "TIMESTAMP"  # <-- PERBAIKAN DI SINI
-    }
-    
-    for col, data_type in new_columns.items():
-        try:
-            cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {data_type}")
-            print(f"✅ Auto-migrasi: Kolom '{col}' berhasil ditambahkan ke database.")
-        except sqlite3.OperationalError:
-            # Jika masuk ke sini, artinya kolom sudah ada. Kita abaikan saja.
-            pass 
-            
-    # Tabel Riwayat Main (Plinko / Crash)
+    # Buat Tabel Riwayat Main (Plinko / Crash / Deposit)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,16 +39,39 @@ def init_db():
             bet_amount INTEGER,
             win_amount INTEGER,
             multiplier REAL,
-            played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(telegram_id) REFERENCES users(telegram_id)
+            played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
+    # Cek dan tambahkan kolom yang mungkin hilang
+    cursor.execute("PRAGMA table_info(users)")
+    existing_columns = [col[1] for col in cursor.fetchall()]
+    
+    columns_to_add = {
+        "referred_by": "INTEGER DEFAULT NULL",
+        "referral_reward": "INTEGER DEFAULT 0",
+        "gifts": "INTEGER DEFAULT 0",
+        "wallet_address": "TEXT DEFAULT NULL",
+        "last_seen": "TIMESTAMP"
+    }
+    
+    for col, data_type in columns_to_add.items():
+        if col not in existing_columns:
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {data_type}")
+                print(f"✅ Kolom '{col}' ditambahkan ke tabel users")
+            except Exception as e:
+                print(f"⚠️ Gagal tambah kolom {col}: {e}")
+    
     conn.commit()
     conn.close()
+    print("✅ Database games berhasil diinisialisasi")
 
 def get_or_create_user(telegram_id, username, first_name, referred_by=None):
     """Mencari user atau membuat user baru dengan balance 0 (tanpa dummy)"""
+    # Pastikan database terinisialisasi
+    init_db()
+    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
@@ -76,7 +82,7 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
     user = cursor.fetchone()
     
     if user:
-        # Update last_seen saja, balance tetap asli
+        # Update last_seen dan username/first_name
         cursor.execute('''
             UPDATE users 
             SET username = ?, first_name = ?, last_seen = ? 
@@ -89,7 +95,7 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
         conn.close()
         return updated_user
     else:
-        # BALANCE = 0, BUKAN 1500!
+        # BALANCE = 0
         cursor.execute('''
             INSERT INTO users (telegram_id, username, first_name, balance, referred_by, created_at, last_seen) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -124,6 +130,23 @@ def get_user_data(telegram_id):
     conn.close()
     return dict(user) if user else None
 
+def update_user_balance(telegram_id, amount_change):
+    """Update balance user (positive atau negative)"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        UPDATE users 
+        SET balance = balance + ? 
+        WHERE telegram_id = ?
+    ''', (amount_change, telegram_id))
+    
+    rows_affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    
+    return rows_affected > 0
+
 def update_user_stats(telegram_id, balance=None, referral_reward=None, gifts=None):
     """Memperbarui nilai balance, referral, atau gifts secara dinamis"""
     conn = sqlite3.connect(DB_PATH)
@@ -155,14 +178,26 @@ def update_user_stats(telegram_id, balance=None, referral_reward=None, gifts=Non
     
     return rows_affected > 0
 
+def add_game_history(telegram_id, game_name, bet_amount, win_amount, multiplier):
+    """Menambahkan riwayat game"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (telegram_id, game_name, bet_amount, win_amount, multiplier, get_current_time()))
+    
+    conn.commit()
+    conn.close()
+    return True
+
 def delete_user_data(telegram_id):
     """Menghapus user dan riwayat gamenya dari database"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Hapus dari tabel history dulu (foreign key constraint)
     cursor.execute("DELETE FROM game_history WHERE telegram_id = ?", (telegram_id,))
-    # Hapus dari tabel users
     cursor.execute("DELETE FROM users WHERE telegram_id = ?", (telegram_id,))
     
     rows_affected = cursor.rowcount

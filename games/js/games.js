@@ -216,6 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const sendBtn = document.getElementById('sendDepositBtn');
+        const originalBtnText = sendBtn.innerHTML;
         sendBtn.disabled = true;
         sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
@@ -224,7 +225,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const memo = `deposit:${currentUser.id}:${Date.now()}`;
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
 
-            // PERBAIKAN: Buat payload dengan format yang benar (tanpa prefix 4 byte 0)
             // Format standar TON untuk comment text cukup di encode ke base64
             const encoder = new TextEncoder();
             const memoBytes = encoder.encode(memo);
@@ -240,9 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: webAddress,
-                    amount: amountNano,
-                    // Kirim tanpa payload dulu jika masih error
-                    // payload: payloadBase64
+                    amount: amountNano
                 }]
             };
 
@@ -266,32 +264,48 @@ document.addEventListener("DOMContentLoaded", () => {
             const verifyData = await verifyResponse.json();
             
             if (verifyData.success) {
+                // Tampilkan instruksi sukses
                 document.getElementById('depositForm').style.display = 'none';
                 document.getElementById('depositInstructions').style.display = 'block';
                 document.getElementById('depositTxHash').textContent = result.boc.slice(0, 30) + '...';
                 
+                // REFRESH BALANCE - Pastikan balance terupdate
                 const fullName = (currentUser.first_name || '') + (currentUser.last_name ? ' ' + currentUser.last_name : '');
-                await loadUserBalance(currentUser.id, currentUser.username || '', fullName);
+                const newBalance = await loadUserBalance(currentUser.id, currentUser.username || '', fullName);
+                
+                console.log('✅ Deposit successful! New balance:', newBalance);
+                
+                // Update balance di header
+                const balanceEl = document.getElementById('userBalance');
+                if (balanceEl && newBalance !== undefined) {
+                    balanceEl.textContent = newBalance.toLocaleString('id-ID');
+                }
+                
+                // Tampilkan notifikasi sukses dengan nominal
+                alert(`✅ Deposit ${amount} TON berhasil!\nSaldo Anda: ${newBalance.toLocaleString('id-ID')} IDR`);
                 
                 setTimeout(() => {
                     closeModal();
                 }, 5000);
             } else {
+                console.error('❌ Verification failed:', verifyData);
                 alert('Deposit gagal diverifikasi: ' + (verifyData.error || 'Unknown error'));
             }
         } catch (error) {
             console.error('Deposit error:', error);
+            
             if (error.message?.includes('rejected')) {
-                alert('Transaksi dibatalkan');
+                alert('Transaksi dibatalkan oleh user');
+            } else if (error.message?.includes('No enough funds')) {
+                alert('❌ Saldo TON tidak cukup!\n\nSilakan isi saldo wallet TON Anda terlebih dahulu.\n\nMinimal deposit: 0.1 TON');
             } else if (error.message?.includes('payload')) {
-                // Coba lagi tanpa payload
-                alert('Gagal kirim deposit, coba lagi nanti');
+                alert('Gagal kirim deposit, silakan coba lagi');
             } else {
                 alert('Gagal memproses deposit: ' + error.message);
             }
         } finally {
             sendBtn.disabled = false;
-            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Deposit';
+            sendBtn.innerHTML = originalBtnText;
         }
     }
 

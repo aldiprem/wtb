@@ -9,7 +9,7 @@ import traceback # Tambahan untuk melihat detail error di terminal
 # Tambah path biar bisa import database
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from games.database.games import get_or_create_user
+from games.database.games import get_or_create_user, add_game_history, update_user_balance
 
 # Membuat Blueprint untuk API
 games_bp = Blueprint('games_bp', __name__, url_prefix='/api/games')
@@ -166,7 +166,7 @@ def process_deposit():
 
 @games_bp.route('/verify-ton-deposit', methods=['POST'])
 def verify_ton_deposit():
-    """Verifikasi deposit TON - REAL"""
+    """Verifikasi deposit TON - REAL dengan update balance"""
     data = request.json
     telegram_id = data.get('telegram_id')
     transaction_hash = data.get('transaction_hash')
@@ -178,45 +178,64 @@ def verify_ton_deposit():
         return jsonify({"success": False, "error": "Missing required fields"}), 400
     
     try:
+        # Pastikan database terinisialisasi
+        from games.database.games import init_db
+        init_db()
+        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Cek apakah transaksi sudah ada
+        # Cek apakah transaksi sudah diproses (berdasarkan transaction_hash)
         cursor.execute("SELECT id FROM game_history WHERE win_amount = ? AND game_name = ?", (amount_ton * 100, 'DEPOSIT_TON'))
         existing = cursor.fetchone()
         
         if existing:
+            conn.close()
             return jsonify({"success": False, "error": "Transaction already processed"}), 400
         
         # Convert TON ke IDR (rate 1 TON = 10000 IDR)
         amount_idr = int(amount_ton * 10000)
         
-        # Update balance user
+        # Update balance user (tambah saldo)
         cursor.execute('''
             UPDATE users 
             SET balance = balance + ? 
             WHERE telegram_id = ?
         ''', (amount_idr, telegram_id))
         
-        # Catat transaksi deposit
+        # Cek apakah update berhasil
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        # Catat transaksi deposit di game_history
         cursor.execute('''
             INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (telegram_id, 'DEPOSIT_TON', amount_idr, amount_idr, 1.0, get_current_time()))
         
         conn.commit()
+        
+        # Ambil balance terbaru
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        new_balance = cursor.fetchone()[0]
+        
         conn.close()
         
         print(f"✅ TON Deposit verified: {amount_ton} TON for user {telegram_id} -> +{amount_idr} IDR")
+        print(f"   New balance: {new_balance} IDR")
         
         return jsonify({
             "success": True,
             "message": f"Deposit {amount_ton} TON berhasil",
-            "amount_idr": amount_idr
+            "amount_idr": amount_idr,
+            "new_balance": new_balance
         })
         
     except Exception as e:
         print(f"❌ Error verifying TON deposit: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
     
 @games_bp.route('/api/user/wallet', methods=['POST'])
