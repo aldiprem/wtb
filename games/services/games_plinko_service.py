@@ -35,7 +35,7 @@ def init_plinko_db():
     conn = get_plinko_db()
     cursor = conn.cursor()
     
-    # Games table
+    # Games table - menggunakan REAL untuk TON
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS plinko_games (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -186,36 +186,38 @@ def update_game_history(telegram_id, game_name, bet_amount, win_amount, multipli
         return False
 
 def update_user_balance(telegram_id, amount_change):
-    """Update user balance in games database"""
+    """Update user balance in games database (dalam TON)"""
     try:
         conn = sqlite3.connect(GAMES_DB_PATH)
         cursor = conn.cursor()
         
+        # Update balance (balance dalam TON/REAL)
         cursor.execute('''
             UPDATE users 
             SET balance = balance + ? 
             WHERE telegram_id = ?
-        ''', (amount_change, telegram_id))
+        ''', (float(amount_change), telegram_id))
         
         conn.commit()
         conn.close()
         return True
     except Exception as e:
         print(f"Error updating balance: {e}")
+        traceback.print_exc()
         return False
 
 def get_user_balance(telegram_id):
-    """Get user balance from games database"""
+    """Get user balance from games database (dalam TON)"""
     try:
         conn = sqlite3.connect(GAMES_DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
         row = cursor.fetchone()
         conn.close()
-        return row[0] if row else 0
+        return float(row[0]) if row and row[0] is not None else 0.0
     except Exception as e:
         print(f"Error getting balance: {e}")
-        return 0
+        return 0.0
 
 # ==================== API ENDPOINTS ====================
 
@@ -393,9 +395,13 @@ def play_game():
 
 @plinko_bp.route('/balance/<int:telegram_id>', methods=['GET'])
 def get_balance(telegram_id):
-    """Get user balance"""
-    balance = get_user_balance(telegram_id)
-    return jsonify({"success": True, "balance": balance})
+    """Get user balance from games database"""
+    try:
+        balance = get_user_balance(telegram_id)
+        return jsonify({"success": True, "balance": balance})
+    except Exception as e:
+        print(f"Error getting balance: {e}")
+        return jsonify({"success": True, "balance": 0.0})
 
 @plinko_bp.route('/deduct-balance', methods=['POST'])
 def deduct_balance():
@@ -413,10 +419,11 @@ def deduct_balance():
     current_balance = get_user_balance(telegram_id)
     
     if current_balance < amount:
-        return jsonify({"success": False, "error": "Insufficient balance"}), 400
+        return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
     
     if update_user_balance(telegram_id, -amount):
-        return jsonify({"success": True, "new_balance": current_balance - amount})
+        new_balance = get_user_balance(telegram_id)
+        return jsonify({"success": True, "new_balance": new_balance})
     
     return jsonify({"success": False, "error": "Failed to deduct balance"}), 500
 
