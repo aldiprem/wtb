@@ -83,23 +83,33 @@
                     </div>
                 </div>
 
-                <!-- Bet Controls -->
-                <div class="bet-controls">
-                    <div class="bet-input-group">
-                        <label class="bet-label">Jumlah Taruhan</label>
-                        <input type="number" id="betAmount" class="bet-input" value="1000" min="100" step="100">
-                    </div>
-                    <div class="bet-input-group">
-                        <label class="bet-label">Risk Level</label>
-                        <div class="risk-selector">
-                            <button class="risk-btn low" data-risk="low">Low</button>
-                            <button class="risk-btn medium active" data-risk="medium">Medium</button>
-                            <button class="risk-btn high" data-risk="high">High</button>
-                        </div>
-                    </div>
+                <!-- Tombol Utama: PLACE (kiri) dan DROP BALL (kanan) -->
+                <div class="action-buttons-row">
+                    <button id="placeBetBtn" class="place-bet-btn">
+                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="ton-logo-md">
+                        PLACE
+                    </button>
                     <button id="playBtn" class="play-btn">
                         <i class="fas fa-play"></i> DROP BALL
                     </button>
+                </div>
+
+                <!-- Tombol Risk Level (di atas tombol place bet) -->
+                <div class="risk-level-trigger" id="riskLevelTrigger">
+                    <i class="fas fa-chart-line"></i> Level <i class="fas fa-chevron-up" id="riskChevron"></i>
+                </div>
+
+                <!-- Panel Risk Level (muncul ke atas) -->
+                <div class="risk-panel" id="riskPanel" style="display: none;">
+                    <div class="risk-panel-header">
+                        <span>Pilih Risk Level</span>
+                        <button class="close-risk-panel" id="closeRiskPanel">&times;</button>
+                    </div>
+                    <div class="risk-selector-panel">
+                        <button class="risk-btn low" data-risk="low">Low</button>
+                        <button class="risk-btn medium active" data-risk="medium">Medium</button>
+                        <button class="risk-btn high" data-risk="high">High</button>
+                    </div>
                 </div>
 
                 <!-- Result Display -->
@@ -112,7 +122,7 @@
                 </div>
             </div>
 
-            <!-- History Section - Scrollable tanpa border pagination -->
+            <!-- History Section - Tanpa border pagination -->
             <div class="history-section">
                 <div class="section-header">
                     <h3><i class="fas fa-history"></i> Riwayat Permainan</h3>
@@ -133,7 +143,7 @@
                         <tbody id="historyBody">
                             <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
                         </tbody>
-                    </table>
+                    \d+
                 </div>
             </div>
 
@@ -159,6 +169,69 @@
             </button>
         </nav>
 
+    </div>
+
+    <!-- Bottom Sheet Modal (Place Bet) -->
+    <div id="placeBetSheet" class="bottom-sheet">
+        <div class="bottom-sheet-content">
+            <div class="bottom-sheet-header">
+                <h3>Place Bet</h3>
+                <button class="close-sheet" id="closeSheetBtn">&times;</button>
+            </div>
+            
+            <!-- Tab Navigation -->
+            <div class="sheet-tabs">
+                <button class="sheet-tab active" data-tab="gift-tab">
+                    <i class="fas fa-gift"></i> GIFT
+                </button>
+                <button class="sheet-tab" data-tab="ton-tab">
+                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="ton-logo-sm">
+                    TON BALANCE
+                </button>
+            </div>
+            
+            <!-- Tab Content: GIFT -->
+            <div class="sheet-tab-content active" id="gift-tab">
+                <div class="gift-content">
+                    <div class="gift-icon-large">
+                        <i class="fas fa-gift"></i>
+                    </div>
+                    <p class="gift-message">Gunakan Gift untuk bermain tanpa mengurangi saldo!</p>
+                    <div class="gift-stats">
+                        <span class="gift-label">Gifts tersedia:</span>
+                        <span class="gift-value" id="userGifts">0</span>
+                    </div>
+                    <button class="btn-use-gift" id="useGiftBtn">
+                        <i class="fas fa-gift"></i> Main dengan Gift
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tab Content: TON BALANCE -->
+            <div class="sheet-tab-content" id="ton-tab">
+                <div class="bet-input-container">
+                    <label class="bet-label-sheet">Jumlah Taruhan (TON)</label>
+                    <input type="number" id="sheetBetAmount" class="bet-input-sheet" value="1.0" min="0.1" step="0.1">
+                    
+                    <!-- Quick Percent Buttons -->
+                    <div class="quick-percent-buttons">
+                        <button class="percent-btn" data-percent="25">25%</button>
+                        <button class="percent-btn" data-percent="50">50%</button>
+                        <button class="percent-btn" data-percent="75">75%</button>
+                        <button class="percent-btn" data-percent="100">MAX</button>
+                    </div>
+                    
+                    <div class="balance-info">
+                        <span>Saldo TON Anda:</span>
+                        <strong id="sheetUserBalance">0 TON</strong>
+                    </div>
+                    
+                    <button id="confirmBetBtn" class="confirm-bet-btn">
+                        <i class="fas fa-check-circle"></i> Konfirmasi Taruhan
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="/games/js/plinko_games.js"></script>

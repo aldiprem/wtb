@@ -1,4 +1,4 @@
-// games/js/plinko_games.js
+// games/js/plinko_games.js - UPDATED VERSION
 (function() {
     console.log('🎰 Plinko Games Initialized');
 
@@ -7,6 +7,8 @@
     let telegramUser = null;
     let canvas = null;
     let ctx = null;
+    let currentBetAmount = 1.0;
+    let usingGift = false;
 
     let multiplierAreas = [];
     
@@ -77,13 +79,11 @@
             for (let col = 0; col < dotsInRow; col++) {
                 const x = rowStartX + col * colSpacing;
                 
-                // Outer glow
                 ctx.beginPath();
                 ctx.arc(x, y, 3, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
                 ctx.fill();
                 
-                // Inner peg
                 ctx.beginPath();
                 ctx.arc(x, y, 2, 0, Math.PI * 2);
                 ctx.fillStyle = '#FFD700';
@@ -98,12 +98,10 @@
         
         drawPlinkoBoard();
 
-        // Gerakkan Cerobong (Hanya di antara 3 titik teratas)
         const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
-        // Di dalam loop balls.forEach di fungsi update()
         balls.forEach((ball, index) => {
             ball.vy += GRAVITY;
             ball.x += ball.vx;
@@ -113,16 +111,13 @@
             const rowSpacing = 28;
             const colSpacing = 26;
             
-            // --- TAMBAHAN: PEMBATAS SAMPING (INVISIBLE WALLS) ---
-            // Hitung baris saat ini berdasarkan posisi Y bola
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
             if (currentRow >= 0 && currentRow < 9) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
-                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10; // -10 buffer
-                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10; // +10 buffer
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10;
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10;
 
-                // Pantulkan jika menabrak batas luar titik-titik
                 if (ball.x < leftWall) {
                     ball.x = leftWall;
                     ball.vx *= -BOUNCE;
@@ -132,7 +127,6 @@
                 }
             }
 
-            // Pembatas berdasarkan lebar multiplier wrapper
             const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
             if (multiplierWrapper && ball.y > canvas.height - 60) {
                 const wrapperWidth = multiplierWrapper.clientWidth;
@@ -143,7 +137,6 @@
                 if (ball.x > wrapperRight) ball.x = wrapperRight;
             }
 
-            // --- LOGIKA TABRAKAN PIN LAMA ANDA ---
             for (let r = 0; r < 9; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -164,22 +157,18 @@
                 }
             }
 
-            // Gambar Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             ctx.fillStyle = '#ef4444';
             ctx.fill();
 
-            // Cek tabrakan dengan dinding multiplier
             checkMultiplierWalls(ball);
 
-            // Cek validasi masuk slot (sebelum bola dihapus)
             let isHit = false;
             if (ball.y + BALL_RADIUS >= canvas.height - 20) {
                 isHit = checkMultiplierHit(ball);
             }
 
-            // Hapus bola setelah valid atau sudah lewat batas
             if (ball.y > canvas.height + 50 || isHit) {
                 balls.splice(index, 1);
             }
@@ -195,14 +184,10 @@
             const data = await response.json();
             
             if (data.success) {
-                // Total kemenangan (atas)
                 const totalWinAmount = data.total_win_amount || 0;
                 document.getElementById('totalWinAmount').textContent = totalWinAmount.toLocaleString();
-                
-                // Biggest multiplier (bawah)
                 document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
                 
-                // Last player
                 const lastPlayerName = data.last_player || '-';
                 const lastPlayerMultiplier = data.last_multiplier || '0';
                 
@@ -226,7 +211,6 @@
                     avatarImg.src = user.photo_url;
                 }
             } else if (user && user.first_name) {
-                // Generate avatar from initial
                 const initial = user.first_name.charAt(0).toUpperCase();
                 const avatarImg = document.getElementById('userAvatarImg');
                 if (avatarImg) {
@@ -247,7 +231,7 @@
             const tbody = document.getElementById('historyBody');
             
             if (!data.success || !data.history || data.history.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Belum ada riwayat</td></td>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Belum ada riwayat</td></tr>';
                 return;
             }
             
@@ -292,6 +276,9 @@
             if (data.success) {
                 loadStats();
                 loadHistory();
+                if (!usingGift) {
+                    await loadUserBalance();
+                }
             }
         } catch (error) {
             console.error('Error saving game:', error);
@@ -303,51 +290,123 @@
         return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
     }
 
-    function finalizeGame(ball) {
+    // Get multiplier from position
+    function getMultiplierFromPosition(x) {
         const multipliers = RISK_MULTIPLIERS[currentRisk];
         const segment = canvas.width / multipliers.length;
-        let slotIndex = Math.floor(ball.x / segment);
+        let slotIndex = Math.floor(x / segment);
         slotIndex = Math.min(Math.max(slotIndex, 0), multipliers.length - 1);
-        
-        const multiplier = multipliers[slotIndex];
-        const winAmount = Math.floor(ball.bet * multiplier);
-        const roundHash = generateRoundHash();
-        
-        animateSlot(slotIndex);
-        
-        // Animate ball drop result
-        const resultDiv = document.getElementById('resultDisplay');
-        const resultMultiplier = document.getElementById('resultMultiplier');
-        const resultWin = document.getElementById('resultWin');
-        
-        resultDiv.style.display = 'block';
-        resultMultiplier.textContent = `${multiplier}x`;
-        resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
-        
-        if (multiplier >= 5) {
-            resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
-            resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-        } else if (multiplier >= 2) {
-            resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-            resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
-        } else {
-            resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
-            resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-        }
-        
-        setTimeout(() => {
-            resultDiv.style.display = 'none';
-        }, 3000);
-        
-        saveGameResult(ball.bet, multiplier, winAmount, roundHash);
+        return {
+            index: slotIndex,
+            multiplier: multipliers[slotIndex]
+        };
     }
 
-    // Get Telegram user
-    async function getTelegramUser() {
-        if (window.Telegram?.WebApp?.initDataUnsafe?.user) {
-            return window.Telegram.WebApp.initDataUnsafe.user;
+    // Fungsi untuk update area multiplier
+    function updateMultiplierAreas() {
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper) return;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const startX = wrapperRect.left - canvasRect.left;
+        const width = wrapperRect.width;
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segmentWidth = width / multipliers.length;
+        
+        multiplierAreas = [];
+        for (let i = 0; i < multipliers.length; i++) {
+            multiplierAreas.push({
+                index: i,
+                multiplier: multipliers[i],
+                x: startX + (i * segmentWidth),
+                width: segmentWidth,
+                bottomY: canvas.height - 15
+            });
         }
-        return { id: 1, first_name: 'Guest', username: 'guest' };
+    }
+
+    function checkMultiplierWalls(ball) {
+        if (ball.y < canvas.height - 80) return false;
+        
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper) return false;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const leftWall = wrapperRect.left - canvasRect.left;
+        const rightWall = wrapperRect.right - canvasRect.left;
+        
+        let hit = false;
+        
+        if (ball.x - BALL_RADIUS < leftWall && ball.vx < 0) {
+            ball.x = leftWall + BALL_RADIUS;
+            ball.vx *= -BOUNCE;
+            hit = true;
+        }
+        
+        if (ball.x + BALL_RADIUS > rightWall && ball.vx > 0) {
+            ball.x = rightWall - BALL_RADIUS;
+            ball.vx *= -BOUNCE;
+            hit = true;
+        }
+        
+        return hit;
+    }
+
+    function checkMultiplierHit(ball) {
+        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
+        
+        updateMultiplierAreas();
+        
+        for (const area of multiplierAreas) {
+            if (ball.x >= area.x && ball.x <= area.x + area.width) {
+                const winAmount = Math.floor(ball.bet * area.multiplier);
+                const roundHash = generateRoundHash();
+                
+                animateSlot(area.index);
+                
+                const resultDiv = document.getElementById('resultDisplay');
+                const resultMultiplier = document.getElementById('resultMultiplier');
+                const resultWin = document.getElementById('resultWin');
+                
+                resultDiv.style.display = 'block';
+                resultMultiplier.textContent = `${area.multiplier}x`;
+                resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
+                
+                if (area.multiplier >= 5) {
+                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                } else if (area.multiplier >= 2) {
+                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                } else {
+                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                }
+                
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 3000);
+                
+                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function animateSlot(slotIndex) {
+        const slots = document.querySelectorAll('.multiplier-slot');
+        if (slots[slotIndex]) {
+            slots[slotIndex].classList.add('active', 'pulse');
+            
+            setTimeout(() => {
+                slots[slotIndex].classList.remove('active', 'pulse');
+            }, 800);
+        }
     }
 
     function renderMultiplierSlots() {
@@ -376,205 +435,53 @@
         wrapper.innerHTML = html;
     }
 
-    // Animasi slot saat bola jatuh
-    function animateSlot(slotIndex) {
-        const slots = document.querySelectorAll('.multiplier-slot');
-        if (slots[slotIndex]) {
-            slots[slotIndex].classList.add('active', 'pulse');
-            
-            setTimeout(() => {
-                slots[slotIndex].classList.remove('active', 'pulse');
-            }, 800);
-        }
-    }
-
-    // Drop Ball (Dipicu Tombol)
-    async function playGame() {
-        const betAmount = parseInt(document.getElementById('betAmount').value);
-        if (isNaN(betAmount) || betAmount < 100) {
-            alert('Minimal taruhan 100');
+    // Drop Ball
+    async function dropBall() {
+        if (currentBetAmount <= 0) {
+            alert('Silakan place bet terlebih dahulu!');
             return;
         }
-
+        
+        if (!usingGift) {
+            const currentBalance = await loadUserBalance();
+            if (currentBalance < currentBetAmount) {
+                alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON`);
+                return;
+            }
+            
+            // Kurangi saldo
+            const deductResponse = await fetch(`${API_BASE}/api/games/update-balance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramUser?.id,
+                    new_balance: currentBalance - currentBetAmount
+                })
+            });
+            
+            if (deductResponse.ok) {
+                await loadUserBalance();
+            }
+        } else {
+            // Gunakan gift - kurangi gift count
+            usingGift = false;
+            const giftsEl = document.getElementById('userGifts');
+            if (giftsEl) {
+                let gifts = parseInt(giftsEl.textContent) || 0;
+                giftsEl.textContent = gifts - 1;
+            }
+        }
+        
         balls.push({
             x: spawnerX,
             y: 25,
             vx: (Math.random() - 0.5) * 1,
             vy: 0,
-            bet: betAmount
+            bet: currentBetAmount
         });
     }
 
-    // Fungsi untuk menentukan slot multiplier berdasarkan posisi X bola
-    function getMultiplierFromPosition(x) {
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const segment = canvas.width / multipliers.length;
-        let slotIndex = Math.floor(x / segment);
-        slotIndex = Math.min(Math.max(slotIndex, 0), multipliers.length - 1);
-        return {
-            index: slotIndex,
-            multiplier: multipliers[slotIndex]
-        };
-    }
-
-    // Ganti fungsi finalizeGame
-    function finalizeGame(ball) {
-        // Cek apakah bola sudah melewati batas bawah multiplier slots
-        const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
-        const wrapperRect = multiplierWrapper?.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        // Konversi posisi bola ke koordinat relatif canvas
-        const ballScreenY = canvasRect.top + ball.y;
-        const wrapperTopY = wrapperRect?.top || 0;
-        
-        // Bola dianggap valid jika sudah melewati posisi Y multiplier wrapper
-        // atau sudah mencapai batas bawah canvas
-        if (ball.y >= canvas.height - 20) {
-            const result = getMultiplierFromPosition(ball.x);
-            
-            const winAmount = Math.floor(ball.bet * result.multiplier);
-            const roundHash = generateRoundHash();
-            
-            animateSlot(result.index);
-            
-            // Tampilkan hasil
-            const resultDiv = document.getElementById('resultDisplay');
-            const resultMultiplier = document.getElementById('resultMultiplier');
-            const resultWin = document.getElementById('resultWin');
-            
-            resultDiv.style.display = 'block';
-            resultMultiplier.textContent = `${result.multiplier}x`;
-            resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
-            
-            if (result.multiplier >= 5) {
-                resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
-                resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-            } else if (result.multiplier >= 2) {
-                resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-                resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
-            } else {
-                resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
-                resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-            }
-            
-            setTimeout(() => {
-                resultDiv.style.display = 'none';
-            }, 3000);
-            
-            saveGameResult(ball.bet, result.multiplier, winAmount, roundHash);
-            return true;
-        }
-        return false;
-    }
-
-    // Fungsi untuk update area multiplier berdasarkan posisi di canvas
-    function updateMultiplierAreas() {
-        const wrapper = document.querySelector('.multiplier-slots-wrapper');
-        if (!wrapper) return;
-        
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        const startX = wrapperRect.left - canvasRect.left;
-        const width = wrapperRect.width;
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const segmentWidth = width / multipliers.length;
-        
-        multiplierAreas = [];
-        for (let i = 0; i < multipliers.length; i++) {
-            multiplierAreas.push({
-                index: i,
-                multiplier: multipliers[i],
-                x: startX + (i * segmentWidth),
-                width: segmentWidth,
-                // Batas bawah area multiplier (posisi Y)
-                bottomY: canvas.height - 15
-            });
-        }
-    }
-
-    // Fungsi untuk cek tabrakan dengan dinding pemisah multiplier
-    function checkMultiplierWalls(ball) {
-        if (ball.y < canvas.height - 80) return false; // Hanya cek di area bawah
-        
-        const wrapper = document.querySelector('.multiplier-slots-wrapper');
-        if (!wrapper) return false;
-        
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        const leftWall = wrapperRect.left - canvasRect.left;
-        const rightWall = wrapperRect.right - canvasRect.left;
-        
-        let hit = false;
-        
-        // Cek tabrakan dengan dinding kiri
-        if (ball.x - BALL_RADIUS < leftWall && ball.vx < 0) {
-            ball.x = leftWall + BALL_RADIUS;
-            ball.vx *= -BOUNCE;
-            hit = true;
-        }
-        
-        // Cek tabrakan dengan dinding kanan
-        if (ball.x + BALL_RADIUS > rightWall && ball.vx > 0) {
-            ball.x = rightWall - BALL_RADIUS;
-            ball.vx *= -BOUNCE;
-            hit = true;
-        }
-        
-        return hit;
-    }
-
-    // Fungsi untuk cek validasi bola masuk ke multiplier slot
-    function checkMultiplierHit(ball) {
-        // Hanya cek ketika bola sudah di area bawah
-        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
-        
-        updateMultiplierAreas();
-        
-        for (const area of multiplierAreas) {
-            // Cek apakah posisi X bola berada di dalam area multiplier
-            if (ball.x >= area.x && ball.x <= area.x + area.width) {
-                // Bola dianggap valid
-                const winAmount = Math.floor(ball.bet * area.multiplier);
-                const roundHash = generateRoundHash();
-                
-                // Animasi highlight slot
-                animateSlot(area.index);
-                
-                // Tampilkan hasil
-                const resultDiv = document.getElementById('resultDisplay');
-                const resultMultiplier = document.getElementById('resultMultiplier');
-                const resultWin = document.getElementById('resultWin');
-                
-                resultDiv.style.display = 'block';
-                resultMultiplier.textContent = `${area.multiplier}x`;
-                resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
-                
-                if (area.multiplier >= 5) {
-                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-                } else if (area.multiplier >= 2) {
-                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
-                } else {
-                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-                }
-                
-                setTimeout(() => {
-                    resultDiv.style.display = 'none';
-                }, 3000);
-                
-                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
-                return true; // Bola sudah diproses
-            }
-        }
-        return false;
-    }
-
-    // Tambahkan fungsi ini di plinko_games.js setelah deklarasi variabel
+    // ==================== BALANCE FUNCTIONS ====================
     async function loadUserBalance() {
         try {
             const tg = window.Telegram.WebApp;
@@ -597,24 +504,152 @@
             
             const data = await response.json();
             const balanceEl = document.getElementById('userBalance');
+            const sheetBalanceEl = document.getElementById('sheetUserBalance');
             
-            if (data.success && balanceEl) {
-                balanceEl.textContent = data.balance.toFixed(2) + ' TON';
+            if (data.success) {
+                const balanceText = data.balance.toFixed(2) + ' TON';
+                if (balanceEl) balanceEl.textContent = balanceText;
+                if (sheetBalanceEl) sheetBalanceEl.textContent = balanceText;
                 return data.balance;
-            } else if (balanceEl) {
-                balanceEl.textContent = '0 TON';
             }
         } catch (error) {
             console.error('Error loading balance:', error);
-            const balanceEl = document.getElementById('userBalance');
-            if (balanceEl) balanceEl.textContent = '0 TON';
         }
         return 0;
     }
 
-    // Initialize
+    async function loadUserGifts() {
+        try {
+            const tg = window.Telegram.WebApp;
+            const user = tg.initDataUnsafe?.user;
+            
+            if (user && user.id) {
+                const response = await fetch(`${API_BASE}/api/games/user-stats/${user.id}`);
+                const data = await response.json();
+                if (data.success) {
+                    const giftsEl = document.getElementById('userGifts');
+                    if (giftsEl) giftsEl.textContent = data.gifts || 0;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading gifts:', error);
+        }
+    }
+
+    // ==================== BOTTOM SHEET FUNCTIONS ====================
+    function showPlaceBetSheet() {
+        const sheet = document.getElementById('placeBetSheet');
+        if (sheet) {
+            sheet.style.display = 'flex';
+            loadUserBalance();
+            loadUserGifts();
+        }
+    }
+
+    function closePlaceBetSheet() {
+        const sheet = document.getElementById('placeBetSheet');
+        if (sheet) sheet.style.display = 'none';
+    }
+
+    function setBetAmount(percent) {
+        loadUserBalance().then(balance => {
+            let amount = balance * (percent / 100);
+            amount = Math.round(amount * 10) / 10;
+            if (amount < 0.1) amount = 0.1;
+            const betInput = document.getElementById('sheetBetAmount');
+            if (betInput) betInput.value = amount.toFixed(1);
+        });
+    }
+
+    async function confirmBet() {
+        const betInput = document.getElementById('sheetBetAmount');
+        let amount = parseFloat(betInput?.value || 0);
+        
+        if (isNaN(amount) || amount < 0.1) {
+            alert('Minimal taruhan 0.1 TON');
+            return;
+        }
+        
+        const activeTab = document.querySelector('.sheet-tab-content.active')?.id;
+        
+        if (activeTab === 'gift-tab') {
+            // Gunakan gift
+            const giftsEl = document.getElementById('userGifts');
+            let gifts = parseInt(giftsEl?.textContent || '0');
+            if (gifts <= 0) {
+                alert('Gift tidak tersedia! Silakan isi saldo TON.');
+                return;
+            }
+            usingGift = true;
+            currentBetAmount = amount;
+            closePlaceBetSheet();
+            alert(`✅ Taruhan ${amount} TON menggunakan GIFT! Tekan DROP BALL untuk bermain.`);
+        } else {
+            // Gunakan TON Balance
+            const currentBalance = await loadUserBalance();
+            if (currentBalance < amount) {
+                alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON`);
+                return;
+            }
+            usingGift = false;
+            currentBetAmount = amount;
+            closePlaceBetSheet();
+            alert(`✅ Taruhan ${amount} TON siap! Tekan DROP BALL untuk bermain.`);
+        }
+    }
+
+    // ==================== RISK PANEL FUNCTIONS ====================
+    function toggleRiskPanel() {
+        const panel = document.getElementById('riskPanel');
+        const chevron = document.getElementById('riskChevron');
+        
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            if (chevron) chevron.className = 'fas fa-chevron-down';
+        } else {
+            panel.style.display = 'none';
+            if (chevron) chevron.className = 'fas fa-chevron-up';
+        }
+    }
+
+    function setRisk(risk) {
+        currentRisk = risk;
+        renderMultiplierSlots();
+        
+        // Update active class on risk buttons
+        document.querySelectorAll('.risk-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.risk === risk) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // Close panel
+        const panel = document.getElementById('riskPanel');
+        const chevron = document.getElementById('riskChevron');
+        if (panel) panel.style.display = 'none';
+        if (chevron) chevron.className = 'fas fa-chevron-up';
+    }
+
+    // ==================== TAB FUNCTIONS ====================
+    function switchTab(tabId) {
+        document.querySelectorAll('.sheet-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.sheet-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        document.querySelector(`.sheet-tab[data-tab="${tabId}"]`)?.classList.add('active');
+        document.getElementById(tabId)?.classList.add('active');
+    }
+
+    // ==================== INITIALIZATION ====================
     async function init() {
-        telegramUser = await getTelegramUser();
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        telegramUser = tg.initDataUnsafe?.user || { id: 1, first_name: 'Guest' };
+        
         await loadUserBalance();
         await updateUserAvatar();
         
@@ -633,24 +668,45 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         
+        // Event Listeners
+        document.getElementById('placeBetBtn')?.addEventListener('click', showPlaceBetSheet);
+        document.getElementById('playBtn')?.addEventListener('click', dropBall);
+        document.getElementById('refreshHistory')?.addEventListener('click', () => {
+            loadStats();
+            loadHistory();
+        });
+        document.getElementById('closeSheetBtn')?.addEventListener('click', closePlaceBetSheet);
+        document.getElementById('confirmBetBtn')?.addEventListener('click', confirmBet);
+        
+        // Risk Panel
+        document.getElementById('riskLevelTrigger')?.addEventListener('click', toggleRiskPanel);
+        document.getElementById('closeRiskPanel')?.addEventListener('click', toggleRiskPanel);
+        
         // Risk buttons
         document.querySelectorAll('.risk-btn').forEach(btn => {
+            btn.addEventListener('click', () => setRisk(btn.dataset.risk));
+        });
+        
+        // Percent buttons
+        document.querySelectorAll('.percent-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.risk-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentRisk = btn.dataset.risk;
-                drawPlinkoBoard();
-                renderMultiplierSlots();
+                const percent = parseInt(btn.dataset.percent);
+                setBetAmount(percent);
             });
         });
         
-        // Play button
-        document.getElementById('playBtn').addEventListener('click', playGame);
+        // Tab switching
+        document.querySelectorAll('.sheet-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                switchTab(tabId);
+            });
+        });
         
-        // Refresh button
-        document.getElementById('refreshHistory').addEventListener('click', () => {
-            loadStats();
-            loadHistory();
+        // Close sheet on outside click
+        const sheet = document.getElementById('placeBetSheet');
+        sheet?.addEventListener('click', (e) => {
+            if (e.target === sheet) closePlaceBetSheet();
         });
         
         await loadStats();
@@ -658,9 +714,8 @@
         updateViewCount();
         renderMultiplierSlots();
         
-        // Start animation loop
         update();
-
+        
         console.log('✅ Plinko Games Ready');
     }
     
