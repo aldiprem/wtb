@@ -448,9 +448,10 @@ def deduct_balance():
         if current_balance < amount:
             return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
         
-        if update_user_balance(telegram_id, -amount):
+        # PERBAIKAN: Pastikan amount dikonversi ke float dengan benar
+        if update_user_balance(telegram_id, -float(amount)):
             new_balance = get_user_balance(telegram_id)
-            return jsonify({"success": True, "new_balance": new_balance})
+            return jsonify({"success": True, "new_balance": new_balance, "deducted": amount})
         
         return jsonify({"success": False, "error": "Failed to deduct balance"}), 500
     except Exception as e:
@@ -516,7 +517,7 @@ def after_request(response):
 
 @plinko_bp.route('/update-net-balance', methods=['POST', 'OPTIONS'])
 def update_net_balance():
-    """Update user balance with net change (profit/loss)"""
+    """Update user balance with net change (HANYA TAMBAHAN WIN)"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -532,6 +533,12 @@ def update_net_balance():
     
     if net_change == 0:
         return jsonify({"success": True, "message": "No change"})
+    
+    # PERBAIKAN: net_change HARUS positif (win amount)
+    # Jika net_change negatif, abaikan karena bet sudah dipotong di awal
+    if net_change < 0:
+        print(f"⚠️ Ignoring negative net_change: {net_change} - bet already deducted")
+        return jsonify({"success": True, "message": "Ignored negative change", "net_change": 0})
     
     try:
         if update_user_balance(telegram_id, net_change):

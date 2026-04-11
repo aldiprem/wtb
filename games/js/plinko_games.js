@@ -253,23 +253,23 @@
     async function finalizeBalanceUpdate() {
         if (pendingBalanceUpdate !== 0 && telegramUser?.id) {
             try {
-                // Kirim net win/loss ke server
+                // Kirim net win ke server (HANYA TAMBAHAN, karena bet sudah dipotong)
                 const response = await fetch(`${API_BASE}/api/plinko/update-net-balance`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         telegram_id: telegramUser.id,
-                        net_change: pendingBalanceUpdate
+                        net_change: pendingBalanceUpdate  // Ini hanya win amount (positif)
                     })
                 });
                 const data = await response.json();
                 if (data.success) {
                     await loadUserBalance();
-                    console.log(`✅ Balance updated: ${pendingBalanceUpdate > 0 ? '+' : ''}${pendingBalanceUpdate} TON`);
+                    console.log(`✅ Balance updated: +${pendingBalanceUpdate} TON`);
                 }
             } catch (error) {
                 console.error('Error finalizing balance:', error);
-                await loadUserBalance(); // Reload anyway
+                await loadUserBalance();
             }
             pendingBalanceUpdate = 0;
         }
@@ -308,13 +308,13 @@
         for (const area of multiplierAreas) {
             if (ball.x >= area.x && ball.x <= area.x + area.width) {
                 const winAmount = ball.bet * area.multiplier;
-                const netProfit = winAmount - ball.bet;
+                const netChange = winAmount;
                 
                 // Accumulate net profit/loss
-                pendingBalanceUpdate += netProfit;
+                pendingBalanceUpdate += netChange;
                 
                 animateSlot(area.index);
-                showResult(area.multiplier, winAmount, netProfit);
+                showResult(area.multiplier, winAmount, netChange);
                 
                 // Simpan hasil ke backend
                 const roundHash = generateRoundHash();
@@ -326,7 +326,7 @@
         return false;
     }
     
-    function showResult(multiplier, winAmount, netProfit) {
+    function showResult(multiplier, winAmount, netChange) {
         const resultDiv = document.getElementById('resultDisplay');
         const resultMultiplier = document.getElementById('resultMultiplier');
         const resultWin = document.getElementById('resultWin');
@@ -334,8 +334,9 @@
         resultDiv.style.display = 'block';
         resultMultiplier.textContent = `${multiplier}x`;
         
-        const netText = netProfit >= 0 ? `+${winAmount.toFixed(2)}` : winAmount.toFixed(2);
-        resultWin.textContent = `${netText} TON`;
+        // Tampilkan kemenangan bersih (yang ditambahkan ke saldo)
+        const winText = winAmount > 0 ? `+${winAmount.toFixed(2)} TON` : `${winAmount.toFixed(2)} TON`;
+        resultWin.textContent = winText;
         
         if (multiplier >= 5) {
             resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
@@ -411,7 +412,6 @@
         return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
     }
 
-    // ==================== PERBAIKAN UTAMA: DROP BALLS ====================
     async function dropBalls() {
         console.log('🎯 dropBalls called - bet:', currentBetAmount, 'count:', ballCount);
         
@@ -468,7 +468,7 @@
             for (let i = 0; i < ballCount; i++) {
                 setTimeout(() => {
                     dropSingleBall();
-                }, i * 250); // Delay 250ms antar bola
+                }, i * 250);
             }
             
         } catch (error) {
