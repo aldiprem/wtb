@@ -25,23 +25,27 @@ def init_db():
             referral_reward INTEGER DEFAULT 0,
             gifts INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            last_seen TIMESTAMP
         )
     ''')
     
-    # --- MIGRASI OTOMATIS JIKA DATABASE LAMA SUDAH ADA ---
+    # --- MIGRASI OTOMATIS: PERBAIKAN PADA 'last_seen' ---
+    # SQLite tidak mengizinkan DEFAULT CURRENT_TIMESTAMP pada ALTER TABLE, 
+    # jadi kita gunakan tipe data TIMESTAMP saja (akan berisi NULL awalnya)
     new_columns = {
         "referred_by": "INTEGER DEFAULT NULL",
         "referral_reward": "INTEGER DEFAULT 0",
         "gifts": "INTEGER DEFAULT 0",
-        "last_seen": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        "last_seen": "TIMESTAMP"  # <-- PERBAIKAN DI SINI
     }
     
     for col, data_type in new_columns.items():
         try:
             cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {data_type}")
+            print(f"✅ Auto-migrasi: Kolom '{col}' berhasil ditambahkan ke database.")
         except sqlite3.OperationalError:
-            pass # Kolom sudah ada, abaikan error
+            # Jika masuk ke sini, artinya kolom sudah ada. Kita abaikan saja.
+            pass 
             
     # Tabel Riwayat Main (Plinko / Crash)
     cursor.execute('''
