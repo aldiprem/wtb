@@ -1,4 +1,4 @@
-// games/js/plinko_games.js - UPDATED WITH BACKEND INTEGRATION
+// games/js/plinko_games.js - PERBAIKAN INPUT DAN BET
 (function() {
     console.log('🎰 Plinko Games Initialized');
 
@@ -9,7 +9,6 @@
     let ctx = null;
     let currentBetAmount = 1.0;
     let ballCount = 1;
-    let ballsToDrop = 0;
 
     let multiplierAreas = [];
     
@@ -328,8 +327,10 @@
 
     // Drop multiple balls
     async function dropBalls() {
+        console.log('dropBalls called - currentBetAmount:', currentBetAmount, 'ballCount:', ballCount);
+        
         if (currentBetAmount <= 0) {
-            alert('Silakan pilih taruhan terlebih dahulu!');
+            alert('Silakan place bet terlebih dahulu! Klik pada bagian BET INFO untuk mengatur taruhan.');
             return;
         }
         
@@ -506,18 +507,6 @@
         return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
     }
 
-    // Get multiplier from position
-    function getMultiplierFromPosition(x) {
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const segment = canvas.width / multipliers.length;
-        let slotIndex = Math.floor(x / segment);
-        slotIndex = Math.min(Math.max(slotIndex, 0), multipliers.length - 1);
-        return {
-            index: slotIndex,
-            multiplier: multipliers[slotIndex]
-        };
-    }
-
     // Fungsi untuk update area multiplier
     function updateMultiplierAreas() {
         const wrapper = document.querySelector('.multiplier-slots-wrapper');
@@ -679,6 +668,9 @@
             panel.style.display = 'block';
             if (chevron) chevron.className = 'fas fa-chevron-down';
             loadUserBalance();
+            // Set value input ke currentBetAmount
+            const betInput = document.getElementById('panelBetAmount');
+            if (betInput) betInput.value = currentBetAmount;
         } else {
             panel.style.display = 'none';
             if (chevron) chevron.className = 'fas fa-chevron-up';
@@ -787,6 +779,48 @@
         if (chevron) chevron.className = 'fas fa-chevron-down';
     }
 
+    // Fix input number agar bisa diketik
+    function fixInputNumber() {
+        const betInput = document.getElementById('panelBetAmount');
+        if (betInput) {
+            // Hapus value default agar placeholder muncul
+            if (betInput.value === '0') {
+                betInput.value = '';
+            }
+            
+            // Event listener untuk memastikan input bisa diketik
+            betInput.addEventListener('input', function(e) {
+                let value = this.value;
+                if (value === '' || value === null) {
+                    return;
+                }
+                let numValue = parseFloat(value);
+                if (!isNaN(numValue) && numValue < 0.1) {
+                    this.value = 0.1;
+                }
+            });
+            
+            betInput.addEventListener('focus', function() {
+                if (this.value === '0') {
+                    this.value = '';
+                }
+            });
+            
+            betInput.addEventListener('blur', function() {
+                if (this.value === '' || this.value === null) {
+                    this.value = '0.1';
+                }
+                let numValue = parseFloat(this.value);
+                if (isNaN(numValue)) {
+                    this.value = '0.1';
+                }
+                if (numValue < 0.1) {
+                    this.value = '0.1';
+                }
+            });
+        }
+    }
+
     // ==================== INITIALIZATION ====================
     async function init() {
         const tg = window.Telegram.WebApp;
@@ -812,7 +846,6 @@
         resizeCanvas();
         
         // Event Listeners
-        document.getElementById('placeBetBtn')?.addEventListener('click', toggleBetPanel);
         document.getElementById('playBtn')?.addEventListener('click', dropBalls);
         document.getElementById('refreshHistory')?.addEventListener('click', () => {
             loadStats();
@@ -845,6 +878,9 @@
         // Confirm bet button
         document.getElementById('confirmBetPanelBtn')?.addEventListener('click', confirmBet);
         
+        // Fix input number
+        fixInputNumber();
+        
         // Close panels on outside click
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.control-panel') && !e.target.closest('.pagination-item')) {
@@ -862,6 +898,7 @@
         update();
         
         console.log('✅ Plinko Games Ready with Backend Integration');
+        console.log('Current bet amount:', currentBetAmount);
     }
     
     init();

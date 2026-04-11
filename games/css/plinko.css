@@ -1361,31 +1361,40 @@ canvas {
     font-size: 11px;
 }
 
+/* Update Pagination Actions - Hanya satu tombol DROP BALL */
 .pagination-actions {
     display: flex;
     gap: 10px;
 }
 
-.pagination-place-btn,
 .pagination-drop-btn {
-    flex: 1;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 12px 16px;
+    padding: 14px 20px;
     border-radius: 30px;
     font-weight: 700;
-    font-size: 14px;
+    font-size: 16px;
     cursor: pointer;
     transition: all 0.3s;
     border: none;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: #000;
+}
+
+.pagination-drop-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.3);
+}
+
+.pagination-drop-btn span {
+    font-size: 16px;
 }
 
 .pagination-place-btn {
-    background: linear-gradient(135deg, #1a1a2e, #16213e);
-    border: 2px solid var(--primary-color);
-    color: var(--primary-color);
+    display: none;
 }
 
 .pagination-place-btn:hover {

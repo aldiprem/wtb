@@ -120,8 +120,7 @@
 
         </main>
 
-        <!-- PAGINATION BORDER BARU - Menggantikan floating-nav -->
-        <!-- Tombol PLACE dan DROP BALL di pagination -->
+        <!-- PAGINATION BORDER BARU - Hanya tombol DROP BALL -->
         <div class="pagination-bar">
             <div class="pagination-controls">
                 <!-- Control Item: Level -->
@@ -146,15 +145,11 @@
                 </div>
             </div>
             
-            <!-- Tombol Aksi -->
+            <!-- HANYA Tombol DROP BALL (tanpa PLACE) -->
             <div class="pagination-actions">
-                <button id="placeBetBtn" class="pagination-place-btn">
-                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="ton-logo-md">
-                    <span>PLACE</span>
-                </button>
                 <button id="playBtn" class="pagination-drop-btn">
                     <i class="fas fa-play"></i>
-                    <span>DROP</span>
+                    <span>DROP BALL</span>
                 </button>
             </div>
         </div>
@@ -179,7 +174,7 @@
                 <button class="close-control-panel" id="closeBetPanel">&times;</button>
             </div>
             <div class="bet-panel-content">
-                <input type="number" id="panelBetAmount" class="bet-panel-input" value="1.0" min="0.1" step="0.1">
+                <input type="number" id="panelBetAmount" class="bet-panel-input" value="1.0" min="0.1" step="0.1" placeholder="0.1">
                 <div class="quick-percent-buttons">
                     <button class="percent-btn" data-percent="25">25%</button>
                     <button class="percent-btn" data-percent="50">50%</button>
