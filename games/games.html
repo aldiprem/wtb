@@ -5,43 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="HandheldFriendly" content="true">
     <meta name="MobileOptimized" content="width">
-    <title>Lobby Games</title>
+    <title>BarackGift - Games</title>
     
     <!-- CSS -->
     <link rel="stylesheet" href="/games/css/games.css">
     
     <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <!-- App Container -->
+    <!-- App Container (Akan dibatasi lebarnya seperti layar HP) -->
     <div class="app-container">
         
         <!-- Header -->
         <header class="glass-header">
-            <div class="user-profile">
-                <div class="avatar-container">
-                    <img id="userAvatar" src="https://via.placeholder.com/100" alt="Avatar">
-                </div>
-                <div class="user-info">
-                    <h2 id="userName">Guest Player</h2>
-                    <p id="userId">@username</p>
-                </div>
+            <div class="app-title">
+                <h2>BarackGift</h2>
             </div>
             <div class="balance-container">
                 <i class="fas fa-coins text-warning"></i>
-                <span id="userBalance">1,500</span>
+                <span id="userBalance"><i class="fas fa-spinner fa-spin"></i></span>
             </div>
         </header>
 
         <!-- Main Content Area -->
         <main class="content-area">
             
-            <!-- TAB: HOME (Kosong) -->
+            <!-- TAB: HOME -->
             <section id="tab-home" class="tab-pane">
                 <div class="empty-state">
                     <i class="fas fa-home"></i>
@@ -90,7 +84,7 @@
                 </div>
             </section>
 
-            <!-- TAB: REFERRAL (Kosong) -->
+            <!-- TAB: REFERRAL -->
             <section id="tab-referral" class="tab-pane">
                 <div class="empty-state">
                     <i class="fas fa-users"></i>
@@ -99,7 +93,7 @@
                 </div>
             </section>
 
-            <!-- TAB: PROFILE (Kosong) -->
+            <!-- TAB: PROFILE -->
             <section id="tab-profile" class="tab-pane">
                 <div class="empty-state">
                     <i class="fas fa-user-circle"></i>

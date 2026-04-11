@@ -22,11 +22,26 @@
     font-family: 'Inter', sans-serif;
 }
 
+/* Penyesuaian Body untuk Desktop view */
 body {
-    background: var(--tg-bg-color);
+    background: #000000; /* Warna sangat gelap untuk background luar di dekstop */
     color: var(--tg-text-color);
     min-height: 100vh;
-    padding-bottom: 90px; /* Space for bottom nav */
+    display: flex;
+    justify-content: center; /* Konten ke tengah di layar lebar */
+}
+
+/* --- FIX UNTUK MEMBUAT TAMPILAN MOBILE-ONLY DI DESKTOP --- */
+.app-container {
+    width: 100%;
+    max-width: 480px; /* Lebar maksimal layaknya frame HP */
+    background: var(--tg-bg-color); /* Warna asli aplikasi */
+    min-height: 100vh;
+    position: relative;
+    padding-bottom: 90px; /* Ruang untuk nav-bottom */
+    box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
 }
 
 /* Header Glassmorphism */
@@ -37,35 +52,21 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 20px;
+    padding: 16px 20px;
     background: rgba(15, 15, 15, 0.75);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
 }
 
-.user-profile {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.avatar-container img {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    border: 2px solid var(--primary-color);
-    object-fit: cover;
-}
-
-.user-info h2 {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 2px;
-}
-
-.user-info p {
-    font-size: 12px;
-    color: var(--tg-hint-color);
+/* Gaya Judul Baru "BarackGift" */
+.app-title h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(135deg, var(--primary-color), var(--success-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 0.5px;
 }
 
 .balance-container {
@@ -242,7 +243,7 @@ body {
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
-    max-width: 400px;
+    max-width: 400px; /* Mengikuti batasan container HP */
     background: rgba(25, 25, 25, 0.85);
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255,255,255,0.1);

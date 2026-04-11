@@ -5,30 +5,46 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Inisialisasi Telegram Web App SDK
     const tg = window.Telegram.WebApp;
     tg.expand(); // Memperluas tampilan mini app menjadi full height
-    
-    // Set warna header telegram menyesuaikan tema
-    tg.setHeaderColor('#0f0f0f'); 
+    tg.setHeaderColor('#0f0f0f'); // Set warna header telegram menyesuaikan tema
 
     // 2. Auth & Pengambilan Data User Telegram
     const initDataUnsafe = tg.initDataUnsafe || {};
     const user = initDataUnsafe.user;
 
-    if (user) {
-        // Tampilkan data user ke Header
-        document.getElementById("userName").textContent = user.first_name + (user.last_name ? " " + user.last_name : "");
-        document.getElementById("userId").textContent = user.username ? "@" + user.username : "ID: " + user.id;
-        
-        // Coba load avatar (Jika disediakan oleh API bot, karena Telegram SDK membatasi direct image kadang-kadang)
-        if (user.photo_url) {
-            document.getElementById("userAvatar").src = user.photo_url;
+    async function loadUserBalance(telegramId, username, firstName) {
+        try {
+            const response = await fetch('/api/games/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    username: username,
+                    first_name: firstName
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                document.getElementById('userBalance').textContent = data.balance.toLocaleString('id-ID');
+                return data.balance;
+            } else {
+                document.getElementById('userBalance').textContent = "Error";
+            }
+        } catch (error) {
+            console.error('Error loading balance:', error);
+            document.getElementById('userBalance').textContent = "Error";
         }
+        return 0;
+    }
 
-        // Anda bisa melakukan AJAX/Fetch ke server backend (games_service.py) disini
-        // untuk mendaftarkan user dan mengambil Balance Asli dari Database.
-        console.log("User terautentikasi:", user);
+    if (user) {
+        // Jika dibuka via Telegram, daftarkan/tarik data user
+        const fullName = user.first_name + (user.last_name ? " " + user.last_name : "");
+        loadUserBalance(user.id, user.username || '', fullName);
     } else {
-        // Fallback jika dibuka di browser biasa (bukan Telegram)
-        console.log("Dibuka di luar Telegram App");
+        // Mode browser (fallback tanpa Telegram)
+        console.log("Dibuka di luar Telegram App. Menjalankan Mode Guest.");
+        document.getElementById("userBalance").textContent = "1.500";
     }
 
     // 3. Logika Pagination / Bottom Navigation
@@ -59,31 +75,3 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
 });
-
-async function loadUserBalance(telegramId, username, firstName) {
-    try {
-        const response = await fetch('/api/games/auth', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegram_id: telegramId,
-                username: username,
-                first_name: firstName
-            })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            document.getElementById('userBalance').textContent = data.balance.toLocaleString();
-            return data.balance;
-        }
-    } catch (error) {
-        console.error('Error loading balance:', error);
-    }
-    return 1500;
-}
-
-// Panggil di dalam init setelah dapat user
-if (user) {
-    await loadUserBalance(user.id, user.username || '', user.first_name || '');
-}
