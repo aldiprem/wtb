@@ -1,4 +1,4 @@
-// games/js/plinko_games.js - UPDATED VERSION with new controls
+// games/js/plinko_games.js - UPDATED VERSION
 (function() {
     console.log('🎰 Plinko Games Initialized');
 
@@ -9,8 +9,6 @@
     let ctx = null;
     let currentBetAmount = 1.0;
     let usingGift = false;
-    let ballCount = 1;
-    let ballsToDrop = 0;
 
     let multiplierAreas = [];
     
@@ -46,19 +44,6 @@
         if (viewsElement) {
             viewsElement.textContent = viewCount;
         }
-    }
-
-    // Update UI labels
-    function updateUILabels() {
-        const riskLabels = { low: 'Low', medium: 'Medium', high: 'High' };
-        const riskLabel = document.getElementById('currentRiskLabel');
-        if (riskLabel) riskLabel.textContent = riskLabels[currentRisk];
-        
-        const betLabel = document.getElementById('currentBetLabel');
-        if (betLabel) betLabel.textContent = currentBetAmount.toFixed(2) + ' TON';
-        
-        const ballLabel = document.getElementById('ballCountLabel');
-        if (ballLabel) ballLabel.textContent = ballCount + ' Bola';
     }
 
     // Fungsi Render Cerobong
@@ -450,24 +435,17 @@
         wrapper.innerHTML = html;
     }
 
-    // Drop multiple balls
-    async function dropBalls() {
+    // Drop Ball
+    async function dropBall() {
         if (currentBetAmount <= 0) {
-            alert('Silakan pilih taruhan terlebih dahulu!');
+            alert('Silakan place bet terlebih dahulu!');
             return;
         }
-        
-        if (ballCount <= 0) {
-            alert('Pilih jumlah bola terlebih dahulu!');
-            return;
-        }
-        
-        const totalBet = currentBetAmount * ballCount;
         
         if (!usingGift) {
             const currentBalance = await loadUserBalance();
-            if (currentBalance < totalBet) {
-                alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON, dibutuhkan: ${totalBet.toFixed(2)} TON`);
+            if (currentBalance < currentBetAmount) {
+                alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON`);
                 return;
             }
             
@@ -477,36 +455,30 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     telegram_id: telegramUser?.id,
-                    new_balance: currentBalance - totalBet
+                    new_balance: currentBalance - currentBetAmount
                 })
             });
             
             if (deductResponse.ok) {
                 await loadUserBalance();
             }
-        }
-        
-        // Drop multiple balls dengan delay
-        for (let i = 0; i < ballCount; i++) {
-            setTimeout(() => {
-                balls.push({
-                    x: spawnerX,
-                    y: 25,
-                    vx: (Math.random() - 0.5) * 1.5,
-                    vy: 0,
-                    bet: currentBetAmount
-                });
-            }, i * 150);
-        }
-        
-        if (usingGift) {
+        } else {
+            // Gunakan gift - kurangi gift count
             usingGift = false;
             const giftsEl = document.getElementById('userGifts');
             if (giftsEl) {
                 let gifts = parseInt(giftsEl.textContent) || 0;
-                giftsEl.textContent = Math.max(0, gifts - ballCount);
+                giftsEl.textContent = gifts - 1;
             }
         }
+        
+        balls.push({
+            x: spawnerX,
+            y: 25,
+            vx: (Math.random() - 0.5) * 1,
+            vy: 0,
+            bet: currentBetAmount
+        });
     }
 
     // ==================== BALANCE FUNCTIONS ====================
@@ -532,12 +504,12 @@
             
             const data = await response.json();
             const balanceEl = document.getElementById('userBalance');
-            const panelBalanceEl = document.getElementById('panelUserBalance');
+            const sheetBalanceEl = document.getElementById('sheetUserBalance');
             
             if (data.success) {
                 const balanceText = data.balance.toFixed(2) + ' TON';
                 if (balanceEl) balanceEl.textContent = balanceText;
-                if (panelBalanceEl) panelBalanceEl.textContent = balanceText;
+                if (sheetBalanceEl) sheetBalanceEl.textContent = balanceText;
                 return data.balance;
             }
         } catch (error) {
@@ -564,62 +536,19 @@
         }
     }
 
-    // ==================== PANEL FUNCTIONS ====================
-    function closeAllPanels() {
-        document.getElementById('riskPanel').style.display = 'none';
-        document.getElementById('betPanel').style.display = 'none';
-        document.getElementById('ballsPanel').style.display = 'none';
-        
-        const chevronRisk = document.getElementById('riskChevron');
-        const chevronBet = document.getElementById('betChevron');
-        const chevronBall = document.getElementById('ballChevron');
-        
-        if (chevronRisk) chevronRisk.className = 'fas fa-chevron-down';
-        if (chevronBet) chevronBet.className = 'fas fa-chevron-up';
-        if (chevronBall) chevronBall.className = 'fas fa-chevron-up';
-    }
-
-    function toggleRiskPanel() {
-        const panel = document.getElementById('riskPanel');
-        const chevron = document.getElementById('riskChevron');
-        
-        if (panel.style.display === 'none') {
-            closeAllPanels();
-            panel.style.display = 'block';
-            if (chevron) chevron.className = 'fas fa-chevron-up';
-        } else {
-            panel.style.display = 'none';
-            if (chevron) chevron.className = 'fas fa-chevron-down';
-        }
-    }
-
-    function toggleBetPanel() {
-        const panel = document.getElementById('betPanel');
-        const chevron = document.getElementById('betChevron');
-        
-        if (panel.style.display === 'none') {
-            closeAllPanels();
-            panel.style.display = 'block';
-            if (chevron) chevron.className = 'fas fa-chevron-down';
+    // ==================== BOTTOM SHEET FUNCTIONS ====================
+    function showPlaceBetSheet() {
+        const sheet = document.getElementById('placeBetSheet');
+        if (sheet) {
+            sheet.style.display = 'flex';
             loadUserBalance();
-        } else {
-            panel.style.display = 'none';
-            if (chevron) chevron.className = 'fas fa-chevron-up';
+            loadUserGifts();
         }
     }
 
-    function toggleBallsPanel() {
-        const panel = document.getElementById('ballsPanel');
-        const chevron = document.getElementById('ballChevron');
-        
-        if (panel.style.display === 'none') {
-            closeAllPanels();
-            panel.style.display = 'block';
-            if (chevron) chevron.className = 'fas fa-chevron-down';
-        } else {
-            panel.style.display = 'none';
-            if (chevron) chevron.className = 'fas fa-chevron-up';
-        }
+    function closePlaceBetSheet() {
+        const sheet = document.getElementById('placeBetSheet');
+        if (sheet) sheet.style.display = 'none';
     }
 
     function setBetAmount(percent) {
@@ -627,13 +556,13 @@
             let amount = balance * (percent / 100);
             amount = Math.round(amount * 10) / 10;
             if (amount < 0.1) amount = 0.1;
-            const betInput = document.getElementById('panelBetAmount');
+            const betInput = document.getElementById('sheetBetAmount');
             if (betInput) betInput.value = amount.toFixed(1);
         });
     }
 
     async function confirmBet() {
-        const betInput = document.getElementById('panelBetAmount');
+        const betInput = document.getElementById('sheetBetAmount');
         let amount = parseFloat(betInput?.value || 0);
         
         if (isNaN(amount) || amount < 0.1) {
@@ -641,59 +570,51 @@
             return;
         }
         
-        currentBetAmount = amount;
-        updateUILabels();
+        const activeTab = document.querySelector('.sheet-tab-content.active')?.id;
         
-        // Close panel
-        const panel = document.getElementById('betPanel');
-        const chevron = document.getElementById('betChevron');
-        if (panel) panel.style.display = 'none';
-        if (chevron) chevron.className = 'fas fa-chevron-up';
-        
-        alert(`✅ Taruhan ${amount.toFixed(2)} TON siap!`);
-    }
-
-    function setBallCount(count) {
-        ballCount = count;
-        updateUILabels();
-        
-        // Update active class on ball options
-        document.querySelectorAll('.ball-option').forEach(opt => {
-            opt.classList.remove('active');
-            if (parseInt(opt.dataset.balls) === count) {
-                opt.classList.add('active');
+        if (activeTab === 'gift-tab') {
+            // Gunakan gift
+            const giftsEl = document.getElementById('userGifts');
+            let gifts = parseInt(giftsEl?.textContent || '0');
+            if (gifts <= 0) {
+                alert('Gift tidak tersedia! Silakan isi saldo TON.');
+                return;
             }
-        });
-        
-        // Close panel
-        const panel = document.getElementById('ballsPanel');
-        const chevron = document.getElementById('ballChevron');
-        if (panel) panel.style.display = 'none';
-        if (chevron) chevron.className = 'fas fa-chevron-up';
+            usingGift = true;
+            currentBetAmount = amount;
+            closePlaceBetSheet();
+            alert(`✅ Taruhan ${amount} TON menggunakan GIFT! Tekan DROP BALL untuk bermain.`);
+        } else {
+            // Gunakan TON Balance
+            const currentBalance = await loadUserBalance();
+            if (currentBalance < amount) {
+                alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON`);
+                return;
+            }
+            usingGift = false;
+            currentBetAmount = amount;
+            closePlaceBetSheet();
+            alert(`✅ Taruhan ${amount} TON siap! Tekan DROP BALL untuk bermain.`);
+        }
     }
 
-    function generateBallsGrid() {
-        const grid = document.getElementById('ballsGrid');
-        if (!grid) return;
+    // ==================== RISK PANEL FUNCTIONS ====================
+    function toggleRiskPanel() {
+        const panel = document.getElementById('riskPanel');
+        const chevron = document.getElementById('riskChevron');
         
-        let html = '';
-        for (let i = 1; i <= 10; i++) {
-            html += `<div class="ball-option ${i === ballCount ? 'active' : ''}" data-balls="${i}">${i} Bola</div>`;
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            if (chevron) chevron.className = 'fas fa-chevron-down';
+        } else {
+            panel.style.display = 'none';
+            if (chevron) chevron.className = 'fas fa-chevron-up';
         }
-        grid.innerHTML = html;
-        
-        // Add event listeners
-        document.querySelectorAll('.ball-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                setBallCount(parseInt(opt.dataset.balls));
-            });
-        });
     }
 
     function setRisk(risk) {
         currentRisk = risk;
         renderMultiplierSlots();
-        updateUILabels();
         
         // Update active class on risk buttons
         document.querySelectorAll('.risk-btn').forEach(btn => {
@@ -707,7 +628,20 @@
         const panel = document.getElementById('riskPanel');
         const chevron = document.getElementById('riskChevron');
         if (panel) panel.style.display = 'none';
-        if (chevron) chevron.className = 'fas fa-chevron-down';
+        if (chevron) chevron.className = 'fas fa-chevron-up';
+    }
+
+    // ==================== TAB FUNCTIONS ====================
+    function switchTab(tabId) {
+        document.querySelectorAll('.sheet-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.sheet-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        document.querySelector(`.sheet-tab[data-tab="${tabId}"]`)?.classList.add('active');
+        document.getElementById(tabId)?.classList.add('active');
     }
 
     // ==================== INITIALIZATION ====================
@@ -734,23 +668,19 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         
-        // Event Listeners untuk bottom nav
-        document.getElementById('placeBetBtn')?.addEventListener('click', toggleBetPanel);
-        document.getElementById('playBtn')?.addEventListener('click', dropBalls);
+        // Event Listeners
+        document.getElementById('placeBetBtn')?.addEventListener('click', showPlaceBetSheet);
+        document.getElementById('playBtn')?.addEventListener('click', dropBall);
         document.getElementById('refreshHistory')?.addEventListener('click', () => {
             loadStats();
             loadHistory();
         });
+        document.getElementById('closeSheetBtn')?.addEventListener('click', closePlaceBetSheet);
+        document.getElementById('confirmBetBtn')?.addEventListener('click', confirmBet);
         
-        // Control bar listeners
+        // Risk Panel
         document.getElementById('riskLevelTrigger')?.addEventListener('click', toggleRiskPanel);
-        document.getElementById('betInfoTrigger')?.addEventListener('click', toggleBetPanel);
-        document.getElementById('ballCountTrigger')?.addEventListener('click', toggleBallsPanel);
-        
-        // Close panel buttons
         document.getElementById('closeRiskPanel')?.addEventListener('click', toggleRiskPanel);
-        document.getElementById('closeBetPanel')?.addEventListener('click', toggleBetPanel);
-        document.getElementById('closeBallsPanel')?.addEventListener('click', toggleBallsPanel);
         
         // Risk buttons
         document.querySelectorAll('.risk-btn').forEach(btn => {
@@ -765,22 +695,24 @@
             });
         });
         
-        // Confirm bet button
-        document.getElementById('confirmBetPanelBtn')?.addEventListener('click', confirmBet);
+        // Tab switching
+        document.querySelectorAll('.sheet-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+                switchTab(tabId);
+            });
+        });
         
-        // Close panels on outside click
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.control-panel') && !e.target.closest('.control-item')) {
-                closeAllPanels();
-            }
+        // Close sheet on outside click
+        const sheet = document.getElementById('placeBetSheet');
+        sheet?.addEventListener('click', (e) => {
+            if (e.target === sheet) closePlaceBetSheet();
         });
         
         await loadStats();
         await loadHistory();
         updateViewCount();
         renderMultiplierSlots();
-        generateBallsGrid();
-        updateUILabels();
         
         update();
         
