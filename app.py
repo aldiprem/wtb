@@ -256,8 +256,7 @@ def serve_giveaway_js(filename):
 
 @app.route('/games')
 def serve_games_page():
-    """Halaman utama games"""
-    return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'games.html')
+    return send_from_directory(os.path.join(base_dir, 'games'), 'games.html')
 
 @app.route('/games/css/<path:filename>')
 def serve_games_css(filename):
