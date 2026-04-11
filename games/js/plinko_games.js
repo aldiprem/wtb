@@ -1,4 +1,4 @@
-// games/js/plinko_games.js - UPDATED VERSION
+// games/js/plinko_games.js - UPDATED WITH BACKEND INTEGRATION
 (function() {
     console.log('🎰 Plinko Games Initialized');
 
@@ -8,7 +8,8 @@
     let canvas = null;
     let ctx = null;
     let currentBetAmount = 1.0;
-    let usingGift = false;
+    let ballCount = 1;
+    let ballsToDrop = 0;
 
     let multiplierAreas = [];
     
@@ -44,6 +45,19 @@
         if (viewsElement) {
             viewsElement.textContent = viewCount;
         }
+    }
+
+    // Update UI labels
+    function updateUILabels() {
+        const riskLabels = { low: 'Low', medium: 'Medium', high: 'High' };
+        const riskLabel = document.getElementById('currentRiskLabel');
+        if (riskLabel) riskLabel.textContent = riskLabels[currentRisk];
+        
+        const betLabel = document.getElementById('currentBetLabel');
+        if (betLabel) betLabel.textContent = currentBetAmount.toFixed(2) + ' TON';
+        
+        const ballLabel = document.getElementById('ballCountLabel');
+        if (ballLabel) ballLabel.textContent = ballCount + ' Bola';
     }
 
     // Fungsi Render Cerobong
@@ -255,7 +269,7 @@
         }
     }
 
-    // Save game result
+    // Save game result to backend
     async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/save`, {
@@ -276,13 +290,215 @@
             if (data.success) {
                 loadStats();
                 loadHistory();
-                if (!usingGift) {
-                    await loadUserBalance();
-                }
+                await loadUserBalance();
             }
         } catch (error) {
             console.error('Error saving game:', error);
         }
+    }
+
+    // Play game via backend
+    async function playGameBackend(betAmount, position = null) {
+        try {
+            const response = await fetch(`${API_BASE}/api/plinko/play`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bet_amount: betAmount,
+                    risk_level: currentRisk,
+                    position: position
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                return {
+                    multiplier: data.multiplier,
+                    win_amount: data.win_amount,
+                    round_hash: data.round_hash,
+                    position: data.position
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error('Error playing game:', error);
+            return null;
+        }
+    }
+
+    // Drop multiple balls
+    async function dropBalls() {
+        if (currentBetAmount <= 0) {
+            alert('Silakan pilih taruhan terlebih dahulu!');
+            return;
+        }
+        
+        if (ballCount <= 0) {
+            alert('Pilih jumlah bola terlebih dahulu!');
+            return;
+        }
+        
+        const totalBet = currentBetAmount * ballCount;
+        
+        // Check balance
+        const currentBalance = await loadUserBalance();
+        if (currentBalance < totalBet) {
+            alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON, dibutuhkan: ${totalBet.toFixed(2)} TON`);
+            return;
+        }
+        
+        // Deduct balance
+        const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id: telegramUser?.id,
+                amount: totalBet
+            })
+        });
+        
+        const deductData = await deductResponse.json();
+        if (!deductData.success) {
+            alert(deductData.error || 'Gagal memotong saldo');
+            return;
+        }
+        
+        await loadUserBalance();
+        
+        // Drop multiple balls dengan delay dan backend calculation
+        for (let i = 0; i < ballCount; i++) {
+            setTimeout(async () => {
+                // Get result from backend
+                const result = await playGameBackend(currentBetAmount);
+                
+                if (result) {
+                    // Save result
+                    await saveGameResult(currentBetAmount, result.multiplier, result.win_amount, result.round_hash);
+                    
+                    // Add win to balance
+                    if (result.win_amount > 0) {
+                        await fetch(`${API_BASE}/api/plinko/add-balance`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                telegram_id: telegramUser?.id,
+                                amount: result.win_amount
+                            })
+                        });
+                        await loadUserBalance();
+                    }
+                    
+                    // Animate ball drop with the calculated multiplier position
+                    animateBallDrop(result.position, result.multiplier, currentBetAmount, result.win_amount);
+                }
+            }, i * 200);
+        }
+    }
+
+    // Animate single ball drop
+    function animateBallDrop(position, multiplier, betAmount, winAmount) {
+        // Calculate X position based on slot index
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segment = canvas.width / multipliers.length;
+        const x = (position * segment) + (segment / 2);
+        
+        balls.push({
+            x: spawnerX,
+            y: 25,
+            vx: (x - spawnerX) / 30,
+            vy: 0,
+            bet: betAmount,
+            targetMultiplier: multiplier,
+            targetWin: winAmount
+        });
+    }
+
+    // Update checkMultiplierHit to use pre-calculated result
+    function checkMultiplierHit(ball) {
+        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
+        
+        updateMultiplierAreas();
+        
+        // If ball has target multiplier from backend, use it
+        if (ball.targetMultiplier) {
+            // Find slot with matching multiplier
+            let targetIndex = -1;
+            for (let i = 0; i < multiplierAreas.length; i++) {
+                if (Math.abs(multiplierAreas[i].multiplier - ball.targetMultiplier) < 0.01) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+            
+            if (targetIndex >= 0) {
+                const area = multiplierAreas[targetIndex];
+                // Adjust ball position to hit the correct slot
+                ball.x = area.x + (area.width / 2);
+                
+                animateSlot(targetIndex);
+                
+                const resultDiv = document.getElementById('resultDisplay');
+                const resultMultiplier = document.getElementById('resultMultiplier');
+                const resultWin = document.getElementById('resultWin');
+                
+                resultDiv.style.display = 'block';
+                resultMultiplier.textContent = `${ball.targetMultiplier}x`;
+                resultWin.textContent = `Win: ${ball.targetWin.toLocaleString()}`;
+                
+                if (ball.targetMultiplier >= 5) {
+                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                } else if (ball.targetMultiplier >= 2) {
+                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                } else {
+                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                }
+                
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 3000);
+                
+                return true;
+            }
+        }
+        
+        // Fallback to normal calculation
+        for (const area of multiplierAreas) {
+            if (ball.x >= area.x && ball.x <= area.x + area.width) {
+                const winAmount = Math.floor(ball.bet * area.multiplier);
+                
+                animateSlot(area.index);
+                
+                const resultDiv = document.getElementById('resultDisplay');
+                const resultMultiplier = document.getElementById('resultMultiplier');
+                const resultWin = document.getElementById('resultWin');
+                
+                resultDiv.style.display = 'block';
+                resultMultiplier.textContent = `${area.multiplier}x`;
+                resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
+                
+                if (area.multiplier >= 5) {
+                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                } else if (area.multiplier >= 2) {
+                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                } else {
+                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                }
+                
+                setTimeout(() => {
+                    resultDiv.style.display = 'none';
+                }, 3000);
+                
+                saveGameResult(ball.bet, area.multiplier, winAmount, generateRoundHash());
+                return true;
+            }
+        }
+        return false;
     }
 
     // Generate random round hash
@@ -356,48 +572,6 @@
         return hit;
     }
 
-    function checkMultiplierHit(ball) {
-        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
-        
-        updateMultiplierAreas();
-        
-        for (const area of multiplierAreas) {
-            if (ball.x >= area.x && ball.x <= area.x + area.width) {
-                const winAmount = Math.floor(ball.bet * area.multiplier);
-                const roundHash = generateRoundHash();
-                
-                animateSlot(area.index);
-                
-                const resultDiv = document.getElementById('resultDisplay');
-                const resultMultiplier = document.getElementById('resultMultiplier');
-                const resultWin = document.getElementById('resultWin');
-                
-                resultDiv.style.display = 'block';
-                resultMultiplier.textContent = `${area.multiplier}x`;
-                resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
-                
-                if (area.multiplier >= 5) {
-                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-                } else if (area.multiplier >= 2) {
-                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
-                } else {
-                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-                }
-                
-                setTimeout(() => {
-                    resultDiv.style.display = 'none';
-                }, 3000);
-                
-                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
-                return true;
-            }
-        }
-        return false;
-    }
-
     function animateSlot(slotIndex) {
         const slots = document.querySelectorAll('.multiplier-slot');
         if (slots[slotIndex]) {
@@ -435,52 +609,6 @@
         wrapper.innerHTML = html;
     }
 
-    // Drop Ball
-    async function dropBall() {
-        if (currentBetAmount <= 0) {
-            alert('Silakan place bet terlebih dahulu!');
-            return;
-        }
-        
-        if (!usingGift) {
-            const currentBalance = await loadUserBalance();
-            if (currentBalance < currentBetAmount) {
-                alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON`);
-                return;
-            }
-            
-            // Kurangi saldo
-            const deductResponse = await fetch(`${API_BASE}/api/games/update-balance`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegram_id: telegramUser?.id,
-                    new_balance: currentBalance - currentBetAmount
-                })
-            });
-            
-            if (deductResponse.ok) {
-                await loadUserBalance();
-            }
-        } else {
-            // Gunakan gift - kurangi gift count
-            usingGift = false;
-            const giftsEl = document.getElementById('userGifts');
-            if (giftsEl) {
-                let gifts = parseInt(giftsEl.textContent) || 0;
-                giftsEl.textContent = gifts - 1;
-            }
-        }
-        
-        balls.push({
-            x: spawnerX,
-            y: 25,
-            vx: (Math.random() - 0.5) * 1,
-            vy: 0,
-            bet: currentBetAmount
-        });
-    }
-
     // ==================== BALANCE FUNCTIONS ====================
     async function loadUserBalance() {
         try {
@@ -492,24 +620,15 @@
                 return 0;
             }
             
-            const response = await fetch('/api/games/auth', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegram_id: user.id,
-                    username: user.username || '',
-                    first_name: user.first_name || 'User'
-                })
-            });
-            
+            const response = await fetch(`${API_BASE}/api/plinko/balance/${user.id}`);
             const data = await response.json();
             const balanceEl = document.getElementById('userBalance');
-            const sheetBalanceEl = document.getElementById('sheetUserBalance');
+            const panelBalanceEl = document.getElementById('panelUserBalance');
             
             if (data.success) {
                 const balanceText = data.balance.toFixed(2) + ' TON';
                 if (balanceEl) balanceEl.textContent = balanceText;
-                if (sheetBalanceEl) sheetBalanceEl.textContent = balanceText;
+                if (panelBalanceEl) panelBalanceEl.textContent = balanceText;
                 return data.balance;
             }
         } catch (error) {
@@ -518,92 +637,60 @@
         return 0;
     }
 
-    async function loadUserGifts() {
-        try {
-            const tg = window.Telegram.WebApp;
-            const user = tg.initDataUnsafe?.user;
-            
-            if (user && user.id) {
-                const response = await fetch(`${API_BASE}/api/games/user-stats/${user.id}`);
-                const data = await response.json();
-                if (data.success) {
-                    const giftsEl = document.getElementById('userGifts');
-                    if (giftsEl) giftsEl.textContent = data.gifts || 0;
-                }
-            }
-        } catch (error) {
-            console.error('Error loading gifts:', error);
-        }
-    }
-
-    // ==================== BOTTOM SHEET FUNCTIONS ====================
-    function showPlaceBetSheet() {
-        const sheet = document.getElementById('placeBetSheet');
-        if (sheet) {
-            sheet.style.display = 'flex';
-            loadUserBalance();
-            loadUserGifts();
-        }
-    }
-
-    function closePlaceBetSheet() {
-        const sheet = document.getElementById('placeBetSheet');
-        if (sheet) sheet.style.display = 'none';
-    }
-
-    function setBetAmount(percent) {
-        loadUserBalance().then(balance => {
-            let amount = balance * (percent / 100);
-            amount = Math.round(amount * 10) / 10;
-            if (amount < 0.1) amount = 0.1;
-            const betInput = document.getElementById('sheetBetAmount');
-            if (betInput) betInput.value = amount.toFixed(1);
-        });
-    }
-
-    async function confirmBet() {
-        const betInput = document.getElementById('sheetBetAmount');
-        let amount = parseFloat(betInput?.value || 0);
+    // ==================== PANEL FUNCTIONS ====================
+    function closeAllPanels() {
+        const riskPanel = document.getElementById('riskPanel');
+        const betPanel = document.getElementById('betPanel');
+        const ballsPanel = document.getElementById('ballsPanel');
         
-        if (isNaN(amount) || amount < 0.1) {
-            alert('Minimal taruhan 0.1 TON');
-            return;
-        }
+        if (riskPanel) riskPanel.style.display = 'none';
+        if (betPanel) betPanel.style.display = 'none';
+        if (ballsPanel) ballsPanel.style.display = 'none';
         
-        const activeTab = document.querySelector('.sheet-tab-content.active')?.id;
+        const chevronRisk = document.getElementById('riskChevron');
+        const chevronBet = document.getElementById('betChevron');
+        const chevronBall = document.getElementById('ballChevron');
         
-        if (activeTab === 'gift-tab') {
-            // Gunakan gift
-            const giftsEl = document.getElementById('userGifts');
-            let gifts = parseInt(giftsEl?.textContent || '0');
-            if (gifts <= 0) {
-                alert('Gift tidak tersedia! Silakan isi saldo TON.');
-                return;
-            }
-            usingGift = true;
-            currentBetAmount = amount;
-            closePlaceBetSheet();
-            alert(`✅ Taruhan ${amount} TON menggunakan GIFT! Tekan DROP BALL untuk bermain.`);
-        } else {
-            // Gunakan TON Balance
-            const currentBalance = await loadUserBalance();
-            if (currentBalance < amount) {
-                alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON`);
-                return;
-            }
-            usingGift = false;
-            currentBetAmount = amount;
-            closePlaceBetSheet();
-            alert(`✅ Taruhan ${amount} TON siap! Tekan DROP BALL untuk bermain.`);
-        }
+        if (chevronRisk) chevronRisk.className = 'fas fa-chevron-down';
+        if (chevronBet) chevronBet.className = 'fas fa-chevron-up';
+        if (chevronBall) chevronBall.className = 'fas fa-chevron-up';
     }
 
-    // ==================== RISK PANEL FUNCTIONS ====================
     function toggleRiskPanel() {
         const panel = document.getElementById('riskPanel');
         const chevron = document.getElementById('riskChevron');
         
         if (panel.style.display === 'none') {
+            closeAllPanels();
+            panel.style.display = 'block';
+            if (chevron) chevron.className = 'fas fa-chevron-up';
+        } else {
+            panel.style.display = 'none';
+            if (chevron) chevron.className = 'fas fa-chevron-down';
+        }
+    }
+
+    function toggleBetPanel() {
+        const panel = document.getElementById('betPanel');
+        const chevron = document.getElementById('betChevron');
+        
+        if (panel.style.display === 'none') {
+            closeAllPanels();
+            panel.style.display = 'block';
+            if (chevron) chevron.className = 'fas fa-chevron-down';
+            loadUserBalance();
+        } else {
+            panel.style.display = 'none';
+            if (chevron) chevron.className = 'fas fa-chevron-up';
+        }
+    }
+
+    function toggleBallsPanel() {
+        const panel = document.getElementById('ballsPanel');
+        const chevron = document.getElementById('ballChevron');
+        
+        if (panel.style.display === 'none') {
+            closeAllPanels();
             panel.style.display = 'block';
             if (chevron) chevron.className = 'fas fa-chevron-down';
         } else {
@@ -612,9 +699,78 @@
         }
     }
 
+    function setBetAmount(percent) {
+        loadUserBalance().then(balance => {
+            let amount = balance * (percent / 100);
+            amount = Math.round(amount * 10) / 10;
+            if (amount < 0.1) amount = 0.1;
+            const betInput = document.getElementById('panelBetAmount');
+            if (betInput) betInput.value = amount.toFixed(1);
+        });
+    }
+
+    async function confirmBet() {
+        const betInput = document.getElementById('panelBetAmount');
+        let amount = parseFloat(betInput?.value || 0);
+        
+        if (isNaN(amount) || amount < 0.1) {
+            alert('Minimal taruhan 0.1 TON');
+            return;
+        }
+        
+        currentBetAmount = amount;
+        updateUILabels();
+        
+        // Close panel
+        const panel = document.getElementById('betPanel');
+        const chevron = document.getElementById('betChevron');
+        if (panel) panel.style.display = 'none';
+        if (chevron) chevron.className = 'fas fa-chevron-up';
+        
+        alert(`✅ Taruhan ${amount.toFixed(2)} TON siap!`);
+    }
+
+    function setBallCount(count) {
+        ballCount = count;
+        updateUILabels();
+        
+        // Update active class on ball options
+        document.querySelectorAll('.ball-option').forEach(opt => {
+            opt.classList.remove('active');
+            if (parseInt(opt.dataset.balls) === count) {
+                opt.classList.add('active');
+            }
+        });
+        
+        // Close panel
+        const panel = document.getElementById('ballsPanel');
+        const chevron = document.getElementById('ballChevron');
+        if (panel) panel.style.display = 'none';
+        if (chevron) chevron.className = 'fas fa-chevron-up';
+    }
+
+    function generateBallsGrid() {
+        const grid = document.getElementById('ballsGrid');
+        if (!grid) return;
+        
+        let html = '';
+        for (let i = 1; i <= 10; i++) {
+            html += `<div class="ball-option ${i === ballCount ? 'active' : ''}" data-balls="${i}">${i} Bola</div>`;
+        }
+        grid.innerHTML = html;
+        
+        // Add event listeners
+        document.querySelectorAll('.ball-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                setBallCount(parseInt(opt.dataset.balls));
+            });
+        });
+    }
+
     function setRisk(risk) {
         currentRisk = risk;
         renderMultiplierSlots();
+        updateUILabels();
         
         // Update active class on risk buttons
         document.querySelectorAll('.risk-btn').forEach(btn => {
@@ -628,20 +784,7 @@
         const panel = document.getElementById('riskPanel');
         const chevron = document.getElementById('riskChevron');
         if (panel) panel.style.display = 'none';
-        if (chevron) chevron.className = 'fas fa-chevron-up';
-    }
-
-    // ==================== TAB FUNCTIONS ====================
-    function switchTab(tabId) {
-        document.querySelectorAll('.sheet-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        document.querySelectorAll('.sheet-tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        
-        document.querySelector(`.sheet-tab[data-tab="${tabId}"]`)?.classList.add('active');
-        document.getElementById(tabId)?.classList.add('active');
+        if (chevron) chevron.className = 'fas fa-chevron-down';
     }
 
     // ==================== INITIALIZATION ====================
@@ -669,18 +812,22 @@
         resizeCanvas();
         
         // Event Listeners
-        document.getElementById('placeBetBtn')?.addEventListener('click', showPlaceBetSheet);
-        document.getElementById('playBtn')?.addEventListener('click', dropBall);
+        document.getElementById('placeBetBtn')?.addEventListener('click', toggleBetPanel);
+        document.getElementById('playBtn')?.addEventListener('click', dropBalls);
         document.getElementById('refreshHistory')?.addEventListener('click', () => {
             loadStats();
             loadHistory();
         });
-        document.getElementById('closeSheetBtn')?.addEventListener('click', closePlaceBetSheet);
-        document.getElementById('confirmBetBtn')?.addEventListener('click', confirmBet);
         
-        // Risk Panel
+        // Control bar listeners
         document.getElementById('riskLevelTrigger')?.addEventListener('click', toggleRiskPanel);
+        document.getElementById('betInfoTrigger')?.addEventListener('click', toggleBetPanel);
+        document.getElementById('ballCountTrigger')?.addEventListener('click', toggleBallsPanel);
+        
+        // Close panel buttons
         document.getElementById('closeRiskPanel')?.addEventListener('click', toggleRiskPanel);
+        document.getElementById('closeBetPanel')?.addEventListener('click', toggleBetPanel);
+        document.getElementById('closeBallsPanel')?.addEventListener('click', toggleBallsPanel);
         
         // Risk buttons
         document.querySelectorAll('.risk-btn').forEach(btn => {
@@ -695,28 +842,26 @@
             });
         });
         
-        // Tab switching
-        document.querySelectorAll('.sheet-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                const tabId = tab.dataset.tab;
-                switchTab(tabId);
-            });
-        });
+        // Confirm bet button
+        document.getElementById('confirmBetPanelBtn')?.addEventListener('click', confirmBet);
         
-        // Close sheet on outside click
-        const sheet = document.getElementById('placeBetSheet');
-        sheet?.addEventListener('click', (e) => {
-            if (e.target === sheet) closePlaceBetSheet();
+        // Close panels on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.control-panel') && !e.target.closest('.pagination-item')) {
+                closeAllPanels();
+            }
         });
         
         await loadStats();
         await loadHistory();
         updateViewCount();
         renderMultiplierSlots();
+        generateBallsGrid();
+        updateUILabels();
         
         update();
         
-        console.log('✅ Plinko Games Ready');
+        console.log('✅ Plinko Games Ready with Backend Integration');
     }
     
     init();
