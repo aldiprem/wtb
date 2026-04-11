@@ -541,9 +541,48 @@
         return false;
     }
 
+    // Tambahkan fungsi ini di plinko_games.js setelah deklarasi variabel
+    async function loadUserBalance() {
+        try {
+            const tg = window.Telegram.WebApp;
+            const user = tg.initDataUnsafe?.user;
+            
+            if (!user || !user.id) {
+                document.getElementById('userBalance').textContent = '0 TON';
+                return 0;
+            }
+            
+            const response = await fetch('/api/games/auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: user.id,
+                    username: user.username || '',
+                    first_name: user.first_name || 'User'
+                })
+            });
+            
+            const data = await response.json();
+            const balanceEl = document.getElementById('userBalance');
+            
+            if (data.success && balanceEl) {
+                balanceEl.textContent = data.balance.toFixed(2) + ' TON';
+                return data.balance;
+            } else if (balanceEl) {
+                balanceEl.textContent = '0 TON';
+            }
+        } catch (error) {
+            console.error('Error loading balance:', error);
+            const balanceEl = document.getElementById('userBalance');
+            if (balanceEl) balanceEl.textContent = '0 TON';
+        }
+        return 0;
+    }
+
     // Initialize
     async function init() {
         telegramUser = await getTelegramUser();
+        await loadUserBalance();
         
         canvas = document.getElementById('plinkoCanvas');
         ctx = canvas.getContext('2d');
