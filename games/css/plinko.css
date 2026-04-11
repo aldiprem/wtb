@@ -189,8 +189,106 @@ body {
     width: 100%;
 }
 
-.stat-jackpot,
-.stat-lasted,
+.stat-jackpot {
+    background: var(--bg-card);
+    border-radius: 18px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    color: var(--tg-text-color);
+}
+
+.stat-jackpot .stat-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #000;
+    flex-shrink: 0;
+}
+
+.stat-jackpot .stat-info {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.stat-jackpot .stat-value {
+    font-size: 14px !important;
+    font-weight: 800;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--success-color);
+}
+
+.stat-jackpot .stat-sub {
+    font-size: 10px !important;
+    color: var(--primary-color);
+    display: block;
+    font-weight: 600;
+}
+
+.stat-lasted {
+    background: var(--bg-card);
+    border-radius: 18px;
+    padding: 6px 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    color: var(--tg-text-color);
+}
+
+.stat-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.stat-lasted .stat-info {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.stat-lasted .stat-value {
+    font-size: 12px !important;
+    font-weight: 700;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.stat-lasted .stat-sub {
+    font-size: 10px !important;
+    color: var(--primary-color);
+    display: block;
+    font-weight: 600;
+}
+
 .stat-round {
     background: var(--bg-card);
     border-radius: 18px;

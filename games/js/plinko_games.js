@@ -195,9 +195,14 @@
             const data = await response.json();
             
             if (data.success) {
+                // Total kemenangan (atas)
+                const totalWinAmount = data.total_win_amount || 0;
+                document.getElementById('totalWinAmount').textContent = totalWinAmount.toLocaleString();
+                
+                // Biggest multiplier (bawah)
                 document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
                 
-                // Tampilkan last player dengan avatar dari Telegram
+                // Last player
                 const lastPlayerName = data.last_player || '-';
                 const lastPlayerMultiplier = data.last_multiplier || '0';
                 
