@@ -24,24 +24,37 @@
 
 /* Penyesuaian Body untuk Desktop view */
 body {
-    background: #000000; /* Warna sangat gelap untuk background luar di dekstop */
+    background: #000000; 
     color: var(--tg-text-color);
-    min-height: 100vh;
+    height: 100vh; /* Kunci tinggi layar */
+    overflow: hidden; /* Cegah browser ikut scroll */
     display: flex;
-    justify-content: center; /* Konten ke tengah di layar lebar */
+    justify-content: center; 
 }
 
-/* --- FIX UNTUK MEMBUAT TAMPILAN MOBILE-ONLY DI DESKTOP --- */
+/* Container utama yang menangani scroll sendiri */
 .app-container {
     width: 100%;
-    max-width: 480px; /* Lebar maksimal layaknya frame HP */
-    background: var(--tg-bg-color); /* Warna asli aplikasi */
-    min-height: 100vh;
+    max-width: 480px; 
+    background: var(--tg-bg-color); 
+    height: 100vh;
     position: relative;
-    padding-bottom: 90px; /* Ruang untuk nav-bottom */
+    padding-bottom: 90px; 
     box-shadow: 0 0 30px rgba(0,0,0,0.8);
-    border-left: 1px solid var(--border-color);
-    border-right: 1px solid var(--border-color);
+    
+    /* Fungsi scroll dalam container saja */
+    overflow-y: auto;
+    /* Mencegah efek pull-to-refresh (reload browser) saat scroll mentok ke atas */
+    overscroll-behavior-y: none; 
+    
+    /* Menyembunyikan scrollbar untuk Firefox, IE, dan Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+/* Menyembunyikan scrollbar untuk Chrome, Safari, dan Opera */
+.app-container::-webkit-scrollbar {
+    display: none;
 }
 
 /* Header Glassmorphism */
@@ -243,7 +256,7 @@ body {
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
-    max-width: 400px; /* Mengikuti batasan container HP */
+    max-width: 400px;
     background: rgba(25, 25, 25, 0.85);
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255,255,255,0.1);
