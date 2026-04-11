@@ -419,57 +419,85 @@
         return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
     }
 
+    // PERBAIKAN TOTAL untuk fungsi dropBalls
     async function dropBalls() {
-        console.log('🎯 dropBalls called - bet:', currentBetAmount, 'count:', ballCount);
+        console.log('🎯 dropBalls called');
         
-        // PERBAIKAN: Cek dan set default jika currentBetAmount invalid
-        if (!currentBetAmount || currentBetAmount <= 0) {
-            const betInput = document.getElementById('panelBetAmount');
-            if (betInput) {
-                currentBetAmount = parseFloat(betInput.value) || 1.0;
-            } else {
-                currentBetAmount = 1.0;
+        // AMBIL LANGSUNG dari input panel, jangan pakai currentBetAmount yang belum update
+        const betInput = document.getElementById('panelBetAmount');
+        let betAmount = 0;
+        
+        if (betInput) {
+            betAmount = parseFloat(betInput.value);
+            if (isNaN(betAmount) || betAmount <= 0) {
+                betAmount = 1.0;
+                betInput.value = '1.0';
             }
-            updateUILabels();
-            console.log('🔄 Reset bet amount to:', currentBetAmount);
+        } else {
+            betAmount = currentBetAmount;
+            if (isNaN(betAmount) || betAmount <= 0) {
+                betAmount = 1.0;
+            }
         }
         
-        if (currentBetAmount <= 0.1) {
-            alert('Silakan atur taruhan terlebih dahulu! Klik pada bagian BET INFO.');
-            // Buka panel bet otomatis
+        // PASTIKAN currentBetAmount terupdate
+        currentBetAmount = betAmount;
+        
+        console.log('💰 Bet amount:', currentBetAmount, 'TON');
+        
+        // VALIDASI - jika masih 0 atau invalid, SET DEFAULT
+        if (!currentBetAmount || currentBetAmount <= 0 || isNaN(currentBetAmount)) {
+            console.log('⚠️ Invalid bet amount, setting to 1.0');
+            currentBetAmount = 1.0;
+            if (betInput) betInput.value = '1.0';
+        }
+        
+        // VALIDASI MINIMAL (0.1 TON)
+        if (currentBetAmount < 0.1) {
+            console.log('⚠️ Bet too small, setting to 0.1');
+            currentBetAmount = 0.1;
+            if (betInput) betInput.value = '0.1';
+        }
+        
+        // UPDATE LABEL
+        updateUILabels();
+        
+        // CEK ULANG setelah update
+        if (currentBetAmount < 0.1) {
+            alert('Minimal taruhan 0.1 TON');
             toggleBetPanel();
             return;
         }
         
+        // CEK PROSES BERJALAN
         if (isProcessingDrop) {
             alert('Masih ada bola yang berjalan, tunggu sebentar...');
             return;
         }
         
-        if (currentBetAmount <= 0.1) {
-            alert('Silakan atur taruhan terlebih dahulu! Klik pada bagian BET INFO.');
-            return;
-        }
-        
+        // CEK JUMLAH BOLA
         if (ballCount <= 0) {
-            alert('Pilih jumlah bola terlebih dahulu!');
-            return;
+            ballCount = 1;
+            updateUILabels();
         }
         
         const totalBet = currentBetAmount * ballCount;
         
-        // Check balance FIRST
+        // LOAD BALANCE TERBARU
         const currentBalance = await loadUserBalance();
+        console.log('💰 Current balance:', currentBalance, 'TON');
+        console.log('💰 Total bet required:', totalBet, 'TON');
+        
         if (currentBalance < totalBet) {
-            alert(`Saldo tidak cukup! Saldo: ${currentBalance.toFixed(2)} TON, dibutuhkan: ${totalBet.toFixed(2)} TON`);
+            alert(`Saldo tidak cukup!\nSaldo: ${currentBalance.toFixed(2)} TON\nDibutuhkan: ${totalBet.toFixed(2)} TON\n\nSilakan deposit terlebih dahulu.`);
             return;
         }
         
         isProcessingDrop = true;
         pendingBalanceUpdate = 0;
         
-        // 1. DEDUCT TOTAL BET dari balance (sekali saja)
         try {
+            // DEDUCT BALANCE
             const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -480,22 +508,26 @@
             });
             
             const deductData = await deductResponse.json();
+            
             if (!deductData.success) {
                 alert(deductData.error || 'Gagal memotong saldo');
                 isProcessingDrop = false;
                 return;
             }
             
-            // Update UI balance
+            // UPDATE UI BALANCE
             await loadUserBalance();
             console.log(`💰 Balance deducted: ${totalBet} TON`);
             
-            // 2. JATUHKAN BOLA satu per satu dengan delay
+            // JATUHKAN BOLA
             for (let i = 0; i < ballCount; i++) {
                 setTimeout(() => {
                     dropSingleBall();
                 }, i * 250);
             }
+            
+            // SIMPAN BET KE LOCALSTORAGE
+            localStorage.setItem('plinko_bet_amount', currentBetAmount);
             
         } catch (error) {
             console.error('Error in dropBalls:', error);
@@ -743,28 +775,38 @@
         let amount = parseFloat(betInput?.value || 0);
         
         if (isNaN(amount) || amount < 0.1) {
-            alert('Minimal taruhan 0.1 TON');
-            // Set ke nilai minimal jika invalid
             amount = 0.1;
             if (betInput) betInput.value = amount.toFixed(1);
         }
         
+        // BATASI MAKSIMAL (opsional, misal max 100 TON)
+        const maxBet = 100;
+        if (amount > maxBet) {
+            amount = maxBet;
+            if (betInput) betInput.value = amount.toFixed(1);
+            alert(`Maksimal taruhan ${maxBet} TON`);
+        }
+        
         currentBetAmount = amount;
         updateUILabels();
+        
+        // SIMPAN KE LOCALSTORAGE
+        localStorage.setItem('plinko_bet_amount', currentBetAmount);
         
         const panel = document.getElementById('betPanel');
         const chevron = document.getElementById('betChevron');
         if (panel) panel.style.display = 'none';
         if (chevron) chevron.className = 'fas fa-chevron-up';
         
-        console.log(`✅ Bet confirmed: ${amount.toFixed(2)} TON`);
+        console.log(`✅ Bet confirmed: ${currentBetAmount.toFixed(2)} TON`);
         
-        // Tampilkan notifikasi singkat bahwa bet sudah di-set
+        // NOTIFIKASI SINGKAT
         const betLabel = document.getElementById('currentBetLabel');
         if (betLabel) {
+            const originalColor = betLabel.style.color;
             betLabel.style.color = '#10b981';
             setTimeout(() => {
-                betLabel.style.color = '';
+                betLabel.style.color = originalColor;
             }, 1000);
         }
     }
@@ -926,42 +968,47 @@
         
         // PERBAIKAN: Set default bet amount ke panel input dan currentBetAmount
         const betInput = document.getElementById('panelBetAmount');
-        if (betInput) {
-            // Ambil dari localStorage atau default 1.0
-            let savedBet = localStorage.getItem('plinko_bet_amount');
-            if (savedBet && parseFloat(savedBet) >= 0.1) {
-                currentBetAmount = parseFloat(savedBet);
-                betInput.value = currentBetAmount.toFixed(1);
-            } else {
-                currentBetAmount = 1.0;
-                betInput.value = '1.0';
-            }
+
+        // SET DEFAULT BET AMOUNT dari localStorage
+        let savedBet = localStorage.getItem('plinko_bet_amount');
+        if (savedBet && parseFloat(savedBet) >= 0.1) {
+            currentBetAmount = parseFloat(savedBet);
         } else {
             currentBetAmount = 1.0;
         }
-        
+
+        // PASTIKAN panelBetAmount terisi
+        if (betInput) {
+            betInput.value = currentBetAmount.toFixed(1);
+        }
+
+        // PASTIKAN currentBetAmount TIDAK 0 atau null
+        if (!currentBetAmount || currentBetAmount <= 0) {
+            currentBetAmount = 1.0;
+            if (betInput) betInput.value = '1.0';
+        }
+
         // Pastikan ballCount ada nilainya
         if (!ballCount || ballCount < 1) {
             ballCount = 1;
         }
-        
+
         // UPDATE LABELS
         updateUILabels();
-        
+
         // Simpan ke localStorage setiap kali bet berubah
         const originalConfirmBet = confirmBet;
         window.confirmBet = async function() {
             await originalConfirmBet();
             localStorage.setItem('plinko_bet_amount', currentBetAmount);
         };
-        
+
         console.log('✅ Plinko Games Ready');
-        console.log('Current bet amount:', currentBetAmount, 'TON');
+        console.log('✅ Initial bet amount:', currentBetAmount, 'TON');
         console.log('Ball count:', ballCount);
-        
+
         update();
     }
-    
     init();
 
     // Global function untuk copy round hash
