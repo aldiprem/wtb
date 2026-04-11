@@ -254,13 +254,9 @@ def serve_giveaway_css(filename):
 def serve_giveaway_js(filename):
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'js'), filename)
 
-@app.route('/plinko-games')
-def serve_plinko_games():
-    """Halaman Plinko Games"""
-    return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'plinko_games.html')
-
 @app.route('/games')
 def serve_games_page():
+    """Halaman utama games"""
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'games.html')
 
 @app.route('/games/css/<path:filename>')
@@ -270,6 +266,15 @@ def serve_games_css(filename):
 @app.route('/games/js/<path:filename>')
 def serve_games_js(filename):
     return send_from_directory(os.path.join(base_dir, 'games', 'js'), filename)
+
+@app.route('/games/database/<path:filename>')
+def serve_games_database(filename):
+    return send_from_directory(os.path.join(base_dir, 'games', 'database'), filename)
+
+@app.route('/plinko-games')
+def serve_plinko_games():
+    """Halaman Plinko Games"""
+    return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'plinko_games.html')
 
 # ==================== ROUTE UNTUK IMAGE SERVICE ====================
 

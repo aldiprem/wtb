@@ -59,3 +59,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
 });
+
+async function loadUserBalance(telegramId, username, firstName) {
+    try {
+        const response = await fetch('/api/games/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegram_id: telegramId,
+                username: username,
+                first_name: firstName
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('userBalance').textContent = data.balance.toLocaleString();
+            return data.balance;
+        }
+    } catch (error) {
+        console.error('Error loading balance:', error);
+    }
+    return 1500;
+}
+
+// Panggil di dalam init setelah dapat user
+if (user) {
+    await loadUserBalance(user.id, user.username || '', user.first_name || '');
+}
