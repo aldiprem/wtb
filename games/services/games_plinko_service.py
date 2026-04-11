@@ -514,6 +514,36 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     return response
 
+@plinko_bp.route('/update-net-balance', methods=['POST', 'OPTIONS'])
+def update_net_balance():
+    """Update user balance with net change (profit/loss)"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+    
+    telegram_id = data.get('telegram_id')
+    net_change = data.get('net_change', 0)
+    
+    if not telegram_id:
+        return jsonify({"success": False, "error": "telegram_id required"}), 400
+    
+    if net_change == 0:
+        return jsonify({"success": True, "message": "No change"})
+    
+    try:
+        if update_user_balance(telegram_id, net_change):
+            new_balance = get_user_balance(telegram_id)
+            return jsonify({"success": True, "new_balance": new_balance, "net_change": net_change})
+        
+        return jsonify({"success": False, "error": "Failed to update balance"}), 500
+    except Exception as e:
+        print(f"Error in update_net_balance: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # Initialize database on import
 init_plinko_db()
 print("✅ games_plinko_service.py loaded successfully")

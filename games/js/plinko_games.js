@@ -1,4 +1,5 @@
-// games/js/plinko_games.js - PERBAIKAN LOGIKA DROP BALL
+// games/js/plinko_games.js - PERBAIKAN LENGKAP UNTUK DROP BALL
+
 (function() {
     console.log('🎰 Plinko Games Initialized');
 
@@ -9,7 +10,13 @@
     let ctx = null;
     let currentBetAmount = 1.0;
     let ballCount = 1;
-    let pendingBalls = []; // Antrian bola yang akan dijatuhkan
+    
+    // Track active balls dan pending drops
+    let activeBalls = [];
+    let ballsToDrop = 0;
+    let isProcessingDrop = false;
+    let currentSessionBalls = []; // Balls yang sedang berjalan dalam sesi ini
+    let pendingBalanceUpdate = 0; // Accumulator untuk update balance
 
     let multiplierAreas = [];
     
@@ -25,7 +32,7 @@
     let spawnerDir = 1;
     const spawnerSpeed = 0.5;
     let animationId = null;
-    let isProcessingBet = false;
+    let isGameRunning = true;
 
     const RISK_MULTIPLIERS = {
         low: [5, 4, 3, 2, 1, 0.5, 1, 2, 3, 4, 5],
@@ -105,6 +112,38 @@
                 ctx.fill();
             }
         }
+        
+        // Draw multiplier slots display
+        updateMultiplierAreas();
+        drawMultiplierSlotsDisplay();
+    }
+    
+    function drawMultiplierSlotsDisplay() {
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper) return;
+        
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const startX = wrapperRect.left - canvasRect.left;
+        const width = wrapperRect.width;
+        const segmentWidth = width / multipliers.length;
+        
+        for (let i = 0; i < multipliers.length; i++) {
+            const mult = multipliers[i];
+            let color = '#9ca3af';
+            if (mult >= 5) color = '#f87171';
+            else if (mult >= 2) color = '#fbbf24';
+            else if (mult >= 1) color = '#34d399';
+            
+            ctx.font = 'bold 10px Inter';
+            ctx.fillStyle = color;
+            ctx.textAlign = 'center';
+            const x = startX + (i * segmentWidth) + (segmentWidth / 2);
+            const y = canvas.height - 15;
+            ctx.fillText(mult.toString(), x, y);
+        }
     }
 
     // --- GAME LOOP (ANIMASI) ---
@@ -117,7 +156,8 @@
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
-        balls.forEach((ball, index) => {
+        for (let i = balls.length - 1; i >= 0; i--) {
+            const ball = balls[i];
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
@@ -174,22 +214,315 @@
 
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444';
+            
+            // Gradient untuk bola
+            const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
+            gradient.addColorStop(0, '#ff6b6b');
+            gradient.addColorStop(1, '#ef4444');
+            ctx.fillStyle = gradient;
             ctx.fill();
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#ef4444';
+            ctx.fill();
+            ctx.shadowBlur = 0;
 
-            checkMultiplierWalls(ball);
-
-            let isHit = false;
-            if (ball.y + BALL_RADIUS >= canvas.height - 20) {
-                isHit = checkMultiplierHit(ball);
+            // Check if ball hit multiplier area
+            const isHit = checkMultiplierHit(ball);
+            
+            if (isHit || ball.y > canvas.height + 100) {
+                balls.splice(i, 1);
+                checkAllBallsComplete();
             }
-
-            if (ball.y > canvas.height + 50 || isHit) {
-                balls.splice(index, 1);
-            }
-        });
+        }
 
         animationId = requestAnimationFrame(update);
+    }
+    
+    function checkAllBallsComplete() {
+        if (balls.length === 0 && isProcessingDrop) {
+            // Semua bola sudah selesai, update final balance
+            setTimeout(async () => {
+                await finalizeBalanceUpdate();
+                isProcessingDrop = false;
+                currentSessionBalls = [];
+                console.log('✅ All balls completed, session finished');
+            }, 500);
+        }
+    }
+    
+    async function finalizeBalanceUpdate() {
+        if (pendingBalanceUpdate !== 0 && telegramUser?.id) {
+            try {
+                // Kirim net win/loss ke server
+                const response = await fetch(`${API_BASE}/api/plinko/update-net-balance`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegram_id: telegramUser.id,
+                        net_change: pendingBalanceUpdate
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadUserBalance();
+                    console.log(`✅ Balance updated: ${pendingBalanceUpdate > 0 ? '+' : ''}${pendingBalanceUpdate} TON`);
+                }
+            } catch (error) {
+                console.error('Error finalizing balance:', error);
+                await loadUserBalance(); // Reload anyway
+            }
+            pendingBalanceUpdate = 0;
+        }
+    }
+
+    // Fungsi untuk update area multiplier
+    function updateMultiplierAreas() {
+        const wrapper = document.querySelector('.multiplier-slots-wrapper');
+        if (!wrapper || !canvas) return;
+        
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const canvasRect = canvas.getBoundingClientRect();
+        
+        const startX = wrapperRect.left - canvasRect.left;
+        const width = wrapperRect.width;
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        const segmentWidth = width / multipliers.length;
+        
+        multiplierAreas = [];
+        for (let i = 0; i < multipliers.length; i++) {
+            multiplierAreas.push({
+                index: i,
+                multiplier: multipliers[i],
+                x: startX + (i * segmentWidth),
+                width: segmentWidth,
+                bottomY: canvas.height - 15
+            });
+        }
+    }
+
+    function checkMultiplierHit(ball) {
+        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
+        
+        updateMultiplierAreas();
+        
+        for (const area of multiplierAreas) {
+            if (ball.x >= area.x && ball.x <= area.x + area.width) {
+                const winAmount = ball.bet * area.multiplier;
+                const netProfit = winAmount - ball.bet;
+                
+                // Accumulate net profit/loss
+                pendingBalanceUpdate += netProfit;
+                
+                animateSlot(area.index);
+                showResult(area.multiplier, winAmount, netProfit);
+                
+                // Simpan hasil ke backend
+                const roundHash = generateRoundHash();
+                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
+                
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    function showResult(multiplier, winAmount, netProfit) {
+        const resultDiv = document.getElementById('resultDisplay');
+        const resultMultiplier = document.getElementById('resultMultiplier');
+        const resultWin = document.getElementById('resultWin');
+        
+        resultDiv.style.display = 'block';
+        resultMultiplier.textContent = `${multiplier}x`;
+        
+        const netText = netProfit >= 0 ? `+${winAmount.toFixed(2)}` : winAmount.toFixed(2);
+        resultWin.textContent = `${netText} TON`;
+        
+        if (multiplier >= 5) {
+            resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
+            resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+        } else if (multiplier >= 2) {
+            resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
+            resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+        } else {
+            resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
+            resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+        }
+        
+        setTimeout(() => {
+            resultDiv.style.display = 'none';
+        }, 3000);
+    }
+
+    async function updateUserBalance(telegramId, netChange) {
+        if (netChange === 0) return;
+        try {
+            await fetch(`${API_BASE}/api/plinko/update-net-balance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    net_change: netChange
+                })
+            });
+        } catch (error) {
+            console.error('Error updating balance:', error);
+        }
+    }
+
+    function animateSlot(slotIndex) {
+        const slots = document.querySelectorAll('.multiplier-slot');
+        if (slots[slotIndex]) {
+            slots[slotIndex].classList.add('active', 'pulse');
+            
+            setTimeout(() => {
+                slots[slotIndex].classList.remove('active', 'pulse');
+            }, 800);
+        }
+    }
+
+    function renderMultiplierSlots() {
+        const wrapper = document.getElementById('multiplierSlotsWrapper');
+        if (!wrapper) return;
+        
+        const multipliers = RISK_MULTIPLIERS[currentRisk];
+        
+        let html = '';
+        for (let i = 0; i < multipliers.length; i++) {
+            const mult = multipliers[i];
+            let riskClass = '';
+            
+            if (mult >= 5) riskClass = 'high';
+            else if (mult >= 2) riskClass = 'medium';
+            else if (mult >= 1) riskClass = 'low';
+            else riskClass = 'zero';
+            
+            const displayValue = mult % 1 === 0 ? mult : mult.toFixed(1);
+            
+            html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
+                        ${displayValue}
+                    </div>`;
+        }
+        
+        wrapper.innerHTML = html;
+    }
+
+    // Generate random round hash
+    function generateRoundHash() {
+        return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
+    }
+
+    // ==================== PERBAIKAN UTAMA: DROP BALLS ====================
+    async function dropBalls() {
+        console.log('🎯 dropBalls called - bet:', currentBetAmount, 'count:', ballCount);
+        
+        if (isProcessingDrop) {
+            alert('Masih ada bola yang berjalan, tunggu sebentar...');
+            return;
+        }
+        
+        if (currentBetAmount <= 0.1) {
+            alert('Silakan atur taruhan terlebih dahulu! Klik pada bagian BET INFO.');
+            return;
+        }
+        
+        if (ballCount <= 0) {
+            alert('Pilih jumlah bola terlebih dahulu!');
+            return;
+        }
+        
+        const totalBet = currentBetAmount * ballCount;
+        
+        // Check balance FIRST
+        const currentBalance = await loadUserBalance();
+        if (currentBalance < totalBet) {
+            alert(`Saldo tidak cukup! Saldo: ${currentBalance.toFixed(2)} TON, dibutuhkan: ${totalBet.toFixed(2)} TON`);
+            return;
+        }
+        
+        isProcessingDrop = true;
+        pendingBalanceUpdate = 0;
+        
+        // 1. DEDUCT TOTAL BET dari balance (sekali saja)
+        try {
+            const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramUser?.id,
+                    amount: totalBet
+                })
+            });
+            
+            const deductData = await deductResponse.json();
+            if (!deductData.success) {
+                alert(deductData.error || 'Gagal memotong saldo');
+                isProcessingDrop = false;
+                return;
+            }
+            
+            // Update UI balance
+            await loadUserBalance();
+            console.log(`💰 Balance deducted: ${totalBet} TON`);
+            
+            // 2. JATUHKAN BOLA satu per satu dengan delay
+            for (let i = 0; i < ballCount; i++) {
+                setTimeout(() => {
+                    dropSingleBall();
+                }, i * 250); // Delay 250ms antar bola
+            }
+            
+        } catch (error) {
+            console.error('Error in dropBalls:', error);
+            alert('Terjadi kesalahan. Silakan coba lagi.');
+            isProcessingDrop = false;
+        }
+    }
+    
+    // Fungsi untuk menjatuhkan satu bola
+    function dropSingleBall() {
+        // Random offset untuk variasi
+        const randomOffset = (Math.random() - 0.5) * 16;
+        const startX = Math.min(Math.max(spawnerX + randomOffset, 20), canvas.width - 20);
+        
+        balls.push({
+            id: Date.now() + Math.random(),
+            x: startX,
+            y: 28,
+            vx: (Math.random() - 0.5) * 2.5,
+            vy: 1,
+            bet: currentBetAmount
+        });
+        
+        console.log(`🎾 Ball dropped, active balls: ${balls.length}`);
+    }
+
+    // ==================== BALANCE FUNCTIONS ====================
+    async function loadUserBalance() {
+        try {
+            const tg = window.Telegram.WebApp;
+            const user = tg.initDataUnsafe?.user;
+            
+            if (!user || !user.id) {
+                document.getElementById('userBalance').textContent = '0 TON';
+                return 0;
+            }
+            
+            const response = await fetch(`${API_BASE}/api/games/balance/${user.id}`);
+            const data = await response.json();
+            
+            const balanceEl = document.getElementById('userBalance');
+            const panelBalanceEl = document.getElementById('panelUserBalance');
+            
+            if (data.success) {
+                const balanceText = data.balance.toFixed(2) + ' TON';
+                if (balanceEl) balanceEl.textContent = balanceText;
+                if (panelBalanceEl) panelBalanceEl.textContent = balanceText;
+                return data.balance;
+            }
+        } catch (error) {
+            console.error('Error loading balance:', error);
+        }
+        return 0;
     }
 
     // Load stats from API
@@ -252,14 +585,14 @@
             
             let html = '';
             for (const game of data.history) {
-                const winClass = game.win_amount > 0 ? 'win-positive' : '';
+                const winClass = game.win_amount > game.bet_amount ? 'win-positive' : '';
                 html += `
                     <tr>
                         <td><code>${game.round_hash.substring(0, 10)}...</code></td>
                         <td>${game.username || 'Anonymous'}</td>
-                        <td>${game.bet_amount.toLocaleString()}</td>
+                        <td>${game.bet_amount.toFixed(2)} TON</td>
                         <td><strong>${game.multiplier}x</strong></td>
-                        <td class="${winClass}">${game.win_amount.toLocaleString()}</td>
+                        <td class="${winClass}">${game.win_amount.toFixed(2)} TON</td>
                         <td>${new Date(game.created_at).toLocaleString()}</td>
                     </tr>
                 `;
@@ -291,319 +624,10 @@
             if (data.success) {
                 loadStats();
                 loadHistory();
-                await loadUserBalance();
             }
         } catch (error) {
             console.error('Error saving game:', error);
         }
-    }
-
-    // Fungsi untuk update area multiplier
-    function updateMultiplierAreas() {
-        const wrapper = document.querySelector('.multiplier-slots-wrapper');
-        if (!wrapper) return;
-        
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        const startX = wrapperRect.left - canvasRect.left;
-        const width = wrapperRect.width;
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const segmentWidth = width / multipliers.length;
-        
-        multiplierAreas = [];
-        for (let i = 0; i < multipliers.length; i++) {
-            multiplierAreas.push({
-                index: i,
-                multiplier: multipliers[i],
-                x: startX + (i * segmentWidth),
-                width: segmentWidth,
-                bottomY: canvas.height - 15
-            });
-        }
-    }
-
-    function checkMultiplierWalls(ball) {
-        if (ball.y < canvas.height - 80) return false;
-        
-        const wrapper = document.querySelector('.multiplier-slots-wrapper');
-        if (!wrapper) return false;
-        
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        const leftWall = wrapperRect.left - canvasRect.left;
-        const rightWall = wrapperRect.right - canvasRect.left;
-        
-        let hit = false;
-        
-        if (ball.x - BALL_RADIUS < leftWall && ball.vx < 0) {
-            ball.x = leftWall + BALL_RADIUS;
-            ball.vx *= -BOUNCE;
-            hit = true;
-        }
-        
-        if (ball.x + BALL_RADIUS > rightWall && ball.vx > 0) {
-            ball.x = rightWall - BALL_RADIUS;
-            ball.vx *= -BOUNCE;
-            hit = true;
-        }
-        
-        return hit;
-    }
-
-    function checkMultiplierHit(ball) {
-        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
-        
-        updateMultiplierAreas();
-        
-        for (const area of multiplierAreas) {
-            if (ball.x >= area.x && ball.x <= area.x + area.width) {
-                const winAmount = Math.floor(ball.bet * area.multiplier);
-                
-                animateSlot(area.index);
-                
-                const resultDiv = document.getElementById('resultDisplay');
-                const resultMultiplier = document.getElementById('resultMultiplier');
-                const resultWin = document.getElementById('resultWin');
-                
-                resultDiv.style.display = 'block';
-                resultMultiplier.textContent = `${area.multiplier}x`;
-                resultWin.textContent = `Win: ${winAmount.toLocaleString()}`;
-                
-                if (area.multiplier >= 5) {
-                    resultDiv.style.background = 'rgba(239, 68, 68, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-                } else if (area.multiplier >= 2) {
-                    resultDiv.style.background = 'rgba(245, 158, 11, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(245, 158, 11, 0.5)';
-                } else {
-                    resultDiv.style.background = 'rgba(16, 185, 129, 0.2)';
-                    resultDiv.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-                }
-                
-                setTimeout(() => {
-                    resultDiv.style.display = 'none';
-                }, 3000);
-                
-                // Update balance setelah bola mendarat
-                if (winAmount > ball.bet) {
-                    updateUserBalance(telegramUser?.id, winAmount - ball.bet);
-                }
-                
-                // Simpan hasil ke backend
-                const roundHash = generateRoundHash();
-                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
-                
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Update balance setelah menang
-    async function updateUserBalance(telegramId, profit) {
-        if (profit <= 0) return;
-        try {
-            await fetch(`${API_BASE}/api/plinko/add-balance`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegram_id: telegramId,
-                    amount: profit
-                })
-            });
-            await loadUserBalance();
-        } catch (error) {
-            console.error('Error updating balance:', error);
-        }
-    }
-
-    function animateSlot(slotIndex) {
-        const slots = document.querySelectorAll('.multiplier-slot');
-        if (slots[slotIndex]) {
-            slots[slotIndex].classList.add('active', 'pulse');
-            
-            setTimeout(() => {
-                slots[slotIndex].classList.remove('active', 'pulse');
-            }, 800);
-        }
-    }
-
-    function renderMultiplierSlots() {
-        const wrapper = document.getElementById('multiplierSlotsWrapper');
-        if (!wrapper) return;
-        
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        
-        let html = '';
-        for (let i = 0; i < multipliers.length; i++) {
-            const mult = multipliers[i];
-            let riskClass = '';
-            
-            if (mult >= 5) riskClass = 'high';
-            else if (mult >= 2) riskClass = 'medium';
-            else if (mult >= 1) riskClass = 'low';
-            else riskClass = 'zero';
-            
-            const displayValue = mult % 1 === 0 ? mult : mult.toFixed(1);
-            
-            html += `<div class="multiplier-slot ${riskClass}" data-index="${i}" data-multiplier="${mult}">
-                        ${displayValue}
-                    </div>`;
-        }
-        
-        wrapper.innerHTML = html;
-    }
-
-    // Generate random round hash
-    function generateRoundHash() {
-        return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
-    }
-
-    // ==================== PERBAIKAN UTAMA: DROP BALLS ====================
-    async function dropBalls() {
-        console.log('dropBalls called - currentBetAmount:', currentBetAmount, 'ballCount:', ballCount);
-        
-        if (isProcessingBet) {
-            alert('Masih ada proses berjalan, tunggu sebentar...');
-            return;
-        }
-        
-        if (currentBetAmount <= 0) {
-            alert('Silakan place bet terlebih dahulu! Klik pada bagian BET INFO untuk mengatur taruhan.');
-            return;
-        }
-        
-        if (ballCount <= 0) {
-            alert('Pilih jumlah bola terlebih dahulu!');
-            return;
-        }
-        
-        const totalBet = currentBetAmount * ballCount;
-        
-        // Check balance
-        const currentBalance = await loadUserBalance();
-        if (currentBalance < totalBet) {
-            alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON, dibutuhkan: ${totalBet.toFixed(2)} TON`);
-            return;
-        }
-        
-        isProcessingBet = true;
-        
-        // Deduct balance FIRST sebelum bola jatuh
-        try {
-            const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    telegram_id: telegramUser?.id,
-                    amount: totalBet
-                })
-            });
-            
-            const deductData = await deductResponse.json();
-            if (!deductData.success) {
-                alert(deductData.error || 'Gagal memotong saldo');
-                isProcessingBet = false;
-                return;
-            }
-            
-            await loadUserBalance();
-            
-            // Setelah saldo dipotong, baru jatuhkan bola satu per satu
-            for (let i = 0; i < ballCount; i++) {
-                setTimeout(() => {
-                    dropSingleBall();
-                }, i * 300); // Delay 300ms antar bola
-            }
-            
-        } catch (error) {
-            console.error('Error in dropBalls:', error);
-            alert('Terjadi kesalahan. Silakan coba lagi.');
-            isProcessingBet = false;
-        }
-    }
-    
-    // Fungsi untuk menjatuhkan satu bola
-    function dropSingleBall() {
-        // Generate random X position untuk variasi
-        const randomOffset = (Math.random() - 0.5) * 15;
-        const startX = spawnerX + randomOffset;
-        
-        balls.push({
-            x: startX,
-            y: 25,
-            vx: (Math.random() - 0.5) * 2,
-            vy: 0,
-            bet: currentBetAmount
-        });
-        
-        // Reset processing flag setelah semua bola selesai (akan di-reset setelah delay terakhir)
-        // Kita track jumlah bola yang sedang berjalan
-        if (balls.length === 0) {
-            // Tidak perlu reset di sini, tunggu semua bola selesai
-        }
-    }
-    
-    // Cek apakah semua bola sudah selesai
-    function checkAllBallsCompleted() {
-        if (balls.length === 0 && isProcessingBet) {
-            // Semua bola sudah selesai
-            setTimeout(() => {
-                isProcessingBet = false;
-            }, 500);
-        }
-    }
-    
-    // Override checkMultiplierHit untuk memanggil checkAllBallsCompleted
-    const originalCheckMultiplierHit = checkMultiplierHit;
-    window.checkMultiplierHit = function(ball) {
-        const result = originalCheckMultiplierHit(ball);
-        if (result) {
-            setTimeout(() => checkAllBallsCompleted(), 100);
-        }
-        return result;
-    };
-
-    // ==================== BALANCE FUNCTIONS ====================
-    async function loadUserBalance() {
-        try {
-            const tg = window.Telegram.WebApp;
-            const user = tg.initDataUnsafe?.user;
-            
-            if (!user || !user.id) {
-                document.getElementById('userBalance').textContent = '0 TON';
-                return 0;
-            }
-            
-            const response = await fetch(`${API_BASE}/api/games/auth`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegram_id: user.id,
-                    username: user.username || '',
-                    first_name: user.first_name || 'User'
-                })
-            });
-            
-            const data = await response.json();
-            const balanceEl = document.getElementById('userBalance');
-            const panelBalanceEl = document.getElementById('panelUserBalance');
-            
-            if (data.success) {
-                const balanceText = data.balance.toFixed(2) + ' TON';
-                if (balanceEl) balanceEl.textContent = balanceText;
-                if (panelBalanceEl) panelBalanceEl.textContent = balanceText;
-                return data.balance;
-            }
-        } catch (error) {
-            console.error('Error loading balance:', error);
-        }
-        return 0;
     }
 
     // ==================== PANEL FUNCTIONS ====================
@@ -697,7 +721,7 @@
         if (panel) panel.style.display = 'none';
         if (chevron) chevron.className = 'fas fa-chevron-up';
         
-        alert(`✅ Taruhan ${amount.toFixed(2)} TON siap!`);
+        console.log(`✅ Bet confirmed: ${amount.toFixed(2)} TON`);
     }
 
     function setBallCount(count) {
@@ -756,10 +780,6 @@
     function fixInputNumber() {
         const betInput = document.getElementById('panelBetAmount');
         if (betInput) {
-            if (betInput.value === '0') {
-                betInput.value = '';
-            }
-            
             betInput.addEventListener('input', function(e) {
                 let value = this.value;
                 if (value === '' || value === null) {
@@ -768,12 +788,6 @@
                 let numValue = parseFloat(value);
                 if (!isNaN(numValue) && numValue < 0.1) {
                     this.value = 0.1;
-                }
-            });
-            
-            betInput.addEventListener('focus', function() {
-                if (this.value === '0') {
-                    this.value = '';
                 }
             });
             
@@ -868,8 +882,8 @@
         
         update();
         
-        console.log('✅ Plinko Games Ready with Backend Integration');
-        console.log('Current bet amount:', currentBetAmount);
+        console.log('✅ Plinko Games Ready');
+        console.log('Current bet amount:', currentBetAmount, 'TON');
     }
     
     init();
