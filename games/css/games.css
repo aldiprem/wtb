@@ -404,8 +404,6 @@ body {
     margin-top: 12px;
 }
 
-/* Tambahkan di games/css/games.css - style untuk header button */
-
 .deposit-header-btn {
     background: linear-gradient(135deg, #3b82f6, #1d4ed8);
     border: none;
@@ -414,6 +412,7 @@ body {
     border-radius: 20px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     cursor: pointer;
     font-size: 12px;
@@ -423,7 +422,11 @@ body {
 }
 
 .deposit-header-btn i {
-    font-size: 14px;
+    font-size: 12px;
+}
+
+.deposit-header-btn span {
+    font-size: 12px;
 }
 
 .deposit-header-btn:hover {

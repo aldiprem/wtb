@@ -1,4 +1,4 @@
-// games/js/games.js - VERSION DENGAN CONNECT WALLET DI HEADER
+// games/js/games.js - VERSION FIXED
 
 document.addEventListener("DOMContentLoaded", () => {
     
@@ -60,35 +60,29 @@ document.addEventListener("DOMContentLoaded", () => {
         const headerBtn = document.getElementById('headerDepositBtn');
         if (!headerBtn) return;
         
-        if (isWalletConnected && tonConnectUI?.connected) {
-            // Wallet connected - tampilkan tombol deposit (hijau)
+        // Clear existing content
+        headerBtn.innerHTML = '';
+        
+        if (isWalletConnected && tonConnectUI && tonConnectUI.account) {
+            // Wallet connected - tampilkan tombol deposit (hijau) dengan icon plus
             headerBtn.innerHTML = '<i class="fas fa-plus"></i>';
             headerBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
             headerBtn.style.width = '28px';
+            headerBtn.style.height = '28px';
+            headerBtn.style.padding = '0';
             headerBtn.style.borderRadius = '50%';
+            headerBtn.style.gap = '0';
             headerBtn.title = 'Deposit TON';
         } else {
             // Wallet not connected - tampilkan tombol connect wallet (biru)
-            headerBtn.innerHTML = '<i class="fas fa-plug"></i>';
+            headerBtn.innerHTML = '<i class="fas fa-plug"></i><span>Connect</span>';
             headerBtn.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
             headerBtn.style.width = 'auto';
+            headerBtn.style.height = 'auto';
             headerBtn.style.padding = '6px 12px';
             headerBtn.style.borderRadius = '20px';
             headerBtn.style.gap = '6px';
             headerBtn.title = 'Connect Wallet';
-            
-            // Tambahkan teks "Connect" jika diinginkan
-            const spanText = document.createElement('span');
-            spanText.textContent = 'Connect';
-            spanText.style.fontSize = '12px';
-            spanText.style.marginLeft = '4px';
-            // Hapus child sebelumnya selain icon
-            while (headerBtn.children.length > 1) {
-                headerBtn.removeChild(headerBtn.lastChild);
-            }
-            if (!headerBtn.querySelector('span')) {
-                headerBtn.appendChild(spanText);
-            }
         }
     }
 
@@ -182,8 +176,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==================== DEPOSIT TON ====================
     async function processDepositTON() {
         if (!tonConnectUI || !tonConnectUI.connected) {
-            // Jika belum connect, trigger connect
-            await tonConnectUI.connect();
+            // Jika belum connect, trigger connect via modal
+            if (tonConnectUI) {
+                await tonConnectUI.openModal();
+            }
             return;
         }
 
@@ -270,7 +266,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('depositForm').style.display = 'none';
         document.getElementById('depositInstructions').style.display = 'none';
         
-        if (isWalletConnected && tonConnectUI?.connected) {
+        if (isWalletConnected && tonConnectUI && tonConnectUI.account) {
             document.getElementById('depositWalletStatus').style.display = 'none';
             document.getElementById('depositForm').style.display = 'block';
             document.getElementById('depositAddress').textContent = webAddress;
@@ -292,19 +288,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ==================== HEADER BUTTON HANDLER ====================
-    function handleHeaderButtonClick() {
-        if (isWalletConnected && tonConnectUI?.connected) {
+    async function handleHeaderButtonClick() {
+        if (isWalletConnected && tonConnectUI && tonConnectUI.account) {
             // Jika sudah connect, buka modal deposit
             showDepositModal();
         } else {
-            // Jika belum connect, trigger connect wallet
+            // Jika belum connect, buka modal wallet
             if (tonConnectUI) {
-                tonConnectUI.connect();
+                await tonConnectUI.openModal();
             } else {
                 // Init dulu kalau belum
                 initTonConnect();
-                setTimeout(() => {
-                    if (tonConnectUI) tonConnectUI.connect();
+                setTimeout(async () => {
+                    if (tonConnectUI) {
+                        await tonConnectUI.openModal();
+                    }
                 }, 500);
             }
         }
@@ -386,4 +384,10 @@ window.copyDepositAddress = function() {
         navigator.clipboard.writeText(address);
         alert('Address copied!');
     }
+};
+
+// Global function close modal
+window.closeModal = function() {
+    const modal = document.getElementById('depositModal');
+    if (modal) modal.style.display = 'none';
 };

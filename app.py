@@ -280,6 +280,28 @@ def serve_profile_page():
     """Halaman profil user"""
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'profil.html')
 
+# ==================== ROUTE UNTUK ICON MANIFEST ====================
+
+@app.route('/icon.png')
+def serve_icon():
+    """Serve icon for TON Connect manifest"""
+    icon_path = os.path.join(base_dir, 'image', 'icon-manifest.jpg')
+    if os.path.exists(icon_path):
+        return send_from_directory(os.path.join(base_dir, 'image'), 'icon-manifest.jpg', mimetype='image/jpeg')
+    else:
+        return '', 404
+
+@app.route('/tonconnect-manifest.json')
+def serve_tonconnect_manifest():
+    manifest = {
+        "url": "https://companel.shop",
+        "name": "BarackGift",
+        "iconUrl": "https://companel.shop/icon.png",
+        "termsOfUseUrl": "https://companel.shop/terms",
+        "privacyPolicyUrl": "https://companel.shop/privacy"
+    }
+    return jsonify(manifest)
+
 # ==================== ROUTE UNTUK IMAGE SERVICE ====================
 
 @app.route('/ii', methods=['GET'])
