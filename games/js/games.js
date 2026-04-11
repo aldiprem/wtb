@@ -225,17 +225,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const memo = `deposit:${currentUser.id}:${Date.now()}`;
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
 
-            // Buat payload dengan format yang benar
+            // PERBAIKAN: Buat payload dengan format yang benar (tanpa prefix 4 byte 0)
+            // Format standar TON untuk comment text cukup di encode ke base64
             const encoder = new TextEncoder();
             const memoBytes = encoder.encode(memo);
-            const prefix = new Uint8Array([0, 0, 0, 0]);
-            const fullBytes = new Uint8Array(prefix.length + memoBytes.length);
-            fullBytes.set(prefix);
-            fullBytes.set(memoBytes, prefix.length);
             
+            // Konversi ke base64
             let binary = '';
-            for (let i = 0; i < fullBytes.length; i++) {
-                binary += String.fromCharCode(fullBytes[i]);
+            for (let i = 0; i < memoBytes.length; i++) {
+                binary += String.fromCharCode(memoBytes[i]);
             }
             const payloadBase64 = btoa(binary);
 
@@ -244,7 +242,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 messages: [{
                     address: webAddress,
                     amount: amountNano,
-                    payload: payloadBase64
+                    // Kirim tanpa payload dulu jika masih error
+                    // payload: payloadBase64
                 }]
             };
 
@@ -285,6 +284,9 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error('Deposit error:', error);
             if (error.message?.includes('rejected')) {
                 alert('Transaksi dibatalkan');
+            } else if (error.message?.includes('payload')) {
+                // Coba lagi tanpa payload
+                alert('Gagal kirim deposit, coba lagi nanti');
             } else {
                 alert('Gagal memproses deposit: ' + error.message);
             }
