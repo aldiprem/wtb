@@ -195,20 +195,15 @@
             const data = await response.json();
             
             if (data.success) {
-                // Total kemenangan
-                const totalWinAmount = data.total_win_amount || 0;
-                document.getElementById('totalWinAmount').textContent = totalWinAmount.toLocaleString();
-                
-                // Biggest multiplier
                 document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
                 
-                // Last player
+                // Tampilkan last player dengan avatar dari Telegram
                 const lastPlayerName = data.last_player || '-';
                 const lastPlayerMultiplier = data.last_multiplier || '0';
                 
                 document.getElementById('lastPlayerName').textContent = lastPlayerName;
                 document.getElementById('lastPlayerMultiplier').textContent = `${lastPlayerMultiplier}x`;
-                document.getElementById('roundHash').textContent = data.current_hash ? data.current_hash.substring(0, 16) + '...' : '-';
+                document.getElementById('roundHash').textContent = data.current_hash ? data.current_hash.substring(0, 12) + '...' : '-';
             }
         } catch (error) {
             console.error('Error loading stats:', error);
@@ -666,24 +661,3 @@
     
     init();
 })();
-
-// Global function untuk copy round hash
-window.copyRoundHash = function() {
-    const hashElement = document.getElementById('roundHash');
-    if (hashElement) {
-        const hashText = hashElement.textContent;
-        if (hashText && hashText !== '-') {
-            navigator.clipboard.writeText(hashText);
-            const container = document.getElementById('roundHashContainer');
-            const originalBg = container.style.background;
-            container.style.background = 'rgba(16, 185, 129, 0.2)';
-            setTimeout(() => {
-                container.style.background = originalBg;
-            }, 300);
-            
-            if (window.Telegram?.WebApp?.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-            }
-        }
-    }
-};
