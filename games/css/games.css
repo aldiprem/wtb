@@ -403,3 +403,47 @@ body {
     text-align: center;
     margin-top: 12px;
 }
+
+/* Tambahkan di games/css/games.css - style untuk header button */
+
+.deposit-header-btn {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    border: none;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.deposit-header-btn i {
+    font-size: 14px;
+}
+
+.deposit-header-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Saat wallet connected (akan diubah via JS) */
+.deposit-header-btn.wallet-connected {
+    background: linear-gradient(135deg, #10b981, #059669);
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+.deposit-header-btn.wallet-connected i {
+    font-size: 16px;
+}
+
+.deposit-header-btn.wallet-connected span {
+    display: none;
+}

@@ -1,4 +1,4 @@
-// games/js/games.js - REPLACE SELURUH ISI dengan ini
+// games/js/games.js - VERSION DENGAN CONNECT WALLET DI HEADER
 
 document.addEventListener("DOMContentLoaded", () => {
     
@@ -10,7 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const user = initDataUnsafe.user;
     let currentUser = user;
     let tonConnectUI = null;
-    let webAddress = 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra'; // Alamat wallet merchant
+    let isWalletConnected = false;
+    let webAddress = 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra';
 
     // ==================== TELEGRAM USER ====================
     async function loadUserBalance(telegramId, username, firstName) {
@@ -54,11 +55,48 @@ document.addEventListener("DOMContentLoaded", () => {
         return false;
     }
 
+    // ==================== UPDATE HEADER DEPOSIT BUTTON ====================
+    function updateHeaderDepositButton() {
+        const headerBtn = document.getElementById('headerDepositBtn');
+        if (!headerBtn) return;
+        
+        if (isWalletConnected && tonConnectUI?.connected) {
+            // Wallet connected - tampilkan tombol deposit (hijau)
+            headerBtn.innerHTML = '<i class="fas fa-plus"></i>';
+            headerBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+            headerBtn.style.width = '28px';
+            headerBtn.style.borderRadius = '50%';
+            headerBtn.title = 'Deposit TON';
+        } else {
+            // Wallet not connected - tampilkan tombol connect wallet (biru)
+            headerBtn.innerHTML = '<i class="fas fa-plug"></i>';
+            headerBtn.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
+            headerBtn.style.width = 'auto';
+            headerBtn.style.padding = '6px 12px';
+            headerBtn.style.borderRadius = '20px';
+            headerBtn.style.gap = '6px';
+            headerBtn.title = 'Connect Wallet';
+            
+            // Tambahkan teks "Connect" jika diinginkan
+            const spanText = document.createElement('span');
+            spanText.textContent = 'Connect';
+            spanText.style.fontSize = '12px';
+            spanText.style.marginLeft = '4px';
+            // Hapus child sebelumnya selain icon
+            while (headerBtn.children.length > 1) {
+                headerBtn.removeChild(headerBtn.lastChild);
+            }
+            if (!headerBtn.querySelector('span')) {
+                headerBtn.appendChild(spanText);
+            }
+        }
+    }
+
     // ==================== TON CONNECT ====================
-    function initTonConnectForDeposit() {
+    function initTonConnect() {
         if (!window.TON_CONNECT_UI) {
             console.log('Waiting for TON Connect...');
-            setTimeout(initTonConnectForDeposit, 500);
+            setTimeout(initTonConnect, 500);
             return;
         }
         
@@ -70,20 +108,36 @@ document.addEventListener("DOMContentLoaded", () => {
             language: 'en'
         });
 
+        // Listener status wallet
         tonConnectUI.onStatusChange(async (wallet) => {
-            const walletStatus = document.getElementById('depositWalletStatus');
-            const depositForm = document.getElementById('depositForm');
+            console.log('Wallet status changed:', wallet);
             
             if (wallet && currentUser) {
-                walletStatus.style.display = 'none';
-                depositForm.style.display = 'block';
+                isWalletConnected = true;
+                updateHeaderDepositButton();
                 
                 // Update wallet address di database
                 await updateUserWallet(currentUser.id, wallet.account.address);
-                document.getElementById('depositAddress').textContent = webAddress;
+                
+                // Update modal jika terbuka
+                const walletStatus = document.getElementById('depositWalletStatus');
+                const depositForm = document.getElementById('depositForm');
+                if (walletStatus && depositForm) {
+                    walletStatus.style.display = 'none';
+                    depositForm.style.display = 'block';
+                    document.getElementById('depositAddress').textContent = webAddress;
+                }
             } else {
-                walletStatus.style.display = 'block';
-                depositForm.style.display = 'none';
+                isWalletConnected = false;
+                updateHeaderDepositButton();
+                
+                // Update modal
+                const walletStatus = document.getElementById('depositWalletStatus');
+                const depositForm = document.getElementById('depositForm');
+                if (walletStatus && depositForm) {
+                    walletStatus.style.display = 'block';
+                    depositForm.style.display = 'none';
+                }
             }
         });
     }
@@ -128,6 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==================== DEPOSIT TON ====================
     async function processDepositTON() {
         if (!tonConnectUI || !tonConnectUI.connected) {
+            // Jika belum connect, trigger connect
             await tonConnectUI.connect();
             return;
         }
@@ -166,7 +221,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
 
-            // Verifikasi deposit ke backend
             const verifyResponse = await fetch('/api/games/verify-ton-deposit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -186,7 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('depositInstructions').style.display = 'block';
                 document.getElementById('depositTxHash').textContent = result.boc.slice(0, 30) + '...';
                 
-                // Refresh balance
                 const fullName = (currentUser.first_name || '') + (currentUser.last_name ? ' ' + currentUser.last_name : '');
                 await loadUserBalance(currentUser.id, currentUser.username || '', fullName);
                 
@@ -209,31 +262,52 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // ==================== MODAL FUNCTIONS ====================
     function showDepositModal() {
         const modal = document.getElementById('depositModal');
         if (!modal) return;
         
         document.getElementById('depositForm').style.display = 'none';
         document.getElementById('depositInstructions').style.display = 'none';
-        document.getElementById('depositWalletStatus').style.display = 'block';
-        document.getElementById('tonAmount').value = '1.0';
         
-        modal.style.display = 'flex';
-        
-        // Init TON Connect if not already
-        if (!tonConnectUI) {
-            initTonConnectForDeposit();
+        if (isWalletConnected && tonConnectUI?.connected) {
+            document.getElementById('depositWalletStatus').style.display = 'none';
+            document.getElementById('depositForm').style.display = 'block';
+            document.getElementById('depositAddress').textContent = webAddress;
+        } else {
+            document.getElementById('depositWalletStatus').style.display = 'block';
         }
+        
+        document.getElementById('tonAmount').value = '1.0';
+        modal.style.display = 'flex';
     }
 
     function closeModal() {
         const modal = document.getElementById('depositModal');
         if (modal) modal.style.display = 'none';
         
-        // Reset modal state
         document.getElementById('depositForm').style.display = 'none';
         document.getElementById('depositInstructions').style.display = 'none';
         document.getElementById('depositWalletStatus').style.display = 'block';
+    }
+
+    // ==================== HEADER BUTTON HANDLER ====================
+    function handleHeaderButtonClick() {
+        if (isWalletConnected && tonConnectUI?.connected) {
+            // Jika sudah connect, buka modal deposit
+            showDepositModal();
+        } else {
+            // Jika belum connect, trigger connect wallet
+            if (tonConnectUI) {
+                tonConnectUI.connect();
+            } else {
+                // Init dulu kalau belum
+                initTonConnect();
+                setTimeout(() => {
+                    if (tonConnectUI) tonConnectUI.connect();
+                }, 500);
+            }
+        }
     }
 
     // ==================== INITIALIZATION ====================
@@ -246,10 +320,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (balanceEl) balanceEl.textContent = "0";
     }
 
-    // Setup deposit button
+    // Init TON Connect
+    initTonConnect();
+
+    // Setup header deposit button
     const headerDepositBtn = document.getElementById('headerDepositBtn');
     if (headerDepositBtn) {
-        headerDepositBtn.addEventListener('click', showDepositModal);
+        headerDepositBtn.addEventListener('click', handleHeaderButtonClick);
     }
 
     // Setup modal close
@@ -299,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    console.log('✅ Games page ready with TON deposit');
+    console.log('✅ Games page ready with dynamic wallet button');
 });
 
 // Global function untuk copy address
