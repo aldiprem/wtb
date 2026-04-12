@@ -11,7 +11,7 @@ from pathlib import Path
 
 # Konfigurasi path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PLINKO_DB_PATH = os.path.join(BASE_DIR, 'database', 'plinko.db')
+PLINKO_DB_PATH = os.path.join(BASE_DIR, 'games', 'database', 'plinko.db')
 GAMES_DB_PATH = os.path.join(BASE_DIR, 'database', 'games_data.db')
 
 print(f"📁 Plinko DB Path: {PLINKO_DB_PATH}")
@@ -45,7 +45,7 @@ def get_current_time():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def get_plinko_db():
-    """Get database connection for plinko.db"""
+    os.makedirs(os.path.dirname(PLINKO_DB_PATH), exist_ok=True)
     conn = sqlite3.connect(str(PLINKO_DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
@@ -283,9 +283,17 @@ def get_history():
     
     try:
         limit = request.args.get('limit', 50, type=int)
+        
+        # Debug: cek apakah database ada
+        import os
+        print(f"🔍 Checking database at: {PLINKO_DB_PATH}")
+        print(f"   Database exists: {os.path.exists(PLINKO_DB_PATH)}")
+        
         history = get_cheat_history(limit)
-
+        
         print(f"📜 History fetched: {len(history)} records")
+        if len(history) > 0:
+            print(f"   First record: {history[0]}")
         
         return jsonify({"success": True, "history": history})
     except Exception as e:
