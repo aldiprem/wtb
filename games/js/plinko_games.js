@@ -132,34 +132,26 @@
     function update() {
         if (!canvas || !ctx) return;
         
-        // 1. Render Papan dan Spawner
         drawPlinkoBoard();
 
-        // Gerakan spawner (cerobong) di bagian atas
-        const maxRange = 10; 
+        // Gerakan Spawner
         spawnerX += spawnerDir * spawnerSpeed;
-        if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
+        if (Math.abs(spawnerX - canvas.width / 2) > 10) spawnerDir *= -1;
 
-        // 2. Loop Memproses Setiap Bola
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
-            // Terapkan Gravitasi & Fisika Dasar
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Batasi kecepatan agar bola tetap terkendali
+            // Limit Kecepatan
             if (ball.vy > 8) ball.vy = 8;
             if (Math.abs(ball.vx) > 4) ball.vx = ball.vx > 0 ? 4 : -4;
 
-            // Konfigurasi Pin (12 Baris)
-            const startY = 50;
-            const rowSpacing = 22;
-            const colSpacing = 22;
-            const totalRows = 12;
+            const startY = 50, rowSpacing = 22, colSpacing = 22, totalRows = 12;
 
-            // 3. DETEKSI TABRAKAN PIN DENGAN LOGIKA ANTI-STUCK
+            // DETEKSI TABRAKAN PIN
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -172,12 +164,11 @@
                     const dy = ball.y - py;
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    // Jika bola menyentuh Pin
                     if (dist < BALL_RADIUS + PIN_RADIUS) {
-                        const pinId = `pin_${r}_${c}`; // ID Unik untuk setiap titik
+                        const pinId = `pin_${r}_${c}`;
                         const angle = Math.atan2(dy, dx);
 
-                        // --- LOGIKA ANTI-STUCK ---
+                        // --- ANTI-STUCK LOGIC ---
                         if (ball.lastPinId === pinId) {
                             ball.hitCount++;
                         } else {
@@ -186,21 +177,19 @@
                         }
 
                         if (ball.hitCount >= 3) {
-                            // PAKSA TURUN: Jika mantul 3x di titik yang sama
-                            ball.vx *= 0.2; // Redam gerakan samping
-                            ball.vy = Math.abs(ball.vy) + 2; // Paksa dorongan ke bawah
-                            ball.y += 5; // Geser posisi melewati pin
-                            ball.hitCount = 0; // Reset hit
+                            // Paksa bola jatuh jika macet di satu pin
+                            ball.vx *= 0.5;
+                            ball.vy = 3; 
+                            ball.y += 5;
+                            ball.hitCount = 0;
                         } else {
-                            // PANTULAN NORMAL
-                            ball.vx += Math.cos(angle) * 0.8; 
+                            // Pantulan Normal
+                            ball.vx += Math.cos(angle) * 1.2;
                             ball.vy *= -BOUNCE;
-                            
-                            // Tambahan dorongan gravitasi kecil setiap mantul agar tidak naik
-                            ball.vy += 0.5; 
+                            ball.vy += 0.5; // Dorongan gravitasi tambahan
                         }
 
-                        // Koreksi posisi agar bola tidak "tenggelam" di dalam pin
+                        // Koreksi posisi
                         const overlap = (BALL_RADIUS + PIN_RADIUS) - dist;
                         ball.x += Math.cos(angle) * overlap;
                         ball.y += Math.sin(angle) * overlap;
@@ -208,33 +197,25 @@
                 }
             }
 
-            // 4. Batasan Dinding Piramida
+            // Batasan Piramida Samping
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
             if (currentRow >= 0 && currentRow < totalRows) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
-                const leftWall = (canvas.width / 2) - (rWidth / 2) - 12;
-                const rightWall = (canvas.width / 2) + (rWidth / 2) + 12;
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10;
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10;
 
-                if (ball.x < leftWall) {
-                    ball.x = leftWall;
-                    ball.vx *= -BOUNCE;
-                } else if (ball.x > rightWall) {
-                    ball.x = rightWall;
-                    ball.vx *= -BOUNCE;
-                }
+                if (ball.x < leftWall) { ball.x = leftWall; ball.vx *= -BOUNCE; }
+                else if (ball.x > rightWall) { ball.x = rightWall; ball.vx *= -BOUNCE; }
             }
 
-            // 5. Gambar Visual Bola
+            // Gambar Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-            const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
-            gradient.addColorStop(0, '#ff6b6b');
-            gradient.addColorStop(1, '#ef4444');
-            ctx.fillStyle = gradient;
+            ctx.fillStyle = '#ef4444';
             ctx.fill();
 
-            // 6. Logika Selesai (Menyentuh Dasar Border Multiplier)
+            // Logika Finish (Menyentuh Dasar)
             const bottomLine = canvas.height - 2;
             if (ball.y >= bottomLine) {
                 const isHit = checkMultiplierHit(ball);
@@ -245,13 +226,11 @@
                 }
             }
 
-            // Safety Net
             if (ball.y > canvas.height + 50) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
         }
-
         animationId = requestAnimationFrame(update);
     }
     
@@ -476,97 +455,39 @@
         return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
     }
 
-    // PERBAIKAN TOTAL untuk fungsi dropBalls
     async function dropBalls() {
         console.log('🎯 dropBalls called');
-        console.log('🎯 telegramUser:', telegramUser);
 
-        // Contoh saat membuat objek bola baru
-        const newBall = {
-            x: spawnerX,
-            y: 25,
-            vx: (Math.random() - 0.5) * 2,
-            vy: 0,
-            lastPinId: null,
-            hitCount: 0
-        };
-        balls.push(newBall);
-
-        // AMBIL LANGSUNG dari input panel, jangan pakai currentBetAmount yang belum update
+        // 1. Ambil Nilai Bet dari Input
         const betInput = document.getElementById('panelBetAmount');
-        let betAmount = 0;
+        let betAmount = betInput ? parseFloat(betInput.value) : currentBetAmount;
         
-        if (betInput) {
-            betAmount = parseFloat(betInput.value);
-            if (isNaN(betAmount) || betAmount <= 0) {
-                betAmount = 1.0;
-                betInput.value = '1.0';
-            }
-        } else {
-            betAmount = currentBetAmount;
-            if (isNaN(betAmount) || betAmount <= 0) {
-                betAmount = 1.0;
-            }
-        }
-        
-        // PASTIKAN currentBetAmount terupdate
-        currentBetAmount = betAmount;
-        
-        console.log('💰 Bet amount:', currentBetAmount, 'TON');
-        
-        // VALIDASI - jika masih 0 atau invalid, SET DEFAULT
-        if (!currentBetAmount || currentBetAmount <= 0 || isNaN(currentBetAmount)) {
-            console.log('⚠️ Invalid bet amount, setting to 1.0');
-            currentBetAmount = 1.0;
-            if (betInput) betInput.value = '1.0';
-        }
-        
-        // VALIDASI MINIMAL (0.1 TON)
-        if (currentBetAmount < 0.1) {
-            console.log('⚠️ Bet too small, setting to 0.1');
-            currentBetAmount = 0.1;
-            if (betInput) betInput.value = '0.1';
-        }
-        
-        // UPDATE LABEL
-        updateUILabels();
-        
-        // CEK ULANG setelah update
-        if (currentBetAmount < 0.1) {
+        if (isNaN(betAmount) || betAmount < 0.1) {
             alert('Minimal taruhan 0.1 TON');
-            toggleBetPanel();
             return;
         }
-        
-        // CEK PROSES BERJALAN
+        currentBetAmount = betAmount;
+
+        // 2. Cek apakah masih ada bola yang berjalan (Antrian)
         if (isProcessingDrop) {
-            alert('Masih ada bola yang berjalan, tunggu sebentar...');
+            alert('Tunggu bola sebelumnya selesai...');
             return;
         }
-        
-        // CEK JUMLAH BOLA
-        if (ballCount <= 0) {
-            ballCount = 1;
-            updateUILabels();
-        }
-        
+
         const totalBet = currentBetAmount * ballCount;
         
-        // LOAD BALANCE TERBARU
+        // 3. Cek Saldo Sebelum Menampilkan Bola
         const currentBalance = await loadUserBalance();
-        console.log('💰 Current balance:', currentBalance, 'TON');
-        console.log('💰 Total bet required:', totalBet, 'TON');
-        
         if (currentBalance < totalBet) {
-            alert(`Saldo tidak cukup!\nSaldo: ${currentBalance.toFixed(2)} TON\nDibutuhkan: ${totalBet.toFixed(2)} TON\n\nSilakan deposit terlebih dahulu.`);
+            alert(`Saldo tidak cukup!\nSaldo: ${currentBalance.toFixed(2)} TON\nDibutuhkan: ${totalBet.toFixed(2)} TON`);
             return;
         }
-        
+
+        // Mulai proses pengiriman ke server
         isProcessingDrop = true;
-        pendingBalanceUpdate = 0;
         
         try {
-            // DEDUCT BALANCE
+            // 4. Potong Saldo di Database
             const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -584,25 +505,38 @@
                 return;
             }
             
-            // UPDATE UI BALANCE
+            // 5. Update UI Balance setelah sukses potong
             await loadUserBalance();
-            console.log(`💰 Balance deducted: ${totalBet} TON`);
+            updateUILabels();
             
-            // JATUHKAN BOLA
+            // 6. JATUHKAN BOLA (Hanya jika saldo sudah sukses dipotong)
             for (let i = 0; i < ballCount; i++) {
                 setTimeout(() => {
-                    dropSingleBall();
-                }, i * 250);
+                    // Panggil fungsi pembuat bola tunggal
+                    dropSingleBall(); 
+                }, i * 300);
             }
             
-            // SIMPAN BET KE LOCALSTORAGE
             localStorage.setItem('plinko_bet_amount', currentBetAmount);
             
         } catch (error) {
             console.error('Error in dropBalls:', error);
-            alert('Terjadi kesalahan. Silakan coba lagi.');
             isProcessingDrop = false;
         }
+    }
+
+    // Fungsi Pembantu untuk membuat objek bola yang VALID
+    function dropSingleBall() {
+        const newBall = {
+            x: spawnerX,
+            y: 25,
+            vx: (Math.random() - 0.5) * 2,
+            vy: 0,
+            lastPinId: null,
+            hitCount: 0,
+            betAmount: currentBetAmount // Simpan nilai bet di dalam bola agar akurat saat menang
+        };
+        balls.push(newBall);
     }
     
     // Fungsi untuk menjatuhkan satu bola
