@@ -117,12 +117,13 @@ def save_game_to_plinko_db(data):
         cursor = conn.cursor()
         
         cursor.execute('''
-            INSERT INTO plinko_games (round_hash, user_id, username, bet_amount, multiplier, win_amount, risk_level)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO plinko_games (round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data['round_hash'],
             data.get('user_id'),
             data.get('username'),
+            data.get('photo_url'),
             data['bet_amount'],
             data['multiplier'],
             data['win_amount'],
@@ -306,7 +307,7 @@ def get_history():
         cursor = conn.cursor()
         
         cursor.execute('''
-            SELECT round_hash, user_id, username, bet_amount, multiplier, win_amount, risk_level, created_at
+            SELECT round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, created_at
             FROM plinko_games
             ORDER BY created_at DESC
             LIMIT ?
@@ -321,6 +322,7 @@ def get_history():
                 "round_hash": row['round_hash'],
                 "user_id": row['user_id'],
                 "username": row['username'],
+                "photo_url": row['photo_url'],
                 "bet_amount": row['bet_amount'],
                 "multiplier": row['multiplier'],
                 "win_amount": row['win_amount'],

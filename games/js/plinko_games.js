@@ -642,7 +642,7 @@
         }
     }
 
-    // Load history dengan tampilan baru - DENGAN FOTO PROFIL TELEGRAM
+    // Load history dengan foto profil dari database
     async function loadHistory() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/history`);
@@ -677,9 +677,6 @@
                 } else if (game.multiplier >= 1) {
                     multiplierClass = 'low';
                     multiplierColor = 'low';
-                } else {
-                    multiplierClass = 'zero';
-                    multiplierColor = 'zero';
                 }
                 
                 // Tentukan kelas win
@@ -691,9 +688,6 @@
                 } else if (game.win_amount < game.bet_amount) {
                     winClass = 'negative';
                     winText = `-${(game.bet_amount - game.win_amount).toFixed(2)} TON`;
-                } else {
-                    winClass = 'neutral';
-                    winText = `${game.win_amount.toFixed(2)} TON`;
                 }
                 
                 // Format waktu
@@ -705,34 +699,14 @@
                     month: 'short'
                 });
                 
-                // Nama pemain
                 const playerName = game.username || 'Anonymous';
                 
-                // 🔥 PERBAIKAN: Coba dapatkan foto profil dari Telegram user
-                // Karena data history tidak menyimpan photo_url, kita perlu ambil dari API terpisah
-                // Atau gunakan user_id untuk fetch foto profil
-                let avatarUrl = '';
-                let userPhotoUrl = null;
-                
-                // Jika ada user_id, coba ambil foto dari Telegram (opsional, async)
-                if (game.user_id) {
-                    try {
-                        // Opsi 1: Jika Anda punya endpoint untuk get user photo
-                        // const photoResponse = await fetch(`${API_BASE}/api/user/photo/${game.user_id}`);
-                        // const photoData = await photoResponse.json();
-                        // if (photoData.photo_url) userPhotoUrl = photoData.photo_url;
-                        
-                        // Opsi 2: Karena tidak ada endpoint, gunakan UI Avatars dulu
-                        // TAPI dengan parameter ?bold=true agar lebih bagus
-                        userPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
-                    } catch (e) {
-                        userPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
-                    }
-                } else {
-                    userPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
+                // 🔥 PERBAIKAN: Gunakan photo_url dari database jika ada
+                let avatarUrl = game.photo_url;
+                if (!avatarUrl) {
+                    // Fallback ke UI Avatars
+                    avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
                 }
-                
-                avatarUrl = userPhotoUrl;
                 
                 html += `
                     <div class="history-item multiplier-${multiplierClass}" data-hash="${game.round_hash}">
@@ -759,7 +733,7 @@
             
             historyList.innerHTML = html;
             
-            // Tambahkan event click untuk copy hash
+            // Event click untuk copy hash
             document.querySelectorAll('.history-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const hash = item.dataset.hash;
