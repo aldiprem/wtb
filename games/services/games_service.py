@@ -509,13 +509,33 @@ def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
             mnemonic=mnemonic_list
         )
         
-        # Dapatkan address wallet merchant
-        merchant_address = wallet.address.to_string(True, True, True)
+        # 🔥 PERBAIKAN: Cara mendapatkan address yang benar
+        # Coba beberapa method yang mungkin tersedia
+        try:
+            # Method 1: .address (property)
+            merchant_address = wallet.address.to_string(True, True, True)
+        except AttributeError:
+            try:
+                # Method 2: .address (object) dengan method berbeda
+                merchant_address = wallet.address.to_str()
+            except AttributeError:
+                try:
+                    # Method 3: Langsung toString
+                    merchant_address = str(wallet.address)
+                except:
+                    # Method 4: Gunakan raw address
+                    merchant_address = wallet.address.to_string(True, True, True)
+        
         print(f"💰 Merchant wallet address: {merchant_address}")
         
         # Cek saldo merchant wallet
         try:
-            balance = client.get_address_balance(merchant_address)
+            # 🔥 PERBAIKAN: Cara cek balance yang benar
+            try:
+                balance = client.get_address_balance(merchant_address)
+            except:
+                # Coba dengan raw address
+                balance = client.get_address_balance(str(merchant_address))
             balance_ton = balance / 1_000_000_000
             print(f"💰 Merchant balance: {balance_ton} TON")
             
