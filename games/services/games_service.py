@@ -481,8 +481,7 @@ def process_withdraw():
     
 def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
     """
-    Kirim TON otomatis dari wallet merchant ke user
-    Menggunakan mnemonic phrase langsung
+    Kirim TON otomatis - VERSI SEDERHANA
     """
     try:
         from tonutils.client import TonapiClient
@@ -495,7 +494,6 @@ def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         mnemonic_list = mnemonic_string.split()
         
         print(f"📤 Sending {amount_ton} TON to {to_address}")
-        print(f"🔑 Mnemonic words: {len(mnemonic_list)}")
         
         # Inisialisasi client
         client = TonapiClient(
@@ -509,38 +507,15 @@ def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
             mnemonic=mnemonic_list
         )
         
-        # 🔥 PERBAIKAN: Cara mendapatkan address yang benar
-        # Coba beberapa method yang mungkin tersedia
-        try:
-            # Method 1: .address (property)
-            merchant_address = wallet.address.to_string(True, True, True)
-        except AttributeError:
-            try:
-                # Method 2: .address (object) dengan method berbeda
-                merchant_address = wallet.address.to_str()
-            except AttributeError:
-                try:
-                    # Method 3: Langsung toString
-                    merchant_address = str(wallet.address)
-                except:
-                    # Method 4: Gunakan raw address
-                    merchant_address = wallet.address.to_string(True, True, True)
-        
+        # 🔥 PERBAIKAN: Ambil address sebagai string
+        merchant_address = str(wallet.address)
         print(f"💰 Merchant wallet address: {merchant_address}")
         
-        # Cek saldo merchant wallet
+        # Cek saldo (opsional, jika gagal lanjutkan saja)
         try:
-            # 🔥 PERBAIKAN: Cara cek balance yang benar
-            try:
-                balance = client.get_address_balance(merchant_address)
-            except:
-                # Coba dengan raw address
-                balance = client.get_address_balance(str(merchant_address))
+            balance = client.get_address_balance(merchant_address)
             balance_ton = balance / 1_000_000_000
             print(f"💰 Merchant balance: {balance_ton} TON")
-            
-            if balance_ton < amount_ton:
-                return False, f"Insufficient merchant balance. Available: {balance_ton} TON, Required: {amount_ton} TON"
         except Exception as e:
             print(f"⚠️ Could not check balance: {e}")
         
@@ -548,8 +523,7 @@ def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         tx_hash = wallet.transfer(
             destination=to_address,
             amount=to_nano(amount_ton),
-            body=f"Withdraw from BarackGift to user {telegram_id}",
-            send_mode=3
+            body=f"Withdraw from BarackGift to user {telegram_id}"
         )
         
         print(f"✅ Withdraw sent: {tx_hash}")
