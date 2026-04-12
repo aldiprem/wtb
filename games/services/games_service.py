@@ -479,38 +479,97 @@ def process_withdraw():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
+# games/services/games_service.py - Tambahkan fungsi konversi di awal file
+
+def raw_ton_to_friendly(raw_address):
+    """Convert raw TON address (0:xxx) to friendly format (EQ/UQ)"""
+    import base64
+    
+    if not raw_address:
+        return raw_address
+    
+    # Jika sudah dalam format friendly
+    if raw_address.startswith('EQ') or raw_address.startswith('UQ'):
+        return raw_address
+    
+    # Jika raw format
+    if raw_address.startswith('0:'):
+        try:
+            parts = raw_address.split(':')
+            if len(parts) != 2:
+                return raw_address
+            
+            hash_hex = parts[1]
+            hash_bytes = bytes.fromhex(hash_hex)
+            
+            # Untuk wallet user, gunakan non-bounceable (tag 0x51)
+            # Bounceable = 0x11, Non-bounceable = 0x51
+            tag = 0x51  # Non-bounceable untuk wallet user
+            address_bytes = bytes([tag]) + hash_bytes
+            
+            # Encode ke base64 URL-safe
+            address_b64 = base64.b64encode(address_bytes).decode('utf-8')
+            address_b64 = address_b64.replace('+', '-').replace('/', '_').rstrip('=')
+            
+            # Prefix UQ untuk non-bounceable
+            return 'UQ' + address_b64
+        except Exception as e:
+            print(f"⚠️ Address conversion error: {e}")
+            return raw_address
+    
+    return raw_address
+
+
+def friendly_to_raw(friendly_address):
+    """Convert friendly TON address (EQ/UQ) to raw format (0:xxx)"""
+    import base64
+    
+    if not friendly_address:
+        return friendly_address
+    
+    if friendly_address.startswith('0:'):
+        return friendly_address
+    
+    if friendly_address.startswith('EQ') or friendly_address.startswith('UQ'):
+        try:
+            # Remove prefix
+            b64_part = friendly_address[2:]
+            # Add padding back
+            padding = 4 - (len(b64_part) % 4)
+            if padding != 4:
+                b64_part += '=' * padding
+            # Replace URL-safe chars back
+            b64_part = b64_part.replace('-', '+').replace('_', '/')
+            # Decode
+            address_bytes = base64.b64decode(b64_part)
+            # Remove tag (first byte)
+            hash_bytes = address_bytes[1:]
+            # Convert to hex
+            hash_hex = hash_bytes.hex()
+            return f"0:{hash_hex}"
+        except Exception as e:
+            print(f"⚠️ Address conversion error: {e}")
+            return friendly_address
+    
+    return friendly_address
+
+
 async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
     """
-    Kirim TON otomatis dari wallet merchant ke user (ASYNC VERSION)
+    Kirim TON otomatis dari wallet merchant ke user
     """
     try:
         from tonutils.client import TonapiClient
         from tonutils.wallet import WalletV4R2
         from tonutils.utils import to_nano
-        # 🔥 HAPUS from tonutils.address import Address
         
         TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
         
-        # 🔥 KONVERSI RAW ADDRESS KE FRIENDLY FORMAT MANUAL
-        def convert_raw_to_friendly(raw_addr):
-            import base64
-            if raw_addr.startswith('0:'):
-                parts = raw_addr.split(':')
-                hash_hex = parts[1]
-                hash_bytes = bytes.fromhex(hash_hex)
-                # Bounceable address tag
-                addr_bytes = bytes([0x11]) + hash_bytes
-                b64 = base64.b64encode(addr_bytes).decode()
-                b64 = b64.replace('+', '-').replace('/', '_').rstrip('=')
-                return 'EQ' + b64
-            return raw_addr
+        # 🔥 KONVERSI ADDRESS KE FRIENDLY FORMAT
+        formatted_address = raw_ton_to_friendly(to_address)
         
-        # Konversi address jika perlu
-        if to_address.startswith('0:'):
-            formatted_address = convert_raw_to_friendly(to_address)
-            print(f"✅ Converted address: {to_address} -> {formatted_address}")
-        else:
-            formatted_address = to_address
+        if formatted_address != to_address:
+            print(f"✅ Address converted: {to_address} -> {formatted_address}")
         
         # Split mnemonic menjadi list
         mnemonic_list = mnemonic_string.split()
@@ -530,7 +589,7 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
             mnemonic=mnemonic_list
         )
         
-        # Dapatkan address sebagai string
+        # Dapatkan address merchant
         merchant_address = str(wallet.address)
         print(f"💰 Merchant wallet address: {merchant_address}")
         
@@ -545,7 +604,7 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         except Exception as e:
             print(f"⚠️ Could not check balance: {e}")
         
-        # Kirim transaksi dengan formatted_address
+        # Kirim transaksi
         tx_hash = await wallet.transfer(
             destination=formatted_address,
             amount=to_nano(amount_ton),
@@ -562,44 +621,10 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         traceback.print_exc()
         return False, str(e)
 
-# Tambahkan di awal file, setelah import
-def raw_ton_to_friendly(raw_address):
-    """Convert raw TON address (0:xxx) to friendly format (EQ...)"""
-    import base64
-    
-    if not raw_address or not raw_address.startswith('0:'):
-        return raw_address
-    
-    try:
-        # Pisahkan workchain dan hash
-        parts = raw_address.split(':')
-        if len(parts) != 2:
-            return raw_address
-        
-        hash_hex = parts[1]
-        hash_bytes = bytes.fromhex(hash_hex)
-        
-        # Bounceable address tag = 0x11
-        address_bytes = bytes([0x11]) + hash_bytes
-        
-        # Encode ke base64 URL-safe
-        address_b64 = base64.b64encode(address_bytes).decode('utf-8')
-        address_b64 = address_b64.replace('+', '-').replace('/', '_').rstrip('=')
-        
-        # Tambahkan prefix EQ
-        friendly_address = 'EQ' + address_b64
-        
-        print(f"✅ Address converted: {raw_address} -> {friendly_address}")
-        return friendly_address
-        
-    except Exception as e:
-        print(f"⚠️ Address conversion failed: {e}")
-        return raw_address
-
 # ==================== ENDPOINT WITHDRAW REAL ====================
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
-    """Proses withdraw TON - dengan konversi address"""
+    """Proses withdraw TON REAL - mengirim TON sungguhan"""
     init_db()
     data = request.json
     
@@ -622,14 +647,14 @@ def process_withdraw_real():
     if not wallet_address:
         return jsonify({"success": False, "error": "Wallet address required"}), 400
     
-    # 🔥 KONVERSI ADDRESS RAW KE FRIENDLY FORMAT
-    if wallet_address.startswith('0:'):
-        formatted_addr = raw_ton_to_friendly(wallet_address)
-    else:
-        formatted_addr = wallet_address
+    # 🔥 KONVERSI ADDRESS KE FRIENDLY FORMAT
+    formatted_addr = raw_ton_to_friendly(wallet_address)
     
-    print(f"📝 Original address: {wallet_address}")
-    print(f"📝 Formatted address: {formatted_addr}")
+    print(f"📝 Withdraw request:")
+    print(f"   User: {telegram_id}")
+    print(f"   Amount: {amount} TON")
+    print(f"   Original address: {wallet_address}")
+    print(f"   Formatted address: {formatted_addr}")
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -657,8 +682,6 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": "Merchant mnemonic not configured in .env"}), 500
         
-        print(f"💰 Processing withdraw: {amount} TON to {formatted_addr}")
-        
         # JALANKAN ASYNC FUNCTION
         import asyncio
         success, result = asyncio.run(send_ton_auto(telegram_id, amount, formatted_addr, MERCHANT_MNEMONIC))
@@ -667,10 +690,10 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": f"Failed to send TON: {result}"}), 500
         
-        # Update balance user
+        # Update balance user (kurangi)
         cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
         
-        # Catat history
+        # Catat history withdraw
         cursor.execute('''
             INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -693,7 +716,7 @@ def process_withdraw_real():
         conn.commit()
         conn.close()
         
-        print(f"✅ Withdraw completed: {amount} TON")
+        print(f"✅ Withdraw completed: {amount} TON to {formatted_addr}")
         
         return jsonify({
             "success": True,

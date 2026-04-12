@@ -86,7 +86,6 @@
         return 0;
     }
 
-    // Load wallet address user
     async function loadUserWallet(telegramId) {
         try {
             const response = await fetch(`/api/games/user-wallet/${telegramId}`);
@@ -95,10 +94,15 @@
                 userWalletAddress = data.wallet_address;
                 const walletEl = document.getElementById('userWalletAddress');
                 if (walletEl) {
+                    // Konversi ke friendly format untuk tampilan
+                    let displayAddress = userWalletAddress;
+                    if (userWalletAddress.startsWith('0:')) {
+                        displayAddress = rawToFriendly(userWalletAddress);
+                    }
                     // Tampilkan truncated version
-                    const truncated = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 6);
+                    const truncated = displayAddress.substring(0, 8) + '...' + displayAddress.substring(displayAddress.length - 6);
                     walletEl.textContent = truncated;
-                    walletEl.setAttribute('data-full-address', userWalletAddress);
+                    walletEl.setAttribute('data-full-address', displayAddress);
                     walletEl.title = 'Click to copy full address';
                 }
                 return userWalletAddress;
@@ -155,17 +159,42 @@
         }
     }
 
+    function rawToFriendly(rawAddress) {
+        if (!rawAddress || !rawAddress.startsWith('0:')) return rawAddress;
+        
+        try {
+            const parts = rawAddress.split(':');
+            const hashHex = parts[1];
+            
+            // Konversi hex ke bytes
+            const hashBytes = new Uint8Array(hashHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+            
+            // Non-bounceable tag (0x51) untuk wallet user
+            const addressBytes = new Uint8Array(1 + hashBytes.length);
+            addressBytes[0] = 0x51;
+            addressBytes.set(hashBytes, 1);
+            
+            // Encode ke base64 URL-safe
+            let binary = '';
+            for (let i = 0; i < addressBytes.length; i++) {
+                binary += String.fromCharCode(addressBytes[i]);
+            }
+            let base64 = btoa(binary);
+            base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            
+            return 'UQ' + base64;
+        } catch (e) {
+            console.error('Address conversion error:', e);
+            return rawAddress;
+        }
+    }
+    
     // Fungsi untuk copy full wallet address
     function copyFullWalletAddress() {
         const addressElement = document.getElementById('userWalletAddress');
         if (addressElement && addressElement.textContent && addressElement.textContent !== 'Belum terhubung') {
-            // Ambil full address dari data attribute atau dari variabel global
-            let fullAddress = userWalletAddress;
-            
-            if (!fullAddress) {
-                // Fallback: coba ambil dari element
-                fullAddress = addressElement.getAttribute('data-full-address') || addressElement.textContent;
-            }
+            // Ambil full address dari data attribute (sudah dalam friendly format)
+            let fullAddress = addressElement.getAttribute('data-full-address');
             
             if (fullAddress && fullAddress !== 'Belum terhubung') {
                 navigator.clipboard.writeText(fullAddress).then(() => {
@@ -213,14 +242,16 @@
             document.getElementById('walletWarning').style.display = 'none';
             document.getElementById('withdrawForm').style.display = 'block';
             
-            // 🔥 SET FULL ADDRESS KE ELEMENT
+            // Set full address ke element (dalam friendly format)
             const addressElement = document.getElementById('userWalletAddress');
-            if (addressElement) {
-                // Tampilkan truncated version untuk UI
-                const truncated = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 6);
+            if (addressElement && userWalletAddress) {
+                let displayAddress = userWalletAddress;
+                if (userWalletAddress.startsWith('0:')) {
+                    displayAddress = rawToFriendly(userWalletAddress);
+                }
+                const truncated = displayAddress.substring(0, 8) + '...' + displayAddress.substring(displayAddress.length - 6);
                 addressElement.textContent = truncated;
-                // Simpan full address di data attribute
-                addressElement.setAttribute('data-full-address', userWalletAddress);
+                addressElement.setAttribute('data-full-address', displayAddress);
                 addressElement.title = 'Click to copy full address';
             }
         }
