@@ -19,11 +19,11 @@
     let pendingBalanceUpdate = 0; // Accumulator untuk update balance
 
     let multiplierAreas = [];
-
+    
+    // --- PHYSICS VARIABLES ---
     let balls = [];
     const GRAVITY = 0.2;
-    const BOUNCE = 0.15;
-    const FRICTION_X = 0.92;
+    const BOUNCE = 0.3;
     const PIN_RADIUS = 3;
     const BALL_RADIUS = 5;
     
@@ -132,33 +132,49 @@
     function update() {
         if (!canvas || !ctx) return;
         
+        // 1. Gambar ulang papan
         drawPlinkoBoard();
 
-        // Gerakan spawner
+        // 2. Gerakan Spawner
         const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
+        // --- KONFIGURASI YANG HARUS SAMA DENGAN drawPlinkoBoard ---
+        const startY = 50;      
+        const rowSpacing = 22;  
+        const colSpacing = 22;  
+        const totalRows = 12; // Pastikan ini 12 agar rintangan terakhir terdeteksi
+
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
-            // 1. Terapkan Gravitasi & Redaman Kecepatan Horizontal
             ball.vy += GRAVITY;
-            ball.vx *= FRICTION_X; // Meredam gerakan kanan-kiri secara konstan
-            
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // 2. Batasi Kecepatan Maksimum (Sangat penting agar tidak "menembus" pin)
-            if (ball.vy > 7) ball.vy = 7;
-            if (Math.abs(ball.vx) > 3.5) ball.vx = ball.vx > 0 ? 3.5 : -3.5;
+            if (ball.vy > 8) ball.vy = 8;
+            if (Math.abs(ball.vx) > 5) ball.vx = ball.vx > 0 ? 5 : -5;
 
-            const startY = 50;
-            const rowSpacing = 22;
-            const colSpacing = 22;
-            const totalRows = 12;
+            // 3. Deteksi Dinding Samping (Piramida)
+            const currentRow = Math.floor((ball.y - startY) / rowSpacing);
+            if (currentRow >= 0 && currentRow < totalRows) {
+                const dots = 3 + currentRow;
+                const rWidth = (dots - 1) * colSpacing;
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10;
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10;
 
-            // 3. Tabrakan Pin (Rintangan)
+                if (ball.x < leftWall) {
+                    ball.x = leftWall;
+                    ball.vx *= -BOUNCE;
+                } else if (ball.x > rightWall) {
+                    ball.x = rightWall;
+                    ball.vx *= -BOUNCE;
+                }
+            }
+
+            // 4. DETEKSI TABRAKAN PIN (Paling Penting agar rintangan terakhir tidak tembus)
+            // r < totalRows memastikan baris ke-12 diproses
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -170,46 +186,19 @@
                     const dy = ball.y - py;
                     const dist = Math.sqrt(dx*dx + dy*dy);
 
-                    if (dist < BALL_RADIUS + PIN_RADIUS) {
+                    // Jika jarak bola ke pin < gabungan radius keduanya
+                    if (dist < (BALL_RADIUS + PIN_RADIUS)) {
                         const angle = Math.atan2(dy, dx);
-                        
-                        // --- LOGIKA PEREDAM PANTULAN ---
-                        // Gunakan pengali kecil (0.6) pada pantulan horizontal agar tidak kencang ke samping
-                        ball.vx += Math.cos(angle) * 0.6; 
-                        
-                        // Berikan sedikit dorongan ke bawah (0.2) setiap kali menabrak 
-                        // agar bola tidak terjebak bolak-balik horizontal
-                        ball.vy = (Math.sin(angle) * BOUNCE) + 0.2; 
-
-                        // Mencegah bola mental ke atas secara ekstrem
-                        if (ball.vy < -2) ball.vy = -2;
-
-                        // Koreksi posisi agar tidak stuck di dalam pin
-                        const overlap = (BALL_RADIUS + PIN_RADIUS) - dist;
-                        ball.x += Math.cos(angle) * overlap;
-                        ball.y += Math.sin(angle) * overlap;
+                        // Pantulan
+                        ball.vx += Math.cos(angle) * 1.6;
+                        ball.vy *= -BOUNCE;
+                        // Reset posisi bola agar tidak "lengket" di dalam pin
+                        ball.y = py + Math.sin(angle) * (BALL_RADIUS + PIN_RADIUS);
                     }
                 }
             }
 
-            // 4. Batasan Dinding Piramida
-            const currentRow = Math.floor((ball.y - startY) / rowSpacing);
-            if (currentRow >= 0 && currentRow < totalRows) {
-                const dots = 3 + currentRow;
-                const rWidth = (dots - 1) * colSpacing;
-                const leftWall = (canvas.width / 2) - (rWidth / 2) - 12;
-                const rightWall = (canvas.width / 2) + (rWidth / 2) + 12;
-
-                if (ball.x < leftWall) {
-                    ball.x = leftWall;
-                    ball.vx *= -0.2; // Pantulan dinding sangat lemah
-                } else if (ball.x > rightWall) {
-                    ball.x = rightWall;
-                    ball.vx *= -0.2;
-                }
-            }
-
-            // 5. Render Bola
+            // 5. Gambar Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
@@ -218,8 +207,9 @@
             ctx.fillStyle = gradient;
             ctx.fill();
 
-            // 6. Deteksi Selesai (Menyentuh Dasar)
-            const bottomLine = canvas.height - 2;
+            // 6. LOGIKA SELESAI (Menyentuh Dasar Canvas/Border Multiplier)
+            // Gunakan batas paling bawah agar bola benar-benar tenggelam
+            const bottomLine = canvas.height - 5;
             if (ball.y >= bottomLine) {
                 const isHit = checkMultiplierHit(ball);
                 if (isHit) {
@@ -229,6 +219,7 @@
                 }
             }
 
+            // Safety Net
             if (ball.y > canvas.height + 50) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
