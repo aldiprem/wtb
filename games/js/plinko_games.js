@@ -22,8 +22,8 @@
     
     // --- PHYSICS VARIABLES ---
     let balls = [];
-    const GRAVITY = 0.35;
-    const BOUNCE = 0.2;
+    const GRAVITY = 0.1;
+    const BOUNCE = 0.1;
     const PIN_RADIUS = 3;
     const BALL_RADIUS = 5;
     
