@@ -41,11 +41,13 @@ BIG_MULTIPLIERS = {
 }
 
 def get_db():
+    """Get database connection"""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(DB_PATH), timeout=20.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
-
 
 def init_db():
     """Initialize database tables dengan sistem tracking bandar"""
@@ -179,52 +181,66 @@ def init_db():
 
 def get_bandar_profit():
     """Mendapatkan keuntungan bandar saat ini"""
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT total_bet_all_time, total_win_all_time, bandar_profit, total_cheat_activated 
-        FROM bandar_profit ORDER BY id DESC LIMIT 1
-    ''')
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
-        return {
-            'total_bet': row['total_bet_all_time'] or 0,
-            'total_win': row['total_win_all_time'] or 0,
-            'profit': row['bandar_profit'] or 0,
-            'cheat_count': row['total_cheat_activated'] or 0
-        }
-    return {'total_bet': 0, 'total_win': 0, 'profit': 0, 'cheat_count': 0}
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT total_bet_all_time, total_win_all_time, bandar_profit, total_cheat_activated 
+            FROM bandar_profit ORDER BY id DESC LIMIT 1
+        ''')
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return {
+                'total_bet': row['total_bet_all_time'] or 0,
+                'total_win': row['total_win_all_time'] or 0,
+                'profit': row['bandar_profit'] or 0,
+                'cheat_count': row['total_cheat_activated'] or 0
+            }
+        return {'total_bet': 0, 'total_win': 0, 'profit': 0, 'cheat_count': 0}
+    except Exception as e:
+        print(f"❌ Error in get_bandar_profit: {e}")
+        if conn:
+            conn.close()
+        return {'total_bet': 0, 'total_win': 0, 'profit': 0, 'cheat_count': 0}
 
 def update_bandar_profit(bet_amount, win_amount, is_cheat=False):
     """Update keuntungan bandar setelah setiap game"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    profit_change = bet_amount - win_amount  # positif = bandar untung
-    
-    if is_cheat:
-        cursor.execute('''
-            UPDATE bandar_profit 
-            SET total_bet_all_time = total_bet_all_time + ?,
-                total_win_all_time = total_win_all_time + ?,
-                bandar_profit = bandar_profit + ?,
-                total_cheat_activated = total_cheat_activated + 1,
-                last_updated = CURRENT_TIMESTAMP
-        ''', (bet_amount, win_amount, profit_change))
-    else:
-        cursor.execute('''
-            UPDATE bandar_profit 
-            SET total_bet_all_time = total_bet_all_time + ?,
-                total_win_all_time = total_win_all_time + ?,
-                bandar_profit = bandar_profit + ?,
-                last_updated = CURRENT_TIMESTAMP
-        ''', (bet_amount, win_amount, profit_change))
-    
-    conn.commit()
-    conn.close()
-    return profit_change
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        profit_change = bet_amount - win_amount  # positif = bandar untung
+        
+        if is_cheat:
+            cursor.execute('''
+                UPDATE bandar_profit 
+                SET total_bet_all_time = total_bet_all_time + ?,
+                    total_win_all_time = total_win_all_time + ?,
+                    bandar_profit = bandar_profit + ?,
+                    total_cheat_activated = total_cheat_activated + 1,
+                    last_updated = CURRENT_TIMESTAMP
+            ''', (bet_amount, win_amount, profit_change))
+        else:
+            cursor.execute('''
+                UPDATE bandar_profit 
+                SET total_bet_all_time = total_bet_all_time + ?,
+                    total_win_all_time = total_win_all_time + ?,
+                    bandar_profit = bandar_profit + ?,
+                    last_updated = CURRENT_TIMESTAMP
+            ''', (bet_amount, win_amount, profit_change))
+        
+        conn.commit()
+        conn.close()
+        return profit_change
+    except Exception as e:
+        print(f"❌ Error in update_bandar_profit: {e}")
+        if conn:
+            conn.close()
+        return 0
 
 def get_user_loss(user_id):
     """Mendapatkan data kerugian user tertentu"""
@@ -434,98 +450,98 @@ def generate_round_hash():
 
 def save_game_result(data):
     """Save game result dengan tracking keuntungan bandar"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    is_forced = 1 if data.get('is_forced', False) else 0
-    cheat_reason = data.get('cheat_reason', '')
-    
-    # Pastikan photo_url ada (jika None, set None)
-    photo_url = data.get('photo_url', None)
-    
-    cursor.execute('''
-        INSERT INTO plinko_games (round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, is_forced, cheat_reason, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        data['round_hash'],
-        data.get('user_id'),
-        data.get('username'),
-        photo_url,
-        data['bet_amount'],
-        data['multiplier'],
-        data['win_amount'],
-        data['risk_level'],
-        is_forced,
-        cheat_reason,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ))
-    
-    # Update bandar profit
-    profit_change = update_bandar_profit(data['bet_amount'], data['win_amount'], is_forced)
-    
-    # Update user loss tracking
-    if data.get('user_id'):
-        update_user_loss(
-            data['user_id'], 
-            data.get('username', 'Unknown'), 
-            data['bet_amount'], 
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        is_forced = 1 if data.get('is_forced', False) else 0
+        cheat_reason = data.get('cheat_reason', '')
+        photo_url = data.get('photo_url', None)
+        
+        cursor.execute('''
+            INSERT INTO plinko_games (round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, is_forced, cheat_reason, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['round_hash'],
+            data.get('user_id'),
+            data.get('username'),
+            photo_url,
+            data['bet_amount'],
+            data['multiplier'],
             data['win_amount'],
-            data.get('is_forced', False)
-        )
-    
-    # Update stats
-    cursor.execute('SELECT COUNT(DISTINCT user_id) FROM plinko_games WHERE user_id IS NOT NULL')
-    total_players = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT COUNT(*) FROM plinko_games')
-    total_games = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT MAX(multiplier) FROM plinko_games')
-    biggest_multiplier = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT MAX(win_amount) FROM plinko_games')
-    biggest_win = cursor.fetchone()[0] or 0
-    
-    cursor.execute('SELECT SUM(bet_amount), SUM(win_amount) FROM plinko_games')
-    total_bet, total_win = cursor.fetchone()
-    
-    cursor.execute('''
-        SELECT username, created_at FROM plinko_games 
-        ORDER BY created_at DESC LIMIT 1
-    ''')
-    last = cursor.fetchone()
-    
-    cursor.execute('''
-        UPDATE plinko_stats SET
-            total_players = ?,
-            total_games = ?,
-            biggest_multiplier = ?,
-            biggest_win = ?,
-            total_bet_amount = ?,
-            total_win_amount = ?,
-            last_player = ?,
-            last_time = ?,
-            current_hash = ?,
-            updated_at = CURRENT_TIMESTAMP
-    ''', (
-        total_players, total_games, biggest_multiplier, biggest_win,
-        total_bet or 0, total_win or 0,
-        data.get('username') or last['username'] if last else None,
-        last['created_at'] if last else None,
-        data['round_hash']
-    ))
-    
-    conn.commit()
-    conn.close()
-    
-    # Print status keuntungan bandar
-    profit_data = get_bandar_profit()
-    status_emoji = "✅" if profit_data['profit'] >= TARGET_BANDAR_PROFIT else "⚠️"
-    print(f"{status_emoji} [BANDAR] Profit: {profit_data['profit']:.2f} TON | Target: {TARGET_BANDAR_PROFIT} TON")
-    print(f"   Total Bet: {profit_data['total_bet']:.2f} | Total Win: {profit_data['total_win']:.2f}")
-    print(f"   Cheat Activated: {profit_data['cheat_count']} times")
-    
-    return True
+            data['risk_level'],
+            is_forced,
+            cheat_reason,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ))
+        
+        # Update bandar profit
+        profit_change = update_bandar_profit(data['bet_amount'], data['win_amount'], is_forced)
+        
+        # Update user loss tracking
+        if data.get('user_id'):
+            update_user_loss(
+                data['user_id'], 
+                data.get('username', 'Unknown'), 
+                data['bet_amount'], 
+                data['win_amount'],
+                data.get('is_forced', False)
+            )
+        
+        # Update stats
+        cursor.execute('SELECT COUNT(DISTINCT user_id) FROM plinko_games WHERE user_id IS NOT NULL')
+        total_players = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT COUNT(*) FROM plinko_games')
+        total_games = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT MAX(multiplier) FROM plinko_games')
+        biggest_multiplier = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT MAX(win_amount) FROM plinko_games')
+        biggest_win = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT SUM(bet_amount), SUM(win_amount) FROM plinko_games')
+        total_bet, total_win = cursor.fetchone()
+        
+        cursor.execute('''
+            SELECT username, created_at FROM plinko_games 
+            ORDER BY created_at DESC LIMIT 1
+        ''')
+        last = cursor.fetchone()
+        
+        cursor.execute('''
+            UPDATE plinko_stats SET
+                total_players = ?,
+                total_games = ?,
+                biggest_multiplier = ?,
+                biggest_win = ?,
+                total_bet_amount = ?,
+                total_win_amount = ?,
+                last_player = ?,
+                last_time = ?,
+                current_hash = ?,
+                updated_at = CURRENT_TIMESTAMP
+        ''', (
+            total_players, total_games, biggest_multiplier, biggest_win,
+            total_bet or 0, total_win or 0,
+            data.get('username') or last['username'] if last else None,
+            last['created_at'] if last else None,
+            data['round_hash']
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        # Print status keuntungan bandar
+        profit_data = get_bandar_profit()
+        status_emoji = "✅" if profit_data['profit'] >= TARGET_BANDAR_PROFIT else "⚠️"
+        print(f"{status_emoji} [BANDAR] Profit: {profit_data['profit']:.2f} TON | Target: {TARGET_BANDAR_PROFIT} TON")
+        
+        return True
+    except Exception as e:
+        print(f"❌ Error in save_game_result: {e}")
+        return False
 
 def get_stats():
     """Get current stats termasuk keuntungan bandar"""
