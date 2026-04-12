@@ -21,17 +21,22 @@ print(f"📁 Games DB Path: {GAMES_DB_PATH}")
 os.makedirs(os.path.dirname(PLINKO_DB_PATH), exist_ok=True)
 os.makedirs(os.path.dirname(GAMES_DB_PATH), exist_ok=True)
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from database.plinko_games import (
-    get_multiplier as cheat_get_multiplier,
-    calculate_win,
-    generate_round_hash,
-    save_game_result,
-    get_stats as get_cheat_stats,
-    get_history as get_cheat_history,
-    get_bandar_profit,
-    TARGET_BANDAR_PROFIT
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "plinko_games",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'plinko_games.py')
 )
+plinko_games_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(plinko_games_module)
+
+cheat_get_multiplier = plinko_games_module.get_multiplier
+calculate_win = plinko_games_module.calculate_win
+generate_round_hash = plinko_games_module.generate_round_hash
+save_game_result = plinko_games_module.save_game_result
+get_cheat_stats = plinko_games_module.get_stats
+get_cheat_history = plinko_games_module.get_history
+get_bandar_profit = plinko_games_module.get_bandar_profit
+TARGET_BANDAR_PROFIT = plinko_games_module.TARGET_BANDAR_PROFIT
 
 # Membuat Blueprint untuk Plinko API
 plinko_bp = Blueprint('plinko_bp', __name__, url_prefix='/api/plinko')
