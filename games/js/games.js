@@ -1,28 +1,43 @@
-// games/js/games.js - VERSION FIXED
+// games/js/profil.js - DENGAN FITUR WITHDRAW
 
-document.addEventListener("DOMContentLoaded", () => {
-    
+(function() {
+    console.log('👤 Profile Page Initialized');
+
     const tg = window.Telegram.WebApp;
     tg.expand();
     tg.setHeaderColor('#0f0f0f');
 
-    const initDataUnsafe = tg.initDataUnsafe || {};
-    const user = initDataUnsafe.user;
-    let currentUser = user;
-    let tonConnectUI = null;
-    let isWalletConnected = false;
-    let webAddress = 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra';
+    let telegramUser = null;
+    let userData = null;
+    let currentBalance = 0;
+    let userWalletAddress = null;
 
-    // Fungsi helper di luar (taruh di awal file)
+    // Ambil data user dari Telegram
+    async function getTelegramUser() {
+        const initDataUnsafe = tg.initDataUnsafe || {};
+        if (initDataUnsafe.user) {
+            return initDataUnsafe.user;
+        }
+        return {
+            id: 123456789,
+            first_name: 'Guest',
+            last_name: 'User',
+            username: 'guest_user',
+            photo_url: 'https://via.placeholder.com/100'
+        };
+    }
+
+    // Fungsi format angka ribuan
     function formatNumberWithCommas(number) {
-        let parts = number.toFixed(2).split('.');
+        let parts = Number(number).toFixed(2).split('.');
         let integerPart = parts[0];
         let decimalPart = parts[1];
         integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         return decimalPart ? integerPart + '.' + decimalPart : integerPart;
     }
 
-    async function loadUserBalance(telegramId, username, firstName) {
+    // Load user data dari backend
+    async function loadUserData(telegramId, username, firstName) {
         try {
             const response = await fetch('/api/games/auth', {
                 method: 'POST',
@@ -35,457 +50,423 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             
             const data = await response.json();
-            const balanceEl = document.getElementById('userBalance');
-            if (data.success && balanceEl) {
-                // ✅ FORMAT ANGKA RIBUAN
+            if (data.success) {
+                userData = data;
+                updateProfileUI();
+                return data;
+            }
+        } catch (error) {
+            console.error('Error loading user data:', error);
+        }
+        return null;
+    }
+
+    async function loadBalance(telegramId) {
+        try {
+            const response = await fetch(`/api/games/balance/${telegramId}`);
+            const data = await response.json();
+            if (data.success) {
+                currentBalance = data.balance;
+                const balanceEl = document.getElementById('userBalance');
+                const profileBalanceEl = document.getElementById('profileBalance');
+                const withdrawBalanceEl = document.getElementById('withdrawBalance');
+                
                 const formattedBalance = formatNumberWithCommas(data.balance);
-                balanceEl.textContent = formattedBalance + ' TON';
+                const balanceText = formattedBalance + ' TON';
+                
+                if (balanceEl) balanceEl.textContent = balanceText;
+                if (profileBalanceEl) profileBalanceEl.textContent = balanceText;
+                if (withdrawBalanceEl) withdrawBalanceEl.textContent = balanceText;
+                
                 return data.balance;
-            } else if (balanceEl) {
-                balanceEl.textContent = "0 TON";
             }
         } catch (error) {
             console.error('Error loading balance:', error);
-            const balanceEl = document.getElementById('userBalance');
-            if (balanceEl) balanceEl.textContent = "0 TON";
         }
         return 0;
     }
 
-    function redirectToPage(url) {
-        if (url && url !== '') {
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
-            setTimeout(() => {
-                window.location.href = url;
-            }, 50);
-            return true;
-        }
-        return false;
-    }
-
-    // ==================== UPDATE HEADER DEPOSIT BUTTON ====================
-    function updateHeaderDepositButton() {
-        const headerBtn = document.getElementById('headerDepositBtn');
-        if (!headerBtn) return;
-        
-        // Clear existing content
-        headerBtn.innerHTML = '';
-        
-        if (isWalletConnected && tonConnectUI && tonConnectUI.account) {
-            // Wallet connected - tampilkan tombol deposit (hijau) dengan icon plus
-            headerBtn.innerHTML = '<i class="fas fa-plus"></i>';
-            headerBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-            headerBtn.style.width = '28px';
-            headerBtn.style.height = '28px';
-            headerBtn.style.padding = '0';
-            headerBtn.style.borderRadius = '50%';
-            headerBtn.style.gap = '0';
-            headerBtn.title = 'Deposit TON';
-        } else {
-            // Wallet not connected - tampilkan tombol connect wallet (biru)
-            headerBtn.innerHTML = '<i class="fas fa-plug"></i><span>Connect</span>';
-            headerBtn.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
-            headerBtn.style.width = 'auto';
-            headerBtn.style.height = 'auto';
-            headerBtn.style.padding = '6px 12px';
-            headerBtn.style.borderRadius = '20px';
-            headerBtn.style.gap = '6px';
-            headerBtn.title = 'Connect Wallet';
-        }
-    }
-
-    // ==================== TON CONNECT ====================
-    function initTonConnect() {
-        if (!window.TON_CONNECT_UI) {
-            console.log('Waiting for TON Connect...');
-            setTimeout(initTonConnect, 500);
-            return;
-        }
-        
-        const manifestUrl = `${window.location.origin}/tonconnect-manifest.json`;
-        
-        tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-            manifestUrl: manifestUrl,
-            buttonRootId: 'depositTonConnect',
-            language: 'en'
-        });
-
-        tonConnectUI.onStatusChange(async (wallet) => {
-            console.log('Wallet status changed:', wallet);
-            
-            const walletStatus = document.getElementById('depositWalletStatus');
-            const depositForm = document.getElementById('depositForm');
-            const disconnectContainer = document.getElementById('disconnectContainer');
-            
-            if (wallet && currentUser) {
-                isWalletConnected = true;
-                updateHeaderDepositButton();
-                
-                // Update wallet address - jangan block jika gagal
-                try {
-                    await updateUserWallet(currentUser.id, wallet.account.address);
-                } catch (err) {
-                    console.warn('Wallet update failed but continuing:', err);
-                }
-                
-                // Update modal UI
-                if (walletStatus) walletStatus.style.display = 'none';
-                if (depositForm) {
-                    depositForm.style.display = 'block';
-                    const depositAddress = document.getElementById('depositAddress');
-                    if (depositAddress) depositAddress.textContent = webAddress;
-                }
-                if (disconnectContainer) disconnectContainer.style.display = 'block';
-                
-                // Setup disconnect button
-                const disconnectBtn = document.getElementById('disconnectWalletBtn');
-                if (disconnectBtn) {
-                    // Remove old listener to avoid duplicate
-                    const newBtn = disconnectBtn.cloneNode(true);
-                    disconnectBtn.parentNode.replaceChild(newBtn, disconnectBtn);
-                    newBtn.addEventListener('click', disconnectWallet);
-                }
-            } else {
-                isWalletConnected = false;
-                updateHeaderDepositButton();
-                
-                if (walletStatus) walletStatus.style.display = 'block';
-                if (depositForm) depositForm.style.display = 'none';
-                if (disconnectContainer) disconnectContainer.style.display = 'none';
-            }
-        });
-    }
-
-    async function updateUserWallet(telegramId, walletAddress) {
+    // Load wallet address user
+    async function loadUserWallet(telegramId) {
         try {
-            // Gunakan endpoint yang benar di games_service.py
-            const response = await fetch('/api/games/user/wallet', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    telegram_id: telegramId.toString(),
-                    wallet_address: walletAddress
-                })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('✅ Wallet updated:', data);
-            } else {
-                console.error('❌ Wallet update failed:', response.status);
+            const response = await fetch(`/api/games/user-wallet/${telegramId}`);
+            const data = await response.json();
+            if (data.success && data.wallet_address) {
+                userWalletAddress = data.wallet_address;
+                const walletEl = document.getElementById('userWalletAddress');
+                if (walletEl) {
+                    walletEl.textContent = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 6);
+                    walletEl.title = userWalletAddress;
+                }
+                return userWalletAddress;
             }
         } catch (error) {
-            console.error('Error updating wallet:', error);
+            console.error('Error loading wallet:', error);
         }
+        return null;
     }
 
-
-    function base64EncodeComment(comment) {
+    // Load total gifts dan referral reward
+    async function loadUserStats(telegramId) {
         try {
-            if (comment.length > 120) {
-                comment = comment.substring(0, 120);
-            }
-            const encoder = new TextEncoder();
-            const commentBytes = encoder.encode(comment);
-            const prefix = new Uint8Array([0, 0, 0, 0]);
-            const fullBytes = new Uint8Array(prefix.length + commentBytes.length);
-            fullBytes.set(prefix);
-            fullBytes.set(commentBytes, prefix.length);
-            let binary = '';
-            for (let i = 0; i < fullBytes.length; i++) {
-                binary += String.fromCharCode(fullBytes[i]);
-            }
-            return btoa(binary);
-        } catch (e) {
-            console.error('Error encoding comment:', e);
-            return undefined;
-        }
-    }
-
-    async function processDepositTON() {
-        if (!tonConnectUI || !tonConnectUI.connected) {
-            await tonConnectUI.openModal();
-            return;
-        }
-
-        const amount = parseFloat(document.getElementById('tonAmount').value);
-        
-        if (isNaN(amount) || amount < 0.1) {
-            alert('Minimum deposit 0.1 TON');
-            return;
-        }
-
-        if (!currentUser || !currentUser.id) {
-            alert('User tidak ditemukan');
-            return;
-        }
-
-        const sendBtn = document.getElementById('sendDepositBtn');
-        const originalBtnText = sendBtn.innerHTML;
-        sendBtn.disabled = true;
-        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-
-        try {
-            const senderAddress = tonConnectUI.account?.address;
-            const memo = `deposit:${currentUser.id}:${Date.now()}`;
-            const amountNano = Math.floor(amount * 1_000_000_000).toString();
-
-            // Format standar TON untuk comment text cukup di encode ke base64
-            const encoder = new TextEncoder();
-            const memoBytes = encoder.encode(memo);
-            
-            // Konversi ke base64
-            let binary = '';
-            for (let i = 0; i < memoBytes.length; i++) {
-                binary += String.fromCharCode(memoBytes[i]);
-            }
-            const payloadBase64 = btoa(binary);
-
-            const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 600,
-                messages: [{
-                    address: webAddress,
-                    amount: amountNano
-                }]
-            };
-
-            console.log('📤 Sending TON deposit:', transaction);
-            const result = await tonConnectUI.sendTransaction(transaction);
-            console.log('✅ Transaction sent:', result);
-
-            // Verifikasi deposit ke backend games
-            const verifyResponse = await fetch('/api/games/verify-ton-deposit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegram_id: currentUser.id.toString(),
-                    transaction_hash: result.boc,
-                    amount_ton: amount,
-                    from_address: senderAddress,
-                    memo: memo
-                })
-            });
-
-            const verifyData = await verifyResponse.json();
-            
-            if (verifyData.success) {
-                // Tampilkan instruksi sukses
-                document.getElementById('depositForm').style.display = 'none';
-                document.getElementById('depositInstructions').style.display = 'block';
-                document.getElementById('depositTxHash').textContent = result.boc.slice(0, 30) + '...';
-                
-                // REFRESH BALANCE - Pastikan balance terupdate
-                const fullName = (currentUser.first_name || '') + (currentUser.last_name ? ' ' + currentUser.last_name : '');
-                const newBalance = await loadUserBalance(currentUser.id, currentUser.username || '', fullName);
-                
-                console.log('✅ Deposit successful! New balance:', newBalance);
-                
-                // Update balance di header
-                const balanceEl = document.getElementById('userBalance');
-                if (balanceEl && newBalance !== undefined) {
-                    balanceEl.textContent = newBalance.toLocaleString('id-ID');
-                }
-                
-                // Tampilkan notifikasi sukses dengan nominal
-                alert(`✅ Deposit ${amount} TON berhasil!\nSaldo Anda: ${newBalance.toLocaleString('id-ID')} IDR`);
-                
-                setTimeout(() => {
-                    closeModal();
-                }, 5000);
-            } else {
-                console.error('❌ Verification failed:', verifyData);
-                alert('Deposit gagal diverifikasi: ' + (verifyData.error || 'Unknown error'));
+            const response = await fetch(`/api/games/user-stats/${telegramId}`);
+            const data = await response.json();
+            if (data.success) {
+                const giftsEl = document.getElementById('totalGifts');
+                const referralEl = document.getElementById('referralReward');
+                if (giftsEl) giftsEl.textContent = data.gifts || 0;
+                if (referralEl) referralEl.textContent = data.referral_reward || 0;
             }
         } catch (error) {
-            console.error('Deposit error:', error);
-            
-            if (error.message?.includes('rejected')) {
-                alert('Transaksi dibatalkan oleh user');
-            } else if (error.message?.includes('No enough funds')) {
-                alert('❌ Saldo TON tidak cukup!\n\nSilakan isi saldo wallet TON Anda terlebih dahulu.\n\nMinimal deposit: 0.1 TON');
-            } else if (error.message?.includes('payload')) {
-                alert('Gagal kirim deposit, silakan coba lagi');
-            } else {
-                alert('Gagal memproses deposit: ' + error.message);
-            }
-        } finally {
-            sendBtn.disabled = false;
-            sendBtn.innerHTML = originalBtnText;
+            console.error('Error loading user stats:', error);
+            const giftsEl = document.getElementById('totalGifts');
+            const referralEl = document.getElementById('referralReward');
+            if (giftsEl) giftsEl.textContent = '0';
+            if (referralEl) referralEl.textContent = '0';
         }
     }
 
-    // ==================== MODAL FUNCTIONS ====================
-    function showDepositModal() {
-        const modal = document.getElementById('depositModal');
+    // Update UI Profile
+    function updateProfileUI() {
+        if (!telegramUser) return;
+        
+        const fullName = (telegramUser.first_name || '') + (telegramUser.last_name ? ' ' + telegramUser.last_name : '');
+        const nameEl = document.getElementById('userFullName');
+        if (nameEl) nameEl.textContent = fullName || 'Telegram User';
+        
+        const username = telegramUser.username || 'no_username';
+        const usernameEl = document.getElementById('userUsername');
+        if (usernameEl) usernameEl.textContent = '@' + username;
+        
+        const idEl = document.getElementById('userId');
+        if (idEl) idEl.textContent = 'ID: ' + telegramUser.id;
+        
+        const avatarImg = document.getElementById('userAvatar');
+        if (avatarImg) {
+            if (telegramUser.photo_url) {
+                avatarImg.src = telegramUser.photo_url;
+            } else {
+                const fullNameStr = fullName || 'User';
+                avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fullNameStr)}&background=6c5ce7&color=fff&size=100`;
+            }
+        }
+    }
+
+    // ==================== WITHDRAW FUNCTIONS ====================
+    
+    function showWithdrawModal() {
+        const modal = document.getElementById('withdrawModal');
         if (!modal) return;
         
-        document.getElementById('depositForm').style.display = 'none';
-        document.getElementById('depositInstructions').style.display = 'none';
+        // Reset UI
+        document.getElementById('withdrawForm').style.display = 'block';
+        document.getElementById('withdrawProcessing').style.display = 'none';
+        document.getElementById('withdrawSuccess').style.display = 'none';
+        document.getElementById('withdrawError').style.display = 'none';
         
-        if (isWalletConnected && tonConnectUI && tonConnectUI.account) {
-            document.getElementById('depositWalletStatus').style.display = 'none';
-            document.getElementById('depositForm').style.display = 'block';
-            document.getElementById('depositAddress').textContent = webAddress;
-        } else {
-            document.getElementById('depositWalletStatus').style.display = 'block';
+        // Reset input
+        const amountInput = document.getElementById('withdrawAmount');
+        if (amountInput) amountInput.value = '';
+        
+        // Load fresh balance
+        if (telegramUser && telegramUser.id) {
+            loadBalance(telegramUser.id);
+            loadUserWallet(telegramUser.id);
         }
         
-        document.getElementById('tonAmount').value = '1.0';
+        // Cek apakah wallet terhubung
+        if (!userWalletAddress) {
+            document.getElementById('walletWarning').style.display = 'block';
+            document.getElementById('withdrawForm').style.display = 'none';
+        } else {
+            document.getElementById('walletWarning').style.display = 'none';
+            document.getElementById('withdrawForm').style.display = 'block';
+        }
+        
         modal.style.display = 'flex';
     }
 
-    function closeModal() {
-        const modal = document.getElementById('depositModal');
+    function closeWithdrawModal() {
+        const modal = document.getElementById('withdrawModal');
         if (modal) modal.style.display = 'none';
-        
-        document.getElementById('depositForm').style.display = 'none';
-        document.getElementById('depositInstructions').style.display = 'none';
-        document.getElementById('depositWalletStatus').style.display = 'block';
     }
 
-    // ==================== DISCONNECT WALLET ====================
-    async function disconnectWallet() {
-        if (!tonConnectUI) return;
-        
-        try {
-            await tonConnectUI.disconnect();
-            console.log('✅ Wallet disconnected');
-            
-            isWalletConnected = false;
-            updateHeaderDepositButton();
-            
-            // Reset UI modal
-            const walletStatus = document.getElementById('depositWalletStatus');
-            const depositForm = document.getElementById('depositForm');
-            const disconnectContainer = document.getElementById('disconnectContainer');
-            
-            if (walletStatus) walletStatus.style.display = 'block';
-            if (depositForm) depositForm.style.display = 'none';
-            if (disconnectContainer) disconnectContainer.style.display = 'none';
-            
-            // Reset deposit address
-            const depositAddress = document.getElementById('depositAddress');
-            if (depositAddress) depositAddress.textContent = '';
-            
-            // Tampilkan notifikasi
-            if (window.Telegram?.WebApp?.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('error');
-            }
-            
-            alert('Wallet berhasil diputuskan');
-        } catch (error) {
-            console.error('Disconnect error:', error);
-            alert('Gagal memutuskan wallet: ' + error.message);
+    function setMaxWithdraw() {
+        const amountInput = document.getElementById('withdrawAmount');
+        if (amountInput && currentBalance > 0) {
+            amountInput.value = currentBalance.toFixed(2);
         }
     }
 
-
-    // ==================== HEADER BUTTON HANDLER ====================
-    async function handleHeaderButtonClick() {
-        if (isWalletConnected && tonConnectUI && tonConnectUI.account) {
-            // Jika sudah connect, buka modal deposit
-            showDepositModal();
-        } else {
-            // Jika belum connect, buka modal wallet
-            if (tonConnectUI) {
-                await tonConnectUI.openModal();
+    async function processWithdraw() {
+        const amountInput = document.getElementById('withdrawAmount');
+        let amount = parseFloat(amountInput.value);
+        
+        // Validasi
+        if (isNaN(amount) || amount <= 0) {
+            alert('Masukkan jumlah withdraw yang valid');
+            return;
+        }
+        
+        if (amount < 0.1) {
+            alert('Minimum withdraw adalah 0.1 TON');
+            return;
+        }
+        
+        if (amount > currentBalance) {
+            alert(`Saldo tidak cukup! Saldo Anda: ${currentBalance.toFixed(2)} TON`);
+            return;
+        }
+        
+        if (!userWalletAddress) {
+            alert('Wallet TON belum terhubung. Silakan deposit terlebih dahulu untuk menghubungkan wallet.');
+            return;
+        }
+        
+        if (!telegramUser || !telegramUser.id) {
+            alert('User tidak ditemukan');
+            return;
+        }
+        
+        // Show processing state
+        document.getElementById('withdrawForm').style.display = 'none';
+        document.getElementById('withdrawProcessing').style.display = 'block';
+        
+        const processBtn = document.getElementById('processWithdrawBtn');
+        const originalText = processBtn?.innerHTML;
+        if (processBtn) {
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        }
+        
+        try {
+            const response = await fetch('/api/games/withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramUser.id,
+                    amount: amount,
+                    wallet_address: userWalletAddress
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Show success
+                document.getElementById('withdrawProcessing').style.display = 'none';
+                document.getElementById('withdrawSuccess').style.display = 'block';
+                document.getElementById('withdrawSuccessAmount').textContent = amount.toFixed(2) + ' TON';
+                document.getElementById('withdrawTxId').textContent = data.transaction_id || 'WID-' + Date.now();
+                
+                // Refresh balance
+                await loadBalance(telegramUser.id);
+                
+                // Haptic feedback
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
             } else {
-                // Init dulu kalau belum
-                initTonConnect();
-                setTimeout(async () => {
-                    if (tonConnectUI) {
-                        await tonConnectUI.openModal();
-                    }
-                }, 500);
+                // Show error
+                document.getElementById('withdrawProcessing').style.display = 'none';
+                document.getElementById('withdrawError').style.display = 'block';
+                document.getElementById('withdrawErrorMessage').textContent = data.error || 'Withdraw gagal, silakan coba lagi';
+                
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
             }
+        } catch (error) {
+            console.error('Withdraw error:', error);
+            document.getElementById('withdrawProcessing').style.display = 'none';
+            document.getElementById('withdrawError').style.display = 'block';
+            document.getElementById('withdrawErrorMessage').textContent = error.message || 'Terjadi kesalahan jaringan';
+        } finally {
+            if (processBtn) {
+                processBtn.disabled = false;
+                processBtn.innerHTML = originalText;
+            }
+        }
+    }
+
+    // ==================== HISTORY FUNCTIONS (tetap ada untuk keperluan lain) ====================
+    
+    async function loadUserGameHistory(telegramId) {
+        try {
+            const response = await fetch(`/api/games/user-history/${telegramId}`);
+            const data = await response.json();
+            
+            const tbody = document.getElementById('historyBodyProfile');
+            if (!tbody) return;
+            
+            if (!data.success || !data.history || data.history.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Belum ada riwayat game</td></tr>';
+                return;
+            }
+            
+            let html = '';
+            for (const game of data.history) {
+                const winClass = game.win_amount > game.bet_amount ? 'win-positive' : '';
+                html += `
+                    <tr>
+                        <td>${game.game_name || 'Plinko'}</td>
+                        <td>${game.bet_amount.toLocaleString()}</td>
+                        <td>${game.multiplier}x</td>
+                        <td class="${winClass}">${game.win_amount.toLocaleString()}</td>
+                        <td>${new Date(game.played_at).toLocaleString()}</td>
+                    </tr>
+                `;
+            }
+            tbody.innerHTML = html;
+        } catch (error) {
+            console.error('Error loading history:', error);
+            const tbody = document.getElementById('historyBodyProfile');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Error loading history</td></tr>';
+            }
+        }
+    }
+
+    function toggleHistory() {
+        const historySection = document.getElementById('historySection');
+        if (!historySection) return;
+        
+        if (historySection.style.display === 'none' || historySection.style.display === '') {
+            historySection.style.display = 'block';
+            if (telegramUser && telegramUser.id) {
+                loadUserGameHistory(telegramUser.id);
+            }
+        } else {
+            historySection.style.display = 'none';
+        }
+    }
+
+    // ==================== DEPOSIT FUNCTIONS ====================
+    
+    function showDepositModal() {
+        const modal = document.getElementById('depositModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeDepositModal() {
+        const modal = document.getElementById('depositModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function processDeposit(amount) {
+        if (!amount || amount < 10000) {
+            alert('Minimal deposit Rp 10.000');
+            return;
+        }
+        
+        if (!telegramUser || !telegramUser.id) {
+            alert('User tidak ditemukan');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/games/deposit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramUser.id,
+                    amount: amount
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(`Deposit Rp ${amount.toLocaleString()} berhasil!`);
+                closeDepositModal();
+                loadBalance(telegramUser.id);
+                loadUserStats(telegramUser.id);
+            } else {
+                alert(data.error || 'Deposit gagal');
+            }
+        } catch (error) {
+            console.error('Deposit error:', error);
+            alert('Error processing deposit');
         }
     }
 
     // ==================== INITIALIZATION ====================
-    if (user) {
-        currentUser = user;
-        const fullName = (user.first_name || '') + (user.last_name ? ' ' + user.last_name : '');
-        loadUserBalance(user.id, user.username || '', fullName);
-    } else {
-        const balanceEl = document.getElementById("userBalance");
-        if (balanceEl) balanceEl.textContent = "0";
-    }
-
-    // Init TON Connect
-    initTonConnect();
-
-    // Setup header deposit button
-    const headerDepositBtn = document.getElementById('headerDepositBtn');
-    if (headerDepositBtn) {
-        headerDepositBtn.addEventListener('click', handleHeaderButtonClick);
-    }
-
-    // Setup modal close
-    const closeModalBtn = document.querySelector('.close-modal');
-    if (closeModalBtn) {
-        closeModalBtn.addEventListener('click', closeModal);
-    }
-
-    window.addEventListener('click', (e) => {
-        const modal = document.getElementById('depositModal');
-        if (modal && e.target === modal) closeModal();
-    });
-
-    // Setup send deposit button
-    const sendDepositBtn = document.getElementById('sendDepositBtn');
-    if (sendDepositBtn) {
-        sendDepositBtn.addEventListener('click', processDepositTON);
-    }
-
-    // Navigation
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabPanes = document.querySelectorAll('.tab-pane');
-
-    navItems.forEach(item => {
-        item.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            const redirectUrl = this.getAttribute('data-url');
+    
+    async function init() {
+        telegramUser = await getTelegramUser();
+        
+        if (telegramUser) {
+            const fullName = (telegramUser.first_name || '') + (telegramUser.last_name ? ' ' + telegramUser.last_name : '');
+            await loadUserData(telegramUser.id, telegramUser.username || '', fullName || 'User');
+            await loadBalance(telegramUser.id);
+            await loadUserStats(telegramUser.id);
+            await loadUserWallet(telegramUser.id);
+        }
+        
+        // Event listeners - DEPOSIT
+        const depositBtn = document.getElementById('depositBtn');
+        if (depositBtn) depositBtn.addEventListener('click', showDepositModal);
+        
+        // Event listeners - WITHDRAW
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        if (withdrawBtn) withdrawBtn.addEventListener('click', showWithdrawModal);
+        
+        const maxBtn = document.getElementById('maxWithdrawBtn');
+        if (maxBtn) maxBtn.addEventListener('click', setMaxWithdraw);
+        
+        const processWithdrawBtn = document.getElementById('processWithdrawBtn');
+        if (processWithdrawBtn) processWithdrawBtn.addEventListener('click', processWithdraw);
+        
+        // History button (opsional, bisa dihapus atau tetap)
+        const historyBtn = document.getElementById('historyBtn');
+        if (historyBtn) historyBtn.addEventListener('click', toggleHistory);
+        
+        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+        if (closeHistoryBtn) {
+            closeHistoryBtn.addEventListener('click', () => {
+                const historySection = document.getElementById('historySection');
+                if (historySection) historySection.style.display = 'none';
+            });
+        }
+        
+        // Modal close handlers
+        const closeModalBtn = document.querySelector('#depositModal .close-modal');
+        if (closeModalBtn) closeModalBtn.addEventListener('click', closeDepositModal);
+        
+        const closeWithdrawBtn = document.querySelector('#withdrawModal .withdraw-close');
+        if (closeWithdrawBtn) closeWithdrawBtn.addEventListener('click', closeWithdrawModal);
+        
+        window.addEventListener('click', (e) => {
+            const depositModal = document.getElementById('depositModal');
+            if (depositModal && e.target === depositModal) closeDepositModal();
             
-            if (redirectUrl && redirectUrl !== '') {
-                redirectToPage(redirectUrl);
-                return;
-            }
-            
-            navItems.forEach(nav => nav.classList.remove('active'));
-            this.classList.add('active');
-
-            tabPanes.forEach(pane => pane.classList.remove('active'));
-            
-            const targetPane = document.getElementById(targetId);
-            if (targetPane) {
-                targetPane.classList.add('active');
-            }
-
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('light');
-            }
+            const withdrawModal = document.getElementById('withdrawModal');
+            if (withdrawModal && e.target === withdrawModal) closeWithdrawModal();
         });
-    });
-
-    console.log('✅ Games page ready with dynamic wallet button');
-});
-
-// Global function untuk copy address
-window.copyDepositAddress = function() {
-    const address = document.getElementById('depositAddress')?.textContent;
-    if (address) {
-        navigator.clipboard.writeText(address);
-        alert('Address copied!');
+        
+        // Deposit method buttons
+        const methodBtns = document.querySelectorAll('.method-btn');
+        methodBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const amount = parseInt(btn.dataset.amount);
+                const customAmount = document.getElementById('customAmount');
+                if (customAmount) customAmount.value = amount;
+            });
+        });
+        
+        const processBtn = document.getElementById('processDeposit');
+        if (processBtn) {
+            processBtn.addEventListener('click', () => {
+                let amount = parseInt(document.getElementById('customAmount').value);
+                if (isNaN(amount)) amount = 10000;
+                processDeposit(amount);
+            });
+        }
+        
+        console.log('✅ Profile Page Ready with Withdraw Feature');
     }
-};
-
-// Global function close modal
-window.closeModal = function() {
-    const modal = document.getElementById('depositModal');
-    if (modal) modal.style.display = 'none';
-};
+    
+    init();
+    
+    // Expose global functions
+    window.closeWithdrawModal = closeWithdrawModal;
+})();
