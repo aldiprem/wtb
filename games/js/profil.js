@@ -107,10 +107,8 @@
                 const profileBalanceEl = document.getElementById('profileBalance');
                 
                 const formattedBalance = formatNumberWithCommas(data.balance);
-                const balanceText = formattedBalance + ' TON';
-                
-                if (balanceEl) balanceEl.textContent = balanceText;
-                if (profileBalanceEl) profileBalanceEl.textContent = balanceText;
+                if (balanceEl) balanceEl.textContent = formattedBalance;
+                if (profileBalanceEl) profileBalanceEl.textContent = formattedBalance;
                 
                 return data.balance;
             }

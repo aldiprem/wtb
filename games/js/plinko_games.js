@@ -63,9 +63,9 @@
         const betLabel = document.getElementById('currentBetLabel');
         if (betLabel) {
             if (currentBetAmount && currentBetAmount > 0) {
-                betLabel.textContent = formatNumberWithCommas(currentBetAmount) + ' TON';
+                betLabel.textContent = formatNumberWithCommas(currentBetAmount);
             } else {
-                betLabel.textContent = '1.00 TON';
+                betLabel.textContent = '1.00';
                 currentBetAmount = 1.0;
             }
         }
@@ -339,9 +339,8 @@
         
         resultDiv.style.display = 'block';
         resultMultiplier.textContent = `${multiplier}x`;
-        
-        // Tampilkan kemenangan yang ditambahkan ke saldo
-        const winText = winAmount > 0 ? `+${winAmount.toFixed(2)} TON` : `${winAmount.toFixed(2)} TON`;
+
+        const winText = winAmount > 0 ? `+${winAmount.toFixed(2)}` : `${winAmount.toFixed(2)}`;
         resultWin.textContent = winText;
         
         if (multiplier >= 5) {
@@ -573,7 +572,7 @@
             const user = tg.initDataUnsafe?.user;
             
             if (!user || !user.id) {
-                document.getElementById('userBalance').textContent = '0 TON';
+                document.getElementById('userBalance').textContent = '0';
                 return 0;
             }
             
@@ -584,11 +583,10 @@
             const panelBalanceEl = document.getElementById('panelUserBalance');
             
             if (data.success) {
-                // ✅ FORMAT ANGKA RIBUAN
                 const formattedBalance = formatNumberWithCommas(data.balance);
-                const balanceText = formattedBalance + ' TON';
-                if (balanceEl) balanceEl.textContent = balanceText;
-                if (panelBalanceEl) panelBalanceEl.textContent = balanceText;
+                // HAPUS ' TON' dari sini
+                if (balanceEl) balanceEl.textContent = formattedBalance;
+                if (panelBalanceEl) panelBalanceEl.textContent = formattedBalance;
                 return data.balance;
             }
         } catch (error) {

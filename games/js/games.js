@@ -100,7 +100,7 @@
                 currentBalance = data.balance;
                 const balanceEl = document.getElementById('userBalance');
                 if (balanceEl) {
-                    balanceEl.textContent = formatNumberWithCommas(data.balance) + ' TON';
+                    balanceEl.textContent = formatNumberWithCommas(data.balance);
                 }
                 return data.balance;
             }
