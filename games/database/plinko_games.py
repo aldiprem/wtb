@@ -41,11 +41,11 @@ BIG_MULTIPLIERS = {
 }
 
 def get_db():
-    """Get database connection"""
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     """Initialize database tables dengan sistem tracking bandar"""
