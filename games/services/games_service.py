@@ -487,28 +487,30 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         from tonutils.client import TonapiClient
         from tonutils.wallet import WalletV4R2
         from tonutils.utils import to_nano
-        from tonutils.address import Address  # 🔥 IMPORT Address
+        # 🔥 HAPUS from tonutils.address import Address
         
         TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
         
-        # 🔥 KONVERSI ADDRESS KE FORMAT YANG VALID
-        try:
-            # Parse address menggunakan Address class
-            if to_address.startswith('0:'):
-                # Raw format, parse langsung
-                addr = Address(to_address)
-                formatted_address = addr.to_string(True, True, True)  # bounceable, url-safe, user-friendly
-                print(f"✅ Raw address converted: {to_address} -> {formatted_address}")
-            else:
-                formatted_address = to_address
-                addr = Address(formatted_address)
-            
-            # Validasi
-            if not addr.is_valid:
-                return False, f"Invalid TON address: {to_address}"
-                
-        except Exception as e:
-            return False, f"Cannot parse address: {to_address}. Error: {e}"
+        # 🔥 KONVERSI RAW ADDRESS KE FRIENDLY FORMAT MANUAL
+        def convert_raw_to_friendly(raw_addr):
+            import base64
+            if raw_addr.startswith('0:'):
+                parts = raw_addr.split(':')
+                hash_hex = parts[1]
+                hash_bytes = bytes.fromhex(hash_hex)
+                # Bounceable address tag
+                addr_bytes = bytes([0x11]) + hash_bytes
+                b64 = base64.b64encode(addr_bytes).decode()
+                b64 = b64.replace('+', '-').replace('/', '_').rstrip('=')
+                return 'EQ' + b64
+            return raw_addr
+        
+        # Konversi address jika perlu
+        if to_address.startswith('0:'):
+            formatted_address = convert_raw_to_friendly(to_address)
+            print(f"✅ Converted address: {to_address} -> {formatted_address}")
+        else:
+            formatted_address = to_address
         
         # Split mnemonic menjadi list
         mnemonic_list = mnemonic_string.split()
@@ -554,36 +556,31 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         print(f"✅ Withdraw sent: {tx_hash}")
         return True, tx_hash
         
-    except ImportError as e:
-        print(f"❌ Import error: {e}")
-        return False, f"Missing module: {e}"
     except Exception as e:
         print(f"❌ Error sending TON: {e}")
         import traceback
         traceback.print_exc()
         return False, str(e)
 
-def raw_to_friendly_address(raw_address):
-    """
-    Konversi raw TON address (0:xxx) ke friendly format (EQ...)
-    """
+# Tambahkan di awal file, setelah import
+def raw_ton_to_friendly(raw_address):
+    """Convert raw TON address (0:xxx) to friendly format (EQ...)"""
     import base64
+    
+    if not raw_address or not raw_address.startswith('0:'):
+        return raw_address
     
     try:
         # Pisahkan workchain dan hash
-        if not raw_address.startswith('0:'):
+        parts = raw_address.split(':')
+        if len(parts) != 2:
             return raw_address
         
-        parts = raw_address.split(':')
-        workchain = int(parts[0])
         hash_hex = parts[1]
-        
-        # Konversi hex ke bytes
         hash_bytes = bytes.fromhex(hash_hex)
         
-        # Buat address bytes: tag (0x11 untuk bounceable) + hash
-        tag = 0x11  # bounceable
-        address_bytes = bytes([tag]) + hash_bytes
+        # Bounceable address tag = 0x11
+        address_bytes = bytes([0x11]) + hash_bytes
         
         # Encode ke base64 URL-safe
         address_b64 = base64.b64encode(address_bytes).decode('utf-8')
@@ -592,17 +589,17 @@ def raw_to_friendly_address(raw_address):
         # Tambahkan prefix EQ
         friendly_address = 'EQ' + address_b64
         
-        print(f"✅ Manual conversion: {raw_address} -> {friendly_address}")
+        print(f"✅ Address converted: {raw_address} -> {friendly_address}")
         return friendly_address
         
     except Exception as e:
-        print(f"❌ Conversion error: {e}")
+        print(f"⚠️ Address conversion failed: {e}")
         return raw_address
 
 # ==================== ENDPOINT WITHDRAW REAL ====================
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
-    """Proses withdraw TON - dengan konversi address manual"""
+    """Proses withdraw TON - dengan konversi address"""
     init_db()
     data = request.json
     
@@ -625,15 +622,14 @@ def process_withdraw_real():
     if not wallet_address:
         return jsonify({"success": False, "error": "Wallet address required"}), 400
     
-    # 🔥 KONVERSI RAW ADDRESS KE FRIENDLY FORMAT
+    # 🔥 KONVERSI ADDRESS RAW KE FRIENDLY FORMAT
     if wallet_address.startswith('0:'):
-        formatted_addr = raw_to_friendly_address(wallet_address)
+        formatted_addr = raw_ton_to_friendly(wallet_address)
     else:
         formatted_addr = wallet_address
     
-    # Validasi panjang address
-    if len(formatted_addr) < 40:
-        return jsonify({"success": False, "error": f"Invalid wallet address format: {formatted_addr}"}), 400
+    print(f"📝 Original address: {wallet_address}")
+    print(f"📝 Formatted address: {formatted_addr}")
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -661,9 +657,7 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": "Merchant mnemonic not configured in .env"}), 500
         
-        print(f"💰 Processing withdraw: {amount} TON")
-        print(f"   Original address: {wallet_address}")
-        print(f"   Formatted address: {formatted_addr}")
+        print(f"💰 Processing withdraw: {amount} TON to {formatted_addr}")
         
         # JALANKAN ASYNC FUNCTION
         import asyncio
@@ -699,7 +693,7 @@ def process_withdraw_real():
         conn.commit()
         conn.close()
         
-        print(f"✅ Withdraw completed: {amount} TON to {formatted_addr}")
+        print(f"✅ Withdraw completed: {amount} TON")
         
         return jsonify({
             "success": True,
