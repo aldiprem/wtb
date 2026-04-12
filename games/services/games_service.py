@@ -487,13 +487,33 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         from tonutils.client import TonapiClient
         from tonutils.wallet import WalletV4R2
         from tonutils.utils import to_nano
+        from tonutils.address import Address
         
         TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
+        
+        # 🔥 VALIDASI DAN KONVERSI ADDRESS
+        try:
+            # Coba parse address
+            if to_address.startswith('0:'):
+                # Raw format, konversi ke format friendly
+                addr = Address(to_address)
+                formatted_address = addr.to_string(True, True, True)
+                print(f"✅ Address converted from raw: {to_address} -> {formatted_address}")
+            else:
+                formatted_address = to_address
+                addr = Address(formatted_address)
+            
+            # Validasi address
+            if not addr.is_valid:
+                return False, f"Invalid TON address: {to_address}"
+                
+        except Exception as e:
+            return False, f"Invalid TON address format: {to_address}. Error: {e}"
         
         # Split mnemonic menjadi list
         mnemonic_list = mnemonic_string.split()
         
-        print(f"📤 Sending {amount_ton} TON to {to_address}")
+        print(f"📤 Sending {amount_ton} TON to {formatted_address}")
         print(f"🔑 Mnemonic words: {len(mnemonic_list)}")
         
         # Inisialisasi client
@@ -512,7 +532,7 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         merchant_address = str(wallet.address)
         print(f"💰 Merchant wallet address: {merchant_address}")
         
-        # Cek saldo merchant wallet (ASYNC)
+        # Cek saldo merchant wallet
         try:
             balance = await client.get_address_balance(merchant_address)
             balance_ton = balance / 1_000_000_000
@@ -523,9 +543,9 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         except Exception as e:
             print(f"⚠️ Could not check balance: {e}")
         
-        # Kirim transaksi (ASYNC)
+        # Kirim transaksi
         tx_hash = await wallet.transfer(
-            destination=to_address,
+            destination=formatted_address,  # Gunakan formatted address
             amount=to_nano(amount_ton),
             body=f"Withdraw from BarackGift to user {telegram_id}",
             send_mode=3
@@ -543,7 +563,7 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
 # ==================== ENDPOINT WITHDRAW REAL ====================
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
-    """Proses withdraw TON - ASYNC VERSION"""
+    """Proses withdraw TON - dengan validasi address"""
     init_db()
     data = request.json
     
@@ -566,9 +586,29 @@ def process_withdraw_real():
     if not wallet_address:
         return jsonify({"success": False, "error": "Wallet address required"}), 400
     
-    # Validasi format wallet address
-    if not wallet_address.startswith('0:') and not wallet_address.startswith('EQ'):
-        return jsonify({"success": False, "error": "Invalid wallet address format"}), 400
+    # 🔥 PERBAIKAN: Validasi format wallet address TON
+    from tonutils.address import Address
+    
+    try:
+        # Coba parse address
+        if wallet_address.startswith('0:'):
+            # Raw format (0:xxx...)
+            addr = Address(wallet_address)
+            formatted_addr = addr.to_string(True, True, True)
+            print(f"✅ Raw address converted: {wallet_address} -> {formatted_addr}")
+        elif wallet_address.startswith('EQ') or wallet_address.startswith('UQ'):
+            # Friendly format
+            addr = Address(wallet_address)
+            formatted_addr = wallet_address
+        else:
+            return jsonify({"success": False, "error": "Invalid wallet address format. Must start with EQ, UQ, or 0:"}), 400
+        
+        # Validasi
+        if not addr.is_valid:
+            return jsonify({"success": False, "error": "Invalid wallet address"}), 400
+            
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Invalid wallet address: {str(e)}"}), 400
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -596,11 +636,11 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": "Merchant mnemonic not configured in .env"}), 500
         
-        print(f"💰 Processing withdraw: {amount} TON to {wallet_address}")
+        print(f"💰 Processing withdraw: {amount} TON to {formatted_addr}")
         
-        # 🔥 JALANKAN ASYNC FUNCTION dengan asyncio.run()
+        # JALANKAN ASYNC FUNCTION dengan asyncio.run()
         import asyncio
-        success, result = asyncio.run(send_ton_auto(telegram_id, amount, wallet_address, MERCHANT_MNEMONIC))
+        success, result = asyncio.run(send_ton_auto(telegram_id, amount, formatted_addr, MERCHANT_MNEMONIC))
         
         if not success:
             conn.close()
