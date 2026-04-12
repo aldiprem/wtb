@@ -132,36 +132,36 @@
     function update() {
         if (!canvas || !ctx) return;
         
-        // Render papan (termasuk 12 baris pin) dan spawner setiap frame
+        // 1. Render Papan dan Spawner
         drawPlinkoBoard();
 
-        // Gerakan spawner (cerobong) di bagian atas
+        // 2. Gerakan Spawner (Cerobong)
         const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
-        // Loop untuk memproses setiap bola yang aktif
+        // 3. Loop Proses Bola
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
-            // Terapkan Fisika Gravitasi
+            // Terapkan Fisika
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Limit kecepatan terminal agar tidak menembus objek
+            // Limit Kecepatan
             if (ball.vy > 8) ball.vy = 8;
             if (Math.abs(ball.vx) > 5) ball.vx = ball.vx > 0 ? 5 : -5;
 
-            // --- KONFIGURASI 12 BARIS ---
-            const startY = 50;      // Sesuai koordinat gambar drawPlinkoBoard
-            const rowSpacing = 22;  // Jarak vertikal antar pin
-            const colSpacing = 22;  // Jarak horizontal antar pin
-            const totalRows = 12;   // Update menjadi 12 baris
+            // --- KONFIGURASI PIN (12 BARIS) ---
+            const startY = 50;      
+            const rowSpacing = 22;  
+            const colSpacing = 22;  
+            const totalRows = 12;   
             
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
             
-            // Batasan Dinding Samping (Bentuk Segitiga/Piramida)
+            // 4. Batasan Dinding Samping (Piramida)
             if (currentRow >= 0 && currentRow < totalRows) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
@@ -177,18 +177,7 @@
                 }
             }
 
-            // Batasan area bawah agar bola masuk lurus ke kotak multiplier
-            const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
-            if (multiplierWrapper && ball.y > canvas.height - 45) {
-                const wrapperWidth = multiplierWrapper.clientWidth;
-                const wrapperLeft = (canvas.width - wrapperWidth) / 2;
-                const wrapperRight = wrapperLeft + wrapperWidth;
-                
-                if (ball.x < wrapperLeft) ball.x = wrapperLeft;
-                if (ball.x > wrapperRight) ball.x = wrapperRight;
-            }
-
-            // Deteksi Tabrakan dengan Pin (Loop 12 Baris)
+            // 5. Deteksi Tabrakan Pin (Loop 12 Baris)
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -202,7 +191,6 @@
 
                     if (dist < BALL_RADIUS + PIN_RADIUS) {
                         const angle = Math.atan2(dy, dx);
-                        // Pantulan acak agar jalur bola variatif
                         ball.vx += Math.cos(angle) * 1.6 + (Math.random() - 0.5) * 0.4;
                         ball.vy *= -BOUNCE;
                         ball.y = py + Math.sin(angle) * (BALL_RADIUS + PIN_RADIUS);
@@ -210,7 +198,7 @@
                 }
             }
 
-            // Render Visual Bola
+            // 6. Render Visual Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
@@ -222,31 +210,31 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // --- LOGIKA AKURASI PENYELESAIAN (PERBAIKAN UTAMA) ---
+            // --- 7. LOGIKA KRITIKAL: MENYENTUH BORDER MULTIPLIER ---
             
-            // multiplierTopY diatur sangat dekat ke dasar canvas (5 pixel dari bawah)
-            // Ini menjamin bola terlihat masuk ke border .multiplier-slots-wrapper sebelum hilang
-            const multiplierTopY = canvas.height - 5;
+            // Agar bola benar-benar menyentuh border, kita gunakan batas Y maksimal canvas.
+            // Kita kurangi hanya 2 pixel agar bola terlihat benar-benar mendarat di garis bawah.
+            const multiplierHitY = canvas.height - 2;
             
-            if (ball.y >= multiplierTopY) {
-                // Cek hitung multiplier hanya saat sudah menyentuh border bawah
+            if (ball.y >= multiplierHitY) {
+                // Pastikan bola berada dalam area horizontal multiplier slots
                 const isHit = checkMultiplierHit(ball);
                 
                 if (isHit) {
+                    // Hapus bola hanya jika sudah mentok ke bawah
                     balls.splice(i, 1);
                     checkAllBallsComplete();
                     continue; 
                 }
             }
             
-            // Safety Net: Hapus bola jika keluar layar secara tidak wajar
-            if (ball.y > canvas.height + 60) {
+            // Safety net diperjauh (jika bola memantul ke luar layar samping/bawah secara ekstrem)
+            if (ball.y > canvas.height + 100) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
         }
 
-        // Rekursi animasi
         animationId = requestAnimationFrame(update);
     }
     
