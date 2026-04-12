@@ -837,12 +837,8 @@
             const tg = window.Telegram.WebApp;
             const user = tg.initDataUnsafe?.user;
             
-            console.log('💾 [SAVE] Telegram user:', user);
-            
-            // PASTIKAN user_id ada
             if (!user || !user.id) {
                 console.error('❌ Cannot save game: No user data');
-                // TAMPILKAN ALERT UNTUK DEBUG
                 alert('ERROR: No user data! Cannot save game.');
                 return;
             }
@@ -852,6 +848,9 @@
                 photoUrl = user.photo_url;
             }
             
+            // 🔥 PERUBAHAN: Gunakan first_name sebagai tampilan, username sebagai backup
+            const displayName = user.first_name || user.username || 'Anonymous';
+            
             const payload = {
                 bet_amount: betAmount,
                 multiplier: multiplier,
@@ -859,7 +858,7 @@
                 round_hash: roundHash,
                 risk_level: currentRisk,
                 user_id: user.id,
-                username: user.username || user.first_name || 'Anonymous',
+                username: displayName,
                 photo_url: photoUrl,
                 is_forced: false,
                 cheat_reason: ''
@@ -873,24 +872,17 @@
                 body: JSON.stringify(payload)
             });
             
-            console.log('💾 [SAVE] Response status:', response.status);
-            
             const data = await response.json();
-            console.log('💾 [SAVE] Response data:', data);
             
             if (data.success) {
                 console.log('✅ Game saved successfully');
-                // Refresh stats dan history setelah save
                 await loadStats();
                 await loadHistory();
-                console.log('✅ Stats and history refreshed');
             } else {
                 console.error('❌ Failed to save game:', data.error);
-                alert(`Save game failed: ${data.error}`);
             }
         } catch (error) {
             console.error('❌ Error saving game:', error);
-            alert(`Save game error: ${error.message}`);
         }
     }
 
