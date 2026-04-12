@@ -575,7 +575,21 @@ def process_withdraw_real():
     amount = data.get('amount')
     wallet_address = data.get('wallet_address')
     
-    # Validasi sama seperti sebelumnya...
+    if not telegram_id:
+        return jsonify({"success": False, "error": "telegram_id required"}), 400
+    
+    if not amount or amount <= 0:
+        return jsonify({"success": False, "error": "Invalid amount"}), 400
+    
+    if amount < 0.1:
+        return jsonify({"success": False, "error": "Minimum withdraw 0.1 TON"}), 400
+    
+    if not wallet_address:
+        return jsonify({"success": False, "error": "Wallet address required"}), 400
+    
+    # Validasi format wallet address
+    if not wallet_address.startswith('0:') and not wallet_address.startswith('EQ'):
+        return jsonify({"success": False, "error": "Invalid wallet address format"}), 400
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -603,6 +617,8 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": "Merchant mnemonic not configured in .env"}), 500
         
+        print(f"💰 Processing withdraw: {amount} TON to {wallet_address}")
+        
         # Kirim TON ke wallet user
         success, result = send_ton_auto(telegram_id, amount, wallet_address, MERCHANT_MNEMONIC)
         
@@ -619,12 +635,24 @@ def process_withdraw_real():
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (telegram_id, 'WITHDRAW_TON', amount, 0, 0, get_current_time()))
         
+        # Simpan ke withdraw_requests
+        reference = f"wd_{telegram_id}_{int(datetime.now().timestamp())}"
+        try:
+            cursor.execute('''
+                INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, transaction_hash, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'completed', ?)
+            ''', (telegram_id, amount, wallet_address, reference, result, get_current_time()))
+        except Exception as e:
+            print(f"⚠️ Could not save withdraw request: {e}")
+        
         # Ambil balance baru
         cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
         new_balance = cursor.fetchone()[0]
         
         conn.commit()
         conn.close()
+        
+        print(f"✅ Withdraw completed: {amount} TON to {wallet_address}")
         
         return jsonify({
             "success": True,
