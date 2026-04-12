@@ -22,7 +22,7 @@
     
     // --- PHYSICS VARIABLES ---
     let balls = [];
-    const GRAVITY = 0.2;
+    const GRAVITY = 0.25;
     const BOUNCE = 0.35;
     const PIN_RADIUS = 3;
     const BALL_RADIUS = 5;
@@ -132,34 +132,27 @@
     function update() {
         if (!canvas || !ctx) return;
         
-        // 1. Render Papan dan Spawner
+        // 1. Render Papan
         drawPlinkoBoard();
 
-        // Gerakan spawner (cerobong) di bagian atas
-        const maxRange = 10; 
+        // Spawner tetap bergerak
         spawnerX += spawnerDir * spawnerSpeed;
-        if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
+        if (Math.abs(spawnerX - canvas.width / 2) > 10) spawnerDir *= -1;
 
         // 2. Loop Memproses Setiap Bola
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
-            // Terapkan Gravitasi & Fisika Dasar
-            ball.vy += GRAVITY;
+            // --- FISIKA BEBAS ---
+            ball.vy += GRAVITY; // Hanya gravitasi murni
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Batasi kecepatan agar bola tetap terkendali
-            if (ball.vy > 8) ball.vy = 8;
-            if (Math.abs(ball.vx) > 4) ball.vx = ball.vx > 0 ? 4 : -4;
+            // Hapus pembatasan kecepatan (Speed Limiter dihapus agar bola bebas melesat)
 
-            // Konfigurasi Pin (12 Baris)
-            const startY = 50;
-            const rowSpacing = 22;
-            const colSpacing = 22;
-            const totalRows = 12;
+            const startY = 50, rowSpacing = 22, colSpacing = 22, totalRows = 12;
 
-            // 3. DETEKSI TABRAKAN PIN DENGAN LOGIKA ANTI-STUCK
+            // 3. DETEKSI TABRAKAN PIN (FULL MOMENTUM)
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -170,62 +163,61 @@
                     const py = startY + r * rowSpacing;
                     const dx = ball.x - px;
                     const dy = ball.y - py;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const distSq = dx * dx + dy * dy;
+                    const minDist = BALL_RADIUS + PIN_RADIUS;
 
-                    // Jika bola menyentuh Pin
-                    if (dist < BALL_RADIUS + PIN_RADIUS) {
-                        const pinId = `pin_${r}_${c}`; // ID Unik untuk setiap titik
+                    if (distSq < minDist * minDist) {
+                        const dist = Math.sqrt(distSq);
                         const angle = Math.atan2(dy, dx);
+                        const pinId = `pin_${r}_${c}`;
 
-                        // --- LOGIKA ANTI-STUCK ---
-                        if (ball.lastPinId === pinId) {
-                            ball.hitCount++;
-                        } else {
-                            ball.lastPinId = pinId;
-                            ball.hitCount = 1;
-                        }
+                        // Logika hitCount hanya untuk anti-stuck ekstrem
+                        if (ball.lastPinId === pinId) ball.hitCount++;
+                        else { ball.lastPinId = pinId; ball.hitCount = 1; }
 
-                        if (ball.hitCount >= 3) {
-                            // PAKSA TURUN: Jika mantul 3x di titik yang sama
-                            ball.vx *= 0.2; // Redam gerakan samping
-                            ball.vy = Math.abs(ball.vy) + 2; // Paksa dorongan ke bawah
-                            ball.y += 5; // Geser posisi melewati pin
-                            ball.hitCount = 0; // Reset hit
+                        if (ball.hitCount >= 5) {
+                            ball.vx += (Math.random() - 0.5) * 4; // Dorong acak kuat jika macet
+                            ball.hitCount = 0;
                         } else {
-                            // PANTULAN NORMAL
-                            ball.vx += Math.cos(angle) * 0.8; 
-                            ball.vy *= -BOUNCE;
+                            // --- PANTULAN TOTAL (BEBAS KE SEGALA ARAH) ---
+                            // Menghitung total kecepatan saat menabrak
+                            let speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
                             
-                            // Tambahan dorongan gravitasi kecil setiap mantul agar tidak naik
-                            ball.vy += 0.5; 
+                            // Berikan pantulan berdasarkan sisa kecepatan + faktor BOUNCE
+                            // Tanpa penambahan ball.vy manual agar tidak berat
+                            let bouncePower = speed * (BOUNCE + 0.5); 
+                            if (bouncePower < 1.5) bouncePower = 1.5; // Minimal power agar tidak mati
+
+                            ball.vx = Math.cos(angle) * bouncePower;
+                            ball.vy = Math.sin(angle) * bouncePower;
                         }
 
-                        // Koreksi posisi agar bola tidak "tenggelam" di dalam pin
-                        const overlap = (BALL_RADIUS + PIN_RADIUS) - dist;
-                        ball.x += Math.cos(angle) * overlap;
-                        ball.y += Math.sin(angle) * overlap;
+                        // Reposisi agar tidak tembus
+                        const overlap = minDist - dist;
+                        ball.x += (dx / dist) * overlap;
+                        ball.y += (dy / dist) * overlap;
                     }
                 }
             }
 
-            // 4. Batasan Dinding Piramida
+            // 4. BATASAN DINDING (DIBUAT MEMBAL BEBAS)
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
             if (currentRow >= 0 && currentRow < totalRows) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
-                const leftWall = (canvas.width / 2) - (rWidth / 2) - 12;
-                const rightWall = (canvas.width / 2) + (rWidth / 2) + 12;
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 15;
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 15;
 
                 if (ball.x < leftWall) {
                     ball.x = leftWall;
-                    ball.vx *= -BOUNCE;
+                    ball.vx *= -0.8; // Pantulan dinding lebih kuat (bebas kesamping)
                 } else if (ball.x > rightWall) {
                     ball.x = rightWall;
-                    ball.vx *= -BOUNCE;
+                    ball.vx *= -0.8;
                 }
             }
 
-            // 5. Gambar Visual Bola
+            // 5. Render Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
@@ -234,11 +226,10 @@
             ctx.fillStyle = gradient;
             ctx.fill();
 
-            // 6. Logika Selesai (Menyentuh Dasar Border Multiplier)
+            // 6. Logika Selesai
             const bottomLine = canvas.height - 2;
             if (ball.y >= bottomLine) {
-                const isHit = checkMultiplierHit(ball);
-                if (isHit) {
+                if (checkMultiplierHit(ball)) {
                     balls.splice(i, 1);
                     checkAllBallsComplete();
                     continue; 
@@ -246,7 +237,7 @@
             }
 
             // Safety Net
-            if (ball.y > canvas.height + 50) {
+            if (ball.y > canvas.height + 100) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
