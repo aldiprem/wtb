@@ -314,8 +314,6 @@
         for (const area of multiplierAreas) {
             if (ball.x >= area.x && ball.x <= area.x + area.width) {
                 const winAmount = ball.bet * area.multiplier;
-                // PERBAIKAN: Net profit = winAmount (BUKAN winAmount - bet)
-                // Karena bet sudah dipotong di awal, kita hanya tambah kemenangan
                 const netChange = winAmount;
                 
                 pendingBalanceUpdate += netChange;
@@ -324,6 +322,14 @@
                 showResult(area.multiplier, winAmount, netChange);
                 
                 const roundHash = generateRoundHash();
+                
+                // 🔥 PASTIKAN TELEGRAM USER TERSEDIA
+                if (!telegramUser) {
+                    const tg = window.Telegram.WebApp;
+                    telegramUser = tg.initDataUnsafe?.user || { id: null, first_name: 'Guest' };
+                }
+                
+                // 🔥 PANGGIL SAVE GAME RESULT DENGAN DATA LENGKAP
                 saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
                 
                 return true;
@@ -595,23 +601,30 @@
         return 0;
     }
 
-    // Load stats from API
     async function loadStats() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/stats`);
             const data = await response.json();
             
             if (data.success) {
+                // Total Win Amount (Jackpot)
                 const totalWinAmount = data.total_win_amount || 0;
-                document.getElementById('totalWinAmount').textContent = totalWinAmount.toLocaleString();
+                document.getElementById('totalWinAmount').textContent = formatNumberWithCommas(totalWinAmount);
                 document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
                 
+                // Last Player Info (stat-lasted)
                 const lastPlayerName = data.last_player || '-';
                 const lastPlayerMultiplier = data.last_multiplier || '0';
                 
                 document.getElementById('lastPlayerName').textContent = lastPlayerName;
                 document.getElementById('lastPlayerMultiplier').textContent = `${lastPlayerMultiplier}x`;
-                document.getElementById('roundHash').textContent = data.current_hash ? data.current_hash.substring(0, 12) + '...' : '-';
+                
+                // Round Hash
+                if (data.current_hash) {
+                    document.getElementById('roundHash').textContent = data.current_hash.substring(0, 12) + '...';
+                } else {
+                    document.getElementById('roundHash').textContent = '-';
+                }
             }
         } catch (error) {
             console.error('Error loading stats:', error);
@@ -640,10 +653,9 @@
         }
     }
 
-    // Load history dengan foto profil dari database
     async function loadHistory() {
         try {
-            const response = await fetch(`${API_BASE}/api/plinko/history?limit=20`);
+            const response = await fetch(`${API_BASE}/api/plinko/history?limit=50`);
             const data = await response.json();
             
             console.log('📜 History response:', data);
@@ -683,33 +695,43 @@
                 
                 // Tentukan kelas win
                 let winClass = 'neutral';
-                let winText = `${game.win_amount.toFixed(2)}`;
-                if (game.win_amount > game.bet_amount) {
+                let winAmount = game.win_amount || 0;
+                let betAmount = game.bet_amount || 0;
+                let winText = `${winAmount.toFixed(2)}`;
+                
+                if (winAmount > betAmount) {
                     winClass = 'positive';
-                    winText = `+${(game.win_amount - game.bet_amount).toFixed(2)}`;
-                } else if (game.win_amount < game.bet_amount) {
+                    winText = `+${(winAmount - betAmount).toFixed(2)}`;
+                } else if (winAmount < betAmount) {
                     winClass = 'negative';
-                    winText = `-${(game.bet_amount - game.win_amount).toFixed(2)}`;
+                    winText = `-${(betAmount - winAmount).toFixed(2)}`;
                 }
                 
                 // Format waktu
-                const playTime = new Date(game.created_at);
-                const timeFormatted = playTime.toLocaleTimeString('id-ID', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: 'short'
-                });
+                let timeFormatted = '-';
+                if (game.created_at) {
+                    const playTime = new Date(game.created_at);
+                    if (!isNaN(playTime.getTime())) {
+                        timeFormatted = playTime.toLocaleString('id-ID', { 
+                            hour: '2-digit', 
+                            minute: '2-digit',
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                        });
+                    }
+                }
                 
                 const playerName = game.username || 'Anonymous';
                 
+                // Gunakan photo_url dari database
                 let avatarUrl = game.photo_url;
                 if (!avatarUrl) {
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
                 }
                 
                 html += `
-                    <div class="history-item multiplier-${multiplierClass}" data-hash="${game.round_hash}">
+                    <div class="history-item multiplier-${multiplierClass}" data-hash="${game.round_hash || ''}">
                         <div class="history-item-content">
                             <div class="history-avatar">
                                 <img src="${avatarUrl}" alt="${playerName}" 
@@ -723,7 +745,7 @@
                                 </div>
                             </div>
                             <div class="history-result">
-                                <div class="history-multiplier ${multiplierColor}">${game.multiplier}x</div>
+                                <div class="history-multiplier ${multiplierColor}">${game.multiplier || 0}x</div>
                                 <div class="history-win ${winClass}">${winText}</div>
                             </div>
                         </div>
@@ -737,7 +759,7 @@
             document.querySelectorAll('.history-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const hash = item.dataset.hash;
-                    if (hash) {
+                    if (hash && hash !== 'undefined') {
                         navigator.clipboard.writeText(hash);
                         showToast('Round Hash copied!', 'success');
                     }
@@ -783,7 +805,6 @@
         }, 2000);
     }
 
-    // Save game result to backend - SERTAKAN FOTO PROFIL
     async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
         try {
             const tg = window.Telegram.WebApp;
@@ -796,30 +817,23 @@
             
             let riskForDisplay = currentRisk;
             
-            console.log('💾 Saving game result:', {
+            const payload = {
                 bet_amount: betAmount,
                 multiplier: multiplier,
                 win_amount: winAmount,
                 round_hash: roundHash,
                 risk_level: riskForDisplay,
-                user_id: telegramUser?.id,
-                username: telegramUser?.username || telegramUser?.first_name || 'Anonymous',
+                user_id: user?.id || null,
+                username: user?.username || user?.first_name || 'Anonymous',
                 photo_url: photoUrl
-            });
+            };
+            
+            console.log('💾 Sending save request:', payload);
             
             const response = await fetch(`${API_BASE}/api/plinko/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    bet_amount: betAmount,
-                    multiplier: multiplier,
-                    win_amount: winAmount,
-                    round_hash: roundHash,
-                    risk_level: riskForDisplay,
-                    user_id: telegramUser?.id || null,
-                    username: telegramUser?.username || telegramUser?.first_name || 'Anonymous',
-                    photo_url: photoUrl
-                })
+                body: JSON.stringify(payload)
             });
             
             const data = await response.json();
@@ -1047,7 +1061,12 @@
     async function init() {
         const tg = window.Telegram.WebApp;
         tg.expand();
-        telegramUser = tg.initDataUnsafe?.user || { id: 1, first_name: 'Guest' };
+        
+        // 🔥 AMBIL TELEGRAM USER DENGAN BENAR
+        const initDataUnsafe = tg.initDataUnsafe || {};
+        telegramUser = initDataUnsafe.user || { id: null, first_name: 'Guest' };
+        
+        console.log('👤 Telegram User:', telegramUser);
         
         await loadUserBalance();
         await updateUserAvatar();
