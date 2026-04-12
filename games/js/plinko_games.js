@@ -642,42 +642,156 @@
         }
     }
 
-    // Load history
+    // Load history dengan tampilan baru
     async function loadHistory() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/history`);
             const data = await response.json();
             
-            const tbody = document.getElementById('historyBody');
+            const historyList = document.getElementById('historyList');
+            
+            if (!historyList) return;
             
             if (!data.success || !data.history || data.history.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Belum ada riwayat</td></tr>';
+                historyList.innerHTML = `
+                    <div class="history-empty">
+                        <i class="fas fa-gamepad"></i>
+                        <p>Belum ada riwayat permainan</p>
+                    </div>
+                `;
                 return;
             }
             
             let html = '';
+            
             for (const game of data.history) {
-                const winClass = game.win_amount > game.bet_amount ? 'win-positive' : '';
+                // Tentukan kelas multiplier
+                let multiplierClass = 'zero';
+                let multiplierColor = 'zero';
+                if (game.multiplier >= 5) {
+                    multiplierClass = 'high';
+                    multiplierColor = 'high';
+                } else if (game.multiplier >= 2) {
+                    multiplierClass = 'medium';
+                    multiplierColor = 'medium';
+                } else if (game.multiplier >= 1) {
+                    multiplierClass = 'low';
+                    multiplierColor = 'low';
+                } else {
+                    multiplierClass = 'zero';
+                    multiplierColor = 'zero';
+                }
+                
+                // Tentukan kelas win
+                let winClass = 'neutral';
+                let winText = `${game.win_amount.toFixed(2)} TON`;
+                if (game.win_amount > game.bet_amount) {
+                    winClass = 'positive';
+                    winText = `+${(game.win_amount - game.bet_amount).toFixed(2)} TON`;
+                } else if (game.win_amount < game.bet_amount) {
+                    winClass = 'negative';
+                    winText = `-${(game.bet_amount - game.win_amount).toFixed(2)} TON`;
+                } else {
+                    winClass = 'neutral';
+                    winText = `${game.win_amount.toFixed(2)} TON`;
+                }
+                
+                // Format waktu
+                const playTime = new Date(game.created_at);
+                const timeFormatted = playTime.toLocaleTimeString('id-ID', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    day: '2-digit',
+                    month: 'short'
+                });
+                
+                // Nama pemain
+                const playerName = game.username || 'Anonymous';
+                const initial = playerName.charAt(0).toUpperCase();
+                
+                // Avatar URL (pakai UI Avatars jika tidak ada foto)
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true`;
+                
                 html += `
-                    <tr>
-                        <td><code>${game.round_hash.substring(0, 10)}...</code></td>
-                        <td>${game.username || 'Anonymous'}</td>
-                        <td>${game.bet_amount.toFixed(2)} TON</td>
-                        <td><strong>${game.multiplier}x</strong></td>
-                        <td class="${winClass}">${game.win_amount.toFixed(2)} TON</td>
-                        <td>${new Date(game.created_at).toLocaleString()}</td>
-                    </tr>
+                    <div class="history-item multiplier-${multiplierClass}" data-hash="${game.round_hash}">
+                        <div class="history-item-content">
+                            <div class="history-avatar">
+                                <img src="${avatarUrl}" alt="${playerName}" onerror="this.src='https://ui-avatars.com/api/?name=${initial}&background=6c5ce7&color=fff&size=64'">
+                            </div>
+                            <div class="history-info">
+                                <div class="history-player-name">${escapeHtml(playerName)}</div>
+                                <div class="history-time">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${timeFormatted}</span>
+                                </div>
+                            </div>
+                            <div class="history-result">
+                                <div class="history-multiplier ${multiplierColor}">${game.multiplier}x</div>
+                                <div class="history-win ${winClass}">${winText}</div>
+                            </div>
+                        </div>
+                    </div>
                 `;
             }
-            tbody.innerHTML = html;
+            
+            historyList.innerHTML = html;
+            
+            // Tambahkan event click untuk copy hash
+            document.querySelectorAll('.history-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const hash = item.dataset.hash;
+                    if (hash) {
+                        navigator.clipboard.writeText(hash);
+                        showToast('Round Hash copied!', 'success');
+                    }
+                });
+            });
+            
         } catch (error) {
             console.error('Error loading history:', error);
+            const historyList = document.getElementById('historyList');
+            if (historyList) {
+                historyList.innerHTML = `
+                    <div class="history-empty">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Gagal memuat riwayat</p>
+                    </div>
+                `;
+            }
         }
     }
 
-    // Save game result to backend
+    // Fungsi helper untuk escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Fungsi showToast untuk notifikasi copy
+    function showToast(message, type = 'info') {
+        // Cek apakah toast container sudah ada
+        let toast = document.querySelector('.toast-notification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.className = 'toast-notification';
+            document.body.appendChild(toast);
+        }
+        
+        toast.textContent = message;
+        toast.className = `toast-notification ${type} show`;
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2000);
+    }
+
+    // Save game result to backend (update dengan multiplier untuk history)
     async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
         try {
+            // Tentukan risk level berdasarkan multiplier (opsional)
+            let riskForDisplay = currentRisk;
+            
             const response = await fetch(`${API_BASE}/api/plinko/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -686,7 +800,7 @@
                     multiplier: multiplier,
                     win_amount: winAmount,
                     round_hash: roundHash,
-                    risk_level: currentRisk,
+                    risk_level: riskForDisplay,
                     user_id: telegramUser?.id || null,
                     username: telegramUser?.username || telegramUser?.first_name || 'Anonymous'
                 })
@@ -695,7 +809,7 @@
             const data = await response.json();
             if (data.success) {
                 loadStats();
-                loadHistory();
+                loadHistory(); // Reload history dengan tampilan baru
             }
         } catch (error) {
             console.error('Error saving game:', error);
