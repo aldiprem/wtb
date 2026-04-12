@@ -478,7 +478,55 @@ def process_withdraw():
         print(f"❌ Withdraw error: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
-    
+
+def convert_raw_ton_address(raw_address):
+    """
+    Konversi raw TON address (0:xxx) ke format bounceable/friendly (EQ/UQ)
+    """
+    try:
+        # Jika sudah dalam format EQ/UQ, return as-is
+        if raw_address.startswith('EQ') or raw_address.startswith('UQ'):
+            return raw_address
+        
+        # Jika format 0:xxx
+        if raw_address.startswith('0:'):
+            # Parse workchain dan hash
+            parts = raw_address.split(':')
+            if len(parts) != 2:
+                return raw_address
+            
+            workchain = int(parts[0])
+            hash_part = parts[1]
+            
+            # Convert hex hash ke bytes
+            import base64
+            hash_bytes = bytes.fromhex(hash_part)
+            
+            # Buat address dengan tag yang benar
+            # Tag 0x11 untuk bounceable, 0x51 untuk non-bounceable
+            # Kita gunakan bounceable (0x11)
+            tag = 0x11
+            address_bytes = bytes([tag]) + hash_bytes
+            
+            # Add workchain byte di awal untuk raw format
+            # Tapi untuk friendly format, kita encode ke base64
+            # Konversi ke base64 URL-safe
+            address_b64 = base64.b64encode(address_bytes).decode('utf-8')
+            # Replace +/ dengan -/_
+            address_b64 = address_b64.replace('+', '-').replace('/', '_').rstrip('=')
+            
+            # Tambahkan prefix yang sesuai (EQ untuk bounceable)
+            friendly_address = 'EQ' + address_b64
+            
+            print(f"✅ Address converted: {raw_address} -> {friendly_address}")
+            return friendly_address
+        
+        return raw_address
+        
+    except Exception as e:
+        print(f"⚠️ Address conversion error: {e}")
+        return raw_address
+
 async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
     """
     Kirim TON otomatis dari wallet merchant ke user (ASYNC VERSION)
@@ -547,7 +595,7 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
 # ==================== ENDPOINT WITHDRAW REAL ====================
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
-    """Proses withdraw TON - dengan validasi address sederhana"""
+    """Proses withdraw TON - dengan konversi address"""
     init_db()
     data = request.json
     
@@ -570,21 +618,12 @@ def process_withdraw_real():
     if not wallet_address:
         return jsonify({"success": False, "error": "Wallet address required"}), 400
     
-    # 🔥 VALIDASI FORMAT WALLET ADDRESS SEDERHANA
-    # TON address harus: dimulai dengan EQ, UQ, atau 0: dan panjang minimal 40 karakter
-    if not (wallet_address.startswith('EQ') or 
-            wallet_address.startswith('UQ') or 
-            wallet_address.startswith('0:')):
-        return jsonify({"success": False, "error": "Invalid wallet address format. Must start with EQ, UQ, or 0:"}), 400
+    # 🔥 KONVERSI ADDRESS RAW KE FRIENDLY FORMAT
+    formatted_addr = convert_raw_ton_address(wallet_address)
     
-    if len(wallet_address) < 40:
-        return jsonify({"success": False, "error": "Invalid wallet address length"}), 400
-    
-    # Format address untuk digunakan di tonutils
-    formatted_addr = wallet_address
-    if wallet_address.startswith('0:'):
-        # Raw format, biarkan apa adanya
-        formatted_addr = wallet_address
+    # Validasi panjang address (minimal 40 karakter setelah konversi)
+    if len(formatted_addr) < 40:
+        return jsonify({"success": False, "error": f"Invalid wallet address after conversion: {formatted_addr}"}), 400
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -612,7 +651,9 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": "Merchant mnemonic not configured in .env"}), 500
         
-        print(f"💰 Processing withdraw: {amount} TON to {formatted_addr}")
+        print(f"💰 Processing withdraw: {amount} TON")
+        print(f"   Original address: {wallet_address}")
+        print(f"   Converted address: {formatted_addr}")
         
         # JALANKAN ASYNC FUNCTION dengan asyncio.run()
         import asyncio
@@ -648,7 +689,7 @@ def process_withdraw_real():
         conn.commit()
         conn.close()
         
-        print(f"✅ Withdraw completed: {amount} TON to {wallet_address}")
+        print(f"✅ Withdraw completed: {amount} TON to {formatted_addr}")
         
         return jsonify({
             "success": True,
