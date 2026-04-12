@@ -1,31 +1,38 @@
-# games/database/games.py - VERSION TON (BUKAN IDR)
+# games/services/games_service.py - VERSION FINAL
 
-import sqlite3
+from flask import Blueprint, jsonify, request
+import sys
 import os
-from datetime import datetime
+import sqlite3
+import traceback
 
+# ==================== KONFIGURASI PATH ====================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(BASE_DIR, 'database', 'games_data.db')
 
-print(f"📁 Database path: {DB_PATH}")
+print(f"📁 Games DB Path: {DB_PATH}")
+
+# Membuat Blueprint untuk API
+games_bp = Blueprint('games_bp', __name__, url_prefix='/api/games')
 
 def get_current_time():
+    from datetime import datetime
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def init_db():
-    """Inisialisasi tabel untuk sistem Games - Balance dalam TON"""
+    """Pastikan database dan tabel ada"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Buat Tabel Users - balance dalam TON (float)
+    # Tabel users
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
             username TEXT,
             first_name TEXT,
-            balance REAL DEFAULT 0,
+            balance INTEGER DEFAULT 0,
             referred_by INTEGER DEFAULT NULL,
-            referral_reward REAL DEFAULT 0,
+            referral_reward INTEGER DEFAULT 0,
             gifts INTEGER DEFAULT 0,
             wallet_address TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -33,147 +40,259 @@ def init_db():
         )
     ''')
     
-    # Buat Tabel Riwayat Main - amount dalam TON
+    # Tabel game_history
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             telegram_id INTEGER,
             game_name TEXT,
-            bet_amount REAL,
-            win_amount REAL,
+            bet_amount INTEGER,
+            win_amount INTEGER,
             multiplier REAL,
             played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
-    # Cek dan tambahkan kolom yang mungkin hilang
+    # Tambah kolom wallet_address jika belum ada
     cursor.execute("PRAGMA table_info(users)")
-    existing_columns = [col[1] for col in cursor.fetchall()]
-    
-    columns_to_add = {
-        "referred_by": "INTEGER DEFAULT NULL",
-        "referral_reward": "REAL DEFAULT 0",
-        "gifts": "INTEGER DEFAULT 0",
-        "wallet_address": "TEXT DEFAULT NULL",
-        "last_seen": "TIMESTAMP"
-    }
-    
-    for col, data_type in columns_to_add.items():
-        if col not in existing_columns:
-            try:
-                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {data_type}")
-                print(f"✅ Kolom '{col}' ditambahkan")
-            except:
-                pass
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'wallet_address' not in columns:
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN wallet_address TEXT DEFAULT NULL")
+            print("✅ Kolom wallet_address ditambahkan")
+        except:
+            pass
     
     conn.commit()
     conn.close()
-    print("✅ Database games siap (balance dalam TON)")
+    print("✅ Database siap")
 
-def get_or_create_user(telegram_id, username, first_name, referred_by=None):
-    """Mencari user atau membuat user baru dengan balance 0 TON"""
+# ==================== AUTH ====================
+@games_bp.route('/auth', methods=['POST'])
+def auth_user():
     init_db()
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "Tidak ada data"}), 400
+        
+    telegram_id = data.get('telegram_id')
+    username = data.get('username', 'Unknown')
+    first_name = data.get('first_name', 'Guest')
     
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    if not telegram_id:
+        return jsonify({"success": False, "error": "telegram_id diperlukan"}), 400
     
-    current_time = get_current_time()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        current_time = get_current_time()
+        
+        cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
+        user = cursor.fetchone()
+        
+        if user:
+            cursor.execute('''
+                UPDATE users 
+                SET username = ?, first_name = ?, last_seen = ? 
+                WHERE telegram_id = ?
+            ''', (username, first_name, current_time, telegram_id))
+            conn.commit()
+            balance = user['balance']
+        else:
+            cursor.execute('''
+                INSERT INTO users (telegram_id, username, first_name, balance, created_at, last_seen) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (telegram_id, username, first_name, 0, current_time, current_time))
+            conn.commit()
+            balance = 0
+        
+        conn.close()
+        
+        return jsonify({
+            "success": True,
+            "telegram_id": telegram_id,
+            "username": username,
+            "balance": balance
+        })
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# ==================== BALANCE ====================
+@games_bp.route('/balance/<int:telegram_id>', methods=['GET'])
+def get_balance(telegram_id):
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        balance = row[0] if row else 0
+        return jsonify({"success": True, "balance": balance})
+    except Exception as e:
+        return jsonify({"success": True, "balance": 0})
+
+# ==================== WALLET ADDRESS ====================
+@games_bp.route('/user/wallet', methods=['POST'])
+def update_user_wallet():
+    init_db()
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    wallet_address = data.get('wallet_address')
     
-    cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
-    user = cursor.fetchone()
+    if not telegram_id:
+        return jsonify({'success': False, 'error': 'telegram_id required'}), 400
     
-    if user:
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
         cursor.execute('''
             UPDATE users 
-            SET username = ?, first_name = ?, last_seen = ? 
+            SET wallet_address = ?
             WHERE telegram_id = ?
-        ''', (username, first_name, current_time, telegram_id))
-        conn.commit()
+        ''', (wallet_address, telegram_id))
         
-        cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
-        updated_user = dict(cursor.fetchone())
+        conn.commit()
         conn.close()
-        return updated_user
-    else:
+        
+        return jsonify({'success': True, 'message': 'Wallet address updated'})
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# games/services/games_service.py - PERBAIKAN verify_ton_deposit
+
+@games_bp.route('/verify-ton-deposit', methods=['POST'])
+def verify_ton_deposit():
+    """Verifikasi deposit TON - Balance langsung dalam TON"""
+    init_db()
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    transaction_hash = data.get('transaction_hash')
+    amount_ton = data.get('amount_ton')
+    from_address = data.get('from_address')
+    memo = data.get('memo', '')
+    
+    if not telegram_id or not transaction_hash:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Cek apakah user ada
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        # LANGSUNG PAKAI TON, BUKAN IDR
+        amount = float(amount_ton)
+        
+        # Update balance (tambah saldo dalam TON)
         cursor.execute('''
-            INSERT INTO users (telegram_id, username, first_name, balance, referred_by, created_at, last_seen) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, username, first_name, 0.0, referred_by, current_time, current_time))
+            UPDATE users 
+            SET balance = balance + ? 
+            WHERE telegram_id = ?
+        ''', (amount, telegram_id))
         
-        if referred_by:
-            cursor.execute("SELECT balance, referral_reward FROM users WHERE telegram_id = ?", (referred_by,))
-            referrer = cursor.fetchone()
-            if referrer:
-                new_balance = referrer['balance'] + 0.5
-                new_ref_reward = referrer['referral_reward'] + 0.5
-                cursor.execute('''
-                    UPDATE users 
-                    SET balance = ?, referral_reward = ? 
-                    WHERE telegram_id = ?
-                ''', (new_balance, new_ref_reward, referred_by))
+        # Catat history (dalam TON)
+        cursor.execute('''
+            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (telegram_id, 'DEPOSIT_TON', amount, amount, 1.0, get_current_time()))
+        
+        # Ambil balance baru
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        new_balance = cursor.fetchone()[0]
         
         conn.commit()
-        
-        cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
-        new_user = dict(cursor.fetchone())
         conn.close()
-        return new_user
+        
+        print(f"✅ Deposit: {amount} TON for user {telegram_id}")
+        print(f"   New balance: {new_balance} TON")
+        
+        return jsonify({
+            "success": True,
+            "message": f"Deposit {amount} TON berhasil",
+            "amount_ton": amount,
+            "new_balance": new_balance
+        })
+        
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
 
-def get_user_data(telegram_id):
-    """Mendapatkan seluruh data user"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
-    user = cursor.fetchone()
-    conn.close()
-    return dict(user) if user else None
+# ==================== USER STATS ====================
+@games_bp.route('/user-stats/<int:telegram_id>', methods=['GET'])
+def get_user_stats(telegram_id):
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT gifts, referral_reward FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return jsonify({
+                "success": True,
+                "gifts": row['gifts'] or 0,
+                "referral_reward": row['referral_reward'] or 0
+            })
+        return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
+    except Exception as e:
+        return jsonify({"success": True, "gifts": 0, "referral_reward": 0})
 
-def update_user_balance(telegram_id, amount_change):
-    """Update balance user (dalam TON)"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-        UPDATE users 
-        SET balance = balance + ? 
-        WHERE telegram_id = ?
-    ''', (amount_change, telegram_id))
-    
-    rows_affected = cursor.rowcount
-    conn.commit()
-    conn.close()
-    
-    return rows_affected > 0
+# ==================== USER HISTORY ====================
+@games_bp.route('/user-history/<int:telegram_id>', methods=['GET'])
+def get_user_game_history(telegram_id):
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT game_name, bet_amount, win_amount, multiplier, played_at 
+            FROM game_history 
+            WHERE telegram_id = ? 
+            ORDER BY played_at DESC 
+            LIMIT 50
+        ''', (telegram_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return jsonify({"success": True, "history": [dict(row) for row in rows]})
+    except Exception as e:
+        return jsonify({"success": True, "history": []})
 
-def add_game_history(telegram_id, game_name, bet_amount, win_amount, multiplier):
-    """Menambahkan riwayat game (dalam TON)"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+# ==================== UPDATE BALANCE ====================
+@games_bp.route('/update-balance', methods=['POST'])
+def update_balance():
+    init_db()
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    new_balance = data.get('new_balance')
     
-    cursor.execute('''
-        INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (telegram_id, game_name, bet_amount, win_amount, multiplier, get_current_time()))
+    if not telegram_id or new_balance is None:
+        return jsonify({"success": False, "error": "Missing required fields"}), 400
     
-    conn.commit()
-    conn.close()
-    return True
-
-def delete_user_data(telegram_id):
-    """Menghapus user dan riwayat gamenya"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    
-    cursor.execute("DELETE FROM game_history WHERE telegram_id = ?", (telegram_id,))
-    cursor.execute("DELETE FROM users WHERE telegram_id = ?", (telegram_id,))
-    
-    rows_affected = cursor.rowcount
-    conn.commit()
-    conn.close()
-    
-    return rows_affected > 0
-
-# Jalankan inisialisasi
-init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET balance = ? WHERE telegram_id = ?", (new_balance, telegram_id))
+        conn.commit()
+        conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
