@@ -278,15 +278,19 @@ def get_stats():
 
 @plinko_bp.route('/history', methods=['GET', 'OPTIONS'])
 def get_history():
-    """Get game history"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
     try:
         limit = request.args.get('limit', 50, type=int)
         history = get_cheat_history(limit)
+
+        print(f"📜 History fetched: {len(history)} records")
+        
         return jsonify({"success": True, "history": history})
     except Exception as e:
+        print(f"❌ Error in get_history: {e}")
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @plinko_bp.route('/save', methods=['POST', 'OPTIONS'])
@@ -507,6 +511,19 @@ def update_net_balance():
     except Exception as e:
         print(f"Error in update_net_balance: {e}")
         traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@plinko_bp.route('/debug/count', methods=['GET'])
+def debug_count():
+    """Cek jumlah data di database"""
+    try:
+        conn = get_plinko_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM plinko_games")
+        count = cursor.fetchone()[0]
+        conn.close()
+        return jsonify({"success": True, "count": count})
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 # Initialize database on import

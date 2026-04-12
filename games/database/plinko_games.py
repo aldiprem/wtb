@@ -4,10 +4,12 @@ import sqlite3
 import json
 import random
 import math
+import os
 from datetime import datetime
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'plinko.db'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DB_PATH = os.path.join(BASE_DIR, 'games', 'database', 'plinko.db')
 
 TARGET_BANDAR_PROFIT = 5.0
 
@@ -438,7 +440,9 @@ def save_game_result(data):
     is_forced = 1 if data.get('is_forced', False) else 0
     cheat_reason = data.get('cheat_reason', '')
     
-    # Insert game
+    # Pastikan photo_url ada (jika None, set None)
+    photo_url = data.get('photo_url', None)
+    
     cursor.execute('''
         INSERT INTO plinko_games (round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, is_forced, cheat_reason, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -446,7 +450,7 @@ def save_game_result(data):
         data['round_hash'],
         data.get('user_id'),
         data.get('username'),
-        data.get('photo_url'),
+        photo_url,
         data['bet_amount'],
         data['multiplier'],
         data['win_amount'],
@@ -599,8 +603,8 @@ def get_history(limit=50):
     
     rows = cursor.fetchall()
     conn.close()
-    
-    return [dict(row) for row in rows]
+
+    return [dict(row) for row in rows] if rows else []
 
 def get_cheat_logs(limit=100):
     """Mendapatkan log kecurangan untuk monitoring"""
