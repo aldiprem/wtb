@@ -1,4 +1,4 @@
-// games/js/plinko_games.js - PERBAIKAN LENGKAP
+// games/js/plinko_games.js - PERBAIKAN LENGKAP UNTUK DROP BALL
 
 (function() {
     console.log('🎰 Plinko Games Initialized');
@@ -15,8 +15,8 @@
     let activeBalls = [];
     let ballsToDrop = 0;
     let isProcessingDrop = false;
-    let currentSessionBalls = [];
-    let pendingBalanceUpdate = 0;
+    let currentSessionBalls = []; // Balls yang sedang berjalan dalam sesi ini
+    let pendingBalanceUpdate = 0; // Accumulator untuk update balance
 
     let multiplierAreas = [];
     
@@ -35,19 +35,10 @@
     let isGameRunning = true;
 
     const RISK_MULTIPLIERS = {
-        low: [2, 1.5, 1, 0.8, 0.5, 0.3, 0.5, 0.8, 1, 1.5, 2],
-        medium: [3, 2, 1.5, 1, 0.5, 0.2, 0.5, 1, 1.5, 2, 3],
-        high: [4, 3, 2, 1.5, 1, 0.5, 0.2, 0.1, 0.0, 0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4]
+        low: [5, 2.5, 2, 0.8, 0.5, 0.2, 0.5, 0.8, 2, 2.5, 5],
+        medium: [10, 5, 2.5, 0.5, 0.2, 0.1, 0.2, 0.5, 2.5, 5, 10],
+        high: [20, 10, 5, 2, 0.5, 0.1, 0.0, 0.1, 0.5, 2, 5, 10, 20]
     };
-
-    // 🔥 FUNGSI FORMAT ANGKA - DIPINDAHKAN KE ATAS
-    function formatNumberWithCommas(number) {
-        let parts = Number(number).toFixed(2).split('.');
-        let integerPart = parts[0];
-        let decimalPart = parts[1];
-        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        return decimalPart ? integerPart + '.' + decimalPart : integerPart;
-    }
 
     let viewCount = parseInt(localStorage.getItem('plinko_views') || '0');
 
@@ -85,7 +76,6 @@
 
     // Fungsi Render Cerobong
     function drawSpawner() {
-        if (!ctx) return;
         ctx.fillStyle = '#334155';
         ctx.fillRect(spawnerX - 15, 0, 30, 25);
         ctx.fillStyle = '#FFD700';
@@ -129,13 +119,14 @@
             }
         }
         
+        // Draw multiplier slots display
         updateMultiplierAreas();
         drawMultiplierSlotsDisplay();
     }
     
     function drawMultiplierSlotsDisplay() {
         const wrapper = document.querySelector('.multiplier-slots-wrapper');
-        if (!wrapper || !canvas || !ctx) return;
+        if (!wrapper) return;
         
         const multipliers = RISK_MULTIPLIERS[currentRisk];
         const wrapperRect = wrapper.getBoundingClientRect();
@@ -230,6 +221,7 @@
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             
+            // Gradient untuk bola
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
             gradient.addColorStop(0, '#ff6b6b');
             gradient.addColorStop(1, '#ef4444');
@@ -240,6 +232,7 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
+            // Check if ball hit multiplier area
             const isHit = checkMultiplierHit(ball);
             
             if (isHit || ball.y > canvas.height + 100) {
@@ -253,6 +246,7 @@
     
     function checkAllBallsComplete() {
         if (balls.length === 0 && isProcessingDrop) {
+            // Semua bola sudah selesai, update final balance
             setTimeout(async () => {
                 await finalizeBalanceUpdate();
                 isProcessingDrop = false;
@@ -265,12 +259,13 @@
     async function finalizeBalanceUpdate() {
         if (pendingBalanceUpdate !== 0 && telegramUser?.id) {
             try {
+                // Kirim net win ke server (HANYA TAMBAHAN, karena bet sudah dipotong)
                 const response = await fetch(`${API_BASE}/api/plinko/update-net-balance`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         telegram_id: telegramUser.id,
-                        net_change: pendingBalanceUpdate
+                        net_change: pendingBalanceUpdate  // Ini hanya win amount (positif)
                     })
                 });
                 const data = await response.json();
@@ -286,6 +281,7 @@
         }
     }
 
+    // Fungsi untuk update area multiplier
     function updateMultiplierAreas() {
         const wrapper = document.querySelector('.multiplier-slots-wrapper');
         if (!wrapper || !canvas) return;
@@ -318,6 +314,8 @@
         for (const area of multiplierAreas) {
             if (ball.x >= area.x && ball.x <= area.x + area.width) {
                 const winAmount = ball.bet * area.multiplier;
+                // PERBAIKAN: Net profit = winAmount (BUKAN winAmount - bet)
+                // Karena bet sudah dipotong di awal, kita hanya tambah kemenangan
                 const netChange = winAmount;
                 
                 pendingBalanceUpdate += netChange;
@@ -339,11 +337,10 @@
         const resultMultiplier = document.getElementById('resultMultiplier');
         const resultWin = document.getElementById('resultWin');
         
-        if (!resultDiv) return;
-        
         resultDiv.style.display = 'block';
         resultMultiplier.textContent = `${multiplier}x`;
         
+        // Tampilkan kemenangan yang ditambahkan ke saldo
         const winText = winAmount > 0 ? `+${winAmount.toFixed(2)} TON` : `${winAmount.toFixed(2)} TON`;
         resultWin.textContent = winText;
         
@@ -361,6 +358,22 @@
         setTimeout(() => {
             resultDiv.style.display = 'none';
         }, 3000);
+    }
+
+    async function updateUserBalance(telegramId, netChange) {
+        if (netChange === 0) return;
+        try {
+            await fetch(`${API_BASE}/api/plinko/update-net-balance`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    net_change: netChange
+                })
+            });
+        } catch (error) {
+            console.error('Error updating balance:', error);
+        }
     }
 
     function animateSlot(slotIndex) {
@@ -400,13 +413,16 @@
         wrapper.innerHTML = html;
     }
 
+    // Generate random round hash
     function generateRoundHash() {
         return 'plinko_' + Date.now() + '_' + Math.random().toString(36).substring(2, 10);
     }
 
+    // PERBAIKAN TOTAL untuk fungsi dropBalls
     async function dropBalls() {
         console.log('🎯 dropBalls called');
         
+        // AMBIL LANGSUNG dari input panel, jangan pakai currentBetAmount yang belum update
         const betInput = document.getElementById('panelBetAmount');
         let betAmount = 0;
         
@@ -423,35 +439,42 @@
             }
         }
         
+        // PASTIKAN currentBetAmount terupdate
         currentBetAmount = betAmount;
         
         console.log('💰 Bet amount:', currentBetAmount, 'TON');
         
+        // VALIDASI - jika masih 0 atau invalid, SET DEFAULT
         if (!currentBetAmount || currentBetAmount <= 0 || isNaN(currentBetAmount)) {
             console.log('⚠️ Invalid bet amount, setting to 1.0');
             currentBetAmount = 1.0;
             if (betInput) betInput.value = '1.0';
         }
         
+        // VALIDASI MINIMAL (0.1 TON)
         if (currentBetAmount < 0.1) {
             console.log('⚠️ Bet too small, setting to 0.1');
             currentBetAmount = 0.1;
             if (betInput) betInput.value = '0.1';
         }
         
+        // UPDATE LABEL
         updateUILabels();
         
+        // CEK ULANG setelah update
         if (currentBetAmount < 0.1) {
             alert('Minimal taruhan 0.1 TON');
             toggleBetPanel();
             return;
         }
         
+        // CEK PROSES BERJALAN
         if (isProcessingDrop) {
             alert('Masih ada bola yang berjalan, tunggu sebentar...');
             return;
         }
         
+        // CEK JUMLAH BOLA
         if (ballCount <= 0) {
             ballCount = 1;
             updateUILabels();
@@ -459,6 +482,7 @@
         
         const totalBet = currentBetAmount * ballCount;
         
+        // LOAD BALANCE TERBARU
         const currentBalance = await loadUserBalance();
         console.log('💰 Current balance:', currentBalance, 'TON');
         console.log('💰 Total bet required:', totalBet, 'TON');
@@ -472,6 +496,7 @@
         pendingBalanceUpdate = 0;
         
         try {
+            // DEDUCT BALANCE
             const deductResponse = await fetch(`${API_BASE}/api/plinko/deduct-balance`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -489,15 +514,18 @@
                 return;
             }
             
+            // UPDATE UI BALANCE
             await loadUserBalance();
             console.log(`💰 Balance deducted: ${totalBet} TON`);
             
+            // JATUHKAN BOLA
             for (let i = 0; i < ballCount; i++) {
                 setTimeout(() => {
                     dropSingleBall();
                 }, i * 250);
             }
             
+            // SIMPAN BET KE LOCALSTORAGE
             localStorage.setItem('plinko_bet_amount', currentBetAmount);
             
         } catch (error) {
@@ -507,7 +535,9 @@
         }
     }
     
+    // Fungsi untuk menjatuhkan satu bola
     function dropSingleBall() {
+        // Random offset untuk variasi
         const randomOffset = (Math.random() - 0.5) * 16;
         const startX = Math.min(Math.max(spawnerX + randomOffset, 20), canvas.width - 20);
         
@@ -523,14 +553,27 @@
         console.log(`🎾 Ball dropped, active balls: ${balls.length}`);
     }
 
+    // Fungsi helper untuk format angka ribuan
+    function formatNumberWithCommas(number) {
+        // Pisahkan bagian integer dan desimal
+        let parts = number.toFixed(2).split('.');
+        let integerPart = parts[0];
+        let decimalPart = parts[1];
+        
+        // Format integer part dengan comma
+        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        
+        // Gabungkan kembali
+        return decimalPart ? integerPart + '.' + decimalPart : integerPart;
+    }
+
     async function loadUserBalance() {
         try {
             const tg = window.Telegram.WebApp;
             const user = tg.initDataUnsafe?.user;
             
             if (!user || !user.id) {
-                const balanceEl = document.getElementById('userBalance');
-                if (balanceEl) balanceEl.textContent = '0 TON';
+                document.getElementById('userBalance').textContent = '0 TON';
                 return 0;
             }
             
@@ -541,6 +584,7 @@
             const panelBalanceEl = document.getElementById('panelUserBalance');
             
             if (data.success) {
+                // ✅ FORMAT ANGKA RIBUAN
                 const formattedBalance = formatNumberWithCommas(data.balance);
                 const balanceText = formattedBalance + ' TON';
                 if (balanceEl) balanceEl.textContent = balanceText;
@@ -553,6 +597,7 @@
         return 0;
     }
 
+    // Load stats from API
     async function loadStats() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/stats`);
@@ -560,17 +605,15 @@
             
             if (data.success) {
                 const totalWinAmount = data.total_win_amount || 0;
-                const totalWinEl = document.getElementById('totalWinAmount');
-                const biggestWinEl = document.getElementById('biggestWin');
-                const lastPlayerNameEl = document.getElementById('lastPlayerName');
-                const lastPlayerMultiplierEl = document.getElementById('lastPlayerMultiplier');
-                const roundHashEl = document.getElementById('roundHash');
+                document.getElementById('totalWinAmount').textContent = totalWinAmount.toLocaleString();
+                document.getElementById('biggestWin').textContent = `${data.biggest_multiplier || 0}x`;
                 
-                if (totalWinEl) totalWinEl.textContent = totalWinAmount.toLocaleString();
-                if (biggestWinEl) biggestWinEl.textContent = `${data.biggest_multiplier || 0}x`;
-                if (lastPlayerNameEl) lastPlayerNameEl.textContent = data.last_player || '-';
-                if (lastPlayerMultiplierEl) lastPlayerMultiplierEl.textContent = `${data.last_multiplier || 0}x`;
-                if (roundHashEl) roundHashEl.textContent = data.current_hash ? data.current_hash.substring(0, 12) + '...' : '-';
+                const lastPlayerName = data.last_player || '-';
+                const lastPlayerMultiplier = data.last_multiplier || '0';
+                
+                document.getElementById('lastPlayerName').textContent = lastPlayerName;
+                document.getElementById('lastPlayerMultiplier').textContent = `${lastPlayerMultiplier}x`;
+                document.getElementById('roundHash').textContent = data.current_hash ? data.current_hash.substring(0, 12) + '...' : '-';
             }
         } catch (error) {
             console.error('Error loading stats:', error);
@@ -582,19 +625,24 @@
             const tg = window.Telegram.WebApp;
             const user = tg.initDataUnsafe?.user;
             
-            const avatarImg = document.getElementById('userAvatarImg');
-            if (!avatarImg) return;
-            
             if (user && user.photo_url) {
-                avatarImg.src = user.photo_url;
+                const avatarImg = document.getElementById('userAvatarImg');
+                if (avatarImg) {
+                    avatarImg.src = user.photo_url;
+                }
             } else if (user && user.first_name) {
-                avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=6c5ce7&color=fff&size=64`;
+                const initial = user.first_name.charAt(0).toUpperCase();
+                const avatarImg = document.getElementById('userAvatarImg');
+                if (avatarImg) {
+                    avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.first_name)}&background=6c5ce7&color=fff&size=64`;
+                }
             }
         } catch (error) {
             console.error('Error updating avatar:', error);
         }
     }
 
+    // Load history dengan foto profil dari database
     async function loadHistory() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/history`);
@@ -617,11 +665,21 @@
             let html = '';
             
             for (const game of data.history) {
+                // Tentukan kelas multiplier
+                let multiplierClass = 'zero';
                 let multiplierColor = 'zero';
-                if (game.multiplier >= 5) multiplierColor = 'high';
-                else if (game.multiplier >= 2) multiplierColor = 'medium';
-                else if (game.multiplier >= 1) multiplierColor = 'low';
+                if (game.multiplier >= 5) {
+                    multiplierClass = 'high';
+                    multiplierColor = 'high';
+                } else if (game.multiplier >= 2) {
+                    multiplierClass = 'medium';
+                    multiplierColor = 'medium';
+                } else if (game.multiplier >= 1) {
+                    multiplierClass = 'low';
+                    multiplierColor = 'low';
+                }
                 
+                // Tentukan kelas win
                 let winClass = 'neutral';
                 let winText = `${game.win_amount.toFixed(2)} TON`;
                 if (game.win_amount > game.bet_amount) {
@@ -632,6 +690,7 @@
                     winText = `-${(game.bet_amount - game.win_amount).toFixed(2)} TON`;
                 }
                 
+                // Format waktu
                 const playTime = new Date(game.created_at);
                 const timeFormatted = playTime.toLocaleTimeString('id-ID', { 
                     hour: '2-digit', 
@@ -642,13 +701,15 @@
                 
                 const playerName = game.username || 'Anonymous';
                 
+                // 🔥 PERBAIKAN: Gunakan photo_url dari database jika ada
                 let avatarUrl = game.photo_url;
                 if (!avatarUrl) {
+                    // Fallback ke UI Avatars
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
                 }
                 
                 html += `
-                    <div class="history-item multiplier-${multiplierColor}" data-hash="${game.round_hash}">
+                    <div class="history-item multiplier-${multiplierClass}" data-hash="${game.round_hash}">
                         <div class="history-item-content">
                             <div class="history-avatar">
                                 <img src="${avatarUrl}" alt="${playerName}" 
@@ -672,6 +733,7 @@
             
             historyList.innerHTML = html;
             
+            // Event click untuk copy hash
             document.querySelectorAll('.history-item').forEach(item => {
                 item.addEventListener('click', () => {
                     const hash = item.dataset.hash;
@@ -696,13 +758,16 @@
         }
     }
 
+    // Fungsi helper untuk escape HTML
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
+    // Fungsi showToast untuk notifikasi copy
     function showToast(message, type = 'info') {
+        // Cek apakah toast container sudah ada
         let toast = document.querySelector('.toast-notification');
         if (!toast) {
             toast = document.createElement('div');
@@ -718,6 +783,7 @@
         }, 2000);
     }
 
+    // Save game result to backend - SERTAKAN FOTO PROFIL
     async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
         try {
             const tg = window.Telegram.WebApp;
@@ -726,6 +792,9 @@
             let photoUrl = null;
             if (user && user.photo_url) {
                 photoUrl = user.photo_url;
+            } else if (user && user.id) {
+                // Fallback: gunakan endpoint untuk ambil foto (jika ada)
+                photoUrl = null;
             }
             
             let riskForDisplay = currentRisk;
@@ -741,14 +810,14 @@
                     risk_level: riskForDisplay,
                     user_id: telegramUser?.id || null,
                     username: telegramUser?.username || telegramUser?.first_name || 'Anonymous',
-                    photo_url: photoUrl
+                    photo_url: photoUrl  // 🔥 TAMBAHKAN photo_url
                 })
             });
             
             const data = await response.json();
             if (data.success) {
                 loadStats();
-                loadHistory();
+                loadHistory(); // Reload history dengan tampilan baru
             }
         } catch (error) {
             console.error('Error saving game:', error);
@@ -799,6 +868,7 @@
             loadUserBalance();
             const betInput = document.getElementById('panelBetAmount');
             if (betInput) {
+                // TAMPILKAN currentBetAmount yang valid
                 if (currentBetAmount && currentBetAmount > 0) {
                     betInput.value = currentBetAmount;
                 } else {
@@ -845,6 +915,7 @@
             if (betInput) betInput.value = amount.toFixed(1);
         }
         
+        // BATASI MAKSIMAL (opsional, misal max 100 TON)
         const maxBet = 100;
         if (amount > maxBet) {
             amount = maxBet;
@@ -855,6 +926,7 @@
         currentBetAmount = amount;
         updateUILabels();
         
+        // SIMPAN KE LOCALSTORAGE
         localStorage.setItem('plinko_bet_amount', currentBetAmount);
         
         const panel = document.getElementById('betPanel');
@@ -864,6 +936,7 @@
         
         console.log(`✅ Bet confirmed: ${currentBetAmount.toFixed(2)} TON`);
         
+        // NOTIFIKASI SINGKAT
         const betLabel = document.getElementById('currentBetLabel');
         if (betLabel) {
             const originalColor = betLabel.style.color;
@@ -926,12 +999,15 @@
         if (chevron) chevron.className = 'fas fa-chevron-down';
     }
 
+    // Fix input number agar bisa diketik
     function fixInputNumber() {
         const betInput = document.getElementById('panelBetAmount');
         if (betInput) {
             betInput.addEventListener('input', function(e) {
                 let value = this.value;
-                if (value === '' || value === null) return;
+                if (value === '' || value === null) {
+                    return;
+                }
                 let numValue = parseFloat(value);
                 if (!isNaN(numValue) && numValue < 0.1) {
                     this.value = 0.1;
@@ -963,10 +1039,6 @@
         await updateUserAvatar();
         
         canvas = document.getElementById('plinkoCanvas');
-        if (!canvas) {
-            console.error('Canvas not found!');
-            return;
-        }
         ctx = canvas.getContext('2d');
         
         function resizeCanvas() {
@@ -982,34 +1054,21 @@
         resizeCanvas();
         
         // Event Listeners
-        const playBtn = document.getElementById('playBtn');
-        if (playBtn) playBtn.addEventListener('click', dropBalls);
-        
-        const refreshBtn = document.getElementById('refreshHistory');
-        if (refreshBtn) refreshBtn.addEventListener('click', () => {
+        document.getElementById('playBtn')?.addEventListener('click', dropBalls);
+        document.getElementById('refreshHistory')?.addEventListener('click', () => {
             loadStats();
             loadHistory();
         });
         
         // Control bar listeners
-        const riskTrigger = document.getElementById('riskLevelTrigger');
-        if (riskTrigger) riskTrigger.addEventListener('click', toggleRiskPanel);
-        
-        const betTrigger = document.getElementById('betInfoTrigger');
-        if (betTrigger) betTrigger.addEventListener('click', toggleBetPanel);
-        
-        const ballTrigger = document.getElementById('ballCountTrigger');
-        if (ballTrigger) ballTrigger.addEventListener('click', toggleBallsPanel);
+        document.getElementById('riskLevelTrigger')?.addEventListener('click', toggleRiskPanel);
+        document.getElementById('betInfoTrigger')?.addEventListener('click', toggleBetPanel);
+        document.getElementById('ballCountTrigger')?.addEventListener('click', toggleBallsPanel);
         
         // Close panel buttons
-        const closeRisk = document.getElementById('closeRiskPanel');
-        if (closeRisk) closeRisk.addEventListener('click', toggleRiskPanel);
-        
-        const closeBet = document.getElementById('closeBetPanel');
-        if (closeBet) closeBet.addEventListener('click', toggleBetPanel);
-        
-        const closeBalls = document.getElementById('closeBallsPanel');
-        if (closeBalls) closeBalls.addEventListener('click', toggleBallsPanel);
+        document.getElementById('closeRiskPanel')?.addEventListener('click', toggleRiskPanel);
+        document.getElementById('closeBetPanel')?.addEventListener('click', toggleBetPanel);
+        document.getElementById('closeBallsPanel')?.addEventListener('click', toggleBallsPanel);
         
         // Risk buttons
         document.querySelectorAll('.risk-btn').forEach(btn => {
@@ -1025,9 +1084,9 @@
         });
         
         // Confirm bet button
-        const confirmBtn = document.getElementById('confirmBetPanelBtn');
-        if (confirmBtn) confirmBtn.addEventListener('click', confirmBet);
+        document.getElementById('confirmBetPanelBtn')?.addEventListener('click', confirmBet);
         
+        // Fix input number
         fixInputNumber();
         
         // Close panels on outside click
@@ -1043,44 +1102,52 @@
         renderMultiplierSlots();
         generateBallsGrid();
         
+        // PERBAIKAN: Set default bet amount ke panel input dan currentBetAmount
         const betInput = document.getElementById('panelBetAmount');
-        
+
+        // SET DEFAULT BET AMOUNT dari localStorage
         let savedBet = localStorage.getItem('plinko_bet_amount');
         if (savedBet && parseFloat(savedBet) >= 0.1) {
             currentBetAmount = parseFloat(savedBet);
         } else {
             currentBetAmount = 1.0;
         }
-        
+
+        // PASTIKAN panelBetAmount terisi
         if (betInput) {
             betInput.value = currentBetAmount.toFixed(1);
         }
-        
+
+        // PASTIKAN currentBetAmount TIDAK 0 atau null
         if (!currentBetAmount || currentBetAmount <= 0) {
             currentBetAmount = 1.0;
             if (betInput) betInput.value = '1.0';
         }
-        
+
+        // Pastikan ballCount ada nilainya
         if (!ballCount || ballCount < 1) {
             ballCount = 1;
         }
-        
+
+        // UPDATE LABELS
         updateUILabels();
-        
+
+        // Simpan ke localStorage setiap kali bet berubah
+        const originalConfirmBet = confirmBet;
         window.confirmBet = async function() {
-            await confirmBet();
+            await originalConfirmBet();
             localStorage.setItem('plinko_bet_amount', currentBetAmount);
         };
-        
+
         console.log('✅ Plinko Games Ready');
         console.log('✅ Initial bet amount:', currentBetAmount, 'TON');
         console.log('Ball count:', ballCount);
-        
+
         update();
     }
-    
     init();
 
+    // Global function untuk copy round hash
     window.copyRoundHash = function() {
         const hashElement = document.getElementById('roundHash');
         if (hashElement) {

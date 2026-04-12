@@ -12,7 +12,6 @@
     let currentBalance = 0;
     let userWalletAddress = null;
 
-    // Ambil data user dari Telegram
     async function getTelegramUser() {
         const initDataUnsafe = tg.initDataUnsafe || {};
         if (initDataUnsafe.user) {
@@ -27,7 +26,6 @@
         };
     }
 
-    // Fungsi format angka ribuan
     function formatNumberWithCommas(number) {
         let parts = Number(number).toFixed(2).split('.');
         let integerPart = parts[0];
@@ -36,7 +34,6 @@
         return decimalPart ? integerPart + '.' + decimalPart : integerPart;
     }
 
-    // Load user data dari backend
     async function loadUserData(telegramId, username, firstName) {
         try {
             const response = await fetch('/api/games/auth', {
@@ -48,7 +45,6 @@
                     first_name: firstName
                 })
             });
-            
             const data = await response.json();
             if (data.success) {
                 userData = data;
@@ -86,7 +82,6 @@
         return 0;
     }
 
-    // Load wallet address user
     async function loadUserWallet(telegramId) {
         try {
             const response = await fetch(`/api/games/user-wallet/${telegramId}`);
@@ -107,7 +102,6 @@
         return null;
     }
 
-    // Load total gifts dan referral reward
     async function loadUserStats(telegramId) {
         try {
             const response = await fetch(`/api/games/user-stats/${telegramId}`);
@@ -127,7 +121,6 @@
         }
     }
 
-    // Update UI Profile
     function updateProfileUI() {
         if (!telegramUser) return;
         
@@ -163,7 +156,6 @@
             return;
         }
         
-        // Reset UI
         const withdrawForm = document.getElementById('withdrawForm');
         const withdrawProcessing = document.getElementById('withdrawProcessing');
         const withdrawSuccess = document.getElementById('withdrawSuccess');
@@ -175,15 +167,12 @@
         if (withdrawSuccess) withdrawSuccess.style.display = 'none';
         if (withdrawError) withdrawError.style.display = 'none';
         
-        // Reset input
         const amountInput = document.getElementById('withdrawAmount');
         if (amountInput) amountInput.value = '';
         
-        // Load fresh balance dan wallet
         if (telegramUser && telegramUser.id) {
             loadBalance(telegramUser.id);
             loadUserWallet(telegramUser.id).then(() => {
-                // Cek apakah wallet terhubung setelah load
                 if (!userWalletAddress) {
                     if (walletWarning) walletWarning.style.display = 'block';
                     if (withdrawForm) withdrawForm.style.display = 'none';
@@ -223,7 +212,6 @@
         const amountInput = document.getElementById('withdrawAmount');
         let amount = parseFloat(amountInput?.value || 0);
         
-        // Validasi
         if (isNaN(amount) || amount <= 0) {
             alert('Masukkan jumlah withdraw yang valid');
             return;
@@ -249,7 +237,6 @@
             return;
         }
         
-        // Show processing state
         const withdrawForm = document.getElementById('withdrawForm');
         const withdrawProcessing = document.getElementById('withdrawProcessing');
         if (withdrawForm) withdrawForm.style.display = 'none';
@@ -277,7 +264,6 @@
             console.log('Withdraw response:', data);
             
             if (data.success) {
-                // Show success
                 if (withdrawProcessing) withdrawProcessing.style.display = 'none';
                 const withdrawSuccess = document.getElementById('withdrawSuccess');
                 const withdrawSuccessAmount = document.getElementById('withdrawSuccessAmount');
@@ -287,16 +273,13 @@
                 if (withdrawSuccessAmount) withdrawSuccessAmount.textContent = amount.toFixed(2) + ' TON';
                 if (withdrawTxId) withdrawTxId.textContent = data.transaction_id || 'WID-' + Date.now();
                 
-                // Refresh balance
                 await loadBalance(telegramUser.id);
                 await loadUserWallet(telegramUser.id);
                 
-                // Haptic feedback
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
             } else {
-                // Show error
                 if (withdrawProcessing) withdrawProcessing.style.display = 'none';
                 const withdrawError = document.getElementById('withdrawError');
                 const withdrawErrorMessage = document.getElementById('withdrawErrorMessage');
@@ -390,19 +373,14 @@
         
         // ========== EVENT LISTENERS ==========
         
-        // DEPOSIT button
         const depositBtn = document.getElementById('depositBtn');
         if (depositBtn) {
             depositBtn.addEventListener('click', showDepositModal);
             console.log('✅ Deposit button listener attached');
-        } else {
-            console.error('❌ depositBtn not found!');
         }
         
-        // WITHDRAW button - YANG INI PENTING
         const withdrawBtn = document.getElementById('withdrawBtn');
         if (withdrawBtn) {
-            // Hapus listener lama jika ada
             const newWithdrawBtn = withdrawBtn.cloneNode(true);
             withdrawBtn.parentNode.replaceChild(newWithdrawBtn, withdrawBtn);
             newWithdrawBtn.addEventListener('click', showWithdrawModal);
@@ -411,7 +389,6 @@
             console.error('❌ withdrawBtn not found!');
         }
         
-        // MAX button
         const maxBtn = document.getElementById('maxWithdrawBtn');
         if (maxBtn) {
             const newMaxBtn = maxBtn.cloneNode(true);
@@ -420,7 +397,6 @@
             console.log('✅ Max button listener attached');
         }
         
-        // PROCESS WITHDRAW button
         const processWithdrawBtn = document.getElementById('processWithdrawBtn');
         if (processWithdrawBtn) {
             const newProcessBtn = processWithdrawBtn.cloneNode(true);
@@ -429,7 +405,6 @@
             console.log('✅ Process withdraw button listener attached');
         }
         
-        // Modal close handlers
         const closeModalBtn = document.querySelector('#depositModal .close-modal');
         if (closeModalBtn) {
             closeModalBtn.addEventListener('click', closeDepositModal);
@@ -440,7 +415,6 @@
             closeWithdrawBtn.addEventListener('click', closeWithdrawModal);
         }
         
-        // Click outside modal
         window.addEventListener('click', (e) => {
             const depositModal = document.getElementById('depositModal');
             if (depositModal && e.target === depositModal) closeDepositModal();
@@ -449,7 +423,6 @@
             if (withdrawModal && e.target === withdrawModal) closeWithdrawModal();
         });
         
-        // Deposit method buttons
         const methodBtns = document.querySelectorAll('.method-btn');
         methodBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -473,13 +446,11 @@
         console.log('Wallet address:', userWalletAddress);
     }
     
-    // Jalankan init setelah DOM fully loaded
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
     }
     
-    // Expose global functions
     window.closeWithdrawModal = closeWithdrawModal;
 })();
