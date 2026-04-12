@@ -245,8 +245,8 @@
         }
         
         try {
-            // 🔥 PERTAMA: Kirim request ke backend untuk mencatat withdraw
-            const response = await fetch('/api/games/withdraw', {
+            // 🔥 PANGGIL ENDPOINT WITHDRAW REAL
+            const response = await fetch('/api/games/withdraw-real', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -259,16 +259,10 @@
             const data = await response.json();
             
             if (data.success) {
-                // 🔥 KEDUA: Jika backend berhasil, tampilkan sukses
-                // Catatan: Untuk withdraw TON sungguhan, Anda perlu:
-                // 1. Backend harus punya wallet dengan saldo cukup
-                // 2. Kirim transaksi TON dari wallet merchant ke user
-                // 3. Atau gunakan TON Pay untuk transfer otomatis
-                
                 document.getElementById('withdrawProcessing').style.display = 'none';
                 document.getElementById('withdrawSuccess').style.display = 'block';
                 document.getElementById('withdrawSuccessAmount').textContent = amount.toFixed(2) + ' TON';
-                document.getElementById('withdrawTxId').textContent = data.transaction_id || 'WID-' + Date.now();
+                document.getElementById('withdrawTxId').textContent = data.transaction_hash || 'TX-' + Date.now();
                 
                 // Refresh balance
                 await loadBalance(telegramUser.id);
@@ -277,9 +271,6 @@
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
-                
-                // 🔥 OPSIONAL: Kirim notifikasi ke user via Telegram Bot
-                sendWithdrawNotification(telegramUser.id, amount, userWalletAddress);
                 
             } else {
                 document.getElementById('withdrawProcessing').style.display = 'none';
