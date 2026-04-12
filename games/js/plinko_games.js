@@ -26,6 +26,7 @@
     const BOUNCE = 0.1;
     const PIN_RADIUS = 3;
     const BALL_RADIUS = 5;
+    const FRISION = 0.98;
     
     // --- SPAWNER VARIABLES ---
     let spawnerX = 0;
@@ -132,37 +133,39 @@
     function update() {
         if (!canvas || !ctx) return;
         
-        // 1. Gambar ulang papan
         drawPlinkoBoard();
 
-        // 2. Gerakan Spawner
+        // Gerakan spawner
         const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
-        // --- KONFIGURASI YANG HARUS SAMA DENGAN drawPlinkoBoard ---
-        const startY = 50;      
-        const rowSpacing = 22;  
-        const colSpacing = 22;  
-        const totalRows = 12; // Pastikan ini 12 agar rintangan terakhir terdeteksi
-
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
+            // 1. Terapkan Gravitasi & Gesekan
             ball.vy += GRAVITY;
+            ball.vx *= FRICTION; // Mengurangi kecepatan samping secara bertahap
+            
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            if (ball.vy > 8) ball.vy = 8;
-            if (Math.abs(ball.vx) > 5) ball.vx = ball.vx > 0 ? 5 : -5;
+            // 2. Batasi kecepatan agar tidak menembus pin
+            if (ball.vy > 7) ball.vy = 7;
+            if (Math.abs(ball.vx) > 4) ball.vx = ball.vx > 0 ? 4 : -4;
 
-            // 3. Deteksi Dinding Samping (Piramida)
+            const startY = 50;
+            const rowSpacing = 22;
+            const colSpacing = 22;
+            const totalRows = 12;
+
+            // 3. Batasan Dinding Piramida
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
             if (currentRow >= 0 && currentRow < totalRows) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
-                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10;
-                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10;
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 12;
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 12;
 
                 if (ball.x < leftWall) {
                     ball.x = leftWall;
@@ -173,8 +176,7 @@
                 }
             }
 
-            // 4. DETEKSI TABRAKAN PIN (Paling Penting agar rintangan terakhir tidak tembus)
-            // r < totalRows memastikan baris ke-12 diproses
+            // 4. Deteksi Tabrakan Pin (Rintangan)
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -186,19 +188,24 @@
                     const dy = ball.y - py;
                     const dist = Math.sqrt(dx*dx + dy*dy);
 
-                    // Jika jarak bola ke pin < gabungan radius keduanya
-                    if (dist < (BALL_RADIUS + PIN_RADIUS)) {
+                    if (dist < BALL_RADIUS + PIN_RADIUS) {
                         const angle = Math.atan2(dy, dx);
-                        // Pantulan
-                        ball.vx += Math.cos(angle) * 1.6;
-                        ball.vy *= -BOUNCE;
-                        // Reset posisi bola agar tidak "lengket" di dalam pin
+                        
+                        // Kurangi dorongan pantulan agar bola tidak mental ke atas
+                        // Gaya pantul diperlemah (0.8 dan 1.2)
+                        ball.vx += Math.cos(angle) * 1.2;
+                        ball.vy *= -BOUNCE; 
+                        
+                        // Mencegah bola memantul ke atas terlalu kuat
+                        if (ball.vy < -3) ball.vy = -3; 
+
+                        // Koreksi posisi agar bola tidak menempel di dalam pin
                         ball.y = py + Math.sin(angle) * (BALL_RADIUS + PIN_RADIUS);
                     }
                 }
             }
 
-            // 5. Gambar Bola
+            // 5. Render Visual Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
@@ -207,9 +214,8 @@
             ctx.fillStyle = gradient;
             ctx.fill();
 
-            // 6. LOGIKA SELESAI (Menyentuh Dasar Canvas/Border Multiplier)
-            // Gunakan batas paling bawah agar bola benar-benar tenggelam
-            const bottomLine = canvas.height - 5;
+            // 6. Logika Selesai (Menyentuh Border Bawah)
+            const bottomLine = canvas.height - 2;
             if (ball.y >= bottomLine) {
                 const isHit = checkMultiplierHit(ball);
                 if (isHit) {
