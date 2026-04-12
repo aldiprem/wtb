@@ -94,15 +94,19 @@
                 userWalletAddress = data.wallet_address;
                 const walletEl = document.getElementById('userWalletAddress');
                 if (walletEl) {
-                    // Konversi ke friendly format untuk tampilan
-                    let displayAddress = userWalletAddress;
+                    // 🔥 KONVERSI KE FRIENDLY FORMAT
+                    let friendlyAddress = userWalletAddress;
                     if (userWalletAddress.startsWith('0:')) {
-                        displayAddress = rawToFriendly(userWalletAddress);
+                        friendlyAddress = rawToFriendly(userWalletAddress);
+                        console.log('Converted address:', {
+                            raw: userWalletAddress,
+                            friendly: friendlyAddress
+                        });
                     }
                     // Tampilkan truncated version
-                    const truncated = displayAddress.substring(0, 8) + '...' + displayAddress.substring(displayAddress.length - 6);
+                    const truncated = friendlyAddress.substring(0, 8) + '...' + friendlyAddress.substring(friendlyAddress.length - 6);
                     walletEl.textContent = truncated;
-                    walletEl.setAttribute('data-full-address', displayAddress);
+                    walletEl.setAttribute('data-full-address', friendlyAddress);
                     walletEl.title = 'Click to copy full address';
                 }
                 return userWalletAddress;
@@ -160,41 +164,65 @@
     }
 
     function rawToFriendly(rawAddress) {
-        if (!rawAddress || !rawAddress.startsWith('0:')) return rawAddress;
+        if (!rawAddress) return rawAddress;
         
-        try {
-            const parts = rawAddress.split(':');
-            const hashHex = parts[1];
-            
-            // Konversi hex ke bytes
-            const hashBytes = new Uint8Array(hashHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
-            
-            // Non-bounceable tag (0x51) untuk wallet user
-            const addressBytes = new Uint8Array(1 + hashBytes.length);
-            addressBytes[0] = 0x51;
-            addressBytes.set(hashBytes, 1);
-            
-            // Encode ke base64 URL-safe
-            let binary = '';
-            for (let i = 0; i < addressBytes.length; i++) {
-                binary += String.fromCharCode(addressBytes[i]);
-            }
-            let base64 = btoa(binary);
-            base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            
-            return 'UQ' + base64;
-        } catch (e) {
-            console.error('Address conversion error:', e);
+        // Jika sudah dalam format friendly, return as-is
+        if (rawAddress.startsWith('EQ') || rawAddress.startsWith('UQ')) {
             return rawAddress;
         }
+        
+        // Jika raw format
+        if (rawAddress.startsWith('0:')) {
+            try {
+                const parts = rawAddress.split(':');
+                const hashHex = parts[1];
+                
+                // 🔥 PASTIKAN HASH LENGKAP (64 karakter)
+                if (hashHex.length !== 64) {
+                    console.error('Invalid hash length:', hashHex.length);
+                    // Coba ambil dari data-full-address atau return raw
+                    return rawAddress;
+                }
+                
+                // Konversi hex ke bytes
+                const hashBytes = new Uint8Array(hashHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+                
+                // 🔥 GUNAKAN TAG YANG BENAR (0x51 untuk non-bounceable / wallet biasa)
+                const addressBytes = new Uint8Array(1 + hashBytes.length);
+                addressBytes[0] = 0x51;  // Non-bounceable (UQ prefix)
+                addressBytes.set(hashBytes, 1);
+                
+                // Encode ke base64 URL-safe
+                let binary = '';
+                for (let i = 0; i < addressBytes.length; i++) {
+                    binary += String.fromCharCode(addressBytes[i]);
+                }
+                let base64 = btoa(binary);
+                base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                
+                return 'UQ' + base64;
+            } catch (e) {
+                console.error('Address conversion error:', e);
+                return rawAddress;
+            }
+        }
+        
+        return rawAddress;
     }
     
-    // Fungsi untuk copy full wallet address
     function copyFullWalletAddress() {
         const addressElement = document.getElementById('userWalletAddress');
         if (addressElement && addressElement.textContent && addressElement.textContent !== 'Belum terhubung') {
             // Ambil full address dari data attribute (sudah dalam friendly format)
             let fullAddress = addressElement.getAttribute('data-full-address');
+            
+            // Fallback jika tidak ada data-full-address
+            if (!fullAddress && userWalletAddress) {
+                fullAddress = userWalletAddress;
+                if (fullAddress.startsWith('0:')) {
+                    fullAddress = rawToFriendly(fullAddress);
+                }
+            }
             
             if (fullAddress && fullAddress !== 'Belum terhubung') {
                 navigator.clipboard.writeText(fullAddress).then(() => {
@@ -213,7 +241,7 @@
         }
     }
 
-    // ==================== WITHDRAW FUNCTIONS ====================
+
     function showWithdrawModal() {
         const modal = document.getElementById('withdrawModal');
         if (!modal) return;
@@ -242,16 +270,16 @@
             document.getElementById('walletWarning').style.display = 'none';
             document.getElementById('withdrawForm').style.display = 'block';
             
-            // Set full address ke element (dalam friendly format)
+            // 🔥 SET FULL ADDRESS KE ELEMENT (dengan konversi yang benar)
             const addressElement = document.getElementById('userWalletAddress');
             if (addressElement && userWalletAddress) {
-                let displayAddress = userWalletAddress;
+                let friendlyAddress = userWalletAddress;
                 if (userWalletAddress.startsWith('0:')) {
-                    displayAddress = rawToFriendly(userWalletAddress);
+                    friendlyAddress = rawToFriendly(userWalletAddress);
                 }
-                const truncated = displayAddress.substring(0, 8) + '...' + displayAddress.substring(displayAddress.length - 6);
+                const truncated = friendlyAddress.substring(0, 8) + '...' + friendlyAddress.substring(friendlyAddress.length - 6);
                 addressElement.textContent = truncated;
-                addressElement.setAttribute('data-full-address', displayAddress);
+                addressElement.setAttribute('data-full-address', friendlyAddress);
                 addressElement.title = 'Click to copy full address';
             }
         }
