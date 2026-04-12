@@ -619,6 +619,15 @@
                 document.getElementById('lastPlayerName').textContent = lastPlayerName;
                 document.getElementById('lastPlayerMultiplier').textContent = `${lastPlayerMultiplier}x`;
                 
+                // Update avatar untuk stat-lasted dari data terakhir
+                if (data.last_player && data.history && data.history.length > 0) {
+                    const lastGame = data.history[0];
+                    if (lastGame && lastGame.photo_url) {
+                        const avatarImg = document.getElementById('userAvatarImg');
+                        if (avatarImg) avatarImg.src = lastGame.photo_url;
+                    }
+                }
+                
                 // Round Hash
                 if (data.current_hash) {
                     document.getElementById('roundHash').textContent = data.current_hash.substring(0, 12) + '...';
@@ -653,14 +662,14 @@
         }
     }
 
-    async function loadHistory() {
+    async function loadHistory(limit = 10, isFullscreen = false) {
         try {
-            const response = await fetch(`${API_BASE}/api/plinko/history?limit=50`);
+            const response = await fetch(`${API_BASE}/api/plinko/history?limit=${isFullscreen ? 100 : limit}`);
             const data = await response.json();
             
             console.log('📜 History response:', data);
             
-            const historyList = document.getElementById('historyList');
+            const historyList = document.getElementById(isFullscreen ? 'fullscreenHistoryList' : 'historyList');
             
             if (!historyList) return;
             
@@ -693,18 +702,26 @@
                     multiplierColor = 'low';
                 }
                 
-                // Tentukan kelas win
+                // Tentukan kelas win (merah untuk rugi, hijau untuk untung)
                 let winClass = 'neutral';
                 let winAmount = game.win_amount || 0;
                 let betAmount = game.bet_amount || 0;
-                let winText = `${winAmount.toFixed(2)}`;
+                let isProfit = winAmount > betAmount;
+                let isLoss = winAmount < betAmount;
                 
-                if (winAmount > betAmount) {
+                let winText = `${winAmount.toFixed(2)}`;
+                let borderColor = '';
+                
+                if (isProfit) {
                     winClass = 'positive';
                     winText = `+${(winAmount - betAmount).toFixed(2)}`;
-                } else if (winAmount < betAmount) {
+                    borderColor = 'border-green';
+                } else if (isLoss) {
                     winClass = 'negative';
                     winText = `-${(betAmount - winAmount).toFixed(2)}`;
+                    borderColor = 'border-red';
+                } else {
+                    borderColor = 'border-neutral';
                 }
                 
                 // Format waktu
@@ -731,7 +748,7 @@
                 }
                 
                 html += `
-                    <div class="history-item multiplier-${multiplierClass}" data-hash="${game.round_hash || ''}">
+                    <div class="history-item ${borderColor}" data-hash="${game.round_hash || ''}">
                         <div class="history-item-content">
                             <div class="history-avatar">
                                 <img src="${avatarUrl}" alt="${playerName}" 
@@ -768,7 +785,7 @@
             
         } catch (error) {
             console.error('❌ Error loading history:', error);
-            const historyList = document.getElementById('historyList');
+            const historyList = document.getElementById(isFullscreen ? 'fullscreenHistoryList' : 'historyList');
             if (historyList) {
                 historyList.innerHTML = `
                     <div class="history-empty">
@@ -1164,6 +1181,35 @@
 
         // UPDATE LABELS
         updateUILabels();
+
+        // Fullscreen history button
+        const fullscreenBtn = document.getElementById('fullscreenHistoryBtn');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', async () => {
+                const modal = document.getElementById('fullscreenHistoryModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+                    await loadHistory(100, true);
+                }
+            });
+        }
+
+        // Close fullscreen modal
+        const closeFullscreen = document.getElementById('closeFullscreenHistory');
+        if (closeFullscreen) {
+            closeFullscreen.addEventListener('click', () => {
+                const modal = document.getElementById('fullscreenHistoryModal');
+                if (modal) modal.style.display = 'none';
+            });
+        }
+
+        // Close modal on outside click
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('fullscreenHistoryModal');
+            if (modal && e.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
 
         // Simpan ke localStorage setiap kali bet berubah
         const originalConfirmBet = confirmBet;
