@@ -21,9 +21,9 @@
     let multiplierAreas = [];
 
     let balls = [];
-    const GRAVITY = 0.2;
+    const GRAVITY = 0.3;
     const BOUNCE = 0.15;
-    const FRICTION_X = 1.1;
+    const FRICTION_X = 0.9;
     const PIN_RADIUS = 3;
     const BALL_RADIUS = 5;
     
