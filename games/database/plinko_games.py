@@ -13,8 +13,8 @@ TARGET_BANDAR_PROFIT = 5.0
 
 # Konfigurasi multiplier untuk setiap risk level - SEMUA DIKECILKAN
 RISK_MULTIPLIERS = {
-    'low': [2, 1.5, 1, 0.8, 0.5, 0.3, 0.5, 0.8, 1, 1.5, 2],  # Max 2x
-    'medium': [3, 2, 1.5, 1, 0.5, 0.2, 0.5, 1, 1.5, 2, 3],    # Max 3x
+    'low': [2, 1.5, 1, 0.8, 0.5, 0.3, 0.5, 0.8, 1, 1.5, 2],
+    'medium': [3, 2, 1.5, 1, 0.5, 0.2, 0.5, 1, 1.5, 2, 3],
     'high': [4, 3, 2, 1.5, 1, 0.5, 0.2, 0.1, 0.0, 0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4]  # Max 4x
 }
 
