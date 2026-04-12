@@ -13,11 +13,10 @@ def get_current_time():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def init_db():
-    """Inisialisasi tabel untuk sistem Games - Balance dalam TON"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Buat Tabel Users - balance dalam TON (float)
+    # Tabel users
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
@@ -33,7 +32,7 @@ def init_db():
         )
     ''')
     
-    # Buat Tabel Riwayat Main - amount dalam TON
+    # Tabel game_history
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS game_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,7 +45,36 @@ def init_db():
         )
     ''')
     
-    # Cek dan tambahkan kolom yang mungkin hilang
+    # 🔥 TAMBAHKAN TABEL withdraw_requests jika belum ada
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS withdraw_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id INTEGER,
+            amount_ton REAL,
+            destination_address TEXT,
+            reference TEXT,
+            transaction_hash TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            processed_at TIMESTAMP
+        )
+    ''')
+    
+    # 🔥 TAMBAHKAN TABEL payment_tracking jika belum ada
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS payment_tracking (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reference TEXT UNIQUE,
+            body_base64_hash TEXT,
+            telegram_id TEXT,
+            amount REAL,
+            status TEXT DEFAULT 'pending',
+            transaction_hash TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Cek dan tambah kolom yang mungkin hilang di users
     cursor.execute("PRAGMA table_info(users)")
     existing_columns = [col[1] for col in cursor.fetchall()]
     
@@ -62,13 +90,38 @@ def init_db():
         if col not in existing_columns:
             try:
                 cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {data_type}")
-                print(f"✅ Kolom '{col}' ditambahkan")
+                print(f"✅ Kolom '{col}' ditambahkan ke users")
             except:
                 pass
     
+    # Cek dan tambah kolom di withdraw_requests jika perlu
+    cursor.execute("PRAGMA table_info(withdraw_requests)")
+    withdraw_columns = [col[1] for col in cursor.fetchall()]
+    
+    if 'reference' not in withdraw_columns:
+        try:
+            cursor.execute("ALTER TABLE withdraw_requests ADD COLUMN reference TEXT")
+            print("✅ Kolom 'reference' ditambahkan ke withdraw_requests")
+        except:
+            pass
+    
+    if 'transaction_hash' not in withdraw_columns:
+        try:
+            cursor.execute("ALTER TABLE withdraw_requests ADD COLUMN transaction_hash TEXT")
+            print("✅ Kolom 'transaction_hash' ditambahkan ke withdraw_requests")
+        except:
+            pass
+    
+    if 'processed_at' not in withdraw_columns:
+        try:
+            cursor.execute("ALTER TABLE withdraw_requests ADD COLUMN processed_at TIMESTAMP")
+            print("✅ Kolom 'processed_at' ditambahkan ke withdraw_requests")
+        except:
+            pass
+    
     conn.commit()
     conn.close()
-    print("✅ Database games siap (balance dalam TON)")
+    print("✅ Database siap dengan semua tabel yang diperlukan")
 
 def get_or_create_user(telegram_id, username, first_name, referred_by=None):
     """Mencari user atau membuat user baru dengan balance 0 TON"""

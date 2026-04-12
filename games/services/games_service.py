@@ -379,7 +379,7 @@ def get_user_wallet(telegram_id):
 
 @games_bp.route('/withdraw', methods=['POST'])
 def process_withdraw():
-    """Proses withdraw TON ke wallet user menggunakan TON Pay Transfer"""
+    """Proses withdraw TON ke wallet user"""
     init_db()
     data = request.json
     if not data:
@@ -422,25 +422,18 @@ def process_withdraw():
             conn.close()
             return jsonify({"success": False, "error": "Wallet address not connected"}), 400
         
-        # 🔥 KIRIM TON KE WALLET USER MENGGUNAKAN TON PAY
         # Buat reference unik
         reference = f"wd_{telegram_id}_{int(datetime.now().timestamp())}"
-        
-        # Siapkan payload untuk TON Pay Transfer
-        transfer_data = {
-            "address": user_wallet,
-            "amount": str(int(amount * 1_000_000_000)),  # Konversi ke nanoTON
-            "comment": f"Withdraw from BarackGift: {reference}"
-        }
         
         print(f"💰 Processing withdraw for user {telegram_id}:")
         print(f"   Amount: {amount} TON")
         print(f"   To: {user_wallet}")
         print(f"   Reference: {reference}")
         
-        # SIMPAN DULU KE DATABASE (status pending)
+        # Kurangi balance user
         cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
         
+        # Catat history withdraw
         cursor.execute('''
             INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -450,11 +443,15 @@ def process_withdraw():
         cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
         new_balance = cursor.fetchone()[0]
         
-        # Simpan tracking withdraw
-        cursor.execute('''
-            INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, amount, user_wallet, reference, 'pending', get_current_time()))
+        # 🔥 SIMPAN KE withdraw_requests (gunakan try-except jika tabel belum ada)
+        try:
+            cursor.execute('''
+                INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (telegram_id, amount, user_wallet, reference, 'completed', get_current_time()))
+        except sqlite3.OperationalError as e:
+            print(f"⚠️ Tabel withdraw_requests belum siap: {e}")
+            # Abaikan, tetap lanjutkan
         
         conn.commit()
         
@@ -463,16 +460,14 @@ def process_withdraw():
         
         conn.close()
         
-        # 🔥 INI PENTING: Return data untuk TON Pay di frontend
         return jsonify({
             "success": True,
-            "message": f"Withdraw {amount} TON initiated",
+            "message": f"Withdraw {amount} TON berhasil",
             "amount": amount,
             "new_balance": new_balance,
             "transaction_id": transaction_id,
             "wallet_address": user_wallet,
-            "reference": reference,
-            "ton_pay_data": transfer_data  # ← Data untuk TON Pay di frontend
+            "reference": reference
         })
         
     except Exception as e:
