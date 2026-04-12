@@ -126,31 +126,7 @@
     }
     
     function drawMultiplierSlotsDisplay() {
-        const wrapper = document.querySelector('.multiplier-slots-wrapper');
-        if (!wrapper) return;
-        
-        const multipliers = RISK_MULTIPLIERS[currentRisk];
-        const wrapperRect = wrapper.getBoundingClientRect();
-        const canvasRect = canvas.getBoundingClientRect();
-        
-        const startX = wrapperRect.left - canvasRect.left;
-        const width = wrapperRect.width;
-        const segmentWidth = width / multipliers.length;
-        
-        for (let i = 0; i < multipliers.length; i++) {
-            const mult = multipliers[i];
-            let color = '#9ca3af';
-            if (mult >= 5) color = '#f87171';
-            else if (mult >= 2) color = '#fbbf24';
-            else if (mult >= 1) color = '#34d399';
-            
-            ctx.font = 'bold 10px Inter';
-            ctx.fillStyle = color;
-            ctx.textAlign = 'center';
-            const x = startX + (i * segmentWidth) + (segmentWidth / 2);
-            const y = canvas.height - 15;
-            ctx.fillText(mult.toString(), x, y);
-        }
+        return;
     }
 
     function update() {
