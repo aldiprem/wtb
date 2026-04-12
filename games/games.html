@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- TON Connect UI - VERSI SAMA DENGAN PLANE GIFT -->
+    <!-- TON Connect UI -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
 
     <!-- Telegram Web App SDK -->
@@ -128,9 +128,12 @@
             </button>
         </nav>
 
+        <!-- 🔥 TOMBOL TON CONNECT - SAMA PERSIS DENGAN INDEX.HTML -->
+        <div id="ton-connect" class="ton-connect-button"></div>
+
     </div>
 
-    <!-- Modal Deposit TON - SAMA DENGAN PLANE GIFT -->
+    <!-- Modal Deposit TON -->
     <div id="depositModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -145,10 +148,9 @@
                     </button>
                 </div>
 
-                <!-- 🔥 TON CONNECT BUTTON - SAMA PERSIS DENGAN PLANE GIFT -->
                 <div id="depositWalletStatus" class="wallet-status">
                     <p>⚠️ Silakan hubungkan wallet TON Anda terlebih dahulu</p>
-                    <div id="depositTonConnect"></div> <!-- ← TIDAK pakai class ton-connect-button -->
+                    <!-- 🔥 TOMBOL CONNECT AKAN MUNCUL DI SINI VIA JS -->
                 </div>
                 
                 <div id="depositForm" style="display: none;">
