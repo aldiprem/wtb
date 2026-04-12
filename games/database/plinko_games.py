@@ -349,7 +349,7 @@ def get_forced_multiplier(risk_level, user_loss_data=None):
 
 def get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username):
     """
-    SISTEM BANDAR NEVER LOSE - PASTI BANDAR UNTUNG
+    SISTEM BANDAR NEVER LOSE - PASTI BANDAR UNTUNG ATAU IMPAS
     """
     profit_data = get_bandar_profit()
     current_bandar_profit = profit_data['profit']
@@ -358,64 +358,41 @@ def get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username):
     is_forced = False
     forced_reason = None
     
-    # STEP 1: Cari multiplier yang TIDAK membuat bandar rugi
-    safe_mult, reason = get_safe_multiplier(risk_level, bet_amount, user_id, username, current_bandar_profit)
+    # STEP 1: Cari multiplier yang AMAN untuk bandar
+    safe_mult, safe_reason = get_safe_multiplier(risk_level, bet_amount, current_bandar_profit)
     
-    # STEP 2: Jika multiplier aman ditemukan dan lebih kecil dari 1x, pakai itu
-    if safe_mult <= 0.5:
-        chosen = safe_mult
-        is_forced = True
-        forced_reason = f'bandar_protect_{reason}'
-        
-        log_cheat_action(
-            user_id, username, f"game_{datetime.now().timestamp()}",
-            "BANDAR_PROTECT_FORCE_LOSS",
-            chosen, None, 1.0,
-            f"Bandar profit: {current_bandar_profit:.2f} - Forcing loss to keep profit"
-        )
-        
-        print(f"🔴 [BANDAR PROTECT] {username} forced {chosen}x | Bandar profit: {current_bandar_profit:.2f}")
-        return chosen, is_forced, forced_reason
+    print(f"📊 [BANDAR CHECK] Current profit: {current_bandar_profit:.2f} TON | Bet: {bet_amount} | Safe multiplier: {safe_mult}x")
     
-    # STEP 3: 90% chance paksa multiplier kecil (0x - 0.5x) biar bandar untung
+    # STEP 2: 95% chance PAKSA multiplier kecil (0x - 0.5x)
     roll = random.random()
     
-    if roll < 0.90 or safe_mult > 1.0:  # 90% atau multiplier aman masih >1x
+    if roll < 0.95:  # 95% FORCE ke multiplier kecil
         # Pilih multiplier paling kecil dari SMALL_MULTIPLIERS
         small_mult = SMALL_MULTIPLIERS.get(risk_level, SMALL_MULTIPLIERS['medium'])
         
-        if user_loss and user_loss['net_loss'] > 15:
-            # User sudah rugi banyak, kasih 0.5x (masih bandar untung)
-            mercy_mult = [0.5, 0.5, 0.5, 0.8, 0.8]
-            chosen = random.choice(mercy_mult)
-            forced_reason = 'mercy_but_still_loss'
-        else:
-            # Pilih multiplier 0x atau sangat kecil
-            chosen = random.choice(small_mult)
-            forced_reason = 'force_small_loss'
-        
+        # Pilih yang paling kecil (0x prioritas)
+        chosen = min(small_mult)
+        forced_reason = f'force_small_loss_{safe_reason}'
         is_forced = True
         
+        # Log kecurangan
         log_cheat_action(
             user_id, username, f"game_{datetime.now().timestamp()}",
-            "FORCE_SMALL_LOSS",
-            chosen, None, 0.9,
-            f"Protecting bandar profit. Current: {current_bandar_profit:.2f}"
+            "BANDAR_FORCE_LOSS",
+            chosen, safe_mult, 0.95,
+            f"Bandar profit before: {current_bandar_profit:.2f} | Forcing {chosen}x"
         )
         
-        print(f"🔴 [FORCE LOSS] {username} got {chosen}x | Bandar profit: {current_bandar_profit:.2f}")
+        print(f"🔴 [BANDAR FORCE] {username} forced {chosen}x | Bandar profit before: {current_bandar_profit:.2f}")
         return chosen, is_forced, forced_reason
     
-    # STEP 4: 10% sisanya - tetap pilih yang paling kecil
-    all_multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
-    small_mults = [m for m in all_multipliers if m < 0.8]
+    # STEP 3: 5% sisanya - pakai safe multiplier (masih aman untuk bandar)
+    chosen = safe_mult
+    is_forced = True  # Tetap dianggap forced karena bandar proteksi
+    forced_reason = f'bandar_protect_{safe_reason}'
     
-    if small_mults:
-        chosen = random.choice(small_mults)
-    else:
-        chosen = 0.2
-    
-    return chosen, is_forced, 'small_bias'
+    print(f"🟡 [BANDAR PROTECT] {username} got {chosen}x (safe multiplier)")
+    return chosen, is_forced, forced_reason
 
 def get_bandar_status():
     """Cek status keuangan bandar"""
@@ -668,38 +645,41 @@ def set_bandar_target(new_target):
     TARGET_BANDAR_PROFIT = new_target
     print(f"🎯 Target bandar profit diubah menjadi {new_target} TON")
 
-def get_safe_multiplier(risk_level, bet_amount, user_id, username, current_bandar_profit):
+def get_safe_multiplier(risk_level, bet_amount, current_bandar_profit):
     """
-    Sistem BANDAR NEVER LOSE - Hitung multiplier aman yang TIDAK membuat bandar rugi
+    SISTEM BANDAR NEVER LOSE - Hitung multiplier yang TIDAK membuat bandar rugi
+    Bandar HARUS tetap untung atau minimal impas (profit >= 0 setelah game)
+    
+    Rumus: Profit Bandar Setelah = current_bandar_profit + bet_amount - (bet_amount * multiplier)
+    Syarat: Profit Bandar Setelah >= 0
+    
+    Maka: multiplier <= (current_bandar_profit + bet_amount) / bet_amount
     """
-    # Ambil semua multiplier yang TIDAK membuat bandar rugi
+    # Hitung multiplier maksimal yang aman untuk bandar
+    max_safe_multiplier = (current_bandar_profit + bet_amount) / bet_amount
+    
+    # Ambil semua multiplier dari risk level
     all_multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
     
-    # Filter multiplier yang aman untuk bandar
-    safe_multipliers = []
-    for mult in all_multipliers:
-        # Hitung profit bandar setelah game ini
-        bandar_profit_after = current_bandar_profit + (bet_amount - (bet_amount * mult))
-        
-        # Bandar HARUS untung atau minimal impas (profit >= 0)
-        if bandar_profit_after >= 0:
-            safe_multipliers.append(mult)
+    # Filter multiplier yang AMAN (tidak membuat bandar rugi)
+    safe_multipliers = [m for m in all_multipliers if m <= max_safe_multiplier]
     
-    # Jika tidak ada multiplier yang aman, paksa ke 0x
+    # Jika TIDAK ADA multiplier yang aman, paksa 0x
     if not safe_multipliers:
-        print(f"⚠️ [BANDAR PROTECT] No safe multiplier! Forcing 0x for {username}")
-        return 0.0, 'force_zero_protection'
+        print(f"⚠️ [BANDAR PROTECT] No safe multiplier! Max safe: {max_safe_multiplier:.2f}x -> Forcing 0x")
+        return 0.0, 'force_zero_no_safe_multiplier'
     
-    # Pilih multiplier yang paling kecil dari yang aman (biar bandar untung banyak)
+    # Pilih multiplier TERKECIL dari yang aman (biar bandar untung banyak)
     chosen = min(safe_multipliers)
     
-    # Jika multiplier masih > 1x dan bisa bikin bandar rugi, turunkan ke 0x
-    if chosen >= 1.0:
-        # Cek ulang dengan multiplier 0x
-        bandar_profit_if_zero = current_bandar_profit + (bet_amount - 0)
-        if bandar_profit_if_zero >= 0:
-            print(f"⚠️ [BANDAR PROTECT] Downgrading {chosen}x to 0x for {username}")
-            return 0.0, 'downgrade_to_zero'
+    # LOGIKA TAMBAHAN: Jika bandar profit saat ini < 5 TON, paksa multiplier lebih kecil
+    if current_bandar_profit < 5 and chosen > 0.5:
+        # Cari multiplier di bawah 0.5x
+        very_small = [m for m in all_multipliers if m < 0.5]
+        if very_small:
+            chosen = min(very_small)
+            print(f"⚠️ [BANDAR PROTECT] Low profit ({current_bandar_profit:.2f}) -> forcing {chosen}x")
+            return chosen, 'force_small_due_low_profit'
     
     return chosen, 'safe_multiplier'
 
