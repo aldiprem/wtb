@@ -21,6 +21,18 @@ print(f"📁 Games DB Path: {GAMES_DB_PATH}")
 os.makedirs(os.path.dirname(PLINKO_DB_PATH), exist_ok=True)
 os.makedirs(os.path.dirname(GAMES_DB_PATH), exist_ok=True)
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database.plinko_games import (
+    get_multiplier as cheat_get_multiplier,
+    calculate_win,
+    generate_round_hash,
+    save_game_result,
+    get_stats as get_cheat_stats,
+    get_history as get_cheat_history,
+    get_bandar_profit,
+    TARGET_BANDAR_PROFIT
+)
+
 # Membuat Blueprint untuk Plinko API
 plinko_bp = Blueprint('plinko_bp', __name__, url_prefix='/api/plinko')
 
@@ -233,65 +245,30 @@ def get_user_balance(telegram_id):
         return 0.0
 
 # ==================== API ENDPOINTS ====================
-
 @plinko_bp.route('/stats', methods=['GET', 'OPTIONS'])
 def get_stats():
-    """Get current plinko stats"""
+    """Get current plinko stats termasuk profit bandar"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
-    init_plinko_db()
     try:
-        conn = get_plinko_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT total_players, total_games, biggest_multiplier, biggest_win,
-                   total_bet_amount, total_win_amount, last_player, last_time, current_hash
-            FROM plinko_stats ORDER BY id DESC LIMIT 1
-        ''')
-        
-        row = cursor.fetchone()
-        
-        cursor.execute('''
-            SELECT multiplier, username FROM plinko_games 
-            ORDER BY created_at DESC LIMIT 1
-        ''')
-        last_game = cursor.fetchone()
-        
-        conn.close()
-        
-        if row:
-            return jsonify({
-                "success": True,
-                "total_players": row['total_players'] or 0,
-                "total_games": row['total_games'] or 0,
-                "biggest_multiplier": row['biggest_multiplier'] or 0,
-                "biggest_win": row['biggest_win'] or 0,
-                "total_bet_amount": row['total_bet_amount'] or 0,
-                "total_win_amount": row['total_win_amount'] or 0,
-                "last_player": row['last_player'],
-                "last_time": row['last_time'],
-                "current_hash": row['current_hash'],
-                "last_multiplier": last_game['multiplier'] if last_game else 0
-            })
-        
+        stats = get_cheat_stats()
         return jsonify({
             "success": True,
-            "total_players": 0,
-            "total_games": 0,
-            "biggest_multiplier": 0,
-            "biggest_win": 0,
-            "total_bet_amount": 0,
-            "total_win_amount": 0,
-            "last_player": None,
-            "last_time": None,
-            "current_hash": None,
-            "last_multiplier": 0
+            "total_players": stats.get('total_players', 0),
+            "total_games": stats.get('total_games', 0),
+            "biggest_multiplier": stats.get('biggest_multiplier', 0),
+            "biggest_win": stats.get('biggest_win', 0),
+            "total_bet_amount": stats.get('total_bet_amount', 0),
+            "total_win_amount": stats.get('total_win_amount', 0),
+            "last_player": stats.get('last_player'),
+            "last_time": stats.get('last_time'),
+            "current_hash": stats.get('current_hash'),
+            "last_multiplier": stats.get('last_multiplier', 0),
+            "bandar_profit": stats.get('bandar_profit', 0),
+            "bandar_target": TARGET_BANDAR_PROFIT
         })
     except Exception as e:
-        print(f"Error getting stats: {e}")
-        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @plinko_bp.route('/history', methods=['GET', 'OPTIONS'])
@@ -300,63 +277,30 @@ def get_history():
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
-    init_plinko_db()
     try:
         limit = request.args.get('limit', 50, type=int)
-        conn = get_plinko_db()
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, created_at
-            FROM plinko_games
-            ORDER BY created_at DESC
-            LIMIT ?
-        ''', (limit,))
-        
-        rows = cursor.fetchall()
-        conn.close()
-        
-        history = []
-        for row in rows:
-            history.append({
-                "round_hash": row['round_hash'],
-                "user_id": row['user_id'],
-                "username": row['username'],
-                "photo_url": row['photo_url'],
-                "bet_amount": row['bet_amount'],
-                "multiplier": row['multiplier'],
-                "win_amount": row['win_amount'],
-                "risk_level": row['risk_level'],
-                "created_at": row['created_at']
-            })
-        
+        history = get_cheat_history(limit)
         return jsonify({"success": True, "history": history})
     except Exception as e:
-        print(f"Error getting history: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @plinko_bp.route('/save', methods=['POST', 'OPTIONS'])
 def save_game():
-    """Save game result"""
+    """Save game result - MENGGUNAKAN CHEAT SYSTEM"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
-    init_plinko_db()
     data = request.json
     
     if not data:
         return jsonify({"success": False, "error": "No data provided"}), 400
     
-    required_fields = ['bet_amount', 'multiplier', 'win_amount', 'round_hash', 'risk_level']
-    for field in required_fields:
-        if field not in data:
-            return jsonify({"success": False, "error": f"Missing field: {field}"}), 400
-    
     try:
-        save_game_to_plinko_db(data)
+        # Simpan pakai cheat system
+        save_game_result(data)
         
         if data.get('user_id'):
-            if data['win_amount'] > 0:
+            if data['win_amount'] > data['bet_amount']:
                 profit = data['win_amount'] - data['bet_amount']
                 if profit > 0:
                     update_user_balance(data['user_id'], profit)
@@ -372,12 +316,11 @@ def save_game():
         return jsonify({"success": True, "message": "Game saved successfully"})
     except Exception as e:
         print(f"Error saving game: {e}")
-        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @plinko_bp.route('/play', methods=['POST', 'OPTIONS'])
 def play_game():
-    """Play a plinko game - calculate result"""
+    """Play a plinko game - MENGGUNAKAN CHEAT SYSTEM"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -388,28 +331,36 @@ def play_game():
     
     bet_amount = data.get('bet_amount', 0)
     risk_level = data.get('risk_level', 'medium')
-    position = data.get('position', None)
+    user_id = data.get('user_id')
+    username = data.get('username', 'Anonymous')
     
     if bet_amount <= 0:
         return jsonify({"success": False, "error": "Invalid bet amount"}), 400
     
-    if position is not None:
-        multiplier = get_multiplier(risk_level, position)
-    else:
-        multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
-        position = random.randint(0, len(multipliers) - 1)
-        multiplier = multipliers[position]
+    # PAKAI CHEAT SYSTEM
+    multiplier, is_forced, cheat_reason = cheat_get_multiplier(
+        risk_level, 
+        position=None,
+        user_id=user_id,
+        username=username,
+        bet_amount=bet_amount
+    )
     
     win_amount = calculate_win(bet_amount, multiplier)
     round_hash = generate_round_hash()
+    
+    if is_forced:
+        print(f"🔴 [CHEAT] {username}: {multiplier}x ({cheat_reason})")
     
     return jsonify({
         "success": True,
         "multiplier": multiplier,
         "win_amount": win_amount,
-        "position": position,
+        "position": None,
         "round_hash": round_hash,
-        "risk_level": risk_level
+        "risk_level": risk_level,
+        "is_forced": is_forced,
+        "cheat_reason": cheat_reason
     })
 
 @plinko_bp.route('/balance/<int:telegram_id>', methods=['GET', 'OPTIONS'])

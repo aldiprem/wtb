@@ -9,7 +9,6 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'plinko.db'
 
-# Target keuntungan bandar minimal (dalam TON)
 TARGET_BANDAR_PROFIT = 10.0
 
 # Konfigurasi multiplier untuk setiap risk level (tampilan visual saja)
