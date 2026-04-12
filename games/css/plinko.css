@@ -276,7 +276,8 @@ body {
     border-right: 1px solid rgba(255, 255, 255, 0.15);
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     width: 315px;
-    transform: translateY(80px);
+    transform: translateY(0px) !important;
+    margin: -10px auto 40px auto;
     margin-bottom: 80px;
     pointer-events: none;
     position: relative;
@@ -358,11 +359,11 @@ body {
     height: 320px !important; 
     display: block;
     margin: 0 auto;
-    margin-bottom: 6px; 
+    margin-bottom: 0px; 
 }
 
 #multiplierSlotsWrapper {
-    margin-top: -80px; 
+    margin-top: 5px; 
     position: relative;
     z-index: 10;
 }

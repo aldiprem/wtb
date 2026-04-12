@@ -132,36 +132,32 @@
     function update() {
         if (!canvas || !ctx) return;
         
-        // 1. Render Papan dan Spawner
+        // 1. Gambar ulang papan
         drawPlinkoBoard();
 
-        // 2. Gerakan Spawner (Cerobong)
+        // 2. Gerakan Spawner
         const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
-        // 3. Loop Proses Bola
+        // --- KONFIGURASI YANG HARUS SAMA DENGAN drawPlinkoBoard ---
+        const startY = 50;      
+        const rowSpacing = 22;  
+        const colSpacing = 22;  
+        const totalRows = 12; // Pastikan ini 12 agar rintangan terakhir terdeteksi
+
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
-            // Terapkan Fisika
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Limit Kecepatan
             if (ball.vy > 8) ball.vy = 8;
             if (Math.abs(ball.vx) > 5) ball.vx = ball.vx > 0 ? 5 : -5;
 
-            // --- KONFIGURASI PIN (12 BARIS) ---
-            const startY = 50;      
-            const rowSpacing = 22;  
-            const colSpacing = 22;  
-            const totalRows = 12;   
-            
+            // 3. Deteksi Dinding Samping (Piramida)
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
-            
-            // 4. Batasan Dinding Samping (Piramida)
             if (currentRow >= 0 && currentRow < totalRows) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
@@ -177,7 +173,8 @@
                 }
             }
 
-            // 5. Deteksi Tabrakan Pin (Loop 12 Baris)
+            // 4. DETEKSI TABRAKAN PIN (Paling Penting agar rintangan terakhir tidak tembus)
+            // r < totalRows memastikan baris ke-12 diproses
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -189,47 +186,41 @@
                     const dy = ball.y - py;
                     const dist = Math.sqrt(dx*dx + dy*dy);
 
-                    if (dist < BALL_RADIUS + PIN_RADIUS) {
+                    // Jika jarak bola ke pin < gabungan radius keduanya
+                    if (dist < (BALL_RADIUS + PIN_RADIUS)) {
                         const angle = Math.atan2(dy, dx);
-                        ball.vx += Math.cos(angle) * 1.6 + (Math.random() - 0.5) * 0.4;
+                        // Pantulan
+                        ball.vx += Math.cos(angle) * 1.6;
                         ball.vy *= -BOUNCE;
+                        // Reset posisi bola agar tidak "lengket" di dalam pin
                         ball.y = py + Math.sin(angle) * (BALL_RADIUS + PIN_RADIUS);
                     }
                 }
             }
 
-            // 6. Render Visual Bola
+            // 5. Gambar Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
             gradient.addColorStop(0, '#ff6b6b');
             gradient.addColorStop(1, '#ef4444');
             ctx.fillStyle = gradient;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = '#ef4444';
             ctx.fill();
-            ctx.shadowBlur = 0;
 
-            // --- 7. LOGIKA KRITIKAL: MENYENTUH BORDER MULTIPLIER ---
-            
-            // Agar bola benar-benar menyentuh border, kita gunakan batas Y maksimal canvas.
-            // Kita kurangi hanya 2 pixel agar bola terlihat benar-benar mendarat di garis bawah.
-            const multiplierHitY = canvas.height - 2;
-            
-            if (ball.y >= multiplierHitY) {
-                // Pastikan bola berada dalam area horizontal multiplier slots
+            // 6. LOGIKA SELESAI (Menyentuh Dasar Canvas/Border Multiplier)
+            // Gunakan batas paling bawah agar bola benar-benar tenggelam
+            const bottomLine = canvas.height - 5;
+            if (ball.y >= bottomLine) {
                 const isHit = checkMultiplierHit(ball);
-                
                 if (isHit) {
-                    // Hapus bola hanya jika sudah mentok ke bawah
                     balls.splice(i, 1);
                     checkAllBallsComplete();
-                    continue; 
+                    continue;
                 }
             }
-            
-            // Safety net diperjauh (jika bola memantul ke luar layar samping/bawah secara ekstrem)
-            if (ball.y > canvas.height + 100) {
+
+            // Safety Net
+            if (ball.y > canvas.height + 50) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
