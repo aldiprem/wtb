@@ -603,8 +603,13 @@ def get_history(limit=50):
     
     rows = cursor.fetchall()
     conn.close()
-
-    return [dict(row) for row in rows] if rows else []
+    
+    result = [dict(row) for row in rows] if rows else []
+    print(f"📜 get_history returning {len(result)} records")
+    if result:
+        print(f"   First record: {result[0]}")
+    
+    return result
 
 def get_cheat_logs(limit=100):
     """Mendapatkan log kecurangan untuk monitoring"""

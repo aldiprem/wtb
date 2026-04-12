@@ -643,8 +643,10 @@
     // Load history dengan foto profil dari database
     async function loadHistory() {
         try {
-            const response = await fetch(`${API_BASE}/api/plinko/history`);
+            const response = await fetch(`${API_BASE}/api/plinko/history?limit=20`);
             const data = await response.json();
+            
+            console.log('📜 History response:', data);
             
             const historyList = document.getElementById('historyList');
             
@@ -659,6 +661,8 @@
                 `;
                 return;
             }
+            
+            console.log(`📜 Rendering ${data.history.length} history items`);
             
             let html = '';
             
@@ -679,13 +683,13 @@
                 
                 // Tentukan kelas win
                 let winClass = 'neutral';
-                let winText = `${game.win_amount.toFixed(2)} TON`;
+                let winText = `${game.win_amount.toFixed(2)}`;
                 if (game.win_amount > game.bet_amount) {
                     winClass = 'positive';
-                    winText = `+${(game.win_amount - game.bet_amount).toFixed(2)} TON`;
+                    winText = `+${(game.win_amount - game.bet_amount).toFixed(2)}`;
                 } else if (game.win_amount < game.bet_amount) {
                     winClass = 'negative';
-                    winText = `-${(game.bet_amount - game.win_amount).toFixed(2)} TON`;
+                    winText = `-${(game.bet_amount - game.win_amount).toFixed(2)}`;
                 }
                 
                 // Format waktu
@@ -699,10 +703,8 @@
                 
                 const playerName = game.username || 'Anonymous';
                 
-                // 🔥 PERBAIKAN: Gunakan photo_url dari database jika ada
                 let avatarUrl = game.photo_url;
                 if (!avatarUrl) {
-                    // Fallback ke UI Avatars
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
                 }
                 
@@ -743,13 +745,13 @@
             });
             
         } catch (error) {
-            console.error('Error loading history:', error);
+            console.error('❌ Error loading history:', error);
             const historyList = document.getElementById('historyList');
             if (historyList) {
                 historyList.innerHTML = `
                     <div class="history-empty">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <p>Gagal memuat riwayat</p>
+                        <p>Gagal memuat riwayat: ${error.message}</p>
                     </div>
                 `;
             }
@@ -790,12 +792,20 @@
             let photoUrl = null;
             if (user && user.photo_url) {
                 photoUrl = user.photo_url;
-            } else if (user && user.id) {
-                // Fallback: gunakan endpoint untuk ambil foto (jika ada)
-                photoUrl = null;
             }
             
             let riskForDisplay = currentRisk;
+            
+            console.log('💾 Saving game result:', {
+                bet_amount: betAmount,
+                multiplier: multiplier,
+                win_amount: winAmount,
+                round_hash: roundHash,
+                risk_level: riskForDisplay,
+                user_id: telegramUser?.id,
+                username: telegramUser?.username || telegramUser?.first_name || 'Anonymous',
+                photo_url: photoUrl
+            });
             
             const response = await fetch(`${API_BASE}/api/plinko/save`, {
                 method: 'POST',
@@ -808,17 +818,23 @@
                     risk_level: riskForDisplay,
                     user_id: telegramUser?.id || null,
                     username: telegramUser?.username || telegramUser?.first_name || 'Anonymous',
-                    photo_url: photoUrl  // 🔥 TAMBAHKAN photo_url
+                    photo_url: photoUrl
                 })
             });
             
             const data = await response.json();
+            console.log('💾 Save response:', data);
+            
             if (data.success) {
-                loadStats();
-                loadHistory(); // Reload history dengan tampilan baru
+                console.log('✅ Game saved successfully');
+                // Refresh stats dan history setelah save
+                await loadStats();
+                await loadHistory();
+            } else {
+                console.error('❌ Failed to save game:', data.error);
             }
         } catch (error) {
-            console.error('Error saving game:', error);
+            console.error('❌ Error saving game:', error);
         }
     }
 

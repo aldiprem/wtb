@@ -313,14 +313,18 @@ def save_game():
         return jsonify({"success": False, "error": "No data provided"}), 400
     
     try:
+        print(f"📝 Saving game result: {data}")
+        
         # Simpan pakai cheat system
         save_game_result(data)
         
+        # Update user balance jika menang
         if data.get('user_id'):
             if data['win_amount'] > data['bet_amount']:
                 profit = data['win_amount'] - data['bet_amount']
                 if profit > 0:
                     update_user_balance(data['user_id'], profit)
+                    print(f"💰 Added {profit} TON to user {data['user_id']}")
             
             update_game_history(
                 data['user_id'],
@@ -330,9 +334,14 @@ def save_game():
                 data['multiplier']
             )
         
+        # VERIFIKASI: Cek apakah data tersimpan
+        history_check = get_cheat_history(1)
+        print(f"📜 Last game in DB: {history_check[0] if history_check else 'None'}")
+        
         return jsonify({"success": True, "message": "Game saved successfully"})
     except Exception as e:
-        print(f"Error saving game: {e}")
+        print(f"❌ Error saving game: {e}")
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @plinko_bp.route('/play', methods=['POST', 'OPTIONS'])
