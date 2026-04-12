@@ -48,12 +48,12 @@ BIG_MULTIPLIERS = {
 _local = threading.local()
 
 def get_db():
-    """Get database connection - singleton per thread"""
+    """Get database connection - singleton per thread with WAL mode"""
     if not hasattr(_local, 'conn') or _local.conn is None:
         _local.conn = sqlite3.connect(str(DB_PATH), timeout=30.0, check_same_thread=False)
         _local.conn.row_factory = sqlite3.Row
-        _local.conn.execute("PRAGMA journal_mode=DELETE")
-        _local.conn.execute("PRAGMA synchronous=NORMAL")
+        _local.conn.execute("PRAGMA journal_mode=WAL")  # TAMBAHKAN INI
+        _local.conn.execute("PRAGMA synchronous=NORMAL")  # TAMBAHKAN INI
         _local.conn.execute("PRAGMA busy_timeout=30000")
     return _local.conn
 
