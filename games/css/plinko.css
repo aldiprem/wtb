@@ -275,9 +275,9 @@ body {
     border-left: 1px solid rgba(255, 255, 255, 0.15);
     border-right: 1px solid rgba(255, 255, 255, 0.15);
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    width: 275px;
-    transform: translateY(50px);
-    margin-bottom: 60px;
+    width: 315px;
+    transform: translateY(80px);
+    margin-bottom: 80px;
     pointer-events: none;
     position: relative;
     z-index: 5;

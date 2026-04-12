@@ -92,10 +92,10 @@
         
         drawSpawner();
 
-        const startY = 60; 
-        const rowSpacing = 28;
-        const colSpacing = 26;
-        const totalRows = 9;
+        const startY = 50;      // Diangkat sedikit agar muat lebih banyak baris
+        const rowSpacing = 22;  // Dirapatkan (sebelumnya 28)
+        const colSpacing = 22;  // Dirapatkan (sebelumnya 26)
+        const totalRows = 14;   // Baris ditambah (sebelumnya 9)
         const initialDots = 3;
 
         for (let row = 0; row < totalRows; row++) {
@@ -107,11 +107,13 @@
             for (let col = 0; col < dotsInRow; col++) {
                 const x = rowStartX + col * colSpacing;
                 
+                // Efek Glow Pin
                 ctx.beginPath();
                 ctx.arc(x, y, 3, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
                 ctx.fill();
                 
+                // Pin Utama
                 ctx.beginPath();
                 ctx.arc(x, y, 2, 0, Math.PI * 2);
                 ctx.fillStyle = '#FFD700';
@@ -119,7 +121,6 @@
             }
         }
         
-        // Draw multiplier slots display
         updateMultiplierAreas();
         drawMultiplierSlotsDisplay();
     }
