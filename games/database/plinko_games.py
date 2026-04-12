@@ -1,4 +1,4 @@
-# games/database/plinko_games.py - PERBAIKAN LENGKAP
+# games/database/plinko_games.py - PERBAIKAN LENGKAP DENGAN SINGLETON DATABASE
 
 import sqlite3
 import json
@@ -7,11 +7,11 @@ import math
 import os
 from datetime import datetime
 from pathlib import Path
+import threading
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DB_PATH = os.path.join(BASE_DIR, 'games', 'database', 'plinko.db')
 
-# PASTIKAN DIRECTORY DATABASE ADA
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 print(f"📁 Plinko DB Path: {DB_PATH}")
@@ -44,21 +44,27 @@ BIG_MULTIPLIERS = {
     'high': [3, 4, 5]
 }
 
+# Thread-local storage untuk database connections
+_local = threading.local()
+
 def get_db():
-    """Get database connection"""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), timeout=30.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    
-    # 🔥 UBAH KE DELETE MODE (BUKAN WAL) untuk menghindari lock
-    conn.execute("PRAGMA journal_mode=DELETE")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("PRAGMA busy_timeout=30000")
-    
-    return conn
+    """Get database connection - singleton per thread"""
+    if not hasattr(_local, 'conn') or _local.conn is None:
+        _local.conn = sqlite3.connect(str(DB_PATH), timeout=30.0, check_same_thread=False)
+        _local.conn.row_factory = sqlite3.Row
+        _local.conn.execute("PRAGMA journal_mode=DELETE")
+        _local.conn.execute("PRAGMA synchronous=NORMAL")
+        _local.conn.execute("PRAGMA busy_timeout=30000")
+    return _local.conn
+
+def close_db():
+    """Close database connection for current thread"""
+    if hasattr(_local, 'conn') and _local.conn:
+        _local.conn.close()
+        _local.conn = None
 
 def init_db():
-    """Initialize database tables dengan sistem tracking bandar"""
+    """Initialize database tables"""
     conn = get_db()
     cursor = conn.cursor()
     
@@ -97,7 +103,7 @@ def init_db():
         )
     ''')
     
-    # TABEL: Tracking keuntungan bandar (global)
+    # Bandar profit table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bandar_profit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,7 +115,7 @@ def init_db():
         )
     ''')
     
-    # TABEL: Tracking kerugian per user
+    # User loss tracking table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_loss_tracking (
             user_id INTEGER PRIMARY KEY,
@@ -125,7 +131,7 @@ def init_db():
         )
     ''')
     
-    # TABEL: Log kecurangan (cheat log)
+    # Cheat log table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cheat_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,98 +165,77 @@ def init_db():
             VALUES (0, 0, ?)
         ''', (datetime.now().strftime('%Y%m%d%H%M%S'),))
     
-    # Cek dan tambah kolom jika belum ada
+    # Add missing columns
     cursor.execute("PRAGMA table_info(plinko_games)")
     existing_columns = [col[1] for col in cursor.fetchall()]
     
     if 'is_forced' not in existing_columns:
         cursor.execute("ALTER TABLE plinko_games ADD COLUMN is_forced BOOLEAN DEFAULT 0")
         print("✅ Kolom is_forced ditambahkan")
-    
     if 'cheat_reason' not in existing_columns:
         cursor.execute("ALTER TABLE plinko_games ADD COLUMN cheat_reason TEXT")
         print("✅ Kolom cheat_reason ditambahkan")
-    
     if 'photo_url' not in existing_columns:
         cursor.execute("ALTER TABLE plinko_games ADD COLUMN photo_url TEXT")
         print("✅ Kolom photo_url ditambahkan")
     
     conn.commit()
-    conn.close()
-    print("✅ Plinko database initialized with BANDAR CHEAT SYSTEM")
+    print("✅ Plinko database initialized")
     print(f"📁 Database location: {DB_PATH}")
     print(f"🎯 Target Bandar Profit: {TARGET_BANDAR_PROFIT} TON")
     
     # VERIFIKASI: Cek apakah tabel bisa diakses
-    test_conn = get_db()
-    test_cursor = test_conn.cursor()
+    test_cursor = conn.cursor()
     test_cursor.execute("SELECT COUNT(*) FROM plinko_games")
     count = test_cursor.fetchone()[0]
     print(f"📊 Existing games in DB: {count}")
-    test_conn.close()
 
 def get_bandar_profit():
     """Mendapatkan keuntungan bandar saat ini"""
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT total_bet_all_time, total_win_all_time, bandar_profit, total_cheat_activated 
-            FROM bandar_profit ORDER BY id DESC LIMIT 1
-        ''')
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row:
-            return {
-                'total_bet': row['total_bet_all_time'] or 0,
-                'total_win': row['total_win_all_time'] or 0,
-                'profit': row['bandar_profit'] or 0,
-                'cheat_count': row['total_cheat_activated'] or 0
-            }
-        return {'total_bet': 0, 'total_win': 0, 'profit': 0, 'cheat_count': 0}
-    except Exception as e:
-        print(f"❌ Error in get_bandar_profit: {e}")
-        if conn:
-            conn.close()
-        return {'total_bet': 0, 'total_win': 0, 'profit': 0, 'cheat_count': 0}
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT total_bet_all_time, total_win_all_time, bandar_profit, total_cheat_activated 
+        FROM bandar_profit ORDER BY id DESC LIMIT 1
+    ''')
+    row = cursor.fetchone()
+    
+    if row:
+        return {
+            'total_bet': row['total_bet_all_time'] or 0,
+            'total_win': row['total_win_all_time'] or 0,
+            'profit': row['bandar_profit'] or 0,
+            'cheat_count': row['total_cheat_activated'] or 0
+        }
+    return {'total_bet': 0, 'total_win': 0, 'profit': 0, 'cheat_count': 0}
 
 def update_bandar_profit(bet_amount, win_amount, is_cheat=False):
     """Update keuntungan bandar setelah setiap game"""
-    conn = None
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        
-        profit_change = bet_amount - win_amount
-        
-        if is_cheat:
-            cursor.execute('''
-                UPDATE bandar_profit 
-                SET total_bet_all_time = total_bet_all_time + ?,
-                    total_win_all_time = total_win_all_time + ?,
-                    bandar_profit = bandar_profit + ?,
-                    total_cheat_activated = total_cheat_activated + 1,
-                    last_updated = CURRENT_TIMESTAMP
-            ''', (bet_amount, win_amount, profit_change))
-        else:
-            cursor.execute('''
-                UPDATE bandar_profit 
-                SET total_bet_all_time = total_bet_all_time + ?,
-                    total_win_all_time = total_win_all_time + ?,
-                    bandar_profit = bandar_profit + ?,
-                    last_updated = CURRENT_TIMESTAMP
-            ''', (bet_amount, win_amount, profit_change))
-        
-        conn.commit()
-        conn.close()
-        return profit_change
-    except Exception as e:
-        print(f"❌ Error in update_bandar_profit: {e}")
-        if conn:
-            conn.close()
-        return 0
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    profit_change = bet_amount - win_amount
+    
+    if is_cheat:
+        cursor.execute('''
+            UPDATE bandar_profit 
+            SET total_bet_all_time = total_bet_all_time + ?,
+                total_win_all_time = total_win_all_time + ?,
+                bandar_profit = bandar_profit + ?,
+                total_cheat_activated = total_cheat_activated + 1,
+                last_updated = CURRENT_TIMESTAMP
+        ''', (bet_amount, win_amount, profit_change))
+    else:
+        cursor.execute('''
+            UPDATE bandar_profit 
+            SET total_bet_all_time = total_bet_all_time + ?,
+                total_win_all_time = total_win_all_time + ?,
+                bandar_profit = bandar_profit + ?,
+                last_updated = CURRENT_TIMESTAMP
+        ''', (bet_amount, win_amount, profit_change))
+    
+    conn.commit()
+    return profit_change
 
 def get_user_loss(user_id):
     """Mendapatkan data kerugian user tertentu"""
@@ -261,7 +246,6 @@ def get_user_loss(user_id):
         FROM user_loss_tracking WHERE user_id = ?
     ''', (user_id,))
     row = cursor.fetchone()
-    conn.close()
     
     if row:
         return {
@@ -308,7 +292,6 @@ def update_user_loss(user_id, username, bet_amount, win_amount, is_forced=False)
           1 if is_forced else 0, is_win))
     
     conn.commit()
-    conn.close()
 
 def log_cheat_action(user_id, username, round_hash, action, multiplier_given, expected_multiplier, cheat_intensity, reason):
     """Mencatat aksi kecurangan ke database"""
@@ -323,7 +306,6 @@ def log_cheat_action(user_id, username, round_hash, action, multiplier_given, ex
     ''', (user_id, username, round_hash, action, multiplier_given, expected_multiplier,
           profit_data['profit'], cheat_intensity, reason))
     conn.commit()
-    conn.close()
     
     print(f"🔴 [CHEAT] {action} - {reason} - User: {username} | Multiplier: {multiplier_given}x | Intensity: {cheat_intensity:.2f}")
 
@@ -457,12 +439,11 @@ def generate_round_hash():
 
 def save_game_result(data):
     """Save game result dengan tracking keuntungan bandar"""
-    conn = None
+    conn = get_db()
+    cursor = conn.cursor()
+    
     try:
         print(f"💾 [SAVE] Starting save_game_result with data: {data}")
-        
-        conn = get_db()
-        cursor = conn.cursor()
         
         is_forced = 1 if data.get('is_forced', False) else 0
         cheat_reason = data.get('cheat_reason', '')
@@ -551,20 +532,17 @@ def save_game_result(data):
         verify_count = verify_cursor.fetchone()[0]
         print(f"🔍 [VERIFY] Game with hash {data['round_hash']} exists: {verify_count > 0}")
         
-        conn.close()
-        
         profit_data = get_bandar_profit()
         status_emoji = "✅" if profit_data['profit'] >= TARGET_BANDAR_PROFIT else "⚠️"
         print(f"{status_emoji} [BANDAR] Profit: {profit_data['profit']:.2f} TON | Target: {TARGET_BANDAR_PROFIT} TON")
         
         return True
+        
     except Exception as e:
         print(f"❌ Error in save_game_result: {e}")
         import traceback
         traceback.print_exc()
-        if conn:
-            conn.rollback()
-            conn.close()
+        conn.rollback()
         return False
 
 def get_stats():
@@ -587,8 +565,6 @@ def get_stats():
     last_game = cursor.fetchone()
     
     profit_data = get_bandar_profit()
-    
-    conn.close()
     
     if row:
         return {
@@ -657,7 +633,6 @@ def get_cheat_logs(limit=100):
         SELECT * FROM cheat_log ORDER BY created_at DESC LIMIT ?
     ''', (limit,))
     rows = cursor.fetchall()
-    conn.close()
     return [dict(row) for row in rows]
 
 def get_top_losing_users(limit=10):
@@ -671,7 +646,6 @@ def get_top_losing_users(limit=10):
         LIMIT ?
     ''', (limit,))
     rows = cursor.fetchall()
-    conn.close()
     return [dict(row) for row in rows]
 
 def reset_bandar_profit():
@@ -683,7 +657,6 @@ def reset_bandar_profit():
         SET total_bet_all_time = 0, total_win_all_time = 0, bandar_profit = 0, total_cheat_activated = 0, last_updated = CURRENT_TIMESTAMP
     ''')
     conn.commit()
-    conn.close()
     print("🔄 Bandar profit telah direset")
 
 def set_bandar_target(new_target):
