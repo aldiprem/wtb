@@ -140,7 +140,7 @@
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
-        // 2. Loop Memproses Setiap Bola
+        // 2. Loop Memproses Setiap Bola Aktif
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
@@ -149,15 +149,15 @@
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // --- PERBAIKAN SMOOTHING 1: Speed Limiter yang lebih lembut ---
-            // Mencegah perubahan kecepatan mendadak yang merusak transisi visual
+            // Speed Limiter Halus: Mencegah bola menembus pin tanpa menghentikan transisi
             const maxVelocity = 7.5;
             if (ball.vy > maxVelocity) ball.vy *= 0.95; 
             if (Math.abs(ball.vx) > 4) ball.vx *= 0.95;
 
+            // Konfigurasi Pin (Sesuaikan dengan rintangan Anda)
             const startY = 50, rowSpacing = 22, colSpacing = 22, totalRows = 12;
 
-            // 3. DETEKSI TABRAKAN PIN (DIPERHALUS)
+            // 3. DETEKSI TABRAKAN PIN (NATURAL & BEBAS)
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -168,7 +168,7 @@
                     const py = startY + r * rowSpacing;
                     const dx = ball.x - px;
                     const dy = ball.y - py;
-                    const distSq = dx * dx + dy * dy; // Gunakan kuadrat untuk efisiensi performa
+                    const distSq = dx * dx + dy * dy;
                     const minDist = BALL_RADIUS + PIN_RADIUS;
 
                     if (distSq < minDist * minDist) {
@@ -184,21 +184,25 @@
                             ball.hitCount = 1;
                         }
 
-                        if (ball.hitCount >= 3) {
-                            // Paksa turun secara halus
-                            ball.vx *= 0.5;
-                            ball.vy = 2.5;
-                            ball.y += 2; 
+                        if (ball.hitCount >= 4) {
+                            // Jika terdeteksi macet, berikan dorongan acak agar lepas
+                            ball.vx += (Math.random() - 0.5) * 2;
+                            ball.vy += 0.5;
                             ball.hitCount = 0;
                         } else {
-                            // --- PERBAIKAN SMOOTHING 2: Pantulan Halus ---
-                            // Menggunakan refleksi sudut yang lebih natural daripada sekadar membalikkan nilai
-                            ball.vx += Math.cos(angle) * 1.1; 
-                            ball.vy = Math.sin(angle) * 1.1 + 0.3; // Tambah gaya berat sedikit
+                            // --- PANTULAN ALAMI (Tidak Membatasi Arah Atas) ---
+                            // Menghitung kecepatan total saat ini
+                            const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+                            // Menggunakan BOUNCE global untuk menentukan sisa energi pantulan
+                            const impactPower = Math.max(speed, 1.0) * BOUNCE;
+                            
+                            // Arahkan kecepatan sesuai sudut tabrakan (Bisa ke atas, bawah, atau samping)
+                            ball.vx = Math.cos(angle) * impactPower;
+                            ball.vy = Math.sin(angle) * impactPower;
                         }
 
-                        // --- PERBAIKAN SMOOTHING 3: Interpolasi Posisi ---
-                        // Mengeluarkan bola dari dalam pin secara proporsional untuk menghilangkan efek "bergetar"
+                        // --- REPOSISI VEKTOR (Kunci Gerakan Smooth) ---
+                        // Mengeluarkan bola dari dalam pin secara presisi sesuai arah datangnya
                         const overlap = minDist - dist;
                         ball.x += (dx / dist) * overlap;
                         ball.y += (dy / dist) * overlap;
@@ -216,25 +220,23 @@
 
                 if (ball.x < leftWall) {
                     ball.x = leftWall;
-                    ball.vx *= -0.3; // Redaman pantulan dinding
+                    ball.vx *= -0.3;
                 } else if (ball.x > rightWall) {
                     ball.x = rightWall;
                     ball.vx *= -0.3;
                 }
             }
 
-            // 5. Gambar Visual Bola
+            // 5. Render Visual Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-            
-            // Gunakan gradien sederhana agar bola terlihat solid dan halus saat bergerak
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
             gradient.addColorStop(0, '#ff6b6b');
             gradient.addColorStop(1, '#ef4444');
             ctx.fillStyle = gradient;
             ctx.fill();
 
-            // 6. Logika Selesai (Menyentuh Dasar)
+            // 6. Logika Selesai (Menyentuh Dasar Canvas)
             const bottomLine = canvas.height - 2;
             if (ball.y >= bottomLine) {
                 const isHit = checkMultiplierHit(ball);
@@ -245,14 +247,14 @@
                 }
             }
 
-            // Safety Net untuk menghapus bola yang keluar layar
+            // Safety Net: Hapus bola jika keluar layar secara ekstrem
             if (ball.y > canvas.height + 50) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
         }
 
-        // Minta frame berikutnya
+        // Loop Animasi
         animationId = requestAnimationFrame(update);
     }
     
