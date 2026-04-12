@@ -155,27 +155,33 @@
     function update() {
         if (!canvas || !ctx) return;
         
+        // Render papan dan spawner setiap frame
         drawPlinkoBoard();
 
+        // Gerakan spawner (cerobong) di bagian atas
         const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
+        // Loop untuk memproses setiap bola yang aktif
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
+            
+            // Terapkan Fisika
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Batasi kecepatan maksimum agar tidak terlalu cepat
+            // Limit kecepatan terminal
             if (ball.vy > 8) ball.vy = 8;
             if (Math.abs(ball.vx) > 5) ball.vx = ball.vx > 0 ? 5 : -5;
 
+            // Batasan Dinding Samping (Bentuk Segitiga)
             const startY = 60;
             const rowSpacing = 28;
             const colSpacing = 26;
-            
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
+            
             if (currentRow >= 0 && currentRow < 9) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
@@ -191,8 +197,9 @@
                 }
             }
 
+            // Batasan area multiplier di bagian paling bawah agar tidak keluar jalur
             const multiplierWrapper = document.querySelector('.multiplier-slots-wrapper');
-            if (multiplierWrapper && ball.y > canvas.height - 60) {
+            if (multiplierWrapper && ball.y > canvas.height - 50) {
                 const wrapperWidth = multiplierWrapper.clientWidth;
                 const wrapperLeft = (canvas.width - wrapperWidth) / 2;
                 const wrapperRight = wrapperLeft + wrapperWidth;
@@ -201,6 +208,7 @@
                 if (ball.x > wrapperRight) ball.x = wrapperRight;
             }
 
+            // Deteksi Tabrakan dengan Pin (Titik-titik)
             for (let r = 0; r < 9; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -214,49 +222,53 @@
 
                     if (dist < BALL_RADIUS + PIN_RADIUS) {
                         const angle = Math.atan2(dy, dx);
-                        ball.vx += Math.cos(angle) * 1.5;
+                        // Efek pantulan acak sedikit agar tidak monoton
+                        ball.vx += Math.cos(angle) * 1.5 + (Math.random() - 0.5) * 0.5;
                         ball.vy *= -BOUNCE;
                         ball.y = py + Math.sin(angle) * (BALL_RADIUS + PIN_RADIUS);
                     }
                 }
             }
 
+            // Gambar Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-            
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
             gradient.addColorStop(0, '#ff6b6b');
             gradient.addColorStop(1, '#ef4444');
             ctx.fillStyle = gradient;
-            ctx.fill();
             ctx.shadowBlur = 8;
             ctx.shadowColor = '#ef4444';
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // 🔥 PERBAIKAN: Hanya cek multiplier jika bola sudah di area bawah
-            // Jangan hapus bola sebelum mencapai multiplier area
-            const multiplierTopY = canvas.height - 50;
+            // --- LOGIKA PERBAIKAN BOLA JATUH ---
             
-            // Jika bola sudah mencapai area multiplier atau di bawahnya
-            if (ball.y + BALL_RADIUS >= multiplierTopY) {
+            // 1. multiplierTopY diturunkan ke -25 (sebelumnya -60 atau -30)
+            // Ini membuat bola harus melewati pin terakhir sebelum dianggap "masuk"
+            const multiplierTopY = canvas.height - 25;
+            
+            // 2. Cek apakah bagian tengah bola sudah melewati garis deteksi
+            if (ball.y >= multiplierTopY) {
+                // Jalankan fungsi hit (menghitung skor/multiplier)
                 const isHit = checkMultiplierHit(ball);
+                
                 if (isHit) {
+                    // Bola hanya dihapus jika checkMultiplierHit sukses
                     balls.splice(i, 1);
                     checkAllBallsComplete();
+                    continue; // Lanjut ke bola berikutnya, jangan jalankan kode di bawah
                 }
-                // 🔥 JANGAN HAPUS BOLA DI SINI! Biarkan checkMultiplierHit yang handle
             }
             
-            // 🔥 HAPUS BOLA HANYA JIKA SUDAH JATUH SANGAT JAUH DI BAWAH CANVAS
-            // (sebagai safety net, bukan untuk deteksi multiplier)
-            if (ball.y > canvas.height + 150) {
-                console.log('🎾 Ball removed (fell too far):', ball.y);
+            // 3. Safety Net: Hapus bola jika benar-benar keluar dari canvas (mencegah memory leak)
+            if (ball.y > canvas.height + 100) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
         }
 
+        // Jalankan frame berikutnya
         animationId = requestAnimationFrame(update);
     }
     
