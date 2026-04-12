@@ -132,29 +132,34 @@
     function update() {
         if (!canvas || !ctx) return;
         
-        // 1. Render Background & Board
+        // 1. Render Papan dan Spawner
         drawPlinkoBoard();
 
-        // Gerakan Spawner tetap berjalan
+        // Gerakan spawner (cerobong) di bagian atas
+        const maxRange = 10; 
         spawnerX += spawnerDir * spawnerSpeed;
-        if (Math.abs(spawnerX - canvas.width / 2) > 10) spawnerDir *= -1;
+        if (Math.abs(spawnerX - canvas.width / 2) > maxRange) spawnerDir *= -1;
 
+        // 2. Loop Memproses Setiap Bola
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
-            // 2. Simulasi Fisika Dasar
+            // Terapkan Gravitasi & Fisika Dasar
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Batasi kecepatan terminal agar bola tidak "loncat" (Penyebab utama ngedet)
-            const maxSpeed = 7;
-            if (ball.vy > maxSpeed) ball.vy = maxSpeed;
-            if (Math.abs(ball.vx) > maxSpeed) ball.vx = ball.vx > 0 ? maxSpeed : -maxVelocity;
+            // Batasi kecepatan agar bola tetap terkendali
+            if (ball.vy > 8) ball.vy = 8;
+            if (Math.abs(ball.vx) > 4) ball.vx = ball.vx > 0 ? 4 : -4;
 
-            const startY = 50, rowSpacing = 22, colSpacing = 22, totalRows = 12;
+            // Konfigurasi Pin (12 Baris)
+            const startY = 50;
+            const rowSpacing = 22;
+            const colSpacing = 22;
+            const totalRows = 12;
 
-            // 3. DETEKSI TABRAKAN PIN (DIPERHALUS)
+            // 3. DETEKSI TABRAKAN PIN DENGAN LOGIKA ANTI-STUCK
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -165,17 +170,14 @@
                     const py = startY + r * rowSpacing;
                     const dx = ball.x - px;
                     const dy = ball.y - py;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const minDist = BALL_RADIUS + PIN_RADIUS;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
 
-                    if (distance < minDist) {
-                        const pinId = `pin_${r}_${c}`;
-                        
-                        // Normal tabrakan (Vektor arah)
-                        const nx = dx / distance;
-                        const ny = dy / distance;
+                    // Jika bola menyentuh Pin
+                    if (dist < BALL_RADIUS + PIN_RADIUS) {
+                        const pinId = `pin_${r}_${c}`; // ID Unik untuk setiap titik
+                        const angle = Math.atan2(dy, dx);
 
-                        // --- LOGIKA ANTI-STUCK (TIDAK MERUSAK TRANSISE) ---
+                        // --- LOGIKA ANTI-STUCK ---
                         if (ball.lastPinId === pinId) {
                             ball.hitCount++;
                         } else {
@@ -183,74 +185,73 @@
                             ball.hitCount = 1;
                         }
 
-                        if (ball.hitCount > 3) {
-                            // Jika macet, dorong halus ke samping & bawah (bukan pindah instan)
-                            ball.vx += (nx * 2) + (Math.random() - 0.5);
-                            ball.vy += 1;
-                            ball.hitCount = 0;
+                        if (ball.hitCount >= 3) {
+                            // PAKSA TURUN: Jika mantul 3x di titik yang sama
+                            ball.vx *= 0.2; // Redam gerakan samping
+                            ball.vy = Math.abs(ball.vy) + 2; // Paksa dorongan ke bawah
+                            ball.y += 5; // Geser posisi melewati pin
+                            ball.hitCount = 0; // Reset hit
                         } else {
-                            // PANTULAN FISIKA NYATA (Smooth Reflection)
-                            // Refleksi kecepatan berdasarkan sudut datang
-                            const dotProduct = ball.vx * nx + ball.vy * ny;
-                            ball.vx = (ball.vx - 2 * dotProduct * nx) * BOUNCE;
-                            ball.vy = (ball.vy - 2 * dotProduct * ny) * BOUNCE;
-
-                            // Berikan sedikit gaya berat ke bawah setiap tabrakan
-                            ball.vy += 0.4; 
+                            // PANTULAN NORMAL
+                            ball.vx += Math.cos(angle) * 0.8; 
+                            ball.vy *= -BOUNCE;
+                            
+                            // Tambahan dorongan gravitasi kecil setiap mantul agar tidak naik
+                            ball.vy += 0.5; 
                         }
 
-                        // REPOSISI BOLA (Penting agar tidak masuk ke dalam pin)
-                        const overlap = minDist - distance;
-                        ball.x += nx * overlap;
-                        ball.y += ny * overlap;
+                        // Koreksi posisi agar bola tidak "tenggelam" di dalam pin
+                        const overlap = (BALL_RADIUS + PIN_RADIUS) - dist;
+                        ball.x += Math.cos(angle) * overlap;
+                        ball.y += Math.sin(angle) * overlap;
                     }
                 }
             }
 
-            // 4. Batasan Dinding Piramida Samping
+            // 4. Batasan Dinding Piramida
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
             if (currentRow >= 0 && currentRow < totalRows) {
                 const dots = 3 + currentRow;
                 const rWidth = (dots - 1) * colSpacing;
-                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10;
-                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10;
+                const leftWall = (canvas.width / 2) - (rWidth / 2) - 12;
+                const rightWall = (canvas.width / 2) + (rWidth / 2) + 12;
 
-                if (ball.x < leftWall) { 
-                    ball.x = leftWall; 
-                    ball.vx *= -BOUNCE; 
-                } else if (ball.x > rightWall) { 
-                    ball.x = rightWall; 
-                    ball.vx *= -BOUNCE; 
+                if (ball.x < leftWall) {
+                    ball.x = leftWall;
+                    ball.vx *= -BOUNCE;
+                } else if (ball.x > rightWall) {
+                    ball.x = rightWall;
+                    ball.vx *= -BOUNCE;
                 }
             }
 
             // 5. Gambar Visual Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-            // Tambahkan gradasi tipis agar transisi gerakan terlihat lebih solid di mata
-            const ballGrad = ctx.createRadialGradient(ball.x - 1, ball.y - 1, 1, ball.x, ball.y, BALL_RADIUS);
-            ballGrad.addColorStop(0, '#ff7676');
-            ballGrad.addColorStop(1, '#ef4444');
-            ctx.fillStyle = ballGrad;
+            const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
+            gradient.addColorStop(0, '#ff6b6b');
+            gradient.addColorStop(1, '#ef4444');
+            ctx.fillStyle = gradient;
             ctx.fill();
 
-            // 6. Logika Selesai (Menyentuh Dasar)
-            if (ball.y >= canvas.height - 2) {
-                if (checkMultiplierHit(ball)) {
+            // 6. Logika Selesai (Menyentuh Dasar Border Multiplier)
+            const bottomLine = canvas.height - 2;
+            if (ball.y >= bottomLine) {
+                const isHit = checkMultiplierHit(ball);
+                if (isHit) {
                     balls.splice(i, 1);
                     checkAllBallsComplete();
                     continue; 
                 }
             }
 
-            // Safety Net jika bola keluar canvas
+            // Safety Net
             if (ball.y > canvas.height + 50) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
         }
 
-        // Loop Animasi
         animationId = requestAnimationFrame(update);
     }
     
