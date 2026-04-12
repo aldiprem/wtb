@@ -281,35 +281,72 @@
         const disconnectContainer = document.getElementById('disconnectContainer');
         const tonConnectContainer = document.getElementById('ton-connect-container');
         const depositAddressEl = document.getElementById('depositAddress');
+        
+        // Elemen label tambahan jika ada di UI Anda
         const walletAddressLabel = document.getElementById('connectedWalletAddress');
         
         if (walletConnected && walletAddress) {
+            // 1. Update status tombol header
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-wallet"></i>';
                 depositBtn.classList.add('wallet-connected');
             }
+
+            // 2. Sembunyikan peringatan "Hubungkan Wallet"
             if (depositWalletStatus) {
                 depositWalletStatus.style.display = 'none';
             }
+
+            // 3. Tampilkan Form Deposit
             if (depositForm) {
                 depositForm.style.display = 'block';
                 
-                // 🔥 TAMPILKAN ALAMAT WALLET USER YANG TERHUBUNG (bukan merchant)
-                if (depositAddressEl) {
-                    let displayAddress = walletAddress;
-                    if (walletAddress.startsWith('0:')) {
-                        displayAddress = rawToFriendly(walletAddress);
+                // 🔥 PERBAIKAN: Mengambil alamat yang benar
+                // Kita coba ambil langsung dari object tonConnectUI jika tersedia 
+                // karena itu yang paling akurat (sama dengan tombol).
+                let displayAddress = walletAddress;
+                
+                try {
+                    if (tonConnectUI && tonConnectUI.account && tonConnectUI.account.address) {
+                        displayAddress = tonConnectUI.account.address;
                     }
-                    // Tampilkan full address (bukan truncated) agar user bisa copy
+                } catch (e) {
+                    console.warn("Could not get address from tonConnectUI directly, using state variable.");
+                }
+
+                // Jika format masih '0:', gunakan fungsi konversi rawToFriendly
+                if (displayAddress.startsWith('0:')) {
+                    displayAddress = rawToFriendly(displayAddress);
+                }
+
+                // Update teks di elemen Border/Box Deposit
+                if (depositAddressEl) {
+                    // Tampilkan alamat lengkap (atau sesuai keinginan)
+                    // Jika ingin tampilan pendek seperti tombol (misal: UQA9...ifEd):
+                    // const shortAddress = displayAddress.substring(0, 4) + '...' + displayAddress.slice(-4);
+                    // depositAddressEl.textContent = shortAddress;
+                    
                     depositAddressEl.textContent = displayAddress;
                     depositAddressEl.setAttribute('data-full-address', displayAddress);
-                    depositAddressEl.title = 'Click to copy full address';
-                    console.log('📝 Displaying connected wallet address:', displayAddress);
+                    depositAddressEl.title = 'Click to copy address';
+                    
+                    console.log('✅ Displaying corrected wallet address:', displayAddress);
+                }
+
+                // Update label tambahan jika ada
+                if (walletAddressLabel) {
+                    walletAddressLabel.textContent = displayAddress;
                 }
             }
+
             if (disconnectContainer) disconnectContainer.style.display = 'block';
-            if (tonConnectContainer) tonConnectContainer.style.display = 'none';
+            
+            // Sembunyikan container asli TON Connect agar tidak double (opsional)
+            // Namun jika Anda ingin tombol "Disconnect" bawaan muncul, biarkan block.
+            // if (tonConnectContainer) tonConnectContainer.style.display = 'none'; 
+
         } else {
+            // LOGIKA SAAT WALLET TERPUTUS (DISCONNECTED)
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-plus"></i>';
                 depositBtn.classList.remove('wallet-connected');
@@ -317,9 +354,15 @@
             if (depositWalletStatus) {
                 depositWalletStatus.style.display = 'block';
             }
-            if (depositForm) depositForm.style.display = 'none';
-            if (disconnectContainer) disconnectContainer.style.display = 'none';
-            if (tonConnectContainer) tonConnectContainer.style.display = 'block';
+            if (depositForm) {
+                depositForm.style.display = 'none';
+            }
+            if (disconnectContainer) {
+                disconnectContainer.style.display = 'none';
+            }
+            if (tonConnectContainer) {
+                tonConnectContainer.style.display = 'block';
+            }
         }
     }
 
