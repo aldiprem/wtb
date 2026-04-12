@@ -1,4 +1,4 @@
-// games/js/games.js - PERBAIKAN: Gunakan API dari games_service.py
+// games/js/games.js - PERBAIKAN TON CONNECT SEPERTI PLANE GIFT
 
 (function() {
     console.log('🎮 Games Page Initialized');
@@ -15,6 +15,8 @@
 
     const API_BASE = window.location.origin;
     const WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra";
+    // 🔥 MANIFEST URL YANG BENAR (seperti PLANE GIFT)
+    const MANIFEST_URL = 'https://companel.shop/tonconnect-manifest.json';
 
     function formatNumberWithCommas(number) {
         let parts = Number(number).toFixed(2).split('.');
@@ -29,7 +31,6 @@
         if (initDataUnsafe.user) {
             return initDataUnsafe.user;
         }
-        // JANGAN return dummy ID
         return null;
     }
 
@@ -109,7 +110,9 @@
         }
     }
 
+    // 🔥 TON CONNECT INIT - SEPERTI PLANE GIFT
     async function initTonConnect() {
+        // Tunggu hingga TON Connect UI tersedia
         if (typeof window.TonConnectUI === 'undefined') {
             console.log('⏳ Waiting for TON Connect UI...');
             for (let i = 0; i < 50; i++) {
@@ -119,60 +122,85 @@
         }
         
         if (typeof window.TonConnectUI === 'undefined') {
-            console.error('TON Connect UI not loaded');
+            console.error('❌ TON Connect UI not loaded');
             createManualConnectButton();
             return;
         }
 
         try {
-            // 🔥 GUNAKAN MANIFEST YANG SUDAH DISEDIAKAN
-            const MANIFEST_URL = 'https://companel.shop/tonconnect-manifest.json';
+            console.log('📝 Initializing TON Connect with manifest:', MANIFEST_URL);
             
-            console.log('📝 Using manifest:', MANIFEST_URL);
-            
+            // 🔥 INISIALISASI SEPERTI PLANE GIFT
             tonConnectUI = new window.TonConnectUI({
-                manifestUrl: MANIFEST_URL,  // ← PASTIKAN INI
-                buttonRootId: 'depositTonConnect'
+                manifestUrl: MANIFEST_URL,
+                buttonRootId: 'depositTonConnect',  // ← ID ini harus ada di HTML
+                language: 'en',
+                walletsListConfiguration: {
+                    includeWallets: [
+                        {
+                            name: 'Tonkeeper',
+                            aboutUrl: 'https://tonkeeper.com',
+                            imageUrl: 'https://tonkeeper.com/assets/tonconnect-icon.png',
+                            bridgeUrl: 'https://bridge.tonkeeper.com/bridge',
+                            universalLink: 'https://app.tonkeeper.com/ton-connect',
+                            deepLink: 'tonkeeper-tc://'
+                        },
+                        {
+                            name: 'Tonhub',
+                            aboutUrl: 'https://tonhub.com',
+                            imageUrl: 'https://tonhub.com/tonconnect-icon.png',
+                            bridgeUrl: 'https://tonhub.com/tonconnect-bridge',
+                            universalLink: 'https://tonhub.com/ton-connect'
+                        }
+                    ]
+                }
             });
 
+            // Cek apakah sudah ada wallet yang terhubung
             const wallet = tonConnectUI.wallet;
             if (wallet) {
                 walletConnected = true;
                 walletAddress = wallet.account.address;
                 updateWalletUI();
                 if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
+                console.log('✅ Wallet already connected:', walletAddress);
             }
 
+            // Listen untuk perubahan status wallet
             tonConnectUI.onStatusChange(async (wallet) => {
+                console.log('📱 Wallet status changed:', wallet ? 'connected' : 'disconnected');
+                
                 if (wallet) {
                     walletConnected = true;
                     walletAddress = wallet.account.address;
                     if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
+                    console.log('✅ Wallet connected:', walletAddress);
                 } else {
                     walletConnected = false;
                     walletAddress = null;
+                    console.log('❌ Wallet disconnected');
                 }
                 updateWalletUI();
             });
 
-            console.log('✅ TON Connect initialized');
+            console.log('✅ TON Connect initialized successfully');
         } catch (error) {
-            console.error('TON Connect error:', error);
+            console.error('❌ TON Connect error:', error);
             createManualConnectButton();
         }
     }
 
-    // Fallback jika TON Connect UI gagal load
+    // Fallback manual jika TON Connect UI gagal
     function createManualConnectButton() {
         const container = document.getElementById('depositTonConnect');
         if (container && !tonConnectUI) {
             container.innerHTML = `
-                <button id="manualConnectBtn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; color: white; padding: 12px 24px; border-radius: 14px; font-weight: 600; cursor: pointer;">
+                <button id="manualConnectBtn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; color: white; padding: 12px 24px; border-radius: 14px; font-weight: 600; cursor: pointer; width: 100%;">
                     <i class="fas fa-wallet"></i> Connect Wallet
                 </button>
             `;
             document.getElementById('manualConnectBtn')?.addEventListener('click', () => {
-                window.open('https://tonkeeper.com/ton-connect?manifest=' + encodeURIComponent(`${API_BASE}/tonconnect-manifest.json`), '_blank');
+                window.open('https://tonkeeper.com/ton-connect?manifest=' + encodeURIComponent(MANIFEST_URL), '_blank');
             });
         }
     }
@@ -203,7 +231,10 @@
     }
 
     async function disconnectWallet() {
-        if (tonConnectUI) await tonConnectUI.disconnect();
+        if (tonConnectUI) {
+            await tonConnectUI.disconnect();
+            console.log('Wallet disconnected');
+        }
     }
 
     // ========== NAVIGATION ==========
@@ -286,7 +317,10 @@
                 }]
             };
             
+            console.log('📤 Sending transaction:', transaction);
+            
             const result = await tonConnectUI.sendTransaction(transaction);
+            console.log('✅ Transaction sent:', result);
             
             if (result) {
                 const verifyData = await verifyDeposit(
@@ -311,6 +345,7 @@
                 }
             }
         } catch (error) {
+            console.error('Deposit error:', error);
             alert('Error: ' + (error.message || 'Terjadi kesalahan'));
         } finally {
             sendBtn.disabled = false;
@@ -334,6 +369,7 @@
             if (balanceEl) balanceEl.textContent = 'Login Required';
         }
         
+        // 🔥 INIT TON CONNECT (setelah user siap)
         await initTonConnect();
         
         // Navigation
@@ -383,6 +419,7 @@
         });
         
         console.log('✅ Games Page Ready');
+        console.log('✅ TON Connect button should appear now');
     }
     
     if (document.readyState === 'loading') {
