@@ -109,35 +109,48 @@
         }
     }
 
-    // 🔥 TON CONNECT INIT - SAMA PERSIS DENGAN INDEX.HTML
     async function initTonConnect() {
-        if (typeof window.TonConnectUI === 'undefined') {
-            console.log('⏳ Waiting for TON Connect UI...');
-            for (let i = 0; i < 50; i++) {
-                await new Promise(resolve => setTimeout(resolve, 100));
-                if (typeof window.TonConnectUI !== 'undefined') break;
+        // Tunggu hingga TON Connect UI tersedia - CEK KEDUA KEMUNGKINAN NAMA
+        let TonConnectUIClass = null;
+        
+        for (let i = 0; i < 50; i++) {
+            if (typeof window.TonConnectUI !== 'undefined') {
+                TonConnectUIClass = window.TonConnectUI;
+                console.log('✅ Found window.TonConnectUI');
+                break;
             }
+            if (typeof window.TON_CONNECT_UI !== 'undefined' && window.TON_CONNECT_UI.TonConnectUI) {
+                TonConnectUIClass = window.TON_CONNECT_UI.TonConnectUI;
+                console.log('✅ Found window.TON_CONNECT_UI.TonConnectUI');
+                break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        if (typeof window.TonConnectUI === 'undefined') {
-            console.error('❌ TON Connect UI not loaded');
+        if (!TonConnectUIClass) {
+            console.error('❌ TON Connect UI not loaded after waiting');
+            // Fallback: buat tombol manual
+            createManualConnectButton();
             return;
         }
 
         try {
-            // 🔥 GUNAKAN MANIFEST DARI TUNNEL URL (SAMA DENGAN INDEX.HTML)
             const manifestUrl = `${API_BASE}/tonconnect-manifest.json`;
-            
             console.log('📝 Initializing TON Connect with manifest:', manifestUrl);
             
-            // 🔥 SAMA PERSIS DENGAN INDEX.HTML - gunakan 'ton-connect' sebagai buttonRootId
-            tonConnectUI = new window.TonConnectUI({
+            // 🔥 PASTIKAN ID container ADA di HTML
+            const container = document.getElementById('ton-connect-container');
+            if (!container) {
+                console.error('❌ Container #ton-connect-container not found');
+                return;
+            }
+            
+            tonConnectUI = new TonConnectUIClass({
                 manifestUrl: manifestUrl,
-                buttonRootId: 'ton-connect-container',  // ← ID container di modal
+                buttonRootId: 'ton-connect-container',
                 language: 'en'
             });
 
-            // Cek wallet yang sudah terhubung
             const wallet = tonConnectUI.wallet;
             if (wallet) {
                 walletConnected = true;
@@ -147,7 +160,6 @@
                 console.log('✅ Wallet already connected:', walletAddress);
             }
 
-            // Listen status perubahan wallet
             tonConnectUI.onStatusChange(async (wallet) => {
                 console.log('📱 Wallet status changed:', wallet ? 'connected' : 'disconnected');
                 
@@ -164,9 +176,24 @@
                 updateWalletUI();
             });
 
-            console.log('✅ TON Connect initialized');
+            console.log('✅ TON Connect initialized successfully');
         } catch (error) {
             console.error('❌ TON Connect error:', error);
+            createManualConnectButton();
+        }
+    }
+
+    function createManualConnectButton() {
+        const container = document.getElementById('ton-connect-container');
+        if (container) {
+            container.innerHTML = `
+                <button id="manualConnectBtn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; color: white; padding: 14px 24px; border-radius: 14px; font-weight: 600; cursor: pointer; width: 100%; font-size: 16px;">
+                    <i class="fas fa-wallet"></i> Connect Wallet
+                </button>
+            `;
+            document.getElementById('manualConnectBtn')?.addEventListener('click', () => {
+                window.open('https://tonkeeper.com/ton-connect?manifest=' + encodeURIComponent(`${API_BASE}/tonconnect-manifest.json`), '_blank');
+            });
         }
     }
 
@@ -335,7 +362,6 @@
         }
     }
 
-    // ========== INIT ==========
     async function init() {
         console.log('🟡 Initializing games page...');
         
@@ -350,8 +376,10 @@
             if (balanceEl) balanceEl.textContent = 'Login Required';
         }
         
-        // 🔥 INIT TON CONNECT
-        await initTonConnect();
+        // 🔥 TUNGGU 1 DETIK SEBELUM INIT TON CONNECT
+        setTimeout(async () => {
+            await initTonConnect();
+        }, 1000);
         
         // Navigation
         document.querySelectorAll('.nav-item').forEach((item) => {
