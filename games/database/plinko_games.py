@@ -47,10 +47,14 @@ BIG_MULTIPLIERS = {
 def get_db():
     """Get database connection"""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH), timeout=20.0, check_same_thread=False)
+    conn = sqlite3.connect(str(DB_PATH), timeout=30.0, check_same_thread=False)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+    
+    # 🔥 UBAH KE DELETE MODE (BUKAN WAL) untuk menghindari lock
+    conn.execute("PRAGMA journal_mode=DELETE")
     conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    
     return conn
 
 def init_db():
