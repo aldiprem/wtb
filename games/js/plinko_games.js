@@ -132,26 +132,30 @@
     function update() {
         if (!canvas || !ctx) return;
         
+        // 1. Bersihkan dan gambar papan
         drawPlinkoBoard();
 
-        // Gerakan Spawner
+        // Gerakan Spawner tetap smooth
         spawnerX += spawnerDir * spawnerSpeed;
         if (Math.abs(spawnerX - canvas.width / 2) > 10) spawnerDir *= -1;
 
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
+            // 2. Integrasi Fisika yang lebih halus
             ball.vy += GRAVITY;
+            ball.vx *= 0.99; // Hambatan udara tipis agar tidak liar
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Limit Kecepatan
-            if (ball.vy > 8) ball.vy = 8;
-            if (Math.abs(ball.vx) > 4) ball.vx = ball.vx > 0 ? 4 : -4;
+            // Batasi kecepatan agar tidak menembus pin (Tunneling)
+            const maxVelocity = 6;
+            if (ball.vy > maxVelocity) ball.vy = maxVelocity;
+            if (Math.abs(ball.vx) > maxVelocity) ball.vx = ball.vx > 0 ? maxVelocity : -maxVelocity;
 
             const startY = 50, rowSpacing = 22, colSpacing = 22, totalRows = 12;
 
-            // DETEKSI TABRAKAN PIN
+            // 3. DETEKSI TABRAKAN PIN DENGAN SMOOTHING
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -162,13 +166,17 @@
                     const py = startY + r * rowSpacing;
                     const dx = ball.x - px;
                     const dy = ball.y - py;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const distSq = dx * dx + dy * dy;
+                    const minDist = BALL_RADIUS + PIN_RADIUS;
 
-                    if (dist < BALL_RADIUS + PIN_RADIUS) {
+                    if (distSq < minDist * minDist) {
+                        const dist = Math.sqrt(distSq);
+                        const nx = dx / dist; // Normal X
+                        const ny = dy / dist; // Normal Y
+
                         const pinId = `pin_${r}_${c}`;
-                        const angle = Math.atan2(dy, dx);
 
-                        // --- ANTI-STUCK LOGIC ---
+                        // --- LOGIKA ANTI-STUCK YANG HALUS ---
                         if (ball.lastPinId === pinId) {
                             ball.hitCount++;
                         } else {
@@ -176,50 +184,63 @@
                             ball.hitCount = 1;
                         }
 
-                        if (ball.hitCount >= 3) {
-                            // Paksa bola jatuh jika macet di satu pin
-                            ball.vx *= 0.5;
-                            ball.vy = 3; 
-                            ball.y += 5;
+                        if (ball.hitCount > 4) {
+                            // Alih-alih tembus paksa, berikan dorongan samping kecil
+                            ball.vx += (Math.random() - 0.5) * 2;
+                            ball.vy += 0.5;
                             ball.hitCount = 0;
                         } else {
-                            // Pantulan Normal
-                            ball.vx += Math.cos(angle) * 1.2;
-                            ball.vy *= -BOUNCE;
-                            ball.vy += 0.5; // Dorongan gravitasi tambahan
+                            // Pantulan Vektor (Lebih Nyata)
+                            // Refleksi kecepatan berdasarkan normal tabrakan
+                            const dot = ball.vx * nx + ball.vy * ny;
+                            ball.vx = (ball.vx - 2 * dot * nx) * BOUNCE;
+                            ball.vy = (ball.vy - 2 * dot * ny) * BOUNCE;
+
+                            // Berikan sedikit "Kick" ke bawah agar tidak memantul ke atas terus
+                            ball.vy += 0.3;
                         }
 
-                        // Koreksi posisi
-                        const overlap = (BALL_RADIUS + PIN_RADIUS) - dist;
-                        ball.x += Math.cos(angle) * overlap;
-                        ball.y += Math.sin(angle) * overlap;
+                        // REPOSISI HALUS (Mencegah bola 'tenggelam' di pin)
+                        const overlap = minDist - dist;
+                        ball.x += nx * overlap;
+                        ball.y += ny * overlap;
                     }
                 }
             }
 
-            // Batasan Piramida Samping
+            // 4. Batasan Dinding Samping (Piramida)
             const currentRow = Math.floor((ball.y - startY) / rowSpacing);
             if (currentRow >= 0 && currentRow < totalRows) {
                 const dots = 3 + currentRow;
-                const rWidth = (dots - 1) * colSpacing;
-                const leftWall = (canvas.width / 2) - (rWidth / 2) - 10;
-                const rightWall = (canvas.width / 2) + (rWidth / 2) + 10;
+                const rowWidth = (dots - 1) * colSpacing;
+                const leftWall = (canvas.width / 2) - (rowWidth / 2) - 10;
+                const rightWall = (canvas.width / 2) + (rowWidth / 2) + 10;
 
-                if (ball.x < leftWall) { ball.x = leftWall; ball.vx *= -BOUNCE; }
-                else if (ball.x > rightWall) { ball.x = rightWall; ball.vx *= -BOUNCE; }
+                if (ball.x < leftWall) { 
+                    ball.x = leftWall; 
+                    ball.vx *= -BOUNCE; 
+                } else if (ball.x > rightWall) { 
+                    ball.x = rightWall; 
+                    ball.vx *= -BOUNCE; 
+                }
             }
 
-            // Gambar Bola
+            // 5. Render Bola dengan Shadow (Agar terlihat 3D/Nyata)
+            ctx.save();
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
-            ctx.fillStyle = '#ef4444';
+            const grad = ctx.createRadialGradient(ball.x-1, ball.y-1, 1, ball.x, ball.y, BALL_RADIUS);
+            grad.addColorStop(0, '#ff8787');
+            grad.addColorStop(1, '#ef4444');
+            ctx.fillStyle = grad;
+            ctx.shadowColor = 'rgba(239, 68, 68, 0.4)';
+            ctx.shadowBlur = 5;
             ctx.fill();
+            ctx.restore();
 
-            // Logika Finish (Menyentuh Dasar)
-            const bottomLine = canvas.height - 2;
-            if (ball.y >= bottomLine) {
-                const isHit = checkMultiplierHit(ball);
-                if (isHit) {
+            // 6. Logika Selesai
+            if (ball.y >= canvas.height - 2) {
+                if (checkMultiplierHit(ball)) {
                     balls.splice(i, 1);
                     checkAllBallsComplete();
                     continue; 
