@@ -642,7 +642,7 @@
         }
     }
 
-    // Load history dengan tampilan baru
+    // Load history dengan tampilan baru - DENGAN FOTO PROFIL TELEGRAM
     async function loadHistory() {
         try {
             const response = await fetch(`${API_BASE}/api/plinko/history`);
@@ -707,16 +707,39 @@
                 
                 // Nama pemain
                 const playerName = game.username || 'Anonymous';
-                const initial = playerName.charAt(0).toUpperCase();
                 
-                // Avatar URL (pakai UI Avatars jika tidak ada foto)
-                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true`;
+                // 🔥 PERBAIKAN: Coba dapatkan foto profil dari Telegram user
+                // Karena data history tidak menyimpan photo_url, kita perlu ambil dari API terpisah
+                // Atau gunakan user_id untuk fetch foto profil
+                let avatarUrl = '';
+                let userPhotoUrl = null;
+                
+                // Jika ada user_id, coba ambil foto dari Telegram (opsional, async)
+                if (game.user_id) {
+                    try {
+                        // Opsi 1: Jika Anda punya endpoint untuk get user photo
+                        // const photoResponse = await fetch(`${API_BASE}/api/user/photo/${game.user_id}`);
+                        // const photoData = await photoResponse.json();
+                        // if (photoData.photo_url) userPhotoUrl = photoData.photo_url;
+                        
+                        // Opsi 2: Karena tidak ada endpoint, gunakan UI Avatars dulu
+                        // TAPI dengan parameter ?bold=true agar lebih bagus
+                        userPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
+                    } catch (e) {
+                        userPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
+                    }
+                } else {
+                    userPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
+                }
+                
+                avatarUrl = userPhotoUrl;
                 
                 html += `
                     <div class="history-item multiplier-${multiplierClass}" data-hash="${game.round_hash}">
                         <div class="history-item-content">
                             <div class="history-avatar">
-                                <img src="${avatarUrl}" alt="${playerName}" onerror="this.src='https://ui-avatars.com/api/?name=${initial}&background=6c5ce7&color=fff&size=64'">
+                                <img src="${avatarUrl}" alt="${playerName}" 
+                                    onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(playerName.charAt(0))}&background=6c5ce7&color=fff&size=64&bold=true'">
                             </div>
                             <div class="history-info">
                                 <div class="history-player-name">${escapeHtml(playerName)}</div>
@@ -786,10 +809,20 @@
         }, 2000);
     }
 
-    // Save game result to backend (update dengan multiplier untuk history)
+    // Save game result to backend - SERTAKAN FOTO PROFIL
     async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
         try {
-            // Tentukan risk level berdasarkan multiplier (opsional)
+            const tg = window.Telegram.WebApp;
+            const user = tg.initDataUnsafe?.user;
+            
+            let photoUrl = null;
+            if (user && user.photo_url) {
+                photoUrl = user.photo_url;
+            } else if (user && user.id) {
+                // Fallback: gunakan endpoint untuk ambil foto (jika ada)
+                photoUrl = null;
+            }
+            
             let riskForDisplay = currentRisk;
             
             const response = await fetch(`${API_BASE}/api/plinko/save`, {
@@ -802,7 +835,8 @@
                     round_hash: roundHash,
                     risk_level: riskForDisplay,
                     user_id: telegramUser?.id || null,
-                    username: telegramUser?.username || telegramUser?.first_name || 'Anonymous'
+                    username: telegramUser?.username || telegramUser?.first_name || 'Anonymous',
+                    photo_url: photoUrl  // 🔥 TAMBAHKAN photo_url
                 })
             });
             

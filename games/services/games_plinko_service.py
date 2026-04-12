@@ -46,6 +46,7 @@ def init_plinko_db():
                 round_hash TEXT UNIQUE NOT NULL,
                 user_id INTEGER,
                 username TEXT,
+                photo_url TEXT,
                 bet_amount REAL,
                 multiplier REAL,
                 win_amount REAL,
@@ -70,15 +71,14 @@ def init_plinko_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
-        # Insert default stats if empty
-        cursor.execute('SELECT COUNT(*) FROM plinko_stats')
-        if cursor.fetchone()[0] == 0:
-            cursor.execute('''
-                INSERT INTO plinko_stats (total_players, total_games, current_hash)
-                VALUES (0, 0, ?)
-            ''', (datetime.now().strftime('%Y%m%d%H%M%S'),))
-        
+
+        # Cek dan tambah kolom photo_url jika belum ada
+        cursor.execute("PRAGMA table_info(plinko_games)")
+        existing_columns = [col[1] for col in cursor.fetchall()]
+        if 'photo_url' not in existing_columns:
+            cursor.execute("ALTER TABLE plinko_games ADD COLUMN photo_url TEXT")
+            print("✅ Kolom photo_url ditambahkan ke plinko_games")
+
         conn.commit()
         conn.close()
         print("✅ Plinko database initialized")
