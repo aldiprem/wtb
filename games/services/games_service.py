@@ -479,9 +479,9 @@ def process_withdraw():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
     
-def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
+async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
     """
-    Kirim TON otomatis - VERSI SEDERHANA
+    Kirim TON otomatis dari wallet merchant ke user (ASYNC VERSION)
     """
     try:
         from tonutils.client import TonapiClient
@@ -494,6 +494,7 @@ def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
         mnemonic_list = mnemonic_string.split()
         
         print(f"📤 Sending {amount_ton} TON to {to_address}")
+        print(f"🔑 Mnemonic words: {len(mnemonic_list)}")
         
         # Inisialisasi client
         client = TonapiClient(
@@ -507,23 +508,27 @@ def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
             mnemonic=mnemonic_list
         )
         
-        # 🔥 PERBAIKAN: Ambil address sebagai string
+        # Dapatkan address sebagai string
         merchant_address = str(wallet.address)
         print(f"💰 Merchant wallet address: {merchant_address}")
         
-        # Cek saldo (opsional, jika gagal lanjutkan saja)
+        # Cek saldo merchant wallet (ASYNC)
         try:
-            balance = client.get_address_balance(merchant_address)
+            balance = await client.get_address_balance(merchant_address)
             balance_ton = balance / 1_000_000_000
             print(f"💰 Merchant balance: {balance_ton} TON")
+            
+            if balance_ton < amount_ton:
+                return False, f"Insufficient merchant balance. Available: {balance_ton} TON, Required: {amount_ton} TON"
         except Exception as e:
             print(f"⚠️ Could not check balance: {e}")
         
-        # Kirim transaksi
-        tx_hash = wallet.transfer(
+        # Kirim transaksi (ASYNC)
+        tx_hash = await wallet.transfer(
             destination=to_address,
             amount=to_nano(amount_ton),
-            body=f"Withdraw from BarackGift to user {telegram_id}"
+            body=f"Withdraw from BarackGift to user {telegram_id}",
+            send_mode=3
         )
         
         print(f"✅ Withdraw sent: {tx_hash}")
@@ -538,7 +543,7 @@ def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
 # ==================== ENDPOINT WITHDRAW REAL ====================
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
-    """Proses withdraw TON - MENGGUNAKAN MNEMONIC DARI ENV"""
+    """Proses withdraw TON - ASYNC VERSION"""
     init_db()
     data = request.json
     
@@ -584,7 +589,7 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
         
-        # 🔥 AMBIL MNEMONIC DARI ENV
+        # AMBIL MNEMONIC DARI ENV
         MERCHANT_MNEMONIC = os.getenv('MERCHANT_MNEMONIC', '')
         
         if not MERCHANT_MNEMONIC:
@@ -593,8 +598,9 @@ def process_withdraw_real():
         
         print(f"💰 Processing withdraw: {amount} TON to {wallet_address}")
         
-        # Kirim TON ke wallet user
-        success, result = send_ton_auto(telegram_id, amount, wallet_address, MERCHANT_MNEMONIC)
+        # 🔥 JALANKAN ASYNC FUNCTION dengan asyncio.run()
+        import asyncio
+        success, result = asyncio.run(send_ton_auto(telegram_id, amount, wallet_address, MERCHANT_MNEMONIC))
         
         if not success:
             conn.close()
