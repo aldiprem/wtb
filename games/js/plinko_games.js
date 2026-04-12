@@ -132,7 +132,7 @@
     function update() {
         if (!canvas || !ctx) return;
         
-        // 1. Render Papan dan Spawner
+        // 1. Render Papan dan Spawner (Background)
         drawPlinkoBoard();
 
         // Gerakan spawner (cerobong) di bagian atas
@@ -144,22 +144,20 @@
         for (let i = balls.length - 1; i >= 0; i--) {
             const ball = balls[i];
             
-            // Terapkan Gravitasi & Fisika Dasar
+            // Terapkan Gravitasi
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Batasi kecepatan agar bola tetap terkendali
-            if (ball.vy > 8) ball.vy = 8;
-            if (Math.abs(ball.vx) > 4) ball.vx = ball.vx > 0 ? 4 : -4;
+            // --- PERBAIKAN SMOOTHING 1: Speed Limiter yang lebih lembut ---
+            // Mencegah perubahan kecepatan mendadak yang merusak transisi visual
+            const maxVelocity = 7.5;
+            if (ball.vy > maxVelocity) ball.vy *= 0.95; 
+            if (Math.abs(ball.vx) > 4) ball.vx *= 0.95;
 
-            // Konfigurasi Pin (12 Baris)
-            const startY = 50;
-            const rowSpacing = 22;
-            const colSpacing = 22;
-            const totalRows = 12;
+            const startY = 50, rowSpacing = 22, colSpacing = 22, totalRows = 12;
 
-            // 3. DETEKSI TABRAKAN PIN DENGAN LOGIKA ANTI-STUCK
+            // 3. DETEKSI TABRAKAN PIN (DIPERHALUS)
             for (let r = 0; r < totalRows; r++) {
                 const dots = 3 + r;
                 const rowWidth = (dots - 1) * colSpacing;
@@ -170,12 +168,13 @@
                     const py = startY + r * rowSpacing;
                     const dx = ball.x - px;
                     const dy = ball.y - py;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const distSq = dx * dx + dy * dy; // Gunakan kuadrat untuk efisiensi performa
+                    const minDist = BALL_RADIUS + PIN_RADIUS;
 
-                    // Jika bola menyentuh Pin
-                    if (dist < BALL_RADIUS + PIN_RADIUS) {
-                        const pinId = `pin_${r}_${c}`; // ID Unik untuk setiap titik
+                    if (distSq < minDist * minDist) {
+                        const dist = Math.sqrt(distSq);
                         const angle = Math.atan2(dy, dx);
+                        const pinId = `pin_${r}_${c}`;
 
                         // --- LOGIKA ANTI-STUCK ---
                         if (ball.lastPinId === pinId) {
@@ -186,24 +185,23 @@
                         }
 
                         if (ball.hitCount >= 3) {
-                            // PAKSA TURUN: Jika mantul 3x di titik yang sama
-                            ball.vx *= 0.2; // Redam gerakan samping
-                            ball.vy = Math.abs(ball.vy) + 2; // Paksa dorongan ke bawah
-                            ball.y += 5; // Geser posisi melewati pin
-                            ball.hitCount = 0; // Reset hit
+                            // Paksa turun secara halus
+                            ball.vx *= 0.5;
+                            ball.vy = 2.5;
+                            ball.y += 2; 
+                            ball.hitCount = 0;
                         } else {
-                            // PANTULAN NORMAL
-                            ball.vx += Math.cos(angle) * 0.8; 
-                            ball.vy *= -BOUNCE;
-                            
-                            // Tambahan dorongan gravitasi kecil setiap mantul agar tidak naik
-                            ball.vy += 0.5; 
+                            // --- PERBAIKAN SMOOTHING 2: Pantulan Halus ---
+                            // Menggunakan refleksi sudut yang lebih natural daripada sekadar membalikkan nilai
+                            ball.vx += Math.cos(angle) * 1.1; 
+                            ball.vy = Math.sin(angle) * 1.1 + 0.3; // Tambah gaya berat sedikit
                         }
 
-                        // Koreksi posisi agar bola tidak "tenggelam" di dalam pin
-                        const overlap = (BALL_RADIUS + PIN_RADIUS) - dist;
-                        ball.x += Math.cos(angle) * overlap;
-                        ball.y += Math.sin(angle) * overlap;
+                        // --- PERBAIKAN SMOOTHING 3: Interpolasi Posisi ---
+                        // Mengeluarkan bola dari dalam pin secara proporsional untuk menghilangkan efek "bergetar"
+                        const overlap = minDist - dist;
+                        ball.x += (dx / dist) * overlap;
+                        ball.y += (dy / dist) * overlap;
                     }
                 }
             }
@@ -218,23 +216,25 @@
 
                 if (ball.x < leftWall) {
                     ball.x = leftWall;
-                    ball.vx *= -BOUNCE;
+                    ball.vx *= -0.3; // Redaman pantulan dinding
                 } else if (ball.x > rightWall) {
                     ball.x = rightWall;
-                    ball.vx *= -BOUNCE;
+                    ball.vx *= -0.3;
                 }
             }
 
             // 5. Gambar Visual Bola
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+            
+            // Gunakan gradien sederhana agar bola terlihat solid dan halus saat bergerak
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
             gradient.addColorStop(0, '#ff6b6b');
             gradient.addColorStop(1, '#ef4444');
             ctx.fillStyle = gradient;
             ctx.fill();
 
-            // 6. Logika Selesai (Menyentuh Dasar Border Multiplier)
+            // 6. Logika Selesai (Menyentuh Dasar)
             const bottomLine = canvas.height - 2;
             if (ball.y >= bottomLine) {
                 const isHit = checkMultiplierHit(ball);
@@ -245,13 +245,14 @@
                 }
             }
 
-            // Safety Net
+            // Safety Net untuk menghapus bola yang keluar layar
             if (ball.y > canvas.height + 50) {
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
         }
 
+        // Minta frame berikutnya
         animationId = requestAnimationFrame(update);
     }
     
