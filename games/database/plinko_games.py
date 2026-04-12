@@ -1,4 +1,4 @@
-# games/database/plinko_games.py - SISTEM LICIK + FORCE GAMES + AUTO CHEAT
+# games/database/plinko_games.py - PERBAIKAN LENGKAP
 
 import sqlite3
 import json
@@ -11,9 +11,15 @@ from pathlib import Path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DB_PATH = os.path.join(BASE_DIR, 'games', 'database', 'plinko.db')
 
+# PASTIKAN DIRECTORY DATABASE ADA
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+print(f"📁 Plinko DB Path: {DB_PATH}")
+print(f"📁 Database exists: {os.path.exists(DB_PATH)}")
+
 TARGET_BANDAR_PROFIT = 5.0
 
-# Konfigurasi multiplier untuk setiap risk level - SEMUA DIKECILKAN
+# Konfigurasi multiplier untuk setiap risk level
 RISK_MULTIPLIERS = {
     'low': [2, 1.5, 1, 0.8, 0.5, 0.3, 0.5, 0.8, 1, 1.5, 2],
     'medium': [3, 2, 1.5, 1, 0.5, 0.2, 0.5, 1, 1.5, 2, 3],
@@ -26,14 +32,12 @@ SMALL_MULTIPLIERS = {
     'high': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.2]
 }
 
-# Multiplier sedang (jarang muncul)
 MEDIUM_MULTIPLIERS = {
     'low': [1, 1.2, 1.5],
     'medium': [1.5, 2, 2.5],
     'high': [1, 1.5, 2]
 }
 
-# Multiplier besar (HAMPIR TIDAK PERNAH MUNCUL - cuma buat gertakan)
 BIG_MULTIPLIERS = {
     'low': [2, 2.5],
     'medium': [3, 4],
@@ -117,7 +121,7 @@ def init_db():
         )
     ''')
     
-    # TABEL: Log kecurangan (cheat log) untuk monitoring
+    # TABEL: Log kecurangan (cheat log)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS cheat_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -167,17 +171,19 @@ def init_db():
         cursor.execute("ALTER TABLE plinko_games ADD COLUMN photo_url TEXT")
         print("✅ Kolom photo_url ditambahkan")
     
-    # Cek dan tambah kolom di user_loss_tracking
-    cursor.execute("PRAGMA table_info(user_loss_tracking)")
-    loss_columns = [col[1] for col in cursor.fetchall()]
-    if 'consecutive_losses' not in loss_columns:
-        cursor.execute("ALTER TABLE user_loss_tracking ADD COLUMN consecutive_losses INTEGER DEFAULT 0")
-        print("✅ Kolom consecutive_losses ditambahkan")
-    
     conn.commit()
     conn.close()
     print("✅ Plinko database initialized with BANDAR CHEAT SYSTEM")
+    print(f"📁 Database location: {DB_PATH}")
     print(f"🎯 Target Bandar Profit: {TARGET_BANDAR_PROFIT} TON")
+    
+    # VERIFIKASI: Cek apakah tabel bisa diakses
+    test_conn = get_db()
+    test_cursor = test_conn.cursor()
+    test_cursor.execute("SELECT COUNT(*) FROM plinko_games")
+    count = test_cursor.fetchone()[0]
+    print(f"📊 Existing games in DB: {count}")
+    test_conn.close()
 
 def get_bandar_profit():
     """Mendapatkan keuntungan bandar saat ini"""
@@ -213,7 +219,7 @@ def update_bandar_profit(bet_amount, win_amount, is_cheat=False):
         conn = get_db()
         cursor = conn.cursor()
         
-        profit_change = bet_amount - win_amount  # positif = bandar untung
+        profit_change = bet_amount - win_amount
         
         if is_cheat:
             cursor.execute('''
@@ -276,7 +282,7 @@ def update_user_loss(user_id, username, bet_amount, win_amount, is_forced=False)
     conn = get_db()
     cursor = conn.cursor()
     
-    net_change = bet_amount - win_amount  # positif = user rugi
+    net_change = bet_amount - win_amount
     is_win = win_amount > bet_amount
     
     cursor.execute('''
@@ -322,12 +328,10 @@ def should_activate_cheat():
     profit_data = get_bandar_profit()
     current_profit = profit_data['profit']
     
-    # Jika profit bandar kurang dari target, aktifkan cheat
     if current_profit < TARGET_BANDAR_PROFIT:
         deficit = TARGET_BANDAR_PROFIT - current_profit
         return True, current_profit, deficit
     
-    # Jika profit sudah melebihi target, matikan cheat
     return False, current_profit, 0
 
 def calculate_cheat_intensity():
@@ -338,37 +342,46 @@ def calculate_cheat_intensity():
     if current_profit >= TARGET_BANDAR_PROFIT:
         return 0.0
     
-    # Defisit = berapa banyak bandar masih kurang dari target
     deficit = TARGET_BANDAR_PROFIT - current_profit
-    
     intensity = min(0.98, 0.5 + (deficit / (TARGET_BANDAR_PROFIT)))
     
     return max(0.0, intensity)
 
 def get_forced_multiplier(risk_level, user_loss_data=None):
-    """
-    Mendapatkan multiplier kecil secara paksa (magnet system)
-    Memaksa bola jatuh ke area multiplier kecil
-    """
-    # Pilih dari small multipliers (paling menguntungkan bandar)
+    """Mendapatkan multiplier kecil secara paksa"""
     small_mult = SMALL_MULTIPLIERS.get(risk_level, SMALL_MULTIPLIERS['medium'])
     
-    # Jika user sudah sangat rugi (>20 TON), beri sedikit keringanan
-    # Tapi tetap bandar untung (multiplier < 2x)
     if user_loss_data and user_loss_data['net_loss'] > 20:
-        # User rugi banyak, kasih multiplier 1x - 2x (impas atau untung kecil)
         mercy_mult = [0.8, 1, 1, 1.2, 1.5, 2]
         chosen = random.choice(mercy_mult)
         return chosen, 'mercy_multiplier'
     
-    # Default: pilih multiplier kecil yang bikin bandar untung besar
     chosen = random.choice(small_mult)
     return chosen, 'force_small_multiplier'
 
+def get_safe_multiplier(risk_level, bet_amount, current_bandar_profit):
+    """Hitung multiplier yang aman untuk bandar"""
+    max_safe_multiplier = (current_bandar_profit + bet_amount) / bet_amount
+    
+    all_multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
+    
+    safe_multipliers = [m for m in all_multipliers if m <= max_safe_multiplier]
+    
+    if not safe_multipliers:
+        return 0.0, 'force_zero_no_safe_multiplier'
+    
+    chosen = min(safe_multipliers)
+    
+    if current_bandar_profit < 5 and chosen > 0.5:
+        very_small = [m for m in all_multipliers if m < 0.5]
+        if very_small:
+            chosen = min(very_small)
+            return chosen, 'force_small_due_low_profit'
+    
+    return chosen, 'safe_multiplier'
+
 def get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username):
-    """
-    SISTEM BANDAR NEVER LOSE - PASTI BANDAR UNTUNG ATAU IMPAS
-    """
+    """SISTEM BANDAR NEVER LOSE - PASTI BANDAR UNTUNG ATAU IMPAS"""
     profit_data = get_bandar_profit()
     current_bandar_profit = profit_data['profit']
     user_loss = get_user_loss(user_id)
@@ -376,24 +389,18 @@ def get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username):
     is_forced = False
     forced_reason = None
     
-    # STEP 1: Cari multiplier yang AMAN untuk bandar
     safe_mult, safe_reason = get_safe_multiplier(risk_level, bet_amount, current_bandar_profit)
     
     print(f"📊 [BANDAR CHECK] Current profit: {current_bandar_profit:.2f} TON | Bet: {bet_amount} | Safe multiplier: {safe_mult}x")
     
-    # STEP 2: 95% chance PAKSA multiplier kecil (0x - 0.5x)
     roll = random.random()
     
-    if roll < 0.95:  # 95% FORCE ke multiplier kecil
-        # Pilih multiplier paling kecil dari SMALL_MULTIPLIERS
+    if roll < 0.95:
         small_mult = SMALL_MULTIPLIERS.get(risk_level, SMALL_MULTIPLIERS['medium'])
-        
-        # Pilih yang paling kecil (0x prioritas)
         chosen = min(small_mult)
         forced_reason = f'force_small_loss_{safe_reason}'
         is_forced = True
         
-        # Log kecurangan
         log_cheat_action(
             user_id, username, f"game_{datetime.now().timestamp()}",
             "BANDAR_FORCE_LOSS",
@@ -404,9 +411,8 @@ def get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username):
         print(f"🔴 [BANDAR FORCE] {username} forced {chosen}x | Bandar profit before: {current_bandar_profit:.2f}")
         return chosen, is_forced, forced_reason
     
-    # STEP 3: 5% sisanya - pakai safe multiplier (masih aman untuk bandar)
     chosen = safe_mult
-    is_forced = True  # Tetap dianggap forced karena bandar proteksi
+    is_forced = True
     forced_reason = f'bandar_protect_{safe_reason}'
     
     print(f"🟡 [BANDAR PROTECT] {username} got {chosen}x (safe multiplier)")
@@ -427,14 +433,11 @@ def get_bandar_status():
     return status
 
 def get_multiplier(risk_level, position=None, user_id=None, username=None, bet_amount=0):
-    """
-    Mendapatkan multiplier dengan sistem licik
-    """
+    """Mendapatkan multiplier dengan sistem licik"""
     if user_id and bet_amount > 0:
         multiplier, is_forced, reason = get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username)
         return multiplier, is_forced, reason
     
-    # Fallback jika tidak ada user data
     multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
     if position is not None and 0 <= position < len(multipliers):
         return multipliers[position], False, 'normal_position'
@@ -450,7 +453,10 @@ def generate_round_hash():
 
 def save_game_result(data):
     """Save game result dengan tracking keuntungan bandar"""
+    conn = None
     try:
+        print(f"💾 [SAVE] Starting save_game_result with data: {data}")
+        
         conn = get_db()
         cursor = conn.cursor()
         
@@ -458,6 +464,7 @@ def save_game_result(data):
         cheat_reason = data.get('cheat_reason', '')
         photo_url = data.get('photo_url', None)
         
+        # Insert ke plinko_games
         cursor.execute('''
             INSERT INTO plinko_games (round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, is_forced, cheat_reason, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -474,6 +481,8 @@ def save_game_result(data):
             cheat_reason,
             datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         ))
+        
+        print(f"✅ [SAVE] Game inserted successfully, rows affected: {cursor.rowcount}")
         
         # Update bandar profit
         profit_change = update_bandar_profit(data['bet_amount'], data['win_amount'], is_forced)
@@ -525,15 +534,21 @@ def save_game_result(data):
         ''', (
             total_players, total_games, biggest_multiplier, biggest_win,
             total_bet or 0, total_win or 0,
-            data.get('username') or last['username'] if last else None,
+            data.get('username') or (last['username'] if last else None),
             last['created_at'] if last else None,
             data['round_hash']
         ))
         
         conn.commit()
+        
+        # VERIFIKASI: Cek apakah data tersimpan
+        verify_cursor = conn.cursor()
+        verify_cursor.execute("SELECT COUNT(*) FROM plinko_games WHERE round_hash = ?", (data['round_hash'],))
+        verify_count = verify_cursor.fetchone()[0]
+        print(f"🔍 [VERIFY] Game with hash {data['round_hash']} exists: {verify_count > 0}")
+        
         conn.close()
         
-        # Print status keuntungan bandar
         profit_data = get_bandar_profit()
         status_emoji = "✅" if profit_data['profit'] >= TARGET_BANDAR_PROFIT else "⚠️"
         print(f"{status_emoji} [BANDAR] Profit: {profit_data['profit']:.2f} TON | Target: {TARGET_BANDAR_PROFIT} TON")
@@ -541,6 +556,11 @@ def save_game_result(data):
         return True
     except Exception as e:
         print(f"❌ Error in save_game_result: {e}")
+        import traceback
+        traceback.print_exc()
+        if conn:
+            conn.rollback()
+            conn.close()
         return False
 
 def get_stats():
@@ -556,14 +576,12 @@ def get_stats():
     
     row = cursor.fetchone()
     
-    # Get last multiplier
     cursor.execute('''
         SELECT multiplier, username FROM plinko_games 
         ORDER BY created_at DESC LIMIT 1
     ''')
     last_game = cursor.fetchone()
     
-    # Get bandar profit
     profit_data = get_bandar_profit()
     
     conn.close()
@@ -669,44 +687,6 @@ def set_bandar_target(new_target):
     global TARGET_BANDAR_PROFIT
     TARGET_BANDAR_PROFIT = new_target
     print(f"🎯 Target bandar profit diubah menjadi {new_target} TON")
-
-def get_safe_multiplier(risk_level, bet_amount, current_bandar_profit):
-    """
-    SISTEM BANDAR NEVER LOSE - Hitung multiplier yang TIDAK membuat bandar rugi
-    Bandar HARUS tetap untung atau minimal impas (profit >= 0 setelah game)
-    
-    Rumus: Profit Bandar Setelah = current_bandar_profit + bet_amount - (bet_amount * multiplier)
-    Syarat: Profit Bandar Setelah >= 0
-    
-    Maka: multiplier <= (current_bandar_profit + bet_amount) / bet_amount
-    """
-    # Hitung multiplier maksimal yang aman untuk bandar
-    max_safe_multiplier = (current_bandar_profit + bet_amount) / bet_amount
-    
-    # Ambil semua multiplier dari risk level
-    all_multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
-    
-    # Filter multiplier yang AMAN (tidak membuat bandar rugi)
-    safe_multipliers = [m for m in all_multipliers if m <= max_safe_multiplier]
-    
-    # Jika TIDAK ADA multiplier yang aman, paksa 0x
-    if not safe_multipliers:
-        print(f"⚠️ [BANDAR PROTECT] No safe multiplier! Max safe: {max_safe_multiplier:.2f}x -> Forcing 0x")
-        return 0.0, 'force_zero_no_safe_multiplier'
-    
-    # Pilih multiplier TERKECIL dari yang aman (biar bandar untung banyak)
-    chosen = min(safe_multipliers)
-    
-    # LOGIKA TAMBAHAN: Jika bandar profit saat ini < 5 TON, paksa multiplier lebih kecil
-    if current_bandar_profit < 5 and chosen > 0.5:
-        # Cari multiplier di bawah 0.5x
-        very_small = [m for m in all_multipliers if m < 0.5]
-        if very_small:
-            chosen = min(very_small)
-            print(f"⚠️ [BANDAR PROTECT] Low profit ({current_bandar_profit:.2f}) -> forcing {chosen}x")
-            return chosen, 'force_small_due_low_profit'
-    
-    return chosen, 'safe_multiplier'
 
 # Initialize database on import
 init_db()

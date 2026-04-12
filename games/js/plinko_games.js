@@ -822,27 +822,34 @@
         }, 2000);
     }
 
+    // Di plinko_games.js, pastikan fungsi saveGameResult seperti ini:
     async function saveGameResult(betAmount, multiplier, winAmount, roundHash) {
         try {
             const tg = window.Telegram.WebApp;
             const user = tg.initDataUnsafe?.user;
+            
+            // PASTIKAN user_id ada
+            if (!user || !user.id) {
+                console.error('❌ Cannot save game: No user data');
+                return;
+            }
             
             let photoUrl = null;
             if (user && user.photo_url) {
                 photoUrl = user.photo_url;
             }
             
-            let riskForDisplay = currentRisk;
-            
             const payload = {
                 bet_amount: betAmount,
                 multiplier: multiplier,
                 win_amount: winAmount,
                 round_hash: roundHash,
-                risk_level: riskForDisplay,
-                user_id: user?.id || null,
-                username: user?.username || user?.first_name || 'Anonymous',
-                photo_url: photoUrl
+                risk_level: currentRisk,
+                user_id: user.id,  // PASTIKAN INI TERISI
+                username: user.username || user.first_name || 'Anonymous',
+                photo_url: photoUrl,
+                is_forced: false,
+                cheat_reason: ''
             };
             
             console.log('💾 Sending save request:', payload);
@@ -858,7 +865,6 @@
             
             if (data.success) {
                 console.log('✅ Game saved successfully');
-                // Refresh stats dan history setelah save
                 await loadStats();
                 await loadHistory();
             } else {
