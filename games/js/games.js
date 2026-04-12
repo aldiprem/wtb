@@ -13,7 +13,7 @@
     let walletConnected = false;
     let walletAddress = null;
 
-    const API_BASE = window.location.origin;
+    const API_BASE = window.location.origin;  // 🔥 Gunakan ini, bukan CONFIG.TUNNEL_URL
     const WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra";
     const MANIFEST_URL = 'https://companel.shop/tonconnect-manifest.json';
 
@@ -110,7 +110,7 @@
     }
 
     async function initTonConnect() {
-        // Tunggu hingga TON Connect UI tersedia - CEK KEDUA KEMUNGKINAN NAMA
+        // Tunggu hingga TON Connect UI tersedia
         let TonConnectUIClass = null;
         
         for (let i = 0; i < 50; i++) {
@@ -129,7 +129,6 @@
         
         if (!TonConnectUIClass) {
             console.error('❌ TON Connect UI not loaded after waiting');
-            // Fallback: buat tombol manual
             createManualConnectButton();
             return;
         }
@@ -138,13 +137,13 @@
             const manifestUrl = `${API_BASE}/tonconnect-manifest.json`;
             console.log('📝 Initializing TON Connect with manifest:', manifestUrl);
             
-            // 🔥 PASTIKAN ID container ADA di HTML
             const container = document.getElementById('ton-connect-container');
             if (!container) {
                 console.error('❌ Container #ton-connect-container not found');
                 return;
             }
             
+            // 🔥 PERBAIKAN: Gunakan API_BASE untuk manifest URL
             tonConnectUI = new TonConnectUIClass({
                 manifestUrl: manifestUrl,
                 buttonRootId: 'ton-connect-container',
@@ -161,25 +160,27 @@
             }
 
             tonConnectUI.onStatusChange(async (wallet) => {
-                debugLog('📱 Wallet status changed:', wallet);
+                console.log('📱 Wallet status changed:', wallet ? 'connected' : 'disconnected');
                 
                 if (wallet && telegramUser) {
-                    updateWalletStatus('connected');
-                    displayWalletInfo(wallet);
-                    await updateUserWallet(telegramUser.id, wallet.account.address);
+                    walletConnected = true;
+                    walletAddress = wallet.account.address;
+                    if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
+                    console.log('✅ Wallet connected:', walletAddress);
                     
-                    // 🔥 SIMPAN WALLET SESSION KE DATABASE
-                    await saveWalletSession(telegramUser.id, wallet.account.address);
-                    
+                    // 🔥 SIMPAN WALLET SESSION
+                    await saveWalletSession(telegramUser.id, walletAddress);
                 } else {
-                    updateWalletStatus('disconnected');
-                    document.getElementById('wallet-info')?.classList.add('hidden');
+                    walletConnected = false;
+                    walletAddress = null;
+                    console.log('❌ Wallet disconnected');
                     
-                    // 🔥 NONAKTIFKAN SESSION SAAT DISCONNECT
+                    // 🔥 NONAKTIFKAN SESSION
                     if (telegramUser) {
                         await deactivateWalletSession(telegramUser.id);
                     }
                 }
+                updateWalletUI();
             });
 
             console.log('✅ TON Connect initialized successfully');
@@ -191,7 +192,7 @@
 
     async function saveWalletSession(telegramId, walletAddress) {
         try {
-            const response = await fetch(`${CONFIG.TUNNEL_URL}/api/games/save-wallet-session`, {
+            const response = await fetch(`${API_BASE}/api/games/save-wallet-session`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -200,15 +201,15 @@
                 })
             });
             const data = await response.json();
-            debugLog('✅ Wallet session saved:', data);
+            console.log('✅ Wallet session saved:', data);
         } catch (error) {
-            debugLog('❌ Error saving wallet session:', error);
+            console.error('❌ Error saving wallet session:', error);
         }
     }
 
     async function deactivateWalletSession(telegramId) {
         try {
-            const response = await fetch(`${CONFIG.TUNNEL_URL}/api/games/deactivate-wallet-session`, {
+            const response = await fetch(`${API_BASE}/api/games/deactivate-wallet-session`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -216,12 +217,11 @@
                 })
             });
             const data = await response.json();
-            debugLog('✅ Wallet session deactivated:', data);
+            console.log('✅ Wallet session deactivated:', data);
         } catch (error) {
-            debugLog('❌ Error deactivating wallet session:', error);
+            console.error('❌ Error deactivating wallet session:', error);
         }
     }
-
 
     function createManualConnectButton() {
         const container = document.getElementById('ton-connect-container');
@@ -242,6 +242,7 @@
         const depositWalletStatus = document.getElementById('depositWalletStatus');
         const depositForm = document.getElementById('depositForm');
         const disconnectContainer = document.getElementById('disconnectContainer');
+        const tonConnectContainer = document.getElementById('ton-connect-container');
         
         if (walletConnected && walletAddress) {
             if (depositBtn) {
@@ -257,6 +258,8 @@
                 if (depositAddress) depositAddress.textContent = WEB_ADDRESS;
             }
             if (disconnectContainer) disconnectContainer.style.display = 'block';
+            // 🔥 SEMBUNYIKAN TOMBOL CONNECT KETIKA SUDAH CONNECT
+            if (tonConnectContainer) tonConnectContainer.style.display = 'none';
         } else {
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-plus"></i>';
@@ -267,6 +270,8 @@
             }
             if (depositForm) depositForm.style.display = 'none';
             if (disconnectContainer) disconnectContainer.style.display = 'none';
+            // 🔥 TAMPILKAN TOMBOL CONNECT KETIKA BELUM CONNECT
+            if (tonConnectContainer) tonConnectContainer.style.display = 'block';
         }
     }
 
@@ -301,9 +306,7 @@
         const modal = document.getElementById('depositModal');
         if (modal) {
             modal.style.display = 'flex';
-            // 🔥 Jika wallet belum connect, pastikan tombol TON Connect muncul
             if (!walletConnected && tonConnectUI) {
-                // TON Connect UI akan otomatis render tombol di container
                 console.log('Modal opened, wallet not connected');
             }
         }
@@ -357,7 +360,6 @@
         sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         
         try {
-            // Kirim tanpa payload dulu (paling aman)
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
@@ -416,10 +418,8 @@
             if (balanceEl) balanceEl.textContent = 'Login Required';
         }
         
-        // 🔥 TUNGGU 1 DETIK SEBELUM INIT TON CONNECT
-        setTimeout(async () => {
-            await initTonConnect();
-        }, 1000);
+        // 🔥 INIT TON CONNECT
+        await initTonConnect();
         
         // Navigation
         document.querySelectorAll('.nav-item').forEach((item) => {
@@ -433,7 +433,7 @@
             });
         });
         
-        // 🔥 BUTTON DEPOSIT (tombol plus di header)
+        // BUTTON DEPOSIT
         const depositBtn = document.getElementById('headerDepositBtn');
         if (depositBtn) {
             const newBtn = depositBtn.cloneNode(true);
