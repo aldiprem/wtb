@@ -152,7 +152,6 @@
         }
     }
 
-    // --- GAME LOOP (ANIMASI) ---
     function update() {
         if (!canvas || !ctx) return;
         
@@ -167,6 +166,10 @@
             ball.vy += GRAVITY;
             ball.x += ball.vx;
             ball.y += ball.vy;
+
+            // Batasi kecepatan maksimum agar tidak terlalu cepat
+            if (ball.vy > 8) ball.vy = 8;
+            if (Math.abs(ball.vx) > 5) ball.vx = ball.vx > 0 ? 5 : -5;
 
             const startY = 60;
             const rowSpacing = 28;
@@ -221,7 +224,6 @@
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
             
-            // Gradient untuk bola
             const gradient = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 1, ball.x, ball.y, BALL_RADIUS);
             gradient.addColorStop(0, '#ff6b6b');
             gradient.addColorStop(1, '#ef4444');
@@ -232,13 +234,24 @@
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Check if ball hit multiplier area
-            const isHit = checkMultiplierHit(ball);
+            // 🔥 PERBAIKAN: Hanya cek multiplier jika bola sudah di area bawah
+            // Jangan hapus bola sebelum mencapai multiplier area
+            const multiplierTopY = canvas.height - 50;
             
-            if (isHit) {
-                balls.splice(i, 1);
-                checkAllBallsComplete();
-            } else if (ball.y > canvas.height + 100) {
+            // Jika bola sudah mencapai area multiplier atau di bawahnya
+            if (ball.y + BALL_RADIUS >= multiplierTopY) {
+                const isHit = checkMultiplierHit(ball);
+                if (isHit) {
+                    balls.splice(i, 1);
+                    checkAllBallsComplete();
+                }
+                // 🔥 JANGAN HAPUS BOLA DI SINI! Biarkan checkMultiplierHit yang handle
+            }
+            
+            // 🔥 HAPUS BOLA HANYA JIKA SUDAH JATUH SANGAT JAUH DI BAWAH CANVAS
+            // (sebagai safety net, bukan untuk deteksi multiplier)
+            if (ball.y > canvas.height + 150) {
+                console.log('🎾 Ball removed (fell too far):', ball.y);
                 balls.splice(i, 1);
                 checkAllBallsComplete();
             }
@@ -319,43 +332,53 @@
         const wrapper = document.querySelector('.multiplier-slots-wrapper');
         if (!wrapper) return false;
         
+        // Hitung area multiplier
         const wrapperRect = wrapper.getBoundingClientRect();
         const canvasRect = canvas.getBoundingClientRect();
-
+        
         const multiplierTopY = canvas.height - 50;
         const multiplierBottomY = canvas.height - 10;
-        
-        // 🔥 CEK: Bola harus benar-benar berada di area multiplier Y
-        if (ball.y + BALL_RADIUS < multiplierTopY) {
-            // Bola masih di atas area multiplier
-            return false;
-        }
-        
-        // 🔥 CEK: Bola harus masih dalam batas canvas (belum keluar)
-        if (ball.y - BALL_RADIUS > canvas.height + 50) {
-            // Bola sudah keluar dari canvas
-            return false;
-        }
         
         // Update area multiplier untuk deteksi X
         updateMultiplierAreas();
         
-        // Cek posisi X bola terhadap slot multiplier
+        // 🔥 CEK APAKAH BOLA BERADA DI AREA MULTIPLIER (berdasarkan Y)
+        const ballBottom = ball.y + BALL_RADIUS;
+        const ballTop = ball.y - BALL_RADIUS;
+        
+        // Jika bola masih di atas area multiplier, belum waktunya
+        if (ballBottom < multiplierTopY) {
+            return false;
+        }
+        
+        // Jika bola sudah melewati area multiplier (di bawahnya) tanpa hit
+        if (ballTop > multiplierBottomY + 20) {
+            console.log('🎯 [MISS] Ball passed below multiplier area without hitting');
+            // Anggap kalah
+            const winAmount = 0;
+            const roundHash = generateRoundHash();
+            
+            if (!telegramUser) {
+                const tg = window.Telegram.WebApp;
+                telegramUser = tg.initDataUnsafe?.user || { id: null, first_name: 'Guest' };
+            }
+            
+            saveGameResult(ball.bet, 0, winAmount, roundHash);
+            showResult(0, winAmount, 0);
+            return true; // Bola dianggap selesai
+        }
+        
+        // 🔥 CEK POSISI X terhadap slot multiplier
         for (const area of multiplierAreas) {
-            // Beri toleransi sedikit di tepi
-            const tolerance = 5;
-            if (ball.x + tolerance >= area.x && ball.x - tolerance <= area.x + area.width) {
+            // Toleransi 8px untuk deteksi
+            if (ball.x >= area.x - 8 && ball.x <= area.x + area.width + 8) {
                 console.log('🎯 [HIT] Ball landed on multiplier area:', area.index, 'multiplier:', area.multiplier);
-                console.log('🎯 [HIT] Ball position - X:', ball.x, 'Y:', ball.y);
-                console.log('🎯 [HIT] Area - X:', area.x, 'to', area.x + area.width);
+                console.log('🎯 Ball position - X:', ball.x, 'Y:', ball.y);
                 
                 const winAmount = ball.bet * area.multiplier;
-                const netChange = winAmount;
-                
-                pendingBalanceUpdate += netChange;
                 
                 animateSlot(area.index);
-                showResult(area.multiplier, winAmount, netChange);
+                showResult(area.multiplier, winAmount, winAmount);
                 
                 const roundHash = generateRoundHash();
                 
@@ -364,35 +387,12 @@
                     telegramUser = tg.initDataUnsafe?.user || { id: null, first_name: 'Guest' };
                 }
                 
-                // Simpan hasil game
                 saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
                 
                 return true;
             }
         }
-        
-        // 🔥 CEK: Jika bola sudah melewati area multiplier (di bawahnya)
-        if (ball.y - BALL_RADIUS > canvas.height) {
-            console.log('🎯 [MISS] Ball passed below multiplier area without hitting');
-            // Bola gagal mengenai multiplier area (misalnya jatuh di sela-sela)
-            // Anggap kalah dengan multiplier 0
-            const winAmount = 0;
-            const roundHash = generateRoundHash();
-            
-            pendingBalanceUpdate += winAmount;
-            
-            showResult(0, winAmount, 0);
-            
-            if (!telegramUser) {
-                const tg = window.Telegram.WebApp;
-                telegramUser = tg.initDataUnsafe?.user || { id: null, first_name: 'Guest' };
-            }
-            
-            saveGameResult(ball.bet, 0, winAmount, roundHash);
-            
-            return true;
-        }
-        
+
         return false;
     }
     
