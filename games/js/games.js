@@ -1,4 +1,4 @@
-// games/js/games.js - VERSION DENGAN API DARI FLASK APP.PY
+// games/js/games.js - PERBAIKAN: Gunakan API dari games_service.py
 
 (function() {
     console.log('🎮 Games Page Initialized');
@@ -13,11 +13,9 @@
     let walletConnected = false;
     let walletAddress = null;
 
-    // Gunakan API dari Flask app.py (bukan /api/games)
     const API_BASE = window.location.origin;
     const WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra";
 
-    // Fungsi format angka ribuan
     function formatNumberWithCommas(number) {
         let parts = Number(number).toFixed(2).split('.');
         let integerPart = parts[0];
@@ -26,31 +24,45 @@
         return decimalPart ? integerPart + '.' + decimalPart : integerPart;
     }
 
-    // Ambil data user dari Telegram
     async function getTelegramUser() {
         const initDataUnsafe = tg.initDataUnsafe || {};
         if (initDataUnsafe.user) {
             return initDataUnsafe.user;
         }
-        return {
-            id: 123456789,
-            first_name: 'Guest',
-            last_name: 'User',
-            username: 'guest_user'
-        };
+        // JANGAN return dummy ID
+        return null;
     }
 
-    // Load balance user dari Flask app.py
+    // ========== API KE games_service.py ==========
+    
+    async function authUser(telegramId, username, firstName) {
+        try {
+            const response = await fetch(`${API_BASE}/api/games/auth`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    username: username,
+                    first_name: firstName
+                })
+            });
+            const data = await response.json();
+            return data.success;
+        } catch (error) {
+            console.error('Auth error:', error);
+            return false;
+        }
+    }
+
     async function loadBalance(telegramId) {
         try {
-            const response = await fetch(`${API_BASE}/api/balance/${telegramId}`);
+            const response = await fetch(`${API_BASE}/api/games/balance/${telegramId}`);
             const data = await response.json();
             if (data.success) {
                 currentBalance = data.balance;
                 const balanceEl = document.getElementById('userBalance');
                 if (balanceEl) {
-                    const formattedBalance = formatNumberWithCommas(data.balance);
-                    balanceEl.textContent = formattedBalance + ' TON';
+                    balanceEl.textContent = formatNumberWithCommas(data.balance) + ' TON';
                 }
                 return data.balance;
             }
@@ -60,58 +72,51 @@
         return 0;
     }
 
-    // Save user ke Flask app.py
-    async function saveUserToDatabase(telegramId, username, firstName, lastName, photoUrl) {
-        try {
-            const response = await fetch(`${API_BASE}/api/user`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegram_id: telegramId.toString(),
-                    telegram_username: username,
-                    telegram_first_name: firstName,
-                    telegram_last_name: lastName || '',
-                    telegram_photo_url: photoUrl
-                })
-            });
-            const data = await response.json();
-            return data.success;
-        } catch (error) {
-            console.error('Error saving user:', error);
-            return false;
-        }
-    }
-
-    // Update wallet address ke Flask app.py
     async function updateUserWallet(telegramId, walletAddress) {
         try {
-            const response = await fetch(`${API_BASE}/api/user/wallet`, {
+            const response = await fetch(`${API_BASE}/api/games/user/wallet`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    telegram_id: telegramId.toString(),
+                    telegram_id: telegramId,
                     wallet_address: walletAddress
                 })
             });
-            const data = await response.json();
-            return data.success;
+            return response.ok;
         } catch (error) {
             console.error('Error updating wallet:', error);
             return false;
         }
     }
 
-    // ==================== TON CONNECT FUNCTIONS ====================
+    async function verifyDeposit(telegramId, transactionHash, amount, fromAddress, memo) {
+        try {
+            const response = await fetch(`${API_BASE}/api/games/verify-ton-deposit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    transaction_hash: transactionHash,
+                    amount_ton: amount,
+                    from_address: fromAddress,
+                    memo: memo
+                })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Verify deposit error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // ========== TON CONNECT ==========
     
     async function initTonConnect() {
-        // Tunggu script TON Connect UI selesai load
         if (typeof window.TonConnectUI === 'undefined') {
-            console.log('⏳ Waiting for TON Connect UI to load...');
-            for (let i = 0; i < 50; i++) {
+            console.log('⏳ Waiting for TON Connect UI...');
+            for (let i = 0; i < 30; i++) {
                 await new Promise(resolve => setTimeout(resolve, 100));
-                if (typeof window.TonConnectUI !== 'undefined') {
-                    break;
-                }
+                if (typeof window.TonConnectUI !== 'undefined') break;
             }
         }
         
@@ -121,11 +126,8 @@
         }
 
         try {
-            const manifestUrl = `${API_BASE}/tonconnect-manifest.json`;
-            console.log('Manifest URL:', manifestUrl);
-            
             tonConnectUI = new window.TonConnectUI({
-                manifestUrl: manifestUrl,
+                manifestUrl: `${API_BASE}/tonconnect-manifest.json`,
                 buttonRootId: 'depositTonConnect'
             });
 
@@ -134,32 +136,24 @@
                 walletConnected = true;
                 walletAddress = wallet.account.address;
                 updateWalletUI();
-                
-                if (telegramUser && telegramUser.id) {
-                    await updateUserWallet(telegramUser.id, walletAddress);
-                }
+                if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
             }
 
             tonConnectUI.onStatusChange(async (wallet) => {
                 if (wallet) {
                     walletConnected = true;
                     walletAddress = wallet.account.address;
-                    console.log('Wallet connected:', walletAddress);
-                    
-                    if (telegramUser && telegramUser.id) {
-                        await updateUserWallet(telegramUser.id, walletAddress);
-                    }
+                    if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
                 } else {
                     walletConnected = false;
                     walletAddress = null;
-                    console.log('Wallet disconnected');
                 }
                 updateWalletUI();
             });
 
             console.log('✅ TON Connect initialized');
         } catch (error) {
-            console.error('Error initializing TON Connect:', error);
+            console.error('TON Connect error:', error);
         }
     }
 
@@ -173,9 +167,7 @@
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-wallet"></i>';
                 depositBtn.classList.add('wallet-connected');
-                depositBtn.title = walletAddress.substring(0, 6) + '...' + walletAddress.substring(walletAddress.length - 4);
             }
-            
             if (depositWalletStatus) depositWalletStatus.style.display = 'none';
             if (depositForm) depositForm.style.display = 'block';
             if (disconnectContainer) disconnectContainer.style.display = 'block';
@@ -183,9 +175,7 @@
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-plus"></i>';
                 depositBtn.classList.remove('wallet-connected');
-                depositBtn.title = 'Connect Wallet';
             }
-            
             if (depositWalletStatus) depositWalletStatus.style.display = 'block';
             if (depositForm) depositForm.style.display = 'none';
             if (disconnectContainer) disconnectContainer.style.display = 'none';
@@ -193,41 +183,28 @@
     }
 
     async function disconnectWallet() {
-        if (tonConnectUI) {
-            await tonConnectUI.disconnect();
-        }
+        if (tonConnectUI) await tonConnectUI.disconnect();
     }
 
-    // ==================== NAVIGATION FUNCTIONS ====================
+    // ========== NAVIGATION ==========
     
     function switchTab(targetId, url) {
         if (url && url !== '') {
             window.location.href = url;
             return;
         }
-        
         if (targetId) {
-            document.querySelectorAll('.tab-pane').forEach(pane => {
-                pane.classList.remove('active');
-            });
-            
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
             const targetPane = document.getElementById(targetId);
-            if (targetPane) {
-                targetPane.classList.add('active');
-            }
-            
+            if (targetPane) targetPane.classList.add('active');
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
-                if (item.getAttribute('data-target') === targetId) {
-                    item.classList.add('active');
-                }
+                if (item.getAttribute('data-target') === targetId) item.classList.add('active');
             });
-            
-            console.log(`✅ Switched to tab: ${targetId}`);
         }
     }
 
-    // ==================== DEPOSIT FUNCTIONS ====================
+    // ========== DEPOSIT ==========
     
     function showDepositModal() {
         const modal = document.getElementById('depositModal');
@@ -241,23 +218,17 @@
 
     function base64EncodeComment(comment) {
         try {
-            if (comment.length > 120) {
-                comment = comment.substring(0, 120);
-            }
+            if (comment.length > 120) comment = comment.substring(0, 120);
             const encoder = new TextEncoder();
             const commentBytes = encoder.encode(comment);
             const prefix = new Uint8Array([0, 0, 0, 0]);
             const fullBytes = new Uint8Array(prefix.length + commentBytes.length);
             fullBytes.set(prefix);
             fullBytes.set(commentBytes, prefix.length);
-            
             let binary = '';
-            for (let i = 0; i < fullBytes.length; i++) {
-                binary += String.fromCharCode(fullBytes[i]);
-            }
+            for (let i = 0; i < fullBytes.length; i++) binary += String.fromCharCode(fullBytes[i]);
             return btoa(binary);
         } catch (e) {
-            console.error('Error encoding comment:', e);
             return undefined;
         }
     }
@@ -277,7 +248,6 @@
             return;
         }
         
-        // Buat memo
         const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
         const amountNano = Math.floor(amount * 1_000_000_000).toString();
         
@@ -289,32 +259,23 @@
         try {
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
-                messages: [
-                    {
-                        address: WEB_ADDRESS,
-                        amount: amountNano,
-                        payload: base64EncodeComment(memo)
-                    }
-                ]
+                messages: [{
+                    address: WEB_ADDRESS,
+                    amount: amountNano,
+                    payload: base64EncodeComment(memo)
+                }]
             };
             
             const result = await tonConnectUI.sendTransaction(transaction);
             
             if (result) {
-                // Verifikasi deposit ke backend Flask
-                const verifyResponse = await fetch(`${API_BASE}/api/verify-transaction`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        telegram_id: telegramUser?.id.toString(),
-                        transaction_hash: result.boc,
-                        amount_ton: amount,
-                        from_address: walletAddress,
-                        memo: memo
-                    })
-                });
-                
-                const verifyData = await verifyResponse.json();
+                const verifyData = await verifyDeposit(
+                    telegramUser?.id.toString(),
+                    result.boc,
+                    amount,
+                    walletAddress,
+                    memo
+                );
                 
                 if (verifyData.success) {
                     document.getElementById('depositWalletStatus').style.display = 'none';
@@ -324,33 +285,20 @@
                     
                     await loadBalance(telegramUser.id);
                     
-                    if (tg.HapticFeedback) {
-                        tg.HapticFeedback.notificationOccurred('success');
-                    }
-                    
-                    setTimeout(() => {
-                        closeDepositModal();
-                        document.getElementById('depositWalletStatus').style.display = 'block';
-                        document.getElementById('depositInstructions').style.display = 'none';
-                    }, 3000);
+                    setTimeout(() => closeDepositModal(), 3000);
                 } else {
                     alert('Verifikasi deposit gagal: ' + (verifyData.error || 'Unknown error'));
                 }
             }
         } catch (error) {
-            console.error('Deposit error:', error);
-            if (error.message && error.message.includes('User rejected')) {
-                alert('Transaksi dibatalkan');
-            } else {
-                alert('Error: ' + (error.message || 'Terjadi kesalahan'));
-            }
+            alert('Error: ' + (error.message || 'Terjadi kesalahan'));
         } finally {
             sendBtn.disabled = false;
             sendBtn.innerHTML = originalText;
         }
     }
 
-    // ==================== INITIALIZATION ====================
+    // ========== INIT ==========
     
     async function init() {
         console.log('🟡 Initializing games page...');
@@ -359,79 +307,62 @@
         console.log('Telegram user:', telegramUser);
         
         if (telegramUser && telegramUser.id) {
-            const fullName = (telegramUser.first_name || '') + (telegramUser.last_name ? ' ' + telegramUser.last_name : '');
-            await saveUserToDatabase(
-                telegramUser.id, 
-                telegramUser.username || '', 
-                fullName || 'User',
-                telegramUser.last_name || '',
-                telegramUser.photo_url || null
-            );
+            await authUser(telegramUser.id, telegramUser.username || '', telegramUser.first_name || '');
             await loadBalance(telegramUser.id);
+        } else {
+            const balanceEl = document.getElementById('userBalance');
+            if (balanceEl) balanceEl.textContent = 'Login Required';
         }
         
-        // Initialize TON Connect
         await initTonConnect();
         
-        // ========== EVENT LISTENERS FOR NAVIGATION ==========
-        const navItems = document.querySelectorAll('.nav-item');
-        console.log(`Found ${navItems.length} nav items`);
-        
-        navItems.forEach((item, index) => {
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach((item) => {
             const newItem = item.cloneNode(true);
             item.parentNode.replaceChild(newItem, item);
-            
             const targetId = newItem.getAttribute('data-target');
             const url = newItem.getAttribute('data-url');
-            
             newItem.addEventListener('click', (e) => {
                 e.preventDefault();
-                e.stopPropagation();
-                console.log(`🔘 Nav clicked: target=${targetId}, url=${url}`);
                 switchTab(targetId, url);
             });
         });
         
-        // ========== DEPOSIT BUTTON ==========
+        // Buttons
         const depositBtn = document.getElementById('headerDepositBtn');
         if (depositBtn) {
-            const newDepositBtn = depositBtn.cloneNode(true);
-            depositBtn.parentNode.replaceChild(newDepositBtn, depositBtn);
-            newDepositBtn.addEventListener('click', showDepositModal);
+            const newBtn = depositBtn.cloneNode(true);
+            depositBtn.parentNode.replaceChild(newBtn, depositBtn);
+            newBtn.addEventListener('click', showDepositModal);
         }
         
-        // ========== DISCONNECT WALLET BUTTON ==========
         const disconnectBtn = document.getElementById('disconnectWalletBtn');
         if (disconnectBtn) {
-            const newDisconnectBtn = disconnectBtn.cloneNode(true);
-            disconnectBtn.parentNode.replaceChild(newDisconnectBtn, disconnectBtn);
-            newDisconnectBtn.addEventListener('click', disconnectWallet);
+            const newBtn = disconnectBtn.cloneNode(true);
+            disconnectBtn.parentNode.replaceChild(newBtn, disconnectBtn);
+            newBtn.addEventListener('click', disconnectWallet);
         }
         
-        // ========== SEND DEPOSIT BUTTON ==========
-        const sendDepositBtn = document.getElementById('sendDepositBtn');
-        if (sendDepositBtn) {
-            const newSendBtn = sendDepositBtn.cloneNode(true);
-            sendDepositBtn.parentNode.replaceChild(newSendBtn, sendDepositBtn);
-            newSendBtn.addEventListener('click', sendDeposit);
+        const sendBtn = document.getElementById('sendDepositBtn');
+        if (sendBtn) {
+            const newBtn = sendBtn.cloneNode(true);
+            sendBtn.parentNode.replaceChild(newBtn, sendBtn);
+            newBtn.addEventListener('click', sendDeposit);
         }
         
-        // ========== MODAL CLOSE HANDLERS ==========
         const closeModalBtn = document.querySelector('#depositModal .close-modal');
         if (closeModalBtn) {
-            const newCloseBtn = closeModalBtn.cloneNode(true);
-            closeModalBtn.parentNode.replaceChild(newCloseBtn, closeModalBtn);
-            newCloseBtn.addEventListener('click', closeDepositModal);
+            const newBtn = closeModalBtn.cloneNode(true);
+            closeModalBtn.parentNode.replaceChild(newBtn, closeModalBtn);
+            newBtn.addEventListener('click', closeDepositModal);
         }
         
         window.addEventListener('click', (e) => {
             const modal = document.getElementById('depositModal');
-            if (modal && e.target === modal) {
-                closeDepositModal();
-            }
+            if (modal && e.target === modal) closeDepositModal();
         });
         
-        console.log('✅ Games Page Ready with TON Connect');
+        console.log('✅ Games Page Ready');
     }
     
     if (document.readyState === 'loading') {
@@ -443,7 +374,7 @@
     window.closeModal = closeDepositModal;
     window.copyDepositAddress = function() {
         const addressEl = document.getElementById('depositAddress');
-        if (addressEl && addressEl.textContent && addressEl.textContent !== '-') {
+        if (addressEl?.textContent && addressEl.textContent !== '-') {
             navigator.clipboard.writeText(addressEl.textContent);
             alert('Address copied!');
         }
