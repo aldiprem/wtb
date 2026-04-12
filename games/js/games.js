@@ -109,12 +109,10 @@
         }
     }
 
-    // ========== TON CONNECT ==========
-    
     async function initTonConnect() {
         if (typeof window.TonConnectUI === 'undefined') {
             console.log('⏳ Waiting for TON Connect UI...');
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 50; i++) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 if (typeof window.TonConnectUI !== 'undefined') break;
             }
@@ -122,13 +120,16 @@
         
         if (typeof window.TonConnectUI === 'undefined') {
             console.error('TON Connect UI not loaded');
+            // Fallback: buat tombol manual
+            createManualConnectButton();
             return;
         }
 
         try {
+            // PASTIKAN buttonRootId = 'depositTonConnect'
             tonConnectUI = new window.TonConnectUI({
                 manifestUrl: `${API_BASE}/tonconnect-manifest.json`,
-                buttonRootId: 'depositTonConnect'
+                buttonRootId: 'depositTonConnect'  // ← INI PENTING!
             });
 
             const wallet = tonConnectUI.wallet;
@@ -154,6 +155,22 @@
             console.log('✅ TON Connect initialized');
         } catch (error) {
             console.error('TON Connect error:', error);
+            createManualConnectButton();
+        }
+    }
+
+    // Fallback jika TON Connect UI gagal load
+    function createManualConnectButton() {
+        const container = document.getElementById('depositTonConnect');
+        if (container && !tonConnectUI) {
+            container.innerHTML = `
+                <button id="manualConnectBtn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; color: white; padding: 12px 24px; border-radius: 14px; font-weight: 600; cursor: pointer;">
+                    <i class="fas fa-wallet"></i> Connect Wallet
+                </button>
+            `;
+            document.getElementById('manualConnectBtn')?.addEventListener('click', () => {
+                window.open('https://tonkeeper.com/ton-connect?manifest=' + encodeURIComponent(`${API_BASE}/tonconnect-manifest.json`), '_blank');
+            });
         }
     }
 
