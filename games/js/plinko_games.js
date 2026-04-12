@@ -673,8 +673,6 @@
             const response = await fetch(`${API_BASE}/api/plinko/history?limit=${isFullscreen ? 100 : limit}`);
             const data = await response.json();
             
-            console.log('📜 History response:', data);
-            
             const historyList = document.getElementById(isFullscreen ? 'fullscreenHistoryList' : 'historyList');
             
             if (!historyList) return;
@@ -688,8 +686,6 @@
                 `;
                 return;
             }
-            
-            console.log(`📜 Rendering ${data.history.length} history items`);
             
             let html = '';
             
@@ -715,7 +711,8 @@
                 let isProfit = winAmount > betAmount;
                 let isLoss = winAmount < betAmount;
                 
-                let winText = `${winAmount.toFixed(2)}`;
+                let winText = '';
+                let betText = '';
                 let borderColor = '';
                 
                 if (isProfit) {
@@ -728,7 +725,11 @@
                     borderColor = 'border-red';
                 } else {
                     borderColor = 'border-neutral';
+                    winText = `0`;
                 }
+                
+                // 🔥 FORMAT BET AMOUNT DENGAN LOGO TON
+                betText = `${betAmount.toFixed(2)}`;
                 
                 // Format waktu
                 let timeFormatted = '-';
@@ -753,6 +754,7 @@
                     avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=6c5ce7&color=fff&size=64&bold=true&length=2`;
                 }
                 
+                // 🔥 HTML DENGAN LOGO TON DI SAMPING SALDO
                 html += `
                     <div class="history-item ${borderColor}" data-hash="${game.round_hash || ''}">
                         <div class="history-item-content">
@@ -766,10 +768,17 @@
                                     <i class="fas fa-clock"></i>
                                     <span>${timeFormatted}</span>
                                 </div>
+                                <div class="history-bet-amount" style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 12px; height: 12px; object-fit: contain;">
+                                    <span style="font-size: 11px; color: var(--tg-hint-color);">${betText}</span>
+                                </div>
                             </div>
                             <div class="history-result">
                                 <div class="history-multiplier ${multiplierColor}">${game.multiplier || 0}x</div>
-                                <div class="history-win ${winClass}">${winText}</div>
+                                <div class="history-win ${winClass}" style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 12px; height: 12px; object-fit: contain;">
+                                    <span>${winText}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
