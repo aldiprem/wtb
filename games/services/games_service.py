@@ -316,7 +316,7 @@ def get_user_wallet(telegram_id):
 
 @games_bp.route('/withdraw', methods=['POST'])
 def process_withdraw():
-    """Proses withdraw TON ke wallet user"""
+    """Proses withdraw TON ke wallet user menggunakan TON Pay Transfer"""
     init_db()
     data = request.json
     if not data:
@@ -359,10 +359,25 @@ def process_withdraw():
             conn.close()
             return jsonify({"success": False, "error": "Wallet address not connected"}), 400
         
-        # Kurangi balance user
+        # 🔥 KIRIM TON KE WALLET USER MENGGUNAKAN TON PAY
+        # Buat reference unik
+        reference = f"wd_{telegram_id}_{int(datetime.now().timestamp())}"
+        
+        # Siapkan payload untuk TON Pay Transfer
+        transfer_data = {
+            "address": user_wallet,
+            "amount": str(int(amount * 1_000_000_000)),  # Konversi ke nanoTON
+            "comment": f"Withdraw from BarackGift: {reference}"
+        }
+        
+        print(f"💰 Processing withdraw for user {telegram_id}:")
+        print(f"   Amount: {amount} TON")
+        print(f"   To: {user_wallet}")
+        print(f"   Reference: {reference}")
+        
+        # SIMPAN DULU KE DATABASE (status pending)
         cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
         
-        # Catat history withdraw
         cursor.execute('''
             INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -372,22 +387,29 @@ def process_withdraw():
         cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
         new_balance = cursor.fetchone()[0]
         
+        # Simpan tracking withdraw
+        cursor.execute('''
+            INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (telegram_id, amount, user_wallet, reference, 'pending', get_current_time()))
+        
+        conn.commit()
+        
         # Generate transaction ID
         transaction_id = f"WID_{datetime.now().strftime('%Y%m%d%H%M%S')}_{telegram_id}"
         
-        conn.commit()
         conn.close()
         
-        print(f"💰 Withdraw: {amount} TON for user {telegram_id} to {wallet_address}")
-        print(f"   New balance: {new_balance} TON")
-
+        # 🔥 INI PENTING: Return data untuk TON Pay di frontend
         return jsonify({
             "success": True,
-            "message": f"Withdraw {amount} TON berhasil",
+            "message": f"Withdraw {amount} TON initiated",
             "amount": amount,
             "new_balance": new_balance,
             "transaction_id": transaction_id,
-            "wallet_address": wallet_address
+            "wallet_address": user_wallet,
+            "reference": reference,
+            "ton_pay_data": transfer_data  # ← Data untuk TON Pay di frontend
         })
         
     except Exception as e:

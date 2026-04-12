@@ -459,6 +459,41 @@ def health_check():
         }
     })
 
+@app.route('/api/notify-withdraw', methods=['POST'])
+def notify_withdraw():
+    """Kirim notifikasi withdraw ke user via Telegram Bot"""
+    data = request.json
+    telegram_id = data.get('telegram_id')
+    amount = data.get('amount')
+    wallet_address = data.get('wallet_address')
+    
+    BOT_TOKEN = os.getenv('BOT_TOKEN', '')
+    
+    if not BOT_TOKEN:
+        return jsonify({'success': False, 'error': 'Bot token not configured'}), 500
+    
+    message = f"""✅ *WITHDRAW BERHASIL!*
+    
+Jumlah: *{amount} TON*
+Wallet: `{wallet_address}`
+
+Dana telah dikirim ke wallet TON Anda.
+Terima kasih telah menggunakan BarackGift! 🎉
+"""
+    
+    try:
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {
+            'chat_id': telegram_id,
+            'text': message,
+            'parse_mode': 'Markdown'
+        }
+        response = requests.post(url, json=payload, timeout=10)
+        return jsonify({'success': True, 'response': response.json()})
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':

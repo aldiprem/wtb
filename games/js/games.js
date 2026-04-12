@@ -120,16 +120,19 @@
         
         if (typeof window.TonConnectUI === 'undefined') {
             console.error('TON Connect UI not loaded');
-            // Fallback: buat tombol manual
             createManualConnectButton();
             return;
         }
 
         try {
-            // PASTIKAN buttonRootId = 'depositTonConnect'
+            // 🔥 GUNAKAN MANIFEST YANG SUDAH DISEDIAKAN
+            const MANIFEST_URL = 'https://companel.shop/tonconnect-manifest.json';
+            
+            console.log('📝 Using manifest:', MANIFEST_URL);
+            
             tonConnectUI = new window.TonConnectUI({
-                manifestUrl: `${API_BASE}/tonconnect-manifest.json`,
-                buttonRootId: 'depositTonConnect'  // ← INI PENTING!
+                manifestUrl: MANIFEST_URL,  // ← PASTIKAN INI
+                buttonRootId: 'depositTonConnect'
             });
 
             const wallet = tonConnectUI.wallet;

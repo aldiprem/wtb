@@ -228,6 +228,11 @@
             return;
         }
         
+        // Konfirmasi user
+        if (!confirm(`Anda akan melakukan withdraw ${amount.toFixed(2)} TON ke wallet:\n${userWalletAddress.substring(0, 8)}...${userWalletAddress.substring(userWalletAddress.length - 6)}\n\nLanjutkan?`)) {
+            return;
+        }
+        
         // Show processing state
         document.getElementById('withdrawForm').style.display = 'none';
         document.getElementById('withdrawProcessing').style.display = 'block';
@@ -240,6 +245,7 @@
         }
         
         try {
+            // 🔥 PERTAMA: Kirim request ke backend untuk mencatat withdraw
             const response = await fetch('/api/games/withdraw', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -253,7 +259,12 @@
             const data = await response.json();
             
             if (data.success) {
-                // Show success
+                // 🔥 KEDUA: Jika backend berhasil, tampilkan sukses
+                // Catatan: Untuk withdraw TON sungguhan, Anda perlu:
+                // 1. Backend harus punya wallet dengan saldo cukup
+                // 2. Kirim transaksi TON dari wallet merchant ke user
+                // 3. Atau gunakan TON Pay untuk transfer otomatis
+                
                 document.getElementById('withdrawProcessing').style.display = 'none';
                 document.getElementById('withdrawSuccess').style.display = 'block';
                 document.getElementById('withdrawSuccessAmount').textContent = amount.toFixed(2) + ' TON';
@@ -266,8 +277,11 @@
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
+                
+                // 🔥 OPSIONAL: Kirim notifikasi ke user via Telegram Bot
+                sendWithdrawNotification(telegramUser.id, amount, userWalletAddress);
+                
             } else {
-                // Show error
                 document.getElementById('withdrawProcessing').style.display = 'none';
                 document.getElementById('withdrawError').style.display = 'block';
                 document.getElementById('withdrawErrorMessage').textContent = data.error || 'Withdraw gagal, silakan coba lagi';
@@ -286,6 +300,23 @@
                 processBtn.disabled = false;
                 processBtn.innerHTML = originalText;
             }
+        }
+    }
+    
+    // 🔥 Fungsi untuk mengirim notifikasi ke Telegram (opsional)
+    async function sendWithdrawNotification(telegramId, amount, walletAddress) {
+        try {
+            await fetch('/api/notify-withdraw', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    amount: amount,
+                    wallet_address: walletAddress
+                })
+            });
+        } catch (e) {
+            console.error('Error sending notification:', e);
         }
     }
 
