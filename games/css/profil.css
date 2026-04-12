@@ -148,45 +148,57 @@ body {
     font-family: monospace;
 }
 
-/* Stats Grid */
 .stats-grid-profile {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
     gap: 12px;
     margin-bottom: 24px;
+    flex-wrap: wrap;
 }
 
 .stat-box {
     background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 16px;
-    padding: 16px;
-    text-align: center;
+    padding: 12px 16px;
+    flex: 1;
+    min-width: 0;
     transition: all 0.3s;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
-.stat-box i {
-    font-size: 28px;
+.stat-box i, 
+.stat-box img {
+    font-size: 24px;
     color: #FFD700;
-    margin-bottom: 8px;
-    display: block;
+    margin-bottom: 0;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
 }
 
 .stat-box-info {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
 }
 
 .stat-label {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--tg-hint-color);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .stat-number {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--tg-text-color);
+    line-height: 1.2;
 }
 
 /* Action Buttons - HANYA DEPOSIT */
