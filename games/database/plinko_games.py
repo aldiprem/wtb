@@ -11,32 +11,32 @@ DB_PATH = Path(__file__).parent.parent.parent / 'data' / 'plinko.db'
 
 TARGET_BANDAR_PROFIT = 5.0
 
-# Konfigurasi multiplier untuk setiap risk level (tampilan visual saja)
+# Konfigurasi multiplier untuk setiap risk level - SEMUA DIKECILKAN
 RISK_MULTIPLIERS = {
-    'low': [5, 4, 3, 2, 1, 0.5, 1, 2, 3, 4, 5],
-    'medium': [15, 10, 5, 2.5, 1, 0.2, 1, 2.5, 5, 10, 15],
-    'high': [20, 10, 2, 1.5, 0.8, 0.5, 0.1, 0.0, 0.1, 0.5, 0.8, 1.5, 2, 10, 20]
+    'low': [2, 1.5, 1, 0.8, 0.5, 0.3, 0.5, 0.8, 1, 1.5, 2],  # Max 2x
+    'medium': [3, 2, 1.5, 1, 0.5, 0.2, 0.5, 1, 1.5, 2, 3],    # Max 3x
+    'high': [4, 3, 2, 1.5, 1, 0.5, 0.2, 0.1, 0.0, 0.1, 0.2, 0.5, 1, 1.5, 2, 3, 4]  # Max 4x
 }
 
-# Multiplier kecil untuk force games (magnet ke angka kecil)
+# Multiplier kecil untuk force games (paling kecil, bikin player rugi total)
 SMALL_MULTIPLIERS = {
-    'low': [0.5, 0.5, 0.5, 0.5, 1, 1, 2],
-    'medium': [0.2, 0.2, 0.2, 0.5, 0.5, 1, 1, 2.5],
-    'high': [0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.5, 0.8, 1, 1]
+    'low': [0.3, 0.3, 0.3, 0.5, 0.5, 0.5, 0.8],
+    'medium': [0.1, 0.1, 0.1, 0.2, 0.2, 0.5, 0.5, 0.5],
+    'high': [0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.1, 0.1, 0.2, 0.2]
 }
 
-# Multiplier sedang (kadang-kadang muncul untuk membuat user tetap bermain)
+# Multiplier sedang (jarang muncul)
 MEDIUM_MULTIPLIERS = {
-    'low': [2, 2.5, 3, 3.5],
-    'medium': [2.5, 3, 4, 5],
-    'high': [1.5, 2, 2.5, 3, 4]
+    'low': [1, 1.2, 1.5],
+    'medium': [1.5, 2, 2.5],
+    'high': [1, 1.5, 2]
 }
 
-# Multiplier besar (jackpot) - persentase kemunculan sangat kecil
+# Multiplier besar (HAMPIR TIDAK PERNAH MUNCUL - cuma buat gertakan)
 BIG_MULTIPLIERS = {
-    'low': [4, 5],
-    'medium': [10, 15],
-    'high': [8, 10, 15, 20]
+    'low': [2, 2.5],
+    'medium': [3, 4],
+    'high': [3, 4, 5]
 }
 
 def get_db():
