@@ -624,7 +624,7 @@ async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
 # ==================== ENDPOINT WITHDRAW REAL ====================
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
-    """Proses withdraw TON REAL - mengirim TON sungguhan"""
+    """Proses withdraw TON - ambil wallet address dari database"""
     init_db()
     data = request.json
     
@@ -633,7 +633,7 @@ def process_withdraw_real():
     
     telegram_id = data.get('telegram_id')
     amount = data.get('amount')
-    wallet_address = data.get('wallet_address')
+    wallet_address = data.get('wallet_address')  # Optional, bisa dari frontend
     
     if not telegram_id:
         return jsonify({"success": False, "error": "telegram_id required"}), 400
@@ -644,17 +644,21 @@ def process_withdraw_real():
     if amount < 0.1:
         return jsonify({"success": False, "error": "Minimum withdraw 0.1 TON"}), 400
     
+    # 🔥 AMBIL WALLET ADDRESS DARI DATABASE jika tidak dikirim dari frontend
     if not wallet_address:
-        return jsonify({"success": False, "error": "Wallet address required"}), 400
-    
-    # 🔥 KONVERSI ADDRESS KE FRIENDLY FORMAT
-    formatted_addr = raw_ton_to_friendly(wallet_address)
+        from games.database.games import get_user_withdraw_wallet
+        wallet_address = get_user_withdraw_wallet(telegram_id)
+        
+        if not wallet_address:
+            return jsonify({
+                "success": False, 
+                "error": "No wallet connected. Please connect your wallet first!"
+            }), 400
     
     print(f"📝 Withdraw request:")
     print(f"   User: {telegram_id}")
     print(f"   Amount: {amount} TON")
-    print(f"   Original address: {wallet_address}")
-    print(f"   Formatted address: {formatted_addr}")
+    print(f"   Wallet address: {wallet_address}")
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -662,7 +666,7 @@ def process_withdraw_real():
         cursor = conn.cursor()
         
         # Cek user dan balance
-        cursor.execute("SELECT balance, wallet_address FROM users WHERE telegram_id = ?", (telegram_id,))
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
         user = cursor.fetchone()
         
         if not user:
@@ -684,7 +688,7 @@ def process_withdraw_real():
         
         # JALANKAN ASYNC FUNCTION
         import asyncio
-        success, result = asyncio.run(send_ton_auto(telegram_id, amount, formatted_addr, MERCHANT_MNEMONIC))
+        success, result = asyncio.run(send_ton_auto(telegram_id, amount, wallet_address, MERCHANT_MNEMONIC))
         
         if not success:
             conn.close()
@@ -716,7 +720,7 @@ def process_withdraw_real():
         conn.commit()
         conn.close()
         
-        print(f"✅ Withdraw completed: {amount} TON to {formatted_addr}")
+        print(f"✅ Withdraw completed: {amount} TON to {wallet_address}")
         
         return jsonify({
             "success": True,
@@ -731,3 +735,63 @@ def process_withdraw_real():
         print(f"❌ Withdraw error: {e}")
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+    
+@games_bp.route('/save-wallet-session', methods=['POST'])
+def save_wallet_session():
+    """Simpan wallet session user"""
+    init_db()
+    data = request.json
+    
+    telegram_id = data.get('telegram_id')
+    wallet_address = data.get('wallet_address')
+    session_id = data.get('session_id')
+    
+    if not telegram_id or not wallet_address:
+        return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+    
+    try:
+        from games.database.games import save_wallet_session as db_save_session
+        db_save_session(telegram_id, wallet_address, session_id)
+        return jsonify({'success': True, 'message': 'Wallet session saved'})
+    except Exception as e:
+        print(f"❌ Error saving wallet session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@games_bp.route('/deactivate-wallet-session', methods=['POST'])
+def deactivate_wallet_session():
+    """Nonaktifkan wallet session (disconnect)"""
+    init_db()
+    data = request.json
+    
+    telegram_id = data.get('telegram_id')
+    wallet_address = data.get('wallet_address')
+    
+    if not telegram_id:
+        return jsonify({'success': False, 'error': 'telegram_id required'}), 400
+    
+    try:
+        from games.database.games import deactivate_wallet_session as db_deactivate
+        db_deactivate(telegram_id, wallet_address)
+        return jsonify({'success': True, 'message': 'Wallet session deactivated'})
+    except Exception as e:
+        print(f"❌ Error deactivating wallet session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@games_bp.route('/active-wallet/<int:telegram_id>', methods=['GET'])
+def get_active_wallet(telegram_id):
+    """Dapatkan wallet address yang sedang aktif untuk withdraw"""
+    init_db()
+    
+    try:
+        from games.database.games import get_user_withdraw_wallet
+        wallet_address = get_user_withdraw_wallet(telegram_id)
+        
+        if wallet_address:
+            return jsonify({'success': True, 'wallet_address': wallet_address})
+        else:
+            return jsonify({'success': False, 'error': 'No active wallet found'}), 404
+    except Exception as e:
+        print(f"❌ Error getting active wallet: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

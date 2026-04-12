@@ -319,13 +319,26 @@
             return;
         }
         
-        if (!userWalletAddress) {
-            alert('Wallet TON belum terhubung. Silakan deposit terlebih dahulu untuk menghubungkan wallet.');
+        if (!telegramUser || !telegramUser.id) {
+            alert('User tidak ditemukan');
             return;
         }
         
-        if (!telegramUser || !telegramUser.id) {
-            alert('User tidak ditemukan');
+        // 🔥 CEK WALLET SESSION DARI DATABASE
+        try {
+            const walletResponse = await fetch(`/api/games/active-wallet/${telegramUser.id}`);
+            const walletData = await walletResponse.json();
+            
+            if (!walletData.success || !walletData.wallet_address) {
+                alert('Wallet TON belum terhubung. Silakan connect wallet terlebih dahulu di halaman Games.');
+                return;
+            }
+            
+            userWalletAddress = walletData.wallet_address;
+            
+        } catch (error) {
+            console.error('Error checking wallet session:', error);
+            alert('Gagal memeriksa koneksi wallet. Silakan coba lagi.');
             return;
         }
         

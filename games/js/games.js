@@ -161,19 +161,25 @@
             }
 
             tonConnectUI.onStatusChange(async (wallet) => {
-                console.log('📱 Wallet status changed:', wallet ? 'connected' : 'disconnected');
+                debugLog('📱 Wallet status changed:', wallet);
                 
-                if (wallet) {
-                    walletConnected = true;
-                    walletAddress = wallet.account.address;
-                    if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
-                    console.log('✅ Wallet connected:', walletAddress);
+                if (wallet && telegramUser) {
+                    updateWalletStatus('connected');
+                    displayWalletInfo(wallet);
+                    await updateUserWallet(telegramUser.id, wallet.account.address);
+                    
+                    // 🔥 SIMPAN WALLET SESSION KE DATABASE
+                    await saveWalletSession(telegramUser.id, wallet.account.address);
+                    
                 } else {
-                    walletConnected = false;
-                    walletAddress = null;
-                    console.log('❌ Wallet disconnected');
+                    updateWalletStatus('disconnected');
+                    document.getElementById('wallet-info')?.classList.add('hidden');
+                    
+                    // 🔥 NONAKTIFKAN SESSION SAAT DISCONNECT
+                    if (telegramUser) {
+                        await deactivateWalletSession(telegramUser.id);
+                    }
                 }
-                updateWalletUI();
             });
 
             console.log('✅ TON Connect initialized successfully');
@@ -182,6 +188,40 @@
             createManualConnectButton();
         }
     }
+
+    async function saveWalletSession(telegramId, walletAddress) {
+        try {
+            const response = await fetch(`${CONFIG.TUNNEL_URL}/api/games/save-wallet-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId.toString(),
+                    wallet_address: walletAddress
+                })
+            });
+            const data = await response.json();
+            debugLog('✅ Wallet session saved:', data);
+        } catch (error) {
+            debugLog('❌ Error saving wallet session:', error);
+        }
+    }
+
+    async function deactivateWalletSession(telegramId) {
+        try {
+            const response = await fetch(`${CONFIG.TUNNEL_URL}/api/games/deactivate-wallet-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: telegramId.toString()
+                })
+            });
+            const data = await response.json();
+            debugLog('✅ Wallet session deactivated:', data);
+        } catch (error) {
+            debugLog('❌ Error deactivating wallet session:', error);
+        }
+    }
+
 
     function createManualConnectButton() {
         const container = document.getElementById('ton-connect-container');

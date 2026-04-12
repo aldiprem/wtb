@@ -16,7 +16,7 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Tabel users
+    # Tabel users (existing)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             telegram_id INTEGER PRIMARY KEY,
@@ -29,6 +29,21 @@ def init_db():
             wallet_address TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_seen TIMESTAMP
+        )
+    ''')
+    
+    # 🔥 TABEL BARU: wallet_sessions - untuk menyimpan wallet address yang sedang connect
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS wallet_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id INTEGER NOT NULL,
+            wallet_address TEXT NOT NULL,
+            session_id TEXT,
+            is_active BOOLEAN DEFAULT 1,
+            connected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_verified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (telegram_id) REFERENCES users(telegram_id),
+            UNIQUE(telegram_id, wallet_address)
         )
     ''')
     
@@ -45,7 +60,7 @@ def init_db():
         )
     ''')
     
-    # 🔥 TAMBAHKAN TABEL withdraw_requests jika belum ada
+    # Tabel withdraw_requests
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS withdraw_requests (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +75,7 @@ def init_db():
         )
     ''')
     
-    # 🔥 TAMBAHKAN TABEL payment_tracking jika belum ada
+    # Tabel payment_tracking
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS payment_tracking (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,7 +109,7 @@ def init_db():
             except:
                 pass
     
-    # Cek dan tambah kolom di withdraw_requests jika perlu
+    # Cek dan tambah kolom di withdraw_requests
     cursor.execute("PRAGMA table_info(withdraw_requests)")
     withdraw_columns = [col[1] for col in cursor.fetchall()]
     
@@ -122,6 +137,109 @@ def init_db():
     conn.commit()
     conn.close()
     print("✅ Database siap dengan semua tabel yang diperlukan")
+
+# ==================== WALLET SESSION FUNCTIONS ====================
+
+def save_wallet_session(telegram_id, wallet_address, session_id=None):
+    """Simpan wallet address yang sedang connect ke database"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    current_time = get_current_time()
+    
+    # Nonaktifkan session lama untuk user ini
+    cursor.execute('''
+        UPDATE wallet_sessions 
+        SET is_active = 0 
+        WHERE telegram_id = ?
+    ''', (telegram_id,))
+    
+    # Simpan session baru
+    cursor.execute('''
+        INSERT INTO wallet_sessions (telegram_id, wallet_address, session_id, is_active, connected_at, last_verified)
+        VALUES (?, ?, ?, 1, ?, ?)
+        ON CONFLICT(telegram_id, wallet_address) DO UPDATE SET
+            is_active = 1,
+            session_id = COALESCE(?, session_id),
+            last_verified = ?
+    ''', (telegram_id, wallet_address, session_id, current_time, current_time, session_id, current_time))
+    
+    # Update juga di tabel users
+    cursor.execute('''
+        UPDATE users 
+        SET wallet_address = ?, last_seen = ?
+        WHERE telegram_id = ?
+    ''', (wallet_address, current_time, telegram_id))
+    
+    conn.commit()
+    conn.close()
+    print(f"✅ Wallet session saved: {telegram_id} -> {wallet_address}")
+
+
+def get_active_wallet_session(telegram_id):
+    """Dapatkan wallet address yang sedang aktif untuk user"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        SELECT wallet_address, session_id, connected_at, last_verified
+        FROM wallet_sessions 
+        WHERE telegram_id = ? AND is_active = 1
+        ORDER BY last_verified DESC LIMIT 1
+    ''', (telegram_id,))
+    
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'wallet_address': row['wallet_address'],
+            'session_id': row['session_id'],
+            'connected_at': row['connected_at'],
+            'last_verified': row['last_verified']
+        }
+    return None
+
+
+def deactivate_wallet_session(telegram_id, wallet_address=None):
+    """Nonaktifkan wallet session (disconnect)"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    if wallet_address:
+        cursor.execute('''
+            UPDATE wallet_sessions 
+            SET is_active = 0 
+            WHERE telegram_id = ? AND wallet_address = ?
+        ''', (telegram_id, wallet_address))
+    else:
+        cursor.execute('''
+            UPDATE wallet_sessions 
+            SET is_active = 0 
+            WHERE telegram_id = ?
+        ''', (telegram_id,))
+    
+    conn.commit()
+    conn.close()
+    print(f"✅ Wallet session deactivated for user {telegram_id}")
+
+
+def get_user_withdraw_wallet(telegram_id):
+    """Dapatkan wallet address untuk withdraw (prioritaskan dari session aktif)"""
+    # Cek dari session aktif dulu
+    session = get_active_wallet_session(telegram_id)
+    if session and session['wallet_address']:
+        return session['wallet_address']
+    
+    # Fallback ke wallet_address dari tabel users
+    user = get_user_data(telegram_id)
+    if user and user.get('wallet_address'):
+        return user['wallet_address']
+    
+    return None
+
+
+# ==================== EXISTING FUNCTIONS ====================
 
 def get_or_create_user(telegram_id, username, first_name, referred_by=None):
     """Mencari user atau membuat user baru dengan balance 0 TON"""
@@ -173,6 +291,7 @@ def get_or_create_user(telegram_id, username, first_name, referred_by=None):
         conn.close()
         return new_user
 
+
 def get_user_data(telegram_id):
     """Mendapatkan seluruh data user"""
     conn = sqlite3.connect(DB_PATH)
@@ -182,6 +301,7 @@ def get_user_data(telegram_id):
     user = cursor.fetchone()
     conn.close()
     return dict(user) if user else None
+
 
 def update_user_balance(telegram_id, amount_change):
     """Update balance user (dalam TON)"""
@@ -200,6 +320,7 @@ def update_user_balance(telegram_id, amount_change):
     
     return rows_affected > 0
 
+
 def add_game_history(telegram_id, game_name, bet_amount, win_amount, multiplier):
     """Menambahkan riwayat game (dalam TON)"""
     conn = sqlite3.connect(DB_PATH)
@@ -214,6 +335,7 @@ def add_game_history(telegram_id, game_name, bet_amount, win_amount, multiplier)
     conn.close()
     return True
 
+
 def delete_user_data(telegram_id):
     """Menghapus user dan riwayat gamenya"""
     conn = sqlite3.connect(DB_PATH)
@@ -221,12 +343,14 @@ def delete_user_data(telegram_id):
     
     cursor.execute("DELETE FROM game_history WHERE telegram_id = ?", (telegram_id,))
     cursor.execute("DELETE FROM users WHERE telegram_id = ?", (telegram_id,))
+    cursor.execute("DELETE FROM wallet_sessions WHERE telegram_id = ?", (telegram_id,))
     
     rows_affected = cursor.rowcount
     conn.commit()
     conn.close()
     
     return rows_affected > 0
+
 
 # Jalankan inisialisasi
 init_db()
