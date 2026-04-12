@@ -495,22 +495,35 @@ def send_ton_auto(telegram_id, amount_ton, to_address, private_key_hex):
             
             TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
             
+            # 🔥 KONVERSI PRIVATE KEY DARI HEX STRING KE BYTES
+            if isinstance(private_key_hex, str):
+                private_key_bytes = bytes.fromhex(private_key_hex)
+            else:
+                private_key_bytes = private_key_hex
+            
+            print(f"🔑 Private key length: {len(private_key_bytes)} bytes")
+            
             # Inisialisasi client
             client = TonapiClient(
                 api_key=TONCENTER_API_KEY,
                 is_testnet=False  # Mainnet
             )
             
-            # Buat wallet dari private key
+            # Buat wallet dari private key (dalam bytes)
             wallet = WalletV4R2.from_private_key(
                 client=client,
-                private_key=private_key_hex
+                private_key=private_key_bytes  # ← HARUS BYTES, BUKAN STRING
             )
+            
+            # Konversi amount ke nano
+            amount_nano = to_nano(amount_ton)
+            
+            print(f"📤 Sending {amount_ton} TON ({amount_nano} nano) to {to_address}")
             
             # Kirim transaksi
             tx_hash = wallet.transfer(
                 destination=to_address,
-                amount=to_nano(amount_ton),
+                amount=amount_nano,
                 body=f"Withdraw from BarackGift to user {telegram_id}",
                 send_mode=3
             )
@@ -518,43 +531,19 @@ def send_ton_auto(telegram_id, amount_ton, to_address, private_key_hex):
             print(f"✅ Withdraw sent via tonutils: {tx_hash}")
             return True, tx_hash
             
-        except ImportError:
-            print("⚠️ tonutils tidak tersedia, menggunakan metode fallback...")
+        except ImportError as e:
+            print(f"⚠️ tonutils tidak tersedia: {e}")
+            return False, "tonutils library not installed. Run: pip install tonutils"
         
-        # 🔥 METODE 2: Fallback menggunakan TON Center API (manual)
-        # Konversi ke nano
-        amount_nano = int(amount_ton * 1_000_000_000)
-        
-        # 1. Dapatkan seqno wallet
-        seqno_response = requests.get(
-            f'https://toncenter.com/api/v2/getWalletInformation',
-            params={'address': WEB_ADDRESS},
-            headers={'X-API-Key': TONCENTER_API_KEY}
-        )
-        
-        if not seqno_response.ok:
-            return False, f"Failed to get seqno: {seqno_response.text}"
-        
-        seqno_data = seqno_response.json()
-        if not seqno_data.get('ok'):
-            return False, f"API error: {seqno_data}"
-        
-        seqno = seqno_data.get('result', {}).get('seqno', 0)
-        
-        # 2. Dapatkan wallet state init
-        wallet_info = seqno_data.get('result', {})
-        wallet_state_init = wallet_info.get('wallet_state_init', '')
-        
-        # 3. Buat transfer message (format raw)
-        # Ini rumit, lebih baik install tonutils
-        return False, "TON Center API manual transfer memerlukan tonutils. Install: pip install tonutils"
+        except Exception as e:
+            print(f"❌ Error in tonutils: {e}")
+            return False, str(e)
         
     except Exception as e:
         print(f"❌ Error sending TON: {e}")
         return False, str(e)
 
 # ==================== ENDPOINT WITHDRAW REAL ====================
-
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
     """Proses withdraw TON - MENGIRIM TON SUNGGAHAN ke wallet user"""
@@ -580,6 +569,10 @@ def process_withdraw_real():
     if not wallet_address:
         return jsonify({"success": False, "error": "Wallet address required"}), 400
     
+    # 🔥 VALIDASI FORMAT WALLET ADDRESS
+    if not wallet_address.startswith('0:') and not wallet_address.startswith('EQ'):
+        return jsonify({"success": False, "error": "Invalid wallet address format"}), 400
+    
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -604,14 +597,21 @@ def process_withdraw_real():
         
         if not PRIVATE_KEY:
             conn.close()
-            return jsonify({"success": False, "error": "Private key not configured"}), 500
+            return jsonify({"success": False, "error": "Private key not configured in .env"}), 500
+        
+        # 🔥 VALIDASI PRIVATE KEY
+        try:
+            bytes.fromhex(PRIVATE_KEY)
+        except ValueError:
+            conn.close()
+            return jsonify({"success": False, "error": "Invalid private key format in .env"}), 500
         
         # 🔥 KIRIM TON KE WALLET USER
-        success, tx_hash = send_ton_auto(telegram_id, amount, wallet_address, PRIVATE_KEY)
+        success, result = send_ton_auto(telegram_id, amount, wallet_address, PRIVATE_KEY)
         
         if not success:
             conn.close()
-            return jsonify({"success": False, "error": f"Failed to send TON: {tx_hash}"}), 500
+            return jsonify({"success": False, "error": f"Failed to send TON: {result}"}), 500
         
         # 🔥 SETELAH TRANSFER BERHASIL, KURANGI BALANCE
         cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
@@ -630,39 +630,52 @@ def process_withdraw_real():
         reference = f"wd_{telegram_id}_{int(datetime.now().timestamp())}"
         
         try:
+            # Buat tabel withdraw_requests jika belum ada
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS withdraw_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    telegram_id INTEGER,
+                    amount_ton REAL,
+                    destination_address TEXT,
+                    reference TEXT,
+                    transaction_hash TEXT,
+                    status TEXT,
+                    created_at TIMESTAMP
+                )
+            ''')
             cursor.execute('''
                 INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, transaction_hash, status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (telegram_id, amount, wallet_address, reference, tx_hash, 'completed', get_current_time()))
-        except:
-            pass
+            ''', (telegram_id, amount, wallet_address, reference, result, 'completed', get_current_time()))
+        except Exception as e:
+            print(f"⚠️ Could not save withdraw request: {e}")
         
         conn.commit()
         conn.close()
         
         print(f"💰 Withdraw REAL: {amount} TON sent to {wallet_address}")
-        print(f"   TX Hash: {tx_hash}")
+        print(f"   TX Hash: {result}")
         print(f"   New balance: {new_balance} TON")
         
-        # 🔥 KIRIM NOTIFIKASI KE TELEGRAM (opsional)
+        # 🔥 KIRIM NOTIFIKASI KE TELEGRAM
         try:
             BOT_TOKEN = os.getenv('BOT_TOKEN', '')
             if BOT_TOKEN:
-                message = f"✅ *Withdraw Berhasil!*\n\nJumlah: *{amount} TON*\nWallet: `{wallet_address}`\nTX: `{tx_hash[:20]}...`\n\nTerima kasih!"
+                message = f"✅ *Withdraw Berhasil!*\n\nJumlah: *{amount} TON*\nWallet: `{wallet_address[:10]}...{wallet_address[-6:]}`\nTX: `{result[:20]}...`\n\nTerima kasih telah menggunakan BarackGift!"
                 requests.post(
                     f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
                     json={'chat_id': telegram_id, 'text': message, 'parse_mode': 'Markdown'},
                     timeout=5
                 )
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️ Could not send notification: {e}")
         
         return jsonify({
             "success": True,
             "message": f"Withdraw {amount} TON berhasil dikirim!",
             "amount": amount,
             "new_balance": new_balance,
-            "transaction_hash": tx_hash,
+            "transaction_hash": result,
             "wallet_address": wallet_address
         })
         
