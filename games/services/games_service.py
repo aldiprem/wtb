@@ -482,65 +482,69 @@ def process_withdraw():
 def send_ton_auto(telegram_id, amount_ton, to_address, private_key_hex):
     """
     Kirim TON otomatis dari wallet merchant ke user
-    Menggunakan TON Center API + tonutils (jika tersedia)
+    Menggunakan TON Center API + tonutils
     """
-    WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra"
-    
     try:
-        # 🔥 METODE 1: Gunakan tonutils (lebih mudah)
+        from tonutils.client import TonapiClient
+        from tonutils.wallet import WalletV4R2
+        from tonutils.utils import to_nano
+        
+        TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
+        
+        # 🔥 KONVERSI PRIVATE KEY DARI HEX STRING KE BYTES
+        if isinstance(private_key_hex, str):
+            private_key_bytes = bytes.fromhex(private_key_hex)
+        else:
+            private_key_bytes = private_key_hex
+        
+        print(f"🔑 Private key length: {len(private_key_bytes)} bytes")
+        print(f"📤 Sending {amount_ton} TON to {to_address}")
+        
+        # Inisialisasi client
+        client = TonapiClient(
+            api_key=TONCENTER_API_KEY,
+            is_testnet=False  # Mainnet
+        )
+        
+        # Buat wallet dari private key
+        wallet = WalletV4R2.from_private_key(
+            client=client,
+            private_key=private_key_bytes
+        )
+        
+        # Dapatkan address wallet merchant
+        merchant_address = wallet.address.to_string(True, True, True)
+        print(f"💰 Merchant wallet address: {merchant_address}")
+        
+        # Cek saldo merchant wallet terlebih dahulu
         try:
-            from tonutils.client import TonapiClient
-            from tonutils.wallet import WalletV4R2
-            from tonutils.utils import to_nano
+            balance = client.get_address_balance(merchant_address)
+            balance_ton = balance / 1_000_000_000
+            print(f"💰 Merchant balance: {balance_ton} TON")
             
-            TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
-            
-            # 🔥 KONVERSI PRIVATE KEY DARI HEX STRING KE BYTES
-            if isinstance(private_key_hex, str):
-                private_key_bytes = bytes.fromhex(private_key_hex)
-            else:
-                private_key_bytes = private_key_hex
-            
-            print(f"🔑 Private key length: {len(private_key_bytes)} bytes")
-            
-            # Inisialisasi client
-            client = TonapiClient(
-                api_key=TONCENTER_API_KEY,
-                is_testnet=False  # Mainnet
-            )
-            
-            # Buat wallet dari private key (dalam bytes)
-            wallet = WalletV4R2.from_private_key(
-                client=client,
-                private_key=private_key_bytes  # ← HARUS BYTES, BUKAN STRING
-            )
-            
-            # Konversi amount ke nano
-            amount_nano = to_nano(amount_ton)
-            
-            print(f"📤 Sending {amount_ton} TON ({amount_nano} nano) to {to_address}")
-            
-            # Kirim transaksi
-            tx_hash = wallet.transfer(
-                destination=to_address,
-                amount=amount_nano,
-                body=f"Withdraw from BarackGift to user {telegram_id}",
-                send_mode=3
-            )
-            
-            print(f"✅ Withdraw sent via tonutils: {tx_hash}")
-            return True, tx_hash
-            
-        except ImportError as e:
-            print(f"⚠️ tonutils tidak tersedia: {e}")
-            return False, "tonutils library not installed. Run: pip install tonutils"
-        
+            if balance_ton < amount_ton:
+                return False, f"Insufficient merchant balance. Available: {balance_ton} TON, Required: {amount_ton} TON"
         except Exception as e:
-            print(f"❌ Error in tonutils: {e}")
-            return False, str(e)
+            print(f"⚠️ Could not check balance: {e}")
         
+        # Kirim transaksi
+        tx_hash = wallet.transfer(
+            destination=to_address,
+            amount=to_nano(amount_ton),
+            body=f"Withdraw from BarackGift to user {telegram_id}",
+            send_mode=3
+        )
+        
+        print(f"✅ Withdraw sent via tonutils: {tx_hash}")
+        return True, tx_hash
+        
+    except ImportError as e:
+        print(f"❌ tonutils not installed: {e}")
+        return False, "tonutils library not installed. Run: pip install tonutils"
+    
     except Exception as e:
         print(f"❌ Error sending TON: {e}")
+        traceback.print_exc()
         return False, str(e)
 
 # ==================== ENDPOINT WITHDRAW REAL ====================
