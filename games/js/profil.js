@@ -166,33 +166,23 @@
     function rawToFriendly(rawAddress) {
         if (!rawAddress) return rawAddress;
         
-        // Jika sudah dalam format friendly, return as-is
         if (rawAddress.startsWith('EQ') || rawAddress.startsWith('UQ')) {
             return rawAddress;
         }
         
-        // Jika raw format
         if (rawAddress.startsWith('0:')) {
             try {
-                const parts = rawAddress.split(':');
-                const hashHex = parts[1];
-                
-                // 🔥 PASTIKAN HASH LENGKAP (64 karakter)
+                const hashHex = rawAddress.substring(2);
                 if (hashHex.length !== 64) {
                     console.error('Invalid hash length:', hashHex.length);
-                    // Coba ambil dari data-full-address atau return raw
                     return rawAddress;
                 }
                 
-                // Konversi hex ke bytes
                 const hashBytes = new Uint8Array(hashHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
-                
-                // 🔥 GUNAKAN TAG YANG BENAR (0x51 untuk non-bounceable / wallet biasa)
                 const addressBytes = new Uint8Array(1 + hashBytes.length);
-                addressBytes[0] = 0x51;  // Non-bounceable (UQ prefix)
+                addressBytes[0] = 0x51;
                 addressBytes.set(hashBytes, 1);
                 
-                // Encode ke base64 URL-safe
                 let binary = '';
                 for (let i = 0; i < addressBytes.length; i++) {
                     binary += String.fromCharCode(addressBytes[i]);
@@ -200,7 +190,9 @@
                 let base64 = btoa(binary);
                 base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
                 
-                return 'UQ' + base64;
+                const result = 'UQ' + base64;
+                console.log('Converted:', {raw: rawAddress, friendly: result});
+                return result;
             } catch (e) {
                 console.error('Address conversion error:', e);
                 return rawAddress;

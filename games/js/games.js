@@ -1,4 +1,4 @@
-// games/js/games.js - PERBAIKAN TON CONNECT
+// games/js/games.js - PERBAIKAN TAMPILAN WALLET ADDRESS
 
 (function() {
     console.log('🎮 Games Page Initialized');
@@ -13,8 +13,8 @@
     let walletConnected = false;
     let walletAddress = null;
 
-    const API_BASE = window.location.origin;  // 🔥 Gunakan ini, bukan CONFIG.TUNNEL_URL
-    const WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra";
+    const API_BASE = window.location.origin;
+    const WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra"; // Alamat MERCHANT untuk deposit
     const MANIFEST_URL = 'https://companel.shop/tonconnect-manifest.json';
 
     function formatNumberWithCommas(number) {
@@ -23,6 +23,44 @@
         let decimalPart = parts[1];
         integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         return decimalPart ? integerPart + '.' + decimalPart : integerPart;
+    }
+
+    // 🔥 FUNGSI KONVERSI RAW KE FRIENDLY (SAMA DENGAN DI PROFIL)
+    function rawToFriendly(rawAddress) {
+        if (!rawAddress) return rawAddress;
+        
+        if (rawAddress.startsWith('EQ') || rawAddress.startsWith('UQ')) {
+            return rawAddress;
+        }
+        
+        if (rawAddress.startsWith('0:')) {
+            try {
+                const hashHex = rawAddress.substring(2);
+                if (hashHex.length !== 64) {
+                    console.error('Invalid hash length:', hashHex.length);
+                    return rawAddress;
+                }
+                
+                const hashBytes = new Uint8Array(hashHex.match(/.{2}/g).map(byte => parseInt(byte, 16)));
+                const addressBytes = new Uint8Array(1 + hashBytes.length);
+                addressBytes[0] = 0x51;
+                addressBytes.set(hashBytes, 1);
+                
+                let binary = '';
+                for (let i = 0; i < addressBytes.length; i++) {
+                    binary += String.fromCharCode(addressBytes[i]);
+                }
+                let base64 = btoa(binary);
+                base64 = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                
+                return 'UQ' + base64;
+            } catch (e) {
+                console.error('Address conversion error:', e);
+                return rawAddress;
+            }
+        }
+        
+        return rawAddress;
     }
 
     async function getTelegramUser() {
@@ -110,7 +148,6 @@
     }
 
     async function initTonConnect() {
-        // Tunggu hingga TON Connect UI tersedia
         let TonConnectUIClass = null;
         
         for (let i = 0; i < 50; i++) {
@@ -143,7 +180,6 @@
                 return;
             }
             
-            // 🔥 PERBAIKAN: Gunakan API_BASE untuk manifest URL
             tonConnectUI = new TonConnectUIClass({
                 manifestUrl: manifestUrl,
                 buttonRootId: 'ton-connect-container',
@@ -155,7 +191,10 @@
                 walletConnected = true;
                 walletAddress = wallet.account.address;
                 updateWalletUI();
-                if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
+                if (telegramUser?.id) {
+                    await updateUserWallet(telegramUser.id, walletAddress);
+                    await saveWalletSession(telegramUser.id, walletAddress);
+                }
                 console.log('✅ Wallet already connected:', walletAddress);
             }
 
@@ -165,17 +204,15 @@
                 if (wallet && telegramUser) {
                     walletConnected = true;
                     walletAddress = wallet.account.address;
-                    if (telegramUser?.id) await updateUserWallet(telegramUser.id, walletAddress);
+                    if (telegramUser?.id) {
+                        await updateUserWallet(telegramUser.id, walletAddress);
+                        await saveWalletSession(telegramUser.id, walletAddress);
+                    }
                     console.log('✅ Wallet connected:', walletAddress);
-                    
-                    // 🔥 SIMPAN WALLET SESSION
-                    await saveWalletSession(telegramUser.id, walletAddress);
                 } else {
                     walletConnected = false;
                     walletAddress = null;
                     console.log('❌ Wallet disconnected');
-                    
-                    // 🔥 NONAKTIFKAN SESSION
                     if (telegramUser) {
                         await deactivateWalletSession(telegramUser.id);
                     }
@@ -243,6 +280,7 @@
         const depositForm = document.getElementById('depositForm');
         const disconnectContainer = document.getElementById('disconnectContainer');
         const tonConnectContainer = document.getElementById('ton-connect-container');
+        const depositAddressEl = document.getElementById('depositAddress');
         
         if (walletConnected && walletAddress) {
             if (depositBtn) {
@@ -254,11 +292,21 @@
             }
             if (depositForm) {
                 depositForm.style.display = 'block';
-                const depositAddress = document.getElementById('depositAddress');
-                if (depositAddress) depositAddress.textContent = WEB_ADDRESS;
+                // 🔥 TAMPILKAN ALAMAT WALLET USER YANG TERHUBUNG (bukan merchant)
+                if (depositAddressEl) {
+                    // Konversi ke friendly format jika perlu
+                    let displayAddress = walletAddress;
+                    if (walletAddress.startsWith('0:')) {
+                        displayAddress = rawToFriendly(walletAddress);
+                    }
+                    // Truncate untuk tampilan
+                    const truncated = displayAddress.substring(0, 8) + '...' + displayAddress.substring(displayAddress.length - 6);
+                    depositAddressEl.textContent = truncated;
+                    depositAddressEl.setAttribute('data-full-address', displayAddress);
+                    depositAddressEl.title = 'Click to copy full address';
+                }
             }
             if (disconnectContainer) disconnectContainer.style.display = 'block';
-            // 🔥 SEMBUNYIKAN TOMBOL CONNECT KETIKA SUDAH CONNECT
             if (tonConnectContainer) tonConnectContainer.style.display = 'none';
         } else {
             if (depositBtn) {
@@ -270,7 +318,6 @@
             }
             if (depositForm) depositForm.style.display = 'none';
             if (disconnectContainer) disconnectContainer.style.display = 'none';
-            // 🔥 TAMPILKAN TOMBOL CONNECT KETIKA BELUM CONNECT
             if (tonConnectContainer) tonConnectContainer.style.display = 'block';
         }
     }
@@ -317,23 +364,6 @@
         if (modal) modal.style.display = 'none';
     }
 
-    function base64EncodeComment(comment) {
-        try {
-            if (comment.length > 120) comment = comment.substring(0, 120);
-            const encoder = new TextEncoder();
-            const commentBytes = encoder.encode(comment);
-            const prefix = new Uint8Array([0, 0, 0, 0]);
-            const fullBytes = new Uint8Array(prefix.length + commentBytes.length);
-            fullBytes.set(prefix);
-            fullBytes.set(commentBytes, prefix.length);
-            let binary = '';
-            for (let i = 0; i < fullBytes.length; i++) binary += String.fromCharCode(fullBytes[i]);
-            return btoa(binary);
-        } catch (e) {
-            return undefined;
-        }
-    }
-
     async function sendDeposit() {
         if (!walletConnected || !tonConnectUI) {
             alert('Silakan hubungkan wallet TON terlebih dahulu');
@@ -363,12 +393,13 @@
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
-                    address: WEB_ADDRESS,
+                    address: WEB_ADDRESS, // Kirim ke alamat MERCHANT
                     amount: amountNano
                 }]
             };
             
-            console.log('📤 Sending transaction:', transaction);
+            console.log('📤 Sending transaction to merchant:', WEB_ADDRESS);
+            console.log('📤 From wallet:', walletAddress);
             
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
@@ -418,7 +449,6 @@
             if (balanceEl) balanceEl.textContent = 'Login Required';
         }
         
-        // 🔥 INIT TON CONNECT
         await initTonConnect();
         
         // Navigation
@@ -479,9 +509,14 @@
     window.closeModal = closeDepositModal;
     window.copyDepositAddress = function() {
         const addressEl = document.getElementById('depositAddress');
-        if (addressEl?.textContent && addressEl.textContent !== '-') {
-            navigator.clipboard.writeText(addressEl.textContent);
-            alert('Address copied!');
+        // Ambil full address dari data attribute
+        let fullAddress = addressEl?.getAttribute('data-full-address');
+        if (!fullAddress && addressEl?.textContent) {
+            fullAddress = addressEl.textContent;
+        }
+        if (fullAddress && fullAddress !== '-') {
+            navigator.clipboard.writeText(fullAddress);
+            alert('Wallet address copied!');
         }
     };
 })();
