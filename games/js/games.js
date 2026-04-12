@@ -109,50 +109,32 @@
         }
     }
 
-    // 🔥 TON CONNECT INIT - HANYA UNTUK DI MODAL
+    // 🔥 TON CONNECT INIT - SAMA PERSIS DENGAN INDEX.HTML
     async function initTonConnect() {
-        // Tunggu hingga TON Connect UI tersedia
-        let TonConnectUIClass = null;
-        
-        for (let i = 0; i < 50; i++) {
-            if (typeof window.TonConnectUI !== 'undefined') {
-                TonConnectUIClass = window.TonConnectUI;
-                console.log('✅ Found window.TonConnectUI');
-                break;
+        if (typeof window.TonConnectUI === 'undefined') {
+            console.log('⏳ Waiting for TON Connect UI...');
+            for (let i = 0; i < 50; i++) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                if (typeof window.TonConnectUI !== 'undefined') break;
             }
-            if (typeof window.TON_CONNECT_UI !== 'undefined') {
-                TonConnectUIClass = window.TON_CONNECT_UI.TonConnectUI;
-                console.log('✅ Found window.TON_CONNECT_UI.TonConnectUI');
-                break;
-            }
-            await new Promise(resolve => setTimeout(resolve, 100));
         }
         
-        if (!TonConnectUIClass) {
+        if (typeof window.TonConnectUI === 'undefined') {
             console.error('❌ TON Connect UI not loaded');
             return;
         }
 
         try {
-            console.log('📝 Initializing TON Connect with manifest:', MANIFEST_URL);
+            // 🔥 GUNAKAN MANIFEST DARI TUNNEL URL (SAMA DENGAN INDEX.HTML)
+            const manifestUrl = `${API_BASE}/tonconnect-manifest.json`;
             
-            // 🔥 INISIALISASI TON CONNECT ke container di modal
-            tonConnectUI = new TonConnectUIClass({
-                manifestUrl: MANIFEST_URL,
+            console.log('📝 Initializing TON Connect with manifest:', manifestUrl);
+            
+            // 🔥 SAMA PERSIS DENGAN INDEX.HTML - gunakan 'ton-connect' sebagai buttonRootId
+            tonConnectUI = new window.TonConnectUI({
+                manifestUrl: manifestUrl,
                 buttonRootId: 'ton-connect-container',  // ← ID container di modal
-                language: 'en',
-                walletsListConfiguration: {
-                    includeWallets: [
-                        {
-                            name: 'Tonkeeper',
-                            aboutUrl: 'https://tonkeeper.com',
-                            imageUrl: 'https://tonkeeper.com/assets/tonconnect-icon.png',
-                            bridgeUrl: 'https://bridge.tonkeeper.com/bridge',
-                            universalLink: 'https://app.tonkeeper.com/ton-connect',
-                            deepLink: 'tonkeeper-tc://'
-                        }
-                    ]
-                }
+                language: 'en'
             });
 
             // Cek wallet yang sudah terhubung
@@ -182,7 +164,7 @@
                 updateWalletUI();
             });
 
-            console.log('✅ TON Connect initialized successfully');
+            console.log('✅ TON Connect initialized');
         } catch (error) {
             console.error('❌ TON Connect error:', error);
         }
