@@ -307,12 +307,20 @@
     }
 
     function checkMultiplierHit(ball) {
-        if (ball.y + BALL_RADIUS < canvas.height - 40) return false;
+        console.log('🎯 [DEBUG] checkMultiplierHit called, ball.y:', ball.y, 'canvas.height:', canvas.height);
         
+        if (ball.y + BALL_RADIUS < canvas.height - 40) {
+            console.log('🎯 [DEBUG] Ball not at bottom yet');
+            return false;
+        }
+        
+        console.log('🎯 [DEBUG] Ball at bottom, checking multipliers');
         updateMultiplierAreas();
         
         for (const area of multiplierAreas) {
             if (ball.x >= area.x && ball.x <= area.x + area.width) {
+                console.log('🎯 [DEBUG] Hit area:', area.index, 'multiplier:', area.multiplier);
+                
                 const winAmount = ball.bet * area.multiplier;
                 const netChange = winAmount;
                 
@@ -323,31 +331,15 @@
                 
                 const roundHash = generateRoundHash();
                 
-                // 🔥 PASTIKAN TELEGRAM USER TERSEDIA
-                if (!telegramUser) {
-                    const tg = window.Telegram.WebApp;
-                    telegramUser = tg.initDataUnsafe?.user || { id: null, first_name: 'Guest' };
-                }
+                console.log('🎯 [DEBUG] About to call saveGameResult, telegramUser:', telegramUser);
                 
-                // 🔥 TAMPUNG ERROR UNTUK DEBUG
-                try {
-                    console.log('🎯 Calling saveGameResult with:', {
-                        bet: ball.bet,
-                        multiplier: area.multiplier,
-                        winAmount: winAmount,
-                        hash: roundHash,
-                        user: telegramUser?.id
-                    });
-                    
-                    // 🔥 PANGGIL SAVE GAME RESULT DAN TUNGGU HASILNYA (sync)
-                    saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
-                } catch (err) {
-                    console.error('❌ Error in saveGameResult call:', err);
-                }
+                // 🔥 PANGGIL SAVE GAME RESULT
+                saveGameResult(ball.bet, area.multiplier, winAmount, roundHash);
                 
                 return true;
             }
         }
+        console.log('🎯 [DEBUG] No multiplier area hit');
         return false;
     }
     
@@ -1107,16 +1099,88 @@
         }
     }
 
+    function getTelegramUserSafe() {
+        try {
+            const tg = window.Telegram.WebApp;
+            
+            // Method 1: initDataUnsafe
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                return tg.initDataUnsafe.user;
+            }
+            
+            // Method 2: Parse from initData
+            if (tg.initData) {
+                const params = new URLSearchParams(tg.initData);
+                const userParam = params.get('user');
+                if (userParam) {
+                    return JSON.parse(decodeURIComponent(userParam));
+                }
+            }
+            
+            // Method 3: Global variable (if set by parent)
+            if (window.TelegramUser) {
+                return window.TelegramUser;
+            }
+            
+            console.error('❌ Cannot get Telegram user from any source');
+            return null;
+        } catch (error) {
+            console.error('❌ Error getting Telegram user:', error);
+            return null;
+        }
+    }
+
     // ==================== INITIALIZATION ====================
     async function init() {
         const tg = window.Telegram.WebApp;
         tg.expand();
         
-        // 🔥 AMBIL TELEGRAM USER DENGAN BENAR
-        const initDataUnsafe = tg.initDataUnsafe || {};
-        telegramUser = initDataUnsafe.user || { id: null, first_name: 'Guest' };
+        // 🔥 AMBIL TELEGRAM USER DENGAN CARA YANG LEBIH AMAN
+        let user = null;
         
-        console.log('👤 Telegram User:', telegramUser);
+        // Cara 1: Dari initDataUnsafe
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            user = tg.initDataUnsafe.user;
+            console.log('👤 User from initDataUnsafe:', user);
+        }
+        
+        // Cara 2: Backup dari WebApp (jika ada)
+        if (!user && tg.initData) {
+            try {
+                const params = new URLSearchParams(tg.initData);
+                const userParam = params.get('user');
+                if (userParam) {
+                    user = JSON.parse(decodeURIComponent(userParam));
+                    console.log('👤 User from initData parse:', user);
+                }
+            } catch(e) {
+                console.error('Error parsing initData:', e);
+            }
+        }
+        
+        // Cara 3: Fallback ke mock (HANYA UNTUK DEBUG - HAPUS NANTI)
+        if (!user || !user.id) {
+            console.warn('⚠️ No user data from Telegram, using fallback (DEBUG MODE)');
+            user = {
+                id: 7998861975,  // ID dari log Anda
+                first_name: 'Test User',
+                username: 'test_user',
+                photo_url: null
+            };
+        }
+        
+        telegramUser = user;
+        
+        console.log('✅ Final telegramUser:', telegramUser);
+        console.log('✅ User ID:', telegramUser?.id);
+        
+        // Jika tidak ada user ID, tampilkan error di UI
+        if (!telegramUser?.id) {
+            const balanceEl = document.getElementById('userBalance');
+            if (balanceEl) balanceEl.textContent = 'ERROR: No User';
+            alert('ERROR: Cannot identify Telegram user. Please restart the app.');
+            return;
+        }
         
         await loadUserBalance();
         await updateUserAvatar();
