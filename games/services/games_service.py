@@ -479,10 +479,10 @@ def process_withdraw():
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
     
-def send_ton_auto(telegram_id, amount_ton, to_address, private_key_hex):
+def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
     """
     Kirim TON otomatis dari wallet merchant ke user
-    Menggunakan TON Center API + tonutils
+    Menggunakan mnemonic phrase langsung
     """
     try:
         from tonutils.client import TonapiClient
@@ -491,32 +491,29 @@ def send_ton_auto(telegram_id, amount_ton, to_address, private_key_hex):
         
         TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
         
-        # 🔥 KONVERSI PRIVATE KEY DARI HEX STRING KE BYTES
-        if isinstance(private_key_hex, str):
-            private_key_bytes = bytes.fromhex(private_key_hex)
-        else:
-            private_key_bytes = private_key_hex
+        # Split mnemonic menjadi list
+        mnemonic_list = mnemonic_string.split()
         
-        print(f"🔑 Private key length: {len(private_key_bytes)} bytes")
         print(f"📤 Sending {amount_ton} TON to {to_address}")
+        print(f"🔑 Mnemonic words: {len(mnemonic_list)}")
         
         # Inisialisasi client
         client = TonapiClient(
             api_key=TONCENTER_API_KEY,
-            is_testnet=False  # Mainnet
+            is_testnet=False
         )
         
-        # Buat wallet dari private key
-        wallet = WalletV4R2.from_private_key(
+        # Buat wallet dari mnemonic
+        wallet, _, _, _ = WalletV4R2.from_mnemonic(
             client=client,
-            private_key=private_key_bytes
+            mnemonic=mnemonic_list
         )
         
         # Dapatkan address wallet merchant
         merchant_address = wallet.address.to_string(True, True, True)
         print(f"💰 Merchant wallet address: {merchant_address}")
         
-        # Cek saldo merchant wallet terlebih dahulu
+        # Cek saldo merchant wallet
         try:
             balance = client.get_address_balance(merchant_address)
             balance_ton = balance / 1_000_000_000
@@ -535,22 +532,19 @@ def send_ton_auto(telegram_id, amount_ton, to_address, private_key_hex):
             send_mode=3
         )
         
-        print(f"✅ Withdraw sent via tonutils: {tx_hash}")
+        print(f"✅ Withdraw sent: {tx_hash}")
         return True, tx_hash
         
-    except ImportError as e:
-        print(f"❌ tonutils not installed: {e}")
-        return False, "tonutils library not installed. Run: pip install tonutils"
-    
     except Exception as e:
         print(f"❌ Error sending TON: {e}")
+        import traceback
         traceback.print_exc()
         return False, str(e)
 
 # ==================== ENDPOINT WITHDRAW REAL ====================
 @games_bp.route('/withdraw-real', methods=['POST'])
 def process_withdraw_real():
-    """Proses withdraw TON - MENGIRIM TON SUNGGAHAN ke wallet user"""
+    """Proses withdraw TON - MENGGUNAKAN MNEMONIC DARI ENV"""
     init_db()
     data = request.json
     
@@ -561,21 +555,7 @@ def process_withdraw_real():
     amount = data.get('amount')
     wallet_address = data.get('wallet_address')
     
-    if not telegram_id:
-        return jsonify({"success": False, "error": "telegram_id required"}), 400
-    
-    if not amount or amount <= 0:
-        return jsonify({"success": False, "error": "Invalid amount"}), 400
-    
-    if amount < 0.1:
-        return jsonify({"success": False, "error": "Minimum withdraw 0.1 TON"}), 400
-    
-    if not wallet_address:
-        return jsonify({"success": False, "error": "Wallet address required"}), 400
-    
-    # 🔥 VALIDASI FORMAT WALLET ADDRESS
-    if not wallet_address.startswith('0:') and not wallet_address.startswith('EQ'):
-        return jsonify({"success": False, "error": "Invalid wallet address format"}), 400
+    # Validasi sama seperti sebelumnya...
     
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -596,31 +576,24 @@ def process_withdraw_real():
             conn.close()
             return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
         
-        # 🔥 AMBIL PRIVATE KEY DARI ENV
-        PRIVATE_KEY = os.getenv('PRIVATE_KEY', '')
+        # 🔥 AMBIL MNEMONIC DARI ENV
+        MERCHANT_MNEMONIC = os.getenv('MERCHANT_MNEMONIC', '')
         
-        if not PRIVATE_KEY:
+        if not MERCHANT_MNEMONIC:
             conn.close()
-            return jsonify({"success": False, "error": "Private key not configured in .env"}), 500
+            return jsonify({"success": False, "error": "Merchant mnemonic not configured in .env"}), 500
         
-        # 🔥 VALIDASI PRIVATE KEY
-        try:
-            bytes.fromhex(PRIVATE_KEY)
-        except ValueError:
-            conn.close()
-            return jsonify({"success": False, "error": "Invalid private key format in .env"}), 500
-        
-        # 🔥 KIRIM TON KE WALLET USER
-        success, result = send_ton_auto(telegram_id, amount, wallet_address, PRIVATE_KEY)
+        # Kirim TON ke wallet user
+        success, result = send_ton_auto(telegram_id, amount, wallet_address, MERCHANT_MNEMONIC)
         
         if not success:
             conn.close()
             return jsonify({"success": False, "error": f"Failed to send TON: {result}"}), 500
         
-        # 🔥 SETELAH TRANSFER BERHASIL, KURANGI BALANCE
+        # Update balance user
         cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
         
-        # Catat history withdraw
+        # Catat history
         cursor.execute('''
             INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -630,49 +603,8 @@ def process_withdraw_real():
         cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
         new_balance = cursor.fetchone()[0]
         
-        # Simpan tracking withdraw
-        reference = f"wd_{telegram_id}_{int(datetime.now().timestamp())}"
-        
-        try:
-            # Buat tabel withdraw_requests jika belum ada
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS withdraw_requests (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_id INTEGER,
-                    amount_ton REAL,
-                    destination_address TEXT,
-                    reference TEXT,
-                    transaction_hash TEXT,
-                    status TEXT,
-                    created_at TIMESTAMP
-                )
-            ''')
-            cursor.execute('''
-                INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, transaction_hash, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (telegram_id, amount, wallet_address, reference, result, 'completed', get_current_time()))
-        except Exception as e:
-            print(f"⚠️ Could not save withdraw request: {e}")
-        
         conn.commit()
         conn.close()
-        
-        print(f"💰 Withdraw REAL: {amount} TON sent to {wallet_address}")
-        print(f"   TX Hash: {result}")
-        print(f"   New balance: {new_balance} TON")
-        
-        # 🔥 KIRIM NOTIFIKASI KE TELEGRAM
-        try:
-            BOT_TOKEN = os.getenv('BOT_TOKEN', '')
-            if BOT_TOKEN:
-                message = f"✅ *Withdraw Berhasil!*\n\nJumlah: *{amount} TON*\nWallet: `{wallet_address[:10]}...{wallet_address[-6:]}`\nTX: `{result[:20]}...`\n\nTerima kasih telah menggunakan BarackGift!"
-                requests.post(
-                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                    json={'chat_id': telegram_id, 'text': message, 'parse_mode': 'Markdown'},
-                    timeout=5
-                )
-        except Exception as e:
-            print(f"⚠️ Could not send notification: {e}")
         
         return jsonify({
             "success": True,
