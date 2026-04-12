@@ -78,17 +78,17 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
+            <!-- Action Buttons - DEPOSIT dan WITHDRAW -->
             <div class="action-buttons">
                 <button class="btn-deposit" id="depositBtn">
                     <i class="fas fa-plus-circle"></i> Deposit
                 </button>
-                <button class="btn-history" id="historyBtn">
-                    <i class="fas fa-history"></i> Riwayat Game
+                <button class="btn-withdraw" id="withdrawBtn">
+                    <i class="fas fa-arrow-down"></i> Withdraw
                 </button>
             </div>
 
-            <!-- Game History Section -->
+            <!-- Game History Section (tetap ada, tapi disembunyikan) -->
             <div class="history-section-profile" id="historySection" style="display: none;">
                 <div class="section-header">
                     <h3><i class="fas fa-gamepad"></i> Riwayat Permainan</h3>
@@ -162,6 +162,127 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL WITHDRAW - TAMBAHKAN INI -->
+    <div id="withdrawModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-arrow-down"></i> Withdraw TON</h3>
+                <span class="close-modal withdraw-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Info Wallet -->
+                <div class="info-box" id="walletInfoBox">
+                    <div class="info-row">
+                        <span class="info-label">Wallet Address:</span>
+                        <code id="userWalletAddress" class="tx-hash">Belum terhubung</code>
+                    </div>
+                </div>
+                
+                <!-- Peringatan jika wallet belum terhubung -->
+                <div id="walletWarning" class="wallet-status" style="display: none;">
+                    <p>⚠️ Silakan hubungkan wallet TON Anda terlebih dahulu di halaman Deposit</p>
+                </div>
+
+                <!-- Form Withdraw -->
+                <div id="withdrawForm">
+                    <div class="balance-info" style="margin-bottom: 20px;">
+                        <span>Saldo TON Anda:</span>
+                        <strong id="withdrawBalance">0 TON</strong>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="withdrawAmount">Jumlah Withdraw (TON):</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="number" id="withdrawAmount" class="form-input" min="0.1" step="0.1" placeholder="0.1" style="flex: 1;">
+                            <button type="button" id="maxWithdrawBtn" class="max-btn" style="background: rgba(255,215,0,0.2); border: 1px solid #FFD700; color: #FFD700; padding: 12px 20px; border-radius: 14px; font-weight: 600; cursor: pointer;">MAX</button>
+                        </div>
+                        <small class="input-hint">Minimum withdraw: 0.1 TON</small>
+                    </div>
+                    
+                    <div class="info-box" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
+                        <div class="info-row">
+                            <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
+                            <span style="font-size: 12px; color: var(--tg-hint-color);">Dana akan dikirim ke wallet TON yang telah terhubung. Proses withdraw membutuhkan waktu 1-5 menit.</span>
+                        </div>
+                    </div>
+                    
+                    <button id="processWithdrawBtn" class="btn-process-withdraw" style="width: 100%; background: linear-gradient(135deg, #f59e0b, #d97706); border: none; color: white; padding: 14px 20px; border-radius: 14px; font-weight: 700; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px;">
+                        <i class="fas fa-paper-plane"></i> Konfirmasi Withdraw
+                    </button>
+                </div>
+
+                <!-- Success/Processing State -->
+                <div id="withdrawProcessing" class="deposit-instructions" style="display: none;">
+                    <div class="success-icon">⏳</div>
+                    <h4>Withdraw Diproses!</h4>
+                    <p>Permintaan withdraw Anda sedang diproses. Dana akan dikirim ke wallet TON Anda.</p>
+                    <div class="info-box">
+                        <div class="info-row">
+                            <span class="info-label">ID Transaksi:</span>
+                            <code id="withdrawTxId" class="tx-hash">-</code>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary btn-full" onclick="closeWithdrawModal()">Tutup</button>
+                </div>
+
+                <div id="withdrawSuccess" class="deposit-instructions" style="display: none;">
+                    <div class="success-icon">✅</div>
+                    <h4>Withdraw Berhasil!</h4>
+                    <p>Dana telah dikirim ke wallet TON Anda.</p>
+                    <div class="info-box">
+                        <div class="info-row">
+                            <span class="info-label">Jumlah:</span>
+                            <code id="withdrawSuccessAmount" class="tx-hash">0 TON</code>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary btn-full" onclick="closeWithdrawModal()">Tutup</button>
+                </div>
+
+                <div id="withdrawError" class="deposit-instructions" style="display: none;">
+                    <div class="success-icon">❌</div>
+                    <h4>Withdraw Gagal!</h4>
+                    <p id="withdrawErrorMessage">Terjadi kesalahan, silakan coba lagi.</p>
+                    <button type="button" class="btn-secondary btn-full" onclick="closeWithdrawModal()">Tutup</button>
+                </div>
+                
+                <p class="payment-info">* Withdraw akan langsung diproses ke wallet TON terdaftar</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tambahkan CSS untuk tombol MAX -->
+    <style>
+        .btn-withdraw {
+            flex: 1;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-withdraw:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+        }
+        .max-btn:hover {
+            background: rgba(255,215,0,0.4) !important;
+            transform: scale(1.02);
+        }
+        .btn-process-withdraw:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-process-withdraw:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+    </style>
 
     <script src="/games/js/profil.js"></script>
 </body>
