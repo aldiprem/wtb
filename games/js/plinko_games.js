@@ -26,7 +26,6 @@
     const BOUNCE = 0.1;
     const PIN_RADIUS = 3;
     const BALL_RADIUS = 5;
-    const FRISION = 0.98;
     
     // --- SPAWNER VARIABLES ---
     let spawnerX = 0;
