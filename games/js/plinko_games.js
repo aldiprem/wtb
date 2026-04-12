@@ -861,7 +861,6 @@
             
             if (!user || !user.id) {
                 console.error('❌ Cannot save game: No user data');
-                alert('ERROR: No user data! Cannot save game.');
                 return;
             }
             
@@ -870,8 +869,15 @@
                 photoUrl = user.photo_url;
             }
             
-            // 🔥 PERUBAHAN: Gunakan first_name sebagai tampilan, username sebagai backup
             const displayName = user.first_name || user.username || 'Anonymous';
+            
+            // CEK STATUS BANDAR SEBELUM SAVE
+            const bandarCheck = await fetch(`${API_BASE}/api/plinko/bandar-status`);
+            const bandarData = await bandarCheck.json();
+            
+            if (bandarData.success && bandarData.needs_force) {
+                console.log(`🔴 [BANDAR] Current profit: ${bandarData.current_profit} TON - NEEDS FORCE!`);
+            }
             
             const payload = {
                 bet_amount: betAmount,
@@ -881,9 +887,7 @@
                 risk_level: currentRisk,
                 user_id: user.id,
                 username: displayName,
-                photo_url: photoUrl,
-                is_forced: false,
-                cheat_reason: ''
+                photo_url: photoUrl
             };
             
             console.log('💾 [SAVE] Sending payload:', payload);
@@ -900,6 +904,18 @@
                 console.log('✅ Game saved successfully');
                 await loadStats();
                 await loadHistory();
+                
+                // CEK ULANG STATUS BANDAR
+                const newBandarCheck = await fetch(`${API_BASE}/api/plinko/bandar-status`);
+                const newBandarData = await newBandarCheck.json();
+                if (newBandarData.success) {
+                    console.log(`💰 [BANDAR AFTER] Profit: ${newBandarData.current_profit} TON`);
+                    
+                    // NOTIFIKASI KALAU BANDAR MASIH RUGI
+                    if (newBandarData.current_profit < 0) {
+                        console.warn(`⚠️ BANDAR STILL LOSS: ${newBandarData.current_profit} TON`);
+                    }
+                }
             } else {
                 console.error('❌ Failed to save game:', data.error);
             }
