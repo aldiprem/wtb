@@ -296,3 +296,101 @@ def update_balance():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+        
+# ==================== WITHDRAW ====================
+@games_bp.route('/user-wallet/<int:telegram_id>', methods=['GET'])
+def get_user_wallet(telegram_id):
+    """Mendapatkan wallet address user"""
+    init_db()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT wallet_address FROM users WHERE telegram_id = ?", (telegram_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        wallet_address = row[0] if row else None
+        return jsonify({"success": True, "wallet_address": wallet_address})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@games_bp.route('/withdraw', methods=['POST'])
+def process_withdraw():
+    """Proses withdraw TON ke wallet user"""
+    init_db()
+    data = request.json
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+    
+    telegram_id = data.get('telegram_id')
+    amount = data.get('amount')
+    wallet_address = data.get('wallet_address')
+    
+    if not telegram_id:
+        return jsonify({"success": False, "error": "telegram_id required"}), 400
+    
+    if not amount or amount <= 0:
+        return jsonify({"success": False, "error": "Invalid amount"}), 400
+    
+    if amount < 0.1:
+        return jsonify({"success": False, "error": "Minimum withdraw 0.1 TON"}), 400
+    
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Cek user dan balance
+        cursor.execute("SELECT balance, wallet_address FROM users WHERE telegram_id = ?", (telegram_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return jsonify({"success": False, "error": "User not found"}), 404
+        
+        current_balance = user['balance'] or 0
+        user_wallet = user['wallet_address']
+        
+        if amount > current_balance:
+            conn.close()
+            return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
+        
+        if not user_wallet:
+            conn.close()
+            return jsonify({"success": False, "error": "Wallet address not connected"}), 400
+        
+        # Kurangi balance user
+        cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
+        
+        # Catat history withdraw
+        cursor.execute('''
+            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (telegram_id, 'WITHDRAW_TON', amount, 0, 0, get_current_time()))
+        
+        # Ambil balance baru
+        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
+        new_balance = cursor.fetchone()[0]
+        
+        # Generate transaction ID
+        transaction_id = f"WID_{datetime.now().strftime('%Y%m%d%H%M%S')}_{telegram_id}"
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"💰 Withdraw: {amount} TON for user {telegram_id} to {wallet_address}")
+        print(f"   New balance: {new_balance} TON")
+
+        return jsonify({
+            "success": True,
+            "message": f"Withdraw {amount} TON berhasil",
+            "amount": amount,
+            "new_balance": new_balance,
+            "transaction_id": transaction_id,
+            "wallet_address": wallet_address
+        })
+        
+    except Exception as e:
+        print(f"❌ Withdraw error: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
