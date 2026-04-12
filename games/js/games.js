@@ -1,4 +1,4 @@
-// games/js/games.js - PERBAIKAN TAMPILAN WALLET ADDRESS USER
+// games/js/games.js - PERBAIKAN LENGKAP
 
 (function() {
     console.log('🎮 Games Page Initialized');
@@ -12,10 +12,10 @@
     let tonConnectUI = null;
     let walletConnected = false;
     let walletAddress = null;
+    let walletAddressFriendly = null; // Simpan friendly address
 
     const API_BASE = window.location.origin;
     const WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra"; // Alamat MERCHANT untuk DEPOSIT
-    const MANIFEST_URL = 'https://companel.shop/tonconnect-manifest.json';
 
     function formatNumberWithCommas(number) {
         let parts = Number(number).toFixed(2).split('.');
@@ -25,7 +25,7 @@
         return decimalPart ? integerPart + '.' + decimalPart : integerPart;
     }
 
-    // 🔥 FUNGSI KONVERSI RAW KE FRIENDLY (SAMA DENGAN DI PROFIL)
+    // 🔥 FUNGSI KONVERSI RAW KE FRIENDLY (UQ format)
     function rawToFriendly(rawAddress) {
         if (!rawAddress) return rawAddress;
         
@@ -189,13 +189,21 @@
             const wallet = tonConnectUI.wallet;
             if (wallet) {
                 walletConnected = true;
-                walletAddress = wallet.account.address;
+                // 🔥 SIMPAN RAW ADDRESS DARI TON CONNECT
+                const rawAddress = wallet.account.address;
+                // 🔥 KONVERSI KE FRIENDLY FORMAT (UQ...)
+                walletAddressFriendly = rawToFriendly(rawAddress);
+                walletAddress = rawAddress;
+                
+                console.log('✅ Wallet already connected - RAW:', rawAddress);
+                console.log('✅ Wallet already connected - FRIENDLY:', walletAddressFriendly);
+                
                 updateWalletUI();
                 if (telegramUser?.id) {
-                    await updateUserWallet(telegramUser.id, walletAddress);
-                    await saveWalletSession(telegramUser.id, walletAddress);
+                    // 🔥 SIMPAN FRIENDLY ADDRESS KE DATABASE
+                    await updateUserWallet(telegramUser.id, walletAddressFriendly);
+                    await saveWalletSession(telegramUser.id, walletAddressFriendly);
                 }
-                console.log('✅ Wallet already connected:', walletAddress);
             }
 
             tonConnectUI.onStatusChange(async (wallet) => {
@@ -203,15 +211,22 @@
                 
                 if (wallet && telegramUser) {
                     walletConnected = true;
-                    walletAddress = wallet.account.address;
+                    const rawAddress = wallet.account.address;
+                    walletAddressFriendly = rawToFriendly(rawAddress);
+                    walletAddress = rawAddress;
+                    
+                    console.log('✅ Wallet connected - RAW:', rawAddress);
+                    console.log('✅ Wallet connected - FRIENDLY:', walletAddressFriendly);
+                    
                     if (telegramUser?.id) {
-                        await updateUserWallet(telegramUser.id, walletAddress);
-                        await saveWalletSession(telegramUser.id, walletAddress);
+                        // 🔥 SIMPAN FRIENDLY ADDRESS KE DATABASE
+                        await updateUserWallet(telegramUser.id, walletAddressFriendly);
+                        await saveWalletSession(telegramUser.id, walletAddressFriendly);
                     }
-                    console.log('✅ Wallet connected:', walletAddress);
                 } else {
                     walletConnected = false;
                     walletAddress = null;
+                    walletAddressFriendly = null;
                     console.log('❌ Wallet disconnected');
                     if (telegramUser) {
                         await deactivateWalletSession(telegramUser.id);
@@ -281,8 +296,9 @@
         const disconnectContainer = document.getElementById('disconnectContainer');
         const tonConnectContainer = document.getElementById('ton-connect-container');
         const depositAddressEl = document.getElementById('depositAddress');
+        const depositFormText = document.querySelector('#depositForm p');
         
-        if (walletConnected && walletAddress) {
+        if (walletConnected && walletAddressFriendly) {
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-wallet"></i>';
                 depositBtn.classList.add('wallet-connected');
@@ -292,41 +308,26 @@
             if (depositForm) {
                 depositForm.style.display = 'block';
                 
-                // 🔥 SOLUSI UTAMA: Mengambil format yang sama persis dengan tombol
-                let displayAddress = walletAddress;
-
-                // 1. Coba ambil format friendly langsung dari library TON Connect
-                if (tonConnectUI && tonConnectUI.wallet && tonConnectUI.wallet.account) {
-                    const account = tonConnectUI.wallet.account;
-                    // Jika library mendukung fungsi konversi internal (ini yang dipakai tombol)
-                    if (typeof account.address !== 'undefined') {
-                        // Secara default tonConnectUI.wallet.account.address memberikan format yang benar
-                        displayAddress = account.address;
-                    }
-                }
-
-                // 2. Jika masih format '0:', gunakan konversi manual tapi pastikan dipotong (truncated) 
-                // agar sama persis tampilannya dengan yang ada di tombol (misal: UQA9...ifEd)
-                if (displayAddress.startsWith('0:')) {
-                    displayAddress = rawToFriendly(displayAddress);
-                }
-
+                // 🔥 TAMPILKAN ADDRESS USER YANG TERHUBUNG (FRIENDLY FORMAT)
                 if (depositAddressEl) {
-                    // Membuat format potongan (UQA9...ifEd) agar identik dengan tombol
-                    const shortened = displayAddress.substring(0, 4) + '...' + displayAddress.slice(-4);
-                    
-                    // Masukkan ke dalam elemen
-                    depositAddressEl.textContent = shortened; 
-                    
-                    // Simpan alamat asli di attribute untuk keperluan copy jika user klik
+                    // Tampilkan friendly address user
+                    const displayAddress = walletAddressFriendly;
+                    // Potong untuk tampilan (UQ...)
+                    const shortened = displayAddress.substring(0, 6) + '...' + displayAddress.slice(-4);
+                    depositAddressEl.textContent = shortened;
                     depositAddressEl.setAttribute('data-full-address', displayAddress);
-                    console.log('✅ Address synced with button:', shortened);
+                    depositAddressEl.title = 'Click to copy full address';
+                    console.log('✅ Displaying user address:', shortened);
+                }
+                
+                // Ubah teks instruksi
+                if (depositFormText) {
+                    depositFormText.textContent = 'Kirim TON dari wallet Anda ke alamat MERCHANT berikut:';
                 }
             }
             if (disconnectContainer) disconnectContainer.style.display = 'block';
             if (tonConnectContainer) tonConnectContainer.style.display = 'none';
         } else {
-            // Logika saat disconnect (kembali ke awal)
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-plus"></i>';
                 depositBtn.classList.remove('wallet-connected');
@@ -406,17 +407,17 @@
         sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         
         try {
-            // 🔥 PERHATIAN: User mengirim ke alamat MERCHANT, BUKAN ke wallet sendiri
+            // 🔥 KIRIM KE ALAMAT MERCHANT (WEB_ADDRESS)
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
-                    address: WEB_ADDRESS, // Alamat MERCHANT untuk deposit
+                    address: WEB_ADDRESS, // Alamat MERCHANT
                     amount: amountNano
                 }]
             };
             
             console.log('📤 Sending transaction to MERCHANT:', WEB_ADDRESS);
-            console.log('📤 From wallet:', walletAddress);
+            console.log('📤 From wallet:', walletAddressFriendly);
             
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
@@ -426,7 +427,7 @@
                     telegramUser?.id.toString(),
                     result.boc,
                     amount,
-                    walletAddress,
+                    walletAddressFriendly,
                     memo
                 );
                 
