@@ -15,7 +15,6 @@
 
     const API_BASE = window.location.origin;
     const WEB_ADDRESS = "UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra";
-    // 🔥 GUNAKAN MANIFEST YANG SUDAH DISEDIAKAN (SAMA DENGAN PLANE GIFT)
     const MANIFEST_URL = 'https://companel.shop/tonconnect-manifest.json';
 
     function formatNumberWithCommas(number) {
@@ -110,9 +109,9 @@
         }
     }
 
-    // 🔥 TON CONNECT INIT - PERBAIKAN UNTUK DETEKSI LIBRARY
+    // 🔥 TON CONNECT INIT - HANYA UNTUK DI MODAL
     async function initTonConnect() {
-        // Tunggu hingga TON Connect UI tersedia (cek kedua kemungkinan nama)
+        // Tunggu hingga TON Connect UI tersedia
         let TonConnectUIClass = null;
         
         for (let i = 0; i < 50; i++) {
@@ -130,18 +129,17 @@
         }
         
         if (!TonConnectUIClass) {
-            console.error('❌ TON Connect UI not loaded after waiting');
-            createManualConnectButton();
+            console.error('❌ TON Connect UI not loaded');
             return;
         }
 
         try {
             console.log('📝 Initializing TON Connect with manifest:', MANIFEST_URL);
             
-            // 🔥 INISIALISASI TON CONNECT
+            // 🔥 INISIALISASI TON CONNECT ke container di modal
             tonConnectUI = new TonConnectUIClass({
                 manifestUrl: MANIFEST_URL,
-                buttonRootId: 'ton-connect',  // ← ID ini ada di HTML
+                buttonRootId: 'ton-connect-container',  // ← ID container di modal
                 language: 'en',
                 walletsListConfiguration: {
                     includeWallets: [
@@ -187,22 +185,6 @@
             console.log('✅ TON Connect initialized successfully');
         } catch (error) {
             console.error('❌ TON Connect error:', error);
-            createManualConnectButton();
-        }
-    }
-
-    // Fallback manual jika TON Connect UI gagal
-    function createManualConnectButton() {
-        const container = document.getElementById('ton-connect');
-        if (container) {
-            container.innerHTML = `
-                <button id="manualConnectBtn" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; color: white; padding: 14px 24px; border-radius: 14px; font-weight: 600; cursor: pointer; width: 100%; font-size: 16px;">
-                    <i class="fas fa-wallet"></i> Connect Wallet
-                </button>
-            `;
-            document.getElementById('manualConnectBtn')?.addEventListener('click', () => {
-                window.open('https://tonkeeper.com/ton-connect?manifest=' + encodeURIComponent(MANIFEST_URL), '_blank');
-            });
         }
     }
 
@@ -211,7 +193,6 @@
         const depositWalletStatus = document.getElementById('depositWalletStatus');
         const depositForm = document.getElementById('depositForm');
         const disconnectContainer = document.getElementById('disconnectContainer');
-        const tonConnectDiv = document.getElementById('ton-connect');
         
         if (walletConnected && walletAddress) {
             if (depositBtn) {
@@ -227,7 +208,6 @@
                 if (depositAddress) depositAddress.textContent = WEB_ADDRESS;
             }
             if (disconnectContainer) disconnectContainer.style.display = 'block';
-            if (tonConnectDiv) tonConnectDiv.style.display = 'none';
         } else {
             if (depositBtn) {
                 depositBtn.innerHTML = '<i class="fas fa-plus"></i>';
@@ -238,7 +218,6 @@
             }
             if (depositForm) depositForm.style.display = 'none';
             if (disconnectContainer) disconnectContainer.style.display = 'none';
-            if (tonConnectDiv) tonConnectDiv.style.display = 'block';
         }
     }
 
@@ -267,11 +246,18 @@
         }
     }
 
-    // ========== DEPOSIT ==========
+    // ========== DEPOSIT MODAL ==========
     
     function showDepositModal() {
         const modal = document.getElementById('depositModal');
-        if (modal) modal.style.display = 'flex';
+        if (modal) {
+            modal.style.display = 'flex';
+            // 🔥 Jika wallet belum connect, pastikan tombol TON Connect muncul
+            if (!walletConnected && tonConnectUI) {
+                // TON Connect UI akan otomatis render tombol di container
+                console.log('Modal opened, wallet not connected');
+            }
+        }
     }
 
     function closeDepositModal() {
@@ -301,8 +287,6 @@
             alert('Silakan hubungkan wallet TON terlebih dahulu');
             if (tonConnectUI) {
                 await tonConnectUI.connect();
-            } else {
-                window.open('https://tonkeeper.com/ton-connect?manifest=' + encodeURIComponent(MANIFEST_URL), '_blank');
             }
             return;
         }
@@ -324,12 +308,12 @@
         sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
         
         try {
+            // Kirim tanpa payload dulu (paling aman)
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: WEB_ADDRESS,
-                    amount: amountNano,
-                    payload: base64EncodeComment(memo)
+                    amount: amountNano
                 }]
             };
             
@@ -370,7 +354,6 @@
     }
 
     // ========== INIT ==========
-    
     async function init() {
         console.log('🟡 Initializing games page...');
         
@@ -385,7 +368,7 @@
             if (balanceEl) balanceEl.textContent = 'Login Required';
         }
         
-        // 🔥 INIT TON CONNECT (setelah user siap)
+        // 🔥 INIT TON CONNECT
         await initTonConnect();
         
         // Navigation
@@ -400,7 +383,7 @@
             });
         });
         
-        // Buttons
+        // 🔥 BUTTON DEPOSIT (tombol plus di header)
         const depositBtn = document.getElementById('headerDepositBtn');
         if (depositBtn) {
             const newBtn = depositBtn.cloneNode(true);
@@ -435,7 +418,6 @@
         });
         
         console.log('✅ Games Page Ready');
-        console.log('✅ TON Connect button should appear at #ton-connect element');
     }
     
     if (document.readyState === 'loading') {

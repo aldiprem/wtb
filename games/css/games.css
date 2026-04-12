@@ -613,13 +613,14 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
-/* 🔥 TOMBOL TON CONNECT - SEPERTI INDEX.HTML */
-.ton-connect-button {
-    margin-bottom: 20px;
+#ton-connect-container {
     width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
 }
 
-.ton-connect-button > button {
+#ton-connect-container button {
     background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
     border: none !important;
     border-radius: 14px !important;
@@ -632,7 +633,7 @@ body {
     transition: all 0.3s ease !important;
 }
 
-.ton-connect-button > button:hover {
+#ton-connect-container button:hover {
     transform: scale(1.02);
     box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
 }
@@ -641,17 +642,30 @@ body {
     background: linear-gradient(135deg, #3b82f6, #1d4ed8);
     border: none;
     color: white;
-    padding: 6px 12px;
-    border-radius: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
     cursor: pointer;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 14px;
+    font-weight: bold;
     transition: all 0.3s;
-    white-space: nowrap;
+    margin-left: 8px;
+}
+
+.deposit-header-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.deposit-header-btn.wallet-connected {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.deposit-header-btn.wallet-connected i {
+    font-size: 16px;
 }
 
 .deposit-header-btn i {

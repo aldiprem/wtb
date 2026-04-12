@@ -296,7 +296,68 @@ def update_balance():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+@games_bp.route('/create-payload', methods=['POST'])
+def create_payload():
+    """Buat payload yang valid untuk TON Connect deposit"""
+    init_db()
+    data = request.json
+    
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+    
+    telegram_id = data.get('telegram_id')
+    amount_ton = float(data.get('amount_ton', 0))
+    
+    # Validasi
+    if amount_ton < 0.1:
+        return jsonify({'success': False, 'error': 'Minimum deposit 0.1 TON'}), 400
+    
+    # Get user dari database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE telegram_id = ?", (telegram_id,))
+        user = cursor.fetchone()
+        conn.close()
         
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        # Buat memo dengan format yang jelas
+        timestamp = int(datetime.now().timestamp())
+        memo_plain = f"deposit:{telegram_id}:{timestamp}"
+        
+        # 🔥 BUAT PAYLOAD DENGAN FORMAT YANG VALID
+        # Format: text comment sederhana (tanpa prefix 4 byte)
+        # Ini lebih kompatibel dengan berbagai wallet
+        memo_bytes = memo_plain.encode('utf-8')
+        payload_base64 = base64.b64encode(memo_bytes).decode('utf-8')
+        
+        # Konversi amount ke nano
+        amount_nano = str(int(amount_ton * 1_000_000_000))
+        
+        print(f"📤 Created payload for user {telegram_id}:")
+        print(f"   Amount: {amount_ton} TON ({amount_nano} nano)")
+        print(f"   Memo: {memo_plain}")
+        print(f"   Payload: {payload_base64[:50]}...")
+        
+        return jsonify({
+            'success': True,
+            'transaction': {
+                'address': 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',  # WEB_ADDRESS
+                'amount': amount_nano,
+                'payload': payload_base64
+            },
+            'memo_plain': memo_plain
+        })
+        
+    except Exception as e:
+        print(f"❌ Error creating payload: {e}")
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ==================== WITHDRAW ====================
 @games_bp.route('/user-wallet/<int:telegram_id>', methods=['GET'])
 def get_user_wallet(telegram_id):
