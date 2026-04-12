@@ -1,4 +1,4 @@
-# games/services/games_service.py - VERSION FINAL
+# games/services/games_service.py - VERSION TANPA WITHDRAW
 
 from flask import Blueprint, jsonify, request
 import sys
@@ -36,9 +36,9 @@ def init_db():
             telegram_id INTEGER PRIMARY KEY,
             username TEXT,
             first_name TEXT,
-            balance INTEGER DEFAULT 0,
+            balance REAL DEFAULT 0,
             referred_by INTEGER DEFAULT NULL,
-            referral_reward INTEGER DEFAULT 0,
+            referral_reward REAL DEFAULT 0,
             gifts INTEGER DEFAULT 0,
             wallet_address TEXT DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -52,8 +52,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             telegram_id INTEGER,
             game_name TEXT,
-            bet_amount INTEGER,
-            win_amount INTEGER,
+            bet_amount REAL,
+            win_amount REAL,
             multiplier REAL,
             played_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -172,8 +172,7 @@ def update_user_wallet():
         print(f"❌ Error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# games/services/games_service.py - PERBAIKAN verify_ton_deposit
-
+# ==================== VERIFY DEPOSIT TON ====================
 @games_bp.route('/verify-ton-deposit', methods=['POST'])
 def verify_ton_deposit():
     """Verifikasi deposit TON - Balance langsung dalam TON"""
@@ -200,7 +199,7 @@ def verify_ton_deposit():
             conn.close()
             return jsonify({"success": False, "error": "User not found"}), 404
         
-        # LANGSUNG PAKAI TON, BUKAN IDR
+        # LANGSUNG PAKAI TON
         amount = float(amount_ton)
         
         # Update balance (tambah saldo dalam TON)
@@ -303,6 +302,7 @@ def update_balance():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# ==================== CREATE PAYLOAD ====================
 @games_bp.route('/create-payload', methods=['POST'])
 def create_payload():
     """Buat payload yang valid untuk TON Connect deposit"""
@@ -315,11 +315,9 @@ def create_payload():
     telegram_id = data.get('telegram_id')
     amount_ton = float(data.get('amount_ton', 0))
     
-    # Validasi
     if amount_ton < 0.1:
         return jsonify({'success': False, 'error': 'Minimum deposit 0.1 TON'}), 400
     
-    # Get user dari database
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -331,28 +329,21 @@ def create_payload():
         if not user:
             return jsonify({'success': False, 'error': 'User not found'}), 404
         
-        # Buat memo dengan format yang jelas
         timestamp = int(datetime.now().timestamp())
         memo_plain = f"deposit:{telegram_id}:{timestamp}"
         
-        # 🔥 BUAT PAYLOAD DENGAN FORMAT YANG VALID
-        # Format: text comment sederhana (tanpa prefix 4 byte)
-        # Ini lebih kompatibel dengan berbagai wallet
         memo_bytes = memo_plain.encode('utf-8')
         payload_base64 = base64.b64encode(memo_bytes).decode('utf-8')
-        
-        # Konversi amount ke nano
         amount_nano = str(int(amount_ton * 1_000_000_000))
         
         print(f"📤 Created payload for user {telegram_id}:")
         print(f"   Amount: {amount_ton} TON ({amount_nano} nano)")
         print(f"   Memo: {memo_plain}")
-        print(f"   Payload: {payload_base64[:50]}...")
         
         return jsonify({
             'success': True,
             'transaction': {
-                'address': 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',  # WEB_ADDRESS
+                'address': 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
                 'amount': amount_nano,
                 'payload': payload_base64
             },
@@ -364,378 +355,7 @@ def create_payload():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ==================== WITHDRAW ====================
-@games_bp.route('/user-wallet/<int:telegram_id>', methods=['GET'])
-def get_user_wallet(telegram_id):
-    """Mendapatkan wallet address user"""
-    init_db()
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT wallet_address FROM users WHERE telegram_id = ?", (telegram_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        wallet_address = row[0] if row else None
-        return jsonify({"success": True, "wallet_address": wallet_address})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@games_bp.route('/withdraw', methods=['POST'])
-def process_withdraw():
-    """Proses withdraw TON ke wallet user"""
-    init_db()
-    data = request.json
-    if not data:
-        return jsonify({"success": False, "error": "No data provided"}), 400
-    
-    telegram_id = data.get('telegram_id')
-    amount = data.get('amount')
-    wallet_address = data.get('wallet_address')
-    
-    if not telegram_id:
-        return jsonify({"success": False, "error": "telegram_id required"}), 400
-    
-    if not amount or amount <= 0:
-        return jsonify({"success": False, "error": "Invalid amount"}), 400
-    
-    if amount < 0.1:
-        return jsonify({"success": False, "error": "Minimum withdraw 0.1 TON"}), 400
-    
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Cek user dan balance
-        cursor.execute("SELECT balance, wallet_address FROM users WHERE telegram_id = ?", (telegram_id,))
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            return jsonify({"success": False, "error": "User not found"}), 404
-        
-        current_balance = user['balance'] or 0
-        user_wallet = user['wallet_address']
-        
-        if amount > current_balance:
-            conn.close()
-            return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
-        
-        if not user_wallet:
-            conn.close()
-            return jsonify({"success": False, "error": "Wallet address not connected"}), 400
-        
-        # Buat reference unik
-        reference = f"wd_{telegram_id}_{int(datetime.now().timestamp())}"
-        
-        print(f"💰 Processing withdraw for user {telegram_id}:")
-        print(f"   Amount: {amount} TON")
-        print(f"   To: {user_wallet}")
-        print(f"   Reference: {reference}")
-        
-        # Kurangi balance user
-        cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
-        
-        # Catat history withdraw
-        cursor.execute('''
-            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, 'WITHDRAW_TON', amount, 0, 0, get_current_time()))
-        
-        # Ambil balance baru
-        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
-        new_balance = cursor.fetchone()[0]
-        
-        # 🔥 SIMPAN KE withdraw_requests (gunakan try-except jika tabel belum ada)
-        try:
-            cursor.execute('''
-                INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (telegram_id, amount, user_wallet, reference, 'completed', get_current_time()))
-        except sqlite3.OperationalError as e:
-            print(f"⚠️ Tabel withdraw_requests belum siap: {e}")
-            # Abaikan, tetap lanjutkan
-        
-        conn.commit()
-        
-        # Generate transaction ID
-        transaction_id = f"WID_{datetime.now().strftime('%Y%m%d%H%M%S')}_{telegram_id}"
-        
-        conn.close()
-        
-        return jsonify({
-            "success": True,
-            "message": f"Withdraw {amount} TON berhasil",
-            "amount": amount,
-            "new_balance": new_balance,
-            "transaction_id": transaction_id,
-            "wallet_address": user_wallet,
-            "reference": reference
-        })
-        
-    except Exception as e:
-        print(f"❌ Withdraw error: {e}")
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)}), 500
-
-# games/services/games_service.py - Tambahkan fungsi konversi di awal file
-
-def raw_ton_to_friendly(raw_address):
-    """Convert raw TON address (0:xxx) to friendly format (EQ/UQ)"""
-    import base64
-    
-    if not raw_address:
-        return raw_address
-    
-    # Jika sudah dalam format friendly
-    if raw_address.startswith('EQ') or raw_address.startswith('UQ'):
-        return raw_address
-    
-    # Jika raw format
-    if raw_address.startswith('0:'):
-        try:
-            parts = raw_address.split(':')
-            if len(parts) != 2:
-                return raw_address
-            
-            hash_hex = parts[1]
-            hash_bytes = bytes.fromhex(hash_hex)
-            
-            # Untuk wallet user, gunakan non-bounceable (tag 0x51)
-            # Bounceable = 0x11, Non-bounceable = 0x51
-            tag = 0x51  # Non-bounceable untuk wallet user
-            address_bytes = bytes([tag]) + hash_bytes
-            
-            # Encode ke base64 URL-safe
-            address_b64 = base64.b64encode(address_bytes).decode('utf-8')
-            address_b64 = address_b64.replace('+', '-').replace('/', '_').rstrip('=')
-            
-            # Prefix UQ untuk non-bounceable
-            return 'UQ' + address_b64
-        except Exception as e:
-            print(f"⚠️ Address conversion error: {e}")
-            return raw_address
-    
-    return raw_address
-
-
-def friendly_to_raw(friendly_address):
-    """Convert friendly TON address (EQ/UQ) to raw format (0:xxx)"""
-    import base64
-    
-    if not friendly_address:
-        return friendly_address
-    
-    if friendly_address.startswith('0:'):
-        return friendly_address
-    
-    if friendly_address.startswith('EQ') or friendly_address.startswith('UQ'):
-        try:
-            # Remove prefix
-            b64_part = friendly_address[2:]
-            # Add padding back
-            padding = 4 - (len(b64_part) % 4)
-            if padding != 4:
-                b64_part += '=' * padding
-            # Replace URL-safe chars back
-            b64_part = b64_part.replace('-', '+').replace('_', '/')
-            # Decode
-            address_bytes = base64.b64decode(b64_part)
-            # Remove tag (first byte)
-            hash_bytes = address_bytes[1:]
-            # Convert to hex
-            hash_hex = hash_bytes.hex()
-            return f"0:{hash_hex}"
-        except Exception as e:
-            print(f"⚠️ Address conversion error: {e}")
-            return friendly_address
-    
-    return friendly_address
-
-
-async def send_ton_auto(telegram_id, amount_ton, to_address, mnemonic_string):
-    """
-    Kirim TON otomatis dari wallet merchant ke user
-    """
-    try:
-        from tonutils.client import TonapiClient
-        from tonutils.wallet import WalletV4R2
-        from tonutils.utils import to_nano
-        
-        TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
-        
-        # 🔥 KONVERSI ADDRESS KE FRIENDLY FORMAT
-        formatted_address = raw_ton_to_friendly(to_address)
-        
-        if formatted_address != to_address:
-            print(f"✅ Address converted: {to_address} -> {formatted_address}")
-        
-        # Split mnemonic menjadi list
-        mnemonic_list = mnemonic_string.split()
-        
-        print(f"📤 Sending {amount_ton} TON to {formatted_address}")
-        print(f"🔑 Mnemonic words: {len(mnemonic_list)}")
-        
-        # Inisialisasi client
-        client = TonapiClient(
-            api_key=TONCENTER_API_KEY,
-            is_testnet=False
-        )
-        
-        # Buat wallet dari mnemonic
-        wallet, _, _, _ = WalletV4R2.from_mnemonic(
-            client=client,
-            mnemonic=mnemonic_list
-        )
-        
-        # Dapatkan address merchant
-        merchant_address = str(wallet.address)
-        print(f"💰 Merchant wallet address: {merchant_address}")
-        
-        # Cek saldo merchant wallet
-        try:
-            balance = await client.get_address_balance(merchant_address)
-            balance_ton = balance / 1_000_000_000
-            print(f"💰 Merchant balance: {balance_ton} TON")
-            
-            if balance_ton < amount_ton:
-                return False, f"Insufficient merchant balance. Available: {balance_ton} TON, Required: {amount_ton} TON"
-        except Exception as e:
-            print(f"⚠️ Could not check balance: {e}")
-        
-        # Kirim transaksi
-        tx_hash = await wallet.transfer(
-            destination=formatted_address,
-            amount=to_nano(amount_ton),
-            body=f"Withdraw from BarackGift to user {telegram_id}",
-            send_mode=3
-        )
-        
-        print(f"✅ Withdraw sent: {tx_hash}")
-        return True, tx_hash
-        
-    except Exception as e:
-        print(f"❌ Error sending TON: {e}")
-        import traceback
-        traceback.print_exc()
-        return False, str(e)
-
-# ==================== ENDPOINT WITHDRAW REAL ====================
-@games_bp.route('/withdraw-real', methods=['POST'])
-def process_withdraw_real():
-    """Proses withdraw TON - ambil wallet address dari database"""
-    init_db()
-    data = request.json
-    
-    if not data:
-        return jsonify({"success": False, "error": "No data provided"}), 400
-    
-    telegram_id = data.get('telegram_id')
-    amount = data.get('amount')
-    wallet_address = data.get('wallet_address')  # Optional, bisa dari frontend
-    
-    if not telegram_id:
-        return jsonify({"success": False, "error": "telegram_id required"}), 400
-    
-    if not amount or amount <= 0:
-        return jsonify({"success": False, "error": "Invalid amount"}), 400
-    
-    if amount < 0.1:
-        return jsonify({"success": False, "error": "Minimum withdraw 0.1 TON"}), 400
-    
-    # 🔥 AMBIL WALLET ADDRESS DARI DATABASE jika tidak dikirim dari frontend
-    if not wallet_address:
-        from games.database.games import get_user_withdraw_wallet
-        wallet_address = get_user_withdraw_wallet(telegram_id)
-        
-        if not wallet_address:
-            return jsonify({
-                "success": False, 
-                "error": "No wallet connected. Please connect your wallet first!"
-            }), 400
-    
-    print(f"📝 Withdraw request:")
-    print(f"   User: {telegram_id}")
-    print(f"   Amount: {amount} TON")
-    print(f"   Wallet address: {wallet_address}")
-    
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        # Cek user dan balance
-        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            return jsonify({"success": False, "error": "User not found"}), 404
-        
-        current_balance = user['balance'] or 0
-        
-        if amount > current_balance:
-            conn.close()
-            return jsonify({"success": False, "error": f"Insufficient balance. Your balance: {current_balance:.2f} TON"}), 400
-        
-        # AMBIL MNEMONIC DARI ENV
-        MERCHANT_MNEMONIC = os.getenv('MERCHANT_MNEMONIC', '')
-        
-        if not MERCHANT_MNEMONIC:
-            conn.close()
-            return jsonify({"success": False, "error": "Merchant mnemonic not configured in .env"}), 500
-        
-        # JALANKAN ASYNC FUNCTION
-        import asyncio
-        success, result = asyncio.run(send_ton_auto(telegram_id, amount, wallet_address, MERCHANT_MNEMONIC))
-        
-        if not success:
-            conn.close()
-            return jsonify({"success": False, "error": f"Failed to send TON: {result}"}), 500
-        
-        # Update balance user (kurangi)
-        cursor.execute("UPDATE users SET balance = balance - ? WHERE telegram_id = ?", (amount, telegram_id))
-        
-        # Catat history withdraw
-        cursor.execute('''
-            INSERT INTO game_history (telegram_id, game_name, bet_amount, win_amount, multiplier, played_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (telegram_id, 'WITHDRAW_TON', amount, 0, 0, get_current_time()))
-        
-        # Simpan ke withdraw_requests
-        reference = f"wd_{telegram_id}_{int(datetime.now().timestamp())}"
-        try:
-            cursor.execute('''
-                INSERT INTO withdraw_requests (telegram_id, amount_ton, destination_address, reference, transaction_hash, status, created_at)
-                VALUES (?, ?, ?, ?, ?, 'completed', ?)
-            ''', (telegram_id, amount, wallet_address, reference, result, get_current_time()))
-        except Exception as e:
-            print(f"⚠️ Could not save withdraw request: {e}")
-        
-        # Ambil balance baru
-        cursor.execute("SELECT balance FROM users WHERE telegram_id = ?", (telegram_id,))
-        new_balance = cursor.fetchone()[0]
-        
-        conn.commit()
-        conn.close()
-        
-        print(f"✅ Withdraw completed: {amount} TON to {wallet_address}")
-        
-        return jsonify({
-            "success": True,
-            "message": f"Withdraw {amount} TON berhasil dikirim!",
-            "amount": amount,
-            "new_balance": new_balance,
-            "transaction_hash": result,
-            "wallet_address": wallet_address
-        })
-        
-    except Exception as e:
-        print(f"❌ Withdraw error: {e}")
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)}), 500
-    
+# ==================== WALLET SESSION ====================
 @games_bp.route('/save-wallet-session', methods=['POST'])
 def save_wallet_session():
     """Simpan wallet session user"""
@@ -757,7 +377,6 @@ def save_wallet_session():
         print(f"❌ Error saving wallet session: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 @games_bp.route('/deactivate-wallet-session', methods=['POST'])
 def deactivate_wallet_session():
     """Nonaktifkan wallet session (disconnect)"""
@@ -778,18 +397,17 @@ def deactivate_wallet_session():
         print(f"❌ Error deactivating wallet session: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 @games_bp.route('/active-wallet/<int:telegram_id>', methods=['GET'])
 def get_active_wallet(telegram_id):
-    """Dapatkan wallet address yang sedang aktif untuk withdraw"""
+    """Dapatkan wallet address yang sedang aktif"""
     init_db()
     
     try:
-        from games.database.games import get_user_withdraw_wallet
-        wallet_address = get_user_withdraw_wallet(telegram_id)
+        from games.database.games import get_active_wallet_session
+        session = get_active_wallet_session(telegram_id)
         
-        if wallet_address:
-            return jsonify({'success': True, 'wallet_address': wallet_address})
+        if session and session.get('wallet_address'):
+            return jsonify({'success': True, 'wallet_address': session['wallet_address']})
         else:
             return jsonify({'success': False, 'error': 'No active wallet found'}), 404
     except Exception as e:

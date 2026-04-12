@@ -1,4 +1,4 @@
-/* games/css/profil.css - LENGKAP */
+/* games/css/profil.css - LENGKAP TANPA WITHDRAW */
 
 :root {
     --tg-bg-color: #0f0f0f;
@@ -22,7 +22,6 @@
     font-family: 'Inter', sans-serif;
 }
 
-/* Pastikan body dan app-container punya struktur yang sama dengan games.css */
 body {
     background: #000000;
     color: var(--tg-text-color);
@@ -32,7 +31,6 @@ body {
     justify-content: center;
 }
 
-/* Container utama dengan scroll sendiri - SAMA PERSIS dengan games.css */
 .app-container {
     width: 100%;
     max-width: 480px;
@@ -41,23 +39,16 @@ body {
     position: relative;
     padding-bottom: 90px;
     box-shadow: 0 0 30px rgba(0,0,0,0.8);
-    
-    /* Fungsi scroll dalam container saja */
     overflow-y: auto;
-    /* Mencegah efek pull-to-refresh (reload browser) saat scroll mentok ke atas */
     overscroll-behavior-y: none;
-    
-    /* Menyembunyikan scrollbar untuk Firefox, IE, dan Edge */
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
-/* Menyembunyikan scrollbar untuk Chrome, Safari, dan Opera */
 .app-container::-webkit-scrollbar {
     display: none;
 }
 
-/* Header Glassmorphism - SAMA dengan games.css */
 .glass-header {
     position: sticky;
     top: 0;
@@ -97,7 +88,6 @@ body {
     color: var(--warning-color);
 }
 
-/* Content Area - Tempat scroll */
 .content-area {
     flex: 1;
     padding: 20px;
@@ -128,9 +118,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    cursor: pointer;
     overflow: hidden;
+    cursor: pointer;
 }
 
 .profile-avatar-large img {
@@ -139,41 +128,22 @@ body {
     object-fit: cover;
 }
 
-.avatar-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0,0,0,0.6);
-    padding: 8px;
-    text-align: center;
-    opacity: 0;
-    transition: opacity 0.3s;
+.profile-name-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-.profile-avatar-large:hover .avatar-overlay {
-    opacity: 1;
+.profile-username-display {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--primary-color);
 }
 
-.avatar-overlay i {
-    font-size: 14px;
-    color: white;
-}
-
-.profile-info-card h2 {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-
-.profile-username {
-    color: var(--tg-hint-color);
-    font-size: 14px;
-    margin-bottom: 4px;
-}
-
-.profile-id {
-    font-size: 12px;
+.profile-id-display {
+    font-size: 13px;
     color: var(--tg-hint-color);
     font-family: monospace;
 }
@@ -219,7 +189,7 @@ body {
     color: var(--tg-text-color);
 }
 
-/* Action Buttons */
+/* Action Buttons - HANYA DEPOSIT */
 .action-buttons {
     display: flex;
     gap: 12px;
@@ -242,23 +212,6 @@ body {
 .btn-deposit:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-}
-
-.btn-history {
-    flex: 1;
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    padding: 14px;
-    border-radius: 12px;
-    color: var(--tg-text-color);
-    font-weight: 600;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.btn-history:hover {
-    background: rgba(255, 255, 255, 0.1);
 }
 
 /* History Section */
@@ -322,7 +275,7 @@ body {
     font-weight: 600;
 }
 
-/* Floating Navigation - SAMA dengan games.css */
+/* Floating Navigation */
 .floating-nav {
     position: fixed;
     bottom: 20px;
@@ -380,7 +333,8 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
     z-index: 1000;
     justify-content: center;
     align-items: center;
@@ -388,66 +342,249 @@ body {
 
 .modal-content {
     background: var(--bg-secondary);
-    border-radius: 20px;
+    border-radius: 24px;
     width: 90%;
     max-width: 400px;
     border: 1px solid var(--border-color);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
+    padding: 18px 20px;
     border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--tg-text-color);
 }
 
 .close-modal {
     font-size: 28px;
     cursor: pointer;
     color: var(--tg-hint-color);
+    transition: all 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.close-modal:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
 }
 
 .modal-body {
     padding: 20px;
 }
 
-.deposit-methods {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+.wallet-status {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.wallet-status p {
+    color: var(--tg-hint-color);
+    font-size: 14px;
     margin-bottom: 16px;
 }
 
-.method-btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    padding: 12px;
-    border-radius: 10px;
-    color: var(--tg-text-color);
-    cursor: pointer;
-    font-weight: 600;
+#disconnectContainer {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.custom-amount {
+.btn-disconnect-wallet {
+    width: 100%;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s;
+}
+
+.btn-disconnect-wallet:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
+#depositForm p {
+    color: var(--tg-hint-color);
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.info-box {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.info-label {
+    font-size: 12px;
+    color: var(--tg-hint-color);
+}
+
+.tx-hash {
+    font-family: monospace;
+    font-size: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 10px;
+    border-radius: 8px;
+    word-break: break-all;
+    flex: 1;
+    color: #40a7e3;
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.form-group {
     margin-bottom: 20px;
 }
 
-.custom-amount input {
+.form-group label {
+    display: block;
+    font-size: 13px;
+    color: var(--tg-hint-color);
+    margin-bottom: 8px;
+}
+
+.form-input {
     width: 100%;
-    padding: 12px;
-    background: var(--bg-card);
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    color: var(--tg-text-color);
+    border-radius: 14px;
+    color: white;
     font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #10b981;
+}
+
+.input-hint {
+    display: block;
+    font-size: 11px;
+    color: var(--tg-hint-color);
+    margin-top: 6px;
 }
 
 .btn-process-deposit {
     width: 100%;
     background: linear-gradient(135deg, #10b981, #059669);
     border: none;
-    padding: 14px;
+    color: white;
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s;
+    margin-top: 10px;
+}
+
+.btn-process-deposit:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn-process-deposit:disabled {
+    opacity: 0.6;
+    transform: none;
+}
+
+.deposit-instructions {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.success-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.deposit-instructions h4 {
+    font-size: 18px;
+    color: #10b981;
+    margin-bottom: 8px;
+}
+
+.deposit-instructions p {
+    font-size: 13px;
+    color: var(--tg-hint-color);
+    margin-bottom: 20px;
+}
+
+.btn-full {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.btn-secondary {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 12px;
     border-radius: 12px;
     color: white;
     font-weight: 600;
@@ -458,7 +595,41 @@ body {
     font-size: 11px;
     color: var(--tg-hint-color);
     text-align: center;
-    margin-top: 12px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+#ton-connect-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+#ton-connect-container button {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    padding: 14px 24px !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    color: white !important;
+    cursor: pointer !important;
+    width: 100% !important;
+    transition: all 0.3s ease !important;
+}
+
+#ton-connect-container button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+/* TON Logo Styles */
+.ton-logo-md {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
 }
 
 /* Animations */
@@ -487,5 +658,17 @@ body {
     
     .nav-label {
         font-size: 9px;
+    }
+    
+    .profile-name-row {
+        gap: 8px;
+    }
+    
+    .profile-username-display {
+        font-size: 14px;
+    }
+    
+    .profile-id-display {
+        font-size: 11px;
     }
 }
