@@ -171,11 +171,13 @@
                 <span class="close-modal withdraw-close">&times;</span>
             </div>
             <div class="modal-body">
-                <!-- Info Wallet -->
                 <div class="info-box" id="walletInfoBox">
                     <div class="info-row">
                         <span class="info-label">Wallet Address:</span>
-                        <code id="userWalletAddress" class="tx-hash">Belum terhubung</code>
+                        <code id="userWalletAddress" class="tx-hash" style="cursor: pointer; user-select: all;" onclick="copyFullWalletAddress()">Belum terhubung</code>
+                        <button type="button" class="icon-btn" onclick="copyFullWalletAddress()" style="cursor: pointer;">
+                            <i class="fas fa-copy"></i>
+                        </button>
                     </div>
                 </div>
                 

@@ -95,8 +95,11 @@
                 userWalletAddress = data.wallet_address;
                 const walletEl = document.getElementById('userWalletAddress');
                 if (walletEl) {
-                    walletEl.textContent = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 6);
-                    walletEl.title = userWalletAddress;
+                    // Tampilkan truncated version
+                    const truncated = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 6);
+                    walletEl.textContent = truncated;
+                    walletEl.setAttribute('data-full-address', userWalletAddress);
+                    walletEl.title = 'Click to copy full address';
                 }
                 return userWalletAddress;
             }
@@ -152,8 +155,36 @@
         }
     }
 
+    // Fungsi untuk copy full wallet address
+    function copyFullWalletAddress() {
+        const addressElement = document.getElementById('userWalletAddress');
+        if (addressElement && addressElement.textContent && addressElement.textContent !== 'Belum terhubung') {
+            // Ambil full address dari data attribute atau dari variabel global
+            let fullAddress = userWalletAddress;
+            
+            if (!fullAddress) {
+                // Fallback: coba ambil dari element
+                fullAddress = addressElement.getAttribute('data-full-address') || addressElement.textContent;
+            }
+            
+            if (fullAddress && fullAddress !== 'Belum terhubung') {
+                navigator.clipboard.writeText(fullAddress).then(() => {
+                    showToast('✅ Wallet address copied!', 'success');
+                    if (tg.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    }
+                }).catch(() => {
+                    showToast('❌ Failed to copy', 'error');
+                });
+            } else {
+                showToast('No wallet address to copy', 'warning');
+            }
+        } else {
+            showToast('Wallet not connected yet', 'warning');
+        }
+    }
+
     // ==================== WITHDRAW FUNCTIONS ====================
-    
     function showWithdrawModal() {
         const modal = document.getElementById('withdrawModal');
         if (!modal) return;
@@ -181,6 +212,17 @@
         } else {
             document.getElementById('walletWarning').style.display = 'none';
             document.getElementById('withdrawForm').style.display = 'block';
+            
+            // 🔥 SET FULL ADDRESS KE ELEMENT
+            const addressElement = document.getElementById('userWalletAddress');
+            if (addressElement) {
+                // Tampilkan truncated version untuk UI
+                const truncated = userWalletAddress.substring(0, 8) + '...' + userWalletAddress.substring(userWalletAddress.length - 6);
+                addressElement.textContent = truncated;
+                // Simpan full address di data attribute
+                addressElement.setAttribute('data-full-address', userWalletAddress);
+                addressElement.title = 'Click to copy full address';
+            }
         }
         
         modal.style.display = 'flex';
@@ -491,4 +533,5 @@
     
     // Expose global functions
     window.closeWithdrawModal = closeWithdrawModal;
+    window.copyFullWalletAddress = copyFullWalletAddress;
 })();
