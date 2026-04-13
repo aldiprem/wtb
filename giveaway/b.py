@@ -121,10 +121,6 @@ class AaycoBot:
 bot.parse_mode = AaycoBot()
 
 async def check_bot_access(chat_id: int) -> tuple:
-    """
-    Check if bot has access to the chat and if user is admin
-    Returns: (has_access, is_admin, error_message)
-    """
     try:
         # Coba get entity untuk cek akses
         entity = await bot.get_entity(chat_id)

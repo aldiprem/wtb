@@ -71,14 +71,56 @@ def get_giveaway_info(giveaway_code):
         # Get participants count
         participants_count = len(giveaway.get('participants', []))
         
-        # Get links and requirements
+        # Get links and requirements - PASTIKAN MENGGUNAKAN giveaway_id YANG SAMA
         giveaway_id = giveaway.get('giveaway_id', '')
-        links = db.get_links_list(giveaway_id) if giveaway_id else []
-        syarat = db.get_syarat(giveaway_id) if giveaway_id else 'None'
-        captcha = db.get_captcha(giveaway_id) if giveaway_id else 'Off'
+        
+        # AMBIL LANGSUNG DARI DATABASE DENGAN CONNECTION BARU UNTUK PASTIKAN DATA
+        try:
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek kolom syarat di tabel giveaways
+                cursor.execute("PRAGMA table_info(giveaways)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                syarat = 'None'
+                if 'syarat' in columns and giveaway_id:
+                    cursor.execute('SELECT syarat FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        syarat = row[0]
+                        print(f"[DEBUG] Found syarat for {giveaway_id}: {syarat}")
+                    else:
+                        print(f"[DEBUG] No syarat found for {giveaway_id}")
+                
+                # Get links
+                links = []
+                if 'link' in columns and giveaway_id:
+                    cursor.execute('SELECT link FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        links = [l.strip() for l in row[0].split('\n') if l.strip()]
+                        print(f"[DEBUG] Found links for {giveaway_id}: {links}")
+                
+                # Get captcha
+                captcha = 'Off'
+                if 'captcha' in columns and giveaway_id:
+                    cursor.execute('SELECT captcha FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
+                    row = cursor.fetchone()
+                    if row and row[0]:
+                        captcha = row[0]
+                
+        except Exception as e:
+            print(f"[ERROR] Failed to get additional data: {e}")
+            links = []
+            syarat = 'None'
+            captcha = 'Off'
         
         # Parse prize into list
         prize_lines = [p.strip() for p in giveaway['prize'].split('\n') if p.strip()]
+        
+        print(f"[DEBUG] Final syarat for response: {syarat}")
+        print(f"[DEBUG] Final links: {links}")
         
         return jsonify({
             'success': True,
@@ -297,3 +339,41 @@ def get_giveaway_stats():
             'success': False,
             'error': str(e)
         }), 500
+    
+@giveaway_bp.route('/debug/<giveaway_code>', methods=['GET'])
+def debug_giveaway(giveaway_code):
+    """Debug endpoint to check raw data"""
+    try:
+        giveaway = db.get_on_giveaway(giveaway_code)
+        
+        if not giveaway:
+            return jsonify({'error': 'Not found'}), 404
+        
+        giveaway_id = giveaway.get('giveaway_id', '')
+        
+        # Ambil data langsung dari tabel giveaways
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("PRAGMA table_info(giveaways)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            result = {}
+            for col in ['syarat', 'link', 'captcha']:
+                if col in columns and giveaway_id:
+                    cursor.execute(f'SELECT {col} FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
+                    row = cursor.fetchone()
+                    result[col] = row[0] if row else None
+                else:
+                    result[col] = 'column_not_exists'
+        
+        return jsonify({
+            'giveaway_code': giveaway_code,
+            'giveaway_id': giveaway_id,
+            'from_on_giveaway': {
+                'prize': giveaway.get('prize'),
+                'winners_count': giveaway.get('winners_count')
+            },
+            'from_giveaways_table': result
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
