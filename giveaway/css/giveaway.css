@@ -141,17 +141,43 @@ body {
     min-height: 100vh;
 }
 
-/* Profile Card */
 .profile-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    /* Gunakan Glassmorphism Style */
+    background: var(--glass-bg); 
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    backdrop-filter: blur(10px);
+    
+    position: relative; /* Wajib untuk menaruh ::after */
+    overflow: hidden;   /* Agar border terpotong rapi */
+    border: none;       /* Hapus border solid lama */
+    box-shadow: var(--shadow);
+}
+
+.profile-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    /* Sudut 170deg agar Atas panjang, Samping pendek di Kiri Atas & Kanan Bawah */
+    background: linear-gradient(170deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .profile-left {
@@ -379,11 +405,30 @@ body {
 
 /* Prize Card */
 .prize-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    border: none; /* Hapus border lama */
+    box-shadow: var(--shadow);
+}
+
+.prize-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .prize-list {
@@ -393,13 +438,39 @@ body {
     margin-bottom: 12px;
 }
 
+/* Update Prize Item dengan Asimetris Border (Panjang di Atas/Bawah, Pendek di Kiri/Kanan) */
 .prize-item {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    background: var(--surface-light);
+    background: var(--glass-bg); 
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    margin-bottom: 8px;
+}
+
+.prize-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(-10deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .prize-number {
@@ -424,10 +495,12 @@ body {
     margin-top: 8px;
 }
 
+/* Update Btn More dengan Gaya Asimetris (Sama dengan Prize Item) */
 .btn-more {
     width: 100%;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
+    background: var(--glass-blur);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
     padding: 12px;
     color: var(--text-secondary);
@@ -437,7 +510,29 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    position: relative; /* Penting */
+    overflow: hidden;   /* Penting */
+    border: none;       /* Hapus border solid lama */
     transition: all 0.2s;
+}
+
+.btn-more::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: linear-gradient(-10deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .btn-more:hover {
@@ -534,13 +629,31 @@ body {
     border-bottom: none;
 }
 
-/* Requirements Card */
 .requirements-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    box-shadow: var(--shadow);
+}
+
+.requirements-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    background: var(--glass-border-color); /* Menggunakan standar 135deg dari root */
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .requirements-list {
@@ -554,8 +667,34 @@ body {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: var(--surface-light);
+    background: var(--glass-bg); 
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    margin-bottom: 10px;
+}
+
+.requirement-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    /* Sudut -10deg agar asimetris (Atas panjang, samping pendek) */
+    background: linear-gradient(-10deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .requirement-item.completed {
@@ -700,13 +839,35 @@ body {
     color: var(--success);
 }
 
-/* Captcha Card */
+/* captcha-card disamakan dengan requirements-card */
 .captcha-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    box-shadow: var(--shadow);
+}
+
+/* Efek Sudut Putih 3D untuk captcha-card */
+.captcha-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    /* Menggunakan template border standard 135deg dari root */
+    background: var(--glass-border-color);
+    
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .captcha-container {
@@ -753,19 +914,55 @@ body {
     border-color: var(--primary);
 }
 
+/* Update captcha-refresh agar rata dan serasi dengan captcha-card */
 .captcha-refresh {
-    width: 48px;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    color: var(--primary);
+    background: var(--glass-bg); 
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     cursor: pointer;
+    
+    /* Logika Penempatan Border */
+    position: relative; 
+    overflow: hidden;   
+    border: none;       
+    box-shadow: var(--shadow-sm);
     transition: all 0.2s;
 }
 
+/* Pseudo-element untuk Sisi Putih 3D (RATA/Simetris 135deg) */
+.captcha-refresh::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: linear-gradient(-50deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 50%, 
+        rgba(255, 255, 255, 0) 50%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
 .captcha-refresh:hover {
-    background: var(--primary);
-    color: white;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.captcha-refresh i {
+    font-size: 18px;
+    color: var(--text-secondary);
 }
 
 .captcha-status {
