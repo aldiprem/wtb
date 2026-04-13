@@ -28,6 +28,18 @@
     
     --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    
+    --glass-bg: rgba(255, 255, 255, 0.03); 
+    --glass-blur: blur(12px);
+    
+    --glass-border-color: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0.05) 20%, 
+        rgba(255, 255, 255, 0.05) 80%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    
+    --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -207,25 +219,19 @@ body {
 }
 
 .countdown-card {
-    /* 1. Menggunakan variabel Glassmorphism dari root */
     background: var(--glass-bg); 
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
-    
-    /* 2. Layout Dasar */
     border: none;
-    border-radius: 24px; /* Disarankan 24px agar selaras dengan lengkungan cahaya sudut */
+    border-radius: 24px;
     padding: 14px 16px;
     margin-bottom: 16px;
     text-align: center;
     position: relative;
     overflow: hidden;
-
-    /* 3. Shadow luar menggunakan variabel shadow dari root */
     box-shadow: var(--shadow);
 }
 
-/* 4. Border Cahaya di Sudut (Tetap dipertahankan) */
 .countdown-card::after {
     content: "";
     position: absolute;
@@ -245,22 +251,39 @@ body {
     pointer-events: none;
 }
 
-/* 5. Tetap matikan elemen kelap-kelip bawaan */
 .countdown-card::before {
     display: none !important;
 }
 
-/* 5. Update Timer Block agar kontras dengan background glossy */
 .countdown-number {
     display: block;
     font-size: 28px;
     font-weight: 800;
-    background: rgb(255 255 255 / 6%); /* Lebih glossy */
+    background: var(--glass-bg); 
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     padding: 8px 10px;
-    border-radius: 14px;
+    border-radius: 12px;
     font-family: 'Inter', monospace;
-    color: #ffffff; /* Putih bersih */
+    color: #ffffff;
     text-shadow: 0 0 10px rgba(64, 167, 227, 0.3);
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.countdown-number::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 @keyframes glowPulse {
