@@ -9,9 +9,16 @@
     --warning: #f59e0b;
     --info: #3b82f6;
     
+    /* Background utama tetap gelap */
     --bg: #0a0a0a;
     --surface: #111111;
     --surface-light: #1a1a1a;
+    
+    /* VARIABEL BARU: Efek Transparan Blur (Glassmorphism) */
+    --glass-bg: rgb(255 255 255 / 3%); /* Putih sangat tipis */
+    --glass-bg-dark: rgba(0, 0, 0, 0.3);    /* Hitam transparan */
+    --blur: blur(10px);                     /* Kekuatan blur */
+    
     --border: rgba(255, 255, 255, 0.08);
     --border-light: rgba(255, 255, 255, 0.05);
     
@@ -199,17 +206,61 @@ body {
     font-weight: 700;
 }
 
-/* Countdown Card with 3D Glow */
 .countdown-card {
-    background: linear-gradient(135deg, var(--surface), var(--surface-light));
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 20px;
+    /* 1. Menggunakan variabel Glassmorphism dari root */
+    background: var(--glass-bg); 
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    
+    /* 2. Layout Dasar */
+    border: none;
+    border-radius: 24px; /* Disarankan 24px agar selaras dengan lengkungan cahaya sudut */
+    padding: 14px 16px;
     margin-bottom: 16px;
     text-align: center;
     position: relative;
     overflow: hidden;
-    animation: glowPulse 2s ease-in-out infinite;
+
+    /* 3. Shadow luar menggunakan variabel shadow dari root */
+    box-shadow: var(--shadow);
+}
+
+/* 4. Border Cahaya di Sudut (Tetap dipertahankan) */
+.countdown-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(194, 194, 194, 0.4) 0%, 
+        rgba(194, 194, 194, 0) 20%, 
+        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#ffffff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 5. Tetap matikan elemen kelap-kelip bawaan */
+.countdown-card::before {
+    display: none !important;
+}
+
+/* 5. Update Timer Block agar kontras dengan background glossy */
+.countdown-number {
+    display: block;
+    font-size: 28px;
+    font-weight: 800;
+    background: rgb(255 255 255 / 6%); /* Lebih glossy */
+    padding: 8px 10px;
+    border-radius: 14px;
+    font-family: 'Inter', monospace;
+    color: #ffffff; /* Putih bersih */
+    text-shadow: 0 0 10px rgba(64, 167, 227, 0.3);
 }
 
 @keyframes glowPulse {
@@ -262,17 +313,6 @@ body {
 .countdown-block {
     text-align: center;
     min-width: 55px;
-}
-
-.countdown-number {
-    display: block;
-    font-size: 28px;
-    font-weight: 800;
-    background: rgba(255, 255, 255, 0.05);
-    padding: 6px 8px;
-    border-radius: 12px;
-    font-family: monospace;
-    color: var(--primary);
 }
 
 .countdown-unit {
