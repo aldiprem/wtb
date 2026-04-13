@@ -266,8 +266,8 @@ body {
     padding: 1px;
     background: linear-gradient(170deg, 
         rgba(194, 194, 194, 0.4) 0%, 
-        rgba(194, 194, 194, 0) 50%, 
-        rgba(194, 194, 194, 0) 50%, 
+        rgba(194, 194, 194, 0) 35%, 
+        rgba(194, 194, 194, 0) 70%, 
         rgba(194, 194, 194, 0.4) 100%
     );
     -webkit-mask: linear-gradient(#ffffff, #fff) content-box, linear-gradient(#fff, #fff);
