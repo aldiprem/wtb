@@ -450,7 +450,7 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    background: var(--glass-bg); 
+    background: var(--bg); 
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
@@ -606,10 +606,8 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    margin: 10px; /* Memberi jarak agar border sudut terlihat */
-    
-    /* Glassmorphism Style */
-    background: var(--glass-bg);
+    margin: 10px;
+    background: var(--bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     
@@ -626,8 +624,7 @@ body {
     inset: 0;
     border-radius: 18px;
     padding: 1px;
-    /* Sudut 170deg: Atas panjang, Samping pendek */
-    background: linear-gradient(170deg, 
+    background: linear-gradient(175deg, 
         rgba(255, 255, 255, 0.4) 0%, 
         rgba(255, 255, 255, 0) 30%,
         rgba(255, 255, 255, 0) 70%, 
@@ -653,7 +650,6 @@ body {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    
     color: var(--text-secondary);
     font-size: 20px;
     cursor: pointer;
@@ -662,8 +658,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%; /* Tetap bulat */
-    
+    border-radius: 50%;
     position: relative; /* Wajib untuk menaruh ::after */
     overflow: hidden;   /* Agar cahaya sudut terpotong rapi sesuai lingkaran */
     border: none;       /* Hapus border lama */
@@ -675,14 +670,12 @@ body {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 50%; /* Mengikuti bentuk bulat tombol */
+    border-radius: 50%;
     padding: 1px;
-    
-    /* Menggunakan 135deg agar cahaya di sudut bulat terlihat rata/simetris */
-    background: linear-gradient(135deg, 
+    background: linear-gradient(140deg, 
         rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 25%, 
-        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0) 30%, 
+        rgba(255, 255, 255, 0) 70%, 
         rgba(255, 255, 255, 0.4) 100%
     );
     
@@ -707,10 +700,8 @@ body {
     padding: 16px 20px;
     max-height: 60vh;
     overflow-y: auto;
-    margin: 0 10px 10px 10px; /* Jarak dari pinggir modal */
-    
-    /* Glassmorphism Style */
-    background: var(--glass-bg);
+    margin: 0 10px 10px 10px;
+    background: var(--bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     
@@ -727,7 +718,7 @@ body {
     inset: 0;
     border-radius: 18px;
     padding: 1px;
-    background: linear-gradient(150deg, 
+    background: linear-gradient(165deg, 
         rgba(255, 255, 255, 0.4) 0%, 
         rgba(255, 255, 255, 0) 30%,
         rgba(255, 255, 255, 0) 70%, 
@@ -797,7 +788,7 @@ body {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: var(--glass-bg); 
+    background: var(--bg); 
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
@@ -814,7 +805,7 @@ body {
     border-radius: 14px;
     padding: 1px;
     /* Sudut -10deg agar asimetris (Atas panjang, samping pendek) */
-    background: linear-gradient(-10deg, 
+    background: linear-gradient(176deg, 
         rgba(255, 255, 255, 0.4) 0%, 
         rgba(255, 255, 255, 0) 30%,
         rgba(255, 255, 255, 0) 70%, 
@@ -920,7 +911,7 @@ body {
     align-items: center;
     gap: 12px;
     padding: 12px;
-    background: var(--glass-bg);
+    background: var(--bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
@@ -940,7 +931,7 @@ body {
     border-radius: 14px;
     padding: 1px;
     /* Sudut 170deg: Cahaya Kiri Atas & Kanan Bawah (Asimetris) */
-    background: linear-gradient(170deg, 
+    background: linear-gradient(175deg, 
         rgba(255, 255, 255, 0.4) 0%, 
         rgba(255, 255, 255, 0) 30%,
         rgba(255, 255, 255, 0) 70%, 
@@ -1048,7 +1039,6 @@ body {
     inset: 0;
     border-radius: 24px;
     padding: 1px;
-    /* Menggunakan template border standard 135deg dari root */
     background: var(--glass-border-color);
     
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
@@ -1087,9 +1077,9 @@ body {
 .captcha-input-group input {
     flex: 1;
     padding: 12px;
-    background: var(--surface-light);
+    background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 10px;
     color: var(--text);
     font-size: 14px;
     text-align: center;
