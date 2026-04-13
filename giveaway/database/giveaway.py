@@ -37,7 +37,6 @@ class GiveawayDatabase:
                 )
             ''')
 
-            # Table for giveaways
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS giveaways (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +50,11 @@ class GiveawayDatabase:
                     status TEXT DEFAULT 'active',
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     winners TEXT DEFAULT '[]',
-                    participants TEXT DEFAULT '[]'
+                    participants TEXT DEFAULT '[]',
+                    durasi_text TEXT DEFAULT '',
+                    link TEXT DEFAULT '',
+                    syarat TEXT DEFAULT 'None',
+                    captcha TEXT DEFAULT 'Off'
                 )
             ''')
             
@@ -909,12 +912,8 @@ class GiveawayDatabase:
     def create_giveaway(self, giveaway_id: str, user_id: int, chat_id: int, 
                         message_id: int, prize: str, winners_count: int, 
                         end_time: str, start_time: str = None) -> Optional[str]:
-        """
-        Create a new on_giveaway record
-        Returns: giveaway_code if successful, None otherwise
-        """
+        """Create a new on_giveaway record"""
         try:
-            import string
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
@@ -923,6 +922,11 @@ class GiveawayDatabase:
                 if start_time is None:
                     start_time = self._get_now()
                 
+                # Pastikan tabel on_giveaway memiliki kolom yang diperlukan
+                cursor.execute("PRAGMA table_info(on_giveaway)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                # Insert sesuai kolom yang ada
                 cursor.execute('''
                     INSERT INTO on_giveaway 
                     (giveaway_code, giveaway_id, user_id, chat_id, message_id, prize, 
@@ -935,6 +939,8 @@ class GiveawayDatabase:
                 return giveaway_code
         except Exception as e:
             print(f"Error creating on_giveaway: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_on_giveaway(self, giveaway_code: str) -> Optional[Dict[str, Any]]:

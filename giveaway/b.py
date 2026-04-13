@@ -1523,7 +1523,7 @@ async def start_giveaway_handler(event):
     
     winners_count = len(hadiah_list)
     
-    msg_self = await event.respond("[⌛](tg://emoji?id=5386367538735104399) **__Memulai giveaway...__**")
+    msg_self = await event.respond("[⌛] **__Memulai giveaway...__**")
     await event.delete()
     
     giveaway_id = generate_giveaway_id()
@@ -1535,6 +1535,59 @@ async def start_giveaway_handler(event):
         minutes = state.get('minutes', 60)
         end_time = get_jakarta_time() + timedelta(minutes=minutes)
     
+    # ============ PENTING: SIMPAN DATA KE TABEL GIVEAWAYS TERLEBIH DAHULU ============
+    # Pilih chat pertama sebagai default untuk tabel giveaways
+    first_chat = saved_chats[0]
+    first_chat_id = int(first_chat.get('chat_id'))
+    
+    # Buat record di tabel giveaways terlebih dahulu dengan semua data
+    try:
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Pastikan kolom ada
+            cursor.execute("PRAGMA table_info(giveaways)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'syarat' not in columns:
+                cursor.execute("ALTER TABLE giveaways ADD COLUMN syarat TEXT DEFAULT 'None'")
+            if 'link' not in columns:
+                cursor.execute("ALTER TABLE giveaways ADD COLUMN link TEXT DEFAULT ''")
+            if 'captcha' not in columns:
+                cursor.execute("ALTER TABLE giveaways ADD COLUMN captcha TEXT DEFAULT 'Off'")
+            
+            # Insert ke tabel giveaways
+            cursor.execute('''
+                INSERT INTO giveaways 
+                (giveaway_id, user_id, chat_id, message_id, prize, winners_count, end_time, status, syarat, link, captcha)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                giveaway_id, 
+                user_id, 
+                first_chat_id, 
+                0,  # message_id sementara
+                formatted_prize,
+                winners_count,
+                end_time.isoformat(),
+                'active',
+                syarat if syarat != 'None' else 'None',
+                link if link else '',
+                captcha if captcha == 'On' else 'Off'
+            ))
+            conn.commit()
+            logger.info(f"✅ Saved giveaway to giveaways table: {giveaway_id}")
+            
+            # Verifikasi
+            cursor.execute('SELECT syarat, link, captcha FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
+            row = cursor.fetchone()
+            logger.info(f"VERIFICATION: syarat={row[0]}, link={row[1][:50] if row[1] else ''}, captcha={row[2]}")
+            
+    except Exception as e:
+        logger.error(f"Error saving to giveaways table: {e}")
+        await event.respond(f"❌ Gagal menyimpan data giveaway: {e}")
+        return
+    
+    # Kirim pesan ke chat
     sent_messages = []
     success_chats = []
     failed_chats = []
@@ -1575,20 +1628,26 @@ async def start_giveaway_handler(event):
             })
             success_chats.append(chat_title)
             
+            # Update message_id di tabel giveaways untuk chat pertama
+            if chat == saved_chats[0]:
+                with sqlite3.connect(db.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('UPDATE giveaways SET message_id = ? WHERE giveaway_id = ?', (msg.id, giveaway_id))
+                    conn.commit()
+            
         except Exception as e:
             failed_chats.append(f"{chat_title}: {str(e)[:50]}")
     
     if not sent_messages:
         await msg_self.delete()
-        await event.respond(f"❌ **Gagal memulai giveaway!**\n\nTidak ada chat yang berhasil dikirimi pesan.\n\nError: {', '.join(failed_chats)}")
+        await event.respond(f"❌ **Gagal memulai giveaway!**")
         return
     
-    # ============ PENTING: Simpan data ke database dengan giveaway_id yang SAMA ============
+    # Buat on_giveaway records
     giveaway_codes = []
-    
     for msg_info in sent_messages:
         giveaway_code = db.create_giveaway(
-            giveaway_id=giveaway_id,  # SAMA UNTUK SEMUA
+            giveaway_id=giveaway_id,
             user_id=user_id,
             chat_id=msg_info['chat_id'],
             message_id=msg_info['message_id'],
@@ -1599,28 +1658,6 @@ async def start_giveaway_handler(event):
         )
         if giveaway_code:
             giveaway_codes.append(giveaway_code)
-    
-    # 🔥 PASTIKAN: Simpan data tambahan ke tabel giveaways menggunakan giveaway_id yang SAMA
-    if giveaway_codes:
-        # Simpan link ke tabel giveaways
-        if link:
-            success = db.add_link(giveaway_id, link)
-            logger.info(f"Saved link for {giveaway_id}: {success} - link: {link[:50]}...")
-        
-        # Simpan syarat ke tabel giveaways
-        if syarat and syarat != 'None':
-            success = db.add_syarat(giveaway_id, syarat)
-            logger.info(f"Saved syarat for {giveaway_id}: {success} - syarat: {syarat}")
-        
-        # Simpan captcha ke tabel giveaways
-        if captcha == 'On':
-            success = db.add_captcha(giveaway_id, captcha)
-            logger.info(f"Saved captcha for {giveaway_id}: {success} - captcha: {captcha}")
-        
-        # 🔥 VERIFIKASI: Cek apakah data tersimpan
-        verify_syarat = db.get_syarat(giveaway_id)
-        verify_link = db.get_link(giveaway_id)
-        logger.info(f"VERIFICATION - Giveaway {giveaway_id}: syarat='{verify_syarat}', link='{verify_link[:50] if verify_link else ''}'")
     
     # Update pesan dengan tombol
     if giveaway_codes:
@@ -1643,11 +1680,6 @@ async def start_giveaway_handler(event):
                 )
             except Exception as e:
                 print(f"Error editing message: {e}")
-                await bot.send_message(
-                    msg_info['chat_id'],
-                    f"🔗 **Klik link berikut untuk mengikuti giveaway:**\n\nhttps://t.me/freebiestbot/giveaway?startapp={first_giveaway_code}",
-                    buttons=correct_buttons
-                )
     
     # Hapus user_state
     if user_id in user_state:
@@ -1677,12 +1709,8 @@ async def start_giveaway_handler(event):
 📢 **Dikirim ke {len(success_chats)} chat:**
 {chr(10).join([f'✅ {chat}' for chat in success_chats])}
 
-{f'❌ Gagal: {chr(10).join(failed_chats)}' if failed_chats else ''}
-
 🔗 **Link MiniApp:**
 https://t.me/freebiestbot?startapp={giveaway_codes[0] if giveaway_codes else '-'}
-
-💡 Bot akan otomatis memilih {winners_count} pemenang saat giveaway berakhir.
 """
     
     await event.respond(success_msg)
