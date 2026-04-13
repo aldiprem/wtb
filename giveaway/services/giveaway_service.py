@@ -379,47 +379,27 @@ def debug_giveaway(giveaway_code):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
-@giveaway_bp.route('/user-stats/<int:user_id>', methods=['GET'])
-def get_user_stats(user_id):
-    """Get user statistics: created, participated, won giveaways"""
+@giveaway_bp.route('/user-photo/<int:user_id>', methods=['GET'])
+def get_user_photo(user_id):
+    """Get user profile photo URL from Telegram Bot API"""
     try:
-        # Hitung giveaway yang dibuat user
-        created_count = 0
-        participated_count = 0
-        won_count = 0
+        BOT_TOKEN = os.getenv("BOT_GIVEAWAY", "")  # Gunakan bot token dari env
         
-        with sqlite3.connect(db.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Giveaway yang dibuat
-            cursor.execute("SELECT COUNT(*) FROM on_giveaway WHERE user_id = ?", (user_id,))
-            row = cursor.fetchone()
-            created_count = row[0] if row else 0
-            
-            # Giveaway yang diikuti
-            cursor.execute("SELECT participants FROM on_giveaway")
-            rows = cursor.fetchall()
-            for row in rows:
-                if row[0]:
-                    participants = json.loads(row[0])
-                    if user_id in participants:
-                        participated_count += 1
-            
-            # Giveaway yang dimenangkan
-            cursor.execute("SELECT winners FROM on_giveaway")
-            rows = cursor.fetchall()
-            for row in rows:
-                if row[0]:
-                    winners = json.loads(row[0])
-                    if user_id in winners:
-                        won_count += 1
+        # Panggil Bot API
+        import requests
+        resp = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getUserProfilePhotos?user_id={user_id}&limit=1")
+        data = resp.json()
         
-        return jsonify({
-            'success': True,
-            'created_count': created_count,
-            'participated_count': participated_count,
-            'won_count': won_count
-        })
+        if data.get('ok') and data.get('result', {}).get('photos'):
+            file_id = data['result']['photos'][0][-1]['file_id']
+            file_resp = requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getFile?file_id={file_id}")
+            file_data = file_resp.json()
+            
+            if file_data.get('ok'):
+                file_path = file_data['result']['file_path']
+                photo_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+                return jsonify({'success': True, 'photo_url': photo_url})
+        
+        return jsonify({'success': False, 'error': 'No photo'}), 404
     except Exception as e:
-        print(f"Error getting user stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

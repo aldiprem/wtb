@@ -140,43 +140,38 @@
         }
     }
 
-    function updateUserUI() {
+    async function updateUserUI() {
         if (!telegramUser) return;
         
         const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
         const userId = telegramUser.id;
-        const username = telegramUser.username || '';
-        const firstName = telegramUser.first_name || '';
-        const lastName = telegramUser.last_name || '';
         
-        // Update nama dan username
         if (elements.userName) elements.userName.textContent = fullName || 'Pengguna Telegram';
-        if (elements.userUsername) elements.userUsername.textContent = username ? `@${username}` : 'Tidak ada username';
+        if (elements.userUsername) elements.userUsername.textContent = telegramUser.username ? `@${telegramUser.username}` : 'Tidak ada username';
         
-        // Gunakan UI Avatars (sama seperti di profil.html)
         const avatarContainer = elements.userAvatar;
         if (!avatarContainer) return;
         
-        // Buat URL avatar dari UI Avatars (reliable, no CORS issues)
-        const nameForAvatar = encodeURIComponent(fullName || firstName || username || 'User');
-        const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+        // Tampilkan loading dulu
+        avatarContainer.innerHTML = `<div class="avatar-initial" style="font-size: 20px;">...</div>`;
         
-        // Tampilkan gambar avatar
-        avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
-        
-        // Optional: Coba ambil foto dari Telegram (jika berhasil, ganti)
-        async function tryLoadTelegramPhoto() {
-            try {
-                // Gunakan endpoint tanpa bot token (menggunakan initData)
-                // Atau lewati karena hampir selalu gagal karena CORS
-                // Lebih baik tetap pakai UI Avatars
-            } catch (error) {
-                console.error('Error loading user photo:', error);
+        // Coba ambil foto dari backend
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/user-photo/${userId}`);
+            const data = await response.json();
+            
+            if (data.success && data.photo_url) {
+                avatarContainer.innerHTML = `<img src="${data.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                return;
             }
+        } catch (error) {
+            console.error('Error loading photo:', error);
         }
         
-        // Jika ingin tetap mencoba (opsional, tapi kemungkinan besar gagal)
-        // tryLoadTelegramPhoto();
+        // Fallback: UI Avatars
+        const nameForAvatar = encodeURIComponent(fullName || telegramUser.first_name || 'User');
+        const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+        avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
     }
 
     // Stats
