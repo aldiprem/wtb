@@ -761,6 +761,143 @@ body {
     margin-top: auto;
 }
 
+/* Additional styles for requirement status */
+.requirement-status {
+    font-size: 11px;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.requirement-status.success {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-color);
+}
+
+.requirement-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning-color);
+}
+
+.requirement-item {
+    cursor: default;
+    transition: all 0.2s;
+}
+
+.requirement-item[data-type="subscribe"]:hover,
+.requirement-item[data-type="boost"]:hover {
+    background: rgba(64, 167, 227, 0.1);
+    transform: translateX(4px);
+}
+
+/* Link card improvements */
+.link-card {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.link-card:hover {
+    transform: translateX(4px);
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+}
+
+.link-card.completed {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.link-visit-btn {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border: none;
+    border-radius: 30px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.link-visit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.link-visit-btn i {
+    font-size: 12px;
+}
+
+.link-url {
+    font-size: 12px;
+    font-family: monospace;
+    word-break: break-all;
+    color: var(--text-secondary);
+}
+
+.link-status {
+    font-size: 10px;
+    margin-top: 4px;
+}
+
+.link-status .fa-check-circle {
+    color: var(--success-color);
+}
+
+/* Links status */
+.links-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--info-color);
+    margin-top: 12px;
+}
+
+.links-status.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+.links-status i {
+    font-size: 14px;
+}
+
+/* Section header consistency */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section-header i {
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+.section-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Make sure sections are visible */
+.requirements-section {
+    display: block;
+}
+
+.links-section {
+    display: block;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 480px) {
     .giveaway-container {

@@ -1,4 +1,4 @@
-// giveaway.js - Halaman Giveaway
+// giveaway.js - Halaman Giveaway (FIXED VERSION)
 (function() {
     'use strict';
     
@@ -19,6 +19,7 @@
     let requiredLinks = [];
     let totalLinks = 0;
     let participationInProgress = false;
+    let requirementsList = []; // Store parsed requirements
 
     // ==================== DOM ELEMENTS ====================
     const elements = {
@@ -41,6 +42,7 @@
         winnersCount: document.getElementById('winnersCount'),
         
         // Requirements
+        requirementsSection: document.getElementById('requirementsSection'),
         requirementsList: document.getElementById('requirementsList'),
         
         // Links
@@ -195,6 +197,7 @@
             elements.captchaStatus.innerHTML = '';
             elements.captchaStatus.className = 'captcha-status';
         }
+        checkParticipationEligibility();
     }
 
     function verifyCaptcha() {
@@ -205,6 +208,8 @@
                 elements.captchaStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Masukkan kode captcha';
                 elements.captchaStatus.className = 'captcha-status error';
             }
+            isCaptchaVerified = false;
+            checkParticipationEligibility();
             return false;
         }
         
@@ -232,7 +237,10 @@
     function renderLinks() {
         if (!elements.linksContainer) return;
         
-        if (!requiredLinks || requiredLinks.length === 0) {
+        // Only show links section if Tap Link requirement exists
+        const hasTapLinkRequirement = requirementsList.some(req => req.type === 'taplink');
+        
+        if (!hasTapLinkRequirement || !requiredLinks || requiredLinks.length === 0) {
             elements.linksSection.style.display = 'none';
             return;
         }
@@ -249,7 +257,7 @@
                     </div>
                     <div class="link-info">
                         <div class="link-url">${escapeHtml(link)}</div>
-                        <div class="link-status">${isClicked ? 'Sudah dikunjungi' : 'Belum dikunjungi'}</div>
+                        <div class="link-status">${isClicked ? '✓ Sudah dikunjungi' : '⚠ Belum dikunjungi'}</div>
                     </div>
                     <button class="link-visit-btn" data-link="${escapeHtml(link)}">
                         <i class="fas fa-external-link-alt"></i>
@@ -290,11 +298,17 @@
                 }
                 const linkStatus = linkCard.querySelector('.link-status');
                 if (linkStatus) {
-                    linkStatus.textContent = 'Sudah dikunjungi';
+                    linkStatus.textContent = '✓ Sudah dikunjungi';
                 }
             }
             
+            // Save to localStorage
+            if (giveawayData?.code) {
+                localStorage.setItem(`giveaway_links_${giveawayData.code}`, JSON.stringify(Array.from(clickedLinks)));
+            }
+            
             updateLinksStatus();
+            renderRequirements(); // Re-render requirements to update Tap Link status
             checkParticipationEligibility();
             showToast('Link telah dikunjungi!', 'success');
         }
@@ -306,84 +320,230 @@
         const clickedCount = clickedLinks.size;
         const total = totalLinks;
         
+        if (total === 0) {
+            elements.linksSection.style.display = 'none';
+            return;
+        }
+        
         if (clickedCount >= total && total > 0) {
-            elements.linksStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Semua link telah dikunjungi! Silakan berpartisipasi.</span>';
+            elements.linksStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>✓ Semua link telah dikunjungi! Silakan berpartisipasi.</span>';
             elements.linksStatus.className = 'links-status success';
         } else if (total > 0) {
-            elements.linksStatus.innerHTML = `<i class="fas fa-info-circle"></i><span>${clickedCount} dari ${total} link telah dikunjungi</span>`;
+            elements.linksStatus.innerHTML = `<i class="fas fa-info-circle"></i><span>📌 ${clickedCount} dari ${total} link telah dikunjungi</span>`;
             elements.linksStatus.className = 'links-status';
         }
     }
 
     // ==================== REQUIREMENTS UI ====================
     
-    function renderRequirements() {
-        if (!elements.requirementsList) return;
+    function parseRequirements(syaratString, hasLinks) {
+        // Parse syarat string like "Subscribe, Boost, Tap link" or "Subscribe, Tap link"
+        const requirements = [];
         
-        const syarat = giveawayData?.syarat || 'None';
-        let requirements = [];
+        if (!syaratString || syaratString === 'None' || syaratString === '') {
+            requirements.push({ 
+                type: 'none', 
+                text: 'Tidak ada syarat khusus', 
+                icon: 'fa-check-circle', 
+                completed: true,
+                required: false
+            });
+            return requirements;
+        }
         
-        if (syarat === 'None' || syarat === '') {
-            requirements = [{ text: 'Tidak ada syarat khusus', icon: 'fa-check-circle', completed: true }];
-        } else {
-            const syaratList = syarat.split(',').map(s => s.trim());
-            for (const s of syaratList) {
-                if (s === 'Subscribe') {
-                    requirements.push({ text: 'Subscribe ke channel/group', icon: 'fa-telegram', completed: false });
-                } else if (s === 'Boost') {
-                    requirements.push({ text: 'Boost channel', icon: 'fa-rocket', completed: false });
-                } else if (s === 'Tap link') {
-                    requirements.push({ text: 'Kunjungi semua link yang disediakan', icon: 'fa-link', completed: clickedLinks.size >= totalLinks });
-                }
+        const syaratList = syaratString.split(',').map(s => s.trim());
+        
+        for (const s of syaratList) {
+            if (s === 'Subscribe') {
+                requirements.push({ 
+                    type: 'subscribe', 
+                    text: 'Subscribe ke channel/group', 
+                    icon: 'fa-telegram', 
+                    completed: false,
+                    required: true
+                });
+            } else if (s === 'Boost') {
+                requirements.push({ 
+                    type: 'boost', 
+                    text: 'Boost channel', 
+                    icon: 'fa-rocket', 
+                    completed: false,
+                    required: true
+                });
+            } else if (s === 'Tap link') {
+                requirements.push({ 
+                    type: 'taplink', 
+                    text: `Kunjungi semua link yang disediakan (${totalLinks} link)`, 
+                    icon: 'fa-link', 
+                    completed: (hasLinks && clickedLinks.size >= totalLinks),
+                    required: true,
+                    totalLinks: totalLinks,
+                    clickedLinks: clickedLinks.size
+                });
             }
         }
         
+        return requirements;
+    }
+    
+    function updateRequirementsCompletion() {
+        // Update completion status for each requirement
+        for (let i = 0; i < requirementsList.length; i++) {
+            const req = requirementsList[i];
+            
+            if (req.type === 'taplink') {
+                req.completed = (totalLinks > 0 && clickedLinks.size >= totalLinks);
+                req.clickedLinks = clickedLinks.size;
+                req.text = `Kunjungi semua link yang disediakan (${clickedLinks.size}/${totalLinks} link)`;
+            } else if (req.type === 'subscribe') {
+                // For now, subscribe is not auto-checked - user must click a button
+                // You can implement actual check via API if needed
+                req.completed = false;
+            } else if (req.type === 'boost') {
+                req.completed = false;
+            } else if (req.type === 'none') {
+                req.completed = true;
+            }
+        }
+    }
+    
+    function renderRequirements() {
+        if (!elements.requirementsList) return;
+        
+        // Update completion status
+        updateRequirementsCompletion();
+        
+        if (requirementsList.length === 0) {
+            elements.requirementsSection.style.display = 'none';
+            return;
+        }
+        
+        elements.requirementsSection.style.display = 'block';
+        
         let html = '';
-        requirements.forEach(req => {
+        for (const req of requirementsList) {
+            const isCompleted = req.completed;
+            let statusIcon = '';
+            let statusText = '';
+            
+            if (req.type === 'none') {
+                statusIcon = '<i class="fas fa-check-circle requirement-check"></i>';
+                statusText = '';
+            } else if (isCompleted) {
+                statusIcon = '<i class="fas fa-check-circle requirement-check"></i>';
+                statusText = '<span class="requirement-status success">✓ Terpenuhi</span>';
+            } else {
+                statusIcon = '';
+                statusText = '<span class="requirement-status pending">⏳ Belum</span>';
+            }
+            
             html += `
-                <div class="requirement-item ${req.completed ? 'completed' : ''}">
+                <div class="requirement-item ${isCompleted ? 'completed' : ''}" data-type="${req.type}">
                     <div class="requirement-icon">
                         <i class="fas ${req.icon}"></i>
                     </div>
-                    <div class="requirement-text">${escapeHtml(req.text)}</div>
-                    ${req.completed ? '<i class="fas fa-check-circle requirement-check"></i>' : ''}
+                    <div class="requirement-text">
+                        ${escapeHtml(req.text)}
+                        ${statusText}
+                    </div>
+                    ${statusIcon}
                 </div>
             `;
-        });
+        }
         
         elements.requirementsList.innerHTML = html;
+        
+        // Add click handlers for subscribe/boost if needed
+        addRequirementActionHandlers();
+    }
+    
+    function addRequirementActionHandlers() {
+        // Add click handler for subscribe requirement
+        const subscribeItem = document.querySelector('.requirement-item[data-type="subscribe"]');
+        if (subscribeItem && !subscribeItem.classList.contains('completed')) {
+            subscribeItem.style.cursor = 'pointer';
+            subscribeItem.addEventListener('click', async () => {
+                // Show channel selection or open subscribe link
+                showToast('Silakan subscribe ke channel terlebih dahulu', 'info');
+                // You can implement actual subscribe check here
+            });
+        }
+        
+        // Add click handler for boost requirement
+        const boostItem = document.querySelector('.requirement-item[data-type="boost"]');
+        if (boostItem && !boostItem.classList.contains('completed')) {
+            boostItem.style.cursor = 'pointer';
+            boostItem.addEventListener('click', async () => {
+                showToast('Silakan boost channel terlebih dahulu', 'info');
+                // You can implement actual boost check here
+            });
+        }
     }
     
     function checkParticipationEligibility() {
         if (hasParticipated) {
-            elements.participateBtn.disabled = true;
-            elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Sudah Berpartisipasi</span>';
+            if (elements.participateBtn) {
+                elements.participateBtn.disabled = true;
+                elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>✓ Sudah Berpartisipasi</span>';
+            }
             return false;
         }
         
         if (giveawayData?.status === 'expired') {
-            elements.participateBtn.disabled = true;
-            elements.participateBtn.innerHTML = '<i class="fas fa-clock"></i><span>Giveaway Berakhir</span>';
+            if (elements.participateBtn) {
+                elements.participateBtn.disabled = true;
+                elements.participateBtn.innerHTML = '<i class="fas fa-clock"></i><span>Giveaway Berakhir</span>';
+            }
             return false;
         }
         
         // Check captcha if enabled
         if (giveawayData?.captcha === 'On' && !isCaptchaVerified) {
-            elements.participateBtn.disabled = true;
-            elements.participateBtn.innerHTML = '<i class="fas fa-shield-alt"></i><span>Verifikasi Captcha Dulu</span>';
+            if (elements.participateBtn) {
+                elements.participateBtn.disabled = true;
+                elements.participateBtn.innerHTML = '<i class="fas fa-shield-alt"></i><span>🔒 Verifikasi Captcha Dulu</span>';
+            }
             return false;
         }
         
-        // Check link requirements
-        if (requiredLinks.length > 0 && clickedLinks.size < totalLinks) {
-            elements.participateBtn.disabled = true;
-            elements.participateBtn.innerHTML = '<i class="fas fa-link"></i><span>Kunjungi Semua Link Dulu</span>';
+        // Check all requirements
+        let allRequirementsMet = true;
+        let missingRequirement = '';
+        
+        for (const req of requirementsList) {
+            if (req.type === 'none') continue;
+            
+            if (req.type === 'taplink' && totalLinks > 0) {
+                if (clickedLinks.size < totalLinks) {
+                    allRequirementsMet = false;
+                    missingRequirement = `Kunjungi ${totalLinks - clickedLinks.size} link lagi`;
+                    break;
+                }
+            } else if (req.type === 'subscribe') {
+                // For now, assume not completed until implemented
+                allRequirementsMet = false;
+                missingRequirement = 'Subscribe ke channel terlebih dahulu';
+                break;
+            } else if (req.type === 'boost') {
+                allRequirementsMet = false;
+                missingRequirement = 'Boost channel terlebih dahulu';
+                break;
+            }
+        }
+        
+        if (!allRequirementsMet) {
+            if (elements.participateBtn) {
+                elements.participateBtn.disabled = true;
+                elements.participateBtn.innerHTML = `<i class="fas fa-lock"></i><span>${missingRequirement}</span>`;
+            }
             return false;
         }
         
         // All requirements met
-        elements.participateBtn.disabled = false;
-        elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>Partisipasi</span>';
+        if (elements.participateBtn) {
+            elements.participateBtn.disabled = false;
+            elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>🎁 Partisipasi Sekarang</span>';
+        }
         return true;
     }
 
@@ -504,6 +664,22 @@
                 requiredLinks = giveawayData.links || [];
                 totalLinks = requiredLinks.length;
                 
+                // Load saved clicked links from localStorage
+                if (giveawayData.code) {
+                    const savedClicks = localStorage.getItem(`giveaway_links_${giveawayData.code}`);
+                    if (savedClicks) {
+                        const savedLinks = JSON.parse(savedClicks);
+                        savedLinks.forEach(link => {
+                            if (requiredLinks.includes(link)) {
+                                clickedLinks.add(link);
+                            }
+                        });
+                    }
+                }
+                
+                // Parse requirements
+                requirementsList = parseRequirements(giveawayData.syarat, totalLinks > 0);
+                
                 // Render UI
                 renderPrize();
                 renderRequirements();
@@ -523,11 +699,15 @@
                     generateCaptcha();
                     
                     if (elements.captchaRefresh) {
+                        elements.captchaRefresh.removeEventListener('click', generateCaptcha);
                         elements.captchaRefresh.addEventListener('click', generateCaptcha);
                     }
                     if (elements.captchaInput) {
+                        elements.captchaInput.removeEventListener('input', verifyCaptcha);
                         elements.captchaInput.addEventListener('input', verifyCaptcha);
                     }
+                } else {
+                    elements.captchaSection.style.display = 'none';
                 }
                 
                 // Check if user already participated
@@ -535,22 +715,9 @@
                     await checkUserParticipation(giveawayData.code, telegramUser.id);
                 }
                 
-                // Update requirement status for tap link
-                if (requiredLinks.length > 0) {
-                    // Check localStorage for previously clicked links
-                    const savedClicks = localStorage.getItem(`giveaway_links_${giveawayData.code}`);
-                    if (savedClicks) {
-                        const savedLinks = JSON.parse(savedClicks);
-                        savedLinks.forEach(link => {
-                            if (requiredLinks.includes(link)) {
-                                clickedLinks.add(link);
-                            }
-                        });
-                        renderLinks();
-                    }
-                    renderRequirements();
-                }
-                
+                // Re-render to ensure status is updated
+                renderRequirements();
+                renderLinks();
                 checkParticipationEligibility();
                 
             } else {
@@ -574,9 +741,13 @@
                 hasParticipated = data.has_participated;
                 
                 if (hasParticipated) {
-                    elements.participationStatus.style.display = 'block';
-                    elements.participateBtn.disabled = true;
-                    elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Sudah Berpartisipasi</span>';
+                    if (elements.participationStatus) {
+                        elements.participationStatus.style.display = 'block';
+                    }
+                    if (elements.participateBtn) {
+                        elements.participateBtn.disabled = true;
+                        elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>✓ Sudah Berpartisipasi</span>';
+                    }
                 }
             }
         } catch (error) {
@@ -595,14 +766,22 @@
             return;
         }
         
+        // Final eligibility check
+        if (!checkParticipationEligibility()) {
+            showToast('Silakan penuhi semua syarat terlebih dahulu', 'warning');
+            return;
+        }
+        
         // Save clicked links to localStorage
         if (clickedLinks.size > 0) {
             localStorage.setItem(`giveaway_links_${giveawayData.code}`, JSON.stringify(Array.from(clickedLinks)));
         }
         
         participationInProgress = true;
-        elements.participateBtn.disabled = true;
-        elements.participateBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
+        if (elements.participateBtn) {
+            elements.participateBtn.disabled = true;
+            elements.participateBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
+        }
         
         try {
             const data = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/participate`, {
@@ -620,21 +799,29 @@
             
             if (data.success) {
                 hasParticipated = true;
-                elements.participationStatus.style.display = 'block';
-                elements.participateBtn.disabled = true;
-                elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Berhasil Berpartisipasi!</span>';
+                if (elements.participationStatus) {
+                    elements.participationStatus.style.display = 'block';
+                }
+                if (elements.participateBtn) {
+                    elements.participateBtn.disabled = true;
+                    elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>✓ Berhasil Berpartisipasi!</span>';
+                }
                 showToast(data.message || 'Berhasil berpartisipasi! Semoga beruntung!', 'success');
                 vibrate(50);
             } else {
                 showToast(data.error || 'Gagal berpartisipasi', 'error');
-                elements.participateBtn.disabled = false;
-                elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>Partisipasi</span>';
+                if (elements.participateBtn) {
+                    elements.participateBtn.disabled = false;
+                    elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>🎁 Partisipasi Sekarang</span>';
+                }
             }
         } catch (error) {
             console.error('Error participating:', error);
             showToast('Terjadi kesalahan, silakan coba lagi', 'error');
-            elements.participateBtn.disabled = false;
-            elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>Partisipasi</span>';
+            if (elements.participateBtn) {
+                elements.participateBtn.disabled = false;
+                elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>🎁 Partisipasi Sekarang</span>';
+            }
         } finally {
             participationInProgress = false;
         }
@@ -698,6 +885,7 @@
             
             // Setup participate button
             if (elements.participateBtn) {
+                elements.participateBtn.removeEventListener('click', participate);
                 elements.participateBtn.addEventListener('click', participate);
             }
             
