@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -30,22 +30,38 @@
     <!-- Main Container -->
     <div class="giveaway-container">
         
-        <!-- Header -->
-        <header class="giveaway-header">
-            <div class="header-icon">
-                <i class="fas fa-gift"></i>
+        <!-- Header Card dengan Profile -->
+        <div class="profile-card">
+            <div class="profile-left">
+                <div class="profile-avatar" id="userAvatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="profile-info">
+                    <div class="profile-name" id="userName">Memuat...</div>
+                    <div class="profile-username" id="userUsername">@username</div>
+                </div>
             </div>
-            <div class="header-title">
-                <h1>Giveaway</h1>
-                <span id="giveawayCode" class="giveaway-code-badge">-</span>
+            <div class="stats-right" id="statsContainer">
+                <div class="stat-item">
+                    <i class="fas fa-gift"></i>
+                    <span class="stat-value" id="statCreated">0</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-users"></i>
+                    <span class="stat-value" id="statParticipated">0</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-trophy"></i>
+                    <span class="stat-value" id="statWon">0</span>
+                </div>
             </div>
-        </header>
+        </div>
 
-        <!-- Countdown Timer Section -->
-        <div class="countdown-section" id="countdownSection">
+        <!-- Countdown Card with 3D Glow Effect -->
+        <div class="countdown-card">
             <div class="countdown-label">
                 <i class="fas fa-hourglass-half"></i>
-                <span>Berakhir dalam:</span>
+                <span>Berakhir Dalam</span>
             </div>
             <div class="countdown-timer" id="countdownTimer">
                 <div class="countdown-block">
@@ -71,77 +87,63 @@
             </div>
         </div>
 
-        <!-- Prize Section -->
-        <div class="prize-section">
-            <div class="section-header">
+        <!-- Prize Card -->
+        <div class="prize-card">
+            <div class="card-header">
                 <i class="fas fa-trophy"></i>
-                <h2>Hadiah Giveaway</h2>
+                <h3>Hadiah Giveaway</h3>
             </div>
-            <div class="prize-list" id="prizeList">
-                <!-- Prizes will be populated here -->
-            </div>
-            <div class="winners-info" id="winnersInfo">
-                <i class="fas fa-users"></i>
-                <span id="winnersCount">-</span> Pemenang
+            <div class="prize-list" id="prizeList"></div>
+            <div class="prize-more" id="prizeMore" style="display: none;">
+                <button class="btn-more" id="showAllPrizesBtn">
+                    <span id="remainingPrizesCount">0</span> Hadiah Lainnya...
+                    <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
 
-        <!-- Requirements Section -->
-        <div class="requirements-section" id="requirementsSection">
-            <div class="section-header">
+        <!-- All Prizes Modal -->
+        <div class="modal-overlay" id="prizeModal">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3><i class="fas fa-gift"></i> Semua Hadiah</h3>
+                    <button class="modal-close" id="closePrizeModal">&times;</button>
+                </div>
+                <div class="modal-body" id="allPrizesList"></div>
+            </div>
+        </div>
+
+        <!-- Requirements Card -->
+        <div class="requirements-card" id="requirementsCard">
+            <div class="card-header">
                 <i class="fas fa-clipboard-list"></i>
-                <h2>Syarat & Ketentuan</h2>
+                <h3>Syarat</h3>
             </div>
-            <div class="requirements-list" id="requirementsList">
-                <!-- Requirements will be populated here -->
-            </div>
+            <div class="requirements-list" id="requirementsList"></div>
         </div>
 
-        <!-- Links Section (Tap Link Requirement) -->
-        <div class="links-section" id="linksSection" style="display: none;">
-            <div class="section-header">
+        <!-- Links Card (Tap Link Requirement) -->
+        <div class="links-card" id="linksCard" style="display: none;">
+            <div class="card-header">
                 <i class="fas fa-link"></i>
-                <h2>Link yang Wajib Dikunjungi</h2>
+                <h3>Link Wajib</h3>
             </div>
-            <div class="links-container" id="linksContainer">
-                <!-- Links will be populated here -->
-            </div>
-            <div class="links-status" id="linksStatus">
-                <i class="fas fa-info-circle"></i>
-                <span>Klik semua link di atas sebelum berpartisipasi</span>
-            </div>
+            <div class="links-container" id="linksContainer"></div>
+            <div class="links-status" id="linksStatus"></div>
         </div>
 
-        <!-- User Info Section -->
-        <div class="user-section" id="userSection">
-            <div class="section-header">
-                <i class="fas fa-user-circle"></i>
-                <h2>Informasi Peserta</h2>
-            </div>
-            <div class="user-info" id="userInfo">
-                <div class="user-avatar" id="userAvatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="user-details">
-                    <div class="user-name" id="userName">-</div>
-                    <div class="user-username" id="userUsername">-</div>
-                    <div class="user-id" id="userId">-</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Captcha Section (if enabled) -->
-        <div class="captcha-section" id="captchaSection" style="display: none;">
-            <div class="section-header">
+        <!-- Captcha Card -->
+        <div class="captcha-card" id="captchaCard" style="display: none;">
+            <div class="card-header">
                 <i class="fas fa-shield-alt"></i>
-                <h2>Verifikasi Captcha</h2>
+                <h3>Verifikasi</h3>
             </div>
             <div class="captcha-container">
-                <div class="captcha-display" id="captchaDisplay">
+                <div class="captcha-display">
                     <span id="captchaCode">XXXX</span>
                 </div>
                 <div class="captcha-input-group">
-                    <input type="text" id="captchaInput" placeholder="Masukkan kode di atas" maxlength="4">
+                    <input type="text" id="captchaInput" placeholder="Kode" maxlength="4">
                     <button class="captcha-refresh" id="captchaRefresh">
                         <i class="fas fa-sync-alt"></i>
                     </button>
@@ -150,29 +152,23 @@
             </div>
         </div>
 
-        <!-- Participation Status -->
-        <div class="participation-status" id="participationStatus" style="display: none;">
-            <div class="status-card success" id="participatedCard">
-                <i class="fas fa-check-circle"></i>
-                <div class="status-text">
-                    <h3>Anda Sudah Berpartisipasi!</h3>
-                    <p>Terima kasih telah mengikuti giveaway ini. Semoga beruntung!</p>
-                </div>
+        <!-- Participation Status Card -->
+        <div class="status-card" id="participationStatus" style="display: none;">
+            <i class="fas fa-check-circle"></i>
+            <div class="status-text">
+                <h4>Sudah Berpartisipasi!</h4>
+                <p>Terima kasih telah mengikuti giveaway ini. Semoga beruntung!</p>
             </div>
         </div>
 
-        <!-- Action Button -->
-        <div class="action-section">
-            <button class="btn-participate" id="participateBtn" disabled>
+        <!-- Floating Action Button (FAB) -->
+        <div class="fab-container" id="fabContainer">
+            <button class="fab-button" id="participateBtn" disabled>
                 <i class="fas fa-hand-peace"></i>
                 <span>Partisipasi</span>
             </button>
         </div>
 
-        <!-- Footer -->
-        <footer class="giveaway-footer">
-            <p>© 2024 Giveaway Bot • Semoga beruntung!</p>
-        </footer>
     </div>
 
     <!-- JavaScript -->
