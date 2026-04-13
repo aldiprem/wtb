@@ -15,9 +15,10 @@
     --surface-light: #1a1a1a;
     
     /* VARIABEL BARU: Efek Transparan Blur (Glassmorphism) */
-    --glass-bg: rgb(255 255 255 / 3%); /* Putih sangat tipis */
-    --glass-bg-dark: rgba(0, 0, 0, 0.3);    /* Hitam transparan */
-    --blur: blur(10px);                     /* Kekuatan blur */
+    --glass-bg: rgb(255 255 255 / 3%);
+    --glass-bg-dark: rgba(0, 0, 0, 0.3);
+    --blur: blur(10px);
+    --glass-blur: blur(12px);
     
     --border: rgba(255, 255, 255, 0.08);
     --border-light: rgba(255, 255, 255, 0.05);
@@ -28,9 +29,7 @@
     
     --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-    
-    --glass-bg: rgba(255, 255, 255, 0.03); 
-    --glass-blur: blur(12px);
+    --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.5);
     
     --glass-border-color: linear-gradient(135deg, 
         rgba(255, 255, 255, 0.4) 0%, 
@@ -38,8 +37,6 @@
         rgba(255, 255, 255, 0.05) 80%, 
         rgba(255, 255, 255, 0.4) 100%
     );
-    
-    --shadow-dark: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -143,15 +140,38 @@ body {
 
 /* Profile Card */
 .profile-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: none;
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.profile-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(194, 194, 194, 0.4) 0%, 
+        rgba(194, 194, 194, 0) 20%, 
+        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .profile-left {
@@ -168,6 +188,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 .profile-avatar i {
@@ -218,8 +239,9 @@ body {
     font-weight: 700;
 }
 
+/* Countdown Card */
 .countdown-card {
-    background: var(--glass-bg); 
+    background: var(--glass-bg);
     backdrop-filter: var(--blur);
     -webkit-backdrop-filter: var(--blur);
     border: none;
@@ -244,7 +266,7 @@ body {
         rgba(194, 194, 194, 0) 80%, 
         rgba(194, 194, 194, 0.4) 100%
     );
-    -webkit-mask: linear-gradient(#ffffff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -253,62 +275,6 @@ body {
 
 .countdown-card::before {
     display: none !important;
-}
-
-.countdown-number {
-    display: block;
-    font-size: 28px;
-    font-weight: 800;
-    background: var(--glass-bg); 
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    padding: 8px 10px;
-    border-radius: 12px;
-    font-family: 'Inter', monospace;
-    color: #ffffff;
-    text-shadow: 0 0 10px rgba(64, 167, 227, 0.3);
-    position: relative;
-    overflow: hidden;
-    border: none;
-}
-
-.countdown-number::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    padding: 1px;
-    background: var(--glass-border-color);
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-}
-
-@keyframes glowPulse {
-    0%, 100% { box-shadow: 0 0 0px rgba(64, 167, 227, 0); }
-    50% { box-shadow: 0 0 20px rgba(64, 167, 227, 0.3); }
-}
-
-.countdown-card::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, var(--primary), transparent, var(--primary), transparent);
-    border-radius: 24px;
-    z-index: -1;
-    opacity: 0.5;
-    animation: borderGlow 3s linear infinite;
-}
-
-@keyframes borderGlow {
-    0% { opacity: 0.3; }
-    50% { opacity: 0.8; }
-    100% { opacity: 0.3; }
 }
 
 .countdown-label {
@@ -336,6 +302,37 @@ body {
 .countdown-block {
     text-align: center;
     min-width: 55px;
+}
+
+.countdown-number {
+    display: block;
+    font-size: 28px;
+    font-weight: 800;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-family: 'Inter', monospace;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(64, 167, 227, 0.3);
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.countdown-number::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .countdown-unit {
@@ -379,11 +376,35 @@ body {
 
 /* Prize Card */
 .prize-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: none;
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.prize-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(194, 194, 194, 0.4) 0%, 
+        rgba(194, 194, 194, 0) 20%, 
+        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .prize-list {
@@ -398,8 +419,26 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    background: var(--surface-light);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.prize-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .prize-number {
@@ -426,8 +465,10 @@ body {
 
 .btn-more {
     width: 100%;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: none;
     border-radius: 14px;
     padding: 12px;
     color: var(--text-secondary);
@@ -438,11 +479,26 @@ body {
     align-items: center;
     justify-content: space-between;
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-more::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .btn-more:hover {
     background: rgba(64, 167, 227, 0.1);
-    border-color: var(--primary);
 }
 
 .btn-more i {
@@ -466,14 +522,37 @@ body {
 }
 
 .modal-container {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: none;
     border-radius: 28px;
     width: 100%;
     max-width: 400px;
     max-height: 80vh;
     overflow: hidden;
     animation: modalFadeIn 0.2s ease;
+    position: relative;
+    box-shadow: var(--shadow-dark);
+}
+
+.modal-container::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(194, 194, 194, 0.4) 0%, 
+        rgba(194, 194, 194, 0) 20%, 
+        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 @keyframes modalFadeIn {
@@ -513,7 +592,7 @@ body {
 }
 
 .modal-close:hover {
-    background: var(--surface-light);
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .modal-body {
@@ -536,11 +615,35 @@ body {
 
 /* Requirements Card */
 .requirements-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: none;
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.requirements-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(194, 194, 194, 0.4) 0%, 
+        rgba(194, 194, 194, 0) 20%, 
+        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .requirements-list {
@@ -554,13 +657,30 @@ body {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: var(--surface-light);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.requirement-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .requirement-item.completed {
     background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 .requirement-icon {
@@ -607,11 +727,35 @@ body {
 
 /* Links Card */
 .links-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: none;
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.links-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(194, 194, 194, 0.4) 0%, 
+        rgba(194, 194, 194, 0) 20%, 
+        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .links-container {
@@ -626,14 +770,31 @@ body {
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    background: var(--surface-light);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.link-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .link-item.completed {
     background: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.2);
 }
 
 .link-icon {
@@ -689,10 +850,28 @@ body {
     align-items: center;
     gap: 8px;
     padding: 10px 12px;
-    background: rgba(59, 130, 246, 0.1);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 12px;
     font-size: 11px;
     color: var(--info);
+    position: relative;
+    overflow: hidden;
+}
+
+.links-status::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .links-status.success {
@@ -702,11 +881,35 @@ body {
 
 /* Captcha Card */
 .captcha-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: none;
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+.captcha-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 26px;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(194, 194, 194, 0.4) 0%, 
+        rgba(194, 194, 194, 0) 20%, 
+        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .captcha-container {
@@ -716,10 +919,28 @@ body {
 }
 
 .captcha-display {
-    background: var(--surface-light);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     padding: 14px;
     text-align: center;
     border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.captcha-display::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .captcha-display span {
@@ -738,29 +959,65 @@ body {
 .captcha-input-group input {
     flex: 1;
     padding: 12px;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: none;
     border-radius: 14px;
     color: var(--text);
     font-size: 14px;
     text-align: center;
     letter-spacing: 3px;
     outline: none;
-    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.captcha-input-group input::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .captcha-input-group input:focus {
-    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--primary);
 }
 
 .captcha-refresh {
     width: 48px;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: none;
     border-radius: 14px;
     color: var(--primary);
     cursor: pointer;
     transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.captcha-refresh::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .captcha-refresh:hover {
