@@ -1,4 +1,5 @@
-# giveaway/services/giveaway_service.py
+# giveaway/services/giveaway_service.py - PERBAIKAN TOTAL
+
 import sqlite3
 import json
 import os
@@ -25,13 +26,8 @@ db = GiveawayDatabase()
 
 
 def validate_telegram_data(data: dict) -> tuple:
-    """
-    Validate and extract Telegram user data from WebApp initData
-    Returns: (is_valid, user_id, username, first_name, last_name)
-    """
+    """Validate and extract Telegram user data from WebApp initData"""
     try:
-        # For now, accept data from request body
-        # In production, you should verify the hash with bot token
         user_id = data.get('id')
         username = data.get('username', '')
         first_name = data.get('first_name', '')
@@ -56,6 +52,7 @@ def generate_participation_token() -> str:
 def get_giveaway_info(giveaway_code):
     """Get giveaway information by code"""
     try:
+        # Ambil dari tabel on_giveaway
         giveaway = db.get_on_giveaway(giveaway_code)
         
         if not giveaway:
@@ -71,56 +68,50 @@ def get_giveaway_info(giveaway_code):
         # Get participants count
         participants_count = len(giveaway.get('participants', []))
         
-        # Get links and requirements - PASTIKAN MENGGUNAKAN giveaway_id YANG SAMA
+        # Get giveaway_id untuk mengambil data tambahan
         giveaway_id = giveaway.get('giveaway_id', '')
         
-        # AMBIL LANGSUNG DARI DATABASE DENGAN CONNECTION BARU UNTUK PASTIKAN DATA
+        # 🔥 AMBIL LANGSUNG DARI DATABASE DENGAN KONEKSI BARU
+        syarat = 'None'
+        links = []
+        captcha = 'Off'
+        
         try:
             with sqlite3.connect(db.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Cek kolom syarat di tabel giveaways
-                cursor.execute("PRAGMA table_info(giveaways)")
-                columns = [col[1] for col in cursor.fetchall()]
+                # Ambil syarat
+                cursor.execute("SELECT syarat FROM giveaways WHERE giveaway_id = ?", (giveaway_id,))
+                row = cursor.fetchone()
+                if row and row[0]:
+                    syarat = row[0]
+                    print(f"[DEBUG] Found syarat for {giveaway_id}: {syarat}")
+                else:
+                    print(f"[DEBUG] No syarat found for {giveaway_id}, using default 'None'")
                 
-                syarat = 'None'
-                if 'syarat' in columns and giveaway_id:
-                    cursor.execute('SELECT syarat FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
-                    row = cursor.fetchone()
-                    if row and row[0]:
-                        syarat = row[0]
-                        print(f"[DEBUG] Found syarat for {giveaway_id}: {syarat}")
-                    else:
-                        print(f"[DEBUG] No syarat found for {giveaway_id}")
+                # Ambil link
+                cursor.execute("SELECT link FROM giveaways WHERE giveaway_id = ?", (giveaway_id,))
+                row = cursor.fetchone()
+                if row and row[0]:
+                    links = [l.strip() for l in row[0].split('\n') if l.strip()]
+                    print(f"[DEBUG] Found links for {giveaway_id}: {links}")
                 
-                # Get links
-                links = []
-                if 'link' in columns and giveaway_id:
-                    cursor.execute('SELECT link FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
-                    row = cursor.fetchone()
-                    if row and row[0]:
-                        links = [l.strip() for l in row[0].split('\n') if l.strip()]
-                        print(f"[DEBUG] Found links for {giveaway_id}: {links}")
-                
-                # Get captcha
-                captcha = 'Off'
-                if 'captcha' in columns and giveaway_id:
-                    cursor.execute('SELECT captcha FROM giveaways WHERE giveaway_id = ?', (giveaway_id,))
-                    row = cursor.fetchone()
-                    if row and row[0]:
-                        captcha = row[0]
-                
+                # Ambil captcha
+                cursor.execute("SELECT captcha FROM giveaways WHERE giveaway_id = ?", (giveaway_id,))
+                row = cursor.fetchone()
+                if row and row[0]:
+                    captcha = row[0]
+                    print(f"[DEBUG] Found captcha for {giveaway_id}: {captcha}")
+                    
         except Exception as e:
             print(f"[ERROR] Failed to get additional data: {e}")
-            links = []
-            syarat = 'None'
-            captcha = 'Off'
+            import traceback
+            traceback.print_exc()
         
         # Parse prize into list
         prize_lines = [p.strip() for p in giveaway['prize'].split('\n') if p.strip()]
         
-        print(f"[DEBUG] Final syarat for response: {syarat}")
-        print(f"[DEBUG] Final links: {links}")
+        print(f"[DEBUG] Final response - syarat: {syarat}, links: {len(links)}, captcha: {captcha}")
         
         return jsonify({
             'success': True,
@@ -141,6 +132,8 @@ def get_giveaway_info(giveaway_code):
         
     except Exception as e:
         print(f"Error getting giveaway info: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -230,6 +223,8 @@ def participate_giveaway():
         
     except Exception as e:
         print(f"Error in participate_giveaway: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -339,7 +334,10 @@ def get_giveaway_stats():
             'success': False,
             'error': str(e)
         }), 500
-    
+
+
+# ==================== DEBUG ENDPOINT ====================
+
 @giveaway_bp.route('/debug/<giveaway_code>', methods=['GET'])
 def debug_giveaway(giveaway_code):
     """Debug endpoint to check raw data"""
@@ -354,6 +352,8 @@ def debug_giveaway(giveaway_code):
         # Ambil data langsung dari tabel giveaways
         with sqlite3.connect(db.db_path) as conn:
             cursor = conn.cursor()
+            
+            # Cek semua kolom di giveaways
             cursor.execute("PRAGMA table_info(giveaways)")
             columns = [col[1] for col in cursor.fetchall()]
             
@@ -371,7 +371,8 @@ def debug_giveaway(giveaway_code):
             'giveaway_id': giveaway_id,
             'from_on_giveaway': {
                 'prize': giveaway.get('prize'),
-                'winners_count': giveaway.get('winners_count')
+                'winners_count': giveaway.get('winners_count'),
+                'participants_count': len(giveaway.get('participants', []))
             },
             'from_giveaways_table': result
         })

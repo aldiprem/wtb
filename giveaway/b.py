@@ -1500,7 +1500,7 @@ async def start_giveaway_handler(event):
     user_id = event.sender_id
     state = user_state.get(user_id, {})
     
-    # Validasi data (sama seperti sebelumnya)
+    # Validasi data
     hadiah_list = state.get('hadiah', [])
     saved_chats = state.get('saved_chats', [])
     durasi = state.get('durasi', '')
@@ -1565,8 +1565,6 @@ async def start_giveaway_handler(event):
 """
         
         try:
-            # 🔥 PERUBAHAN: Gunakan Button.url dengan startapp
-            # Kirim pesan dulu tanpa tombol (karena belum punya giveaway_code)
             msg = await bot.send_message(chat_id, message_text)
             
             sent_messages.append({
@@ -1585,21 +1583,12 @@ async def start_giveaway_handler(event):
         await event.respond(f"❌ **Gagal memulai giveaway!**\n\nTidak ada chat yang berhasil dikirimi pesan.\n\nError: {', '.join(failed_chats)}")
         return
     
-    # Simpan ke database
-    db.create_giveaway(
-        giveaway_id=giveaway_id,
-        user_id=user_id,
-        chat_id=sent_messages[0]['chat_id'],
-        message_id=sent_messages[0]['message_id'],
-        prize=formatted_prize,
-        winners_count=winners_count,
-        end_time=end_time.isoformat()
-    )
-    
+    # ============ PENTING: Simpan data ke database dengan giveaway_id yang SAMA ============
     giveaway_codes = []
+    
     for msg_info in sent_messages:
         giveaway_code = db.create_giveaway(
-            giveaway_id=giveaway_id,
+            giveaway_id=giveaway_id,  # SAMA UNTUK SEMUA
             user_id=user_id,
             chat_id=msg_info['chat_id'],
             message_id=msg_info['message_id'],
@@ -1610,15 +1599,30 @@ async def start_giveaway_handler(event):
         )
         if giveaway_code:
             giveaway_codes.append(giveaway_code)
-            
-            if link:
-                db.add_link(giveaway_id, link)
-            if syarat and syarat != 'None':
-                db.add_syarat(giveaway_id, syarat)
-            if captcha == 'On':
-                db.add_captcha(giveaway_id, captcha)
     
-    # ============ UPDATE PESAN DENGAN TOMBOL YANG BENAR ============
+    # 🔥 PASTIKAN: Simpan data tambahan ke tabel giveaways menggunakan giveaway_id yang SAMA
+    if giveaway_codes:
+        # Simpan link ke tabel giveaways
+        if link:
+            success = db.add_link(giveaway_id, link)
+            logger.info(f"Saved link for {giveaway_id}: {success} - link: {link[:50]}...")
+        
+        # Simpan syarat ke tabel giveaways
+        if syarat and syarat != 'None':
+            success = db.add_syarat(giveaway_id, syarat)
+            logger.info(f"Saved syarat for {giveaway_id}: {success} - syarat: {syarat}")
+        
+        # Simpan captcha ke tabel giveaways
+        if captcha == 'On':
+            success = db.add_captcha(giveaway_id, captcha)
+            logger.info(f"Saved captcha for {giveaway_id}: {success} - captcha: {captcha}")
+        
+        # 🔥 VERIFIKASI: Cek apakah data tersimpan
+        verify_syarat = db.get_syarat(giveaway_id)
+        verify_link = db.get_link(giveaway_id)
+        logger.info(f"VERIFICATION - Giveaway {giveaway_id}: syarat='{verify_syarat}', link='{verify_link[:50] if verify_link else ''}'")
+    
+    # Update pesan dengan tombol
     if giveaway_codes:
         first_giveaway_code = giveaway_codes[0]
         
@@ -1639,7 +1643,6 @@ async def start_giveaway_handler(event):
                 )
             except Exception as e:
                 print(f"Error editing message: {e}")
-                # Jika edit gagal, kirim pesan baru dengan tombol
                 await bot.send_message(
                     msg_info['chat_id'],
                     f"🔗 **Klik link berikut untuk mengikuti giveaway:**\n\nhttps://t.me/freebiestbot/giveaway?startapp={first_giveaway_code}",
@@ -1669,6 +1672,7 @@ async def start_giveaway_handler(event):
 • Hadiah: {len(hadiah_list)} item
 • Jumlah Pemenang: {winners_count}
 • Berakhir: {end_time.strftime('%d %B %Y %H:%M:%S WIB')}
+• Syarat: {syarat}
 
 📢 **Dikirim ke {len(success_chats)} chat:**
 {chr(10).join([f'✅ {chat}' for chat in success_chats])}
