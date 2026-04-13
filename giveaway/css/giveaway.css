@@ -164,13 +164,13 @@ body {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 24px;
+    border-radius: 25px;
     padding: 1px;
     /* Sudut 170deg agar Atas panjang, Samping pendek di Kiri Atas & Kanan Bawah */
     background: linear-gradient(170deg, 
         rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0) 50%,
+        rgba(255, 255, 255, 0) 50%, 
         rgba(255, 255, 255, 0.4) 100%
     );
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
@@ -264,10 +264,10 @@ body {
     inset: 0;
     border-radius: 26px;
     padding: 1px;
-    background: linear-gradient(140deg, 
+    background: linear-gradient(170deg, 
         rgba(194, 194, 194, 0.4) 0%, 
-        rgba(194, 194, 194, 0) 20%, 
-        rgba(194, 194, 194, 0) 80%, 
+        rgba(194, 194, 194, 0) 50%, 
+        rgba(194, 194, 194, 0) 50%, 
         rgba(194, 194, 194, 0.4) 100%
     );
     -webkit-mask: linear-gradient(#ffffff, #fff) content-box, linear-gradient(#fff, #fff);
@@ -403,7 +403,7 @@ body {
     font-weight: 600;
 }
 
-/* Prize Card */
+/* Update Prize Card agar sama dengan Requirements Card */
 .prize-card {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -413,17 +413,23 @@ body {
     margin-bottom: 16px;
     position: relative;
     overflow: hidden;
-    border: none; /* Hapus border lama */
+    border: none;
     box-shadow: var(--shadow);
 }
 
+/* Efek Sudut Putih 3D untuk Prize Card (Logika 170deg asimetris) */
 .prize-card::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 24px;
     padding: 1px;
-    background: var(--glass-border-color);
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 35%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
@@ -581,7 +587,38 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
+    margin: 10px; /* Memberi jarak agar border sudut terlihat */
+    
+    /* Glassmorphism Style */
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+/* Efek Sudut Putih 3D untuk Modal Header */
+.modal-header::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    padding: 1px;
+    /* Sudut 170deg: Atas panjang, Samping pendek */
+    background: linear-gradient(170deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .modal-header h3 {
@@ -592,19 +629,55 @@ body {
     gap: 8px;
 }
 
+/* Update tombol close modal */
 .modal-close {
-    background: none;
-    border: none;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    
     color: var(--text-secondary);
-    font-size: 24px;
+    font-size: 20px;
     cursor: pointer;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
+    border-radius: 50%; /* Tetap bulat */
+    
+    position: relative; /* Wajib untuk menaruh ::after */
+    overflow: hidden;   /* Agar cahaya sudut terpotong rapi sesuai lingkaran */
+    border: none;       /* Hapus border lama */
     transition: all 0.2s;
+}
+
+/* Efek Sudut Putih 3D untuk modal-close (Rata/135deg) */
+.modal-close::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%; /* Mengikuti bentuk bulat tombol */
+    padding: 1px;
+    
+    /* Menggunakan 135deg agar cahaya di sudut bulat terlihat rata/simetris */
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 25%, 
+        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+    transform: rotate(90deg); /* Opsional: efek putar saat hover agar keren */
 }
 
 .modal-close:hover {
@@ -615,6 +688,37 @@ body {
     padding: 16px 20px;
     max-height: 60vh;
     overflow-y: auto;
+    margin: 0 10px 10px 10px; /* Jarak dari pinggir modal */
+    
+    /* Glassmorphism Style */
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+/* Efek Sudut Putih 3D untuk Modal Body */
+.modal-body::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    padding: 1px;
+    background: linear-gradient(150deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .modal-prize-item {
@@ -629,6 +733,7 @@ body {
     border-bottom: none;
 }
 
+/* Update Requirements Card: Samping Pendek (Setengah), Atas & Bawah Full */
 .requirements-card {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -648,7 +753,13 @@ body {
     inset: 0;
     border-radius: 24px;
     padding: 1px;
-    background: var(--glass-border-color); /* Menggunakan standar 135deg dari root */
+    background: linear-gradient(172deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 20%, 
+        rgba(255, 255, 255, 0) 80%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
@@ -744,6 +855,7 @@ body {
     color: var(--warning);
 }
 
+/* Update Links Card: Atas/Bawah FULL, Samping SETENGAH */
 .links-card {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -761,10 +873,15 @@ body {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 24px;
+    border-radius: inherit; /* Pastikan rata dengan radius kartu */
     padding: 1px;
-    /* Efek cahaya sudut simetris untuk container besar */
-    background: var(--glass-border-color);
+    background: linear-gradient(167deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 20%, 
+        rgba(255, 255, 255, 0) 80%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
