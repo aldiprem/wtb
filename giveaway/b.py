@@ -36,6 +36,7 @@ env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 sys.path.append('/root/wtb')
 from giveaway.database.giveaway import GiveawayDatabase
+import sqlite3
 import pytz
 
 # Logging seperti fragment_bot.py
