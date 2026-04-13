@@ -744,13 +744,32 @@ body {
     color: var(--warning);
 }
 
-/* Links Card */
 .links-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    box-shadow: var(--shadow);
+}
+
+.links-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    /* Efek cahaya sudut simetris untuk container besar */
+    background: var(--glass-border-color);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .links-container {
@@ -764,10 +783,43 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
-    background: var(--surface-light);
+    padding: 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border-radius: 14px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    text-decoration: none;
+    color: var(--text);
     transition: all 0.2s;
+}
+
+.link-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    /* Sudut 170deg: Cahaya Kiri Atas & Kanan Bawah (Asimetris) */
+    background: linear-gradient(170deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.link-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px); /* Efek geser sedikit saat hover */
 }
 
 .link-item.completed {
@@ -945,7 +997,7 @@ body {
     background: linear-gradient(-50deg, 
         rgba(255, 255, 255, 0.3) 0%, 
         rgba(255, 255, 255, 0) 50%, 
-        rgba(255, 255, 255, 0) 50%, 
+        rgba(255, 255, 255, 0) 5%, 
         rgba(255, 255, 255, 0.4) 100%
     );
     
