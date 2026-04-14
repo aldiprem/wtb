@@ -179,8 +179,6 @@ async def check_bot_access(chat_id: int) -> tuple:
     except Exception as e:
         return False, False, f"Bot tidak dapat mengakses chat ini: {str(e)[:100]}"
 
-# Di b.py - Ganti fungsi check_on_giveaway_expired dengan yang ini
-
 async def check_on_giveaway_expired():
     """Periodically check for expired on_giveaway"""
     while True:
@@ -323,6 +321,56 @@ Giveaway berakhir tanpa pemenang.
             logger.error(f"Error checking on_giveaway expired: {e}")
         
         await asyncio.sleep(60)
+
+async def process_pending_membership_checks():
+    """Process pending membership checks from database"""
+    while True:
+        try:
+            # Ambil pending checks dengan priority tinggi
+            pending_checks = db.get_pending_checks(limit=10)
+            
+            for check in pending_checks:
+                check_id = check['id']
+                giveaway_id = check['giveaway_id']
+                user_id = check['user_id']
+                chat_ids = check['chat_ids']
+                
+                logger.info(f"Processing membership check {check_id} for user {user_id}")
+                
+                chat_results = []
+                all_member = True
+                
+                for chat_id_str in chat_ids:
+                    try:
+                        # Konversi chat_id ke integer
+                        chat_id_int = int(chat_id_str)
+                        
+                        # Cek apakah user member
+                        participant = await bot.get_participant(chat_id_int, user_id)
+                        is_member = True
+                        logger.info(f"User {user_id} is member of chat {chat_id_str}")
+                    except Exception as e:
+                        is_member = False
+                        all_member = False
+                        logger.info(f"User {user_id} is NOT member of chat {chat_id_str}: {e}")
+                    
+                    chat_results.append({
+                        'chat_id': chat_id_str,
+                        'is_member': is_member
+                    })
+                    
+                    # Update ke tabel user_membership
+                    db.update_user_membership(giveaway_id, user_id, chat_id_str, is_member)
+                
+                # Update hasil pengecekan
+                db.update_check_result(check_id, chat_results, all_member)
+                logger.info(f"Completed membership check {check_id}: all_member={all_member}")
+            
+            await asyncio.sleep(2)  # Cek setiap 2 detik
+            
+        except Exception as e:
+            logger.error(f"Error processing pending membership checks: {e}")
+            await asyncio.sleep(5)
 
 async def menu_create_giveaway(event, user_id: int = None):
     """Display the create giveaway menu with current data"""
@@ -1748,7 +1796,6 @@ https://t.me/freebiestbot?startapp={giveaway_codes[0] if giveaway_codes else '-'
     
     await event.respond(success_msg)
 
-# ==================== MAIN - SAMA PERSIS SEPERTI fragment_bot.py ====================
 async def main():
     logger.info("🚀 Starting Giveaway Bot...")
     
@@ -1761,6 +1808,9 @@ async def main():
     
     # Start monitoring expired giveaways
     asyncio.create_task(check_on_giveaway_expired())
+    
+    # Start processing pending membership checks
+    asyncio.create_task(process_pending_membership_checks())
     
     await bot.run_until_disconnected()
 
