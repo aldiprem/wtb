@@ -332,7 +332,7 @@ async def check_pending_membership():
         try:
             async with aiohttp.ClientSession() as session:
                 # Ambil pending checks dari Flask
-                async with session.get('http://localhost:5000/api/giveaway/pending-checks?limit=5') as resp:
+                async with session.get('http://companel.shop/api/giveaway/pending-checks?limit=5') as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         if data.get('success') and data.get('checks'):
@@ -358,7 +358,7 @@ async def process_membership_check(session, check):
         
         if not chats:
             # Tidak ada chat yang perlu dicek, langsung update sebagai done
-            async with session.post('http://localhost:5000/api/giveaway/update-check-result', 
+            async with session.post('https://companel.shop/api/giveaway/update-check-result', 
                                    json={
                                        'check_id': check['id'],
                                        'is_all_member': True,
@@ -410,7 +410,7 @@ async def process_membership_check(session, check):
                 all_member = False
         
         # Update hasil ke Flask
-        async with session.post('http://localhost:5000/api/giveaway/update-check-result', 
+        async with session.post('https://companel.shop/api/giveaway/update-check-result', 
                                json={
                                    'check_id': check['id'],
                                    'is_all_member': all_member,
