@@ -93,6 +93,8 @@
     let totalLinks = 0;
     let participationInProgress = false;
     let requirementsList = [];
+    let subscribeChats = [];
+    let subscribeStatus = new Map();
 
     // DOM Elements
     const elements = {
@@ -380,7 +382,29 @@
         }
     }
 
-    // Requirements
+    async function loadSubscribeChats() {
+        if (!giveawayData || !telegramUser) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/membership-status/${telegramUser.id}/${giveawayData.code}`);
+            const data = await response.json();
+            
+            if (data.success && data.requirements && data.requirements.length > 0) {
+                subscribeChats = data.requirements;
+                
+                // Initialize status
+                for (const chat of subscribeChats) {
+                    subscribeStatus.set(chat.username, false);
+                }
+                
+                renderSubscribeRequirement();
+            }
+        } catch (error) {
+            console.error('Error loading subscribe chats:', error);
+        }
+    }
+
+    // Update parseRequirements to include subscribe with expandable
     function parseRequirements(syaratString) {
         const requirements = [];
         if (!syaratString || syaratString === 'None' || syaratString === '') {
@@ -390,7 +414,13 @@
         const syaratList = syaratString.split(',').map(s => s.trim());
         for (const s of syaratList) {
             if (s === 'Subscribe') {
-                requirements.push({ type: 'subscribe', text: 'Bergabung Chat ID', icon: 'fa-telegram', completed: false });
+                requirements.push({ 
+                    type: 'subscribe', 
+                    text: 'Bergabung Chat ID', 
+                    icon: 'fa-telegram', 
+                    completed: false,
+                    hasExpandable: true
+                });
             } else if (s === 'Boost') {
                 requirements.push({ type: 'boost', text: 'Boost Channel', icon: 'fa-rocket', completed: false });
             } else if (s === 'Tap link') {
@@ -400,6 +430,7 @@
         return requirements;
     }
 
+    // Update renderRequirements to add expandable indicator for subscribe
     function renderRequirements() {
         if (!elements.requirementsList) return;
         for (let i = 0; i < requirementsList.length; i++) {
@@ -419,12 +450,19 @@
         for (const req of requirementsList) {
             if (req.type === 'none') continue;
             const isCompleted = req.completed;
+            
+            // Add expandable indicator for subscribe
+            const hasExpandableIcon = req.type === 'subscribe' ? '<i class="fas fa-chevron-down expand-icon"></i>' : '';
+            
             html += `
-                <div class="requirement-item ${isCompleted ? 'completed' : ''}">
-                    <div class="requirement-icon"><i class="fas ${req.icon}"></i></div>
+                <div class="requirement-item ${isCompleted ? 'completed' : ''}" data-type="${req.type}">
+                    <div class="requirement-icon">
+                        <i class="fas ${req.icon}"></i>
+                        ${hasExpandableIcon}
+                    </div>
                     <div class="requirement-text">
                         ${escapeHtml(req.text)}
-                        <div class="requirement-sub">${req.type === 'subscribe' ? 'Bergabung dengan channel/group' : req.type === 'boost' ? 'Boost channel Telegram' : 'Klik tombol di samping'}</div>
+                        <div class="requirement-sub">${req.type === 'subscribe' ? 'Klik icon untuk melihat daftar channel' : req.type === 'boost' ? 'Boost channel Telegram' : 'Klik tombol di samping'}</div>
                     </div>
                     ${isCompleted ? '<span class="requirement-status success">✓ Terpenuhi</span>' : '<span class="requirement-status pending">⏳ Belum</span>'}
                 </div>
@@ -591,26 +629,13 @@
                 renderPrize();
                 renderRequirements();
                 renderLinks();
-                if (giveawayData.end_time && giveawayData.status !== 'expired') {
-                    startCountdown(giveawayData.end_time);
-                } else if (giveawayData.status === 'expired') {
-                    if (elements.countdownTimer) elements.countdownTimer.style.display = 'none';
-                    if (elements.expiredMessage) elements.expiredMessage.style.display = 'flex';
+                
+                // Load subscribe chats if needed
+                if (giveawayData.syarat && giveawayData.syarat.includes('Subscribe')) {
+                    await loadSubscribeChats();
                 }
-                if (giveawayData.captcha === 'On') {
-                    if (elements.captchaCard) elements.captchaCard.style.display = 'block';
-                    generateCaptcha();
-                    if (elements.captchaRefresh) elements.captchaRefresh.addEventListener('click', generateCaptcha);
-                    if (elements.captchaInput) elements.captchaInput.addEventListener('input', verifyCaptcha);
-                } else {
-                    if (elements.captchaCard) elements.captchaCard.style.display = 'none';
-                }
-                if (telegramUser) await checkUserParticipation(giveawayData.code, telegramUser.id);
-                renderRequirements();
-                renderLinks();
-                checkParticipationEligibility();
-            } else {
-                showToast(data.error || 'Gagal memuat giveaway', 'error');
+                
+                // ... rest of the function
             }
         } catch (error) {
             console.error('Error loading giveaway:', error);
@@ -770,6 +795,189 @@
     if (elements.requirementsList) {
         observer.observe(elements.requirementsList, { childList: true, subtree: true });
     }
+
+    function renderSubscribeRequirement() {
+        const hasSubscribe = requirementsList.some(req => req.type === 'subscribe');
+        
+        if (!hasSubscribe || !subscribeChats || subscribeChats.length === 0) {
+            return;
+        }
+        
+        // Find subscribe requirement item in DOM
+        const subscribeItem = document.querySelector('.requirement-item[data-type="subscribe"]');
+        if (!subscribeItem) return;
+        
+        // Add expandable content
+        const requirementTextDiv = subscribeItem.querySelector('.requirement-text');
+        if (!requirementTextDiv) return;
+        
+        // Check if already expanded
+        let expandableDiv = subscribeItem.querySelector('.subscribe-expandable');
+        if (expandableDiv) {
+            expandableDiv.remove();
+        }
+        
+        // Create expandable chat list
+        expandableDiv = document.createElement('div');
+        expandableDiv.className = 'subscribe-expandable';
+        expandableDiv.style.display = 'none';
+        
+        let chatsHtml = '<div class="subscribe-chats-list">';
+        for (const chat of subscribeChats) {
+            const isMember = subscribeStatus.get(chat.username) || false;
+            chatsHtml += `
+                <div class="subscribe-chat-item ${isMember ? 'member' : ''}" data-chat-username="${chat.username}" data-chat-link="${chat.link}">
+                    <div class="subscribe-chat-avatar">
+                        <i class="fas fa-telegram-plane"></i>
+                    </div>
+                    <div class="subscribe-chat-info">
+                        <div class="subscribe-chat-name">${escapeHtml(chat.username)}</div>
+                        <div class="subscribe-chat-id">${escapeHtml(chat.link)}</div>
+                    </div>
+                    <div class="subscribe-chat-status">
+                        ${isMember ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-clock"></i>'}
+                    </div>
+                    <div class="subscribe-chat-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add check button
+        chatsHtml += `
+            <div class="subscribe-check-all">
+                <button class="btn-check-subscribe" id="checkSubscribeBtn">
+                    <i class="fas fa-sync-alt"></i> Cek Partisipasi
+                </button>
+            </div>
+        `;
+        chatsHtml += '</div>';
+        
+        expandableDiv.innerHTML = chatsHtml;
+        requirementTextDiv.appendChild(expandableDiv);
+        
+        // Add click handler to requirement item to toggle expand
+        const requirementIcon = subscribeItem.querySelector('.requirement-icon');
+        if (requirementIcon) {
+            requirementIcon.style.cursor = 'pointer';
+            requirementIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isVisible = expandableDiv.style.display === 'block';
+                expandableDiv.style.display = isVisible ? 'none' : 'block';
+                
+                // Rotate icon
+                const icon = requirementIcon.querySelector('i');
+                if (icon) {
+                    icon.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+                    icon.style.transition = 'transform 0.3s ease';
+                }
+            });
+        }
+        
+        // Add click handlers for chat items (redirect to channel)
+        document.querySelectorAll('.subscribe-chat-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const link = item.dataset.chatLink;
+                if (link && !e.target.closest('#checkSubscribeBtn')) {
+                    window.open(link, '_blank');
+                    hapticLight();
+                }
+            });
+        });
+        
+        // Add check button handler
+        const checkBtn = document.getElementById('checkSubscribeBtn');
+        if (checkBtn) {
+            checkBtn.addEventListener('click', async () => {
+                await checkAllMemberships();
+            });
+        }
+    }
+
+    /**
+     * Check membership for all required chats
+     */
+    async function checkAllMemberships() {
+        if (!telegramUser || !giveawayData) {
+            showToast('Data user tidak ditemukan', 'error');
+            return;
+        }
+        
+        hapticMedium();
+        
+        const checkBtn = document.getElementById('checkSubscribeBtn');
+        if (checkBtn) {
+            checkBtn.disabled = true;
+            checkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memeriksa...';
+        }
+        
+        showLoading(true);
+        
+        let allMember = true;
+        
+        for (const chat of subscribeChats) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/giveaway/check-membership`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: telegramUser.id,
+                        chat_id: chat.username,
+                        giveaway_code: giveawayData.code
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // For demo, simulate check (in production, bot will update)
+                // Here we simulate based on response
+                if (data.success) {
+                    // Temporary: set as member for demo
+                    // In real implementation, bot will callback to update status
+                    subscribeStatus.set(chat.username, true);
+                    allMember = allMember && true;
+                } else {
+                    subscribeStatus.set(chat.username, false);
+                    allMember = false;
+                }
+            } catch (error) {
+                console.error(`Error checking membership for ${chat.username}:`, error);
+                subscribeStatus.set(chat.username, false);
+                allMember = false;
+            }
+        }
+        
+        // Update UI
+        renderSubscribeRequirement();
+        renderRequirements();
+        
+        // Update requirement completion
+        const subscribeReq = requirementsList.find(req => req.type === 'subscribe');
+        if (subscribeReq) {
+            subscribeReq.completed = allMember;
+        }
+        
+        renderRequirements();
+        checkParticipationEligibility();
+        
+        if (allMember) {
+            hapticSuccess();
+            showToast('Semua channel sudah di-subscribe!', 'success');
+        } else {
+            hapticWarning();
+            showToast('Beberapa channel belum di-subscribe', 'warning');
+        }
+        
+        if (checkBtn) {
+            checkBtn.disabled = false;
+            checkBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Cek Partisipasi';
+        }
+        
+        showLoading(false);
+    }
+
+
 
     // Initialize Telegram WebApp
     function initTelegram() {

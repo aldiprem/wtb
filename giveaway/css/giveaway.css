@@ -1241,6 +1241,172 @@ body {
     display: inline-block;
 }
 
+/* Tambahkan di akhir file giveaway.css */
+
+/* Subscribe Expandable Styles */
+.subscribe-expandable {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    animation: fadeIn 0.3s ease;
+}
+
+.subscribe-chats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.subscribe-chat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border-color-light);
+}
+
+.subscribe-chat-item:hover {
+    transform: translateX(4px);
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+}
+
+.subscribe-chat-item.member {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.subscribe-chat-avatar {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.subscribe-chat-avatar i {
+    font-size: 20px;
+    color: white;
+}
+
+.subscribe-chat-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.subscribe-chat-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.subscribe-chat-id {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.subscribe-chat-status {
+    flex-shrink: 0;
+}
+
+.subscribe-chat-status i {
+    font-size: 18px;
+    color: var(--text-muted);
+}
+
+.subscribe-chat-item.member .subscribe-chat-status i {
+    color: var(--success-color);
+}
+
+.subscribe-chat-arrow {
+    flex-shrink: 0;
+}
+
+.subscribe-chat-arrow i {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.subscribe-check-all {
+    margin-top: 12px;
+    padding-top: 8px;
+}
+
+.btn-check-subscribe {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border: none;
+    border-radius: 30px;
+    padding: 12px 20px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s;
+}
+
+.btn-check-subscribe:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-glow);
+}
+
+.btn-check-subscribe:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.btn-check-subscribe i {
+    font-size: 14px;
+}
+
+/* Expand icon for requirement */
+.requirement-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.expand-icon {
+    font-size: 10px;
+    color: var(--text-muted);
+    transition: transform 0.3s ease;
+}
+
+.requirement-icon {
+    cursor: pointer;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .giveaway-container {
