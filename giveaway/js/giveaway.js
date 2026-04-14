@@ -1,4 +1,4 @@
-// giveaway.js - Modern Minimalist Version with Haptic Feedback (FIXED)
+// giveaway.js - Modern Minimalist Version with Telegram Haptic Feedback
 
 (function() {
     'use strict';
@@ -8,19 +8,79 @@
     const API_BASE_URL = window.location.origin;
     const MAX_RETRIES = 3;
 
-    // HAPTIC CONFIGURATION
-    const HAPTIC_DURATION = {
-        LIGHT: 10,
-        MEDIUM: 20,
-        HEAVY: 40,
-        SUCCESS: 30,
-        ERROR: 50,
-        WARNING: 25
-    };
-
-    // Flag to track if user has interacted with the page
-    let hasUserInteracted = false;
-    let pendingHapticQueue = [];
+    // ==================== TELEGRAM HAPTIC FEEDBACK ====================
+    
+    /**
+     * Get Telegram WebApp instance
+     */
+    function getTelegramWebApp() {
+        if (window.Telegram && window.Telegram.WebApp) {
+            return window.Telegram.WebApp;
+        }
+        return null;
+    }
+    
+    /**
+     * Light haptic feedback for button clicks (1x short vibration)
+     */
+    function hapticLight() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('light');
+        }
+    }
+    
+    /**
+     * Medium haptic feedback for confirmations (1x medium vibration)
+     */
+    function hapticMedium() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('medium');
+        }
+    }
+    
+    /**
+     * Heavy haptic feedback for major actions (1x heavy vibration)
+     */
+    function hapticHeavy() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('heavy');
+        }
+    }
+    
+    /**
+     * Success haptic feedback (2x vibrations)
+     * Telegram doesn't have native double vibration, so we do two impacts
+     */
+    function hapticSuccess() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            // Double vibration for success
+            tg.HapticFeedback.notificationOccurred('success');
+        }
+    }
+    
+    /**
+     * Error haptic feedback (long vibration)
+     */
+    function hapticError() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('error');
+        }
+    }
+    
+    /**
+     * Warning haptic feedback
+     */
+    function hapticWarning() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('warning');
+        }
+    }
 
     let giveawayData = null;
     let telegramUser = null;
@@ -86,146 +146,12 @@
         participateBtn: document.getElementById('participateBtn')
     };
 
-    // ==================== USER GESTURE TRACKING ====================
-    
-    /**
-     * Mark that user has interacted with the page
-     * This should be called on any user action (click, tap, touch, etc.)
-     */
-    function markUserInteracted() {
-        if (!hasUserInteracted) {
-            hasUserInteracted = true;
-            console.log('✅ User interaction detected, haptic feedback enabled');
-            
-            // Process any pending haptic requests
-            processPendingHapticQueue();
-        }
-    }
-    
-    /**
-     * Process queued haptic feedback after user interaction
-     */
-    function processPendingHapticQueue() {
-        while (pendingHapticQueue.length > 0) {
-            const { duration, pattern } = pendingHapticQueue.shift();
-            executeVibration(duration, pattern);
-        }
-    }
-    
-    /**
-     * Queue haptic feedback for later execution (before user interaction)
-     */
-    function queueHaptic(duration, pattern) {
-        pendingHapticQueue.push({ duration, pattern });
-    }
-
-    // ==================== HAPTIC FEEDBACK FUNCTIONS ====================
-    
-    /**
-     * Execute vibration (internal function, checks for user interaction)
-     */
-    function executeVibration(duration = 20, pattern = null) {
-        // Check if vibration is supported
-        if (!window.navigator || !window.navigator.vibrate) {
-            return; // Vibration not supported
-        }
-        
-        let actualDuration = duration;
-        
-        // Use predefined patterns if pattern is provided
-        if (pattern && HAPTIC_DURATION[pattern.toUpperCase()]) {
-            actualDuration = HAPTIC_DURATION[pattern.toUpperCase()];
-        }
-        
-        // For complex patterns, we can use array patterns
-        if (pattern === 'success') {
-            // Success pattern: double tap
-            window.navigator.vibrate([actualDuration, 50, actualDuration]);
-        } else if (pattern === 'error') {
-            // Error pattern: long buzz
-            window.navigator.vibrate(actualDuration);
-        } else if (pattern === 'warning') {
-            // Warning pattern: short buzz, pause, short buzz
-            window.navigator.vibrate([actualDuration, 30, actualDuration]);
-        } else {
-            // Simple vibration
-            window.navigator.vibrate(actualDuration);
-        }
-    }
-    
-    /**
-     * Light haptic feedback for button clicks and taps
-     * Requires user interaction first
-     */
-    function hapticLight() {
-        if (hasUserInteracted) {
-            executeVibration(HAPTIC_DURATION.LIGHT, 'light');
-        } else {
-            queueHaptic(HAPTIC_DURATION.LIGHT, 'light');
-        }
-    }
-    
-    /**
-     * Medium haptic feedback for confirmations
-     */
-    function hapticMedium() {
-        if (hasUserInteracted) {
-            executeVibration(HAPTIC_DURATION.MEDIUM, 'medium');
-        } else {
-            queueHaptic(HAPTIC_DURATION.MEDIUM, 'medium');
-        }
-    }
-    
-    /**
-     * Heavy haptic feedback for major actions
-     */
-    function hapticHeavy() {
-        if (hasUserInteracted) {
-            executeVibration(HAPTIC_DURATION.HEAVY, 'heavy');
-        } else {
-            queueHaptic(HAPTIC_DURATION.HEAVY, 'heavy');
-        }
-    }
-    
-    /**
-     * Success haptic feedback pattern
-     */
-    function hapticSuccess() {
-        if (hasUserInteracted) {
-            executeVibration(HAPTIC_DURATION.SUCCESS, 'success');
-        } else {
-            queueHaptic(HAPTIC_DURATION.SUCCESS, 'success');
-        }
-    }
-    
-    /**
-     * Error haptic feedback pattern
-     */
-    function hapticError() {
-        if (hasUserInteracted) {
-            executeVibration(HAPTIC_DURATION.ERROR, 'error');
-        } else {
-            queueHaptic(HAPTIC_DURATION.ERROR, 'error');
-        }
-    }
-    
-    /**
-     * Warning haptic feedback pattern
-     */
-    function hapticWarning() {
-        if (hasUserInteracted) {
-            executeVibration(HAPTIC_DURATION.WARNING, 'warning');
-        } else {
-            queueHaptic(HAPTIC_DURATION.WARNING, 'warning');
-        }
-    }
-
     // ==================== UTILITY FUNCTIONS ====================
     
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
         
-        // Add haptic feedback for toast (only if user has interacted)
+        // Add haptic feedback for toast
         if (type === 'success') {
             hapticSuccess();
         } else if (type === 'error') {
@@ -301,18 +227,16 @@
         if (!telegramUser) return;
         
         const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
-        const userId = telegramUser.id;
-        const username = telegramUser.username || '';
         
         if (elements.userName) elements.userName.textContent = fullName || 'Pengguna Telegram';
-        if (elements.userUsername) elements.userUsername.textContent = username ? `@${username}` : 'Tidak ada username';
+        if (elements.userUsername) elements.userUsername.textContent = telegramUser.username ? `@${telegramUser.username}` : 'Tidak ada username';
         
         const avatarContainer = elements.userAvatar;
         if (avatarContainer) {
             if (telegramUser.photo_url) {
                 avatarContainer.innerHTML = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
             } else {
-                const nameForAvatar = encodeURIComponent(fullName || username || 'User');
+                const nameForAvatar = encodeURIComponent(fullName || telegramUser.username || 'User');
                 const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
                 avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
             }
@@ -418,7 +342,6 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 hapticMedium(); // Haptic feedback for link click
-                markUserInteracted(); // Mark user interaction
                 const link = btn.dataset.link;
                 if (link) {
                     window.open(link, '_blank');
@@ -719,7 +642,6 @@
         if (participationInProgress) return;
         
         hapticMedium(); // Haptic feedback for button click
-        markUserInteracted(); // Mark user interaction
         
         if (hasParticipated) { 
             showToast('Sudah berpartisipasi', 'warning'); 
@@ -758,7 +680,7 @@
                 })
             });
             if (data.success) {
-                hapticSuccess(); // Success haptic feedback
+                hapticSuccess(); // Success haptic feedback (double vibration)
                 hasParticipated = true;
                 if (elements.participationStatus) elements.participationStatus.style.display = 'flex';
                 if (elements.participateBtn) {
@@ -768,7 +690,7 @@
                 showToast(data.message || 'Berhasil berpartisipasi!', 'success');
                 await loadUserStats();
             } else {
-                hapticError(); // Error haptic feedback
+                hapticError(); // Error haptic feedback (long vibration)
                 showToast(data.error || 'Gagal berpartisipasi', 'error');
                 if (elements.participateBtn) {
                     elements.participateBtn.disabled = false;
@@ -802,39 +724,10 @@
         }
     }
 
-    // ==================== SETUP USER GESTURE LISTENERS ====================
-    
-    /**
-     * Setup event listeners to detect user interaction
-     */
-    function setupUserGestureListeners() {
-        const events = ['click', 'touchstart', 'touchend', 'keydown', 'keyup'];
-        events.forEach(eventType => {
-            document.body.addEventListener(eventType, markUserInteracted, { once: false, passive: true });
-        });
-        
-        // Also listen on specific interactive elements
-        const interactiveElements = [
-            elements.participateBtn,
-            elements.showAllPrizesBtn,
-            elements.closePrizeModal,
-            elements.captchaRefresh,
-            elements.captchaInput
-        ];
-        
-        interactiveElements.forEach(el => {
-            if (el) {
-                el.addEventListener('click', markUserInteracted);
-                el.addEventListener('touchstart', markUserInteracted);
-            }
-        });
-    }
-
     // Event Listeners with Haptic Feedback
     if (elements.showAllPrizesBtn) {
         elements.showAllPrizesBtn.addEventListener('click', (e) => {
             hapticLight();
-            markUserInteracted();
             showAllPrizes();
         });
     }
@@ -842,7 +735,6 @@
     if (elements.closePrizeModal) {
         elements.closePrizeModal.addEventListener('click', (e) => {
             hapticLight();
-            markUserInteracted();
             closePrizeModal();
         });
     }
@@ -851,7 +743,6 @@
         elements.prizeModal.addEventListener('click', (e) => { 
             if (e.target === elements.prizeModal) {
                 hapticLight();
-                markUserInteracted();
                 closePrizeModal();
             }
         });
@@ -865,14 +756,10 @@
     function addRequirementHaptic() {
         const requirementItems = document.querySelectorAll('.requirement-item');
         requirementItems.forEach(item => {
-            item.removeEventListener('click', requirementClickHandler);
-            item.addEventListener('click', requirementClickHandler);
+            item.addEventListener('click', () => {
+                hapticLight();
+            });
         });
-    }
-    
-    function requirementClickHandler() {
-        hapticLight();
-        markUserInteracted();
     }
 
     // Observe DOM changes to add haptic to dynamically added elements
@@ -884,13 +771,21 @@
         observer.observe(elements.requirementsList, { childList: true, subtree: true });
     }
 
+    // Initialize Telegram WebApp
+    function initTelegram() {
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.expand();
+            tg.setHeaderColor('#0f0f0f');
+            tg.setBackgroundColor('#0f0f0f');
+            console.log('✅ Telegram WebApp initialized');
+        }
+    }
+
     // Init
     function init() {
+        initTelegram();
         showLoading(true);
-        
-        // Setup user gesture detection
-        setupUserGestureListeners();
-        
         try {
             let giveawayCode = getStartParam();
             if (!giveawayCode) {
