@@ -11,8 +11,15 @@ from flask import Blueprint, request, jsonify, g
 from functools import wraps
 import sys
 from pathlib import Path
-from apscheduler.schedulers.background import BackgroundScheduler
-import atexit
+
+# APScheduler - import dengan aman (optional dependency)
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    import atexit
+    SCHEDULER_AVAILABLE = True
+except ImportError:
+    SCHEDULER_AVAILABLE = False
+    print("[WARNING] APScheduler not installed, scheduler disabled")
 
 # Add root to path
 ROOT_DIR = Path(__file__).parent.parent.parent
@@ -26,17 +33,34 @@ giveaway_bp = Blueprint('giveaway', __name__, url_prefix='/api/giveaway')
 # Initialize database
 db = GiveawayDatabase()
 
-scheduler = BackgroundScheduler()
+# ============ SCHEDULER ============
+scheduler = None
 
-def process_completed_checks():
-    print(f"[Scheduler] Checking for completed user states at {datetime.now()}")
-
-
-scheduler.add_job(func=process_completed_checks, trigger="interval", seconds=1)
-scheduler.start()
-
-# Cleanup on shutdown
-atexit.register(lambda: scheduler.shutdown())
+if SCHEDULER_AVAILABLE:
+    try:
+        scheduler = BackgroundScheduler()
+        
+        def process_completed_checks():
+            """Process completed user checks and update frontend"""
+            try:
+                # TODO: Implement WebSocket or SSE notification
+                # Untuk sekarang hanya log
+                print(f"[Scheduler] Checking for completed user states at {datetime.now()}")
+            except Exception as e:
+                print(f"[Scheduler] Error: {e}")
+        
+        scheduler.add_job(func=process_completed_checks, trigger="interval", seconds=1)
+        scheduler.start()
+        print("[INFO] Scheduler started successfully")
+        
+        # Cleanup on shutdown
+        atexit.register(lambda: scheduler.shutdown() if scheduler else None)
+    except Exception as e:
+        print(f"[ERROR] Failed to start scheduler: {e}")
+        scheduler = None
+else:
+    print("[INFO] Scheduler disabled - APScheduler not installed")
+# ===================================
 
 
 def validate_telegram_data(data: dict) -> tuple:

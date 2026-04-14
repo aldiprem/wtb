@@ -93,14 +93,6 @@
     let totalLinks = 0;
     let participationInProgress = false;
     let requirementsList = [];
-    let membershipStatus = {
-        isChecking: false,
-        isMember: false,
-        joinedChats: [],
-        totalChats: 0,
-        lastCheck: null
-    };
-    let membershipCheckInterval = null;
     let userCheckState = {
         status: 'pending',
         isAllMember: false,
@@ -1301,48 +1293,6 @@
             }
         } catch (error) {
             console.error('Error saving user state:', error);
-        }
-    }
-    
-    // Tambahkan fungsi ini di giveaway.js untuk refresh status subscribe setelah verifikasi
-    async function refreshMembershipStatus() {
-        if (!giveawayData?.code || !telegramUser?.id) return;
-        if (membershipStatus.isChecking) return;
-        
-        membershipStatus.isChecking = true;
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/giveaway/check-membership/${giveawayData.code}/${telegramUser.id}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                const isMember = data.member_status;
-                
-                // Update requirement subscribe status
-                for (let i = 0; i < requirementsList.length; i++) {
-                    if (requirementsList[i].type === 'subscribe') {
-                        requirementsList[i].completed = isMember;
-                        requirementsList[i].text = isMember ? '✓ Bergabung Chat ID' : 'Bergabung Chat ID';
-                        break;
-                    }
-                }
-                
-                // Re-render requirements
-                renderRequirements();
-                
-                // Update UI
-                if (isMember) {
-                    updateMembershipUI('success');
-                } else {
-                    updateMembershipUI('pending');
-                }
-                
-                checkParticipationEligibility();
-            }
-        } catch (error) {
-            console.error('Error refreshing membership:', error);
-        } finally {
-            membershipStatus.isChecking = false;
         }
     }
 
