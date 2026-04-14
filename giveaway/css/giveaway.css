@@ -1749,3 +1749,28 @@ body {
 .chat-list-item:active {
     transform: scale(0.98);
 }
+
+/* Loading dots animation */
+.loading-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.loading-dots::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: ''; }
+    40% { content: '.'; }
+    60% { content: '..'; }
+    80%, 100% { content: '...'; }
+}
+
+/* Error status untuk requirement */
+.requirement-status.error {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}

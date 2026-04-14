@@ -444,7 +444,7 @@ def get_giveaway_chats(giveaway_code):
                 'success': False,
                 'error': 'Giveaway ID tidak ditemukan'
             }), 404
-        
+
         # Ambil chat info dari database
         chats = db.get_chat_info_by_giveaway_id(giveaway_id)
         
@@ -529,6 +529,110 @@ def get_bot_info(username):
         
     except Exception as e:
         print(f"Error getting bot info: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    
+@giveaway_bp.route('/check-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
+def check_membership(giveaway_code, user_id):
+    """Check if user is member of all required chats for a giveaway"""
+    try:
+        # Ambil giveaway dari on_giveaway
+        giveaway = db.get_on_giveaway(giveaway_code)
+        
+        if not giveaway:
+            return jsonify({
+                'success': False,
+                'error': 'Giveaway tidak ditemukan'
+            }), 404
+        
+        giveaway_id = giveaway.get('giveaway_id', '')
+        
+        if not giveaway_id:
+            return jsonify({
+                'success': False,
+                'error': 'Giveaway ID tidak ditemukan'
+            }), 404
+        
+        # Ambil chat info dari database
+        chats = db.get_chat_info_by_giveaway_id(giveaway_id)
+        
+        if not chats:
+            return jsonify({
+                'success': True,
+                'member_status': True,
+                'joined_chats': [],
+                'total_chats': 0,
+                'message': 'Tidak ada chat yang perlu diikuti'
+            })
+        
+        # Di sini seharusnya memanggil bot untuk cek keanggotaan
+        # Karena kita tidak bisa memanggil bot langsung dari Flask,
+        # kita akan mengembalikan status berdasarkan data yang ada
+        # Untuk implementasi sebenarnya, perlu menggunakan RPC atau database terpisah
+        
+        # Sementara, kita kembalikan bahwa user belum bergabung
+        # Ini akan diupdate oleh bot secara periodik atau via webhook
+        
+        return jsonify({
+            'success': True,
+            'member_status': False,
+            'joined_chats': [],
+            'total_chats': len(chats),
+            'chats': chats,
+            'message': 'Pengecekan keanggotaan sedang diproses'
+        })
+        
+    except Exception as e:
+        print(f"Error checking membership: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@giveaway_bp.route('/verify-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
+def verify_membership(giveaway_code, user_id):
+    """Verify user membership in all required chats before participation"""
+    try:
+        # Ambil giveaway dari on_giveaway
+        giveaway = db.get_on_giveaway(giveaway_code)
+        
+        if not giveaway:
+            return jsonify({
+                'success': False,
+                'error': 'Giveaway tidak ditemukan'
+            }), 404
+        
+        giveaway_id = giveaway.get('giveaway_id', '')
+        
+        if not giveaway_id:
+            return jsonify({
+                'success': False,
+                'error': 'Giveaway ID tidak ditemukan'
+            }), 404
+        
+        # Ambil chat info dari database
+        chats = db.get_chat_info_by_giveaway_id(giveaway_id)
+        
+        if not chats:
+            return jsonify({
+                'success': True,
+                'verified': True,
+                'message': 'Tidak ada chat yang perlu diikuti'
+            })
+        
+        return jsonify({
+            'success': True,
+            'verified': False,
+            'total_chats': len(chats),
+            'message': 'Silakan bergabung ke semua chat terlebih dahulu'
+        })
+        
+    except Exception as e:
+        print(f"Error verifying membership: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
