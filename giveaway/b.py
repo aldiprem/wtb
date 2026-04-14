@@ -1621,6 +1621,38 @@ async def start_giveaway_handler(event):
         try:
             msg = await bot.send_message(chat_id, message_text)
             
+            # ============ TAMBAHKAN: SIMPAN CHAT INFO KE DATABASE ============
+            try:
+                # Ambil entity untuk mendapatkan detail lengkap
+                entity = await bot.get_entity(chat_id)
+                chat_username = getattr(entity, 'username', '')
+                chat_type = 'Channel' if hasattr(entity, 'broadcast') and entity.broadcast else 'Group'
+                if hasattr(entity, 'megagroup') and entity.megagroup:
+                    chat_type = 'Supergroup'
+                
+                # Dapatkan foto profil jika ada
+                chat_photo_url = ''
+                try:
+                    if hasattr(entity, 'photo') and entity.photo:
+                        # Buat link ke foto (opsional)
+                        chat_photo_url = f'https://t.me/{chat_username}' if chat_username else ''
+                except:
+                    pass
+                
+                # Simpan ke database
+                db.save_chat_info(
+                    giveaway_id=giveaway_id,
+                    chat_id=str(chat_id),
+                    chat_title=chat_title,
+                    chat_username=chat_username or '',
+                    chat_photo_url=chat_photo_url,
+                    chat_type=chat_type
+                )
+                logger.info(f"✅ Saved chat info for {chat_id} in giveaway {giveaway_id}")
+            except Exception as e:
+                logger.warning(f"Failed to save chat info for {chat_id}: {e}")
+            # ============ END TAMBAHAN ============
+            
             sent_messages.append({
                 'chat_id': chat_id,
                 'message_id': msg.id,

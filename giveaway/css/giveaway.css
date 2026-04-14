@@ -1270,3 +1270,142 @@ body {
         font-size: 14px;
     }
 }
+
+/* Chat List Modal Item Styles */
+.modal-chat-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    background: var(--bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 16px;
+    margin-bottom: 10px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    transition: all 0.2s;
+}
+
+.modal-chat-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(175deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.modal-chat-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.chat-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.chat-avatar i {
+    font-size: 24px;
+    color: white;
+}
+
+.chat-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-detail {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 2px;
+    flex-wrap: wrap;
+}
+
+.chat-type {
+    font-size: 10px;
+    color: var(--primary);
+    background: rgba(64, 167, 227, 0.15);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.chat-username {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.chat-id {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.chat-visit-btn {
+    width: 36px;
+    height: 36px;
+    background: rgba(64, 167, 227, 0.15);
+    border: none;
+    border-radius: 12px;
+    color: var(--primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.chat-visit-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+.chat-visit-btn i {
+    font-size: 14px;
+}
+
+/* Tambahan untuk requirement-item yang bisa diklik */
+.requirement-item[data-type="subscribe"] {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.requirement-item[data-type="subscribe"]:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}

@@ -99,6 +99,78 @@ class GiveawayDatabase:
             cursor.execute("ALTER TABLE on_giveaway ADD COLUMN is_ended INTEGER DEFAULT 0")
         
         conn.commit()
+        self.init_chat_info_table()
+
+    def init_chat_info_table(self):
+        """Initialize chat_info table for storing chat details"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS chat_info (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    giveaway_id TEXT NOT NULL,
+                    chat_id TEXT NOT NULL,
+                    chat_title TEXT,
+                    chat_username TEXT,
+                    chat_photo_url TEXT,
+                    chat_type TEXT,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (giveaway_id) REFERENCES giveaways(giveaway_id)
+                )
+            ''')
+            
+            conn.commit()
+
+    def save_chat_info(self, giveaway_id: str, chat_id: str, chat_title: str = "", 
+                    chat_username: str = "", chat_photo_url: str = "", chat_type: str = "") -> bool:
+        """Save chat information for a giveaway"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Hapus data lama jika ada
+                cursor.execute('DELETE FROM chat_info WHERE giveaway_id = ? AND chat_id = ?', 
+                            (giveaway_id, chat_id))
+                
+                # Insert data baru
+                cursor.execute('''
+                    INSERT INTO chat_info (giveaway_id, chat_id, chat_title, chat_username, chat_photo_url, chat_type)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (giveaway_id, chat_id, chat_title, chat_username, chat_photo_url, chat_type))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving chat info: {e}")
+            return False
+
+    def get_chat_info_by_giveaway_id(self, giveaway_id: str) -> List[Dict[str, Any]]:
+        """Get all chat info for a giveaway"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT chat_id, chat_title, chat_username, chat_photo_url, chat_type
+                    FROM chat_info 
+                    WHERE giveaway_id = ?
+                    ORDER BY id ASC
+                ''', (giveaway_id,))
+                
+                rows = cursor.fetchall()
+                chats = []
+                for row in rows:
+                    chats.append({
+                        'chat_id': row[0],
+                        'chat_title': row[1],
+                        'chat_username': row[2],
+                        'chat_photo_url': row[3],
+                        'chat_type': row[4]
+                    })
+                return chats
+        except Exception as e:
+            print(f"Error getting chat info: {e}")
+            return []
 
     def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:
         """Save or update user information"""

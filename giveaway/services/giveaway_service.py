@@ -423,3 +423,42 @@ def get_user_stats(user_id):
     except Exception as e:
         print(f"Error getting user stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@giveaway_bp.route('/chats/<giveaway_code>', methods=['GET'])
+def get_giveaway_chats(giveaway_code):
+    """Get list of chat IDs for a giveaway"""
+    try:
+        # Ambil giveaway dari on_giveaway
+        giveaway = db.get_on_giveaway(giveaway_code)
+        
+        if not giveaway:
+            return jsonify({
+                'success': False,
+                'error': 'Giveaway tidak ditemukan'
+            }), 404
+        
+        giveaway_id = giveaway.get('giveaway_id', '')
+        
+        if not giveaway_id:
+            return jsonify({
+                'success': False,
+                'error': 'Giveaway ID tidak ditemukan'
+            }), 404
+        
+        # Ambil chat info dari database
+        chats = db.get_chat_info_by_giveaway_id(giveaway_id)
+        
+        return jsonify({
+            'success': True,
+            'chats': chats,
+            'total': len(chats)
+        })
+        
+    except Exception as e:
+        print(f"Error getting giveaway chats: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

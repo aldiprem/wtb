@@ -419,18 +419,35 @@
         for (const req of requirementsList) {
             if (req.type === 'none') continue;
             const isCompleted = req.completed;
+            // Tambahkan data-type attribute untuk subscribe
+            const dataAttr = req.type === 'subscribe' ? 'data-type="subscribe"' : '';
             html += `
-                <div class="requirement-item ${isCompleted ? 'completed' : ''}">
+                <div class="requirement-item ${isCompleted ? 'completed' : ''}" ${dataAttr}>
                     <div class="requirement-icon"><i class="fas ${req.icon}"></i></div>
                     <div class="requirement-text">
                         ${escapeHtml(req.text)}
-                        <div class="requirement-sub">${req.type === 'subscribe' ? 'Bergabung dengan channel/group' : req.type === 'boost' ? 'Boost channel Telegram' : 'Klik tombol di samping'}</div>
+                        <div class="requirement-sub">${req.type === 'subscribe' ? 'Klik untuk melihat daftar chat' : req.type === 'boost' ? 'Boost channel Telegram' : 'Klik tombol di samping'}</div>
                     </div>
                     ${isCompleted ? '<span class="requirement-status success">✓ Terpenuhi</span>' : '<span class="requirement-status pending">⏳ Belum</span>'}
                 </div>
             `;
         }
         elements.requirementsList.innerHTML = html;
+        
+        // TAMBAHKAN EVENT LISTENER UNTUK SUBSCRIBE REQUIREMENT
+        const subscribeItems = document.querySelectorAll('.requirement-item[data-type="subscribe"]');
+        subscribeItems.forEach(item => {
+            // Hanya tambahkan event jika belum completed
+            const isCompleted = item.classList.contains('completed');
+            if (!isCompleted) {
+                item.style.cursor = 'pointer';
+                item.addEventListener('click', (e) => {
+                    // Jangan trigger jika klik pada status badge
+                    if (e.target.classList.contains('requirement-status')) return;
+                    showChatListModal();
+                });
+            }
+        });
     }
 
     // Prize
@@ -769,6 +786,139 @@
     
     if (elements.requirementsList) {
         observer.observe(elements.requirementsList, { childList: true, subtree: true });
+    }
+
+    // ==================== CHAT LIST MODAL ====================
+    async function showChatListModal() {
+        hapticMedium();
+        
+        if (!giveawayData?.code) {
+            showToast('Data giveaway tidak ditemukan', 'error');
+            return;
+        }
+        
+        showLoading(true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/chats/${giveawayData.code}`);
+            const data = await response.json();
+            
+            if (!data.success) {
+                showToast(data.error || 'Gagal memuat daftar chat', 'error');
+                return;
+            }
+            
+            const chats = data.chats || [];
+            
+            if (chats.length === 0) {
+                showToast('Tidak ada chat yang tersimpan', 'warning');
+                return;
+            }
+            
+            // Buat modal container jika belum ada
+            let chatModal = document.getElementById('chatModal');
+            if (!chatModal) {
+                chatModal = document.createElement('div');
+                chatModal.id = 'chatModal';
+                chatModal.className = 'modal-overlay';
+                chatModal.innerHTML = `
+                    <div class="modal-container">
+                        <div class="modal-header">
+                            <h3><i class="fas fa-telegram"></i> Chat ID</h3>
+                            <button class="modal-close" id="closeChatModal">&times;</button>
+                        </div>
+                        <div class="modal-body" id="chatListContainer"></div>
+                    </div>
+                `;
+                document.body.appendChild(chatModal);
+                
+                // Event listener untuk close
+                document.getElementById('closeChatModal')?.addEventListener('click', () => {
+                    hapticLight();
+                    closeChatModal();
+                });
+                
+                chatModal.addEventListener('click', (e) => {
+                    if (e.target === chatModal) {
+                        hapticLight();
+                        closeChatModal();
+                    }
+                });
+            }
+            
+            // Render daftar chat
+            const chatContainer = document.getElementById('chatListContainer');
+            if (chatContainer) {
+                let html = '';
+                
+                for (const chat of chats) {
+                    // Generate avatar URL
+                    const chatTitle = chat.chat_title || chat.chat_id;
+                    const nameForAvatar = encodeURIComponent(chatTitle);
+                    const avatarUrl = chat.chat_photo_url || `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+                    
+                    html += `
+                        <div class="modal-chat-item" data-chat-id="${escapeHtml(chat.chat_id)}">
+                            <div class="chat-avatar">
+                                <img src="${avatarUrl}" alt="Avatar" onerror="this.src='https://ui-avatars.com/api/?name=Chat&background=40a7e3&color=fff&size=100&rounded=true'">
+                            </div>
+                            <div class="chat-info">
+                                <div class="chat-title">${escapeHtml(chat.chat_title || '-')}</div>
+                                <div class="chat-detail">
+                                    <span class="chat-type">${escapeHtml(chat.chat_type || 'Chat')}</span>
+                                    <span class="chat-username">${chat.chat_username ? '@' + escapeHtml(chat.chat_username) : ''}</span>
+                                </div>
+                                <div class="chat-id">ID: ${escapeHtml(chat.chat_id)}</div>
+                            </div>
+                            <button class="chat-visit-btn" data-chat-id="${escapeHtml(chat.chat_id)}" data-chat-username="${escapeHtml(chat.chat_username || '')}">
+                                <i class="fas fa-external-link-alt"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                chatContainer.innerHTML = html;
+                
+                // Tambah event listener untuk tombol kunjungi
+                document.querySelectorAll('.chat-visit-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        hapticMedium();
+                        const chatId = btn.dataset.chatId;
+                        const chatUsername = btn.dataset.chatUsername;
+                        
+                        let link = '';
+                        if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                            link = `https://t.me/${chatUsername}`;
+                        } else if (chatId) {
+                            link = `https://t.me/${chatId}`;
+                        }
+                        
+                        if (link) {
+                            window.open(link, '_blank');
+                            showToast('Membuka chat...', 'info');
+                        } else {
+                            showToast('Link tidak tersedia', 'error');
+                        }
+                    });
+                });
+            }
+            
+            chatModal.style.display = 'flex';
+            
+        } catch (error) {
+            console.error('Error loading chats:', error);
+            showToast('Gagal memuat daftar chat', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function closeChatModal() {
+        const chatModal = document.getElementById('chatModal');
+        if (chatModal) {
+            chatModal.style.display = 'none';
+        }
     }
 
     // Initialize Telegram WebApp
