@@ -1,4 +1,5 @@
-// giveaway.js - Modern Minimalist Version
+// giveaway.js - Modern Minimalist Version with Haptic Feedback
+
 (function() {
     'use strict';
     
@@ -6,6 +7,16 @@
 
     const API_BASE_URL = window.location.origin;
     const MAX_RETRIES = 3;
+
+    // HAPTIC CONFIGURATION
+    const HAPTIC_DURATION = {
+        LIGHT: 10,
+        MEDIUM: 20,
+        HEAVY: 40,
+        SUCCESS: 30,
+        ERROR: 50,
+        WARNING: 25
+    };
 
     let giveawayData = null;
     let telegramUser = null;
@@ -71,13 +82,105 @@
         participateBtn: document.getElementById('participateBtn')
     };
 
-    // Utility Functions
+    // ==================== HAPTIC FEEDBACK FUNCTIONS ====================
+    
+    /**
+     * Trigger haptic vibration on supported devices
+     * @param {number} duration - Vibration duration in milliseconds
+     * @param {string} pattern - Optional pattern type: 'light', 'medium', 'heavy', 'success', 'error', 'warning'
+     */
+    function vibrate(duration = 20, pattern = null) {
+        // Check if vibration is supported
+        if (!window.navigator || !window.navigator.vibrate) {
+            return; // Vibration not supported
+        }
+        
+        let actualDuration = duration;
+        
+        // Use predefined patterns if pattern is provided
+        if (pattern && HAPTIC_DURATION[pattern.toUpperCase()]) {
+            actualDuration = HAPTIC_DURATION[pattern.toUpperCase()];
+        }
+        
+        // For complex patterns, we can use array patterns
+        if (pattern === 'success') {
+            // Success pattern: double tap
+            window.navigator.vibrate([actualDuration, 50, actualDuration]);
+        } else if (pattern === 'error') {
+            // Error pattern: long buzz
+            window.navigator.vibrate(actualDuration);
+        } else if (pattern === 'warning') {
+            // Warning pattern: short buzz, pause, short buzz
+            window.navigator.vibrate([actualDuration, 30, actualDuration]);
+        } else {
+            // Simple vibration
+            window.navigator.vibrate(actualDuration);
+        }
+    }
+    
+    /**
+     * Light haptic feedback for button clicks and taps
+     */
+    function hapticLight() {
+        vibrate(HAPTIC_DURATION.LIGHT, 'light');
+    }
+    
+    /**
+     * Medium haptic feedback for confirmations
+     */
+    function hapticMedium() {
+        vibrate(HAPTIC_DURATION.MEDIUM, 'medium');
+    }
+    
+    /**
+     * Heavy haptic feedback for major actions
+     */
+    function hapticHeavy() {
+        vibrate(HAPTIC_DURATION.HEAVY, 'heavy');
+    }
+    
+    /**
+     * Success haptic feedback pattern
+     */
+    function hapticSuccess() {
+        vibrate(HAPTIC_DURATION.SUCCESS, 'success');
+    }
+    
+    /**
+     * Error haptic feedback pattern
+     */
+    function hapticError() {
+        vibrate(HAPTIC_DURATION.ERROR, 'error');
+    }
+    
+    /**
+     * Warning haptic feedback pattern
+     */
+    function hapticWarning() {
+        vibrate(HAPTIC_DURATION.WARNING, 'warning');
+    }
+
+    // ==================== UTILITY FUNCTIONS ====================
+    
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
+        
+        // Add haptic feedback for toast
+        if (type === 'success') {
+            hapticSuccess();
+        } else if (type === 'error') {
+            hapticError();
+        } else if (type === 'warning') {
+            hapticWarning();
+        } else {
+            hapticLight();
+        }
+        
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i><span>${message}</span>`;
         elements.toastContainer.appendChild(toast);
+        
         setTimeout(() => {
             toast.style.animation = 'slideUp 0.3s ease reverse';
             setTimeout(() => toast.remove(), 300);
@@ -87,12 +190,6 @@
     function showLoading(show) {
         if (elements.loadingOverlay) {
             elements.loadingOverlay.style.display = show ? 'flex' : 'none';
-        }
-    }
-
-    function vibrate(duration = 20) {
-        if (window.navigator && window.navigator.vibrate) {
-            window.navigator.vibrate(duration);
         }
     }
 
@@ -147,18 +244,14 @@
         const userId = telegramUser.id;
         const username = telegramUser.username || '';
         
-        // Update nama dan username
         if (elements.userName) elements.userName.textContent = fullName || 'Pengguna Telegram';
         if (elements.userUsername) elements.userUsername.textContent = username ? `@${username}` : 'Tidak ada username';
         
-        // Update avatar - SAMA PERSIS seperti profil.js
         const avatarContainer = elements.userAvatar;
         if (avatarContainer) {
             if (telegramUser.photo_url) {
-                // Jika ada photo_url, gunakan foto asli
                 avatarContainer.innerHTML = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
             } else {
-                // Fallback ke UI Avatars dengan inisial nama
                 const nameForAvatar = encodeURIComponent(fullName || username || 'User');
                 const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
                 avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
@@ -184,6 +277,8 @@
 
     // Captcha
     function generateCaptcha() {
+        hapticLight(); // Haptic feedback for refresh
+        
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
         let result = '';
         for (let i = 0; i < 4; i++) {
@@ -203,6 +298,7 @@
     function verifyCaptcha() {
         const inputValue = elements.captchaInput?.value.trim().toUpperCase();
         if (!inputValue) {
+            hapticWarning();
             if (elements.captchaStatus) {
                 elements.captchaStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Masukkan kode';
                 elements.captchaStatus.className = 'captcha-status error';
@@ -212,6 +308,7 @@
             return false;
         }
         if (inputValue === captchaCode) {
+            hapticSuccess();
             isCaptchaVerified = true;
             if (elements.captchaStatus) {
                 elements.captchaStatus.innerHTML = '<i class="fas fa-check-circle"></i> Valid!';
@@ -220,6 +317,7 @@
             checkParticipationEligibility();
             return true;
         } else {
+            hapticError();
             isCaptchaVerified = false;
             if (elements.captchaStatus) {
                 elements.captchaStatus.innerHTML = '<i class="fas fa-times-circle"></i> Salah';
@@ -259,6 +357,7 @@
         document.querySelectorAll('.link-visit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                hapticMedium(); // Haptic feedback for link click
                 const link = btn.dataset.link;
                 if (link) {
                     window.open(link, '_blank');
@@ -271,6 +370,7 @@
 
     function markLinkAsClicked(link) {
         if (!clickedLinks.has(link)) {
+            hapticSuccess(); // Haptic feedback for successful link visit
             clickedLinks.add(link);
             if (giveawayData?.code) {
                 localStorage.setItem(`giveaway_links_${giveawayData.code}`, JSON.stringify(Array.from(clickedLinks)));
@@ -380,6 +480,7 @@
     }
 
     function showAllPrizes() {
+        hapticMedium(); // Haptic feedback for opening modal
         const prizes = giveawayData?.prize || [];
         if (!elements.allPrizesList) return;
         let html = '';
@@ -396,6 +497,7 @@
     }
 
     function closePrizeModal() {
+        hapticLight(); // Haptic feedback for closing modal
         if (elements.prizeModal) elements.prizeModal.style.display = 'none';
     }
 
@@ -554,9 +656,21 @@
 
     async function participate() {
         if (participationInProgress) return;
-        if (hasParticipated) { showToast('Sudah berpartisipasi', 'warning'); return; }
-        if (!telegramUser) { showToast('Data user tidak ditemukan', 'error'); return; }
-        if (!checkParticipationEligibility()) { showToast('Penuhi semua syarat dulu', 'warning'); return; }
+        
+        hapticMedium(); // Haptic feedback for button click
+        
+        if (hasParticipated) { 
+            showToast('Sudah berpartisipasi', 'warning'); 
+            return; 
+        }
+        if (!telegramUser) { 
+            showToast('Data user tidak ditemukan', 'error'); 
+            return; 
+        }
+        if (!checkParticipationEligibility()) { 
+            showToast('Penuhi semua syarat dulu', 'warning'); 
+            return; 
+        }
         
         if (clickedLinks.size > 0 && giveawayData?.code) {
             localStorage.setItem(`giveaway_links_${giveawayData.code}`, JSON.stringify(Array.from(clickedLinks)));
@@ -582,6 +696,7 @@
                 })
             });
             if (data.success) {
+                hapticSuccess(); // Success haptic feedback
                 hasParticipated = true;
                 if (elements.participationStatus) elements.participationStatus.style.display = 'flex';
                 if (elements.participateBtn) {
@@ -589,9 +704,9 @@
                     elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Berhasil!</span>';
                 }
                 showToast(data.message || 'Berhasil berpartisipasi!', 'success');
-                vibrate(50);
                 await loadUserStats();
             } else {
+                hapticError(); // Error haptic feedback
                 showToast(data.error || 'Gagal berpartisipasi', 'error');
                 if (elements.participateBtn) {
                     elements.participateBtn.disabled = false;
@@ -600,6 +715,7 @@
             }
         } catch (error) {
             console.error('Error participating:', error);
+            hapticError();
             showToast('Terjadi kesalahan', 'error');
             if (elements.participateBtn) {
                 elements.participateBtn.disabled = false;
@@ -624,11 +740,52 @@
         }
     }
 
-    // Event Listeners
-    if (elements.showAllPrizesBtn) elements.showAllPrizesBtn.addEventListener('click', showAllPrizes);
-    if (elements.closePrizeModal) elements.closePrizeModal.addEventListener('click', closePrizeModal);
-    if (elements.prizeModal) elements.prizeModal.addEventListener('click', (e) => { if (e.target === elements.prizeModal) closePrizeModal(); });
-    if (elements.participateBtn) elements.participateBtn.addEventListener('click', participate);
+    // Event Listeners with Haptic Feedback
+    if (elements.showAllPrizesBtn) {
+        elements.showAllPrizesBtn.addEventListener('click', (e) => {
+            hapticLight();
+            showAllPrizes();
+        });
+    }
+    
+    if (elements.closePrizeModal) {
+        elements.closePrizeModal.addEventListener('click', (e) => {
+            hapticLight();
+            closePrizeModal();
+        });
+    }
+    
+    if (elements.prizeModal) {
+        elements.prizeModal.addEventListener('click', (e) => { 
+            if (e.target === elements.prizeModal) {
+                hapticLight();
+                closePrizeModal();
+            }
+        });
+    }
+    
+    if (elements.participateBtn) {
+        elements.participateBtn.addEventListener('click', participate);
+    }
+
+    // Add haptic feedback to requirement items (subscribe/boost)
+    function addRequirementHaptic() {
+        const requirementItems = document.querySelectorAll('.requirement-item');
+        requirementItems.forEach(item => {
+            item.addEventListener('click', () => {
+                hapticLight();
+            });
+        });
+    }
+
+    // Observe DOM changes to add haptic to dynamically added elements
+    const observer = new MutationObserver(() => {
+        addRequirementHaptic();
+    });
+    
+    if (elements.requirementsList) {
+        observer.observe(elements.requirementsList, { childList: true, subtree: true });
+    }
 
     // Init
     function init() {
