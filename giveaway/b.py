@@ -1716,34 +1716,6 @@ https://t.me/freebiestbot?startapp={giveaway_codes[0] if giveaway_codes else '-'
     
     await event.respond(success_msg)
 
-@bot.on(events.NewMessage)
-async def handle_membership_check(event):
-    pass
-
-async def check_user_membership(user_id: int, chat_username: str) -> bool:
-    """Check if user is member of a chat/channel"""
-    try:
-        # Dapatkan entity chat dari username
-        entity = await bot.get_entity(chat_username)
-        
-        # Coba cek participant
-        from telethon.tl.functions.channels import GetParticipantRequest
-        from telethon.tl.types import ChannelParticipant, ChannelParticipantBanned
-        
-        try:
-            participant = await bot(GetParticipantRequest(
-                channel=entity,
-                participant=user_id
-            ))
-            # Jika berhasil, user adalah member
-            return True
-        except Exception as e:
-            # Jika error, user bukan member
-            return False
-    except Exception as e:
-        logger.error(f"Error checking membership for {user_id} in {chat_username}: {e}")
-        return False
-
 # ==================== MAIN - SAMA PERSIS SEPERTI fragment_bot.py ====================
 async def main():
     logger.info("🚀 Starting Giveaway Bot...")
