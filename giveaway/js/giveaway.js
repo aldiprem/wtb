@@ -93,6 +93,9 @@
     let totalLinks = 0;
     let participationInProgress = false;
     let requirementsList = [];
+    let captchaModal = null;
+    let currentCaptchaCode = '';
+    let isCaptchaVerifiedForParticipation = false;
 
     // DOM Elements
     const elements = {
@@ -605,7 +608,15 @@
         countdownInterval = setInterval(updateCountdown, 1000);
     }
 
-    // Eligibility
+    function generateCaptchaCode() {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
     function checkParticipationEligibility() {
         if (hasParticipated) {
             if (elements.participateBtn) {
@@ -621,13 +632,8 @@
             }
             return false;
         }
-        if (giveawayData?.captcha === 'On' && !isCaptchaVerified) {
-            if (elements.participateBtn) {
-                elements.participateBtn.disabled = true;
-                elements.participateBtn.innerHTML = '<i class="fas fa-shield-alt"></i><span>Verifikasi Captcha</span>';
-            }
-            return false;
-        }
+        
+        // Cek semua syarat kecuali captcha (captcha akan di-check saat klik partisipasi)
         for (const req of requirementsList) {
             if (req.type === 'taplink' && totalLinks > 0 && clickedLinks.size < totalLinks) {
                 if (elements.participateBtn) {
@@ -644,11 +650,144 @@
                 return false;
             }
         }
+        
+        // Jika semua syarat terpenuhi, tombol aktif untuk PARTISIPASI
         if (elements.participateBtn) {
             elements.participateBtn.disabled = false;
             elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>Partisipasi</span>';
         }
         return true;
+    }
+
+    async function showCaptchaModal() {
+        hapticMedium();
+        
+        return new Promise((resolve) => {
+            // Buat modal container jika belum ada
+            let captchaModalEl = document.getElementById('captchaModal');
+            if (!captchaModalEl) {
+                captchaModalEl = document.createElement('div');
+                captchaModalEl.id = 'captchaModal';
+                captchaModalEl.className = 'modal-overlay';
+                captchaModalEl.innerHTML = `
+                    <div class="modal-container captcha-modal-container">
+                        <div class="modal-header captcha-modal-header">
+                            <h3><i class="fas fa-shield-alt"></i> Verifikasi Captcha</h3>
+                            <button class="modal-close" id="closeCaptchaModal">&times;</button>
+                        </div>
+                        <div class="modal-body captcha-modal-body">
+                            <div class="captcha-display-modal">
+                                <span id="captchaCodeDisplay">XXXXXX</span>
+                            </div>
+                            <div class="captcha-modal-input-group">
+                                <input type="text" id="captchaInputModal" class="captcha-modal-input" placeholder="Kode" maxlength="6" autocomplete="off">
+                                <button class="captcha-modal-btn" id="captchaRefreshBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button class="captcha-modal-btn" id="captchaVerifyBtn">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                            <div class="captcha-modal-status info" id="captchaModalStatus">
+                                <i class="fas fa-info-circle"></i> Masukkan kode di atas
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(captchaModalEl);
+            }
+            
+            // Generate captcha baru
+            let captchaCode = generateCaptchaCode();
+            const displaySpan = document.getElementById('captchaCodeDisplay');
+            const inputField = document.getElementById('captchaInputModal');
+            const statusDiv = document.getElementById('captchaModalStatus');
+            const refreshBtn = document.getElementById('captchaRefreshBtn');
+            const verifyBtn = document.getElementById('captchaVerifyBtn');
+            const closeBtn = document.getElementById('closeCaptchaModal');
+            
+            if (displaySpan) displaySpan.textContent = captchaCode;
+            if (inputField) inputField.value = '';
+            if (statusDiv) {
+                statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> Masukkan kode di atas';
+                statusDiv.className = 'captcha-modal-status info';
+            }
+            
+            // Fungsi refresh captcha
+            const refreshCaptcha = () => {
+                hapticLight();
+                captchaCode = generateCaptchaCode();
+                if (displaySpan) displaySpan.textContent = captchaCode;
+                if (inputField) inputField.value = '';
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> Masukkan kode di atas';
+                    statusDiv.className = 'captcha-modal-status info';
+                }
+            };
+            
+            // Fungsi verifikasi
+            const verifyCaptcha = () => {
+                const inputValue = inputField?.value.trim().toUpperCase() || '';
+                if (!inputValue) {
+                    hapticWarning();
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Masukkan kode';
+                        statusDiv.className = 'captcha-modal-status error';
+                    }
+                    return;
+                }
+                if (inputValue === captchaCode) {
+                    hapticSuccess();
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<i class="fas fa-check-circle"></i> Valid!';
+                        statusDiv.className = 'captcha-modal-status success';
+                    }
+                    setTimeout(() => {
+                        closeCaptchaModalEl();
+                        resolve(true);
+                    }, 500);
+                } else {
+                    hapticError();
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<i class="fas fa-times-circle"></i> Kode salah, coba lagi';
+                        statusDiv.className = 'captcha-modal-status error';
+                    }
+                    // Refresh captcha setelah salah
+                    setTimeout(() => refreshCaptcha(), 1000);
+                }
+            };
+            
+            // Close modal function
+            const closeCaptchaModalEl = () => {
+                if (captchaModalEl) captchaModalEl.style.display = 'none';
+                refreshBtn?.removeEventListener('click', refreshCaptcha);
+                verifyBtn?.removeEventListener('click', verifyCaptcha);
+                closeBtn?.removeEventListener('click', closeCaptchaModalEl);
+                inputField?.removeEventListener('keypress', keyHandler);
+            };
+            
+            // Event listener untuk enter key
+            const keyHandler = (e) => {
+                if (e.key === 'Enter') verifyCaptcha();
+            };
+            
+            refreshBtn?.addEventListener('click', refreshCaptcha);
+            verifyBtn?.addEventListener('click', verifyCaptcha);
+            closeBtn?.addEventListener('click', closeCaptchaModalEl);
+            inputField?.addEventListener('keypress', keyHandler);
+            
+            // Klik overlay untuk close
+            captchaModalEl.addEventListener('click', (e) => {
+                if (e.target === captchaModalEl) {
+                    hapticLight();
+                    closeCaptchaModalEl();
+                    resolve(false);
+                }
+            }, { once: true });
+            
+            captchaModalEl.style.display = 'flex';
+            inputField?.focus();
+        });
     }
 
     // API Functions
@@ -691,14 +830,6 @@
                     if (elements.countdownTimer) elements.countdownTimer.style.display = 'none';
                     if (elements.expiredMessage) elements.expiredMessage.style.display = 'flex';
                 }
-                if (giveawayData.captcha === 'On') {
-                    if (elements.captchaCard) elements.captchaCard.style.display = 'block';
-                    generateCaptcha();
-                    if (elements.captchaRefresh) elements.captchaRefresh.addEventListener('click', generateCaptcha);
-                    if (elements.captchaInput) elements.captchaInput.addEventListener('input', verifyCaptcha);
-                } else {
-                    if (elements.captchaCard) elements.captchaCard.style.display = 'none';
-                }
                 if (telegramUser) await checkUserParticipation(giveawayData.code, telegramUser.id);
                 renderRequirements();
                 renderLinks();
@@ -735,7 +866,7 @@
     async function participate() {
         if (participationInProgress) return;
         
-        hapticMedium(); // Haptic feedback for button click
+        hapticMedium();
         
         if (hasParticipated) { 
             showToast('Sudah berpartisipasi', 'warning'); 
@@ -748,6 +879,16 @@
         if (!checkParticipationEligibility()) { 
             showToast('Penuhi semua syarat dulu', 'warning'); 
             return; 
+        }
+        
+        // Jika captcha diaktifkan, tampilkan modal captcha
+        if (giveawayData?.captcha === 'On') {
+            const captchaVerified = await showCaptchaModal();
+            if (!captchaVerified) {
+                showToast('Verifikasi captcha dibatalkan', 'info');
+                return;
+            }
+            showToast('Captcha terverifikasi!', 'success');
         }
         
         if (clickedLinks.size > 0 && giveawayData?.code) {
@@ -774,7 +915,7 @@
                 })
             });
             if (data.success) {
-                hapticSuccess(); // Success haptic feedback (double vibration)
+                hapticSuccess();
                 hasParticipated = true;
                 if (elements.participationStatus) elements.participationStatus.style.display = 'flex';
                 if (elements.participateBtn) {
@@ -784,7 +925,7 @@
                 showToast(data.message || 'Berhasil berpartisipasi!', 'success');
                 await loadUserStats();
             } else {
-                hapticError(); // Error haptic feedback (long vibration)
+                hapticError();
                 showToast(data.error || 'Gagal berpartisipasi', 'error');
                 if (elements.participateBtn) {
                     elements.participateBtn.disabled = false;

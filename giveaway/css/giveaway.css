@@ -1213,6 +1213,176 @@ body {
     color: var(--danger);
 }
 
+/* ==================== CAPTCHA MODAL STYLES ==================== */
+.captcha-modal-container {
+    max-width: 340px !important;
+}
+
+.captcha-modal-header {
+    padding: 12px 16px !important;
+    margin: 8px !important;
+}
+
+.captcha-modal-header h3 {
+    font-size: 14px !important;
+}
+
+.captcha-modal-body {
+    padding: 16px 20px !important;
+    margin: 0 8px 8px 8px !important;
+}
+
+/* Captcha Display dengan coretan */
+.captcha-display-modal {
+    background: linear-gradient(145deg, #1a1a1a, #0f0f0f);
+    padding: 20px;
+    text-align: center;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.captcha-display-modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 2px,
+        rgba(255, 255, 255, 0.03) 2px,
+        rgba(255, 255, 255, 0.03) 4px
+    );
+    pointer-events: none;
+}
+
+.captcha-display-modal span {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: 12px;
+    font-family: 'Courier New', 'Fira Code', monospace;
+    color: var(--primary);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    position: relative;
+    z-index: 1;
+}
+
+/* Efek coretan acak */
+.captcha-display-modal .scratch-line {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.08);
+    height: 1px;
+    width: 100%;
+    pointer-events: none;
+}
+
+.captcha-modal-input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.captcha-modal-input {
+    flex: 1;
+    padding: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 16px;
+    text-align: center;
+    letter-spacing: 4px;
+    font-family: 'Courier New', monospace;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.captcha-modal-input:focus {
+    border-color: var(--primary);
+}
+
+.captcha-modal-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.captcha-modal-btn {
+    width: 48px;
+    height: 48px;
+    background: var(--bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    transition: all 0.2s;
+}
+
+.captcha-modal-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    padding: 1px;
+    background: linear-gradient(175deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.3) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.captcha-modal-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(1.02);
+}
+
+.captcha-modal-btn i {
+    font-size: 20px;
+    color: var(--primary);
+}
+
+.captcha-modal-status {
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.captcha-modal-status.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.captcha-modal-status.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.captcha-modal-status.info {
+    background: rgba(64, 167, 227, 0.1);
+    color: var(--primary);
+}
+
 /* Status Card */
 .status-card {
     background: rgba(16, 185, 129, 0.1);
