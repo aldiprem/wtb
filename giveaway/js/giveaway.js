@@ -510,7 +510,7 @@
                         ${escapeHtml(req.text)}
                         <div class="requirement-sub">${req.type === 'subscribe' ? 'Klik untuk melihat daftar chat' : req.type === 'boost' ? 'Boost channel Telegram' : 'Klik tombol di samping'}</div>
                     </div>
-                    ${isCompleted ? '<span class="requirement-status success">✓ Terpenuhi</span>' : '<span class="requirement-status pending">⏳ Belum</span>'}
+                    ${isCompleted ? '<span class="requirement-status success">✓ Selesai</span>' : '<span class="requirement-status pending">⏳ Belum</span>'}
                 </div>
             `;
         }
