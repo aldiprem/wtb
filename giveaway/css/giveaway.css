@@ -30,7 +30,7 @@
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
     
     --glass-bg: rgba(255, 255, 255, 0.03); 
-    --glass-blur: blur(12px);
+    --glass-blur: blur(6px);
     
     --glass-border-color: linear-gradient(135deg, 
         rgba(255, 255, 255, 0.4) 0%, 
@@ -1253,34 +1253,92 @@ body {
     z-index: 1000;
 }
 
+/* Update FAB Button: Full-Width Glassmorphism dengan Double-Side 3D Border */
 .fab-button {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border: none;
-    border-radius: 60px;
-    padding: 14px 32px;
-    color: white;
-    font-size: 16px;
+    position: fixed;
+    bottom: 20px;
+    left: 16px;
+    right: 16px;
+    height: 58px;
+    
+    /* Efek Glassmorphism */
+    background: var(--glass-bg);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    
+    color: #ffffff;
     font-weight: 700;
-    cursor: pointer;
+    border-radius: 20px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
-    box-shadow: 0 4px 20px rgba(64, 167, 227, 0.4);
-    transition: all 0.3s;
+    
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.fab-button:hover:not(:disabled) {
+/* 1. EFEK BAYANGAN HITAM (Kanan-Atas & Kiri-Bawah) */
+.fab-button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 19px;
+    padding: 2px; /* Sedikit lebih tebal untuk kontras bayangan */
+    
+    /* Gradien 340deg menargetkan Kanan-Atas dan Kiri-Bawah */
+    background: linear-gradient(35deg, 
+        rgb(0 0 0 / 80%) 0%, 
+        rgba(0, 0, 0, 0) 10%,
+        rgba(0, 0, 0, 0) 90%, 
+        rgb(0 0 0 / 80%) 100%
+    );
+    
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 2. EFEK CAHAYA PUTIH (Kiri-Atas & Kanan-Bawah) */
+.fab-button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1.2px;
+    background: linear-gradient(175deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Efek Interaksi */
+.fab-button:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(64, 167, 227, 0.5);
+    background: rgba(255, 255, 255, 0.08);
 }
 
-.fab-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+.fab-button:active {
+    transform: translateY(1px) scale(0.98);
 }
 
+/* Icon style didalam tombol */
 .fab-button i {
     font-size: 18px;
+    filter: drop-shadow(0 0 8px var(--primary));
 }
 
 .btn-loading {
