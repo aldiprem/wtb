@@ -403,7 +403,7 @@ async def menu_create_giveaway(event, user_id: int = None):
             await event.respond(msg, buttons=buttons)
     else:
         await event.respond(msg, buttons=buttons)
-        
+
 @bot.on(events.NewMessage(pattern='/check_membership(?:@\\w+)?\\s+(\\d+)\\s+(\\d+)'))
 async def check_membership_command(event):
     """Handle membership check from API"""
@@ -440,37 +440,49 @@ async def check_membership_command(event):
             
             try:
                 chat_id_int = int(chat_id_str)
+                is_member = False
                 
                 # Cek keanggotaan menggunakan GetParticipantRequest
                 from telethon.tl.functions.channels import GetParticipantRequest
-                from telethon.tl.types import ChannelParticipantBanned
+                from telethon.tl.types import ChannelParticipantBanned, ChannelParticipantLeft
                 
-                participant = await bot(GetParticipantRequest(
-                    channel=chat_id_int,
-                    participant=user_id
-                ))
+                try:
+                    participant = await bot(GetParticipantRequest(
+                        channel=chat_id_int,
+                        participant=user_id
+                    ))
+                    
+                    # Cek apakah user bukan banned atau left
+                    if not isinstance(participant.participant, (ChannelParticipantBanned, ChannelParticipantLeft)):
+                        is_member = True
+                        
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    if 'user not found' in error_msg or 'participant not found' in error_msg:
+                        is_member = False
+                    elif 'chat not found' in error_msg or 'channel invalid' in error_msg:
+                        is_member = False
+                    else:
+                        is_member = False
+                        logger.warning(f"Error checking {chat_id_str}: {e}")
                 
-                is_member = not isinstance(participant.participant, ChannelParticipantBanned)
+                # UPDATE KE DATABASE MEMBERSHIP
+                db.update_user_membership(giveaway_id, user_id, chat_id_str, is_member)
                 
+                status = "✅ MEMBER" if is_member else "❌ NOT MEMBER"
+                results.append(f"{status} | {chat_title} (`{chat_id_str}`)")
+                
+                if not is_member:
+                    all_member = False
+                    
             except Exception as e:
-                error_msg = str(e).lower()
-                if 'user not found' in error_msg or 'participant not found' in error_msg:
-                    is_member = False
-                else:
-                    is_member = False
-                    logger.warning(f"Error checking {chat_id_str}: {e}")
-            
-            # Update database
-            db.update_user_membership(giveaway_id, user_id, chat_id_str, is_member)
-            
-            status = "✅ MEMBER" if is_member else "❌ NOT MEMBER"
-            results.append(f"{status} | {chat_title} (`{chat_id_str}`)")
-            
-            if not is_member:
+                logger.error(f"Error processing chat {chat_id_str}: {e}")
+                results.append(f"❌ ERROR | {chat_title} (`{chat_id_str}`): {str(e)[:50]}")
                 all_member = False
         
         # Kirim hasil ke admin
-        result_text = f"📊 **Membership Check for User {user_id}**\n\n" + "\n".join(results)
+        result_text = f"📊 **Membership Check for User {user_id}**\n\n"
+        result_text += "\n".join(results)
         result_text += f"\n\n**Overall:** {'✅ ALL MEMBER' if all_member else '❌ NOT ALL MEMBER'}"
         
         await event.reply(result_text)
@@ -478,6 +490,40 @@ async def check_membership_command(event):
     except Exception as e:
         logger.error(f"Error in check_membership_command: {e}")
         await event.reply(f"❌ Error: {e}")
+
+@bot.on(events.CallbackQuery(pattern="^toggle_captcha$"))
+async def toggle_captcha(event):
+    user_id = event.sender_id
+    
+    # Get current captcha status from user_state
+    current_status = user_state[user_id].get('captcha', 'Off')
+    
+    # Toggle status
+    new_status = 'On' if current_status == 'Off' else 'Off'
+    
+    # Update user_state
+    user_state[user_id]['captcha'] = new_status
+
+    if new_status == 'On':
+        await event.answer("✅ Captcha diaktifkan! Peserta harus menyelesaikan captcha.", alert=True)
+    else:
+        await event.answer("❌ Captcha dinonaktifkan.", alert=True)
+
+    class FakeEvent:
+        def __init__(self, uid, b):
+            self.sender_id = uid
+            self.client = b
+            self.chat_id = uid
+        
+        async def edit(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+        
+        async def respond(self, text, buttons=None):
+            await self.client.send_message(self.sender_id, text, buttons=buttons)
+    
+    fake_event = FakeEvent(user_id, bot)
+    await event.delete()
+    await menu_create_giveaway(fake_event, user_id)
 
 @bot.on(events.NewMessage(pattern="^/start$"))
 async def start(event):

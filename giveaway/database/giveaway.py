@@ -317,16 +317,24 @@ class GiveawayDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 now = self._get_now()
+                
+                # Gunakan 1/0 untuk boolean SQLite
+                member_value = 1 if is_member else 0
+                
                 cursor.execute('''
                     INSERT INTO user_membership (giveaway_id, user_id, chat_id, is_member, updated_at)
                     VALUES (?, ?, ?, ?, ?)
                     ON CONFLICT(giveaway_id, user_id, chat_id) 
                     DO UPDATE SET is_member = ?, updated_at = ?
-                ''', (giveaway_id, user_id, chat_id, is_member, now, is_member, now))
+                ''', (giveaway_id, user_id, chat_id, member_value, now, member_value, now))
+                
                 conn.commit()
+                print(f"[DEBUG] Updated membership: user={user_id}, chat={chat_id}, is_member={is_member}")
                 return True
         except Exception as e:
             print(f"Error updating user membership: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def check_user_all_memberships(self, giveaway_id: str, user_id: int) -> bool:
@@ -335,7 +343,7 @@ class GiveawayDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Ambil semua chat untuk giveaway ini
+                # Ambil semua chat untuk giveaway ini dari chat_info
                 cursor.execute('SELECT chat_id FROM chat_info WHERE giveaway_id = ?', (giveaway_id,))
                 chats = cursor.fetchall()
                 
@@ -349,12 +357,16 @@ class GiveawayDatabase:
                         WHERE giveaway_id = ? AND user_id = ? AND chat_id = ?
                     ''', (giveaway_id, user_id, chat_id))
                     row = cursor.fetchone()
-                    if not row or not row[0]:
+                    if not row or row[0] != 1:  # is_member = 1 (True)
+                        print(f"[DEBUG] User {user_id} not member of chat {chat_id}")
                         return False
                 
+                print(f"[DEBUG] User {user_id} is member of all chats for giveaway {giveaway_id}")
                 return True
         except Exception as e:
             print(f"Error checking all memberships: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:

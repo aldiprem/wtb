@@ -1372,21 +1372,63 @@
         renderRequirements();
     }
 
-    // Start periodic membership check (setiap 10 detik)
+    // Tambahkan fungsi ini di giveaway.js untuk refresh status subscribe setelah verifikasi
+    async function refreshMembershipStatus() {
+        if (!giveawayData?.code || !telegramUser?.id) return;
+        if (membershipStatus.isChecking) return;
+        
+        membershipStatus.isChecking = true;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/check-membership/${giveawayData.code}/${telegramUser.id}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const isMember = data.member_status;
+                
+                // Update requirement subscribe status
+                for (let i = 0; i < requirementsList.length; i++) {
+                    if (requirementsList[i].type === 'subscribe') {
+                        requirementsList[i].completed = isMember;
+                        requirementsList[i].text = isMember ? '✓ Bergabung Chat ID' : 'Bergabung Chat ID';
+                        break;
+                    }
+                }
+                
+                // Re-render requirements
+                renderRequirements();
+                
+                // Update UI
+                if (isMember) {
+                    updateMembershipUI('success');
+                } else {
+                    updateMembershipUI('pending');
+                }
+                
+                checkParticipationEligibility();
+            }
+        } catch (error) {
+            console.error('Error refreshing membership:', error);
+        } finally {
+            membershipStatus.isChecking = false;
+        }
+    }
+
+    // Panggil refreshMembershipStatus setiap 5 detik jika belum berpartisipasi
     function startMembershipChecker() {
         if (membershipCheckInterval) clearInterval(membershipCheckInterval);
         
         // Check pertama kali setelah load
         setTimeout(() => {
-            checkMembershipStatus(false);
+            refreshMembershipStatus();
         }, 2000);
         
-        // Check setiap 10 detik
+        // Check setiap 5 detik (lebih cepat)
         membershipCheckInterval = setInterval(() => {
             if (giveawayData && telegramUser && !hasParticipated) {
-                checkMembershipStatus(false);
+                refreshMembershipStatus();
             }
-        }, 10000);
+        }, 5000);
     }
 
     function stopMembershipChecker() {
@@ -1427,7 +1469,13 @@
                 updateUserUI();
                 loadUserStats();
             }
-            
+            // Panggil loadGiveaway dan tunggu selesai
+            loadGiveaway(giveawayCode).then(() => {
+                // Setelah loadGiveaway selesai, baru cek dan start membership checker
+                if (giveawayData && giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
+                    startMembershipChecker();
+                }
+            });
         } catch (error) {
             console.error('Init error:', error);
             showToast('Terjadi kesalahan', 'error');
