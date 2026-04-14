@@ -675,21 +675,24 @@
                     <div class="modal-container captcha-modal-container">
                         <div class="modal-header captcha-modal-header">
                             <h3><i class="fas fa-shield-alt"></i> Verifikasi Captcha</h3>
-                            <button class="modal-close" id="closeCaptchaModal">&times;</button>
+                            <div class="header-actions">
+                                <button class="captcha-refresh-header" id="captchaRefreshHeader">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button class="modal-close" id="closeCaptchaModal">&times;</button>
+                            </div>
                         </div>
                         <div class="modal-body captcha-modal-body">
                             <div class="captcha-display-modal">
                                 <span id="captchaCodeDisplay">XXXXXX</span>
                             </div>
                             <div class="captcha-modal-input-group">
-                                <input type="text" id="captchaInputModal" class="captcha-modal-input" placeholder="Kode" maxlength="6" autocomplete="off">
-                                <button class="captcha-modal-btn" id="captchaRefreshBtn">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                                <button class="captcha-modal-btn" id="captchaVerifyBtn">
-                                    <i class="fas fa-check"></i>
-                                </button>
+                                <input type="text" id="captchaInputModal" class="captcha-modal-input" placeholder="Kode Verifikasi" maxlength="6" autocomplete="off">
                             </div>
+                            <button class="captcha-verify-btn" id="captchaVerifyBtn">
+                                <i class="fas fa-check-circle"></i>
+                                <span>Verifikasi</span>
+                            </button>
                             <div class="captcha-modal-status info" id="captchaModalStatus">
                                 <i class="fas fa-info-circle"></i> Masukkan kode di atas
                             </div>
@@ -704,7 +707,7 @@
             const displaySpan = document.getElementById('captchaCodeDisplay');
             const inputField = document.getElementById('captchaInputModal');
             const statusDiv = document.getElementById('captchaModalStatus');
-            const refreshBtn = document.getElementById('captchaRefreshBtn');
+            const refreshBtn = document.getElementById('captchaRefreshHeader');
             const verifyBtn = document.getElementById('captchaVerifyBtn');
             const closeBtn = document.getElementById('closeCaptchaModal');
             

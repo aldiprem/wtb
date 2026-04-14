@@ -1221,15 +1221,71 @@ body {
 .captcha-modal-header {
     padding: 12px 16px !important;
     margin: 8px !important;
+    position: relative;
 }
 
 .captcha-modal-header h3 {
     font-size: 14px !important;
 }
 
+/* Tombol refresh captcha di header (sebelah tombol close) */
+.captcha-refresh-header {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    transition: all 0.2s;
+    margin-right: 8px;
+}
+
+.captcha-refresh-header::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    padding: 1px;
+    background: linear-gradient(155deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 30%, 
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.captcha-refresh-header:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: rotate(30deg);
+}
+
+.captcha-refresh-header i {
+    font-size: 14px;
+    color: var(--primary);
+}
+
+/* Header dengan flex untuk menampung tombol refresh dan close */
+.captcha-modal-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .captcha-modal-body {
-    padding: 16px 20px !important;
-    margin: 0 8px 8px 8px !important;
+    padding: 20px 20px !important;
+    margin: 0 8px 12px 8px !important;
 }
 
 /* Captcha Display dengan coretan */
@@ -1281,14 +1337,13 @@ body {
     pointer-events: none;
 }
 
+/* Input group - hanya input saja (tanpa tombol refresh) */
 .captcha-modal-input-group {
-    display: flex;
-    gap: 10px;
     margin-bottom: 16px;
 }
 
 .captcha-modal-input {
-    flex: 1;
+    width: 100%;
     padding: 14px;
     background: var(--bg);
     border: 1px solid var(--border);
@@ -1306,38 +1361,60 @@ body {
     border-color: var(--primary);
 }
 
-.captcha-modal-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.captcha-modal-btn {
-    width: 48px;
-    height: 48px;
-    background: var(--bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border-radius: 12px;
+/* Tombol Verifikasi - Full Width dengan jarak yang pas */
+.captcha-verify-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 16px;
+    padding: 14px 16px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
     cursor: pointer;
     position: relative;
     overflow: hidden;
     border: none;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-top: 8px;
 }
 
-.captcha-modal-btn::after {
+/* Efek bayangan hitam untuk tombol verifikasi */
+.captcha-verify-btn::before {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 12px;
+    border-radius: 14px;
+    padding: 1.5px;
+    background: linear-gradient(35deg, 
+        rgba(0, 0, 0, 0.6) 0%, 
+        rgba(0, 0, 0, 0) 30%,
+        rgba(0, 0, 0, 0) 70%, 
+        rgba(0, 0, 0, 0.6) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Efek cahaya putih untuk tombol verifikasi */
+.captcha-verify-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
     padding: 1px;
     background: linear-gradient(175deg, 
         rgba(255, 255, 255, 0.3) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0) 40%,
+        rgba(255, 255, 255, 0) 60%, 
         rgba(255, 255, 255, 0.3) 100%
     );
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
@@ -1347,14 +1424,17 @@ body {
     pointer-events: none;
 }
 
-.captcha-modal-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
-    transform: scale(1.02);
+.captcha-verify-btn:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
 }
 
-.captcha-modal-btn i {
-    font-size: 20px;
-    color: var(--primary);
+.captcha-verify-btn:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+.captcha-verify-btn i {
+    font-size: 18px;
 }
 
 .captcha-modal-status {
@@ -1365,7 +1445,7 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 12px;
 }
 
 .captcha-modal-status.success {
