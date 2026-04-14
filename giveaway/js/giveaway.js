@@ -1253,14 +1253,20 @@
         // Update UI untuk menunjukkan loading
         updateMembershipUI('loading');
         
+        // Set timeout 10 detik
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
         try {
-            const response = await fetch(`${API_BASE_URL}/api/giveaway/check-membership/${giveawayData.code}/${telegramUser.id}`);
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/check-membership/${giveawayData.code}/${telegramUser.id}`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
             const data = await response.json();
             
             if (data.success) {
                 membershipStatus.isMember = data.member_status;
-                membershipStatus.joinedChats = data.joined_chats || [];
-                membershipStatus.totalChats = data.total_chats;
                 membershipStatus.lastCheck = new Date();
                 
                 // Update requirement subscribe status
@@ -1273,12 +1279,12 @@
                     updateMembershipUI('pending');
                 }
                 
-                // Re-check eligibility setelah membership status berubah
                 checkParticipationEligibility();
             } else {
                 updateMembershipUI('error');
             }
         } catch (error) {
+            clearTimeout(timeoutId);
             console.error('Error checking membership:', error);
             updateMembershipUI('error');
         } finally {

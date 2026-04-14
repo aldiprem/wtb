@@ -536,24 +536,15 @@ def get_bot_info(username):
     
 @giveaway_bp.route('/check-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
 def check_membership(giveaway_code, user_id):
-    """Check if user is member of all required chats for a giveaway"""
+    """Check if user is member of all required chats for a giveaway (realtime)"""
     try:
-        # Ambil giveaway dari on_giveaway
         giveaway = db.get_on_giveaway(giveaway_code)
-        
         if not giveaway:
-            return jsonify({
-                'success': False,
-                'error': 'Giveaway tidak ditemukan'
-            }), 404
+            return jsonify({'success': False, 'error': 'Giveaway tidak ditemukan'}), 404
         
         giveaway_id = giveaway.get('giveaway_id', '')
-        
         if not giveaway_id:
-            return jsonify({
-                'success': False,
-                'error': 'Giveaway ID tidak ditemukan'
-            }), 404
+            return jsonify({'success': False, 'error': 'Giveaway ID tidak ditemukan'}), 404
         
         # Ambil chat info dari database
         chats = db.get_chat_info_by_giveaway_id(giveaway_id)
@@ -567,73 +558,80 @@ def check_membership(giveaway_code, user_id):
                 'message': 'Tidak ada chat yang perlu diikuti'
             })
         
-        # Di sini seharusnya memanggil bot untuk cek keanggotaan
-        # Karena kita tidak bisa memanggil bot langsung dari Flask,
-        # kita akan mengembalikan status berdasarkan data yang ada
-        # Untuk implementasi sebenarnya, perlu menggunakan RPC atau database terpisah
+        # Simpan request pengecekan ke tabel pending_checks
+        # Bot akan membaca tabel ini dan melakukan pengecekan
+        pending_id = db.add_pending_membership_check(giveaway_id, user_id, [c['chat_id'] for c in chats])
         
-        # Sementara, kita kembalikan bahwa user belum bergabung
-        # Ini akan diupdate oleh bot secara periodik atau via webhook
+        # Tunggu maksimal 5 detik untuk hasil pengecekan
+        wait_time = 0
+        while wait_time < 10:  # Maksimal 10 detik
+            result = db.get_pending_check_result(pending_id)
+            if result is not None:
+                return jsonify({
+                    'success': True,
+                    'member_status': result['is_member'],
+                    'joined_chats': result.get('joined_chats', []),
+                    'total_chats': len(chats),
+                    'message': 'Member' if result['is_member'] else 'Not member'
+                })
+            time.sleep(0.5)
+            wait_time += 0.5
         
+        # Jika timeout, kembalikan status berdasarkan data lama
+        is_member = db.check_user_all_memberships(giveaway_id, user_id)
         return jsonify({
             'success': True,
-            'member_status': False,
-            'joined_chats': [],
-            'total_chats': len(chats),
-            'chats': chats,
-            'message': 'Pengecekan keanggotaan sedang diproses'
+            'member_status': is_member,
+            'message': 'Member' if is_member else 'Not member (check pending)'
         })
         
     except Exception as e:
         print(f"Error checking membership: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @giveaway_bp.route('/verify-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
 def verify_membership(giveaway_code, user_id):
-    """Verify user membership in all required chats before participation"""
+    """Verify user membership in all required chats before participation (realtime)"""
     try:
-        # Ambil giveaway dari on_giveaway
         giveaway = db.get_on_giveaway(giveaway_code)
-        
         if not giveaway:
-            return jsonify({
-                'success': False,
-                'error': 'Giveaway tidak ditemukan'
-            }), 404
+            return jsonify({'success': False, 'error': 'Giveaway tidak ditemukan'}), 404
         
         giveaway_id = giveaway.get('giveaway_id', '')
-        
         if not giveaway_id:
-            return jsonify({
-                'success': False,
-                'error': 'Giveaway ID tidak ditemukan'
-            }), 404
+            return jsonify({'success': False, 'error': 'Giveaway ID tidak ditemukan'}), 404
         
-        # Ambil chat info dari database
         chats = db.get_chat_info_by_giveaway_id(giveaway_id)
         
         if not chats:
-            return jsonify({
-                'success': True,
-                'verified': True,
-                'message': 'Tidak ada chat yang perlu diikuti'
-            })
+            return jsonify({'success': True, 'verified': True, 'message': 'Tidak ada chat yang perlu diikuti'})
         
+        # Simpan request verifikasi ke tabel pending_checks dengan priority tinggi
+        pending_id = db.add_pending_membership_check(giveaway_id, user_id, [c['chat_id'] for c in chats], priority=1)
+        
+        # Tunggu hasil verifikasi (maksimal 8 detik)
+        wait_time = 0
+        while wait_time < 8:
+            result = db.get_pending_check_result(pending_id)
+            if result is not None:
+                return jsonify({
+                    'success': True,
+                    'verified': result['is_member'],
+                    'total_chats': len(chats),
+                    'message': 'Bergabung' if result['is_member'] else 'Silakan bergabung ke semua chat terlebih dahulu'
+                })
+            time.sleep(0.5)
+            wait_time += 0.5
+        
+        # Jika timeout, verifikasi gagal
         return jsonify({
             'success': True,
             'verified': False,
             'total_chats': len(chats),
-            'message': 'Silakan bergabung ke semua chat terlebih dahulu'
+            'message': 'Verifikasi timeout, silakan coba lagi'
         })
         
     except Exception as e:
         print(f"Error verifying membership: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
