@@ -899,12 +899,12 @@
                 chatModal.id = 'chatModal';
                 chatModal.className = 'modal-overlay';
                 chatModal.innerHTML = `
-                    <div class="modal-container">
-                        <div class="modal-header">
-                            <h3><i class="fas fa-telegram"></i> Chat ID</h3>
-                            <button class="modal-close" id="closeChatModal">&times;</button>
+                    <div class="modal-container" style="max-width: 320px;">
+                        <div class="modal-header" style="padding: 12px 16px;">
+                            <h3 style="font-size: 14px;"><i class="fas fa-telegram"></i> Daftar Chat</h3>
+                            <button class="modal-close" id="closeChatModal" style="width: 30px; height: 30px;">&times;</button>
                         </div>
-                        <div class="modal-body" id="chatListContainer"></div>
+                        <div class="modal-body" id="chatListContainer" style="padding: 12px 16px;"></div>
                     </div>
                 `;
                 document.body.appendChild(chatModal);
@@ -923,56 +923,106 @@
                 });
             }
             
-            // Render daftar chat
+            // Render daftar chat dengan ukuran lebih kecil
             const chatContainer = document.getElementById('chatListContainer');
             if (chatContainer) {
                 let html = '';
                 
                 for (const chat of chats) {
-                    // Generate avatar URL
-                    const chatTitle = chat.chat_title || chat.chat_id;
-                    const nameForAvatar = encodeURIComponent(chatTitle);
-                    const avatarUrl = chat.chat_photo_url || `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+                    // Generate nama dari chat_title atau fallback
+                    const chatName = chat.chat_title || 'Chat';
+                    const chatType = chat.chat_type || 'Chat';
+                    const chatId = chat.chat_id;
+                    const chatUsername = chat.chat_username || '';
+                    
+                    // Buat link untuk membuka chat
+                    let chatLink = '';
+                    if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                        chatLink = `https://t.me/${chatUsername}`;
+                    } else if (chatId) {
+                        // Hapus tanda -100 untuk channel
+                        let cleanId = chatId.replace('-100', '');
+                        chatLink = `https://t.me/${cleanId}`;
+                    }
+                    
+                    // Avatar URL - lebih kecil
+                    const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
+                    const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=60&rounded=true&bold=true&length=2`;
                     
                     html += `
-                        <div class="modal-chat-item" data-chat-id="${escapeHtml(chat.chat_id)}">
-                            <div class="chat-avatar">
-                                <img src="${avatarUrl}" alt="Avatar" onerror="this.src='https://ui-avatars.com/api/?name=Chat&background=40a7e3&color=fff&size=100&rounded=true'">
+                        <div class="chat-list-item" data-chat-link="${escapeHtml(chatLink)}" style="
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            padding: 8px 12px;
+                            background: var(--bg);
+                            backdrop-filter: var(--glass-blur);
+                            -webkit-backdrop-filter: var(--glass-blur);
+                            border-radius: 12px;
+                            margin-bottom: 8px;
+                            position: relative;
+                            overflow: hidden;
+                            cursor: pointer;
+                            transition: all 0.2s;
+                        ">
+                            <div class="chat-list-avatar" style="
+                                width: 36px;
+                                height: 36px;
+                                border-radius: 50%;
+                                overflow: hidden;
+                                flex-shrink: 0;
+                                background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                            ">
+                                <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://ui-avatars.com/api/?name=TG&background=40a7e3&color=fff&size=60&rounded=true'">
                             </div>
-                            <div class="chat-info">
-                                <div class="chat-title">${escapeHtml(chat.chat_title || '-')}</div>
-                                <div class="chat-detail">
-                                    <span class="chat-type">${escapeHtml(chat.chat_type || 'Chat')}</span>
-                                    <span class="chat-username">${chat.chat_username ? '@' + escapeHtml(chat.chat_username) : ''}</span>
-                                </div>
-                                <div class="chat-id">ID: ${escapeHtml(chat.chat_id)}</div>
+                            <div class="chat-list-info" style="flex: 1; min-width: 0;">
+                                <div class="chat-list-name" style="
+                                    font-size: 13px;
+                                    font-weight: 600;
+                                    margin-bottom: 2px;
+                                    white-space: nowrap;
+                                    overflow: hidden;
+                                    text-overflow: ellipsis;
+                                ">${escapeHtml(chatName)}</div>
+                                <div class="chat-list-type" style="
+                                    font-size: 10px;
+                                    color: var(--primary);
+                                    background: rgba(64, 167, 227, 0.15);
+                                    padding: 2px 6px;
+                                    border-radius: 20px;
+                                    display: inline-block;
+                                ">${escapeHtml(chatType)}</div>
                             </div>
-                            <button class="chat-visit-btn" data-chat-id="${escapeHtml(chat.chat_id)}" data-chat-username="${escapeHtml(chat.chat_username || '')}">
-                                <i class="fas fa-external-link-alt"></i>
-                            </button>
+                            <div class="chat-list-arrow" style="
+                                width: 28px;
+                                height: 28px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                flex-shrink: 0;
+                                background: rgba(255, 255, 255, 0.05);
+                                border-radius: 8px;
+                            ">
+                                <i class="fas fa-chevron-right" style="font-size: 12px; color: var(--text-muted);"></i>
+                            </div>
                         </div>
                     `;
                 }
                 
                 chatContainer.innerHTML = html;
                 
-                // Tambah event listener untuk tombol kunjungi
-                document.querySelectorAll('.chat-visit-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
+                // Tambah event listener untuk seluruh chat item (klik di mana saja)
+                document.querySelectorAll('.chat-list-item').forEach(item => {
+                    item.addEventListener('click', (e) => {
                         e.stopPropagation();
                         hapticMedium();
-                        const chatId = btn.dataset.chatId;
-                        const chatUsername = btn.dataset.chatUsername;
+                        const chatLink = item.dataset.chatLink;
                         
-                        let link = '';
-                        if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
-                            link = `https://t.me/${chatUsername}`;
-                        } else if (chatId) {
-                            link = `https://t.me/${chatId}`;
-                        }
-                        
-                        if (link) {
-                            window.open(link, '_blank');
+                        if (chatLink) {
+                            window.open(chatLink, '_blank');
                             showToast('Membuka chat...', 'info');
                         } else {
                             showToast('Link tidak tersedia', 'error');
