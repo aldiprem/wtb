@@ -92,6 +92,23 @@ class GiveawayDatabase:
                     FOREIGN KEY (giveaway_id) REFERENCES giveaways(giveaway_id)
                 )
             ''')
+
+            cursor.execute('''
+                CREATE TABLE user_check_state (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    giveaway_id TEXT NOT NULL,      -- ID giveaway
+                    giveaway_code TEXT NOT NULL,    -- Kode giveaway
+                    user_id INTEGER NOT NULL,       -- Telegram user ID
+                    username TEXT,                  -- Username (opsional)
+                    status TEXT DEFAULT 'pending',  -- pending, done, reject
+                    is_all_member BOOLEAN DEFAULT 0, -- TRUE jika sudah join semua chat
+                    joined_chats TEXT DEFAULT '[]',  -- JSON array chat_id yang sudah dijoin
+                    total_chats INTEGER DEFAULT 0,   -- Total chat yang harus dijoin
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(giveaway_id, user_id)
+                )
+            ''')
             
         cursor.execute("PRAGMA table_info(on_giveaway)")
         columns = [col[1] for col in cursor.fetchall()]
@@ -100,8 +117,113 @@ class GiveawayDatabase:
         
         conn.commit()
         self.init_chat_info_table()
-        self.init_pending_checks_table()
-        self.init_membership_table()
+
+    def save_user_check_state(self, giveaway_id: str, giveaway_code: str, user_id: int, 
+                            username: str = "", first_name: str = "", total_chats: int = 0) -> bool:
+        """Save or update user check state"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    INSERT INTO user_check_state 
+                    (giveaway_id, giveaway_code, user_id, username, first_name, total_chats, status, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
+                    ON CONFLICT(giveaway_id, user_id) 
+                    DO UPDATE SET 
+                        giveaway_code = excluded.giveaway_code,
+                        username = excluded.username,
+                        first_name = excluded.first_name,
+                        total_chats = excluded.total_chats,
+                        status = 'pending',
+                        updated_at = excluded.updated_at
+                ''', (giveaway_id, giveaway_code, user_id, username, first_name, total_chats, now))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving user check state: {e}")
+            return False
+
+    def get_pending_user_checks(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get users with status 'pending' for bot to check"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, giveaway_id, giveaway_code, user_id, username, first_name, total_chats
+                    FROM user_check_state 
+                    WHERE status = 'pending'
+                    ORDER BY created_at ASC
+                    LIMIT ?
+                ''', (limit,))
+                
+                rows = cursor.fetchall()
+                results = []
+                for row in rows:
+                    results.append({
+                        'id': row[0],
+                        'giveaway_id': row[1],
+                        'giveaway_code': row[2],
+                        'user_id': row[3],
+                        'username': row[4],
+                        'first_name': row[5],
+                        'total_chats': row[6]
+                    })
+                return results
+        except Exception as e:
+            print(f"Error getting pending user checks: {e}")
+            return []
+
+    def update_user_check_result(self, user_check_id: int, is_all_member: bool, 
+                                joined_chats: List[str], status: str = None) -> bool:
+        """Update user check result"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                if status is None:
+                    status = 'done' if is_all_member else 'reject'
+                
+                cursor.execute('''
+                    UPDATE user_check_state 
+                    SET status = ?, is_all_member = ?, joined_chats = ?, updated_at = ?
+                    WHERE id = ?
+                ''', (status, 1 if is_all_member else 0, json.dumps(joined_chats), now, user_check_id))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error updating user check result: {e}")
+            return False
+
+    def get_user_check_state(self, giveaway_code: str, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user check state by giveaway code and user id"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, status, is_all_member, joined_chats, total_chats, updated_at
+                    FROM user_check_state 
+                    WHERE giveaway_code = ? AND user_id = ?
+                ''', (giveaway_code, user_id))
+                
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        'id': row[0],
+                        'status': row[1],
+                        'is_all_member': bool(row[2]),
+                        'joined_chats': json.loads(row[3]) if row[3] else [],
+                        'total_chats': row[4],
+                        'updated_at': row[5]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting user check state: {e}")
+            return None
 
     def init_chat_info_table(self):
         """Initialize chat_info table for storing chat details"""
@@ -173,201 +295,6 @@ class GiveawayDatabase:
         except Exception as e:
             print(f"Error getting chat info: {e}")
             return []
-
-    def init_pending_checks_table(self):
-        """Initialize pending membership checks table"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pending_membership_checks (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    giveaway_id TEXT NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    chat_ids TEXT NOT NULL,
-                    priority INTEGER DEFAULT 0,
-                    status TEXT DEFAULT 'pending',
-                    result TEXT DEFAULT NULL,
-                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS membership_check_results (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    check_id INTEGER NOT NULL,
-                    chat_id TEXT NOT NULL,
-                    is_member BOOLEAN DEFAULT 0,
-                    checked_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (check_id) REFERENCES pending_membership_checks(id)
-                )
-            ''')
-            conn.commit()
-
-    def add_pending_membership_check(self, giveaway_id: str, user_id: int, chat_ids: List[str], priority: int = 0) -> int:
-        """Add a pending membership check request"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                chat_ids_json = json.dumps(chat_ids)
-                cursor.execute('''
-                    INSERT INTO pending_membership_checks (giveaway_id, user_id, chat_ids, priority, status)
-                    VALUES (?, ?, ?, ?, 'pending')
-                ''', (giveaway_id, user_id, chat_ids_json, priority))
-                conn.commit()
-                return cursor.lastrowid
-        except Exception as e:
-            print(f"Error adding pending membership check: {e}")
-            return -1
-
-    def get_pending_checks(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get pending membership checks that need to be processed"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT id, giveaway_id, user_id, chat_ids, priority
-                    FROM pending_membership_checks
-                    WHERE status = 'pending'
-                    ORDER BY priority DESC, created_at ASC
-                    LIMIT ?
-                ''', (limit,))
-                rows = cursor.fetchall()
-                
-                checks = []
-                for row in rows:
-                    checks.append({
-                        'id': row[0],
-                        'giveaway_id': row[1],
-                        'user_id': row[2],
-                        'chat_ids': json.loads(row[3]),
-                        'priority': row[4]
-                    })
-                return checks
-        except Exception as e:
-            print(f"Error getting pending checks: {e}")
-            return []
-
-    def update_check_result(self, check_id: int, chat_results: List[Dict[str, Any]], is_member: bool):
-        """Update check result"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                now = self._get_now()
-                
-                # Update status check
-                cursor.execute('''
-                    UPDATE pending_membership_checks
-                    SET status = 'completed', result = ?, updated_at = ?
-                    WHERE id = ?
-                ''', (json.dumps({'is_member': is_member}), now, check_id))
-                
-                # Insert individual chat results
-                for chat_result in chat_results:
-                    cursor.execute('''
-                        INSERT INTO membership_check_results (check_id, chat_id, is_member, checked_at)
-                        VALUES (?, ?, ?, ?)
-                    ''', (check_id, chat_result['chat_id'], chat_result['is_member'], now))
-                
-                conn.commit()
-                return True
-        except Exception as e:
-            print(f"Error updating check result: {e}")
-            return False
-
-    def get_pending_check_result(self, check_id: int) -> Optional[Dict[str, Any]]:
-        """Get result of a pending check"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT status, result FROM pending_membership_checks WHERE id = ?
-                ''', (check_id,))
-                row = cursor.fetchone()
-                
-                if row and row[0] == 'completed' and row[1]:
-                    return json.loads(row[1])
-                return None
-        except Exception as e:
-            print(f"Error getting pending check result: {e}")
-            return None
-
-    def init_membership_table(self):
-        """Initialize user membership table"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS user_membership (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    giveaway_id TEXT NOT NULL,
-                    user_id INTEGER NOT NULL,
-                    chat_id TEXT NOT NULL,
-                    is_member BOOLEAN DEFAULT 0,
-                    last_checked TEXT DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (giveaway_id) REFERENCES giveaways(giveaway_id),
-                    UNIQUE(giveaway_id, user_id, chat_id)
-                )
-            ''')
-            conn.commit()
-
-    def update_user_membership(self, giveaway_id: str, user_id: int, chat_id: str, is_member: bool) -> bool:
-        """Update user membership status"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                now = self._get_now()
-                
-                # Gunakan 1/0 untuk boolean SQLite
-                member_value = 1 if is_member else 0
-                
-                cursor.execute('''
-                    INSERT INTO user_membership (giveaway_id, user_id, chat_id, is_member, updated_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(giveaway_id, user_id, chat_id) 
-                    DO UPDATE SET is_member = ?, updated_at = ?
-                ''', (giveaway_id, user_id, chat_id, member_value, now, member_value, now))
-                
-                conn.commit()
-                print(f"[DEBUG] Updated membership: user={user_id}, chat={chat_id}, is_member={is_member}")
-                return True
-        except Exception as e:
-            print(f"Error updating user membership: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
-
-    def check_user_all_memberships(self, giveaway_id: str, user_id: int) -> bool:
-        """Check if user is member of all required chats for a giveaway"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Ambil semua chat untuk giveaway ini dari chat_info
-                cursor.execute('SELECT chat_id FROM chat_info WHERE giveaway_id = ?', (giveaway_id,))
-                chats = cursor.fetchall()
-                
-                if not chats:
-                    return True
-                
-                for chat in chats:
-                    chat_id = chat[0]
-                    cursor.execute('''
-                        SELECT is_member FROM user_membership 
-                        WHERE giveaway_id = ? AND user_id = ? AND chat_id = ?
-                    ''', (giveaway_id, user_id, chat_id))
-                    row = cursor.fetchone()
-                    if not row or row[0] != 1:  # is_member = 1 (True)
-                        print(f"[DEBUG] User {user_id} not member of chat {chat_id}")
-                        return False
-                
-                print(f"[DEBUG] User {user_id} is member of all chats for giveaway {giveaway_id}")
-                return True
-        except Exception as e:
-            print(f"Error checking all memberships: {e}")
-            import traceback
-            traceback.print_exc()
-            return False
 
     def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:
         """Save or update user information"""

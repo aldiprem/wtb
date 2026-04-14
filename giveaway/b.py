@@ -322,6 +322,104 @@ Giveaway berakhir tanpa pemenang.
         
         await asyncio.sleep(60)
 
+async def check_pending_membership():
+    """Bot schedule to check pending membership every 1 second"""
+    import aiohttp
+    
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                # Ambil pending checks dari Flask
+                async with session.get('http://localhost:5000/api/giveaway/pending-checks?limit=5') as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get('success') and data.get('checks'):
+                            for check in data['checks']:
+                                await process_membership_check(session, check)
+                    else:
+                        logger.warning(f"Failed to get pending checks: {resp.status}")
+        except Exception as e:
+            logger.error(f"Error in check_pending_membership: {e}")
+        
+        await asyncio.sleep(1)  # Schedule setiap 1 detik
+
+async def process_membership_check(session, check):
+    """Process single membership check"""
+    try:
+        user_id = check['user_id']
+        giveaway_code = check['giveaway_code']
+        giveaway_id = check['giveaway_id']
+        chats = check.get('chats', [])
+        
+        if not chats:
+            # Tidak ada chat yang perlu dicek, langsung update sebagai done
+            async with session.post('http://localhost:5000/api/giveaway/update-check-result', 
+                                   json={
+                                       'check_id': check['id'],
+                                       'is_all_member': True,
+                                       'joined_chats': [],
+                                       'status': 'done'
+                                   }) as resp:
+                logger.info(f"User {user_id} has no chats to check, marked as done")
+            return
+        
+        joined_chats = []
+        all_member = True
+        
+        for chat in chats:
+            chat_id_str = chat['chat_id']
+            chat_title = chat.get('chat_title', 'Unknown')
+            is_member = False
+            
+            try:
+                chat_id_int = int(chat_id_str)
+                
+                from telethon.tl.functions.channels import GetParticipantRequest
+                from telethon.tl.types import ChannelParticipantBanned, ChannelParticipantLeft
+                
+                try:
+                    participant = await bot(GetParticipantRequest(
+                        channel=chat_id_int,
+                        participant=user_id
+                    ))
+                    
+                    if not isinstance(participant.participant, (ChannelParticipantBanned, ChannelParticipantLeft)):
+                        is_member = True
+                        joined_chats.append(chat_id_str)
+                        logger.info(f"User {user_id} is member of {chat_title}")
+                        
+                except Exception as e:
+                    error_msg = str(e).lower()
+                    if 'user not found' in error_msg or 'participant not found' in error_msg:
+                        is_member = False
+                        logger.info(f"User {user_id} not found in {chat_title}")
+                    else:
+                        is_member = False
+                        logger.warning(f"Error checking {chat_id_str}: {e}")
+                
+                if not is_member:
+                    all_member = False
+                    
+            except Exception as e:
+                logger.error(f"Error processing chat {chat_id_str}: {e}")
+                all_member = False
+        
+        # Update hasil ke Flask
+        async with session.post('http://localhost:5000/api/giveaway/update-check-result', 
+                               json={
+                                   'check_id': check['id'],
+                                   'is_all_member': all_member,
+                                   'joined_chats': joined_chats,
+                                   'status': 'done' if all_member else 'reject'
+                               }) as resp:
+            if resp.status == 200:
+                logger.info(f"Updated check result for user {user_id}: all_member={all_member}")
+            else:
+                logger.error(f"Failed to update check result: {resp.status}")
+                
+    except Exception as e:
+        logger.error(f"Error processing membership check: {e}")
+
 async def menu_create_giveaway(event, user_id: int = None):
     """Display the create giveaway menu with current data"""
     if user_id is None:
@@ -403,93 +501,6 @@ async def menu_create_giveaway(event, user_id: int = None):
             await event.respond(msg, buttons=buttons)
     else:
         await event.respond(msg, buttons=buttons)
-
-@bot.on(events.NewMessage(pattern='/check_membership(?:@\\w+)?\\s+(\\d+)\\s+(\\d+)'))
-async def check_membership_command(event):
-    """Handle membership check from API"""
-    try:
-        giveaway_code = event.pattern_match.group(1)
-        user_id = int(event.pattern_match.group(2))
-        
-        logger.info(f"Manual membership check for user {user_id} in giveaway {giveaway_code}")
-        
-        # Ambil giveaway
-        giveaway = db.get_on_giveaway(giveaway_code)
-        if not giveaway:
-            await event.reply(f"❌ Giveaway {giveaway_code} tidak ditemukan")
-            return
-        
-        giveaway_id = giveaway.get('giveaway_id', '')
-        if not giveaway_id:
-            await event.reply(f"❌ Giveaway ID tidak ditemukan")
-            return
-        
-        # Ambil chat info
-        chats = db.get_chat_info_by_giveaway_id(giveaway_id)
-        
-        if not chats:
-            await event.reply(f"✅ Tidak ada chat yang perlu dicek untuk user {user_id}")
-            return
-        
-        results = []
-        all_member = True
-        
-        for chat in chats:
-            chat_id_str = chat['chat_id']
-            chat_title = chat.get('chat_title', 'Unknown')
-            
-            try:
-                chat_id_int = int(chat_id_str)
-                is_member = False
-                
-                # Cek keanggotaan menggunakan GetParticipantRequest
-                from telethon.tl.functions.channels import GetParticipantRequest
-                from telethon.tl.types import ChannelParticipantBanned, ChannelParticipantLeft
-                
-                try:
-                    participant = await bot(GetParticipantRequest(
-                        channel=chat_id_int,
-                        participant=user_id
-                    ))
-                    
-                    # Cek apakah user bukan banned atau left
-                    if not isinstance(participant.participant, (ChannelParticipantBanned, ChannelParticipantLeft)):
-                        is_member = True
-                        
-                except Exception as e:
-                    error_msg = str(e).lower()
-                    if 'user not found' in error_msg or 'participant not found' in error_msg:
-                        is_member = False
-                    elif 'chat not found' in error_msg or 'channel invalid' in error_msg:
-                        is_member = False
-                    else:
-                        is_member = False
-                        logger.warning(f"Error checking {chat_id_str}: {e}")
-                
-                # UPDATE KE DATABASE MEMBERSHIP
-                db.update_user_membership(giveaway_id, user_id, chat_id_str, is_member)
-                
-                status = "✅ MEMBER" if is_member else "❌ NOT MEMBER"
-                results.append(f"{status} | {chat_title} (`{chat_id_str}`)")
-                
-                if not is_member:
-                    all_member = False
-                    
-            except Exception as e:
-                logger.error(f"Error processing chat {chat_id_str}: {e}")
-                results.append(f"❌ ERROR | {chat_title} (`{chat_id_str}`): {str(e)[:50]}")
-                all_member = False
-        
-        # Kirim hasil ke admin
-        result_text = f"📊 **Membership Check for User {user_id}**\n\n"
-        result_text += "\n".join(results)
-        result_text += f"\n\n**Overall:** {'✅ ALL MEMBER' if all_member else '❌ NOT ALL MEMBER'}"
-        
-        await event.reply(result_text)
-        
-    except Exception as e:
-        logger.error(f"Error in check_membership_command: {e}")
-        await event.reply(f"❌ Error: {e}")
 
 @bot.on(events.CallbackQuery(pattern="^toggle_captcha$"))
 async def toggle_captcha(event):
@@ -1845,6 +1856,9 @@ async def main():
     
     # Start monitoring expired giveaways
     asyncio.create_task(check_on_giveaway_expired())
+    
+    # Start membership checker (baru)
+    asyncio.create_task(check_pending_membership())
     
     await bot.run_until_disconnected()
 

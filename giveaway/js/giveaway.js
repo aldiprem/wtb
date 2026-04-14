@@ -93,9 +93,6 @@
     let totalLinks = 0;
     let participationInProgress = false;
     let requirementsList = [];
-    let captchaModal = null;
-    let currentCaptchaCode = '';
-    let isCaptchaVerifiedForParticipation = false;
     let membershipStatus = {
         isChecking: false,
         isMember: false,
@@ -104,6 +101,11 @@
         lastCheck: null
     };
     let membershipCheckInterval = null;
+    let userCheckState = {
+        status: 'pending',
+        isAllMember: false,
+        pollingInterval: null
+    };
 
     // DOM Elements
     const elements = {
@@ -231,23 +233,6 @@
         } catch (error) {
             console.error('Error getting Telegram user:', error);
             return null;
-        }
-    }
-
-    async function triggerMembershipCheck() {
-        if (!giveawayData?.code || !telegramUser?.id) return;
-        
-        try {
-            // Panggil endpoint untuk trigger pengecekan manual
-            const response = await fetch(`${API_BASE_URL}/api/giveaway/trigger-membership-check/${giveawayData.code}/${telegramUser.id}`, {
-                method: 'POST'
-            });
-            const data = await response.json();
-            if (data.success) {
-                console.log('Membership check triggered:', data.check_id);
-            }
-        } catch (error) {
-            console.error('Error triggering membership check:', error);
         }
     }
 
@@ -906,41 +891,23 @@
             return; 
         }
         
-        // ============ VERIFIKASI KEANGGOTAAN SEBELUM PARTISIPASI ============
-        // Tampilkan loading pada tombol
         participationInProgress = true;
-        if (elements.participateBtn) {
-            elements.participateBtn.disabled = true;
-            elements.participateBtn.innerHTML = '<span class="btn-loading"></span><span>Verifikasi Keanggotaan...</span>';
-        }
         
-        try {
-            // Verifikasi keanggotaan ke bot
-            const verifyResponse = await fetch(`${API_BASE_URL}/api/giveaway/verify-membership/${giveawayData.code}/${telegramUser.id}`);
-            const verifyData = await verifyResponse.json();
+        // Cek user state dari database (polling terakhir)
+        if (!userCheckState.isAllMember && requirementsList.some(r => r.type === 'subscribe')) {
+            // Refresh state dulu
+            await pollUserCheckState();
             
-            if (!verifyData.success || !verifyData.verified) {
+            if (!userCheckState.isAllMember) {
                 hapticError();
-                showToast(verifyData.message || 'Anda belum bergabung ke semua chat yang diperlukan!', 'warning');
+                showToast('Anda belum bergabung ke semua chat yang diperlukan!', 'warning');
                 if (elements.participateBtn) {
                     elements.participateBtn.disabled = false;
                     elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>Partisipasi</span>';
                 }
                 participationInProgress = false;
-                
-                // Refresh membership status
-                checkMembershipStatus(true);
                 return;
             }
-        } catch (error) {
-            console.error('Error verifying membership:', error);
-            showToast('Gagal verifikasi keanggotaan, coba lagi', 'error');
-            if (elements.participateBtn) {
-                elements.participateBtn.disabled = false;
-                elements.participateBtn.innerHTML = '<i class="fas fa-hand-peace"></i><span>Partisipasi</span>';
-            }
-            participationInProgress = false;
-            return;
         }
         
         // ============ VERIFIKASI CAPTCHA ============
@@ -994,8 +961,7 @@
                 }
                 showToast(data.message || 'Berhasil berpartisipasi!', 'success');
                 await loadUserStats();
-                // Stop membership checker karena sudah berpartisipasi
-                stopMembershipChecker();
+                stopUserStatePolling();
             } else {
                 hapticError();
                 showToast(data.error || 'Gagal berpartisipasi', 'error');
@@ -1261,117 +1227,83 @@
         }
     }
 
-    async function checkMembershipStatus(showLoading = false) {
+    async function pollUserCheckState() {
         if (!giveawayData?.code || !telegramUser?.id) return;
-        if (membershipStatus.isChecking) return;
-        
-        membershipStatus.isChecking = true;
-        
-        // Update UI untuk menunjukkan loading
-        updateMembershipUI('loading');
-        
-        // Set timeout 10 detik
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        if (userCheckState.status === 'done' || userCheckState.status === 'reject') return;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/giveaway/check-membership/${giveawayData.code}/${telegramUser.id}`, {
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-            
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/user-state/${giveawayData.code}/${telegramUser.id}`);
             const data = await response.json();
             
             if (data.success) {
-                membershipStatus.isMember = data.member_status;
-                membershipStatus.lastCheck = new Date();
+                userCheckState.status = data.status;
+                userCheckState.isAllMember = data.is_all_member;
                 
                 // Update requirement subscribe status
-                updateSubscribeRequirementStatus(membershipStatus.isMember);
-                
-                // Update UI
-                if (membershipStatus.isMember) {
-                    updateMembershipUI('success');
-                } else {
-                    updateMembershipUI('pending');
+                for (let i = 0; i < requirementsList.length; i++) {
+                    if (requirementsList[i].type === 'subscribe') {
+                        requirementsList[i].completed = data.is_all_member;
+                        requirementsList[i].text = data.is_all_member ? '✓ Bergabung Chat ID' : 'Bergabung Chat ID';
+                        break;
+                    }
                 }
                 
+                renderRequirements();
                 checkParticipationEligibility();
-
-                if (giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
-                    triggerMembershipCheck();
+                
+                // Jika sudah selesai (done/reject), stop polling
+                if (data.status === 'done' || data.status === 'reject') {
+                    stopUserStatePolling();
                 }
-            } else {
-                updateMembershipUI('error');
             }
         } catch (error) {
-            clearTimeout(timeoutId);
-            console.error('Error checking membership:', error);
-            updateMembershipUI('error');
-        } finally {
-            membershipStatus.isChecking = false;
+            console.error('Error polling user state:', error);
         }
     }
 
-    function updateMembershipUI(status) {
-        const subscribeItems = document.querySelectorAll('.requirement-item[data-type="subscribe"]');
+    function startUserStatePolling() {
+        if (userCheckState.pollingInterval) clearInterval(userCheckState.pollingInterval);
         
-        subscribeItems.forEach(item => {
-            const statusBadge = item.querySelector('.requirement-status');
-            const iconDiv = item.querySelector('.requirement-icon i');
-            const textDiv = item.querySelector('.requirement-text');
-            
-            if (status === 'loading') {
-                if (statusBadge) {
-                    statusBadge.innerHTML = '<span class="loading-dots">⏳ Memeriksa...</span>';
-                    statusBadge.className = 'requirement-status pending';
-                }
-                if (iconDiv) {
-                    iconDiv.className = 'fas fa-spinner fa-pulse';
-                }
-            } else if (status === 'success') {
-                if (statusBadge) {
-                    statusBadge.innerHTML = '✓ Terpenuhi';
-                    statusBadge.className = 'requirement-status success';
-                }
-                if (iconDiv) {
-                    iconDiv.className = 'fas fa-check-circle';
-                    iconDiv.style.color = 'var(--success)';
-                }
-                item.classList.add('completed');
-            } else if (status === 'pending') {
-                if (statusBadge) {
-                    statusBadge.innerHTML = '⏳ Belum';
-                    statusBadge.className = 'requirement-status pending';
-                }
-                if (iconDiv) {
-                    iconDiv.className = 'fas fa-telegram';
-                    iconDiv.style.color = 'var(--primary)';
-                }
-                item.classList.remove('completed');
-            } else if (status === 'error') {
-                if (statusBadge) {
-                    statusBadge.innerHTML = '⚠ Gagal cek';
-                    statusBadge.className = 'requirement-status error';
-                }
+        // Polling setiap 2 detik
+        userCheckState.pollingInterval = setInterval(() => {
+            if (giveawayData && telegramUser && !hasParticipated) {
+                pollUserCheckState();
             }
-        });
+        }, 2000);
     }
 
-    function updateSubscribeRequirementStatus(isMember) {
-        // Update requirementsList
-        for (let i = 0; i < requirementsList.length; i++) {
-            if (requirementsList[i].type === 'subscribe') {
-                requirementsList[i].completed = isMember;
-                requirementsList[i].text = isMember ? '✓ Bergabung Chat ID' : 'Bergabung Chat ID';
-                break;
-            }
+    function stopUserStatePolling() {
+        if (userCheckState.pollingInterval) {
+            clearInterval(userCheckState.pollingInterval);
+            userCheckState.pollingInterval = null;
         }
-        
-        // Re-render requirements
-        renderRequirements();
     }
 
+    async function saveUserCheckState() {
+        if (!giveawayData?.code || !telegramUser?.id) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/user-state`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    giveaway_code: giveawayData.code,
+                    giveaway_id: giveawayData.id,
+                    user_id: telegramUser.id,
+                    username: telegramUser.username || '',
+                    first_name: telegramUser.first_name || '',
+                    total_chats: 0
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log('User state saved');
+            }
+        } catch (error) {
+            console.error('Error saving user state:', error);
+        }
+    }
+    
     // Tambahkan fungsi ini di giveaway.js untuk refresh status subscribe setelah verifikasi
     async function refreshMembershipStatus() {
         if (!giveawayData?.code || !telegramUser?.id) return;
@@ -1414,30 +1346,6 @@
         }
     }
 
-    // Panggil refreshMembershipStatus setiap 5 detik jika belum berpartisipasi
-    function startMembershipChecker() {
-        if (membershipCheckInterval) clearInterval(membershipCheckInterval);
-        
-        // Check pertama kali setelah load
-        setTimeout(() => {
-            refreshMembershipStatus();
-        }, 2000);
-        
-        // Check setiap 5 detik (lebih cepat)
-        membershipCheckInterval = setInterval(() => {
-            if (giveawayData && telegramUser && !hasParticipated) {
-                refreshMembershipStatus();
-            }
-        }, 5000);
-    }
-
-    function stopMembershipChecker() {
-        if (membershipCheckInterval) {
-            clearInterval(membershipCheckInterval);
-            membershipCheckInterval = null;
-        }
-    }
-
     // Initialize Telegram WebApp
     function initTelegram() {
         const tg = window.Telegram?.WebApp;
@@ -1449,7 +1357,6 @@
         }
     }
 
-    // Init
     function init() {
         initTelegram();
         showLoading(true);
@@ -1469,11 +1376,14 @@
                 updateUserUI();
                 loadUserStats();
             }
-            // Panggil loadGiveaway dan tunggu selesai
-            loadGiveaway(giveawayCode).then(() => {
-                // Setelah loadGiveaway selesai, baru cek dan start membership checker
+            
+            loadGiveaway(giveawayCode).then(async () => {
+                // Simpan user state ke database
+                await saveUserCheckState();
+                
+                // Start polling untuk cek status subscribe
                 if (giveawayData && giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
-                    startMembershipChecker();
+                    startUserStatePolling();
                 }
             });
         } catch (error) {

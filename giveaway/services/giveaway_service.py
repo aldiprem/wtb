@@ -11,6 +11,8 @@ from flask import Blueprint, request, jsonify, g
 from functools import wraps
 import sys
 from pathlib import Path
+from apscheduler.schedulers.background import BackgroundScheduler
+import atexit
 
 # Add root to path
 ROOT_DIR = Path(__file__).parent.parent.parent
@@ -23,6 +25,18 @@ giveaway_bp = Blueprint('giveaway', __name__, url_prefix='/api/giveaway')
 
 # Initialize database
 db = GiveawayDatabase()
+
+scheduler = BackgroundScheduler()
+
+def process_completed_checks():
+    print(f"[Scheduler] Checking for completed user states at {datetime.now()}")
+
+
+scheduler.add_job(func=process_completed_checks, trigger="interval", seconds=1)
+scheduler.start()
+
+# Cleanup on shutdown
+atexit.register(lambda: scheduler.shutdown())
 
 
 def validate_telegram_data(data: dict) -> tuple:
@@ -534,161 +548,122 @@ def get_bot_info(username):
             'error': str(e)
         }), 500
     
-@giveaway_bp.route('/check-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
-def check_membership(giveaway_code, user_id):
-    """Check if user is member of all required chats for a giveaway"""
-    try:
-        giveaway = db.get_on_giveaway(giveaway_code)
-        if not giveaway:
-            return jsonify({'success': False, 'error': 'Giveaway tidak ditemukan'}), 404
-        
-        giveaway_id = giveaway.get('giveaway_id', '')
-        if not giveaway_id:
-            return jsonify({'success': False, 'error': 'Giveaway ID tidak ditemukan'}), 404
-        
-        # Ambil syarat dari tabel giveaways
-        syarat = db.get_syarat(giveaway_id)
-        
-        # Jika tidak ada syarat Subscribe, langsung return True
-        if 'Subscribe' not in syarat:
-            return jsonify({
-                'success': True,
-                'member_status': True,
-                'joined_chats': [],
-                'total_chats': 0,
-                'message': 'Tidak ada syarat subscribe'
-            })
-        
-        chats = db.get_chat_info_by_giveaway_id(giveaway_id)
-        
-        if not chats:
-            return jsonify({
-                'success': True,
-                'member_status': True,
-                'joined_chats': [],
-                'total_chats': 0,
-                'message': 'Tidak ada chat yang perlu diikuti'
-            })
-        
-        # CEK DARI DATABASE MEMBERSHIP
-        is_member = db.check_user_all_memberships(giveaway_id, user_id)
-        
-        # Jika sudah member, update UI
-        if is_member:
-            return jsonify({
-                'success': True,
-                'member_status': True,
-                'total_chats': len(chats),
-                'joined_chats': [c['chat_id'] for c in chats],
-                'message': 'Member'
-            })
-        
-        # Jika belum member, trigger pengecekan ke bot
-        bot_token = os.getenv("BOT_GIVEAWAY")
-        admin_chat_id = os.getenv("ADMIN_CHAT_ID")
-        
-        if bot_token and admin_chat_id:
-            import requests
-            try:
-                url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                payload = {
-                    'chat_id': admin_chat_id,
-                    'text': f'/check_membership {giveaway_code} {user_id}',
-                    'parse_mode': 'Markdown'
-                }
-                response = requests.post(url, json=payload, timeout=5)
-                print(f"[DEBUG] Sent check request to bot, response: {response.status_code}")
-            except Exception as e:
-                print(f"Error sending to bot: {e}")
-        
-        return jsonify({
-            'success': True,
-            'member_status': False,
-            'total_chats': len(chats),
-            'joined_chats': [],
-            'message': 'Pengecekan keanggotaan dalam proses...'
-        })
-        
-    except Exception as e:
-        print(f"Error checking membership: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+# ==================== USER CHECK STATE ROUTES ====================
 
-@giveaway_bp.route('/verify-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
-def verify_membership(giveaway_code, user_id):
-    """Verify user membership in all required chats before participation"""
+@giveaway_bp.route('/user-state', methods=['POST'])
+def save_user_check_state():
+    """Save user check state when user opens giveaway page"""
     try:
-        giveaway = db.get_on_giveaway(giveaway_code)
-        if not giveaway:
-            return jsonify({'success': False, 'error': 'Giveaway tidak ditemukan'}), 404
+        data = request.get_json()
         
-        giveaway_id = giveaway.get('giveaway_id', '')
-        if not giveaway_id:
-            return jsonify({'success': False, 'error': 'Giveaway ID tidak ditemukan'}), 404
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
         
-        # Ambil syarat dari tabel giveaways
-        syarat = db.get_syarat(giveaway_id)
+        giveaway_code = data.get('giveaway_code')
+        giveaway_id = data.get('giveaway_id')
+        user_id = data.get('user_id')
+        username = data.get('username', '')
+        first_name = data.get('first_name', '')
+        total_chats = data.get('total_chats', 0)
         
-        # Jika tidak ada syarat Subscribe, langsung return True
-        if 'Subscribe' not in syarat:
-            return jsonify({'success': True, 'verified': True, 'message': 'Tidak ada syarat subscribe'})
+        if not giveaway_code or not giveaway_id or not user_id:
+            return jsonify({'success': False, 'error': 'Parameter tidak lengkap'}), 400
         
-        chats = db.get_chat_info_by_giveaway_id(giveaway_id)
-        
-        if not chats:
-            return jsonify({'success': True, 'verified': True, 'message': 'Tidak ada chat yang perlu diikuti'})
-        
-        # CEK LANGSUNG KE DATABASE MEMBERSHIP
-        is_member = db.check_user_all_memberships(giveaway_id, user_id)
-        
-        # Jika belum member, tambahkan pending check dengan priority tinggi
-        if not is_member:
-            check_id = db.add_pending_membership_check(
-                giveaway_id, user_id, [c['chat_id'] for c in chats], priority=5
-            )
-            print(f"[DEBUG] Added pending check {check_id} for user {user_id}")
-        
-        return jsonify({
-            'success': True,
-            'verified': is_member,
-            'total_chats': len(chats),
-            'message': 'Bergabung' if is_member else 'Silakan bergabung ke semua chat terlebih dahulu'
-        })
-        
-    except Exception as e:
-        print(f"Error verifying membership: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@giveaway_bp.route('/trigger-membership-check/<giveaway_code>/<int:user_id>', methods=['POST'])
-def trigger_membership_check(giveaway_code, user_id):
-    """Manually trigger membership check for a user"""
-    try:
-        giveaway = db.get_on_giveaway(giveaway_code)
-        if not giveaway:
-            return jsonify({'success': False, 'error': 'Giveaway tidak ditemukan'}), 404
-        
-        giveaway_id = giveaway.get('giveaway_id', '')
-        if not giveaway_id:
-            return jsonify({'success': False, 'error': 'Giveaway ID tidak ditemukan'}), 404
-        
-        chats = db.get_chat_info_by_giveaway_id(giveaway_id)
-        
-        if not chats:
-            return jsonify({'success': True, 'message': 'Tidak ada chat yang perlu dicek'})
-        
-        # Tambahkan pending check dengan priority tinggi
-        check_id = db.add_pending_membership_check(
-            giveaway_id, user_id, [c['chat_id'] for c in chats], priority=3
+        success = db.save_user_check_state(
+            giveaway_id=giveaway_id,
+            giveaway_code=giveaway_code,
+            user_id=user_id,
+            username=username,
+            first_name=first_name,
+            total_chats=total_chats
         )
         
         return jsonify({
-            'success': True,
-            'check_id': check_id,
-            'message': 'Pengecekan keanggotaan dimulai'
+            'success': success,
+            'message': 'User state saved' if success else 'Failed to save'
         })
         
     except Exception as e:
+        print(f"Error in save_user_check_state: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@giveaway_bp.route('/user-state/<giveaway_code>/<int:user_id>', methods=['GET'])
+def get_user_check_state(giveaway_code, user_id):
+    """Get user check state for frontend polling"""
+    try:
+        state = db.get_user_check_state(giveaway_code, user_id)
+        
+        if not state:
+            return jsonify({
+                'success': True,
+                'status': 'pending',
+                'is_all_member': False,
+                'joined_chats': [],
+                'total_chats': 0
+            })
+        
+        return jsonify({
+            'success': True,
+            'status': state['status'],
+            'is_all_member': state['is_all_member'],
+            'joined_chats': state['joined_chats'],
+            'total_chats': state['total_chats'],
+            'updated_at': state['updated_at']
+        })
+        
+    except Exception as e:
+        print(f"Error in get_user_check_state: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@giveaway_bp.route('/pending-checks', methods=['GET'])
+def get_pending_checks():
+    """Get pending user checks for bot to process"""
+    try:
+        limit = request.args.get('limit', 10, type=int)
+        pending_checks = db.get_pending_user_checks(limit)
+        
+        # Untuk setiap pending check, ambil chat_info
+        for check in pending_checks:
+            chats = db.get_chat_info_by_giveaway_id(check['giveaway_id'])
+            check['chats'] = chats
+        
+        return jsonify({
+            'success': True,
+            'checks': pending_checks,
+            'total': len(pending_checks)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_pending_checks: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@giveaway_bp.route('/update-check-result', methods=['POST'])
+def update_check_result():
+    """Update user check result from bot"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        check_id = data.get('check_id')
+        is_all_member = data.get('is_all_member', False)
+        joined_chats = data.get('joined_chats', [])
+        status = data.get('status')  # optional: 'done' or 'reject'
+        
+        if not check_id:
+            return jsonify({'success': False, 'error': 'check_id required'}), 400
+        
+        success = db.update_user_check_result(check_id, is_all_member, joined_chats, status)
+        
+        return jsonify({
+            'success': success,
+            'message': 'Check result updated' if success else 'Failed to update'
+        })
+        
+    except Exception as e:
+        print(f"Error in update_check_result: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
