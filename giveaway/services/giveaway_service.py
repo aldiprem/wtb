@@ -536,7 +536,7 @@ def get_bot_info(username):
     
 @giveaway_bp.route('/check-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
 def check_membership(giveaway_code, user_id):
-    """Check if user is member of all required chats for a giveaway (realtime via bot)"""
+    """Check if user is member of all required chats for a giveaway"""
     try:
         giveaway = db.get_on_giveaway(giveaway_code)
         if not giveaway:
@@ -546,7 +546,6 @@ def check_membership(giveaway_code, user_id):
         if not giveaway_id:
             return jsonify({'success': False, 'error': 'Giveaway ID tidak ditemukan'}), 404
         
-        # Ambil chat info dari database
         chats = db.get_chat_info_by_giveaway_id(giveaway_id)
         
         if not chats:
@@ -558,26 +557,32 @@ def check_membership(giveaway_code, user_id):
                 'message': 'Tidak ada chat yang perlu diikuti'
             })
         
-        # Kirim request ke bot untuk cek keanggotaan via Telegram API
+        # KIRIM REQUEST KE BOT UNTUK DI PROSES VIA TELEGRAM API
         bot_token = os.getenv("BOT_GIVEAWAY")
+        admin_chat_id = os.getenv("ADMIN_CHAT_ID")
         
-        # Simpan request ke database terlebih dahulu
-        check_id = db.add_pending_membership_check(giveaway_id, user_id, [c['chat_id'] for c in chats])
+        if bot_token and admin_chat_id:
+            import requests
+            try:
+                # Kirim pesan ke bot dengan format khusus
+                url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+                payload = {
+                    'chat_id': admin_chat_id,
+                    'text': f'/check_membership {giveaway_code} {user_id}',
+                    'parse_mode': 'Markdown'
+                }
+                requests.post(url, json=payload, timeout=2)
+            except Exception as e:
+                print(f"Error sending to bot: {e}")
         
-        # Kirim pesan ke bot untuk memproses (via webhook atau API)
-        # Kita akan menggunakan pendekatan: bot akan membaca pending_checks setiap beberapa detik
-        # Atau kita bisa langsung memanggil bot via sendMessage ke chat admin
-        
-        # Untuk sementara, kembalikan status dari database yang sudah ada
-        # Jika belum ada data, kembalikan False
+        # Kembalikan status dari database yang sudah ada (cache)
         is_member = db.check_user_all_memberships(giveaway_id, user_id)
         
         return jsonify({
             'success': True,
             'member_status': is_member,
-            'joined_chats': [],
             'total_chats': len(chats),
-            'message': 'Member' if is_member else 'Not member'
+            'message': 'Member' if is_member else 'Not member (check in progress)'
         })
         
     except Exception as e:
@@ -589,7 +594,7 @@ def check_membership(giveaway_code, user_id):
 
 @giveaway_bp.route('/verify-membership/<giveaway_code>/<int:user_id>', methods=['GET'])
 def verify_membership(giveaway_code, user_id):
-    """Verify user membership in all required chats before participation (realtime via bot)"""
+    """Verify user membership in all required chats before participation"""
     try:
         giveaway = db.get_on_giveaway(giveaway_code)
         if not giveaway:
@@ -604,43 +609,7 @@ def verify_membership(giveaway_code, user_id):
         if not chats:
             return jsonify({'success': True, 'verified': True, 'message': 'Tidak ada chat yang perlu diikuti'})
         
-        # Verifikasi real-time dengan memanggil bot langsung
-        # Kita akan menggunakan mekanisme: bot akan memproses pending check dengan priority tinggi
-        
-        # Tambahkan pending check dengan priority tinggi
-        check_id = db.add_pending_membership_check(giveaway_id, user_id, [c['chat_id'] for c in chats], priority=2)
-        
-        # Trigger bot untuk segera memproses (opsional: kirim pesan ke bot)
-        bot_token = os.getenv("BOT_GIVEAWAY")
-        admin_chat_id = os.getenv("ADMIN_CHAT_ID")  # Set di .env
-        
-        if bot_token and admin_chat_id:
-            import requests
-            try:
-                # Kirim pesan ke bot untuk memproses pending checks
-                url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-                payload = {
-                    'chat_id': admin_chat_id,
-                    'text': '/process_checks'
-                }
-                requests.post(url, json=payload, timeout=2)
-            except:
-                pass
-        
-        # Tunggu sebentar untuk hasil (max 3 detik)
-        import time
-        for i in range(6):  # 6 x 0.5 = 3 detik
-            result = db.get_pending_check_result(check_id)
-            if result is not None:
-                return jsonify({
-                    'success': True,
-                    'verified': result['is_member'],
-                    'total_chats': len(chats),
-                    'message': 'Bergabung' if result['is_member'] else 'Silakan bergabung ke semua chat terlebih dahulu'
-                })
-            time.sleep(0.5)
-        
-        # Jika timeout, cek dari database yang sudah ada
+        # LANGSUNG CEK DATABASE YANG SUDAH ADA
         is_member = db.check_user_all_memberships(giveaway_id, user_id)
         
         return jsonify({
@@ -655,7 +624,7 @@ def verify_membership(giveaway_code, user_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-    
+
 @giveaway_bp.route('/trigger-membership-check/<giveaway_code>/<int:user_id>', methods=['POST'])
 def trigger_membership_check(giveaway_code, user_id):
     """Manually trigger membership check for a user"""

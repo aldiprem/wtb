@@ -234,6 +234,23 @@
         }
     }
 
+    async function triggerMembershipCheck() {
+        if (!giveawayData?.code || !telegramUser?.id) return;
+        
+        try {
+            // Panggil endpoint untuk trigger pengecekan manual
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/trigger-membership-check/${giveawayData.code}/${telegramUser.id}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log('Membership check triggered:', data.check_id);
+            }
+        } catch (error) {
+            console.error('Error triggering membership check:', error);
+        }
+    }
+
     function updateUserUI() {
         if (!telegramUser) return;
         
@@ -1280,6 +1297,10 @@
                 }
                 
                 checkParticipationEligibility();
+
+                if (giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
+                    triggerMembershipCheck();
+                }
             } else {
                 updateMembershipUI('error');
             }
@@ -1406,13 +1427,7 @@
                 updateUserUI();
                 loadUserStats();
             }
-            // Panggil loadGiveaway dan tunggu selesai
-            loadGiveaway(giveawayCode).then(() => {
-                // Setelah loadGiveaway selesai, baru cek dan start membership checker
-                if (giveawayData && giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
-                    startMembershipChecker();
-                }
-            });
+            
         } catch (error) {
             console.error('Init error:', error);
             showToast('Terjadi kesalahan', 'error');
