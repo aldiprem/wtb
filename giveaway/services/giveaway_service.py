@@ -462,3 +462,74 @@ def get_giveaway_chats(giveaway_code):
             'success': False,
             'error': str(e)
         }), 500
+    
+@giveaway_bp.route('/bot-info/<username>', methods=['GET'])
+def get_bot_info(username):
+    """Get bot information by username"""
+    try:
+        # Hapus @ jika ada di depan username
+        clean_username = username.lstrip('@')
+        
+        # Coba ambil dari cache database terlebih dahulu
+        bot_info = None
+        try:
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah tabel bot_info ada, jika tidak buat
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS bot_info (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        bot_name TEXT,
+                        first_name TEXT,
+                        photo_url TEXT,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                conn.commit()
+                
+                # Cari di database
+                cursor.execute('SELECT username, bot_name, first_name, photo_url FROM bot_info WHERE username = ?', (clean_username,))
+                row = cursor.fetchone()
+                if row:
+                    bot_info = {
+                        'username': row[0],
+                        'bot_name': row[1],
+                        'first_name': row[2],
+                        'photo_url': row[3]
+                    }
+        except Exception as e:
+            print(f"Error reading bot cache: {e}")
+        
+        if bot_info:
+            return jsonify({
+                'success': True,
+                'bot': bot_info,
+                'cached': True
+            })
+        
+        # Jika tidak ada di cache, kembalikan informasi dasar
+        # (Untuk mendapatkan foto profil bot secara realtime, diperlukan akses ke Telegram API)
+        # Kita kembalikan informasi dasar dengan placeholder
+        
+        # Parse nama bot dari username
+        bot_name = clean_username.replace('_', ' ').title()
+        
+        return jsonify({
+            'success': True,
+            'bot': {
+                'username': clean_username,
+                'bot_name': bot_name,
+                'first_name': bot_name,
+                'photo_url': f'https://ui-avatars.com/api/?name={clean_username[0:2]}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2'
+            },
+            'cached': False
+        })
+        
+    except Exception as e:
+        print(f"Error getting bot info: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

@@ -313,7 +313,51 @@
     }
 
     // Links
-    function renderLinks() {
+    async function fetchBotInfo(botUsername) {
+        // Cache bot info untuk menghindari fetch berulang
+        if (window.botInfoCache && window.botInfoCache[botUsername]) {
+            return window.botInfoCache[botUsername];
+        }
+        
+        try {
+            // Gunakan API untuk mendapatkan info bot
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/bot-info/${botUsername}`);
+            const data = await response.json();
+            if (data.success) {
+                if (!window.botInfoCache) window.botInfoCache = {};
+                window.botInfoCache[botUsername] = data;
+                return data;
+            }
+        } catch (error) {
+            console.error('Error fetching bot info:', error);
+        }
+        return null;
+    }
+
+    function extractBotUsernameFromLink(link) {
+        // Extract username dari link t.me
+        // Contoh: https://t.me/epic_gift_bot/app?startapp=xxx -> epic_gift_bot
+        //         t.me/username -> username
+        try {
+            let cleanLink = link.replace('https://', '').replace('http://', '');
+            if (cleanLink.startsWith('t.me/')) {
+                let parts = cleanLink.split('/');
+                if (parts.length >= 2) {
+                    let username = parts[1];
+                    // Hapus query string jika ada
+                    username = username.split('?')[0];
+                    // Hapus path tambahan seperti /app
+                    username = username.split('/')[0];
+                    return username;
+                }
+            }
+            return null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    async function renderLinks() {
         if (!elements.linksContainer) return;
         const hasTapLink = requirementsList.some(req => req.type === 'taplink');
         if (!hasTapLink || !requiredLinks || requiredLinks.length === 0) {
@@ -322,48 +366,81 @@
         }
         if (elements.linksCard) elements.linksCard.style.display = 'block';
         
+        // Sembunyikan links-status karena tidak perlu
+        if (elements.linksStatus) elements.linksStatus.style.display = 'none';
+        
         let html = '';
-        requiredLinks.forEach((link) => {
+        
+        for (const link of requiredLinks) {
             const isClicked = clickedLinks.has(link);
+            const botUsername = extractBotUsernameFromLink(link);
+            let botName = botUsername || 'Telegram Bot';
+            let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(botName.substring(0, 2))}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+            
+            // Coba fetch info bot jika ada username
+            if (botUsername) {
+                try {
+                    const botInfo = await fetchBotInfo(botUsername);
+                    if (botInfo && botInfo.bot) {
+                        if (botInfo.bot.username) botName = `@${botInfo.bot.username}`;
+                        if (botInfo.bot.first_name) botName = botInfo.bot.first_name;
+                        if (botInfo.bot.photo_url) avatarUrl = botInfo.bot.photo_url;
+                    }
+                } catch (e) {
+                    console.error('Error fetching bot info:', e);
+                }
+            }
+            
             html += `
-                <div class="link-item ${isClicked ? 'completed' : ''}" data-link="${escapeHtml(link)}">
-                    <div class="link-icon"><i class="fas ${isClicked ? 'fa-check-circle' : 'fa-link'}"></i></div>
-                    <div class="link-info">
-                        <div class="link-url">${escapeHtml(link)}</div>
-                        <div class="link-status">${isClicked ? '✓ Dikunjungi' : '⚠ Belum'}</div>
+                <div class="link-item ${isClicked ? 'completed' : ''}" data-link="${escapeHtml(link)}" data-bot-username="${escapeHtml(botUsername || '')}">
+                    <div class="link-icon">
+                        <img src="${avatarUrl}" alt="${escapeHtml(botName)}" class="bot-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(botName.substring(0, 2))}&background=40a7e3&color=fff&size=100&rounded=true'">
                     </div>
-                    <button class="link-visit-btn" data-link="${escapeHtml(link)}"><i class="fas fa-external-link-alt"></i> Kunjungi</button>
+                    <div class="link-info">
+                        <div class="link-bot-name">${escapeHtml(botName)}</div>
+                        <div class="link-url">${escapeHtml(link)}</div>
+                    </div>
+                    <div class="link-arrow ${isClicked ? 'completed' : ''}">
+                        ${isClicked ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-chevron-right"></i>'}
+                    </div>
                 </div>
             `;
-        });
+        }
         elements.linksContainer.innerHTML = html;
         
-        document.querySelectorAll('.link-visit-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+        // Tambah event listener untuk seluruh link item
+        document.querySelectorAll('.link-item').forEach(item => {
+            item.addEventListener('click', async (e) => {
+                // Jangan trigger jika klik pada arrow/check (tapi arrow juga trigger)
                 e.stopPropagation();
-                hapticMedium(); // Haptic feedback for link click
-                const link = btn.dataset.link;
-                if (link) {
+                const link = item.dataset.link;
+                const isClicked = item.classList.contains('completed');
+                
+                if (!isClicked && link) {
+                    hapticMedium();
+                    // Buka link di new tab
                     window.open(link, '_blank');
-                    markLinkAsClicked(link);
+                    await markLinkAsClicked(link);
                 }
             });
         });
-        updateLinksStatus();
     }
 
     function markLinkAsClicked(link) {
-        if (!clickedLinks.has(link)) {
-            hapticSuccess(); // Haptic feedback for successful link visit
-            clickedLinks.add(link);
-            if (giveawayData?.code) {
-                localStorage.setItem(`giveaway_links_${giveawayData.code}`, JSON.stringify(Array.from(clickedLinks)));
+        return new Promise((resolve) => {
+            if (!clickedLinks.has(link)) {
+                hapticSuccess();
+                clickedLinks.add(link);
+                if (giveawayData?.code) {
+                    localStorage.setItem(`giveaway_links_${giveawayData.code}`, JSON.stringify(Array.from(clickedLinks)));
+                }
+                renderLinks();
+                renderRequirements();
+                checkParticipationEligibility();
+                showToast('Link dikunjungi!', 'success');
             }
-            renderLinks();
-            renderRequirements();
-            checkParticipationEligibility();
-            showToast('Link dikunjungi!', 'success');
-        }
+            resolve();
+        });
     }
 
     function updateLinksStatus() {
