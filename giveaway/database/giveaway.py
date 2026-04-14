@@ -100,6 +100,8 @@ class GiveawayDatabase:
         
         conn.commit()
         self.init_chat_info_table()
+        self.init_pending_checks_table()
+        self.init_membership_table()
 
     def init_chat_info_table(self):
         """Initialize chat_info table for storing chat details"""
