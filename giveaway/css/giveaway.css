@@ -16,6 +16,7 @@
     
     /* VARIABEL BARU: Efek Transparan Blur (Glassmorphism) */
     --glass-bg: rgb(255 255 255 / 3%); /* Putih sangat tipis */
+    --primary-glass: rgb(57 119 155 / 20%);
     --glass-bg-dark: rgba(0, 0, 0, 0.3);    /* Hitam transparan */
     --blur: blur(10px);                     /* Kekuatan blur */
     
@@ -819,8 +820,7 @@ body {
 }
 
 .requirement-item.completed {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: var(--bg);
 }
 
 .requirement-icon {
@@ -989,8 +989,7 @@ body {
 }
 
 .link-item.completed {
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: var(--bg);
 }
 
 .link-icon {
@@ -1262,7 +1261,7 @@ body {
     height: 58px;
     
     /* Efek Glassmorphism */
-    background: var(--glass-bg);
+    background: var(--primary-glass);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     
@@ -1311,12 +1310,12 @@ body {
     position: absolute;
     inset: 0;
     border-radius: 20px;
-    padding: 1.2px;
+    padding: 1.4px;
     background: linear-gradient(175deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
+        rgb(229 229 229 / 40%) 0%, 
+        rgb(252 252 252 / 10%) 30%,
         rgba(255, 255, 255, 0) 70%, 
-        rgba(255, 255, 255, 0.4) 100%
+        rgb(229 229 229 / 40%) 100%
     );
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
