@@ -1,4 +1,4 @@
-// giveaway.js - Modern Minimalist Version with Haptic Feedback
+// giveaway.js - Modern Minimalist Version with Haptic Feedback (FIXED)
 
 (function() {
     'use strict';
@@ -17,6 +17,10 @@
         ERROR: 50,
         WARNING: 25
     };
+
+    // Flag to track if user has interacted with the page
+    let hasUserInteracted = false;
+    let pendingHapticQueue = [];
 
     let giveawayData = null;
     let telegramUser = null;
@@ -82,14 +86,45 @@
         participateBtn: document.getElementById('participateBtn')
     };
 
+    // ==================== USER GESTURE TRACKING ====================
+    
+    /**
+     * Mark that user has interacted with the page
+     * This should be called on any user action (click, tap, touch, etc.)
+     */
+    function markUserInteracted() {
+        if (!hasUserInteracted) {
+            hasUserInteracted = true;
+            console.log('✅ User interaction detected, haptic feedback enabled');
+            
+            // Process any pending haptic requests
+            processPendingHapticQueue();
+        }
+    }
+    
+    /**
+     * Process queued haptic feedback after user interaction
+     */
+    function processPendingHapticQueue() {
+        while (pendingHapticQueue.length > 0) {
+            const { duration, pattern } = pendingHapticQueue.shift();
+            executeVibration(duration, pattern);
+        }
+    }
+    
+    /**
+     * Queue haptic feedback for later execution (before user interaction)
+     */
+    function queueHaptic(duration, pattern) {
+        pendingHapticQueue.push({ duration, pattern });
+    }
+
     // ==================== HAPTIC FEEDBACK FUNCTIONS ====================
     
     /**
-     * Trigger haptic vibration on supported devices
-     * @param {number} duration - Vibration duration in milliseconds
-     * @param {string} pattern - Optional pattern type: 'light', 'medium', 'heavy', 'success', 'error', 'warning'
+     * Execute vibration (internal function, checks for user interaction)
      */
-    function vibrate(duration = 20, pattern = null) {
+    function executeVibration(duration = 20, pattern = null) {
         // Check if vibration is supported
         if (!window.navigator || !window.navigator.vibrate) {
             return; // Vibration not supported
@@ -120,44 +155,69 @@
     
     /**
      * Light haptic feedback for button clicks and taps
+     * Requires user interaction first
      */
     function hapticLight() {
-        vibrate(HAPTIC_DURATION.LIGHT, 'light');
+        if (hasUserInteracted) {
+            executeVibration(HAPTIC_DURATION.LIGHT, 'light');
+        } else {
+            queueHaptic(HAPTIC_DURATION.LIGHT, 'light');
+        }
     }
     
     /**
      * Medium haptic feedback for confirmations
      */
     function hapticMedium() {
-        vibrate(HAPTIC_DURATION.MEDIUM, 'medium');
+        if (hasUserInteracted) {
+            executeVibration(HAPTIC_DURATION.MEDIUM, 'medium');
+        } else {
+            queueHaptic(HAPTIC_DURATION.MEDIUM, 'medium');
+        }
     }
     
     /**
      * Heavy haptic feedback for major actions
      */
     function hapticHeavy() {
-        vibrate(HAPTIC_DURATION.HEAVY, 'heavy');
+        if (hasUserInteracted) {
+            executeVibration(HAPTIC_DURATION.HEAVY, 'heavy');
+        } else {
+            queueHaptic(HAPTIC_DURATION.HEAVY, 'heavy');
+        }
     }
     
     /**
      * Success haptic feedback pattern
      */
     function hapticSuccess() {
-        vibrate(HAPTIC_DURATION.SUCCESS, 'success');
+        if (hasUserInteracted) {
+            executeVibration(HAPTIC_DURATION.SUCCESS, 'success');
+        } else {
+            queueHaptic(HAPTIC_DURATION.SUCCESS, 'success');
+        }
     }
     
     /**
      * Error haptic feedback pattern
      */
     function hapticError() {
-        vibrate(HAPTIC_DURATION.ERROR, 'error');
+        if (hasUserInteracted) {
+            executeVibration(HAPTIC_DURATION.ERROR, 'error');
+        } else {
+            queueHaptic(HAPTIC_DURATION.ERROR, 'error');
+        }
     }
     
     /**
      * Warning haptic feedback pattern
      */
     function hapticWarning() {
-        vibrate(HAPTIC_DURATION.WARNING, 'warning');
+        if (hasUserInteracted) {
+            executeVibration(HAPTIC_DURATION.WARNING, 'warning');
+        } else {
+            queueHaptic(HAPTIC_DURATION.WARNING, 'warning');
+        }
     }
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -165,7 +225,7 @@
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
         
-        // Add haptic feedback for toast
+        // Add haptic feedback for toast (only if user has interacted)
         if (type === 'success') {
             hapticSuccess();
         } else if (type === 'error') {
@@ -358,6 +418,7 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 hapticMedium(); // Haptic feedback for link click
+                markUserInteracted(); // Mark user interaction
                 const link = btn.dataset.link;
                 if (link) {
                     window.open(link, '_blank');
@@ -658,6 +719,7 @@
         if (participationInProgress) return;
         
         hapticMedium(); // Haptic feedback for button click
+        markUserInteracted(); // Mark user interaction
         
         if (hasParticipated) { 
             showToast('Sudah berpartisipasi', 'warning'); 
@@ -740,10 +802,39 @@
         }
     }
 
+    // ==================== SETUP USER GESTURE LISTENERS ====================
+    
+    /**
+     * Setup event listeners to detect user interaction
+     */
+    function setupUserGestureListeners() {
+        const events = ['click', 'touchstart', 'touchend', 'keydown', 'keyup'];
+        events.forEach(eventType => {
+            document.body.addEventListener(eventType, markUserInteracted, { once: false, passive: true });
+        });
+        
+        // Also listen on specific interactive elements
+        const interactiveElements = [
+            elements.participateBtn,
+            elements.showAllPrizesBtn,
+            elements.closePrizeModal,
+            elements.captchaRefresh,
+            elements.captchaInput
+        ];
+        
+        interactiveElements.forEach(el => {
+            if (el) {
+                el.addEventListener('click', markUserInteracted);
+                el.addEventListener('touchstart', markUserInteracted);
+            }
+        });
+    }
+
     // Event Listeners with Haptic Feedback
     if (elements.showAllPrizesBtn) {
         elements.showAllPrizesBtn.addEventListener('click', (e) => {
             hapticLight();
+            markUserInteracted();
             showAllPrizes();
         });
     }
@@ -751,6 +842,7 @@
     if (elements.closePrizeModal) {
         elements.closePrizeModal.addEventListener('click', (e) => {
             hapticLight();
+            markUserInteracted();
             closePrizeModal();
         });
     }
@@ -759,6 +851,7 @@
         elements.prizeModal.addEventListener('click', (e) => { 
             if (e.target === elements.prizeModal) {
                 hapticLight();
+                markUserInteracted();
                 closePrizeModal();
             }
         });
@@ -772,10 +865,14 @@
     function addRequirementHaptic() {
         const requirementItems = document.querySelectorAll('.requirement-item');
         requirementItems.forEach(item => {
-            item.addEventListener('click', () => {
-                hapticLight();
-            });
+            item.removeEventListener('click', requirementClickHandler);
+            item.addEventListener('click', requirementClickHandler);
         });
+    }
+    
+    function requirementClickHandler() {
+        hapticLight();
+        markUserInteracted();
     }
 
     // Observe DOM changes to add haptic to dynamically added elements
@@ -790,6 +887,10 @@
     // Init
     function init() {
         showLoading(true);
+        
+        // Setup user gesture detection
+        setupUserGestureListeners();
+        
         try {
             let giveawayCode = getStartParam();
             if (!giveawayCode) {

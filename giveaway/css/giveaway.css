@@ -1241,45 +1241,6 @@ body {
     display: inline-block;
 }
 
-/* Button press effect */
-.fab-button:active,
-.link-visit-btn:active,
-.btn-more:active,
-.modal-close:active,
-.captcha-refresh:active {
-    transform: scale(0.96);
-    transition: transform 0.05s ease;
-}
-
-/* Requirement item tap effect */
-.requirement-item:active {
-    transform: scale(0.99);
-    background: rgba(255, 255, 255, 0.05);
-    transition: transform 0.05s ease;
-}
-
-/* Link item tap effect */
-.link-item:active {
-    transform: scale(0.99);
-    transition: transform 0.05s ease;
-}
-
-/* Prize item tap effect */
-.prize-item:active {
-    transform: scale(0.99);
-    transition: transform 0.05s ease;
-}
-
-/* Toast entrance animation enhancement */
-.toast {
-    cursor: pointer;
-}
-
-.toast:active {
-    transform: scale(0.98);
-    transition: transform 0.05s ease;
-}
-
 /* Responsive */
 @media (max-width: 480px) {
     .giveaway-container {
