@@ -94,16 +94,17 @@ class GiveawayDatabase:
             ''')
 
             cursor.execute('''
-                CREATE TABLE user_check_state (
+                CREATE TABLE IF NOT EXISTS user_check_state (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    giveaway_id TEXT NOT NULL,      -- ID giveaway
-                    giveaway_code TEXT NOT NULL,    -- Kode giveaway
-                    user_id INTEGER NOT NULL,       -- Telegram user ID
-                    username TEXT,                  -- Username (opsional)
-                    status TEXT DEFAULT 'pending',  -- pending, done, reject
-                    is_all_member BOOLEAN DEFAULT 0, -- TRUE jika sudah join semua chat
-                    joined_chats TEXT DEFAULT '[]',  -- JSON array chat_id yang sudah dijoin
-                    total_chats INTEGER DEFAULT 0,   -- Total chat yang harus dijoin
+                    giveaway_id TEXT NOT NULL,
+                    giveaway_code TEXT NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    username TEXT,
+                    first_name TEXT,
+                    status TEXT DEFAULT 'pending',
+                    is_all_member INTEGER DEFAULT 0,
+                    joined_chats TEXT DEFAULT '[]',
+                    total_chats INTEGER DEFAULT 0,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(giveaway_id, user_id)

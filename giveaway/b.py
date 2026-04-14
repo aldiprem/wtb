@@ -326,6 +326,8 @@ async def check_pending_membership():
     """Bot schedule to check pending membership every 1 second"""
     import aiohttp
     
+    await asyncio.sleep(1)
+    
     while True:
         try:
             async with aiohttp.ClientSession() as session:
@@ -338,10 +340,13 @@ async def check_pending_membership():
                                 await process_membership_check(session, check)
                     else:
                         logger.warning(f"Failed to get pending checks: {resp.status}")
+        except aiohttp.ClientConnectorError:
+            logger.warning("Flask server not ready yet, waiting...")
+            await asyncio.sleep(5)
         except Exception as e:
             logger.error(f"Error in check_pending_membership: {e}")
         
-        await asyncio.sleep(1)  # Schedule setiap 1 detik
+        await asyncio.sleep(1)
 
 async def process_membership_check(session, check):
     """Process single membership check"""
