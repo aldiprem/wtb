@@ -1,6 +1,7 @@
 import os
 import asyncio
 import logging
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -9,7 +10,8 @@ from telethon import TelegramClient, events, Button
 env_path = Path(__file__).parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-from database import data 
+# Perbaiki import - gunakan dari database.data
+from database.data import IndotagDatabase
 
 # Logging
 logging.basicConfig(
@@ -24,7 +26,8 @@ API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("INDOTAG_TOKEN", "")
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 
-db = IndotagDatabase()
+# Inisialisasi database dengan path yang benar
+db = IndotagDatabase(db_path="/root/wtb/indotag/database/indotag.db")
 bot = TelegramClient('indotag_bot_session', API_ID, API_HASH)
 
 # User states untuk multi-step input
@@ -311,6 +314,180 @@ Ketik /cancel untuk membatalkan
     
     await event.edit(msg, buttons=[[Button.inline("🔙 Kembali", data="marketplace")]])
 
+# Handler untuk input ID pembelian
+@bot.on(events.NewMessage)
+async def handle_buy_username_input(event):
+    user_id = event.sender_id
+    
+    if user_id not in user_states:
+        return
+    
+    state = user_states[user_id]
+    
+    if state.get('step') != 'waiting_username_id':
+        return
+    
+    if event.raw_text.startswith('/'):
+        if event.raw_text == '/cancel':
+            del user_states[user_id]
+            msg, buttons = await main_menu(user_id, "")
+            await event.respond("❌ Dibatalakan.", buttons=buttons)
+            return
+        return
+    
+    try:
+        username_id = int(event.raw_text.strip())
+    except ValueError:
+        await event.reply("❌ ID harus berupa angka!")
+        return
+    
+    # Cari username berdasarkan ID
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, username, seller_id, price, description
+            FROM usernames WHERE id = ? AND status = 'available'
+        ''', (username_id,))
+        row = cursor.fetchone()
+    
+    if not row:
+        await event.reply("❌ Username tidak ditemukan atau sudah terjual!")
+        del user_states[user_id]
+        return
+    
+    username_data = {
+        'id': row[0],
+        'username': row[1],
+        'seller_id': row[2],
+        'price': row[3],
+        'description': row[4]
+    }
+    
+    # Cek saldo user
+    user = db.get_user(user_id)
+    if not user or user['balance'] < username_data['price']:
+        await event.reply(f"❌ Saldo tidak cukup!\n💰 Saldo: Rp {format_price(user['balance']) if user else 0}\n💵 Harga: Rp {format_price(username_data['price'])}\n\nSilakan top up saldo terlebih dahulu.")
+        del user_states[user_id]
+        return
+    
+    # Tampilkan konfirmasi pembelian
+    user_states[user_id]['buy_username'] = username_data
+    
+    confirm_msg = f"""
+╔══════════════════════════╗
+║      ✅ KONFIRMASI          ║
+╚══════════════════════════╝
+
+📝 **Username:** @{username_data['username']}
+💰 **Harga:** Rp {format_price(username_data['price'])}
+👤 **Penjual ID:** `{username_data['seller_id']}`
+
+💳 **Saldo Anda:** Rp {format_price(user['balance'])}
+💵 **Setelah beli:** Rp {format_price(user['balance'] - username_data['price'])}
+
+━━━━━━━━━━━━━━━━━━━━━
+Konfirmasi pembelian?
+"""
+    
+    buttons = [
+        [Button.inline("✅ Ya, Beli", data="confirm_buy"),
+         Button.inline("❌ Batal", data="cancel_buy")]
+    ]
+    
+    await event.reply(confirm_msg, buttons=buttons)
+
+@bot.on(events.CallbackQuery(data="confirm_buy"))
+async def confirm_buy(event):
+    user_id = event.sender_id
+    
+    if user_id not in user_states or 'buy_username' not in user_states[user_id]:
+        await event.answer("Data tidak ditemukan", alert=True)
+        return
+    
+    username_data = user_states[user_id]['buy_username']
+    
+    # Proses pembelian
+    success = db.deduct_balance(user_id, username_data['price'])
+    
+    if not success:
+        await event.edit("❌ Saldo tidak cukup untuk melakukan pembelian!")
+        del user_states[user_id]
+        return
+    
+    # Tambah saldo ke penjual
+    db.add_balance(username_data['seller_id'], username_data['price'])
+    
+    # Update status username
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        cursor.execute('''
+            UPDATE usernames 
+            SET status = 'sold', sold_at = ?, buyer_id = ?
+            WHERE id = ?
+        ''', (now, user_id, username_data['id']))
+        conn.commit()
+    
+    # Buat transaksi
+    transaction_id = db.create_transaction(
+        username_data['username'],
+        username_data['seller_id'],
+        user_id,
+        username_data['price']
+    )
+    
+    # Notifikasi ke pembeli
+    await event.edit(f"""
+✅ **PEMBELIAN BERHASIL!**
+
+📝 **Username:** @{username_data['username']}
+💰 **Harga:** Rp {format_price(username_data['price'])}
+🆔 **Transaksi ID:** `{transaction_id}`
+
+Username akan segera dikirim oleh penjual.
+Terima kasih telah berbelanja di INDOTAG MARKET! 🎉
+""")
+    
+    # Notifikasi ke penjual
+    try:
+        await bot.send_message(
+            username_data['seller_id'],
+            f"""
+🎉 **USERNAME TERJUAL!**
+
+📝 **Username:** @{username_data['username']}
+💰 **Harga:** Rp {format_price(username_data['price'])}
+👤 **Dibeli oleh:** User ID `{user_id}`
+
+💰 **Saldo Anda bertambah Rp {format_price(username_data['price'])}**
+
+Silakan hubungi pembeli untuk mengirimkan username.
+"""
+        )
+    except:
+        pass
+    
+    del user_states[user_id]
+    
+    # Kembali ke menu utama
+    user = await bot.get_entity(user_id)
+    msg, buttons = await main_menu(user_id, user.first_name or "")
+    await event.respond(msg, buttons=buttons)
+
+@bot.on(events.CallbackQuery(data="cancel_buy"))
+async def cancel_buy(event):
+    user_id = event.sender_id
+    
+    if user_id in user_states:
+        del user_states[user_id]
+    
+    await event.edit("❌ Pembelian dibatalkan.")
+    
+    # Kembali ke menu utama
+    user = await bot.get_entity(user_id)
+    msg, buttons = await main_menu(user_id, user.first_name or "")
+    await event.respond(msg, buttons=buttons)
+
 @bot.on(events.CallbackQuery(data="my_listings"))
 async def my_listings(event):
     user_id = event.sender_id
@@ -378,6 +555,47 @@ Ketik /cancel untuk membatalkan
 """
     
     await event.edit(msg, buttons=[[Button.inline("🔙 Kembali", data="my_listings")]])
+
+# Handler untuk hapus listing
+@bot.on(events.NewMessage)
+async def handle_delete_listing(event):
+    user_id = event.sender_id
+    
+    if user_id not in user_states:
+        return
+    
+    state = user_states[user_id]
+    
+    if state.get('step') != 'waiting_delete_id':
+        return
+    
+    if event.raw_text.startswith('/'):
+        if event.raw_text == '/cancel':
+            del user_states[user_id]
+            msg, buttons = await main_menu(user_id, "")
+            await event.respond("❌ Dibatalkan.", buttons=buttons)
+            return
+        return
+    
+    try:
+        username_id = int(event.raw_text.strip())
+    except ValueError:
+        await event.reply("❌ ID harus berupa angka!")
+        return
+    
+    success = db.delete_username(username_id, user_id)
+    
+    if success:
+        await event.reply(f"✅ Listing dengan ID `{username_id}` berhasil dihapus!")
+    else:
+        await event.reply(f"❌ Gagal menghapus listing. Pastikan ID `{username_id}` milik Anda dan masih tersedia.")
+    
+    del user_states[user_id]
+    
+    # Kembali ke menu utama
+    user = await bot.get_entity(user_id)
+    msg, buttons = await main_menu(user_id, user.first_name or "")
+    await event.respond(msg, buttons=buttons)
 
 @bot.on(events.CallbackQuery(data="profile"))
 async def profile(event):
