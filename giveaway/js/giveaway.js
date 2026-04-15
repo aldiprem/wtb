@@ -328,12 +328,27 @@
         if (!elements.chatListContainer || !giveawayData?.code) return;
         
         try {
+            // Ambil daftar chat untuk giveaway ini
             const response = await fetch(`${API_BASE_URL}/api/giveaway/chats/${giveawayData.code}`);
             const data = await response.json();
             
             if (!data.success || !data.chats || data.chats.length === 0) {
                 if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'none';
                 return;
+            }
+            
+            // Ambil semua force subs untuk mendapatkan invite_link
+            const forceSubsResponse = await fetch(`${API_BASE_URL}/api/giveaway/force-subs`);
+            const forceSubsData = await forceSubsResponse.json();
+            
+            // Buat map chat_id -> invite_link dari force_subs
+            const inviteLinkMap = new Map();
+            if (forceSubsData.success && forceSubsData.force_subs) {
+                for (const fs of forceSubsData.force_subs) {
+                    if (fs.invite_link) {
+                        inviteLinkMap.set(fs.chat_id, fs.invite_link);
+                    }
+                }
             }
             
             if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'block';
@@ -346,13 +361,17 @@
                 const chatId = chat.chat_id;
                 const chatUsername = chat.chat_username || '';
                 
-                // Buat link untuk membuka chat
-                let chatLink = '';
-                if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
-                    chatLink = `https://t.me/${chatUsername}`;
-                } else if (chatId) {
-                    let cleanId = chatId.replace('-100', '');
-                    chatLink = `https://t.me/${cleanId}`;
+                // 🔥 PRIORITAS: Gunakan invite_link dari force_subs jika ada
+                let chatLink = inviteLinkMap.get(chatId);
+                
+                // Jika tidak ada invite_link, fallback ke username atau ID
+                if (!chatLink) {
+                    if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                        chatLink = `https://t.me/${chatUsername}`;
+                    } else if (chatId) {
+                        let cleanId = chatId.replace('-100', '');
+                        chatLink = `https://t.me/${cleanId}`;
+                    }
                 }
                 
                 // Avatar URL
@@ -1240,6 +1259,20 @@
                 return;
             }
             
+            // Ambil semua force subs untuk mendapatkan invite_link
+            const forceSubsResponse = await fetch(`${API_BASE_URL}/api/giveaway/force-subs`);
+            const forceSubsData = await forceSubsResponse.json();
+            
+            // Buat map chat_id -> invite_link dari force_subs
+            const inviteLinkMap = new Map();
+            if (forceSubsData.success && forceSubsData.force_subs) {
+                for (const fs of forceSubsData.force_subs) {
+                    if (fs.invite_link) {
+                        inviteLinkMap.set(fs.chat_id, fs.invite_link);
+                    }
+                }
+            }
+            
             // Buat modal container jika belum ada
             let chatModal = document.getElementById('chatModal');
             if (!chatModal) {
@@ -1283,14 +1316,18 @@
                     const chatId = chat.chat_id;
                     const chatUsername = chat.chat_username || '';
                     
-                    // Buat link untuk membuka chat
-                    let chatLink = '';
-                    if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
-                        chatLink = `https://t.me/${chatUsername}`;
-                    } else if (chatId) {
-                        // Hapus tanda -100 untuk channel
-                        let cleanId = chatId.replace('-100', '');
-                        chatLink = `https://t.me/${cleanId}`;
+                    // 🔥 PRIORITAS: Gunakan invite_link dari force_subs jika ada
+                    let chatLink = inviteLinkMap.get(chatId);
+                    
+                    // Jika tidak ada invite_link, fallback ke username atau ID
+                    if (!chatLink) {
+                        if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                            chatLink = `https://t.me/${chatUsername}`;
+                        } else if (chatId) {
+                            // Hapus tanda -100 untuk channel
+                            let cleanId = chatId.replace('-100', '');
+                            chatLink = `https://t.me/${cleanId}`;
+                        }
                     }
                     
                     // Avatar URL - lebih kecil
