@@ -100,6 +100,7 @@
     };
     let participantsList = [];
     let participantsModal = null;
+    let scrollPosition = 0;
 
     // DOM Elements
     const elements = {
@@ -660,12 +661,18 @@
             `;
         });
         elements.allPrizesList.innerHTML = html;
-        if (elements.prizeModal) elements.prizeModal.style.display = 'flex';
+        if (elements.prizeModal) {
+            document.body.classList.add('modal-open');
+            elements.prizeModal.style.display = 'flex';
+        }
     }
 
     function closePrizeModal() {
-        hapticLight(); // Haptic feedback for closing modal
-        if (elements.prizeModal) elements.prizeModal.style.display = 'none';
+        hapticLight();
+        if (elements.prizeModal) {
+            document.body.classList.remove('modal-open');
+            elements.prizeModal.style.display = 'none';
+        }
     }
 
     function updateUIAfterParticipation() {
@@ -896,8 +903,8 @@
                 }
             };
             
-            // Close modal function
             const closeCaptchaModalEl = () => {
+                document.body.classList.remove('modal-open');
                 if (captchaModalEl) captchaModalEl.style.display = 'none';
                 refreshBtn?.removeEventListener('click', refreshCaptcha);
                 verifyBtn?.removeEventListener('click', verifyCaptcha);
@@ -924,6 +931,7 @@
                 }
             }, { once: true });
             
+            document.body.classList.add('modal-open');
             captchaModalEl.style.display = 'flex';
             inputField?.focus();
         });
@@ -1371,6 +1379,7 @@
                 });
             }
             
+            document.body.classList.add('modal-open');
             chatModal.style.display = 'flex';
             
         } catch (error) {
@@ -1384,6 +1393,7 @@
     function closeChatModal() {
         const chatModal = document.getElementById('chatModal');
         if (chatModal) {
+            document.body.classList.remove('modal-open');
             chatModal.style.display = 'none';
         }
     }
@@ -1661,11 +1671,13 @@
             document.body.appendChild(userProfileModal);
             
             document.getElementById('closeUserProfileModal')?.addEventListener('click', () => {
+                document.body.classList.remove('modal-open');
                 userProfileModal.style.display = 'none';
             });
-            
+
             userProfileModal.addEventListener('click', (e) => {
                 if (e.target === userProfileModal) {
+                    document.body.classList.remove('modal-open');
                     userProfileModal.style.display = 'none';
                 }
             });
@@ -1675,6 +1687,7 @@
         document.getElementById('userProfileName').textContent = fullName;
         document.getElementById('userProfileUsername').textContent = username ? `@${username}` : 'Tidak ada username';
         
+        document.body.classList.add('modal-open');
         userProfileModal.style.display = 'flex';
     }
 
@@ -1733,21 +1746,23 @@
             });
         });
         
+        document.body.classList.add('modal-open');
         modal.style.display = 'flex';
     }
 
-    // Setup modal close
     function setupParticipantsModal() {
         const modal = document.getElementById('participantsModal');
         const closeBtn = document.getElementById('closeParticipantsModal');
         
         if (modal && closeBtn) {
             closeBtn.addEventListener('click', () => {
-                modal.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                modal.style.display = 'none';userProfileModal.style.display = 'flex';
             });
             
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) {
+                    document.body.classList.remove('modal-open');
                     modal.style.display = 'none';
                 }
             });

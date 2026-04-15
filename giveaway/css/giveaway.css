@@ -582,20 +582,33 @@ body {
     background: rgba(255, 255, 255, 0.08);
 }
 
-/* Modal */
+/* Modal Overlay - Update dengan blur, disable scroll, dan block interaction */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 4000;
     display: none;
     align-items: center;
     justify-content: center;
     padding: 20px;
+}
+
+/* Class untuk disable scroll pada body saat modal terbuka */
+body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
 
 .modal-container {
