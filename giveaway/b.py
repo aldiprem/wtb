@@ -529,7 +529,6 @@ async def menu_create_giveaway(event, user_id: int = None):
     else:
         await event.respond(msg, buttons=buttons)
 
-# Ganti fungsi check_user_boost untuk menggunakan ubot (userbot)
 async def check_user_boost(channel_username: str, user_id: int) -> dict:
     """
     Mengecek apakah user sudah boost channel tertentu
@@ -543,11 +542,19 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             peer=channel
         ))
         
-        # Cek apakah user memiliki slot boost di channel ini
-        my_boost_slots = getattr(result, 'my_boost_slots', [])
-        is_boost = len(my_boost_slots) > 0
+        # 🔥 PERBAIKAN: Cek tipe data dengan aman
+        # my_boost_slots bisa berupa None, empty list, atau list of int
+        my_boost_slots = getattr(result, 'my_boost_slots', None)
         
-        # Dapatkan informasi tambahan
+        # AMAN: Cek jika None atau empty list
+        if my_boost_slots is None:
+            is_boost = False
+            boost_slots = []
+        else:
+            boost_slots = my_boost_slots if isinstance(my_boost_slots, list) else []
+            is_boost = len(boost_slots) > 0
+        
+        # Dapatkan informasi tambahan dari my_boost
         my_boost = getattr(result, 'my_boost', None)
         boost_info = {}
         
@@ -555,7 +562,7 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             boost_info = {
                 'boost_date': getattr(my_boost, 'date', None),
                 'multiplier': getattr(my_boost, 'multiplier', 1),
-                'slots': my_boost_slots
+                'slots': boost_slots
             }
         
         return {
@@ -564,7 +571,7 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             'channel': channel,
             'total_boosts': getattr(result, 'boosts', 0),
             'channel_level': getattr(result, 'level', 0),
-            'boost_slots': my_boost_slots,
+            'boost_slots': boost_slots,
             'boost_info': boost_info,
             'error': None
         }
@@ -581,6 +588,8 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             return {'success': False, 'is_boost': False, 'error': 'User ID tidak valid'}
         elif 'CHANNEL_INVALID' in error_msg:
             return {'success': False, 'is_boost': False, 'error': 'Channel tidak ditemukan'}
+        elif 'BOT_METHOD_INVALID' in error_msg:
+            return {'success': False, 'is_boost': False, 'error': 'Method ini hanya bisa digunakan oleh user account (bukan bot)'}
         else:
             return {'success': False, 'is_boost': False, 'error': f'RPC Error: {error_msg}'}
     except Exception as e:
