@@ -584,28 +584,76 @@
         if (elements.prizeModal) elements.prizeModal.style.display = 'none';
     }
 
-    // Countdown
+    // Fungsi untuk update tampilan setelah partisipasi
+    function updateUIAfterParticipation() {
+        // Sembunyikan FAB Button
+        const fabContainer = document.querySelector('.fab-container');
+        if (fabContainer) {
+            fabContainer.classList.add('hide-after-participate');
+        }
+        
+        // Sembunyikan Requirements Card
+        const requirementsCard = document.getElementById('requirementsCard');
+        if (requirementsCard) {
+            requirementsCard.classList.add('hide-after-participate');
+        }
+        
+        // Sembunyikan Links Card
+        const linksCard = document.getElementById('linksCard');
+        if (linksCard) {
+            linksCard.classList.add('hide-after-participate');
+        }
+        
+        // Sembunyikan Captcha Card jika ada
+        const captchaCard = document.getElementById('captchaCard');
+        if (captchaCard) {
+            captchaCard.classList.add('hide-after-participate');
+        }
+        
+        // Tampilkan Status Card (sudah ada)
+        const participationStatus = document.getElementById('participationStatus');
+        if (participationStatus) {
+            participationStatus.style.display = 'flex';
+        }
+    }
+
+    // Fungsi untuk update countdown dengan separator titik dua
+    function updateCountdownDisplay(days, hours, minutes, seconds) {
+        const daysEl = document.getElementById('days');
+        const hoursEl = document.getElementById('hours');
+        const minutesEl = document.getElementById('minutes');
+        const secondsEl = document.getElementById('seconds');
+        
+        if (daysEl) daysEl.textContent = formatNumber(days);
+        if (hoursEl) hoursEl.textContent = formatNumber(hours);
+        if (minutesEl) minutesEl.textContent = formatNumber(minutes);
+        if (secondsEl) secondsEl.textContent = formatNumber(seconds);
+    }
+
+    // Perbarui fungsi startCountdown
     function startCountdown(endTimeStr) {
         if (countdownInterval) clearInterval(countdownInterval);
+        
         function updateCountdown() {
             const now = new Date();
             const end = new Date(endTimeStr);
             const diff = end - now;
+            
             if (diff <= 0) {
                 if (countdownInterval) clearInterval(countdownInterval);
                 if (elements.countdownTimer) elements.countdownTimer.style.display = 'none';
                 if (elements.expiredMessage) elements.expiredMessage.style.display = 'flex';
                 return;
             }
+            
             const days = Math.floor(diff / (1000 * 60 * 60 * 24));
             const hours = Math.floor((diff % (86400000)) / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (3600000)) / (1000 * 60));
             const seconds = Math.floor((diff % (60000)) / 1000);
-            if (elements.days) elements.days.textContent = formatNumber(days);
-            if (elements.hours) elements.hours.textContent = formatNumber(hours);
-            if (elements.minutes) elements.minutes.textContent = formatNumber(minutes);
-            if (elements.seconds) elements.seconds.textContent = formatNumber(seconds);
+            
+            updateCountdownDisplay(days, hours, minutes, seconds);
         }
+        
         updateCountdown();
         countdownInterval = setInterval(updateCountdown, 1000);
     }
@@ -856,16 +904,32 @@
             if (data.success) {
                 hasParticipated = data.has_participated;
                 if (hasParticipated) {
-                    if (elements.participationStatus) elements.participationStatus.style.display = 'flex';
-                    if (elements.participateBtn) {
-                        elements.participateBtn.disabled = true;
-                        elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Sudah Berpartisipasi</span>';
-                    }
+                    // Update UI jika sudah berpartisipasi
+                    updateUIAfterParticipation();
                 }
             }
         } catch (error) {
             console.error('Error checking participation:', error);
         }
+    }
+
+    function addCountdownSeparators() {
+        const countdownTimer = document.getElementById('countdownTimer');
+        if (!countdownTimer) return;
+        
+        const blocks = countdownTimer.querySelectorAll('.countdown-block');
+        blocks.forEach((block, index) => {
+            if (index < blocks.length - 1) {
+                const numberSpan = block.querySelector('.countdown-number');
+                if (numberSpan && !numberSpan.querySelector('.countdown-separator')) {
+                    const separator = document.createElement('span');
+                    separator.className = 'countdown-separator';
+                    separator.textContent = ':';
+                    separator.style.marginLeft = '4px';
+                    numberSpan.parentNode.insertBefore(separator, numberSpan.nextSibling);
+                }
+            }
+        });
     }
 
     async function participate() {
@@ -890,7 +954,6 @@
         
         // Cek user state dari database (polling terakhir)
         if (!userCheckState.isAllMember && requirementsList.some(r => r.type === 'subscribe')) {
-            // Refresh state dulu
             await pollUserCheckState();
             
             if (!userCheckState.isAllMember) {
@@ -946,14 +1009,19 @@
                     }
                 })
             });
+            
             if (data.success) {
                 hapticSuccess();
                 hasParticipated = true;
-                if (elements.participationStatus) elements.participationStatus.style.display = 'flex';
+                
+                // UPDATE UI SETELAH BERHASIL PARTISIPASI
+                updateUIAfterParticipation();
+                
                 if (elements.participateBtn) {
                     elements.participateBtn.disabled = true;
                     elements.participateBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Berhasil!</span>';
                 }
+                
                 showToast(data.message || 'Berhasil berpartisipasi!', 'success');
                 await loadUserStats();
                 stopUserStatePolling();

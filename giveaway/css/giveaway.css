@@ -355,9 +355,9 @@ body {
 
 .countdown-timer {
     display: flex;
-    justify-content: center;
-    gap: 12px;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
 }
 
 .countdown-block {
@@ -742,6 +742,16 @@ body {
 
 .modal-prize-item:last-child {
     border-bottom: none;
+}
+
+.requirements-card.hide-after-participate,
+.links-card.hide-after-participate,
+.captcha-card.hide-after-participate {
+    display: none !important;
+}
+
+.fab-container.hide-after-participate {
+    display: none !important;
 }
 
 /* Update Requirements Card: Samping Pendek (Setengah), Atas & Bawah Full */
@@ -1463,7 +1473,6 @@ body {
     color: var(--primary);
 }
 
-/* Status Card */
 .status-card {
     background: rgba(16, 185, 129, 0.1);
     border: 1px solid rgba(16, 185, 129, 0.2);
