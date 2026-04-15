@@ -1419,14 +1419,17 @@
         const avatarsStack = document.getElementById('avatarsStack');
         if (!avatarsStack) return;
         
-        // Urutkan dari yang terbaru (berdasarkan ID atau joined_at)
-        const recentParticipants = [...participants].reverse().slice(0, 5);
-        const remainingCount = participants.length - 5;
+        const sortedParticipants = [...participants];
+        
+        // Ambil maksimal 5 avatar untuk ditampilkan
+        const displayParticipants = sortedParticipants.slice(-5); // 5 terbaru
+        const remainingCount = sortedParticipants.length - 5;
         
         let html = '';
         
-        for (let i = 0; i < recentParticipants.length; i++) {
-            const p = recentParticipants[i];
+        // Render avatar dari yang LAMA ke yang BARU (agar yang baru di paling kanan/terakhir)
+        for (let i = 0; i < displayParticipants.length; i++) {
+            const p = displayParticipants[i];
             const userName = p.first_name || p.username || 'User';
             const initial = userName.charAt(0).toUpperCase();
             
@@ -1435,7 +1438,7 @@
             
             // Jika tidak ada photo_url, gunakan UI Avatars sebagai fallback
             if (!photoUrl || photoUrl === '') {
-                const nameForAvatar = encodeURIComponent(userName);
+                const nameForAvatar = encodeURIComponent(userName.substring(0, 2));
                 photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
             }
             
@@ -1445,16 +1448,18 @@
                     data-username="${escapeHtml(p.username || '')}" 
                     data-first-name="${escapeHtml(p.first_name || '')}" 
                     data-last-name="${escapeHtml(p.last_name || '')}"
-                    data-photo-url="${escapeHtml(photoUrl)}">
+                    data-photo-url="${escapeHtml(photoUrl)}"
+                    title="${escapeHtml(userName)}">
                     <img src="${photoUrl}" alt="${escapeHtml(userName)}" 
                         onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true'">
                 </div>
             `;
         }
         
+        // Jika ada sisa peserta, tampilkan tombol "+X" yang JADI PENGGANTI TEXT "Peserta Terbaru"
         if (remainingCount > 0) {
             html += `
-                <div class="avatar-stack-more" id="showMoreParticipants">
+                <div class="avatar-stack-more" id="showMoreParticipants" title="${remainingCount} peserta lainnya">
                     +${remainingCount}
                 </div>
             `;
@@ -1464,7 +1469,8 @@
         
         // Event listener untuk avatar item
         document.querySelectorAll('.avatar-stack-item').forEach(item => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const userId = item.dataset.userId;
                 const username = item.dataset.username;
                 const firstName = item.dataset.firstName;
@@ -1474,10 +1480,15 @@
             });
         });
         
-        // Event listener untuk tombol show more
+        // Event listener untuk tombol show more (+X)
         const showMoreBtn = document.getElementById('showMoreParticipants');
         if (showMoreBtn) {
-            showMoreBtn.addEventListener('click', () => {
+            // Hapus listener lama jika ada
+            const newShowMoreBtn = showMoreBtn.cloneNode(true);
+            showMoreBtn.parentNode.replaceChild(newShowMoreBtn, showMoreBtn);
+            
+            newShowMoreBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 showAllParticipantsModal();
             });
         }
