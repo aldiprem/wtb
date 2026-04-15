@@ -528,27 +528,26 @@ async def menu_create_giveaway(event, user_id: int = None):
             await event.respond(msg, buttons=buttons)
     else:
         await event.respond(msg, buttons=buttons)
-        
+
+# Ganti fungsi check_user_boost untuk menggunakan ubot (userbot)
 async def check_user_boost(channel_username: str, user_id: int) -> dict:
     """
     Mengecek apakah user sudah boost channel tertentu
-    Menggunakan my_boost_slots untuk verifikasi boost di channel spesifik
+    HARUS menggunakan user account (ubot), BUKAN bot token!
     """
     try:
         channel = channel_username.lstrip('@')
         
-        # Dapatkan status boost channel
-        result = await bot(functions.premium.GetBoostsStatusRequest(
+        # 🔥 PENTING: Gunakan ubot (user account), BUKAN bot
+        result = await ubot(functions.premium.GetBoostsStatusRequest(
             peer=channel
         ))
         
-        # 🔥 CARA BENAR: Cek apakah user memiliki slot boost di channel ini
-        # my_boost_slots akan berisi list of int (nomor slot) jika user boost channel ini
-        # Jika tidak boost, my_boost_slots akan berisi empty list (bukan None)
+        # Cek apakah user memiliki slot boost di channel ini
         my_boost_slots = getattr(result, 'my_boost_slots', [])
         is_boost = len(my_boost_slots) > 0
         
-        # Dapatkan informasi tambahan dari my_boost jika ada
+        # Dapatkan informasi tambahan
         my_boost = getattr(result, 'my_boost', None)
         boost_info = {}
         
@@ -556,7 +555,7 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             boost_info = {
                 'boost_date': getattr(my_boost, 'date', None),
                 'multiplier': getattr(my_boost, 'multiplier', 1),
-                'slots': my_boost_slots  # Nomor slot yang digunakan
+                'slots': my_boost_slots
             }
         
         return {
@@ -577,18 +576,20 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             'error': f'Rate limit. Coba lagi dalam {e.seconds} detik'
         }
     except errors.RPCError as e:
-        return {
-            'success': False,
-            'is_boost': False,
-            'error': f'RPC Error: {str(e)}'
-        }
+        error_msg = str(e)
+        if 'USER_ID_INVALID' in error_msg:
+            return {'success': False, 'is_boost': False, 'error': 'User ID tidak valid'}
+        elif 'CHANNEL_INVALID' in error_msg:
+            return {'success': False, 'is_boost': False, 'error': 'Channel tidak ditemukan'}
+        else:
+            return {'success': False, 'is_boost': False, 'error': f'RPC Error: {error_msg}'}
     except Exception as e:
         return {
             'success': False,
             'is_boost': False,
             'error': f'Terjadi kesalahan: {str(e)}'
         }
-
+    
 @bot.on(events.NewMessage(pattern=r'^/checkboost(?:\s+(\S+)(?:\s+(\S+))?)?$'))
 async def check_boost_command(event):
     """Perintah untuk mengecek boost user di channel"""
@@ -609,33 +610,26 @@ async def check_boost_command(event):
             "**📋 Cara Penggunaan:**\n"
             "`/checkboost <channel_username> <user_id>`\n\n"
             "**Contoh:**\n"
-            "`/checkboost @giftfreebies 123456789`\n"
-            "`/checkboost giftfreebies 123456789`\n\n"
-            "**Keterangan:**\n"
-            "• `<channel_username>`: Username channel (dengan atau tanpa @)\n"
-            "• `<user_id>`: ID Telegram user yang ingin dicek"
+            "`/checkboost @giftfreebies 123456789`\n\n"
+            "**Catatan:** Perintah ini menggunakan userbot, pastikan userbot sudah login."
         )
         return
     
     if not user_id_str:
-        await event.reply(
-            "❌ **User ID tidak boleh kosong!**\n\n"
-            "Contoh: `/checkboost @giftfreebies 123456789`"
-        )
+        await event.reply("❌ **User ID tidak boleh kosong!**")
         return
     
-    # Konversi user_id ke integer
     try:
         user_id = int(user_id_str)
     except ValueError:
-        await event.reply(f"❌ **User ID tidak valid!** `{user_id_str}` bukan angka yang valid.")
+        await event.reply(f"❌ **User ID tidak valid!** `{user_id_str}`")
         return
     
     # Kirim pesan loading
-    loading_msg = await event.reply("🔄 **Sedang mengecek boost...**")
+    loading_msg = await event.reply("🔄 **Sedang mengecek boost menggunakan userbot...**")
     
     try:
-        # Cek boost user
+        # 🔥 Gunakan ubot, BUKAN bot
         result = await check_user_boost(channel_username, user_id)
         
         if not result['success']:
@@ -656,7 +650,6 @@ async def check_boost_command(event):
         except:
             user_info = f"• **User ID:** `{user_id}`\n"
         
-        # Format pesan hasil
         message = f"""
 {status_emoji} **HASIL CEK BOOST** {status_emoji}
 
@@ -672,14 +665,12 @@ async def check_boost_command(event):
 **🎯 Status Boost:** {status_text}
 """
         
-        # Tambahkan info detail jika user boost
         if result['is_boost'] and result['boost_info']:
             boost = result['boost_info']
             message += f"""
 **📈 Detail Boost:**
-• **ID Boost:** `{boost.get('boost_id', '-')}`
 • **Multiplier:** {boost.get('multiplier', 1)}x
-• **Tanggal:** {boost.get('boost_date', '-')}
+• **Slots:** {', '.join(map(str, boost.get('slots', [])))}
 """
         
         message += "\n━━━━━━━━━━━━━━━━━━━━━"
@@ -2213,7 +2204,7 @@ async def main():
     
     # Start master bot
     await bot.start(bot_token=BOT_TOKEN)
-    await ubot.start(PHONE_NUMBER)
+    await ubot.start()
     logger.info("✅ Giveaway Bot is running")
     
     # Start monitoring expired giveaways
