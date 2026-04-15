@@ -604,9 +604,11 @@ body {
     border-radius: 28px;
     width: 100%;
     max-width: 400px;
-    max-height: 80vh;
+    max-height: 85vh;
     overflow: hidden;
     animation: modalFadeIn 0.2s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 @keyframes modalFadeIn {
@@ -619,7 +621,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 16px 20px;
-    margin: 10px;
+    margin: 10px 10px 0 10px;
     background: var(--bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -628,6 +630,7 @@ body {
     position: relative;
     overflow: hidden;
     border: none;
+    flex-shrink: 0;
 }
 
 /* Efek Sudut Putih 3D untuk Modal Header */
@@ -672,13 +675,13 @@ body {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    position: relative; /* Wajib untuk menaruh ::after */
-    overflow: hidden;   /* Agar cahaya sudut terpotong rapi sesuai lingkaran */
-    border: none;       /* Hapus border lama */
+    position: relative;
+    overflow: hidden;
+    border: none;
     transition: all 0.2s;
 }
 
-/* Efek Sudut Putih 3D untuk modal-close (Rata/135deg) */
+/* Efek Sudut Putih 3D untuk modal-close */
 .modal-close::after {
     content: "";
     position: absolute;
@@ -691,7 +694,6 @@ body {
         rgba(255, 255, 255, 0) 70%, 
         rgba(255, 255, 255, 0.4) 100%
     );
-    
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
@@ -702,17 +704,11 @@ body {
 .modal-close:hover {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text);
-    transform: rotate(90deg); /* Opsional: efek putar saat hover agar keren */
-}
-
-.modal-close:hover {
-    background: var(--surface-light);
+    transform: rotate(90deg);
 }
 
 .modal-body {
     padding: 16px 20px;
-    max-height: 60vh;
-    overflow-y: auto;
     margin: 0 10px 10px 10px;
     background: var(--bg);
     backdrop-filter: var(--glass-blur);
@@ -720,11 +716,13 @@ body {
     
     border-radius: 18px;
     position: relative;
-    overflow: hidden;
     border: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
 }
 
-/* Efek Sudut Putih 3D untuk Modal Body */
+/* Efek Sudut Putih 3D untuk Modal Body - TETAP DIBAWAH SCROLL */
 .modal-body::after {
     content: "";
     position: absolute;
@@ -742,6 +740,33 @@ body {
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
+    z-index: 0;
+}
+
+/* Konten di dalam modal-body harus di atas pseudo-element */
+.modal-body > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* Scrollbar styling untuk modal body */
+.modal-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: var(--border-light);
+    border-radius: 4px;
+    margin: 8px 0;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
 }
 
 .modal-prize-item {
@@ -754,6 +779,56 @@ body {
 
 .modal-prize-item:last-child {
     border-bottom: none;
+}
+
+.modal-prize-item .prize-number {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: white;
+}
+
+.modal-prize-item .prize-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+    .modal-container {
+        max-width: 92%;
+        max-height: 80vh;
+    }
+    
+    .modal-body {
+        padding: 12px 16px;
+    }
+    
+    .modal-prize-item {
+        padding: 10px 0;
+    }
+    
+    .modal-prize-item .prize-number {
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        font-size: 12px;
+    }
+    
+    .modal-prize-item .prize-name {
+        font-size: 12px;
+    }
 }
 
 .requirements-card.hide-after-participate,
