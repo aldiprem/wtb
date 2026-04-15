@@ -61,6 +61,84 @@ user_states = {}
 def format_price(price: int) -> str:
     return f"{price:,}".replace(",", ".")
 
+# ============ DATABASE PENDING ============
+def init_pending_table():
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS pending_usernames (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                seller_id INTEGER NOT NULL,
+                seller_name TEXT,
+                price INTEGER NOT NULL,
+                description TEXT,
+                target_id INTEGER NOT NULL,
+                target_type TEXT NOT NULL,
+                created_at TEXT
+            )
+        ''')
+        conn.commit()
+
+init_pending_table()
+
+def save_pending(username, seller_id, seller_name, price, description, target_id, target_type):
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        cursor.execute('''
+            INSERT INTO pending_usernames (username, seller_id, seller_name, price, description, target_id, target_type, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (username, seller_id, seller_name, price, description, target_id, target_type, now))
+        conn.commit()
+        return cursor.lastrowid
+
+def get_pending_by_id(pending_id):
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM pending_usernames WHERE id = ?', (pending_id,))
+        row = cursor.fetchone()
+        if row:
+            return {
+                'id': row[0],
+                'username': row[1],
+                'seller_id': row[2],
+                'seller_name': row[3],
+                'price': row[4],
+                'description': row[5],
+                'target_id': row[6],
+                'target_type': row[7],
+                'created_at': row[8]
+            }
+        return None
+
+def delete_pending(pending_id):
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
+        conn.commit()
+
+def get_all_pending():
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM pending_usernames ORDER BY created_at DESC')
+        rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            result.append({
+                'id': row[0],
+                'username': row[1],
+                'seller_id': row[2],
+                'seller_name': row[3],
+                'price': row[4],
+                'description': row[5],
+                'target_id': row[6],
+                'target_type': row[7],
+                'created_at': row[8]
+            })
+        return result
+
+# ============ MENU ============
 async def main_menu(user_id: int, first_name: str = ""):
     user = db.get_user(user_id)
     balance = user['balance'] if user else 0
@@ -118,7 +196,6 @@ async def back_to_main(event):
 @bot.on(events.CallbackQuery(data="add_username"))
 async def add_username_start(event):
     user_id = event.sender_id
-    
     user_states[user_id] = {'step': 'waiting_username'}
     
     msg = """
@@ -126,21 +203,14 @@ async def add_username_start(event):
 ║      ➕ ADD USERNAME       ║
 ╚══════════════════════════╝
 
-Silakan kirimkan **username Telegram** yang ingin dijual.
+Kirimkan **username Telegram** yang ingin dijual.
 
-📝 **Format:** `@username` atau `username`
+📝 Format: `@username` atau `username`
+Contoh: `@johndoe`
 
-Contoh: `@johndoe` atau `johndoe`
-
-⚠️ **Catatan:**
-• Username akan diverifikasi terlebih dahulu
-• Pemilik username harus mengkonfirmasi
-• Jika channel, bot harus menjadi admin
-
-━━━━━━━━━━━━━━━━━━━━━
-Ketik /cancel untuk membatalkan
+⚠️ Bot akan verifikasi ke pemilik username.
+Ketik /cancel untuk batal
 """
-    
     await event.edit(msg, buttons=[[Button.inline("❌ Batal", data="main_menu")]])
 
 async def check_entity_type(entity):
@@ -153,127 +223,9 @@ async def check_entity_type(entity):
     else:
         return 'user', f"{entity.first_name or ''} {entity.last_name or ''}".strip() or entity.username or str(entity.id)
 
-# TABEL UNTUK PENDING VERIFIKASI - DISIMPAN DI DATABASE
-def init_pending_table():
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS pending_verifications (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL,
-                seller_id INTEGER NOT NULL,
-                seller_name TEXT,
-                price INTEGER NOT NULL,
-                description TEXT,
-                target_id INTEGER NOT NULL,
-                target_type TEXT NOT NULL,
-                status TEXT DEFAULT 'pending',
-                created_at TEXT,
-                FOREIGN KEY (seller_id) REFERENCES users(user_id)
-            )
-        ''')
-        conn.commit()
-
-# Panggil init
-init_pending_table()
-
-def save_pending_verification(username, seller_id, seller_name, price, description, target_id, target_type):
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        now = datetime.now().isoformat()
-        cursor.execute('''
-            INSERT INTO pending_verifications (username, seller_id, seller_name, price, description, target_id, target_type, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (username, seller_id, seller_name, price, description, target_id, target_type, now))
-        conn.commit()
-        return cursor.lastrowid
-
-def get_pending_verification(pending_id):
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM pending_verifications WHERE id = ? AND status = "pending"', (pending_id,))
-        row = cursor.fetchone()
-        if row:
-            return {
-                'id': row[0],
-                'username': row[1],
-                'seller_id': row[2],
-                'seller_name': row[3],
-                'price': row[4],
-                'description': row[5],
-                'target_id': row[6],
-                'target_type': row[7],
-                'status': row[8],
-                'created_at': row[9]
-            }
-        return None
-
-def delete_pending_verification(pending_id):
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute('DELETE FROM pending_verifications WHERE id = ?', (pending_id,))
-        conn.commit()
-
-def get_all_pending_verifications():
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM pending_verifications WHERE status = "pending" ORDER BY created_at DESC')
-        rows = cursor.fetchall()
-        result = []
-        for row in rows:
-            result.append({
-                'id': row[0],
-                'username': row[1],
-                'seller_id': row[2],
-                'seller_name': row[3],
-                'price': row[4],
-                'description': row[5],
-                'target_id': row[6],
-                'target_type': row[7],
-                'created_at': row[9]
-            })
-        return result
-
-async def send_verification_to_channel(channel_id, pending_id, username_input, seller_name, price, description):
+async def send_verification(target_id, pending_id, username_input, seller_name, price, description, target_type):
+    """Kirim pesan verifikasi ke target"""
     try:
-        # Cek akses bot
-        try:
-            await bot.send_message(channel_id, "🔐 Verifikasi username...")
-        except ChatAdminRequiredError:
-            return False, "❌ Bot bukan admin di channel ini!"
-        except Exception as e:
-            return False, f"❌ Tidak dapat mengakses channel: {str(e)[:100]}"
-        
-        msg = f"""
-🔐 **VERIFIKASI USERNAME**
-
-Seseorang ingin menjual username **@{username_input}**
-
-👤 **Penjual:** {seller_name}
-💰 **Harga:** Rp {format_price(price)}
-📝 **Deskripsi:** {description if description else '-'}
-
-⚠️ **Apakah Anda pemilik channel @{username_input}?**
-
-Klik tombol di bawah untuk mengkonfirmasi.
-"""
-        
-        buttons = [[Button.inline("✅ KONFIRMASI", data=f"confirm:{pending_id}")]]
-        
-        await bot.send_message(channel_id, msg, buttons=buttons)
-        return True, "✅ Verifikasi dikirim ke channel"
-        
-    except Exception as e:
-        return False, f"❌ Gagal: {str(e)[:100]}"
-
-async def send_verification_to_user(user_id, pending_id, username_input, seller_name, price, description):
-    try:
-        # Cek apakah user bisa dihubungi
-        try:
-            await bot.send_message(user_id, "🔐 Verifikasi username...")
-        except RPCError as e:
-            return False, f"❌ User @{username_input} belum start bot atau memblokir bot"
-        
         msg = f"""
 🔐 **VERIFIKASI USERNAME**
 
@@ -287,37 +239,34 @@ Seseorang ingin menjual username **@{username_input}**
 
 Klik tombol di bawah untuk mengkonfirmasi.
 """
-        
         buttons = [[Button.inline("✅ KONFIRMASI", data=f"confirm:{pending_id}")]]
         
-        await bot.send_message(user_id, msg, buttons=buttons)
-        return True, "✅ Verifikasi dikirim ke pemilik username"
-        
+        await bot.send_message(target_id, msg, buttons=buttons)
+        return True, "✅ Verifikasi dikirim"
     except Exception as e:
         return False, f"❌ Gagal: {str(e)[:100]}"
 
 @bot.on(events.CallbackQuery(pattern=r"confirm:(\d+)"))
 async def confirm_callback(event):
-    """Handle konfirmasi dari channel atau user"""
+    """HANDLE KONFIRMASI - SEDERHANA, TANPA EXPIRED"""
     pending_id = int(event.data_match.group(1))
     clicker_id = event.sender_id
     
     # Ambil data pending dari database
-    pending = get_pending_verification(pending_id)
+    pending = get_pending_by_id(pending_id)
     
     if not pending:
-        await event.answer("❌ Verifikasi sudah tidak tersedia!", alert=True)
+        await event.answer("❌ Data tidak ditemukan!", alert=True)
         return
     
-    # Verifikasi bahwa yang klik adalah target yang benar
+    # CEK: Apakah yang klik adalah target yang benar?
     if pending['target_id'] != clicker_id:
         await event.answer("❌ Anda bukan pemilik username ini!", alert=True)
         return
     
-    # Konfirmasi berhasil
+    # BERHASIL - Simpan ke database usernames
     await event.answer("✅ Verifikasi berhasil!", alert=True)
     
-    # Simpan username ke database
     success = db.add_username(
         pending['username'],
         pending['seller_id'],
@@ -326,44 +275,39 @@ async def confirm_callback(event):
     )
     
     if success:
+        # Update pesan
         await event.edit(f"""
 ✅ **VERIFIKASI BERHASIL!**
 
 Username **@{pending['username']}** telah diverifikasi dan masuk ke marketplace.
 
-📝 **Detail:**
-• Harga: Rp {format_price(pending['price'])}
-• Status: Available
+💰 Harga: Rp {format_price(pending['price'])}
 """)
         
-        # Kirim notifikasi ke penjual
+        # Notifikasi ke penjual
         try:
             await bot.send_message(
                 pending['seller_id'],
                 f"""
 ✅ **USERNAME BERHASIL DIVERIFIKASI!**
 
-Username **@{pending['username']}** telah dikonfirmasi oleh pemiliknya.
+Username @{pending['username']} telah dikonfirmasi oleh pemiliknya.
 
-📝 **Detail:**
-• Harga: Rp {format_price(pending['price'])}
-• Status: Available
+💰 Harga: Rp {format_price(pending['price'])}
+📊 Status: Available
 
-Username sekarang dapat dilihat di menu MY LISTINGS Anda.
+Cek di menu MY LISTINGS.
 """
             )
         except:
             pass
         
         # Hapus dari pending
-        delete_pending_verification(pending_id)
+        delete_pending(pending_id)
         
-        # Kirim ke admin
+        # Notifikasi ke admin
         try:
-            await bot.send_message(
-                OWNER_ID,
-                f"📢 Username @{pending['username']} diverifikasi oleh pemiliknya. Penjual: {pending['seller_name']}"
-            )
+            await bot.send_message(OWNER_ID, f"✅ Username @{pending['username']} diverifikasi oleh pemiliknya. Penjual: {pending['seller_name']}")
         except:
             pass
     else:
@@ -391,7 +335,7 @@ async def handle_add_username_input(event):
         
         import re
         if not re.match(r'^[a-zA-Z0-9_]{5,32}$', username_input):
-            await event.reply("❌ Format username tidak valid!\n\nUsername hanya boleh berisi huruf, angka, underscore, panjang 5-32 karakter.")
+            await event.reply("❌ Username tidak valid! (huruf, angka, underscore, 5-32 karakter)")
             return
         
         # Cek username
@@ -408,14 +352,12 @@ async def handle_add_username_input(event):
             await event.reply(f"""
 ✅ Ditemukan: **{entity_name}** ({entity_type.upper()})
 
-Sekarang masukkan **harga jual** (dalam Rupiah).
-
+Masukkan **harga jual** (Rupiah):
 Contoh: `50000` atau `100000`
 
-Ketik /cancel untuk membatalkan
+Ketik /cancel untuk batal
 """)
             return
-            
         except Exception as e:
             await event.reply(f"❌ Username @{username_input} tidak ditemukan!")
             return
@@ -430,19 +372,19 @@ Ketik /cancel untuk membatalkan
                 await event.reply("❌ Harga maksimal Rp 100.000.000")
                 return
         except ValueError:
-            await event.reply("❌ Harga harus berupa angka!\n\nContoh: `50000`")
+            await event.reply("❌ Harga harus angka! Contoh: `50000`")
             return
         
         user_states[user_id]['price'] = price
         user_states[user_id]['step'] = 'waiting_description'
         
         await event.reply(f"""
-💰 **Harga:** Rp {format_price(price)}
+💰 Harga: Rp {format_price(price)}
 
-Sekarang masukkan **deskripsi** (opsional).
+Masukkan **deskripsi** (opsional):
+Ketik `-` untuk skip
 
-Ketik `-` untuk skip.
-Ketik /cancel untuk membatalkan
+Ketik /cancel untuk batal
 """)
         return
     
@@ -456,45 +398,51 @@ Ketik /cancel untuk membatalkan
         target_id = user_states[user_id]['target_id']
         price = user_states[user_id]['price']
         
-        # Dapatkan info penjual
+        # Info penjual
         seller = await bot.get_entity(user_id)
         seller_name = f"{seller.first_name or ''} {seller.last_name or ''}".strip() or seller.username or str(user_id)
         
-        # Simpan ke pending verifikasi di DATABASE
-        pending_id = save_pending_verification(
-            username, user_id, seller_name, price, description, target_id, target_type
-        )
-        
-        # Kirim verifikasi
+        # CEK AKSES BOT UNTUK CHANNEL
         if target_type in ['channel', 'supergroup', 'group']:
-            success, message = await send_verification_to_channel(
-                target_id, pending_id, username, seller_name, price, description
-            )
-        else:
-            success, message = await send_verification_to_user(
-                target_id, pending_id, username, seller_name, price, description
-            )
+            try:
+                await bot.send_message(target_id, "🔐 Cek akses...")
+            except ChatAdminRequiredError:
+                await event.reply("❌ Bot bukan admin di channel ini! Tambahkan bot sebagai admin dulu.")
+                del user_states[user_id]
+                return
+            except Exception as e:
+                await event.reply(f"❌ Tidak dapat mengakses channel: {str(e)[:100]}")
+                del user_states[user_id]
+                return
+        
+        # CEK AKSES UNTUK USER
+        if target_type == 'user':
+            try:
+                await bot.send_message(target_id, "🔐 Verifikasi username...")
+            except RPCError:
+                await event.reply(f"❌ User @{username} belum start bot atau memblokir bot!")
+                del user_states[user_id]
+                return
+        
+        # SIMPAN KE PENDING DATABASE
+        pending_id = save_pending(username, user_id, seller_name, price, description, target_id, target_type)
+        
+        # KIRIM VERIFIKASI
+        success, message = await send_verification(target_id, pending_id, username, seller_name, price, description, target_type)
         
         if success:
             await event.reply(f"""
 ✅ {message}
 
-📝 **Username:** @{username}
-💰 **Harga:** Rp {format_price(price)}
+📝 Username: @{username}
+💰 Harga: Rp {format_price(price)}
 
 ⏳ Menunggu konfirmasi dari pemilik username.
-Anda akan menerima notifikasi setelah diverifikasi.
+Anda akan dapat notifikasi jika sudah diverifikasi.
 """)
         else:
-            # Hapus pending jika gagal
-            delete_pending_verification(pending_id)
-            await event.reply(f"""
-❌ {message}
-
-**Solusi:**
-• Untuk channel: pastikan bot sudah menjadi admin
-• Untuk user: pastikan user sudah start bot (@{username} klik /start)
-""")
+            delete_pending(pending_id)
+            await event.reply(f"❌ {message}")
         
         # Clear state
         del user_states[user_id]
@@ -503,10 +451,10 @@ Anda akan menerima notifikasi setelah diverifikasi.
         msg_menu, buttons = await main_menu(user_id, "")
         await event.respond(msg_menu, buttons=buttons)
 
+# ============ MY LISTINGS ============
 @bot.on(events.CallbackQuery(data="my_listings"))
 async def my_listings(event):
     user_id = event.sender_id
-    
     usernames = db.get_my_usernames(user_id)
     
     if not usernames:
@@ -515,9 +463,9 @@ async def my_listings(event):
 ║      📦 MY LISTINGS        ║
 ╚══════════════════════════╝
 
-Anda belum memiliki listing.
+Belum ada listing.
 
-Tekan tombol 「➕ ADD USERNAME」 untuk menjual.
+Tekan 「➕ ADD USERNAME」
 """
         buttons = [[Button.inline("➕ ADD USERNAME", data="add_username")],
                    [Button.inline("🔙 Kembali", data="main_menu")]]
@@ -528,31 +476,28 @@ Tekan tombol 「➕ ADD USERNAME」 untuk menjual.
 ╔══════════════════════════╗
 ║      📦 MY LISTINGS        ║
 ╚══════════════════════════╝
-Total {len(usernames)} username terdaftar
+Total {len(usernames)} username
 
 """
-    
     for i, u in enumerate(usernames, 1):
         status_icon = "✅" if u['status'] == 'available' else "❌"
         status_text = "Available" if u['status'] == 'available' else "Terjual"
-        msg += f"\n{i}. {status_icon} **@{u['username']}**\n"
+        msg += f"\n{i}. {status_icon} @{u['username']}\n"
         msg += f"   💰 Rp {format_price(u['price'])}\n"
-        msg += f"   📊 Status: {status_text}\n"
+        msg += f"   📊 {status_text}\n"
         if u.get('description'):
             msg += f"   📝 {u['description'][:50]}\n"
-        msg += f"   🆔 ID: `{u['id']}`\n"
+        msg += f"   🆔 ID: {u['id']}\n"
     
     buttons = [
         [Button.inline("🗑 Hapus Listing", data="delete_listing")],
         [Button.inline("🔙 Kembali", data="main_menu")]
     ]
-    
     await event.edit(msg, buttons=buttons)
 
 @bot.on(events.CallbackQuery(data="delete_listing"))
 async def delete_listing_start(event):
     user_id = event.sender_id
-    
     user_states[user_id] = {'step': 'waiting_delete_id'}
     
     msg = """
@@ -560,27 +505,21 @@ async def delete_listing_start(event):
 ║      🗑 HAPUS LISTING      ║
 ╚══════════════════════════╝
 
-Masukkan **ID Username** yang ingin dihapus.
+Masukkan ID Username yang ingin dihapus.
 
-ID bisa dilihat di menu 「📦 MY LISTINGS」
+ID bisa dilihat di MY LISTINGS.
 
-⚠️ Hanya listing dengan status "available" yang bisa dihapus.
-
-━━━━━━━━━━━━━━━━━━━━━
-Ketik /cancel untuk membatalkan
+Ketik /cancel untuk batal
 """
-    
     await event.edit(msg, buttons=[[Button.inline("🔙 Kembali", data="my_listings")]])
 
 @bot.on(events.NewMessage)
 async def handle_delete_listing(event):
     user_id = event.sender_id
-    
     if user_id not in user_states:
         return
     
     state = user_states[user_id]
-    
     if state.get('step') != 'waiting_delete_id':
         return
     
@@ -595,168 +534,123 @@ async def handle_delete_listing(event):
     try:
         username_id = int(event.raw_text.strip())
     except ValueError:
-        await event.reply("❌ ID harus berupa angka!")
+        await event.reply("❌ ID harus angka!")
         return
     
     success = db.delete_username(username_id, user_id)
-    
     if success:
-        await event.reply(f"✅ Listing dengan ID `{username_id}` berhasil dihapus!")
+        await event.reply(f"✅ Listing ID `{username_id}` berhasil dihapus!")
     else:
-        await event.reply(f"❌ Gagal menghapus listing. Pastikan ID `{username_id}` milik Anda dan masih tersedia.")
+        await event.reply(f"❌ Gagal hapus listing ID `{username_id}`")
     
     del user_states[user_id]
-    
     user = await bot.get_entity(user_id)
     msg, buttons = await main_menu(user_id, user.first_name or "")
     await event.respond(msg, buttons=buttons)
 
+# ============ PROFIL ============
 @bot.on(events.CallbackQuery(data="profile"))
 async def profile(event):
     user_id = event.sender_id
     user = db.get_user(user_id)
     
     if not user:
-        msg = "❌ Data user tidak ditemukan"
+        msg = "❌ Data tidak ditemukan"
         buttons = [[Button.inline("🔙 Kembali", data="main_menu")]]
         await event.edit(msg, buttons=buttons)
         return
     
     usernames = db.get_my_usernames(user_id)
-    total_listings = len(usernames)
-    available_listings = len([u for u in usernames if u['status'] == 'available'])
-    sold_listings = len([u for u in usernames if u['status'] == 'sold'])
-    
     msg = f"""
 ╔══════════════════════════╗
 ║      📊 PROFIL ANDA        ║
 ╚══════════════════════════╝
 
-🆔 **User ID:** `{user['user_id']}`
-👤 **Username:** @{user['username'] or '-'}
-📛 **Nama:** {user['first_name'] or ''} {user['last_name'] or ''}
-💰 **Saldo:** Rp {format_price(user['balance'])}
-👑 **Admin:** {'Ya' if user['is_admin'] else 'Tidak'}
+🆔 ID: `{user['user_id']}`
+👤 @{user['username'] or '-'}
+📛 {user['first_name'] or ''} {user['last_name'] or ''}
+💰 Saldo: Rp {format_price(user['balance'])}
+👑 Admin: {'Ya' if user['is_admin'] else 'Tidak'}
 
-━━━━━━━━━━━━━━━━━━━━━
-📦 **Statistik Listing:**
-• Total Listing: {total_listings}
-• Tersedia: {available_listings}
-• Terjual: {sold_listings}
-
-━━━━━━━━━━━━━━━━━━━━━
-📌 **Fitur:**
-• Jual username Telegram (dengan verifikasi)
-• Lihat daftar username sendiri
-• Hapus listing yang belum terjual
-
+📦 Listing: {len(usernames)}
 """
-    
     buttons = [[Button.inline("🔙 Kembali", data="main_menu")]]
-    
     await event.edit(msg, buttons=buttons)
 
-# ==================== ADMIN COMMANDS ====================
-
+# ============ ADMIN COMMANDS ============
 @bot.on(events.NewMessage(pattern="^/addbalance (\\d+) (\\d+)$"))
 async def admin_add_balance(event):
     if event.sender_id != OWNER_ID:
         return
-    
     user_id = int(event.data_match.group(1))
     amount = int(event.data_match.group(2))
-    
-    success = db.add_balance(user_id, amount)
-    
-    if success:
-        await event.reply(f"✅ Berhasil menambah saldo Rp {format_price(amount)} ke user ID {user_id}")
+    if db.add_balance(user_id, amount):
+        await event.reply(f"✅ +Rp {format_price(amount)} ke user {user_id}")
     else:
-        await event.reply("❌ Gagal menambah saldo")
+        await event.reply("❌ Gagal")
 
 @bot.on(events.NewMessage(pattern="^/listusers$"))
 async def admin_list_users(event):
     if event.sender_id != OWNER_ID:
         return
-    
     with sqlite3.connect(db.db_path) as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT user_id, username, first_name, balance FROM users ORDER BY balance DESC LIMIT 20')
         rows = cursor.fetchall()
-    
     if not rows:
         await event.reply("Belum ada user")
         return
-    
-    msg = "📊 **TOP 20 USERS BY BALANCE**\n\n"
+    msg = "📊 TOP 20 USERS\n\n"
     for i, row in enumerate(rows, 1):
         msg += f"{i}. ID: `{row[0]}` | @{row[1] or '-'} | {row[2] or '-'}\n   💰 Rp {format_price(row[3])}\n\n"
-    
     await event.reply(msg)
 
 @bot.on(events.NewMessage(pattern="^/stats$"))
 async def admin_stats(event):
     if event.sender_id != OWNER_ID:
         return
-    
     with sqlite3.connect(db.db_path) as conn:
         cursor = conn.cursor()
-        
         cursor.execute('SELECT COUNT(*) FROM users')
         total_users = cursor.fetchone()[0]
-        
         cursor.execute('SELECT COUNT(*) FROM usernames WHERE status = "available"')
         available = cursor.fetchone()[0]
-        
         cursor.execute('SELECT COUNT(*) FROM usernames WHERE status = "sold"')
         sold = cursor.fetchone()[0]
-        
-        cursor.execute('SELECT COUNT(*) FROM transactions')
-        total_transactions = cursor.fetchone()[0]
-    
     msg = f"""
-📊 **INDOTAG MARKET STATISTICS**
+📊 INDOTAG STATS
 
-👥 **Total Users:** {total_users}
-🏷️ **Username Available:** {available}
-✅ **Username Sold:** {sold}
-🔄 **Total Transactions:** {total_transactions}
+👥 Users: {total_users}
+🏷️ Available: {available}
+✅ Sold: {sold}
 """
-    
     await event.reply(msg)
 
 @bot.on(events.NewMessage(pattern="^/pending$"))
 async def admin_list_pending(event):
     if event.sender_id != OWNER_ID:
         return
-    
-    pendings = get_all_pending_verifications()
-    
+    pendings = get_all_pending()
     if not pendings:
-        await event.reply("Tidak ada verifikasi pending.")
+        await event.reply("Tidak ada pending verifikasi.")
         return
-    
-    msg = "⏳ **PENDING VERIFICATIONS**\n\n"
+    msg = "⏳ PENDING VERIFICATIONS\n\n"
     for p in pendings:
-        msg += f"🆔 ID: `{p['id']}`\n"
-        msg += f"📝 Username: @{p['username']}\n"
+        msg += f"🆔 ID: {p['id']}\n"
+        msg += f"📝 @{p['username']}\n"
         msg += f"👤 Penjual: {p['seller_name']}\n"
-        msg += f"💰 Harga: Rp {format_price(p['price'])}\n"
-        msg += f"🏷️ Target: {p['target_type']}\n"
-        msg += f"📅 Dibuat: {p['created_at']}\n\n"
-    
+        msg += f"💰 Rp {format_price(p['price'])}\n"
+        msg += f"🏷️ Target: {p['target_type']} (ID: {p['target_id']})\n"
+        msg += f"📅 {p['created_at'][:19]}\n\n"
     await event.reply(msg)
 
-# ==================== MAIN ====================
-
+# ============ MAIN ============
 async def main():
     logger.info("🚀 Starting INDOTAG Market Bot...")
-    
     db.init_database()
     init_pending_table()
-    
     await bot.start(bot_token=BOT_TOKEN)
     logger.info("✅ INDOTAG Bot is running")
-    
     await bot.run_until_disconnected()
 
 if __name__ == '__main__':
