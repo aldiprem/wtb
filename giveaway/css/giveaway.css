@@ -2095,7 +2095,7 @@ body {
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border: 2px solid var(--bg);
-    margin-left: -12px; /* BUAT TUMPUK - hanya terlihat 1/4 bagian */
+    margin-left: -25px;
     cursor: pointer;
     transition: all 0.2s;
     overflow: hidden;
