@@ -52,7 +52,6 @@ logger = logging.getLogger(__name__)
 API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_GIVEAWAY", "")
-PHONE_NUMBER = os.getenv("PHONE_NUMBER", "")
 
 DEFAULT_DELIMITERS['^^'] = lambda *a, **k: MessageEntityBlockquote(*a, **k)
 user_state = {}
@@ -64,7 +63,6 @@ CHANNEL_INFO = "@giftfreebies"
 
 db = GiveawayDatabase()
 bot = TelegramClient('giveaway_bot_session', API_ID, API_HASH)
-ubot = TelegramClient('giveaway_userbot_session', API_ID, API_HASH)
 
 def get_jakarta_time() -> datetime:
     """Get current time in Asia/Jakarta timezone"""
@@ -529,6 +527,7 @@ async def menu_create_giveaway(event, user_id: int = None):
     else:
         await event.respond(msg, buttons=buttons)
 
+# Ganti fungsi check_user_boost untuk menggunakan ubot (userbot)
 async def check_user_boost(channel_username: str, user_id: int) -> dict:
     """
     Mengecek apakah user sudah boost channel tertentu
@@ -542,19 +541,11 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             peer=channel
         ))
         
-        # 🔥 PERBAIKAN: Cek tipe data dengan aman
-        # my_boost_slots bisa berupa None, empty list, atau list of int
-        my_boost_slots = getattr(result, 'my_boost_slots', None)
+        # Cek apakah user memiliki slot boost di channel ini
+        my_boost_slots = getattr(result, 'my_boost_slots', [])
+        is_boost = len(my_boost_slots) > 0
         
-        # AMAN: Cek jika None atau empty list
-        if my_boost_slots is None:
-            is_boost = False
-            boost_slots = []
-        else:
-            boost_slots = my_boost_slots if isinstance(my_boost_slots, list) else []
-            is_boost = len(boost_slots) > 0
-        
-        # Dapatkan informasi tambahan dari my_boost
+        # Dapatkan informasi tambahan
         my_boost = getattr(result, 'my_boost', None)
         boost_info = {}
         
@@ -562,7 +553,7 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             boost_info = {
                 'boost_date': getattr(my_boost, 'date', None),
                 'multiplier': getattr(my_boost, 'multiplier', 1),
-                'slots': boost_slots
+                'slots': my_boost_slots
             }
         
         return {
@@ -571,7 +562,7 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             'channel': channel,
             'total_boosts': getattr(result, 'boosts', 0),
             'channel_level': getattr(result, 'level', 0),
-            'boost_slots': boost_slots,
+            'boost_slots': my_boost_slots,
             'boost_info': boost_info,
             'error': None
         }
@@ -588,8 +579,6 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             return {'success': False, 'is_boost': False, 'error': 'User ID tidak valid'}
         elif 'CHANNEL_INVALID' in error_msg:
             return {'success': False, 'is_boost': False, 'error': 'Channel tidak ditemukan'}
-        elif 'BOT_METHOD_INVALID' in error_msg:
-            return {'success': False, 'is_boost': False, 'error': 'Method ini hanya bisa digunakan oleh user account (bukan bot)'}
         else:
             return {'success': False, 'is_boost': False, 'error': f'RPC Error: {error_msg}'}
     except Exception as e:
@@ -598,96 +587,6 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             'is_boost': False,
             'error': f'Terjadi kesalahan: {str(e)}'
         }
-    
-@bot.on(events.NewMessage(pattern=r'^/checkboost(?:\s+(\S+)(?:\s+(\S+))?)?$'))
-async def check_boost_command(event):
-    """Perintah untuk mengecek boost user di channel"""
-    
-    # Hanya owner yang bisa menggunakan
-    if event.sender_id != OWNER_ID:
-        await event.reply("❌ **Akses ditolak!** Perintah ini hanya untuk owner.")
-        return
-    
-    # Parse arguments
-    match = event.pattern_match
-    channel_username = match.group(1)
-    user_id_str = match.group(2)
-    
-    # Validasi input
-    if not channel_username:
-        await event.reply(
-            "**📋 Cara Penggunaan:**\n"
-            "`/checkboost <channel_username> <user_id>`\n\n"
-            "**Contoh:**\n"
-            "`/checkboost @giftfreebies 123456789`\n\n"
-            "**Catatan:** Perintah ini menggunakan userbot, pastikan userbot sudah login."
-        )
-        return
-    
-    if not user_id_str:
-        await event.reply("❌ **User ID tidak boleh kosong!**")
-        return
-    
-    try:
-        user_id = int(user_id_str)
-    except ValueError:
-        await event.reply(f"❌ **User ID tidak valid!** `{user_id_str}`")
-        return
-    
-    # Kirim pesan loading
-    loading_msg = await event.reply("🔄 **Sedang mengecek boost menggunakan userbot...**")
-    
-    try:
-        # 🔥 Gunakan ubot, BUKAN bot
-        result = await check_user_boost(channel_username, user_id)
-        
-        if not result['success']:
-            await loading_msg.edit(f"❌ **Gagal mengecek boost!**\n\n{result['error']}")
-            return
-        
-        # Format hasil
-        status_emoji = "✅" if result['is_boost'] else "❌"
-        status_text = "**SUDAH BOOST**" if result['is_boost'] else "**BELUM BOOST**"
-        
-        # Coba dapatkan info user
-        user_info = ""
-        try:
-            user_entity = await bot.get_entity(user_id)
-            user_name = f"{user_entity.first_name or ''} {user_entity.last_name or ''}".strip() or "User"
-            user_username = f"@{user_entity.username}" if user_entity.username else ""
-            user_info = f"• **Nama:** {user_name}\n• **Username:** {user_username or '-'}\n"
-        except:
-            user_info = f"• **User ID:** `{user_id}`\n"
-        
-        message = f"""
-{status_emoji} **HASIL CEK BOOST** {status_emoji}
-
-━━━━━━━━━━━━━━━━━━━━━
-**📊 Informasi Channel:**
-• **Channel:** @{result['channel']}
-• **Total Boost:** {result['total_boosts']}
-• **Level Channel:** {result['channel_level']}
-
-**👤 Informasi User:**
-{user_info}
-━━━━━━━━━━━━━━━━━━━━━
-**🎯 Status Boost:** {status_text}
-"""
-        
-        if result['is_boost'] and result['boost_info']:
-            boost = result['boost_info']
-            message += f"""
-**📈 Detail Boost:**
-• **Multiplier:** {boost.get('multiplier', 1)}x
-• **Slots:** {', '.join(map(str, boost.get('slots', [])))}
-"""
-        
-        message += "\n━━━━━━━━━━━━━━━━━━━━━"
-        
-        await loading_msg.edit(message)
-        
-    except Exception as e:
-        await loading_msg.edit(f"❌ **Terjadi kesalahan:**\n```\n{str(e)}\n```")
 
 @bot.on(events.CallbackQuery(pattern="^toggle_captcha$"))
 async def toggle_captcha(event):
@@ -2213,7 +2112,6 @@ async def main():
     
     # Start master bot
     await bot.start(bot_token=BOT_TOKEN)
-    await ubot.start()
     logger.info("✅ Giveaway Bot is running")
     
     # Start monitoring expired giveaways
