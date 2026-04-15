@@ -527,6 +527,167 @@ async def menu_create_giveaway(event, user_id: int = None):
     else:
         await event.respond(msg, buttons=buttons)
 
+# Tambahkan fungsi ini setelah fungsi check_pending_membership() atau di bagian utility functions
+
+async def check_user_boost(channel_username: str, user_id: int) -> dict:
+    """
+    Mengecek apakah user sudah boost channel tertentu
+    Returns: dict dengan status, is_boost, dan detail
+    """
+    try:
+        # Format channel username (hapus @ jika ada)
+        channel = channel_username.lstrip('@')
+        
+        # Gunakan GetBoostsStatusRequest untuk mengecek status boost channel
+        result = await bot(functions.premium.GetBoostsStatusRequest(
+            peer=channel
+        ))
+        
+        # Cek apakah user ini sedang boost channel
+        # my_boost akan berisi informasi boost user (None jika tidak boost)
+        my_boost = getattr(result, 'my_boost', None)
+        
+        is_boost = my_boost is not None
+        
+        # Dapatkan informasi tambahan jika user boost
+        boost_info = {}
+        if is_boost:
+            boost_info = {
+                'boost_id': getattr(my_boost, 'id', None),
+                'boost_date': getattr(my_boost, 'date', None),
+                'multiplier': getattr(my_boost, 'multiplier', 1),
+                'slots': getattr(my_boost, 'slots', [])
+            }
+        
+        return {
+            'success': True,
+            'is_boost': is_boost,
+            'channel': channel,
+            'total_boosts': getattr(result, 'boosts', 0),
+            'channel_level': getattr(result, 'level', 0),
+            'boost_info': boost_info,
+            'error': None
+        }
+        
+    except errors.FloodWaitError as e:
+        return {
+            'success': False,
+            'is_boost': False,
+            'error': f'Rate limit. Coba lagi dalam {e.seconds} detik'
+        }
+    except errors.RPCError as e:
+        return {
+            'success': False,
+            'is_boost': False,
+            'error': f'Error: {str(e)}'
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'is_boost': False,
+            'error': f'Terjadi kesalahan: {str(e)}'
+        }
+
+@bot.on(events.NewMessage(pattern=r'^/checkboost(?:\s+(\S+)(?:\s+(\S+))?)?$'))
+async def check_boost_command(event):
+    """Perintah untuk mengecek boost user di channel"""
+    
+    # Hanya owner yang bisa menggunakan
+    if event.sender_id != OWNER_ID:
+        await event.reply("❌ **Akses ditolak!** Perintah ini hanya untuk owner.")
+        return
+    
+    # Parse arguments
+    match = event.pattern_match
+    channel_username = match.group(1)
+    user_id_str = match.group(2)
+    
+    # Validasi input
+    if not channel_username:
+        await event.reply(
+            "**📋 Cara Penggunaan:**\n"
+            "`/checkboost <channel_username> <user_id>`\n\n"
+            "**Contoh:**\n"
+            "`/checkboost @giftfreebies 123456789`\n"
+            "`/checkboost giftfreebies 123456789`\n\n"
+            "**Keterangan:**\n"
+            "• `<channel_username>`: Username channel (dengan atau tanpa @)\n"
+            "• `<user_id>`: ID Telegram user yang ingin dicek"
+        )
+        return
+    
+    if not user_id_str:
+        await event.reply(
+            "❌ **User ID tidak boleh kosong!**\n\n"
+            "Contoh: `/checkboost @giftfreebies 123456789`"
+        )
+        return
+    
+    # Konversi user_id ke integer
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
+        await event.reply(f"❌ **User ID tidak valid!** `{user_id_str}` bukan angka yang valid.")
+        return
+    
+    # Kirim pesan loading
+    loading_msg = await event.reply("🔄 **Sedang mengecek boost...**")
+    
+    try:
+        # Cek boost user
+        result = await check_user_boost(channel_username, user_id)
+        
+        if not result['success']:
+            await loading_msg.edit(f"❌ **Gagal mengecek boost!**\n\n{result['error']}")
+            return
+        
+        # Format hasil
+        status_emoji = "✅" if result['is_boost'] else "❌"
+        status_text = "**SUDAH BOOST**" if result['is_boost'] else "**BELUM BOOST**"
+        
+        # Coba dapatkan info user
+        user_info = ""
+        try:
+            user_entity = await bot.get_entity(user_id)
+            user_name = f"{user_entity.first_name or ''} {user_entity.last_name or ''}".strip() or "User"
+            user_username = f"@{user_entity.username}" if user_entity.username else ""
+            user_info = f"• **Nama:** {user_name}\n• **Username:** {user_username or '-'}\n"
+        except:
+            user_info = f"• **User ID:** `{user_id}`\n"
+        
+        # Format pesan hasil
+        message = f"""
+{status_emoji} **HASIL CEK BOOST** {status_emoji}
+
+━━━━━━━━━━━━━━━━━━━━━
+**📊 Informasi Channel:**
+• **Channel:** @{result['channel']}
+• **Total Boost:** {result['total_boosts']}
+• **Level Channel:** {result['channel_level']}
+
+**👤 Informasi User:**
+{user_info}
+━━━━━━━━━━━━━━━━━━━━━
+**🎯 Status Boost:** {status_text}
+"""
+        
+        # Tambahkan info detail jika user boost
+        if result['is_boost'] and result['boost_info']:
+            boost = result['boost_info']
+            message += f"""
+**📈 Detail Boost:**
+• **ID Boost:** `{boost.get('boost_id', '-')}`
+• **Multiplier:** {boost.get('multiplier', 1)}x
+• **Tanggal:** {boost.get('boost_date', '-')}
+"""
+        
+        message += "\n━━━━━━━━━━━━━━━━━━━━━"
+        
+        await loading_msg.edit(message)
+        
+    except Exception as e:
+        await loading_msg.edit(f"❌ **Terjadi kesalahan:**\n```\n{str(e)}\n```")
+
 @bot.on(events.CallbackQuery(pattern="^toggle_captcha$"))
 async def toggle_captcha(event):
     user_id = event.sender_id
