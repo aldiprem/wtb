@@ -323,7 +323,6 @@ Giveaway berakhir tanpa pemenang.
         await asyncio.sleep(60)
 
 async def check_pending_membership():
-    """Bot schedule to check pending membership every 1 second"""
     import aiohttp
     
     await asyncio.sleep(1)
@@ -1637,6 +1636,11 @@ async def start_giveaway_handler(event):
         minutes = state.get('minutes', 60)
         end_time = get_jakarta_time() + timedelta(minutes=minutes)
     
+    # Ambil info creator
+    creator = await bot.get_entity(user_id)
+    creator_name = f"{creator.first_name or ''} {creator.last_name or ''}".strip() or creator.username or str(user_id)
+    creator_mention = f"[{creator_name}](tg://user?id={user_id})"
+    
     # ============ PENTING: SIMPAN DATA KE TABEL GIVEAWAYS TERLEBIH DAHULU ============
     # Pilih chat pertama sebagai default untuk tabel giveaways
     first_chat = saved_chats[0]
@@ -1698,27 +1702,36 @@ async def start_giveaway_handler(event):
         chat_id = int(chat.get('chat_id'))
         chat_title = chat.get('title', 'Unknown')
         
-        message_text = f"""
-🎉 **GIVEAWAY BERLANGSUNG!** 🎉
+        # Format chat info untuk ditampilkan
+        chat_username = chat.get('username', '')
+        chat_display = f"📺 **CHAT ID:** [{chat_title}](https://t.me/{chat_username}) (`{chat_id}`)" if chat_username else f"📺 **CHAT ID:** {chat_title} (`{chat_id}`)"
+        
+        # Format link
+        link_text = ""
+        if link:
+            links = link.split('\n')
+            link_text = "🔗 **ADS LINK:**\n" + "\n".join([f"   {i+1}. {l}" for i, l in enumerate(links)])
+        
+        message_text = f"""🎉 **GIVEAWAY STARTED** 🎉
 
 ━━━━━━━━━━━━━━━━━━━━━
-🏆 **HADIAH:**
+🎁 **HADIAH:**
 {formatted_prize}
 ━━━━━━━━━━━━━━━━━━━━━
-👥 **JUMLAH PEMENANG:** {winners_count} (sesuai jumlah hadiah)
+🚨 **SYARAT:** {syarat if syarat != 'None' else 'Tidak ada syarat khusus'}
+
+{link_text if link_text else ''}
+
+{chat_display}
+
+👤 **CREATOR:** {creator_mention}
+━━━━━━━━━━━━━━━━━━━━━
+^^__Silakan klik tombol dibawah ini untuk berpartisipasi giveaway, Selamat bergabung dan semoga beruntung.__^^
+
 ⏰ **BERAKHIR:** {end_time.strftime('%d %B %Y %H:%M:%S WIB')}
 ━━━━━━━━━━━━━━━━━━━━━
+#{giveaway_id}"""
 
-**Syarat & Ketentuan:**
-{syarat if syarat != 'None' else 'Tidak ada syarat khusus'}
-
-{chr(10).join([f'🔗 {l}' for l in link.split('\n')]) if link else ''}
-
-📌 **Klik tombol di bawah untuk mengikuti giveaway!**
-
-🎁 Good luck everyone!
-"""
-        
         try:
             msg = await bot.send_message(chat_id, message_text)
             
@@ -1726,7 +1739,7 @@ async def start_giveaway_handler(event):
             try:
                 # Ambil entity untuk mendapatkan detail lengkap
                 entity = await bot.get_entity(chat_id)
-                chat_username = getattr(entity, 'username', '')
+                chat_username_db = getattr(entity, 'username', '')
                 chat_type = 'Channel' if hasattr(entity, 'broadcast') and entity.broadcast else 'Group'
                 if hasattr(entity, 'megagroup') and entity.megagroup:
                     chat_type = 'Supergroup'
@@ -1735,8 +1748,7 @@ async def start_giveaway_handler(event):
                 chat_photo_url = ''
                 try:
                     if hasattr(entity, 'photo') and entity.photo:
-                        # Buat link ke foto (opsional)
-                        chat_photo_url = f'https://t.me/{chat_username}' if chat_username else ''
+                        chat_photo_url = f'https://t.me/{chat_username_db}' if chat_username_db else ''
                 except:
                     pass
                 
@@ -1745,7 +1757,7 @@ async def start_giveaway_handler(event):
                     giveaway_id=giveaway_id,
                     chat_id=str(chat_id),
                     chat_title=chat_title,
-                    chat_username=chat_username or '',
+                    chat_username=chat_username_db or '',
                     chat_photo_url=chat_photo_url,
                     chat_type=chat_type
                 )
@@ -1830,21 +1842,21 @@ async def start_giveaway_handler(event):
     await msg_self.delete()
     
     success_msg = f"""
-✅ **GIVEAWAY BERHASIL DIMULAI!**
+[✅](tg://emoji?id=5980930633298350051) **GIVEAWAY BERHASIL DIMULAI!**
 
-📊 **Detail Giveaway:**
-• ID Giveaway: `{giveaway_id}`
+[📊](tg://emoji?id=5231200819986047254) **Detail Giveaway:**
+^^• ID Giveaway: `{giveaway_id}`
 • Kode Giveaway: `{giveaway_codes[0] if giveaway_codes else '-'}`
 • Hadiah: {len(hadiah_list)} item
 • Jumlah Pemenang: {winners_count}
 • Berakhir: {end_time.strftime('%d %B %Y %H:%M:%S WIB')}
-• Syarat: {syarat}
+• Syarat: {syarat}^^
 
-📢 **Dikirim ke {len(success_chats)} chat:**
+[📢](tg://emoji?id=5771695636411847302) **Dikirim ke {len(success_chats)} chat:**
 {chr(10).join([f'✅ {chat}' for chat in success_chats])}
 
-🔗 **Link MiniApp:**
-https://t.me/freebiestbot?startapp={giveaway_codes[0] if giveaway_codes else '-'}
+[🔗](tg://emoji?id=4972414068146045694) **Link MiniApp:**
+https://t.me/freebiestbot/giveaway?startapp={giveaway_codes[0] if giveaway_codes else '-'}
 """
     
     await event.respond(success_msg)
