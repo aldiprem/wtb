@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 from telethon import TelegramClient, events, Button
-from telethon.errors import ChatAdminRequiredError, UserNotParticipantError
+from telethon.errors import ChatAdminRequiredError, RPCError
 import sys
 
 # Coba load .env dari beberapa lokasi
@@ -31,9 +31,9 @@ if not loaded:
 # Import database
 from database.data import IndotagDatabase
 
-# Logging
+# Logging - PERBAIKI TYPO
 logging.basicConfig(
-    format='%(asctime)s - %name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
@@ -177,11 +177,12 @@ async def send_verification_to_channel(channel_id, verification_id, username_inp
         try:
             chat = await bot.get_entity(channel_id)
             # Coba kirim pesan untuk cek akses
-            await bot.send_message(channel_id, "✅ Bot sedang melakukan pengecekan akses...")
+            test_msg = await bot.send_message(channel_id, "✅ Bot sedang melakukan pengecekan akses...")
+            await test_msg.delete()
         except ChatAdminRequiredError:
-            return False, "Bot bukan admin di channel ini! Tambahkan bot sebagai admin terlebih dahulu."
+            return False, "❌ Bot bukan admin di channel ini! Tambahkan bot sebagai admin terlebih dahulu."
         except Exception as e:
-            return False, f"Tidak dapat mengakses channel: {str(e)[:100]}"
+            return False, f"❌ Tidak dapat mengakses channel: {str(e)[:100]}"
         
         msg = f"""
 🔐 **VERIFIKASI KEPEMILIKAN USERNAME**
@@ -206,10 +207,10 @@ Verifikasi ini diperlukan untuk memastikan kepemilikan username.
         buttons = [[Button.inline("✅ Konfirmasi Kepemilikan", data=f"verify_channel:{verification_id}:{username_input}")]]
         
         await bot.send_message(channel_id, msg, buttons=buttons)
-        return True, "Pesan verifikasi telah dikirim ke channel."
+        return True, "✅ Pesan verifikasi telah dikirim ke channel."
         
     except Exception as e:
-        return False, f"Gagal mengirim verifikasi: {str(e)[:100]}"
+        return False, f"❌ Gagal mengirim verifikasi: {str(e)[:100]}"
 
 async def send_verification_to_user(user_id, verification_id, username_input, seller_id, seller_name, price, description):
     """Kirim verifikasi ke user (harus start bot dulu)"""
@@ -217,8 +218,16 @@ async def send_verification_to_user(user_id, verification_id, username_input, se
         # Cek apakah user bisa dihubungi
         try:
             await bot.send_message(user_id, "🔐 **Verifikasi Kepemilikan Username**\n\nSedang memproses verifikasi...")
+        except RPCError as e:
+            error_msg = str(e).lower()
+            if 'user is not acquainted' in error_msg or 'bot was blocked' in error_msg:
+                return False, f"❌ Tidak dapat mengirim pesan ke @{username_input}. Pastikan user sudah start bot (klik /start) dan tidak memblokir bot."
+            elif 'bot was kicked' in error_msg:
+                return False, f"❌ Bot telah dikick oleh @{username_input}."
+            else:
+                return False, f"❌ Gagal mengirim pesan: {str(e)[:100]}"
         except Exception as e:
-            return False, f"Tidak dapat mengirim pesan ke user @{username_input}. Pastikan user sudah start bot dan tidak memblokir bot."
+            return False, f"❌ Gagal mengirim pesan: {str(e)[:100]}"
         
         msg = f"""
 🔐 **VERIFIKASI KEPEMILIKAN USERNAME**
@@ -243,10 +252,10 @@ Verifikasi ini diperlukan untuk memastikan kepemilikan username.
         buttons = [[Button.inline("✅ Konfirmasi Kepemilikan", data=f"verify_user:{verification_id}:{username_input}")]]
         
         await bot.send_message(user_id, msg, buttons=buttons)
-        return True, "Pesan verifikasi telah dikirim ke pemilik username."
+        return True, "✅ Pesan verifikasi telah dikirim ke pemilik username."
         
     except Exception as e:
-        return False, f"Gagal mengirim verifikasi: {str(e)[:100]}"
+        return False, f"❌ Gagal mengirim verifikasi: {str(e)[:100]}"
 
 @bot.on(events.CallbackQuery(pattern=r"verify_channel:([^:]+):(.+)"))
 async def verify_channel_callback(event):
@@ -447,45 +456,148 @@ async def handle_add_username_input(event):
             entity_type, entity_name = await check_entity_type(entity)
             
             if entity_type in ['channel', 'supergroup', 'group']:
-                # Ini adalah channel/group
                 target_id = entity.id
-                await event.reply(f"✅ Ditemukan: **{entity_name}** ({entity_type.upper()})\n\nMengirim permintaan verifikasi ke channel...")
+                await event.reply(f"✅ Ditemukan: **{entity_name}** ({entity_type.upper()})")
+                
+                # Langsung kirim verifikasi tanpa minta harga dulu?
+                # Sesuai permintaan: tunggu verifikasi dulu baru input harga
+                
+                # Simpan data sementara
+                user_states[user_id]['username'] = username_input
                 user_states[user_id]['target_type'] = 'channel'
                 user_states[user_id]['target_id'] = target_id
                 user_states[user_id]['target_name'] = entity_name
+                user_states[user_id]['step'] = 'waiting_verification'  # Tunggu verifikasi dulu
+                
+                # Dapatkan info penjual
+                seller = await bot.get_entity(user_id)
+                seller_name = f"{seller.first_name or ''} {seller.last_name or ''}".strip() or seller.username or str(user_id)
+                
+                # Generate ID verifikasi
+                verification_id = generate_verification_id()
+                
+                # Simpan pending verifikasi (tanpa harga dulu)
+                pending_verifications[verification_id] = {
+                    'username': username_input,
+                    'seller_id': user_id,
+                    'seller_name': seller_name,
+                    'price': None,  # Akan diisi setelah verifikasi
+                    'description': None,
+                    'target_id': target_id,
+                    'target_type': 'channel',
+                    'created_at': datetime.now().isoformat(),
+                    'step': 'waiting_price'  # Setelah verifikasi, minta harga
+                }
+                
+                # Kirim verifikasi ke channel
+                success, message = await send_verification_to_channel(
+                    target_id, verification_id, username_input, user_id, seller_name, 0, ""
+                )
+                
+                if success:
+                    user_states[user_id]['verification_id'] = verification_id
+                    await event.reply(f"""
+✅ **Permintaan verifikasi telah dikirim ke channel!**
+
+📝 **Username:** @{username_input}
+🏷️ **Tipe:** CHANNEL
+
+{message}
+
+⏳ Menunggu konfirmasi dari pemilik channel.
+Anda akan diminta memasukkan harga setelah channel mengkonfirmasi.
+
+🆔 **ID Verifikasi:** `{verification_id}`
+""")
+                else:
+                    del user_states[user_id]
+                    del pending_verifications[verification_id]
+                    await event.reply(f"""
+❌ **Gagal mengirim permintaan verifikasi!**
+
+{message}
+
+**Solusi:**
+1. Pastikan bot sudah menjadi admin di channel @{username_input}
+2. Berikan izin "Post Messages" ke bot
+3. Coba lagi dengan mengulangi proses ADD USERNAME
+
+Jika masalah berlanjut, hubungi admin.
+""")
+                return
+                
             else:
                 # Ini adalah user
                 target_id = entity.id
-                await event.reply(f"✅ Ditemukan: **{entity_name}** (USER)\n\nMengirim permintaan verifikasi ke pemilik username...")
+                await event.reply(f"✅ Ditemukan: **{entity_name}** (USER)")
+                
+                # Simpan data sementara
+                user_states[user_id]['username'] = username_input
                 user_states[user_id]['target_type'] = 'user'
                 user_states[user_id]['target_id'] = target_id
                 user_states[user_id]['target_name'] = entity_name
+                user_states[user_id]['step'] = 'waiting_verification'
+                
+                # Dapatkan info penjual
+                seller = await bot.get_entity(user_id)
+                seller_name = f"{seller.first_name or ''} {seller.last_name or ''}".strip() or seller.username or str(user_id)
+                
+                # Generate ID verifikasi
+                verification_id = generate_verification_id()
+                
+                # Simpan pending verifikasi
+                pending_verifications[verification_id] = {
+                    'username': username_input,
+                    'seller_id': user_id,
+                    'seller_name': seller_name,
+                    'price': None,
+                    'description': None,
+                    'target_id': target_id,
+                    'target_type': 'user',
+                    'created_at': datetime.now().isoformat(),
+                    'step': 'waiting_price'
+                }
+                
+                # Kirim verifikasi ke user
+                success, message = await send_verification_to_user(
+                    target_id, verification_id, username_input, user_id, seller_name, 0, ""
+                )
+                
+                if success:
+                    user_states[user_id]['verification_id'] = verification_id
+                    await event.reply(f"""
+✅ **Permintaan verifikasi telah dikirim ke pemilik username!**
+
+📝 **Username:** @{username_input}
+🏷️ **Tipe:** USER
+
+{message}
+
+⏳ Menunggu konfirmasi dari @{username_input}.
+Anda akan diminta memasukkan harga setelah user mengkonfirmasi.
+
+🆔 **ID Verifikasi:** `{verification_id}`
+""")
+                else:
+                    del user_states[user_id]
+                    del pending_verifications[verification_id]
+                    await event.reply(f"""
+❌ **Gagal mengirim permintaan verifikasi!**
+
+{message}
+
+**Solusi:**
+1. Pastikan @{username_input} sudah start bot dengan mengklik /start
+2. Pastikan @{username_input} tidak memblokir bot
+3. Coba lagi dengan mengulangi proses ADD USERNAME
+
+Jika masalah berlanjut, hubungi admin.
+""")
+                return
                 
         except Exception as e:
             await event.reply(f"❌ Username @{username_input} tidak ditemukan!\n\nError: {str(e)[:100]}")
             return
-        
-        user_states[user_id]['username'] = username_input
-        user_states[user_id]['step'] = 'waiting_price'
-        
-        msg = f"""
-╔══════════════════════════╗
-║      ➕ ADD USERNAME       ║
-╚══════════════════════════╝
-
-📝 **Username:** @{username_input}
-🏷️ **Tipe:** {user_states[user_id]['target_type'].upper()}
-👤 **Nama:** {user_states[user_id]['target_name']}
-
-Sekarang masukkan **harga jual** (dalam Rupiah).
-
-Contoh: `50000` atau `100000`
-
-━━━━━━━━━━━━━━━━━━━━━
-Ketik /cancel untuk membatalkan
-"""
-        await event.reply(msg)
-        return
     
     elif state.get('step') == 'waiting_price':
         try:
@@ -529,71 +641,40 @@ Ketik /cancel untuk membatalkan
         if description == '-':
             description = ""
         
-        username = user_states[user_id]['username']
-        price = user_states[user_id]['price']
-        target_type = user_states[user_id]['target_type']
-        target_id = user_states[user_id]['target_id']
-        target_name = user_states[user_id]['target_name']
-        
-        # Dapatkan info penjual
-        seller = await bot.get_entity(user_id)
-        seller_name = f"{seller.first_name or ''} {seller.last_name or ''}".strip() or seller.username or str(user_id)
-        
-        # Generate ID verifikasi
-        verification_id = generate_verification_id()
-        
-        # Simpan pending verifikasi
-        pending_verifications[verification_id] = {
-            'username': username,
-            'seller_id': user_id,
-            'seller_name': seller_name,
-            'price': price,
-            'description': description,
-            'target_id': target_id,
-            'target_type': target_type,
-            'created_at': datetime.now().isoformat()
-        }
-        
-        # Kirim verifikasi sesuai tipe
-        if target_type == 'channel':
-            success, message = await send_verification_to_channel(
-                target_id, verification_id, username, user_id, seller_name, price, description
-            )
-        else:
-            success, message = await send_verification_to_user(
-                target_id, verification_id, username, user_id, seller_name, price, description
-            )
-        
-        if success:
-            await event.reply(f"""
-✅ **Permintaan verifikasi telah dikirim!**
-
-📝 **Username:** @{username}
-🏷️ **Tipe:** {target_type.upper()}
-💰 **Harga:** Rp {format_price(price)}
-
-{message}
-
-⏳ Menunggu konfirmasi dari pemilik username.
-Anda akan menerima notifikasi setelah diverifikasi.
-
-🆔 **ID Verifikasi:** `{verification_id}`
-""")
-        else:
-            await event.reply(f"""
-❌ **Gagal mengirim permintaan verifikasi!**
-
-{message}
-
-Silakan coba lagi atau hubungi admin.
-""")
+        # Update pending verifikasi dengan harga dan deskripsi
+        verification_id = user_states[user_id].get('verification_id')
+        if verification_id and verification_id in pending_verifications:
+            pending_verifications[verification_id]['price'] = user_states[user_id]['price']
+            pending_verifications[verification_id]['description'] = description
         
         # Clear state
         del user_states[user_id]
         
+        await event.reply(f"""
+✅ **Data harga dan deskripsi telah disimpan!**
+
+📝 **Username:** @{user_states[user_id]['username']}
+💰 **Harga:** Rp {format_price(user_states[user_id]['price'])}
+📝 **Deskripsi:** {description if description else '-'}
+
+⏳ Menunggu konfirmasi dari pemilik username.
+Anda akan menerima notifikasi setelah diverifikasi.
+""")
+        
         # Kembali ke menu utama
         msg_menu, buttons = await main_menu(user_id, "")
         await event.respond(msg_menu, buttons=buttons)
+    
+    elif state.get('step') == 'waiting_verification':
+        # User sedang menunggu verifikasi, beri info
+        await event.reply("""
+⏳ **Menunggu Verifikasi**
+
+Permintaan verifikasi sedang dalam proses.
+Anda akan menerima notifikasi setelah pemilik username mengkonfirmasi.
+
+Gunakan menu lain atau tunggu sebentar.
+""")
 
 @bot.on(events.CallbackQuery(data="my_listings"))
 async def my_listings(event):
@@ -830,7 +911,7 @@ async def admin_list_pending(event):
         msg += f"🆔 ID: `{vid}`\n"
         msg += f"📝 Username: @{data['username']}\n"
         msg += f"👤 Penjual: {data['seller_name']}\n"
-        msg += f"💰 Harga: Rp {format_price(data['price'])}\n"
+        msg += f"💰 Harga: {format_price(data['price']) if data['price'] else 'Belum diisi'}\n"
         msg += f"🏷️ Target: {data['target_type']} (ID: {data['target_id']})\n"
         msg += f"📅 Dibuat: {data['created_at']}\n\n"
     
