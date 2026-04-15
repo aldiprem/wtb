@@ -2213,6 +2213,7 @@ async def main():
     
     # Start master bot
     await bot.start(bot_token=BOT_TOKEN)
+    await ubot.start()
     logger.info("✅ Giveaway Bot is running")
     
     # Start monitoring expired giveaways
