@@ -1525,13 +1525,32 @@
         }
     }
 
-    // Tambahkan event listener untuk tombol refresh di init() atau di bagian event listeners
+    // ==================== REFRESH PAGE (RELOAD BROWSER) ====================
+    async function refreshPage() {
+        hapticMedium();
+        
+        const refreshBtn = document.getElementById('refreshChatBtn');
+        if (refreshBtn) {
+            // Tambahkan class loading sebentar
+            refreshBtn.classList.add('loading');
+            refreshBtn.disabled = true;
+        }
+        
+        showToast('🔄 Memuat ulang halaman...', 'info', 1000);
+        
+        // Reload halaman setelah delay 500ms (agar toast terlihat)
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    }
+
+    // Event listener untuk tombol refresh
     function setupRefreshButton() {
         const refreshBtn = document.getElementById('refreshChatBtn');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                refreshChatAndMembership();
+                refreshPage();
             });
         }
     }
@@ -1936,8 +1955,9 @@
             // Setup modal
             setupParticipantsModal();
             setupViewAllButton();
+            
+            // 🔥 Setup refresh button (reload page)
             setupRefreshButton();
-            forceSaveUserState();
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
