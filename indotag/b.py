@@ -6,13 +6,14 @@ from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
 from telethon import TelegramClient, events, Button
+from telethon.errors import ChatAdminRequiredError, UserNotParticipantError
 import sys
 
 # Coba load .env dari beberapa lokasi
 env_paths = [
-    Path(__file__).parent / '.env',           # indotag/.env
-    Path(__file__).parent.parent / '.env',    # wtb/.env (root)
-    Path('/root/wtb/.env'),                   # absolute path
+    Path(__file__).parent / '.env',
+    Path(__file__).parent.parent / '.env',
+    Path('/root/wtb/.env'),
 ]
 
 loaded = False
@@ -32,7 +33,7 @@ from database.data import IndotagDatabase
 
 # Logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format='%(asctime)s - %name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
@@ -43,7 +44,6 @@ API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("INDOTAG_TOKEN", "")
 OWNER_ID = os.getenv("OWNER_ID", "")
 
-# Validasi konfigurasi
 if not API_ID or not API_HASH or not BOT_TOKEN:
     logger.error("❌ Missing configuration!")
     print("\n📋 Environment variables found:")
@@ -65,15 +65,19 @@ OWNER_ID = int(OWNER_ID) if OWNER_ID else 0
 db = IndotagDatabase(db_path="/root/wtb/indotag/database/indotag.db")
 bot = TelegramClient('indotag_bot_session', API_ID, API_HASH)
 
-# User states untuk multi-step input
+# User states
 user_states = {}
+pending_verifications = {}  # {verification_id: data}
 
 def format_price(price: int) -> str:
-    """Format price with thousand separator"""
     return f"{price:,}".replace(",", ".")
 
+def generate_verification_id() -> str:
+    import random
+    import string
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+
 async def main_menu(user_id: int, first_name: str = ""):
-    """Display main menu"""
     user = db.get_user(user_id)
     balance = user['balance'] if user else 0
     
@@ -110,11 +114,9 @@ async def start(event):
     last_name = user.last_name or ""
     username = user.username or ""
     
-    # Save user to database
     db.save_user(user_id, username, first_name, last_name)
     
     msg, buttons = await main_menu(user_id, first_name)
-    
     await event.respond(msg, buttons=buttons)
 
 @bot.on(events.CallbackQuery(data="main_menu"))
@@ -123,7 +125,6 @@ async def back_to_main(event):
     user_id = user.id
     first_name = user.first_name or ""
     
-    # Clear user state
     if user_id in user_states:
         del user_states[user_id]
     
@@ -147,11 +148,273 @@ Silakan kirimkan **username Telegram** yang ingin dijual.
 
 Contoh: `@johndoe` atau `johndoe`
 
+⚠️ **Catatan:**
+• Username akan diverifikasi terlebih dahulu
+• Pemilik username harus mengkonfirmasi
+• Jika channel, bot harus menjadi admin
+
 ━━━━━━━━━━━━━━━━━━━━━
 Ketik /cancel untuk membatalkan
 """
     
     await event.edit(msg, buttons=[[Button.inline("❌ Batal", data="main_menu")]])
+
+async def check_entity_type(entity):
+    """Cek apakah entity adalah channel atau user"""
+    if hasattr(entity, 'broadcast') and entity.broadcast:
+        return 'channel', entity.title or entity.username or str(entity.id)
+    elif hasattr(entity, 'megagroup') and entity.megagroup:
+        return 'supergroup', entity.title or entity.username or str(entity.id)
+    elif hasattr(entity, 'group') and entity.group:
+        return 'group', entity.title or entity.username or str(entity.id)
+    else:
+        return 'user', f"{entity.first_name or ''} {entity.last_name or ''}".strip() or entity.username or str(entity.id)
+
+async def send_verification_to_channel(channel_id, verification_id, username_input, seller_id, seller_name, price, description):
+    """Kirim verifikasi ke channel"""
+    try:
+        # Cek apakah bot admin di channel
+        try:
+            chat = await bot.get_entity(channel_id)
+            # Coba kirim pesan untuk cek akses
+            await bot.send_message(channel_id, "✅ Bot sedang melakukan pengecekan akses...")
+        except ChatAdminRequiredError:
+            return False, "Bot bukan admin di channel ini! Tambahkan bot sebagai admin terlebih dahulu."
+        except Exception as e:
+            return False, f"Tidak dapat mengakses channel: {str(e)[:100]}"
+        
+        msg = f"""
+🔐 **VERIFIKASI KEPEMILIKAN USERNAME**
+
+Seseorang ingin menjual username **@{username_input}** dengan detail:
+
+👤 **Penjual:** {seller_name} (ID: `{seller_id}`)
+💰 **Harga:** Rp {format_price(price)}
+📝 **Deskripsi:** {description if description else '-'}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ **Apakah Anda pemilik username @{username_input}?**
+
+Jika ya, klik tombol di bawah untuk mengkonfirmasi.
+Verifikasi ini diperlukan untuk memastikan kepemilikan username.
+
+━━━━━━━━━━━━━━━━━━━━━
+🆔 **ID Verifikasi:** `{verification_id}`
+"""
+        
+        buttons = [[Button.inline("✅ Konfirmasi Kepemilikan", data=f"verify_channel:{verification_id}:{username_input}")]]
+        
+        await bot.send_message(channel_id, msg, buttons=buttons)
+        return True, "Pesan verifikasi telah dikirim ke channel."
+        
+    except Exception as e:
+        return False, f"Gagal mengirim verifikasi: {str(e)[:100]}"
+
+async def send_verification_to_user(user_id, verification_id, username_input, seller_id, seller_name, price, description):
+    """Kirim verifikasi ke user (harus start bot dulu)"""
+    try:
+        # Cek apakah user bisa dihubungi
+        try:
+            await bot.send_message(user_id, "🔐 **Verifikasi Kepemilikan Username**\n\nSedang memproses verifikasi...")
+        except Exception as e:
+            return False, f"Tidak dapat mengirim pesan ke user @{username_input}. Pastikan user sudah start bot dan tidak memblokir bot."
+        
+        msg = f"""
+🔐 **VERIFIKASI KEPEMILIKAN USERNAME**
+
+Seseorang ingin menjual username **@{username_input}** dengan detail:
+
+👤 **Penjual:** {seller_name} (ID: `{seller_id}`)
+💰 **Harga:** Rp {format_price(price)}
+📝 **Deskripsi:** {description if description else '-'}
+
+━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ **Apakah Anda pemilik username @{username_input}?**
+
+Jika ya, klik tombol di bawah untuk mengkonfirmasi.
+Verifikasi ini diperlukan untuk memastikan kepemilikan username.
+
+━━━━━━━━━━━━━━━━━━━━━
+🆔 **ID Verifikasi:** `{verification_id}`
+"""
+        
+        buttons = [[Button.inline("✅ Konfirmasi Kepemilikan", data=f"verify_user:{verification_id}:{username_input}")]]
+        
+        await bot.send_message(user_id, msg, buttons=buttons)
+        return True, "Pesan verifikasi telah dikirim ke pemilik username."
+        
+    except Exception as e:
+        return False, f"Gagal mengirim verifikasi: {str(e)[:100]}"
+
+@bot.on(events.CallbackQuery(pattern=r"verify_channel:([^:]+):(.+)"))
+async def verify_channel_callback(event):
+    """Handle verifikasi dari channel"""
+    verification_id = event.data_match.group(1)
+    username_input = event.data_match.group(2)
+    channel_id = event.chat_id
+    
+    # Cek apakah verifikasi pending
+    if verification_id not in pending_verifications:
+        await event.answer("❌ Verifikasi sudah kadaluwarsa atau tidak ditemukan!", alert=True)
+        return
+    
+    data = pending_verifications[verification_id]
+    
+    # Verifikasi bahwa yang klik adalah channel itu sendiri
+    if data['target_id'] != channel_id:
+        await event.answer("❌ Hanya pemilik channel yang dapat melakukan verifikasi!", alert=True)
+        return
+    
+    # Konfirmasi verifikasi
+    await event.answer("✅ Verifikasi berhasil! Username akan ditambahkan ke marketplace.", alert=True)
+    
+    # Simpan username ke database dengan status available
+    success = db.add_username(
+        username_input, 
+        data['seller_id'], 
+        data['price'], 
+        data['description']
+    )
+    
+    if success:
+        # Update pesan di channel
+        await event.edit(f"""
+✅ **VERIFIKASI BERHASIL!**
+
+Username **@{username_input}** telah diverifikasi dan berhasil ditambahkan ke marketplace.
+
+📝 **Detail:**
+• Penjual: {data['seller_name']} (ID: `{data['seller_id']}`)
+• Harga: Rp {format_price(data['price'])}
+• Deskripsi: {data['description'] if data['description'] else '-'}
+
+Username sekarang tersedia untuk dijual.
+""")
+        
+        # Kirim notifikasi ke penjual
+        try:
+            await bot.send_message(
+                data['seller_id'],
+                f"""
+✅ **USERNAME BERHASIL DIVERIFIKASI!**
+
+Username **@{username_input}** telah dikonfirmasi oleh pemiliknya dan berhasil ditambahkan ke marketplace.
+
+📝 **Detail:**
+• Harga: Rp {format_price(data['price'])}
+• Status: Available
+
+Username sekarang dapat dilihat di menu MY LISTINGS Anda.
+"""
+            )
+        except:
+            pass
+        
+        # Hapus pending verifikasi
+        del pending_verifications[verification_id]
+        
+        # Kirim notifikasi ke admin
+        try:
+            await bot.send_message(
+                OWNER_ID,
+                f"""
+📢 **USERNAME BARU TERVERTIFIKASI!**
+
+Username: @{username_input}
+Penjual: {data['seller_name']} (ID: {data['seller_id']})
+Harga: Rp {format_price(data['price'])}
+"""
+            )
+        except:
+            pass
+    else:
+        await event.edit(f"❌ Gagal menambahkan username @{username_input}. Mungkin sudah terdaftar.")
+
+@bot.on(events.CallbackQuery(pattern=r"verify_user:([^:]+):(.+)"))
+async def verify_user_callback(event):
+    """Handle verifikasi dari user"""
+    verification_id = event.data_match.group(1)
+    username_input = event.data_match.group(2)
+    user_id = event.sender_id
+    
+    # Cek apakah verifikasi pending
+    if verification_id not in pending_verifications:
+        await event.answer("❌ Verifikasi sudah kadaluwarsa atau tidak ditemukan!", alert=True)
+        return
+    
+    data = pending_verifications[verification_id]
+    
+    # Verifikasi bahwa yang klik adalah user yang dimaksud
+    if data['target_id'] != user_id:
+        await event.answer("❌ Hanya pemilik username yang dapat melakukan verifikasi!", alert=True)
+        return
+    
+    # Konfirmasi verifikasi
+    await event.answer("✅ Verifikasi berhasil! Username akan ditambahkan ke marketplace.", alert=True)
+    
+    # Simpan username ke database dengan status available
+    success = db.add_username(
+        username_input, 
+        data['seller_id'], 
+        data['price'], 
+        data['description']
+    )
+    
+    if success:
+        # Update pesan ke user
+        await event.edit(f"""
+✅ **VERIFIKASI BERHASIL!**
+
+Username **@{username_input}** telah diverifikasi dan berhasil ditambahkan ke marketplace.
+
+📝 **Detail:**
+• Penjual: {data['seller_name']} (ID: `{data['seller_id']}`)
+• Harga: Rp {format_price(data['price'])}
+• Deskripsi: {data['description'] if data['description'] else '-'}
+
+Username sekarang tersedia untuk dijual.
+""")
+        
+        # Kirim notifikasi ke penjual
+        try:
+            await bot.send_message(
+                data['seller_id'],
+                f"""
+✅ **USERNAME BERHASIL DIVERIFIKASI!**
+
+Username **@{username_input}** telah dikonfirmasi oleh pemiliknya dan berhasil ditambahkan ke marketplace.
+
+📝 **Detail:**
+• Harga: Rp {format_price(data['price'])}
+• Status: Available
+
+Username sekarang dapat dilihat di menu MY LISTINGS Anda.
+"""
+            )
+        except:
+            pass
+        
+        # Hapus pending verifikasi
+        del pending_verifications[verification_id]
+        
+        # Kirim notifikasi ke admin
+        try:
+            await bot.send_message(
+                OWNER_ID,
+                f"""
+📢 **USERNAME BARU TERVERTIFIKASI!**
+
+Username: @{username_input}
+Penjual: {data['seller_name']} (ID: {data['seller_id']})
+Harga: Rp {format_price(data['price'])}
+"""
+            )
+        except:
+            pass
+    else:
+        await event.edit(f"❌ Gagal menambahkan username @{username_input}. Mungkin sudah terdaftar.")
 
 @bot.on(events.NewMessage)
 async def handle_add_username_input(event):
@@ -173,10 +436,33 @@ async def handle_add_username_input(event):
     if state.get('step') == 'waiting_username':
         username_input = event.raw_text.strip().lstrip('@')
         
-        # Validasi username
         import re
         if not re.match(r'^[a-zA-Z0-9_]{5,32}$', username_input):
             await event.reply("❌ Format username tidak valid!\n\nUsername hanya boleh berisi huruf, angka, underscore, panjang 5-32 karakter.")
+            return
+        
+        # Cek apakah username adalah channel atau user
+        try:
+            entity = await bot.get_entity(username_input)
+            entity_type, entity_name = await check_entity_type(entity)
+            
+            if entity_type in ['channel', 'supergroup', 'group']:
+                # Ini adalah channel/group
+                target_id = entity.id
+                await event.reply(f"✅ Ditemukan: **{entity_name}** ({entity_type.upper()})\n\nMengirim permintaan verifikasi ke channel...")
+                user_states[user_id]['target_type'] = 'channel'
+                user_states[user_id]['target_id'] = target_id
+                user_states[user_id]['target_name'] = entity_name
+            else:
+                # Ini adalah user
+                target_id = entity.id
+                await event.reply(f"✅ Ditemukan: **{entity_name}** (USER)\n\nMengirim permintaan verifikasi ke pemilik username...")
+                user_states[user_id]['target_type'] = 'user'
+                user_states[user_id]['target_id'] = target_id
+                user_states[user_id]['target_name'] = entity_name
+                
+        except Exception as e:
+            await event.reply(f"❌ Username @{username_input} tidak ditemukan!\n\nError: {str(e)[:100]}")
             return
         
         user_states[user_id]['username'] = username_input
@@ -188,6 +474,8 @@ async def handle_add_username_input(event):
 ╚══════════════════════════╝
 
 📝 **Username:** @{username_input}
+🏷️ **Tipe:** {user_states[user_id]['target_type'].upper()}
+👤 **Nama:** {user_states[user_id]['target_name']}
 
 Sekarang masukkan **harga jual** (dalam Rupiah).
 
@@ -221,6 +509,7 @@ Ketik /cancel untuk membatalkan
 ╚══════════════════════════╝
 
 📝 **Username:** @{user_states[user_id]['username']}
+🏷️ **Tipe:** {user_states[user_id]['target_type'].upper()}
 💰 **Harga:** Rp {format_price(price)}
 
 Sekarang masukkan **deskripsi** (opsional).
@@ -242,26 +531,67 @@ Ketik /cancel untuk membatalkan
         
         username = user_states[user_id]['username']
         price = user_states[user_id]['price']
+        target_type = user_states[user_id]['target_type']
+        target_id = user_states[user_id]['target_id']
+        target_name = user_states[user_id]['target_name']
         
-        # Simpan ke database
-        success = db.add_username(username, user_id, price, description)
+        # Dapatkan info penjual
+        seller = await bot.get_entity(user_id)
+        seller_name = f"{seller.first_name or ''} {seller.last_name or ''}".strip() or seller.username or str(user_id)
+        
+        # Generate ID verifikasi
+        verification_id = generate_verification_id()
+        
+        # Simpan pending verifikasi
+        pending_verifications[verification_id] = {
+            'username': username,
+            'seller_id': user_id,
+            'seller_name': seller_name,
+            'price': price,
+            'description': description,
+            'target_id': target_id,
+            'target_type': target_type,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        # Kirim verifikasi sesuai tipe
+        if target_type == 'channel':
+            success, message = await send_verification_to_channel(
+                target_id, verification_id, username, user_id, seller_name, price, description
+            )
+        else:
+            success, message = await send_verification_to_user(
+                target_id, verification_id, username, user_id, seller_name, price, description
+            )
         
         if success:
-            msg = f"""
-✅ **Username Berhasil Ditambahkan!**
+            await event.reply(f"""
+✅ **Permintaan verifikasi telah dikirim!**
 
 📝 **Username:** @{username}
+🏷️ **Tipe:** {target_type.upper()}
 💰 **Harga:** Rp {format_price(price)}
-📝 **Deskripsi:** {description if description else '-'}
 
-Username akan muncul di daftar MY LISTINGS Anda.
-"""
-            await event.reply(msg)
+{message}
+
+⏳ Menunggu konfirmasi dari pemilik username.
+Anda akan menerima notifikasi setelah diverifikasi.
+
+🆔 **ID Verifikasi:** `{verification_id}`
+""")
         else:
-            await event.reply("❌ Gagal menambahkan username. Mungkin username sudah terdaftar di sistem.")
+            await event.reply(f"""
+❌ **Gagal mengirim permintaan verifikasi!**
+
+{message}
+
+Silakan coba lagi atau hubungi admin.
+""")
         
-        # Clear state dan kembali ke menu
+        # Clear state
         del user_states[user_id]
+        
+        # Kembali ke menu utama
         msg_menu, buttons = await main_menu(user_id, "")
         await event.respond(msg_menu, buttons=buttons)
 
@@ -296,9 +626,10 @@ Total {len(usernames)} username terdaftar
     
     for i, u in enumerate(usernames, 1):
         status_icon = "✅" if u['status'] == 'available' else "❌"
+        status_text = "Available" if u['status'] == 'available' else "Terjual"
         msg += f"\n{i}. {status_icon} **@{u['username']}**\n"
         msg += f"   💰 Rp {format_price(u['price'])}\n"
-        msg += f"   📊 Status: {u['status']}\n"
+        msg += f"   📊 Status: {status_text}\n"
         if u.get('description'):
             msg += f"   📝 {u['description'][:50]}\n"
         msg += f"   🆔 ID: `{u['id']}`\n"
@@ -368,7 +699,6 @@ async def handle_delete_listing(event):
     
     del user_states[user_id]
     
-    # Kembali ke menu utama
     user = await bot.get_entity(user_id)
     msg, buttons = await main_menu(user_id, user.first_name or "")
     await event.respond(msg, buttons=buttons)
@@ -384,7 +714,6 @@ async def profile(event):
         await event.edit(msg, buttons=buttons)
         return
     
-    # Hitung total listing
     usernames = db.get_my_usernames(user_id)
     total_listings = len(usernames)
     available_listings = len([u for u in usernames if u['status'] == 'available'])
@@ -409,7 +738,7 @@ async def profile(event):
 
 ━━━━━━━━━━━━━━━━━━━━━
 📌 **Fitur:**
-• Jual username Telegram
+• Jual username Telegram (dengan verifikasi)
 • Lihat daftar username sendiri
 • Hapus listing yang belum terjual
 
@@ -487,25 +816,23 @@ async def admin_stats(event):
     
     await event.reply(msg)
 
-@bot.on(events.NewMessage(pattern="^/listall$"))
-async def admin_list_all_usernames(event):
+@bot.on(events.NewMessage(pattern="^/pending$"))
+async def admin_list_pending(event):
     if event.sender_id != OWNER_ID:
         return
     
-    usernames = db.get_all_available_usernames(limit=100)
-    
-    if not usernames:
-        await event.reply("Belum ada username yang terdaftar")
+    if not pending_verifications:
+        await event.reply("Tidak ada verifikasi pending.")
         return
     
-    msg = "📋 **SEMUA USERNAME TERDAFTAR**\n\n"
-    for u in usernames:
-        msg += f"🆔 ID: `{u['id']}` | @{u['username']}\n"
-        msg += f"   💰 Rp {format_price(u['price'])}\n"
-        msg += f"   👤 Seller ID: `{u['seller_id']}`\n"
-        if u.get('description'):
-            msg += f"   📝 {u['description'][:50]}\n"
-        msg += "\n"
+    msg = "⏳ **PENDING VERIFICATIONS**\n\n"
+    for vid, data in pending_verifications.items():
+        msg += f"🆔 ID: `{vid}`\n"
+        msg += f"📝 Username: @{data['username']}\n"
+        msg += f"👤 Penjual: {data['seller_name']}\n"
+        msg += f"💰 Harga: Rp {format_price(data['price'])}\n"
+        msg += f"🏷️ Target: {data['target_type']} (ID: {data['target_id']})\n"
+        msg += f"📅 Dibuat: {data['created_at']}\n\n"
     
     await event.reply(msg)
 
@@ -514,10 +841,8 @@ async def admin_list_all_usernames(event):
 async def main():
     logger.info("🚀 Starting INDOTAG Market Bot...")
     
-    # Initialize database
     db.init_database()
     
-    # Start bot
     await bot.start(bot_token=BOT_TOKEN)
     logger.info("✅ INDOTAG Bot is running")
     
