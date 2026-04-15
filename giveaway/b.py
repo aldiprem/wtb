@@ -532,16 +532,12 @@ async def menu_create_giveaway(event, user_id: int = None):
 # Tambahkan fungsi ini setelah fungsi check_pending_membership() atau di bagian utility functions
 
 async def check_user_boost(channel_username: str, user_id: int) -> dict:
-    """
-    Mengecek apakah user sudah boost channel tertentu
-    Returns: dict dengan status, is_boost, dan detail
-    """
     try:
         # Format channel username (hapus @ jika ada)
         channel = channel_username.lstrip('@')
         
         # Gunakan GetBoostsStatusRequest untuk mengecek status boost channel
-        result = await bot(functions.premium.GetBoostsStatusRequest(
+        result = await ubot(functions.premium.GetBoostsStatusRequest(
             peer=channel
         ))
         
