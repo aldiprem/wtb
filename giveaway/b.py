@@ -38,6 +38,8 @@ sys.path.append('/root/wtb')
 from giveaway.database.giveaway import GiveawayDatabase
 import sqlite3
 import pytz
+from telethon.tl import functions, types
+from telethon import errors
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
@@ -56,6 +58,7 @@ user_state = {}
 user_chats = {}
 loading_message = {}
 JAKARTA_TZ = pytz.timezone('Asia/Jakarta')
+OWNER_ID = int(os.getenv("OWNER_ID", 0))
 
 db = GiveawayDatabase()
 bot = TelegramClient('giveaway_bot_session', API_ID, API_HASH)
@@ -556,6 +559,75 @@ async def toggle_captcha(event):
     fake_event = FakeEvent(user_id, bot)
     await event.delete()
     await menu_create_giveaway(fake_event, user_id)
+
+@bot.on(events.NewMessage(pattern=r"^([+\-#%])fsub(?:\s+(.*))?$"))
+async def force_sub_manager(event):
+    if event.sender_id != OWNER_ID:
+        return
+
+    mode = event.pattern_match.group(1)
+    args = event.pattern_match.group(2)
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if mode == "#":
+        db.clear_all_force_subs()
+        return await event.reply("♻️ **Semua Force Subs berhasil di-reset.**")
+
+    if mode == "%":
+        rows = db.get_all_force_subs()
+        if not rows:
+            return await event.reply("ℹ️ Tidak ada force subs aktif.")
+        text = "**📢 DAFTAR FORCE SUBS:**\n\n"
+        for i, r in enumerate(rows, 1):
+            text += f"**{i}.** `{r['chat_id']}`\n• Type: `{r['chat_type']}`\n• Title: {r['title'] or '-'}\n• Username: @{r['username'] or '-'}\n• Link: {r['invite_link'] or '-'}\n\n"
+        return await event.reply(text, link_preview=False)
+
+    if not args:
+        return await event.reply("❌ Gunakan ID, contoh:\n`+fsub -100xxx -100yyy`")
+
+    ids = args.split()
+    success = 0
+
+    for cid in ids:
+        try:
+            chat_id = int(cid)
+        except ValueError:
+            continue
+
+        if mode == "-":
+            if db.remove_force_sub(str(chat_id)):
+                success += 1
+            continue
+
+        try:
+            existing = db.get_force_sub(str(chat_id))
+            if existing:
+                chat_type, title, username, invite_link = existing['chat_type'], existing['title'], existing['username'], existing['invite_link']
+            else:
+                chat = await bot.get_entity(chat_id)
+                chat_type = "channel" if isinstance(chat, types.Channel) and chat.broadcast else "group"
+                title = getattr(chat, "title", None)
+                username = getattr(chat, "username", None)
+                invite_link = None
+                try:
+                    invite = await bot(functions.messages.ExportChatInviteRequest(peer=chat, expire_date=None, usage_limit=None))
+                    invite_link = invite.link
+                except errors.ChatAdminRequiredError:
+                    print(f"[FSUB] Bot bukan admin di {chat_id}")
+                except Exception as e:
+                    print(f"[FSUB] Gagal buat invite {chat_id}: {e}")
+
+            db.add_force_sub(str(chat_id), chat_type, title or '', username or '', invite_link or '')
+            success += 1
+        except Exception as e:
+            print(f"⚠️ Gagal tambah force sub {chat_id}: {e}")
+            continue
+
+    if mode == "+":
+        await event.reply(f"✅ **Force Subs ditambahkan:** {success}")
+    elif mode == "-":
+        await event.reply(f"🗑️ **Force Subs dihapus:** {success}")
 
 @bot.on(events.NewMessage(pattern="^/start$"))
 async def start(event):
@@ -1658,6 +1730,24 @@ async def start_giveaway_handler(event):
     creator_name = f"{creator.first_name or ''} {creator.last_name or ''}".strip() or creator.username or str(user_id)
     creator_mention = f"[{creator_name}](tg://user?id={user_id})"
     
+    # ============ TAMBAHKAN FORCE SUBS KE SYARAT ============
+    force_subs = db.get_all_force_subs()
+    force_subs_chat_ids = [fs['chat_id'] for fs in force_subs]
+    
+    if force_subs_chat_ids:
+        user_syarat = state.get('syarat', 'None')
+        if user_syarat == 'None' or not user_syarat:
+            syarat = ', '.join(force_subs_chat_ids)
+        else:
+            existing = [s.strip() for s in user_syarat.split(',')]
+            for fs in force_subs_chat_ids:
+                if fs not in existing:
+                    existing.append(fs)
+            syarat = ', '.join(existing)
+    else:
+        syarat = state.get('syarat', 'None')
+    # ============ END FORCE SUBS ============
+    
     # ============ PENTING: SIMPAN DATA KE TABEL GIVEAWAYS TERLEBIH DAHULU ============
     # Pilih chat pertama sebagai default untuk tabel giveaways
     first_chat = saved_chats[0]
@@ -1782,7 +1872,21 @@ async def start_giveaway_handler(event):
             except Exception as e:
                 logger.warning(f"Failed to save chat info for {chat_id}: {e}")
             # ============ END TAMBAHAN ============
-            
+
+            for fs in force_subs:
+                try:
+                    db.save_chat_info(
+                        giveaway_id=giveaway_id,
+                        chat_id=fs['chat_id'],
+                        chat_title=fs.get('title') or f"Force Sub {fs['chat_id']}",
+                        chat_username=fs.get('username') or '',
+                        chat_photo_url='',
+                        chat_type=fs.get('chat_type', 'channel')
+                    )
+                    logger.info(f"✅ Saved force sub {fs['chat_id']} to giveaway {giveaway_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to save force sub {fs['chat_id']}: {e}")
+
             sent_messages.append({
                 'chat_id': chat_id,
                 'message_id': msg.id,

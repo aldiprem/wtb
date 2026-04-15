@@ -693,3 +693,8 @@ def update_check_result():
     except Exception as e:
         print(f"Error in update_check_result: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@giveaway_bp.route('/force-subs', methods=['GET'])
+def get_force_subs():
+    force_subs = db.get_all_force_subs()
+    return jsonify({'success': True, 'force_subs': force_subs})

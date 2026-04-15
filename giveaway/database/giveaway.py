@@ -125,6 +125,73 @@ class GiveawayDatabase:
         
         conn.commit()
         self.init_chat_info_table()
+        self.init_force_subs_table()
+
+    def init_force_subs_table(self):
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS force_subs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id TEXT UNIQUE NOT NULL,
+                    chat_type TEXT DEFAULT 'channel',
+                    title TEXT,
+                    username TEXT,
+                    invite_link TEXT,
+                    added_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+
+    def add_force_sub(self, chat_id: str, chat_type: str = 'channel', title: str = '', 
+                    username: str = '', invite_link: str = '') -> bool:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                cursor.execute('''
+                    INSERT OR REPLACE INTO force_sums 
+                    (chat_id, chat_type, title, username, invite_link, added_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (chat_id, chat_type, title, username, invite_link, now))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error adding force sub: {e}")
+            return False
+
+    def remove_force_sub(self, chat_id: str) -> bool:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM force_subs WHERE chat_id = ?', (chat_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error removing force sub: {e}")
+            return False
+
+    def get_all_force_subs(self) -> List[Dict[str, Any]]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT chat_id, chat_type, title, username, invite_link FROM force_subs ORDER BY added_at DESC')
+                rows = cursor.fetchall()
+                return [{'chat_id': r[0], 'chat_type': r[1], 'title': r[2], 'username': r[3], 'invite_link': r[4]} for r in rows]
+        except Exception as e:
+            print(f"Error getting force subs: {e}")
+            return []
+
+    def clear_all_force_subs(self) -> bool:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM force_subs')
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error clearing force subs: {e}")
+            return False
 
     def save_user_check_state(self, giveaway_id: str, giveaway_code: str, user_id: int, 
                             username: str = "", first_name: str = "", total_chats: int = 0) -> bool:
