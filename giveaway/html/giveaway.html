@@ -156,6 +156,32 @@
             </div>
         </div>
 
+        <!-- Participation Avatars Card -->
+        <div class="participation-avatars-card" id="participationAvatarsCard" style="display: none;">
+            <div class="avatars-header">
+                <div class="avatars-title">
+                    <i class="fas fa-users"></i>
+                    <span>Peserta Terbaru</span>
+                </div>
+                <button class="avatars-view-btn" id="viewAllParticipantsBtn">
+                    <span>Lihat Semua</span>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="avatars-stack" id="avatarsStack"></div>
+        </div>
+
+        <!-- All Participants Modal -->
+        <div class="modal-overlay" id="participantsModal">
+            <div class="modal-container" style="max-width: 340px;">
+                <div class="modal-header" style="padding: 12px 16px;">
+                    <h3 style="font-size: 14px;"><i class="fas fa-users"></i> Daftar Peserta</h3>
+                    <button class="modal-close" id="closeParticipantsModal">&times;</button>
+                </div>
+                <div class="modal-body" id="participantsListContainer" style="padding: 12px 16px;"></div>
+            </div>
+        </div>
+
         <!-- Floating Action Button (FAB) -->
         <div class="fab-container" id="fabContainer">
             <button class="fab-button" id="participateBtn" disabled>
