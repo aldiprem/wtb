@@ -722,27 +722,6 @@ body {
     flex: 1;
 }
 
-/* Efek Sudut Putih 3D untuk Modal Body - TETAP DIBAWAH SCROLL */
-.modal-body::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 18px;
-    padding: 1px;
-    background: linear-gradient(165deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(255, 255, 255, 0.4) 100%
-    );
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    z-index: 0;
-}
-
 /* Konten di dalam modal-body harus di atas pseudo-element */
 .modal-body > * {
     position: relative;
