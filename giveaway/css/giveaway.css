@@ -2284,3 +2284,65 @@ body.modal-open {
     font-size: 11px;
     color: var(--text-muted);
 }
+
+/* Chat Refresh Button */
+.chat-refresh-btn {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+    margin-left: auto;
+}
+
+.chat-refresh-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 10px;
+    padding: 1px;
+    background: linear-gradient(155deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 30%, 
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.chat-refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: rotate(30deg);
+    color: var(--primary);
+}
+
+.chat-refresh-btn:active {
+    transform: rotate(30deg) scale(0.95);
+}
+
+.chat-refresh-btn i {
+    font-size: 14px;
+}
+
+/* Loading spinner inline untuk refresh */
+.chat-refresh-btn.loading {
+    pointer-events: none;
+}
+
+.chat-refresh-btn.loading i {
+    animation: spin 0.6s linear infinite;
+}

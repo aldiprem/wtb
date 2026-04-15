@@ -1435,9 +1435,65 @@
         }
     }
 
-    async function pollUserCheckState() {
+    async function refreshChatAndMembership() {
+        hapticMedium();
+        
+        const refreshBtn = document.getElementById('refreshChatBtn');
+        if (!refreshBtn) return;
+        
+        // Tambahkan class loading
+        refreshBtn.classList.add('loading');
+        refreshBtn.disabled = true;
+        
+        showToast('Memperbarui data chat...', 'info', 1500);
+        
+        try {
+            // 1. Refresh chat info (render ulang dari database)
+            await renderChatInfo();
+            
+            // 2. Refresh user check state (polling ulang untuk cek membership)
+            if (giveawayData?.code && telegramUser?.id && !hasParticipated) {
+                // Cek ulang user state dari database
+                await pollUserCheckState(true); // force refresh
+                
+                // Update requirement subscribe status
+                for (let i = 0; i < requirementsList.length; i++) {
+                    if (requirementsList[i].type === 'subscribe') {
+                        requirementsList[i].completed = userCheckState.isAllMember;
+                        requirementsList[i].text = userCheckState.isAllMember ? '✓ Bergabung Chat ID' : 'Bergabung Chat ID';
+                        break;
+                    }
+                }
+                
+                renderRequirements();
+                checkParticipationEligibility();
+                
+                if (userCheckState.isAllMember) {
+                    hapticSuccess();
+                    showToast('✅ Anda sudah bergabung ke semua chat!', 'success');
+                } else {
+                    hapticWarning();
+                    showToast('⚠️ Anda belum bergabung ke semua chat yang diperlukan', 'warning');
+                }
+            } else {
+                showToast('Data chat diperbarui', 'success');
+            }
+            
+        } catch (error) {
+            console.error('Error refreshing chat:', error);
+            hapticError();
+            showToast('Gagal memperbarui data chat', 'error');
+        } finally {
+            // Hapus class loading
+            refreshBtn.classList.remove('loading');
+            refreshBtn.disabled = false;
+        }
+    }
+
+    // Modifikasi fungsi pollUserCheckState untuk support force refresh
+    async function pollUserCheckState(force = false) {
         if (!giveawayData?.code || !telegramUser?.id) return;
-        if (userCheckState.status === 'done' || userCheckState.status === 'reject') return;
+        if (!force && (userCheckState.status === 'done' || userCheckState.status === 'reject')) return;
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/giveaway/user-state/${giveawayData.code}/${telegramUser.id}`);
@@ -1459,13 +1515,24 @@
                 renderRequirements();
                 checkParticipationEligibility();
                 
-                // Jika sudah selesai (done/reject), stop polling
-                if (data.status === 'done' || data.status === 'reject') {
+                // Jika sudah selesai (done/reject) dan bukan force, stop polling
+                if (!force && (data.status === 'done' || data.status === 'reject')) {
                     stopUserStatePolling();
                 }
             }
         } catch (error) {
             console.error('Error polling user state:', error);
+        }
+    }
+
+    // Tambahkan event listener untuk tombol refresh di init() atau di bagian event listeners
+    function setupRefreshButton() {
+        const refreshBtn = document.getElementById('refreshChatBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                refreshChatAndMembership();
+            });
         }
     }
 
@@ -1840,6 +1907,7 @@
             // Setup modal
             setupParticipantsModal();
             setupViewAllButton();
+            setupRefreshButton();
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
