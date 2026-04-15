@@ -1511,13 +1511,11 @@
         const totalParticipants = participants.length;
         const sortedParticipants = [...participants];
         
-        // Ambil maksimal 5 avatar untuk ditampilkan
         const displayParticipants = sortedParticipants.slice(-5);
         const remainingCount = totalParticipants - 5;
         
         let html = '';
         
-        // Render avatar stack
         for (let i = 0; i < displayParticipants.length; i++) {
             const p = displayParticipants[i];
             const userName = p.first_name || p.username || 'User';
@@ -1543,19 +1541,16 @@
             `;
         }
         
-        // Tentukan teks yang ditampilkan di samping avatar stack
         let sideText = '';
         if (totalParticipants > 0) {
             if (totalParticipants < 5) {
-                // Kurang dari 5 peserta: tampilkan "X Peserta..."
                 sideText = `<span class="avatars-side-text">${totalParticipants} Peserta...</span>`;
             } else if (remainingCount > 0) {
-                // Lebih dari 5 peserta: tampilkan "+X Peserta Lainnya..."
                 sideText = `<span class="avatars-side-text">+${remainingCount} Peserta Lainnya...</span>`;
             }
         }
         
-        // Gabungkan avatar stack dengan side text
+        // RENDER LENGKAP DENGAN TOMBOL
         const containerHtml = `
             <div class="avatars-stack-wrapper">
                 <div class="avatars-stack">
@@ -1587,11 +1582,7 @@
         // Event listener untuk tombol show all participants
         const viewBtn = document.getElementById('viewAllParticipantsBtn');
         if (viewBtn) {
-            // Hapus listener lama
-            const newViewBtn = viewBtn.cloneNode(true);
-            viewBtn.parentNode.replaceChild(newViewBtn, viewBtn);
-            
-            newViewBtn.addEventListener('click', (e) => {
+            viewBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showAllParticipantsModal();
             });
