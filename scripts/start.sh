@@ -134,7 +134,6 @@ kill_giveaway_bot() {
     
     # Hapus file session Telethon
     rm -f giveaway/giveaway_bot_session.session 2>/dev/null
-    rm -f giveaway/*.session 2>/dev/null
     
     # Hentikan screen session jika ada
     if screen -list | grep -q "giveaway_bot"; then
