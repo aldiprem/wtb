@@ -7,7 +7,7 @@ import random
 import string
 
 class IndotagDatabase:
-    def __init__(self, db_path: str = "/root/wtb/indotag/indotag.db"):
+    def __init__(self, db_path: str = "/root/wtb/indotag/database/indotag.db"):
         self.db_path = db_path
         self.timezone = pytz.timezone('Asia/Jakarta')
         self.init_database()
