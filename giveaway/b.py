@@ -52,6 +52,7 @@ logger = logging.getLogger(__name__)
 API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_GIVEAWAY", "")
+PHONE_NUMBER = os.getenv("PHONE_NUMBER", "")
 
 DEFAULT_DELIMITERS['^^'] = lambda *a, **k: MessageEntityBlockquote(*a, **k)
 user_state = {}
@@ -63,6 +64,7 @@ CHANNEL_INFO = "@giftfreebies"
 
 db = GiveawayDatabase()
 bot = TelegramClient('giveaway_bot_session', API_ID, API_HASH)
+ubot = TelegramClient('giveaway_userbot_session', API_ID, API_HASH)
 
 def get_jakarta_time() -> datetime:
     """Get current time in Asia/Jakarta timezone"""
@@ -2212,6 +2214,7 @@ async def main():
     
     # Start master bot
     await bot.start(bot_token=BOT_TOKEN)
+    await ubot.start(PHONE_NUMBER)
     logger.info("✅ Giveaway Bot is running")
     
     # Start monitoring expired giveaways
