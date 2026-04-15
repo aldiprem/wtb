@@ -1731,6 +1731,7 @@ async def start_giveaway_handler(event):
     creator = await bot.get_entity(user_id)
     creator_name = f"{creator.first_name or ''} {creator.last_name or ''}".strip() or creator.username or str(user_id)
     creator_mention = f"[{creator_name}](tg://user?id={user_id})"
+    creator_username = f"@{creator.username}" if creator.username else f"ID: {user_id}"
     
     # ============ TAMBAHKAN FORCE SUBS KE SYARAT ============
     force_subs = db.get_all_force_subs()
@@ -1807,6 +1808,9 @@ async def start_giveaway_handler(event):
     success_chats = []
     failed_chats = []
     
+    # Kumpulkan info chat untuk dikirim ke channel info
+    channel_chats_info = []
+    
     for chat in saved_chats:
         chat_id = int(chat.get('chat_id'))
         chat_title = chat.get('title', 'Unknown')
@@ -1815,20 +1819,25 @@ async def start_giveaway_handler(event):
         chat_username = chat.get('username', '')
         chat_display = f"📺 **CHAT ID:** [{chat_title}](https://t.me/{chat_username}) (`{chat_id}`)" if chat_username else f"📺 **CHAT ID:** {chat_title} (`{chat_id}`)"
         
+        # Simpan info chat untuk channel info
+        if chat_username:
+            channel_chats_info.append(f"• {chat_title} (@{chat_username})")
+        else:
+            channel_chats_info.append(f"• {chat_title} (ID: {chat_id})")
+        
         # Format link
         link_text = ""
         if link:
             links = link.split('\n')
             link_text = "🔗 **ADS LINK:**\n" + "\n".join([f"   {i+1}. {l}" for i, l in enumerate(links)])
         
-        message_text = f"""🎉 **GIVEAWAY STARTED** 🎉
+        message_text = f"""
+🎉 **GIVEAWAY STARTED** 🎉
 
 ━━━━━━━━━━━━━━━━━━━━━
 🎁 **HADIAH:**
 {formatted_prize}
 ━━━━━━━━━━━━━━━━━━━━━
-🚨 **SYARAT:** {syarat if syarat != 'None' else 'Tidak ada syarat khusus'}
-
 {link_text if link_text else ''}
 
 {chat_display}
@@ -1949,6 +1958,55 @@ async def start_giveaway_handler(event):
                 )
             except Exception as e:
                 print(f"Error editing message: {e}")
+    
+    # ============ KIRIM NOTIFIKASI KE CHANNEL INFO ============
+    try:
+        # Format hadiah untuk channel info
+        channel_prize_text = '\n'.join([f"   {i+1}. {h}" for i, h in enumerate(hadiah_list)])
+        
+        # Format chat list untuk channel info
+        channel_chats_text = '\n'.join(channel_chats_info)
+        
+        # Format force subs jika ada
+        force_subs_text = ""
+        if force_subs:
+            force_subs_list = []
+            for fs in force_subs:
+                fs_title = fs.get('title') or f"Force Sub {fs['chat_id']}"
+                fs_username = fs.get('username')
+                if fs_username:
+                    force_subs_list.append(f"   • {fs_title} (@{fs_username})")
+                else:
+                    force_subs_list.append(f"   • {fs_title} (ID: {fs['chat_id']})")
+            force_subs_text = "\n📢 **FORCE SUBS:**\n" + '\n'.join(force_subs_list)
+        
+        # Buat pesan untuk channel info (tanpa button)
+        channel_message = f"""
+🎉 **GIVEAWAY DIBUAT!** 🎉
+
+━━━━━━━━━━━━━━━━━━━━━
+🆔 **ID GIVEAWAY:** `{giveaway_id}`
+👤 **CREATOR:** {creator_name} ({creator_username})
+━━━━━━━━━━━━━━━━━━━━━
+🎁 **HADIAH:**
+{channel_prize_text}
+━━━━━━━━━━━━━━━━━━━━━
+📺 **TARGET CHAT:**
+{channel_chats_text}
+{force_subs_text}
+━━━━━━━━━━━━━━━━━━━━━
+⏰ **BERAKHIR:** {end_time.strftime('%d %B %Y %H:%M:%S WIB')}
+━━━━━━━━━━━━━━━━━━━━━
+#{giveaway_id}
+"""
+        
+        # Kirim ke channel info
+        await bot.send_message(CHANNEL_INFO, channel_message)
+        logger.info(f"✅ Sent notification to channel {CHANNEL_INFO} for giveaway {giveaway_id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to send notification to channel {CHANNEL_INFO}: {e}")
+    # ============ END NOTIFIKASI KE CHANNEL INFO ============
     
     # Hapus user_state
     if user_id in user_state:
