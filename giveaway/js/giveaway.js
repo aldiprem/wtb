@@ -1883,6 +1883,35 @@
         }
     }
 
+    async function forceSaveUserState() {
+        if (!giveawayData?.code || !telegramUser?.id) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/user-state`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    giveaway_code: giveawayData.code,
+                    giveaway_id: giveawayData.id,
+                    user_id: telegramUser.id,
+                    username: telegramUser.username || '',
+                    first_name: telegramUser.first_name || '',
+                    total_chats: 0
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                console.log('User state re-saved');
+                // Reset status untuk polling ulang
+                userCheckState.status = 'pending';
+                userCheckState.isAllMember = false;
+                startUserStatePolling();
+            }
+        } catch (error) {
+            console.error('Error re-saving user state:', error);
+        }
+    }
+
     function init() {
         initTelegram();
         addAvatarsStyles();
@@ -1908,6 +1937,7 @@
             setupParticipantsModal();
             setupViewAllButton();
             setupRefreshButton();
+            forceSaveUserState();
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
