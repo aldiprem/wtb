@@ -1837,7 +1837,7 @@ async def start_giveaway_handler(event):
 
 ━━━━━━━━━━━━━━━━━━━━━
 🎁 **HADIAH:**
-{formatted_prize}
+^^{formatted_prize}^^
 ━━━━━━━━━━━━━━━━━━━━━
 {link_text if link_text else ''}
 
@@ -1990,7 +1990,7 @@ async def start_giveaway_handler(event):
 👤 **CREATOR:** {creator_name} ({creator_username})
 ━━━━━━━━━━━━━━━━━━━━━
 🎁 **HADIAH:**
-{channel_prize_text}
+^^{channel_prize_text}^^
 ━━━━━━━━━━━━━━━━━━━━━
 📺 **TARGET CHAT:**
 {channel_chats_text}
