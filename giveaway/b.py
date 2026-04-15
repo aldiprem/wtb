@@ -59,6 +59,7 @@ user_chats = {}
 loading_message = {}
 JAKARTA_TZ = pytz.timezone('Asia/Jakarta')
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
+CHANNEL_INFO = "@giftfreebies"
 
 db = GiveawayDatabase()
 bot = TelegramClient('giveaway_bot_session', API_ID, API_HASH)
