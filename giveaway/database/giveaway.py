@@ -143,6 +143,26 @@ class GiveawayDatabase:
             ''')
             conn.commit()
 
+    def get_force_sub(self, chat_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific force sub by chat_id"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT chat_id, chat_type, title, username, invite_link FROM force_subs WHERE chat_id = ?', (chat_id,))
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        'chat_id': row[0],
+                        'chat_type': row[1],
+                        'title': row[2],
+                        'username': row[3],
+                        'invite_link': row[4]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting force sub: {e}")
+            return None
+
     def add_force_sub(self, chat_id: str, chat_type: str = 'channel', title: str = '', 
                     username: str = '', invite_link: str = '') -> bool:
         try:

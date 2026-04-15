@@ -602,9 +602,11 @@ async def force_sub_manager(event):
 
         try:
             existing = db.get_force_sub(str(chat_id))
+            print(f"[DEBUG] existing = {existing}")
             if existing:
                 chat_type, title, username, invite_link = existing['chat_type'], existing['title'], existing['username'], existing['invite_link']
             else:
+                print(f"[DEBUG] Getting chat entity for {chat_id}")
                 chat = await bot.get_entity(chat_id)
                 chat_type = "channel" if isinstance(chat, types.Channel) and chat.broadcast else "group"
                 title = getattr(chat, "title", None)
