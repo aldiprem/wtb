@@ -150,7 +150,11 @@
         
         // Participation
         participationStatus: document.getElementById('participationStatus'),
-        participateBtn: document.getElementById('participateBtn')
+        participateBtn: document.getElementById('participateBtn'),  // <-- Tambah koma di sini
+        
+        // Chat Card
+        chatInfoCard: document.getElementById('chatInfoCard'),
+        chatListContainer: document.getElementById('chatListContainer')
     };
 
     // ==================== UTILITY FUNCTIONS ====================
@@ -316,6 +320,84 @@
             }
             checkParticipationEligibility();
             return false;
+        }
+    }
+
+    async function renderChatInfo() {
+        if (!elements.chatListContainer || !giveawayData?.code) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/chats/${giveawayData.code}`);
+            const data = await response.json();
+            
+            if (!data.success || !data.chats || data.chats.length === 0) {
+                if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'none';
+                return;
+            }
+            
+            if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'block';
+            
+            let html = '';
+            
+            for (const chat of data.chats) {
+                const chatName = chat.chat_title || 'Chat';
+                const chatType = chat.chat_type || 'Chat';
+                const chatId = chat.chat_id;
+                const chatUsername = chat.chat_username || '';
+                
+                // Buat link untuk membuka chat
+                let chatLink = '';
+                if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                    chatLink = `https://t.me/${chatUsername}`;
+                } else if (chatId) {
+                    let cleanId = chatId.replace('-100', '');
+                    chatLink = `https://t.me/${cleanId}`;
+                }
+                
+                // Avatar URL
+                const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
+                const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+                
+                html += `
+                    <div class="chat-info-item" data-chat-link="${escapeHtml(chatLink)}">
+                        <div class="chat-info-avatar">
+                            <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" 
+                                onerror="this.src='https://ui-avatars.com/api/?name=TG&background=40a7e3&color=fff&size=100&rounded=true'">
+                        </div>
+                        <div class="chat-info-details">
+                            <div class="chat-info-name">${escapeHtml(chatName)}</div>
+                            <div class="chat-info-meta">
+                                <span class="chat-info-type">${escapeHtml(chatType)}</span>
+                                <span class="chat-info-id">${escapeHtml(chatId)}</span>
+                            </div>
+                        </div>
+                        <div class="chat-info-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            elements.chatListContainer.innerHTML = html;
+            
+            // Event listener untuk chat item
+            document.querySelectorAll('.chat-info-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    hapticMedium();
+                    const chatLink = item.dataset.chatLink;
+                    if (chatLink) {
+                        window.open(chatLink, '_blank');
+                        showToast('Membuka chat...', 'info');
+                    } else {
+                        showToast('Link tidak tersedia', 'error');
+                    }
+                });
+            });
+            
+        } catch (error) {
+            console.error('Error loading chat info:', error);
+            if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'none';
         }
     }
 
@@ -881,6 +963,7 @@
                 renderPrize();
                 renderRequirements();
                 renderLinks();
+                renderChatInfo(); // Tambahkan ini untuk render chat card
                 if (giveawayData.end_time && giveawayData.status !== 'expired') {
                     startCountdown(giveawayData.end_time);
                 } else if (giveawayData.status === 'expired') {
@@ -1409,6 +1492,12 @@
                 if (avatarsCard) {
                     avatarsCard.style.display = 'flex';
                 }
+            } else {
+                // Sembunyikan card jika tidak ada peserta
+                const avatarsCard = document.getElementById('participationAvatarsCard');
+                if (avatarsCard) {
+                    avatarsCard.style.display = 'none';
+                }
             }
         } catch (error) {
             console.error('Error fetching participants:', error);
@@ -1419,24 +1508,22 @@
         const avatarsStack = document.getElementById('avatarsStack');
         if (!avatarsStack) return;
         
+        const totalParticipants = participants.length;
         const sortedParticipants = [...participants];
         
         // Ambil maksimal 5 avatar untuk ditampilkan
-        const displayParticipants = sortedParticipants.slice(-5); // 5 terbaru
-        const remainingCount = sortedParticipants.length - 5;
+        const displayParticipants = sortedParticipants.slice(-5);
+        const remainingCount = totalParticipants - 5;
         
         let html = '';
         
-        // Render avatar dari yang LAMA ke yang BARU (agar yang baru di paling kanan/terakhir)
+        // Render avatar stack
         for (let i = 0; i < displayParticipants.length; i++) {
             const p = displayParticipants[i];
             const userName = p.first_name || p.username || 'User';
             const initial = userName.charAt(0).toUpperCase();
             
-            // PRIORITAS: Gunakan photo_url dari database jika ada
             let photoUrl = p.photo_url;
-            
-            // Jika tidak ada photo_url, gunakan UI Avatars sebagai fallback
             if (!photoUrl || photoUrl === '') {
                 const nameForAvatar = encodeURIComponent(userName.substring(0, 2));
                 photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
@@ -1456,16 +1543,33 @@
             `;
         }
         
-        // Jika ada sisa peserta, tampilkan tombol "+X" yang JADI PENGGANTI TEXT "Peserta Terbaru"
-        if (remainingCount > 0) {
-            html += `
-                <div class="avatar-stack-more" id="showMoreParticipants" title="${remainingCount} peserta lainnya">
-                    +${remainingCount}
-                </div>
-            `;
+        // Tentukan teks yang ditampilkan di samping avatar stack
+        let sideText = '';
+        if (totalParticipants > 0) {
+            if (totalParticipants < 5) {
+                // Kurang dari 5 peserta: tampilkan "X Peserta..."
+                sideText = `<span class="avatars-side-text">${totalParticipants} Peserta...</span>`;
+            } else if (remainingCount > 0) {
+                // Lebih dari 5 peserta: tampilkan "+X Peserta Lainnya..."
+                sideText = `<span class="avatars-side-text">+${remainingCount} Peserta Lainnya...</span>`;
+            }
         }
         
-        avatarsStack.innerHTML = html;
+        // Gabungkan avatar stack dengan side text
+        const containerHtml = `
+            <div class="avatars-stack-wrapper">
+                <div class="avatars-stack">
+                    ${html}
+                    ${sideText}
+                </div>
+                <button class="avatars-view-btn" id="viewAllParticipantsBtn">
+                    <span>Lihat semua</span>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        `;
+        
+        avatarsStack.innerHTML = containerHtml;
         
         // Event listener untuk avatar item
         document.querySelectorAll('.avatar-stack-item').forEach(item => {
@@ -1480,19 +1584,55 @@
             });
         });
         
-        // Event listener untuk tombol show more (+X)
-        const showMoreBtn = document.getElementById('showMoreParticipants');
-        if (showMoreBtn) {
-            // Hapus listener lama jika ada
-            const newShowMoreBtn = showMoreBtn.cloneNode(true);
-            showMoreBtn.parentNode.replaceChild(newShowMoreBtn, showMoreBtn);
+        // Event listener untuk tombol show all participants
+        const viewBtn = document.getElementById('viewAllParticipantsBtn');
+        if (viewBtn) {
+            // Hapus listener lama
+            const newViewBtn = viewBtn.cloneNode(true);
+            viewBtn.parentNode.replaceChild(newViewBtn, viewBtn);
             
-            newShowMoreBtn.addEventListener('click', (e) => {
+            newViewBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showAllParticipantsModal();
             });
         }
     }
+
+    // Tambahkan CSS untuk side text di style
+    const addAvatarsStyles = () => {
+        const style = document.createElement('style');
+        style.textContent = `
+            .avatars-stack-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                gap: 12px;
+            }
+            
+            .avatars-stack {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                gap: 0;
+                flex: 1;
+            }
+            
+            .avatars-side-text {
+                font-size: 13px;
+                color: var(--text-secondary);
+                margin-left: 8px;
+                white-space: nowrap;
+            }
+            
+            @media (max-width: 480px) {
+                .avatars-side-text {
+                    font-size: 11px;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    };
 
     function showUserProfileModal(userId, username, firstName, lastName, photoUrl = null) {
         hapticMedium();
@@ -1635,6 +1775,7 @@
 
     function init() {
         initTelegram();
+        addAvatarsStyles();
         showLoading(true);
         try {
             let giveawayCode = getStartParam();

@@ -887,6 +887,166 @@ body {
     color: var(--warning);
 }
 
+/* Chat Info Card - Sama seperti Links Card */
+.chat-info-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 24px;
+    padding: 16px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    box-shadow: var(--shadow);
+}
+
+.chat-info-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    background: linear-gradient(167deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 20%, 
+        rgba(255, 255, 255, 0) 80%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.chat-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-info-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: var(--bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    text-decoration: none;
+    color: var(--text);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.chat-info-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(175deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.chat-info-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.chat-info-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    overflow: hidden;
+}
+
+.chat-info-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.chat-info-avatar i {
+    font-size: 20px;
+    color: white;
+}
+
+.chat-info-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-info-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-info-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.chat-info-type {
+    font-size: 10px;
+    color: var(--primary);
+    background: rgba(64, 167, 227, 0.15);
+    padding: 2px 8px;
+    border-radius: 20px;
+}
+
+.chat-info-id {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: monospace;
+}
+
+.chat-info-arrow {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.chat-info-item:hover .chat-info-arrow {
+    background: rgba(64, 167, 227, 0.2);
+    transform: translateX(2px);
+}
+
+.chat-info-arrow i {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
 /* Update Links Card: Atas/Bawah FULL, Samping SETENGAH */
 .links-card {
     background: var(--glass-bg);
