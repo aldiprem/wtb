@@ -1544,7 +1544,7 @@
         let sideText = '';
         if (totalParticipants > 0) {
             if (totalParticipants < 5) {
-                sideText = `<span class="avatars-side-text">${totalParticipants} Peserta...</span>`;
+                sideText = `<span class="avatars-side-text">${totalParticipants} Peserta</span>`;
             } else if (remainingCount > 0) {
                 sideText = `<span class="avatars-side-text">+${remainingCount} Peserta Lainnya...</span>`;
             }
@@ -1610,7 +1610,7 @@
             }
             
             .avatars-side-text {
-                font-size: 13px;
+                font-size: 15px;
                 color: var(--text-secondary);
                 margin-left: 8px;
                 white-space: nowrap;
