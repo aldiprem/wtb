@@ -150,7 +150,7 @@ class GiveawayDatabase:
                 cursor = conn.cursor()
                 now = self._get_now()
                 cursor.execute('''
-                    INSERT OR REPLACE INTO force_sums 
+                    INSERT OR REPLACE INTO force_subs 
                     (chat_id, chat_type, title, username, invite_link, added_at)
                     VALUES (?, ?, ?, ?, ?, ?)
                 ''', (chat_id, chat_type, title, username, invite_link, now))
