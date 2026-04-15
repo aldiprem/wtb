@@ -82,7 +82,127 @@ class IndotagDatabase:
             ''')
             
             conn.commit()
+
+    def init_pending_table(self):
+        """Initialize pending verifications table"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pending_verifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    verification_id TEXT UNIQUE NOT NULL,
+                    username TEXT NOT NULL,
+                    seller_id INTEGER NOT NULL,
+                    seller_name TEXT,
+                    price INTEGER DEFAULT 0,
+                    description TEXT,
+                    target_id INTEGER NOT NULL,
+                    target_type TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_at TEXT,
+                    FOREIGN KEY (seller_id) REFERENCES users(user_id)
+                )
+            ''')
+            conn.commit()
     
+    def save_pending_verification(self, verification_id, username, seller_id, seller_name, 
+                                   price, description, target_id, target_type):
+        """Save pending verification to database"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                cursor.execute('''
+                    INSERT INTO pending_verifications 
+                    (verification_id, username, seller_id, seller_name, price, description, target_id, target_type, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (verification_id, username, seller_id, seller_name, price, description, target_id, target_type, now))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving pending: {e}")
+            return False
+    
+    def get_pending_verification(self, verification_id):
+        """Get pending verification by ID"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM pending_verifications WHERE verification_id = ? AND status = "pending"', (verification_id,))
+                row = cursor.fetchone()
+                if row:
+                    return {
+                        'id': row[0],
+                        'verification_id': row[1],
+                        'username': row[2],
+                        'seller_id': row[3],
+                        'seller_name': row[4],
+                        'price': row[5],
+                        'description': row[6],
+                        'target_id': row[7],
+                        'target_type': row[8],
+                        'status': row[9],
+                        'created_at': row[10]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting pending: {e}")
+            return None
+    
+    def update_pending_price_description(self, verification_id, price, description):
+        """Update price and description for pending verification"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE pending_verifications 
+                    SET price = ?, description = ?
+                    WHERE verification_id = ?
+                ''', (price, description, verification_id))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error updating pending: {e}")
+            return False
+    
+    def delete_pending_verification(self, verification_id):
+        """Delete pending verification"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM pending_verifications WHERE verification_id = ?', (verification_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error deleting pending: {e}")
+            return False
+    
+    def get_all_pending_verifications(self):
+        """Get all pending verifications for admin"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM pending_verifications WHERE status = "pending" ORDER BY created_at DESC')
+                rows = cursor.fetchall()
+                result = []
+                for row in rows:
+                    result.append({
+                        'id': row[0],
+                        'verification_id': row[1],
+                        'username': row[2],
+                        'seller_id': row[3],
+                        'seller_name': row[4],
+                        'price': row[5],
+                        'description': row[6],
+                        'target_id': row[7],
+                        'target_type': row[8],
+                        'created_at': row[10]
+                    })
+                return result
+        except Exception as e:
+            print(f"Error getting all pending: {e}")
+            return []
+
     def generate_transaction_id(self) -> str:
         return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
     
