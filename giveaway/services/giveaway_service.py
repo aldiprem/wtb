@@ -177,7 +177,6 @@ def get_giveaway_info(giveaway_code):
             'error': str(e)
         }), 500
 
-
 @giveaway_bp.route('/participate', methods=['POST'])
 def participate_giveaway():
     """User participates in giveaway"""
@@ -195,6 +194,9 @@ def participate_giveaway():
         
         # Validate user data
         is_valid, user_id, username, first_name, last_name = validate_telegram_data(user_data)
+        
+        # Ambil photo_url dari user_data
+        photo_url = user_data.get('photo_url', '')
         
         if not is_valid or not user_id:
             return jsonify({
@@ -227,12 +229,13 @@ def participate_giveaway():
                 'error': 'Anda sudah berpartisipasi dalam giveaway ini'
             }), 400
         
-        # Save user to database
+        # Save user to database with photo_url
         db.save_user(
             user_id=user_id,
             username=username or "",
             first_name=first_name or "",
-            last_name=last_name or ""
+            last_name=last_name or "",
+            photo_url=photo_url or ""
         )
         
         # Add participant
@@ -268,7 +271,6 @@ def participate_giveaway():
             'error': str(e)
         }), 500
 
-
 @giveaway_bp.route('/check-participation/<giveaway_code>/<int:user_id>', methods=['GET'])
 def check_participation(giveaway_code, user_id):
     """Check if user has participated in giveaway"""
@@ -297,7 +299,6 @@ def check_participation(giveaway_code, user_id):
             'error': str(e)
         }), 500
 
-
 @giveaway_bp.route('/participants/<giveaway_code>', methods=['GET'])
 def get_participants(giveaway_code):
     """Get list of participants (admin only)"""
@@ -312,7 +313,7 @@ def get_participants(giveaway_code):
         
         participants = giveaway.get('participants', [])
         
-        # Get detailed user info
+        # Get detailed user info with photo_url
         participants_detail = []
         for user_id in participants:
             user = db.get_user(user_id)
@@ -321,14 +322,16 @@ def get_participants(giveaway_code):
                     'user_id': user['user_id'],
                     'username': user['username'],
                     'first_name': user['first_name'],
-                    'last_name': user['last_name']
+                    'last_name': user['last_name'],
+                    'photo_url': user.get('photo_url', '')
                 })
             else:
                 participants_detail.append({
                     'user_id': user_id,
                     'username': None,
                     'first_name': None,
-                    'last_name': None
+                    'last_name': None,
+                    'photo_url': ''
                 })
         
         return jsonify({
@@ -343,7 +346,6 @@ def get_participants(giveaway_code):
             'success': False,
             'error': str(e)
         }), 500
-
 
 @giveaway_bp.route('/stats', methods=['GET'])
 def get_giveaway_stats():

@@ -31,6 +31,7 @@ class GiveawayDatabase:
                     username TEXT,
                     first_name TEXT,
                     last_name TEXT,
+                    photo_url TEXT,
                     is_admin BOOLEAN DEFAULT 0,
                     first_seen TIMESTAMP,
                     last_seen TIMESTAMP
@@ -110,7 +111,13 @@ class GiveawayDatabase:
                     UNIQUE(giveaway_id, user_id)
                 )
             ''')
-            
+
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'photo_url' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN photo_url TEXT")
+            print("✅ Added photo_url column to users table")
+
         cursor.execute("PRAGMA table_info(on_giveaway)")
         columns = [col[1] for col in cursor.fetchall()]
         if 'is_ended' not in columns:
@@ -297,7 +304,8 @@ class GiveawayDatabase:
             print(f"Error getting chat info: {e}")
             return []
 
-    def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:
+    def save_user(self, user_id: int, username: str = "", first_name: str = "", 
+                last_name: str = "", photo_url: str = "") -> bool:
         """Save or update user information"""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -313,15 +321,15 @@ class GiveawayDatabase:
                     # Update existing user
                     cursor.execute('''
                         UPDATE users 
-                        SET username = ?, first_name = ?, last_name = ?, last_seen = ?
+                        SET username = ?, first_name = ?, last_name = ?, photo_url = ?, last_seen = ?
                         WHERE user_id = ?
-                    ''', (username, first_name, last_name, now, user_id))
+                    ''', (username, first_name, last_name, photo_url, now, user_id))
                 else:
                     # Insert new user
                     cursor.execute('''
-                        INSERT INTO users (user_id, username, first_name, last_name, first_seen, last_seen)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (user_id, username, first_name, last_name, now, now))
+                        INSERT INTO users (user_id, username, first_name, last_name, photo_url, first_seen, last_seen)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (user_id, username, first_name, last_name, photo_url, now, now))
                 
                 conn.commit()
                 return True
@@ -335,7 +343,7 @@ class GiveawayDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT user_id, username, first_name, last_name, is_admin, first_seen, last_seen
+                    SELECT user_id, username, first_name, last_name, photo_url, is_admin, first_seen, last_seen
                     FROM users WHERE user_id = ?
                 ''', (user_id,))
                 row = cursor.fetchone()
@@ -346,9 +354,10 @@ class GiveawayDatabase:
                         'username': row[1],
                         'first_name': row[2],
                         'last_name': row[3],
-                        'is_admin': bool(row[4]),
-                        'first_seen': row[5],
-                        'last_seen': row[6]
+                        'photo_url': row[4],
+                        'is_admin': bool(row[5]),
+                        'first_seen': row[6],
+                        'last_seen': row[7]
                     }
                 return None
         except Exception as e:

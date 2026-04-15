@@ -1002,6 +1002,15 @@
         }
         
         try {
+            // Dapatkan photo_url dari Telegram WebApp
+            let photoUrl = '';
+            if (window.Telegram && window.Telegram.WebApp) {
+                const initData = window.Telegram.WebApp.initDataUnsafe;
+                if (initData && initData.user && initData.user.photo_url) {
+                    photoUrl = initData.user.photo_url;
+                }
+            }
+            
             const data = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/participate`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -1010,7 +1019,8 @@
                         id: telegramUser.id,
                         username: telegramUser.username,
                         first_name: telegramUser.first_name,
-                        last_name: telegramUser.last_name
+                        last_name: telegramUser.last_name,
+                        photo_url: photoUrl  // Kirim photo_url
                     }
                 })
             });
@@ -1383,7 +1393,6 @@
         }
     }
 
-    // Fetch participants list
     async function fetchParticipants() {
         if (!giveawayData?.code) return;
         
@@ -1406,13 +1415,11 @@
         }
     }
 
-    // Render avatar stack
     function renderAvatars(participants) {
         const avatarsStack = document.getElementById('avatarsStack');
         if (!avatarsStack) return;
         
         // Urutkan dari yang terbaru (berdasarkan ID atau joined_at)
-        // Asumsi participant terbaru adalah index terakhir, kita balik
         const recentParticipants = [...participants].reverse().slice(0, 5);
         const remainingCount = participants.length - 5;
         
@@ -1422,11 +1429,25 @@
             const p = recentParticipants[i];
             const userName = p.first_name || p.username || 'User';
             const initial = userName.charAt(0).toUpperCase();
-            const photoUrl = p.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=1`;
+            
+            // PRIORITAS: Gunakan photo_url dari database jika ada
+            let photoUrl = p.photo_url;
+            
+            // Jika tidak ada photo_url, gunakan UI Avatars sebagai fallback
+            if (!photoUrl || photoUrl === '') {
+                const nameForAvatar = encodeURIComponent(userName);
+                photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
+            }
             
             html += `
-                <div class="avatar-stack-item" data-user-id="${p.user_id}" data-username="${p.username || ''}" data-first-name="${p.first_name || ''}" data-last-name="${p.last_name || ''}">
-                    <img src="${photoUrl}" alt="${escapeHtml(userName)}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true'">
+                <div class="avatar-stack-item" 
+                    data-user-id="${p.user_id}" 
+                    data-username="${escapeHtml(p.username || '')}" 
+                    data-first-name="${escapeHtml(p.first_name || '')}" 
+                    data-last-name="${escapeHtml(p.last_name || '')}"
+                    data-photo-url="${escapeHtml(photoUrl)}">
+                    <img src="${photoUrl}" alt="${escapeHtml(userName)}" 
+                        onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true'">
                 </div>
             `;
         }
@@ -1448,7 +1469,8 @@
                 const username = item.dataset.username;
                 const firstName = item.dataset.firstName;
                 const lastName = item.dataset.lastName;
-                showUserProfileModal(userId, username, firstName, lastName);
+                const photoUrl = item.dataset.photoUrl;
+                showUserProfileModal(userId, username, firstName, lastName, photoUrl);
             });
         });
         
@@ -1461,13 +1483,17 @@
         }
     }
 
-    // Show user profile modal
-    function showUserProfileModal(userId, username, firstName, lastName) {
+    function showUserProfileModal(userId, username, firstName, lastName, photoUrl = null) {
         hapticMedium();
         
         const fullName = `${firstName || ''} ${lastName || ''}`.trim() || username || 'Pengguna';
         const initial = fullName.charAt(0).toUpperCase();
-        const photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=200&rounded=true&bold=true&length=2`;
+        
+        // PRIORITAS: Gunakan photo_url jika ada
+        let displayPhotoUrl = photoUrl;
+        if (!displayPhotoUrl || displayPhotoUrl === '') {
+            displayPhotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=200&rounded=true&bold=true&length=2`;
+        }
         
         // Buat modal sederhana untuk profile user
         let userProfileModal = document.getElementById('userProfileModal');
@@ -1503,14 +1529,13 @@
             });
         }
         
-        document.getElementById('userProfileAvatar').src = photoUrl;
+        document.getElementById('userProfileAvatar').src = displayPhotoUrl;
         document.getElementById('userProfileName').textContent = fullName;
         document.getElementById('userProfileUsername').textContent = username ? `@${username}` : 'Tidak ada username';
         
         userProfileModal.style.display = 'flex';
     }
 
-    // Show all participants modal
     function showAllParticipantsModal() {
         hapticMedium();
         
@@ -1524,13 +1549,24 @@
         for (const p of participantsList) {
             const userName = p.first_name || p.username || 'User';
             const initial = userName.charAt(0).toUpperCase();
-            const photoUrl = p.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=1`;
             const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username || 'Pengguna';
             
+            // PRIORITAS: Gunakan photo_url dari database
+            let photoUrl = p.photo_url;
+            if (!photoUrl || photoUrl === '') {
+                photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=1`;
+            }
+            
             html += `
-                <div class="modal-participant-item" data-user-id="${p.user_id}" data-username="${p.username || ''}" data-first-name="${p.first_name || ''}" data-last-name="${p.last_name || ''}">
+                <div class="modal-participant-item" 
+                    data-user-id="${p.user_id}" 
+                    data-username="${escapeHtml(p.username || '')}" 
+                    data-first-name="${escapeHtml(p.first_name || '')}" 
+                    data-last-name="${escapeHtml(p.last_name || '')}"
+                    data-photo-url="${escapeHtml(photoUrl)}">
                     <div class="participant-avatar">
-                        <img src="${photoUrl}" alt="${escapeHtml(userName)}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true'">
+                        <img src="${photoUrl}" alt="${escapeHtml(userName)}" 
+                            onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true'">
                     </div>
                     <div class="participant-info">
                         <div class="participant-name">${escapeHtml(fullName)}</div>
@@ -1549,8 +1585,9 @@
                 const username = item.dataset.username;
                 const firstName = item.dataset.firstName;
                 const lastName = item.dataset.lastName;
+                const photoUrl = item.dataset.photoUrl;
                 modal.style.display = 'none';
-                showUserProfileModal(userId, username, firstName, lastName);
+                showUserProfileModal(userId, username, firstName, lastName, photoUrl);
             });
         });
         
