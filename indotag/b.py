@@ -7,8 +7,24 @@ from pathlib import Path
 from dotenv import load_dotenv
 from telethon import TelegramClient, events, Button
 
-env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=env_path)
+# Coba load .env dari beberapa lokasi
+env_paths = [
+    Path(__file__).parent / '.env',           # indotag/.env
+    Path(__file__).parent.parent / '.env',    # wtb/.env (root)
+    Path('/root/wtb/.env'),                   # absolute path
+]
+
+loaded = False
+for env_path in env_paths:
+    if env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        print(f"✅ Loaded .env from: {env_path}")
+        loaded = True
+        break
+
+if not loaded:
+    print("⚠️ No .env file found, using system environment variables")
+    load_dotenv()  # coba default
 
 # Perbaiki import - gunakan dari database.data
 from database.data import IndotagDatabase
@@ -20,11 +36,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Configuration
-API_ID = int(os.getenv("API_ID", 0))
+# Configuration - dengan validasi
+API_ID = os.getenv("API_ID", "")
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("INDOTAG_TOKEN", "")
-OWNER_ID = int(os.getenv("OWNER_ID", 0))
+OWNER_ID = os.getenv("OWNER_ID", "")
+
+# Validasi konfigurasi
+if not API_ID or not API_HASH or not BOT_TOKEN:
+    logger.error("❌ Missing configuration!")
+    logger.error(f"API_ID: {'SET' if API_ID else 'MISSING'}")
+    logger.error(f"API_HASH: {'SET' if API_HASH else 'MISSING'}")
+    logger.error(f"INDOTAG_TOKEN: {'SET' if BOT_TOKEN else 'MISSING'}")
+    logger.error(f"OWNER_ID: {OWNER_ID or 'MISSING'}")
+    
+    # Print semua environment variables untuk debugging (tanpa nilai sensitif)
+    print("\n📋 Environment variables found:")
+    for key in ['API_ID', 'API_HASH', 'INDOTAG_TOKEN', 'OWNER_ID']:
+        value = os.getenv(key)
+        if value:
+            if key == 'INDOTAG_TOKEN':
+                print(f"   {key}: {value[:10]}... (length: {len(value)})")
+            else:
+                print(f"   {key}: {value}")
+        else:
+            print(f"   {key}: NOT SET")
+    
+    sys.exit(1)
+
+API_ID = int(API_ID)
+OWNER_ID = int(OWNER_ID) if OWNER_ID else 0
 
 # Inisialisasi database dengan path yang benar
 db = IndotagDatabase(db_path="/root/wtb/indotag/database/indotag.db")
@@ -133,7 +174,7 @@ async def handle_add_username_input(event):
         if event.raw_text == '/cancel':
             del user_states[user_id]
             msg, buttons = await main_menu(user_id, "")
-            await event.respond("❌ Dibatalakan.", buttons=buttons)
+            await event.respond("❌ Dibatalkan.", buttons=buttons)
             return
         return
     
@@ -331,7 +372,7 @@ async def handle_buy_username_input(event):
         if event.raw_text == '/cancel':
             del user_states[user_id]
             msg, buttons = await main_menu(user_id, "")
-            await event.respond("❌ Dibatalakan.", buttons=buttons)
+            await event.respond("❌ Dibatalkan.", buttons=buttons)
             return
         return
     
