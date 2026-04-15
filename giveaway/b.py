@@ -528,33 +528,35 @@ async def menu_create_giveaway(event, user_id: int = None):
             await event.respond(msg, buttons=buttons)
     else:
         await event.respond(msg, buttons=buttons)
-
-# Tambahkan fungsi ini setelah fungsi check_pending_membership() atau di bagian utility functions
-
+        
 async def check_user_boost(channel_username: str, user_id: int) -> dict:
+    """
+    Mengecek apakah user sudah boost channel tertentu
+    Menggunakan my_boost_slots untuk verifikasi boost di channel spesifik
+    """
     try:
-        # Format channel username (hapus @ jika ada)
         channel = channel_username.lstrip('@')
         
-        # Gunakan GetBoostsStatusRequest untuk mengecek status boost channel
-        result = await ubot(functions.premium.GetBoostsStatusRequest(
+        # Dapatkan status boost channel
+        result = await bot(functions.premium.GetBoostsStatusRequest(
             peer=channel
         ))
         
-        # Cek apakah user ini sedang boost channel
-        # my_boost akan berisi informasi boost user (None jika tidak boost)
+        # 🔥 CARA BENAR: Cek apakah user memiliki slot boost di channel ini
+        # my_boost_slots akan berisi list of int (nomor slot) jika user boost channel ini
+        # Jika tidak boost, my_boost_slots akan berisi empty list (bukan None)
+        my_boost_slots = getattr(result, 'my_boost_slots', [])
+        is_boost = len(my_boost_slots) > 0
+        
+        # Dapatkan informasi tambahan dari my_boost jika ada
         my_boost = getattr(result, 'my_boost', None)
-        
-        is_boost = my_boost is not None
-        
-        # Dapatkan informasi tambahan jika user boost
         boost_info = {}
-        if is_boost:
+        
+        if my_boost and hasattr(my_boost, 'date'):
             boost_info = {
-                'boost_id': getattr(my_boost, 'id', None),
                 'boost_date': getattr(my_boost, 'date', None),
                 'multiplier': getattr(my_boost, 'multiplier', 1),
-                'slots': getattr(my_boost, 'slots', [])
+                'slots': my_boost_slots  # Nomor slot yang digunakan
             }
         
         return {
@@ -563,6 +565,7 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
             'channel': channel,
             'total_boosts': getattr(result, 'boosts', 0),
             'channel_level': getattr(result, 'level', 0),
+            'boost_slots': my_boost_slots,
             'boost_info': boost_info,
             'error': None
         }
@@ -577,7 +580,7 @@ async def check_user_boost(channel_username: str, user_id: int) -> dict:
         return {
             'success': False,
             'is_boost': False,
-            'error': f'Error: {str(e)}'
+            'error': f'RPC Error: {str(e)}'
         }
     except Exception as e:
         return {
