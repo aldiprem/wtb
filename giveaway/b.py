@@ -180,7 +180,6 @@ async def check_bot_access(chat_id: int) -> tuple:
         return False, False, f"Bot tidak dapat mengakses chat ini: {str(e)[:100]}"
 
 async def check_on_giveaway_expired():
-    """Periodically check for expired on_giveaway"""
     while True:
         try:
             now = get_jakarta_time().isoformat()
@@ -207,6 +206,20 @@ async def check_on_giveaway_expired():
                     # Parse prize list
                     prize_lines = [p.strip() for p in giveaway['prize'].split('\n') if p.strip()]
                     
+                    # Ambil info chat dari database
+                    chat_info = db.get_chat_info_by_giveaway_id(giveaway['giveaway_id'])
+                    chat_display = ""
+                    if chat_info:
+                        for chat in chat_info:
+                            chat_title = chat.get('chat_title', 'Unknown')
+                            chat_id = chat.get('chat_id', '')
+                            chat_username = chat.get('chat_username', '')
+                            if chat_username:
+                                chat_display = f"📺 **CHAT ID:** [{chat_title}](https://t.me/{chat_username}) (`{chat_id}`)"
+                            else:
+                                chat_display = f"📺 **CHAT ID:** {chat_title} (`{chat_id}`)"
+                            break
+                    
                     if winners:
                         winner_mentions = []
                         winner_details = []
@@ -222,27 +235,31 @@ async def check_on_giveaway_expired():
                                 winner_mentions.append(f"{i}. 🎉 User {winner_id}")
                                 winner_details.append(f"{i}. User ID: `{winner_id}`")
                         
-                        # Buat teks pengumuman dengan hadiah yang sesuai
-                        winner_prize_text = ""
+                        # Buat daftar winner dengan hadiah yang sesuai
+                        winner_list = []
                         for i, winner_id in enumerate(winners):
                             prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
-                            winner_prize_text += f"• Hadiah ke-{i+1}: {prize_text} → {winner_mentions[i] if i < len(winner_mentions) else f'Pemenang {i+1}'}\n"
+                            try:
+                                user = await bot.get_entity(winner_id)
+                                full_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "User"
+                                username = f"@{user.username}" if user.username else ""
+                                winner_list.append(f"{i+1}. {prize_text} - {full_name} {username}")
+                            except:
+                                winner_list.append(f"{i+1}. {prize_text} - User {winner_id}")
                         
-                        winner_text = f"""
-🏆 **GIVEAWAY TELAH BERAKHIR!** 🏆
+                        winner_text = f"""🏆 **GIVEAWAY BERAKHIR** 🏆
 
 ━━━━━━━━━━━━━━━━━━━━━
-**HADIAH & PEMENANG:**
-{winner_prize_text}
-━━━━━━━━━━━━━━━━━━━━━
-**🏆 DAFTAR PEMENANG:**
-{chr(10).join(winner_mentions)}
-━━━━━━━━━━━━━━━━━━━━━
+👥 **LIST WINNER:**
+{chr(10).join(winner_list)}
 
-Selamat kepada para pemenang! 🎊
+{chat_display if chat_display else '📺 **CHAT ID:** -'}
 
-Hadiah akan segera dikirim oleh admin.
-"""
+━━━━━━━━━━━━━━━━━━━━━
+^^__Selamat kepada pemenang, silakan hubungi admin ataupun admin akan menghubungi pemenang untuk pembagian hadiah.__^^
+
+━━━━━━━━━━━━━━━━━━━━━
+#{giveaway['giveaway_id']}"""
                         
                         # Kirim pengumuman ke chat
                         try:
@@ -260,8 +277,7 @@ Hadiah akan segera dikirim oleh admin.
                                 prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
                                 await bot.send_message(
                                     winner_id,
-                                    f"""
-🏆 **SELAMAT! ANDA MEMENANGKAN GIVEAWAY!** 🏆
+                                    f"""🏆 **SELAMAT! ANDA MEMENANGKAN GIVEAWAY!** 🏆
 
 🎁 **Hadiah yang Anda menangkan:**
 {prize_text}
@@ -271,32 +287,33 @@ Hadiah akan segera dikirim oleh admin.
 • Berakhir: {giveaway['end_time']}
 
 Silakan hubungi admin untuk mengklaim hadiah Anda.
-
 Terima kasih telah berpartisipasi! ❤️
-"""
+
+━━━━━━━━━━━━━━━━━━━━━
+#{giveaway['giveaway_id']}"""
                                 )
                             except Exception as e:
                                 logger.error(f"Gagal mengirim DM ke {winner_id}: {e}")
                     
                     else:
                         # Tidak ada pemenang (tidak ada peserta)
-                        no_winner_text = f"""
-🏆 **GIVEAWAY TELAH BERAKHIR!** 🏆
+                        no_winner_text = f"""🏆 **GIVEAWAY BERAKHIR** 🏆
 
 ━━━━━━━━━━━━━━━━━━━━━
 **Hadiah:**
 {chr(10).join([f"• {p}" for p in prize_lines]) if prize_lines else giveaway['prize']}
 
-━━━━━━━━━━━━━━━━━━━━━
 📊 **Statistik:**
 • Total Peserta: {total_participants}
 • Jumlah Hadiah: {winners_count}
 
-━━━━━━━━━━━━━━━━━━━━━
-😢 **Tidak ada peserta yang mengikuti giveaway ini.**
+{chat_display if chat_display else '📺 **CHAT ID:** -'}
 
-Giveaway berakhir tanpa pemenang.
-"""
+━━━━━━━━━━━━━━━━━━━━━
+^^__Tidak ada peserta yang mengikuti giveaway ini.__^^
+
+━━━━━━━━━━━━━━━━━━━━━
+#{giveaway['giveaway_id']}"""
                         try:
                             await bot.send_message(
                                 giveaway['chat_id'],
@@ -320,7 +337,7 @@ Giveaway berakhir tanpa pemenang.
         except Exception as e:
             logger.error(f"Error checking on_giveaway expired: {e}")
         
-        await asyncio.sleep(60)
+        await asyncio.sleep(1)
 
 async def check_pending_membership():
     import aiohttp
