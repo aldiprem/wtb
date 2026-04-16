@@ -252,16 +252,17 @@
                 }
                 elements.recentGiveaways.innerHTML = html;
                 
-                // Add click event to recent giveaway items
-                document.querySelectorAll('.recent-giveaway-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const giveawayCode = item.dataset.giveawayCode;
-                        if (giveawayCode) {
-                            hapticMedium();
-                            window.open(`/giveaway?startapp=${giveawayCode}`, '_blank');
-                        }
-                    });
+            // Di dalam loadRecentGiveaways, perbaiki event click
+            document.querySelectorAll('.recent-giveaway-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const giveawayCode = item.dataset.giveawayCode;
+                    if (giveawayCode) {
+                        hapticMedium();
+                        // Gunakan path /giveaways dengan parameter id
+                        window.location.href = `/giveaways?id=${giveawayCode}`;
+                    }
                 });
+            });
             } else {
                 elements.recentGiveaways.innerHTML = '<div class="loading-placeholder">Belum ada giveaway</div>';
             }
@@ -328,10 +329,9 @@
 
     function openGiveawayInput() {
         hapticMedium();
-        // Prompt untuk memasukkan kode giveaway
         const code = prompt('Masukkan kode giveaway:');
         if (code && code.trim()) {
-            window.open(`/giveaway?startapp=${code.trim()}`, '_blank');
+            window.location.href = `/giveaways?id=${code.trim()}`;
         }
     }
 
@@ -391,7 +391,13 @@
         if (elements.viewAllGiveawaysBtn) {
             elements.viewAllGiveawaysBtn.addEventListener('click', () => {
                 hapticMedium();
-                window.open('/giveaway', '_blank');
+                const recentSection = document.getElementById('recentGiveaways');
+                if (recentSection) {
+                    recentSection.scrollIntoView({ behavior: 'smooth' });
+                    showToast('Silakan pilih giveaway dari daftar di atas', 'info');
+                } else {
+                    showToast('Daftar giveaway sudah ditampilkan di atas', 'info');
+                }
             });
         }
     }
