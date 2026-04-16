@@ -11,6 +11,7 @@ from flask import Blueprint, request, jsonify, g
 from functools import wraps
 import sys
 from pathlib import Path
+from datetime import datetime, timedelta
 
 # APScheduler - import dengan aman (optional dependency)
 try:
@@ -727,4 +728,164 @@ def get_invite_links():
             })
     except Exception as e:
         print(f"Error getting invite links: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+@giveaway_bp.route('/lobby-stats', methods=['GET'])
+def get_lobby_stats():
+    """Get statistics for lobby page"""
+    try:
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            now = datetime.now()
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+            week_start = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+            
+            # Total users
+            cursor.execute("SELECT COUNT(*) FROM users")
+            total_users = cursor.fetchone()[0] or 0
+            
+            # Total admins
+            cursor.execute("SELECT COUNT(*) FROM users WHERE is_admin = 1")
+            total_admins = cursor.fetchone()[0] or 0
+            
+            # Total giveaways
+            cursor.execute("SELECT COUNT(*) FROM giveaways")
+            total_giveaways = cursor.fetchone()[0] or 0
+            
+            # Giveaways today, week, month
+            cursor.execute("SELECT COUNT(*) FROM giveaways WHERE created_at >= ?", (today_start,))
+            giveaways_today = cursor.fetchone()[0] or 0
+            
+            cursor.execute("SELECT COUNT(*) FROM giveaways WHERE created_at >= ?", (week_start,))
+            giveaways_week = cursor.fetchone()[0] or 0
+            
+            cursor.execute("SELECT COUNT(*) FROM giveaways WHERE created_at >= ?", (month_start,))
+            giveaways_month = cursor.fetchone()[0] or 0
+            
+            # Active giveaways
+            cursor.execute("SELECT COUNT(*) FROM on_giveaway WHERE status = 'active' AND is_ended = 0")
+            active_giveaways = cursor.fetchone()[0] or 0
+            
+            # Total participants and unique participants
+            cursor.execute("SELECT participants FROM on_giveaway")
+            rows = cursor.fetchall()
+            total_participants = 0
+            unique_participants = set()
+            
+            for row in rows:
+                if row[0]:
+                    participants = json.loads(row[0])
+                    total_participants += len(participants)
+                    unique_participants.update(participants)
+            
+            # Today participants
+            cursor.execute("SELECT joined_at FROM giveaway_entries")
+            rows = cursor.fetchall()
+            today_participants = 0
+            for row in rows:
+                if row[0]:
+                    joined_at = datetime.fromisoformat(row[0]) if isinstance(row[0], str) else row[0]
+                    if joined_at.date() == now.date():
+                        today_participants += 1
+            
+            # Total winners
+            cursor.execute("SELECT winners FROM on_giveaway WHERE is_ended = 1")
+            rows = cursor.fetchall()
+            total_winners = 0
+            for row in rows:
+                if row[0]:
+                    winners = json.loads(row[0])
+                    total_winners += len(winners)
+            
+            # Average participants per giveaway
+            avg_participants = round(total_participants / total_giveaways, 2) if total_giveaways > 0 else 0
+            
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'total_users': total_users,
+                    'total_admins': total_admins,
+                    'total_giveaways': total_giveaways,
+                    'giveaways_today': giveaways_today,
+                    'giveaways_week': giveaways_week,
+                    'giveaways_month': giveaways_month,
+                    'active_giveaways': active_giveaways,
+                    'total_participants': total_participants,
+                    'today_participants': today_participants,
+                    'unique_participants': len(unique_participants),
+                    'total_winners': total_winners,
+                    'avg_participants_per_giveaway': avg_participants
+                }
+            })
+    except Exception as e:
+        print(f"Error in get_lobby_stats: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@giveaway_bp.route('/owner-info', methods=['GET'])
+def get_owner_info():
+    """Get owner information"""
+    try:
+        owner_id = os.getenv("OWNER_ID")
+        if not owner_id:
+            return jsonify({'success': True, 'owner': None})
+        
+        owner = db.get_user(int(owner_id))
+        if owner:
+            return jsonify({
+                'success': True,
+                'owner': {
+                    'name': f"{owner.get('first_name', '')} {owner.get('last_name', '')}".strip() or 'Owner',
+                    'username': owner.get('username'),
+                    'user_id': owner.get('user_id')
+                }
+            })
+        return jsonify({'success': True, 'owner': None})
+    except Exception as e:
+        print(f"Error in get_owner_info: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@giveaway_bp.route('/recent-giveaways', methods=['GET'])
+def get_recent_giveaways():
+    """Get recent giveaways for lobby page"""
+    try:
+        limit = request.args.get('limit', 5, type=int)
+        
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT giveaway_code, giveaway_id, prize, created_at, participants
+                FROM on_giveaway 
+                ORDER BY created_at DESC 
+                LIMIT ?
+            ''', (limit,))
+            rows = cursor.fetchall()
+            
+            giveaways = []
+            for row in rows:
+                giveaway_code, giveaway_id, prize, created_at, participants_json = row
+                participants = json.loads(participants_json) if participants_json else []
+                
+                # Parse prize lines
+                prize_lines = [p.strip() for p in prize.split('\n') if p.strip()]
+                
+                giveaways.append({
+                    'giveaway_code': giveaway_code,
+                    'giveaway_id': giveaway_id,
+                    'prize_lines': prize_lines[:3],  # Only first 3 lines
+                    'participants_count': len(participants),
+                    'created_at': created_at
+                })
+            
+            return jsonify({
+                'success': True,
+                'giveaways': giveaways
+            })
+    except Exception as e:
+        print(f"Error in get_recent_giveaways: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

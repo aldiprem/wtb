@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Giveaway Bot - Platform Giveaway Telegram</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/giveaway/css/lobby.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="lobby-container">
+        
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <div class="hero-icon">
+                <i class="fas fa-gift"></i>
+            </div>
+            <h1 class="hero-title">Giveaway Bot</h1>
+            <p class="hero-subtitle">Platform Giveaway Terpercaya di Telegram</p>
+            <div class="hero-buttons">
+                <button class="hero-btn primary" id="openBotBtn">
+                    <i class="fab fa-telegram"></i> Buka Bot
+                </button>
+                <button class="hero-btn secondary" id="openGiveawayBtn">
+                    <i class="fas fa-trophy"></i> Ikuti Giveaway
+                </button>
+            </div>
+        </div>
+
+        <!-- Stats Section (Ditampilkan setelah scroll/klik) -->
+        <div class="stats-section" id="statsSection">
+            <div class="section-header">
+                <i class="fas fa-chart-line"></i>
+                <h2>Statistik Bot</h2>
+                <button class="refresh-stats-btn" id="refreshStatsBtn">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-users"></i></div>
+                    <div class="stat-value" id="statTotalUsers">--</div>
+                    <div class="stat-label">Total Pengguna</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-gift"></i></div>
+                    <div class="stat-value" id="statTotalGiveaways">--</div>
+                    <div class="stat-label">Total Giveaway</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-hand-peace"></i></div>
+                    <div class="stat-value" id="statTotalParticipants">--</div>
+                    <div class="stat-label">Total Partisipasi</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-trophy"></i></div>
+                    <div class="stat-value" id="statTotalWinners">--</div>
+                    <div class="stat-label">Total Pemenang</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-fire"></i></div>
+                    <div class="stat-value" id="statActiveGiveaways">--</div>
+                    <div class="stat-label">Giveaway Aktif</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+                    <div class="stat-value" id="statTodayParticipants">--</div>
+                    <div class="stat-label">Partisipasi Hari Ini</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Cards Grid -->
+        <div class="info-grid">
+            <!-- Owner Card -->
+            <div class="info-card">
+                <div class="card-icon"><i class="fas fa-crown"></i></div>
+                <h3>Owner & Creator</h3>
+                <div class="owner-info">
+                    <div class="owner-name" id="ownerName">Loading...</div>
+                    <div class="owner-username" id="ownerUsername">@username</div>
+                </div>
+                <button class="card-btn" id="contactOwnerBtn">
+                    <i class="fab fa-telegram"></i> Hubungi Owner
+                </button>
+            </div>
+
+            <!-- Official Channel Card -->
+            <div class="info-card">
+                <div class="card-icon"><i class="fas fa-bullhorn"></i></div>
+                <h3>Channel Resmi</h3>
+                <p>Dapatkan informasi giveaway terbaru dan pengumuman penting</p>
+                <button class="card-btn" id="officialChannelBtn">
+                    <i class="fab fa-telegram"></i> Bergabung
+                </button>
+            </div>
+
+            <!-- Force Subs Card -->
+            <div class="info-card">
+                <div class="card-icon"><i class="fas fa-link"></i></div>
+                <h3>Force Subscribe</h3>
+                <p>Channel yang wajib diikuti untuk mengikuti giveaway</p>
+                <div class="force-subs-list" id="forceSubsList">
+                    <div class="loading-placeholder">Memuat...</div>
+                </div>
+            </div>
+
+            <!-- Help & Support Card -->
+            <div class="info-card">
+                <div class="card-icon"><i class="fas fa-question-circle"></i></div>
+                <h3>Bantuan & Panduan</h3>
+                <ul class="help-list">
+                    <li><i class="fas fa-check-circle"></i> Cara membuat giveaway</li>
+                    <li><i class="fas fa-check-circle"></i> Cara berpartisipasi</li>
+                    <li><i class="fas fa-check-circle"></i> Syarat & ketentuan</li>
+                    <li><i class="fas fa-check-circle"></i> FAQ</li>
+                </ul>
+                <button class="card-btn" id="helpBtn">
+                    <i class="fas fa-book"></i> Baca Panduan
+                </button>
+            </div>
+
+            <!-- Statistics Detail Card -->
+            <div class="info-card full-width">
+                <div class="card-icon"><i class="fas fa-chart-pie"></i></div>
+                <h3>Statistik Lengkap</h3>
+                <div class="detail-stats" id="detailStats">
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Giveaway Hari Ini:</span>
+                        <span class="detail-value" id="detailGiveawaysToday">--</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Giveaway Minggu Ini:</span>
+                        <span class="detail-value" id="detailGiveawaysWeek">--</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Giveaway Bulan Ini:</span>
+                        <span class="detail-value" id="detailGiveawaysMonth">--</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Peserta Unik:</span>
+                        <span class="detail-value" id="detailUniqueParticipants">--</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Rata-rata per Giveaway:</span>
+                        <span class="detail-value" id="detailAvgParticipants">--</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Total Admin:</span>
+                        <span class="detail-value" id="detailTotalAdmins">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Giveaways Card -->
+            <div class="info-card full-width">
+                <div class="card-icon"><i class="fas fa-history"></i></div>
+                <h3>Giveaway Terbaru</h3>
+                <div class="recent-giveaways" id="recentGiveaways">
+                    <div class="loading-placeholder">Memuat giveaway terbaru...</div>
+                </div>
+                <button class="card-btn outline" id="viewAllGiveawaysBtn">
+                    <i class="fas fa-arrow-right"></i> Lihat Semua
+                </button>
+            </div>
+        </div>
+
+        <!-- CTA Footer -->
+        <div class="cta-footer">
+            <p>Mulai buat giveaway Anda sekarang juga!</p>
+            <button class="cta-btn" id="ctaOpenBotBtn">
+                <i class="fab fa-telegram"></i> Buka Bot
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>&copy; 2024 Giveaway Bot - Platform Giveaway Telegram</p>
+            <p class="footer-version">Version 1.0.0</p>
+        </div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/giveaway/js/lobby.js"></script>
+</body>
+</html>
