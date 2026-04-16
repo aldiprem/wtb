@@ -17,8 +17,8 @@
     /* VARIABEL BARU: Efek Transparan Blur (Glassmorphism) */
     --glass-bg: rgb(255 255 255 / 3%); /* Putih sangat tipis */
     --primary-glass: rgb(57 119 155 / 20%);
-    --glass-bg-dark: rgba(0, 0, 0, 0.3);    /* Hitam transparan */
-    --blur: blur(10px);                     /* Kekuatan blur */
+    --glass-bg-dark: rgba(0, 0, 0, 0.3)
+    --blur: blur(10px);
     
     --border: rgba(255, 255, 255, 0.08);
     --border-light: rgba(255, 255, 255, 0.05);

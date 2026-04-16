@@ -30,6 +30,45 @@
     <!-- Main Container -->
     <div class="lobby-container">
         
+        <!-- Profile Header Section -->
+        <div class="profile-header" id="profileHeader">
+            <div class="profile-avatar" id="profileAvatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="profile-info">
+                <div class="profile-name" id="profileName">Memuat...</div>
+                <div class="profile-username" id="profileUsername">@username</div>
+                <div class="profile-id" id="profileId">ID: --</div>
+            </div>
+        </div>
+
+        <!-- User Stats Card -->
+        <div class="user-stats-card" id="userStatsCard">
+            <div class="stats-row">
+                <div class="user-stat-item">
+                    <div class="user-stat-icon"><i class="fas fa-gift"></i></div>
+                    <div class="user-stat-info">
+                        <span class="user-stat-value" id="userStatCreated">0</span>
+                        <span class="user-stat-label">Giveaway Dibuat</span>
+                    </div>
+                </div>
+                <div class="user-stat-item">
+                    <div class="user-stat-icon"><i class="fas fa-hand-peace"></i></div>
+                    <div class="user-stat-info">
+                        <span class="user-stat-value" id="userStatParticipated">0</span>
+                        <span class="user-stat-label">Partisipasi</span>
+                    </div>
+                </div>
+                <div class="user-stat-item">
+                    <div class="user-stat-icon"><i class="fas fa-trophy"></i></div>
+                    <div class="user-stat-info">
+                        <span class="user-stat-value" id="userStatWon">0</span>
+                        <span class="user-stat-label">Dimennagkan</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Hero Section -->
         <div class="hero-section">
             <div class="hero-icon">
@@ -47,7 +86,7 @@
             </div>
         </div>
 
-        <!-- Stats Section (Ditampilkan setelah scroll/klik) -->
+        <!-- Stats Section -->
         <div class="stats-section" id="statsSection">
             <div class="section-header">
                 <i class="fas fa-chart-line"></i>
@@ -93,12 +132,19 @@
         <!-- Info Cards Grid -->
         <div class="info-grid">
             <!-- Owner Card -->
-            <div class="info-card">
-                <div class="card-icon"><i class="fas fa-crown"></i></div>
-                <h3>Owner & Creator</h3>
-                <div class="owner-info">
-                    <div class="owner-name" id="ownerName">Loading...</div>
-                    <div class="owner-username" id="ownerUsername">@username</div>
+            <div class="info-card" id="ownerCard">
+                <div class="card-header-flex">
+                    <div class="card-icon-small"><i class="fas fa-crown"></i></div>
+                    <h3>Owner & Creator</h3>
+                </div>
+                <div class="owner-info-flex" id="ownerInfoFlex">
+                    <div class="owner-avatar-small" id="ownerAvatarSmall">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="owner-details">
+                        <div class="owner-name" id="ownerName">Loading...</div>
+                        <div class="owner-username" id="ownerUsername">@username</div>
+                    </div>
                 </div>
                 <button class="card-btn" id="contactOwnerBtn">
                     <i class="fab fa-telegram"></i> Hubungi Owner
@@ -107,8 +153,10 @@
 
             <!-- Official Channel Card -->
             <div class="info-card">
-                <div class="card-icon"><i class="fas fa-bullhorn"></i></div>
-                <h3>Channel Resmi</h3>
+                <div class="card-header-flex">
+                    <div class="card-icon-small"><i class="fas fa-bullhorn"></i></div>
+                    <h3>Channel Resmi</h3>
+                </div>
                 <p>Dapatkan informasi giveaway terbaru dan pengumuman penting</p>
                 <button class="card-btn" id="officialChannelBtn">
                     <i class="fab fa-telegram"></i> Bergabung
@@ -117,8 +165,10 @@
 
             <!-- Force Subs Card -->
             <div class="info-card">
-                <div class="card-icon"><i class="fas fa-link"></i></div>
-                <h3>Force Subscribe</h3>
+                <div class="card-header-flex">
+                    <div class="card-icon-small"><i class="fas fa-link"></i></div>
+                    <h3>Force Subscribe</h3>
+                </div>
                 <p>Channel yang wajib diikuti untuk mengikuti giveaway</p>
                 <div class="force-subs-list" id="forceSubsList">
                     <div class="loading-placeholder">Memuat...</div>
@@ -127,8 +177,10 @@
 
             <!-- Help & Support Card -->
             <div class="info-card">
-                <div class="card-icon"><i class="fas fa-question-circle"></i></div>
-                <h3>Bantuan & Panduan</h3>
+                <div class="card-header-flex">
+                    <div class="card-icon-small"><i class="fas fa-question-circle"></i></div>
+                    <h3>Bantuan & Panduan</h3>
+                </div>
                 <ul class="help-list">
                     <li><i class="fas fa-check-circle"></i> Cara membuat giveaway</li>
                     <li><i class="fas fa-check-circle"></i> Cara berpartisipasi</li>
@@ -142,8 +194,10 @@
 
             <!-- Statistics Detail Card -->
             <div class="info-card full-width">
-                <div class="card-icon"><i class="fas fa-chart-pie"></i></div>
-                <h3>Statistik Lengkap</h3>
+                <div class="card-header-flex">
+                    <div class="card-icon-small"><i class="fas fa-chart-pie"></i></div>
+                    <h3>Statistik Lengkap</h3>
+                </div>
                 <div class="detail-stats" id="detailStats">
                     <div class="detail-stat-item">
                         <span class="detail-label">Giveaway Hari Ini:</span>
@@ -174,8 +228,10 @@
 
             <!-- Recent Giveaways Card -->
             <div class="info-card full-width">
-                <div class="card-icon"><i class="fas fa-history"></i></div>
-                <h3>Giveaway Terbaru</h3>
+                <div class="card-header-flex">
+                    <div class="card-icon-small"><i class="fas fa-history"></i></div>
+                    <h3>Giveaway Terbaru</h3>
+                </div>
                 <div class="recent-giveaways" id="recentGiveaways">
                     <div class="loading-placeholder">Memuat giveaway terbaru...</div>
                 </div>

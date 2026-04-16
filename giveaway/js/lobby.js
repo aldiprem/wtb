@@ -49,7 +49,18 @@
         loadingOverlay: document.getElementById('loadingOverlay'),
         toastContainer: document.getElementById('toastContainer'),
         
-        // Stats
+        // Profile
+        profileAvatar: document.getElementById('profileAvatar'),
+        profileName: document.getElementById('profileName'),
+        profileUsername: document.getElementById('profileUsername'),
+        profileId: document.getElementById('profileId'),
+        
+        // User Stats
+        userStatCreated: document.getElementById('userStatCreated'),
+        userStatParticipated: document.getElementById('userStatParticipated'),
+        userStatWon: document.getElementById('userStatWon'),
+        
+        // Bot Stats
         statTotalUsers: document.getElementById('statTotalUsers'),
         statTotalGiveaways: document.getElementById('statTotalGiveaways'),
         statTotalParticipants: document.getElementById('statTotalParticipants'),
@@ -68,6 +79,7 @@
         // Owner
         ownerName: document.getElementById('ownerName'),
         ownerUsername: document.getElementById('ownerUsername'),
+        ownerAvatarSmall: document.getElementById('ownerAvatarSmall'),
         
         // Force Subs
         forceSubsList: document.getElementById('forceSubsList'),
@@ -117,6 +129,57 @@
         return num.toLocaleString('id-ID');
     }
 
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ==================== TELEGRAM USER ====================
+    
+    function getTelegramUser() {
+        try {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const initData = window.Telegram.WebApp.initDataUnsafe;
+                if (initData && initData.user) {
+                    return {
+                        id: initData.user.id,
+                        username: initData.user.username || '',
+                        first_name: initData.user.first_name || '',
+                        last_name: initData.user.last_name || '',
+                        photo_url: initData.user.photo_url || null
+                    };
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error getting Telegram user:', error);
+            return null;
+        }
+    }
+
+    function updateProfileUI(telegramUser) {
+        if (!telegramUser) return;
+        
+        const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim() || 'Pengguna Telegram';
+        
+        if (elements.profileName) elements.profileName.textContent = fullName;
+        if (elements.profileUsername) elements.profileUsername.textContent = telegramUser.username ? `@${telegramUser.username}` : 'Tidak ada username';
+        if (elements.profileId) elements.profileId.textContent = `ID: ${telegramUser.id}`;
+        
+        const avatarContainer = elements.profileAvatar;
+        if (avatarContainer) {
+            if (telegramUser.photo_url) {
+                avatarContainer.innerHTML = `<img src="${telegramUser.photo_url}" alt="${escapeHtml(fullName)}">`;
+            } else {
+                const nameForAvatar = encodeURIComponent(fullName.substring(0, 2));
+                const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=128&rounded=true&bold=true&length=2`;
+                avatarContainer.innerHTML = `<img src="${avatarUrl}" alt="${escapeHtml(fullName)}">`;
+            }
+        }
+    }
+
     // ==================== API FUNCTIONS ====================
     
     async function fetchWithRetry(url, options, retries = 3) {
@@ -136,7 +199,23 @@
         }
     }
 
-    async function loadStatistics() {
+    async function loadUserStats(userId) {
+        if (!userId) return;
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/user-stats/${userId}`, { method: 'GET' });
+            
+            if (response.success) {
+                if (elements.userStatCreated) elements.userStatCreated.textContent = formatNumber(response.created_count || 0);
+                if (elements.userStatParticipated) elements.userStatParticipated.textContent = formatNumber(response.participated_count || 0);
+                if (elements.userStatWon) elements.userStatWon.textContent = formatNumber(response.won_count || 0);
+            }
+        } catch (error) {
+            console.error('Error loading user stats:', error);
+        }
+    }
+
+    async function loadBotStatistics() {
         try {
             const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/lobby-stats`, { method: 'GET' });
             
@@ -177,6 +256,15 @@
             if (response.success && response.owner) {
                 if (elements.ownerName) elements.ownerName.textContent = response.owner.name || 'Administrator';
                 if (elements.ownerUsername) elements.ownerUsername.textContent = response.owner.username ? `@${response.owner.username}` : 'Owner';
+                
+                // Update owner avatar
+                if (elements.ownerAvatarSmall && response.owner.photo_url) {
+                    elements.ownerAvatarSmall.innerHTML = `<img src="${response.owner.photo_url}" alt="Owner">`;
+                } else if (elements.ownerAvatarSmall) {
+                    const nameForAvatar = encodeURIComponent((response.owner.name || 'O').substring(0, 2));
+                    const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=96&rounded=true&bold=true&length=2`;
+                    elements.ownerAvatarSmall.innerHTML = `<img src="${avatarUrl}" alt="Owner">`;
+                }
                 return response.owner;
             }
         } catch (error) {
@@ -252,17 +340,15 @@
                 }
                 elements.recentGiveaways.innerHTML = html;
                 
-            // Di dalam loadRecentGiveaways, perbaiki event click
-            document.querySelectorAll('.recent-giveaway-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const giveawayCode = item.dataset.giveawayCode;
-                    if (giveawayCode) {
-                        hapticMedium();
-                        // Gunakan path /giveaways dengan parameter id
-                        window.location.href = `/giveaways?id=${giveawayCode}`;
-                    }
+                document.querySelectorAll('.recent-giveaway-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const giveawayCode = item.dataset.giveawayCode;
+                        if (giveawayCode) {
+                            hapticMedium();
+                            window.location.href = `/giveaways?id=${giveawayCode}`;
+                        }
+                    });
                 });
-            });
             } else {
                 elements.recentGiveaways.innerHTML = '<div class="loading-placeholder">Belum ada giveaway</div>';
             }
@@ -289,13 +375,6 @@
         }
     }
 
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
     // ==================== EVENT HANDLERS ====================
     
     async function refreshAllData() {
@@ -307,10 +386,12 @@
             elements.refreshStatsBtn.disabled = true;
         }
         
+        const telegramUser = getTelegramUser();
         await Promise.all([
-            loadStatistics(),
+            loadBotStatistics(),
             loadForceSubs(),
-            loadRecentGiveaways()
+            loadRecentGiveaways(),
+            telegramUser ? loadUserStats(telegramUser.id) : Promise.resolve()
         ]);
         
         if (elements.refreshStatsBtn) {
@@ -323,7 +404,6 @@
 
     function openBot() {
         hapticMedium();
-        // Ganti dengan username bot Anda
         window.open('https://t.me/freebiestbot', '_blank');
     }
 
@@ -337,21 +417,17 @@
 
     function contactOwner() {
         hapticMedium();
-        // Ganti dengan username owner
-        window.open('https://t.me/owner_username', '_blank');
+        window.open('https://t.me/giftfreebies', '_blank');
     }
 
     function joinOfficialChannel() {
         hapticMedium();
-        // Ganti dengan link channel resmi
         window.open('https://t.me/giftfreebies', '_blank');
     }
 
     function openHelp() {
         hapticMedium();
         showToast('Bantuan akan segera tersedia', 'info');
-        // Bisa diarahkan ke halaman panduan
-        // window.open('/help', '_blank');
     }
 
     // ==================== INITIALIZATION ====================
@@ -408,8 +484,14 @@
         
         setupEventListeners();
         
+        const telegramUser = getTelegramUser();
+        if (telegramUser) {
+            updateProfileUI(telegramUser);
+            await loadUserStats(telegramUser.id);
+        }
+        
         await Promise.all([
-            loadStatistics(),
+            loadBotStatistics(),
             loadOwnerInfo(),
             loadForceSubs(),
             loadRecentGiveaways()
