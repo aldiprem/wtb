@@ -492,16 +492,22 @@
             return;
         }
         
+        // Request peer from Telegram
+        // This requires the bot to support KeyboardButtonRequestPeer
+        // For now, we'll use manual input as fallback
         const chatId = prompt(`Masukkan ID ${peerType === 'channel' ? 'Channel' : 'Group'}:\nContoh: -1001234567890`);
         if (chatId && chatId.trim()) {
             addChatManually(chatId.trim(), peerType);
         }
     }
     
-    // Fungsi baru: Fetch entity chat dari ID
-    async function fetchChatEntity(chatId) {
+    async function addChatManually(chatId, type = 'channel') {
+        hapticMedium();
+        showLoading(true);
+        
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/fetch-chat-entity`, {
+            // Check if bot has access and user is admin
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/validate-chat`, {
                 method: 'POST',
                 body: JSON.stringify({
                     chat_id: chatId,
@@ -510,303 +516,27 @@
             });
             
             if (response.success) {
-                return {
-                    success: true,
-                    chat_id: response.chat_id,
-                    title: response.title,
-                    username: response.username,
-                    type: response.type,
-                    visibility: response.visibility,
-                    invite_link: response.invite_link,
-                    photo_url: response.photo_url,
-                    member_count: response.member_count
-                };
-            } else {
-                return {
-                    success: false,
-                    error: response.error || 'Gagal mengambil data chat'
-                };
-            }
-        } catch (error) {
-            console.error('Error fetching chat entity:', error);
-            return {
-                success: false,
-                error: error.message || 'Terjadi kesalahan'
-            };
-        }
-    }
-
-    // Perbaiki fungsi openChatModal
-    function openChatModal() {
-        hapticMedium();
-        
-        // Buat modal chat yang lebih baik dengan input ID
-        let chatInputModal = document.getElementById('chatInputModal');
-        if (!chatInputModal) {
-            chatInputModal = document.createElement('div');
-            chatInputModal.id = 'chatInputModal';
-            chatInputModal.className = 'modal-overlay';
-            chatInputModal.innerHTML = `
-                <div class="modal-container" style="max-width: 360px;">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-plus-circle"></i> Tambah Chat</h3>
-                        <button class="modal-close" id="closeChatInputModal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <p style="margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
-                            <i class="fas fa-info-circle"></i> Masukkan ID Chat (Channel/Group)
-                        </p>
-                        <input type="text" id="chatIdInput" placeholder="Contoh: -1001234567890" style="margin-bottom: 16px;">
-                        <div id="chatPreview" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--surface-light); border-radius: 14px;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div id="previewAvatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                    <i class="fas fa-users" style="color: white; font-size: 24px;"></i>
-                                </div>
-                                <div style="flex: 1;">
-                                    <div id="previewTitle" style="font-weight: 600; margin-bottom: 4px;">-</div>
-                                    <div id="previewMeta" style="font-size: 11px; color: var(--text-muted);">-</div>
-                                </div>
-                                <div id="previewStatus" style="font-size: 11px;">
-                                    <span class="loading-spinner-small" style="display: none; width: 16px; height: 16px;"></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn-primary" id="confirmAddChatBtn" disabled>Tambahkan</button>
-                            <button class="btn-secondary" id="cancelChatInputBtn">Batal</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(chatInputModal);
-            
-            // Event listeners
-            document.getElementById('closeChatInputModal')?.addEventListener('click', () => {
-                closeModal(chatInputModal);
-            });
-            
-            document.getElementById('cancelChatInputBtn')?.addEventListener('click', () => {
-                closeModal(chatInputModal);
-            });
-            
-            document.getElementById('confirmAddChatBtn')?.addEventListener('click', async () => {
-                const chatIdInput = document.getElementById('chatIdInput');
-                const chatId = chatIdInput?.value.trim();
-                if (chatId) {
-                    await addChatManually(chatId);
-                    closeModal(chatInputModal);
-                }
-            });
-            
-            // Live preview saat input berubah
-            const chatIdInput = document.getElementById('chatIdInput');
-            const confirmBtn = document.getElementById('confirmAddChatBtn');
-            
-            chatIdInput?.addEventListener('input', debounce(async (e) => {
-                const chatId = e.target.value.trim();
-                if (chatId) {
-                    await previewChatEntity(chatId);
-                    if (confirmBtn) confirmBtn.disabled = false;
-                } else {
-                    document.getElementById('chatPreview').style.display = 'none';
-                    if (confirmBtn) confirmBtn.disabled = true;
-                }
-            }, 500));
-            
-            chatInputModal.addEventListener('click', (e) => {
-                if (e.target === chatInputModal) closeModal(chatInputModal);
-            });
-        }
-        
-        // Reset form
-        const chatIdInput = document.getElementById('chatIdInput');
-        const chatPreview = document.getElementById('chatPreview');
-        const confirmBtn = document.getElementById('confirmAddChatBtn');
-        
-        if (chatIdInput) chatIdInput.value = '';
-        if (chatPreview) chatPreview.style.display = 'none';
-        if (confirmBtn) confirmBtn.disabled = true;
-        
-        openModal(chatInputModal);
-        setTimeout(() => chatIdInput?.focus(), 100);
-    }
-
-    // Fungsi preview chat entity
-    async function previewChatEntity(chatId) {
-        const chatPreview = document.getElementById('chatPreview');
-        const previewAvatar = document.getElementById('previewAvatar');
-        const previewTitle = document.getElementById('previewTitle');
-        const previewMeta = document.getElementById('previewMeta');
-        const previewStatus = document.getElementById('previewStatus');
-        const loadingSpan = previewStatus?.querySelector('.loading-spinner-small');
-        
-        if (chatPreview) chatPreview.style.display = 'block';
-        if (previewStatus) {
-            if (loadingSpan) loadingSpan.style.display = 'inline-block';
-            previewStatus.innerHTML = '<span class="loading-spinner-small" style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(64,167,227,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite;"></span> Mengecek...';
-        }
-        
-        try {
-            const entity = await fetchChatEntity(chatId);
-            
-            if (entity.success) {
-                // Update preview
-                if (previewTitle) previewTitle.textContent = entity.title || entity.chat_id;
-                
-                let metaText = `${entity.type === 'channel' ? 'Channel' : entity.type === 'group' ? 'Group' : 'Supergroup'}`;
-                if (entity.visibility === 'public' && entity.username) {
-                    metaText += ` • @${entity.username}`;
-                } else {
-                    metaText += ` • Private`;
-                }
-                if (entity.member_count) {
-                    metaText += ` • ${entity.member_count.toLocaleString()} members`;
-                }
-                if (previewMeta) previewMeta.textContent = metaText;
-                
-                // Update avatar
-                if (previewAvatar) {
-                    if (entity.photo_url) {
-                        previewAvatar.innerHTML = `<img src="${entity.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    } else {
-                        const initial = (entity.title || 'C').charAt(0).toUpperCase();
-                        previewAvatar.innerHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary), var(--primary-dark));"><span style="color: white; font-weight: 600;">${initial}</span></div>`;
-                    }
-                }
-                
-                if (previewStatus) {
-                    previewStatus.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Valid';
-                }
-                
-                // Store entity data untuk digunakan saat add
-                window.pendingChatEntity = entity;
-                
-            } else {
-                if (previewTitle) previewTitle.textContent = 'Chat tidak ditemukan';
-                if (previewMeta) previewMeta.textContent = entity.error || 'Periksa ID Chat';
-                if (previewStatus) {
-                    previewStatus.innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger);"></i> Tidak valid';
-                }
-                window.pendingChatEntity = null;
-            }
-        } catch (error) {
-            console.error('Preview error:', error);
-            if (previewTitle) previewTitle.textContent = 'Error';
-            if (previewMeta) previewMeta.textContent = 'Gagal mengambil data';
-            if (previewStatus) {
-                previewStatus.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i> Error';
-            }
-            window.pendingChatEntity = null;
-        }
-    }
-
-    // Fungsi debounce helper
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    // Perbaiki fungsi addChatManually
-    async function addChatManually(chatId, type = null) {
-        hapticMedium();
-        showLoading(true);
-        
-        try {
-            // Gunakan entity yang sudah di-preview jika ada
-            let entity = window.pendingChatEntity;
-            
-            if (!entity || entity.chat_id !== chatId) {
-                // Fetch ulang jika belum ada preview
-                entity = await fetchChatEntity(chatId);
-            }
-            
-            if (entity && entity.success) {
-                // Cek apakah chat sudah ada
-                const exists = giveawayData.chats.some(c => c.chat_id === entity.chat_id);
-                if (exists) {
-                    showToast(`Chat "${entity.title}" sudah ditambahkan`, 'warning');
-                    return;
-                }
-                
                 giveawayData.chats.push({
-                    chat_id: entity.chat_id,
-                    title: entity.title || chatId,
-                    type: entity.type || 'channel',
-                    visibility: entity.visibility || 'private',
-                    username: entity.username || null,
-                    invite_link: entity.invite_link || null,
-                    photo_url: entity.photo_url || null,
-                    member_count: entity.member_count || 0
+                    chat_id: chatId,
+                    title: response.chat_title || chatId,
+                    type: response.chat_type || type,
+                    visibility: response.visibility || 'private',
+                    username: response.username || null,
+                    invite_link: response.invite_link || null
                 });
                 renderChats();
                 checkFormValidity();
-                showToast(`Chat "${entity.title || chatId}" ditambahkan`, 'success');
-                
-                // Clear preview
-                window.pendingChatEntity = null;
+                showToast(`Chat ${response.chat_title || chatId} ditambahkan`, 'success');
             } else {
-                showToast(entity?.error || 'Gagal menambahkan chat', 'error');
+                showToast(response.error || 'Gagal menambahkan chat', 'error');
             }
         } catch (error) {
             console.error('Error adding chat:', error);
             showToast('Gagal menambahkan chat', 'error');
         } finally {
             showLoading(false);
-            window.pendingChatEntity = null;
+            closeModal(elements.chatModal);
         }
-    }
-
-    // Perbaiki renderChats untuk menampilkan foto profil
-    function renderChats() {
-        if (!elements.chatList) return;
-        
-        if (giveawayData.chats.length === 0) {
-            elements.chatList.innerHTML = '<div class="value-text empty">Belum ada chat</div>';
-            return;
-        }
-        
-        let html = '';
-        giveawayData.chats.forEach((chat, index) => {
-            const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Supergroup';
-            const visibilityIcon = chat.visibility === 'public' ? '🌐' : '🔒';
-            
-            // Gunakan photo_url jika ada
-            const hasPhoto = chat.photo_url && chat.photo_url !== '';
-            const initial = (chat.title || 'C').charAt(0).toUpperCase();
-            
-            html += `
-                <div class="chat-item" data-index="${index}">
-                    <div class="chat-icon" style="background: ${hasPhoto ? 'transparent' : 'linear-gradient(135deg, var(--primary), var(--primary-dark))'}; overflow: hidden;">
-                        ${hasPhoto ? `<img src="${chat.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas ${chat.type === 'channel' ? 'fa-broadcast-tower' : 'fa-users'}"></i>`}
-                    </div>
-                    <div class="chat-info">
-                        <div class="chat-title">${escapeHtml(chat.title || chat.chat_id)}</div>
-                        <div class="chat-meta">
-                            <span class="chat-type">${visibilityIcon} ${chatType}</span>
-                            <span>${escapeHtml(chat.chat_id)}</span>
-                            ${chat.username ? `<span>@${escapeHtml(chat.username)}</span>` : ''}
-                        </div>
-                    </div>
-                    <button class="chat-delete" data-index="${index}"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-        });
-        elements.chatList.innerHTML = html;
-        
-        document.querySelectorAll('.chat-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = parseInt(btn.dataset.index);
-                deleteChat(index);
-            });
-        });
     }
 
     // ==================== LINK HANDLERS ====================
@@ -967,7 +697,7 @@
             btnSpan.textContent = 'Start Giveaway';
         }
     }
-
+    
     // ==================== API FUNCTIONS ====================
 
     async function fetchWithRetry(url, options, retries = MAX_RETRIES) {
