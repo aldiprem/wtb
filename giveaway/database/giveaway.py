@@ -1433,3 +1433,44 @@ class GiveawayDatabase:
         except Exception as e:
             print(f"Error getting ended giveaways: {e}")
             return []
+        
+    def save_chat_invite_link(self, chat_id: str, invite_link: str) -> bool:
+        """Save invite link for a private chat"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Buat tabel jika belum ada
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS chat_invite_links (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        chat_id TEXT UNIQUE NOT NULL,
+                        invite_link TEXT NOT NULL,
+                        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                # Insert atau update
+                cursor.execute('''
+                    INSERT OR REPLACE INTO chat_invite_links (chat_id, invite_link, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (chat_id, invite_link))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving chat invite link: {e}")
+            return False
+
+    def get_chat_invite_link(self, chat_id: str) -> Optional[str]:
+        """Get invite link for a private chat"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT invite_link FROM chat_invite_links WHERE chat_id = ?', (chat_id,))
+                row = cursor.fetchone()
+                return row[0] if row else None
+        except Exception as e:
+            print(f"Error getting chat invite link: {e}")
+            return None

@@ -698,3 +698,33 @@ def update_check_result():
 def get_force_subs():
     force_subs = db.get_all_force_subs()
     return jsonify({'success': True, 'force_subs': force_subs})
+
+@giveaway_bp.route('/invite-links', methods=['GET'])
+def get_invite_links():
+    """Get all invite links for private chats"""
+    try:
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS chat_invite_links (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id TEXT UNIQUE NOT NULL,
+                    invite_link TEXT NOT NULL,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+            
+            cursor.execute('SELECT chat_id, invite_link FROM chat_invite_links')
+            rows = cursor.fetchall()
+            
+            invite_links = [{'chat_id': row[0], 'invite_link': row[1]} for row in rows]
+            
+            return jsonify({
+                'success': True,
+                'invite_links': invite_links
+            })
+    except Exception as e:
+        print(f"Error getting invite links: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

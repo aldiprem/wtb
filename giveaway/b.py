@@ -1317,7 +1317,7 @@ async def add_chat(event):
 
 [⚠](tg://emoji?id=5474438063637669983) **Syarat Chat yang bisa ditambahkan:**
 1. Bot harus menjadi **admin** di chat tersebut
-2. Anda harus menjadi **admin** di chat tersebut
+2. Anda harus menjadi **admin/owner** di chat tersebut
 3. Bot harus memiliki izin **mengirim pesan**
 
 [📌](tg://emoji?id=5397782960512444700) **Cara menambahkan:**
@@ -1344,7 +1344,9 @@ __Klik SELESAI jika sudah selesai menambahkan.__
             title = chat.get('title', '-')
             chat_id = chat.get('chat_id', '-')
             chat_type = chat.get('chat_type', '-')
-            chats_text += f"{i}. [{chat_type}] {title}\n   `{chat_id}`\n"
+            visibility = chat.get('visibility', 'unknown')
+            visibility_icon = "🔓" if visibility == "public" else "🔒" if visibility == "private" else "❓"
+            chats_text += f"{i}. {visibility_icon} [{chat_type}] {title}\n   `{chat_id}`\n"
         
         await event.respond(chats_text, buttons=inline_buttons)
     else:
@@ -1398,6 +1400,8 @@ async def handle_peer_selection(event):
     chat_type = "Unknown"
     username = None
     title = None
+    invite_link = None
+    visibility = "unknown"  # public atau private
     
     try:
         if hasattr(peer, 'channel_id'):
@@ -1418,11 +1422,19 @@ async def handle_peer_selection(event):
             title = getattr(entity, 'title', None)
             if hasattr(entity, 'megagroup') and entity.megagroup:
                 chat_type = "Supergroup"
-        except:
-            pass
+            
+            # DETEKSI PUBLIC ATAU PRIVATE
+            # Channel/Group dianggap PUBLIC jika memiliki username
+            if username:
+                visibility = "public"
+            else:
+                visibility = "private"
+                
+        except Exception as e:
+            print(f"Error getting entity: {e}")
+            visibility = "unknown"
         
-        # ========== CEK AKSES BOT DAN ADMIN ==========
-        # Cek akses bot
+        # ========== CEK AKSES BOT ==========
         try:
             test_msg = await bot.send_message(int(chat_id), "✅ Bot sedang melakukan pengecekan akses...")
             await test_msg.delete()
@@ -1431,15 +1443,16 @@ async def handle_peer_selection(event):
             bot_has_access = False
             error_msg = f"**Bot tidak memiliki akses ke chat ini. Pastikan bot sudah menjadi admin di chat.**"
             await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
-            # Delete the service message
             try:
                 await bot.delete_messages(msg.chat_id, msg.id)
             except:
                 pass
             return
         
-        # Cek apakah user adalah admin
+        # ========== CEK APAKAH USER ADALAH ADMIN/OWNER ==========
         is_admin = False
+        is_creator = False
+        
         try:
             from telethon.tl.functions.channels import GetParticipantRequest
             from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
@@ -1449,7 +1462,8 @@ async def handle_peer_selection(event):
                 participant=user_id
             ))
             
-            is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
+            is_admin = isinstance(participant.participant, ChannelParticipantAdmin)
+            is_creator = isinstance(participant.participant, ChannelParticipantCreator)
             
         except Exception as e:
             # Coba cek untuk group biasa
@@ -1458,28 +1472,78 @@ async def handle_peer_selection(event):
                 full_chat = await bot(GetFullChatRequest(chat_id=-int(chat_id)))
                 for participant in full_chat.full_chat.participants.participants:
                     if participant.user_id == user_id:
-                        is_admin = True
+                        # Di group biasa, semua member bisa jadi? Perlu cek lebih lanjut
+                        # Untuk group biasa, kita cek apakah user adalah creator
+                        if hasattr(participant, 'is_creator') and participant.is_creator:
+                            is_creator = True
+                            is_admin = True
                         break
             except:
                 is_admin = False
+                is_creator = False
         
-        if not is_admin:
-            error_msg = "Anda bukan admin di chat ini! Bot hanya bisa digunakan oleh admin chat."
+        # Jika user BUKAN admin DAN BUKAN creator, TOLAK
+        if not is_admin and not is_creator:
+            error_msg = "Anda bukan admin/owner di chat ini! Bot hanya bisa digunakan oleh admin atau owner chat."
             await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
-            # Delete the service message
             try:
                 await bot.delete_messages(msg.chat_id, msg.id)
             except:
                 pass
             return
         
-        # ========== LANJUTKAN PENYIMPANAN ==========
-        # Get existing chats from user_chats
+        # ========== JIKA CHAT PRIVATE, BUAT INVITE LINK ==========
+        if visibility == "private":
+            try:
+                # Coba buat invite link (expire never, unlimited usage)
+                invite = await bot(functions.messages.ExportChatInviteRequest(
+                    peer=int(chat_id),
+                    expire_date=None,  # Tidak pernah expired
+                    usage_limit=None,   # Unlimited usage
+                    title="Giveaway Join Link"
+                ))
+                invite_link = invite.link
+                print(f"[INFO] Created invite link for private chat {chat_id}: {invite_link}")
+            except errors.ChatAdminRequiredError:
+                error_msg = "Bot tidak memiliki izin untuk membuat invite link. Pastikan bot memiliki hak 'Invite Users'."
+                await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat Private!**\n\n{error_msg}")
+                try:
+                    await bot.delete_messages(msg.chat_id, msg.id)
+                except:
+                    pass
+                return
+            except Exception as e:
+                error_msg = f"Gagal membuat invite link: {str(e)[:100]}"
+                await bot.send_message(user_id, f"⚠️ **Peringatan!**\n\n{error_msg}\n\nChat akan ditambahkan tanpa link invite. Pastikan peserta bisa join melalui username atau ID.")
+                invite_link = None
+        else:
+            # Chat public, tidak perlu invite link
+            invite_link = None
+        
+        # ========== SIMPAN KE DATABASE ==========
+        try:
+            # Simpan ke tabel force_subs atau chat_info
+            db.save_chat_info(
+                giveaway_id=None,  # Belum ada giveaway_id, simpan sementara
+                chat_id=chat_id,
+                chat_title=title or '',
+                chat_username=username or '',
+                chat_photo_url='',
+                chat_type=chat_type
+            )
+            
+            # Jika private, simpan invite link ke tabel terpisah
+            if visibility == "private" and invite_link:
+                db.save_chat_invite_link(chat_id, invite_link)
+                
+        except Exception as e:
+            print(f"Error saving to database: {e}")
+        
+        # ========== LANJUTKAN PENYIMPANAN KE user_chats ==========
         existing_chats = user_chats.get(user_id, [])
         already_exists = any(c['chat_id'] == chat_id for c in existing_chats)
 
         if not already_exists:
-            # Add to user_chats
             if user_id not in user_chats:
                 user_chats[user_id] = []
             
@@ -1487,7 +1551,9 @@ async def handle_peer_selection(event):
                 'chat_id': chat_id,
                 'chat_type': chat_type,
                 'username': username,
-                'title': title
+                'title': title,
+                'visibility': visibility,
+                'invite_link': invite_link
             })
             
             # Delete the service message
@@ -1497,19 +1563,22 @@ async def handle_peer_selection(event):
                 pass
             
             # Send success message
+            visibility_text = "🔓 Public" if visibility == "public" else "🔒 Private"
+            invite_text = f"\n• Invite Link: {invite_link}" if invite_link else ""
+            
             await bot.send_message(
                 user_id,
                 f"✅ **Berhasil Ditambahkan!**\n\n"
                 f"• Tipe: {chat_type}\n"
+                f"• Visibilitas: {visibility_text}\n"
                 f"• ID: `{chat_id}`\n"
                 f"• Nama: {title or '-'}\n"
-                f"• Username: @{username if username else '-'}\n\n"
+                f"• Username: @{username if username else '-'}{invite_text}\n\n"
                 f"✅ Bot memiliki akses\n"
-                f"✅ Anda adalah admin"
+                f"✅ Anda adalah admin/owner"
             )
             
             # Simpan ke user_state untuk ditampilkan di menu
-            # Gunakan chat pertama sebagai default
             user_state[user_id]['chat_id'] = chat_id
             user_state[user_id]['chat_title'] = title or ''
             

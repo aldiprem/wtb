@@ -328,7 +328,6 @@
         if (!elements.chatListContainer || !giveawayData?.code) return;
         
         try {
-            // Ambil daftar chat untuk giveaway ini
             const response = await fetch(`${API_BASE_URL}/api/giveaway/chats/${giveawayData.code}`);
             const data = await response.json();
             
@@ -337,17 +336,13 @@
                 return;
             }
             
-            // Ambil semua force subs untuk mendapatkan invite_link
-            const forceSubsResponse = await fetch(`${API_BASE_URL}/api/giveaway/force-subs`);
-            const forceSubsData = await forceSubsResponse.json();
-            
-            // Buat map chat_id -> invite_link dari force_subs
+            // Ambil invite links untuk private chats
+            const inviteLinksResponse = await fetch(`${API_BASE_URL}/api/giveaway/invite-links`);
+            const inviteLinksData = await inviteLinksResponse.json();
             const inviteLinkMap = new Map();
-            if (forceSubsData.success && forceSubsData.force_subs) {
-                for (const fs of forceSubsData.force_subs) {
-                    if (fs.invite_link) {
-                        inviteLinkMap.set(fs.chat_id, fs.invite_link);
-                    }
+            if (inviteLinksData.success && inviteLinksData.invite_links) {
+                for (const item of inviteLinksData.invite_links) {
+                    inviteLinkMap.set(item.chat_id, item.invite_link);
                 }
             }
             
@@ -361,20 +356,19 @@
                 const chatId = chat.chat_id;
                 const chatUsername = chat.chat_username || '';
                 
-                // 🔥 PRIORITAS: Gunakan invite_link dari force_subs jika ada
+                // PRIORITAS: Gunakan invite link jika ada (untuk private chat)
                 let chatLink = inviteLinkMap.get(chatId);
                 
-                // Jika tidak ada invite_link, fallback ke username atau ID
-                if (!chatLink) {
-                    if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
-                        chatLink = `https://t.me/${chatUsername}`;
-                    } else if (chatId) {
-                        let cleanId = chatId.replace('-100', '');
-                        chatLink = `https://t.me/${cleanId}`;
-                    }
+                // Jika tidak ada invite link, fallback ke username
+                if (!chatLink && chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                    chatLink = `https://t.me/${chatUsername}`;
+                }
+                // Jika masih tidak ada, fallback ke ID (hanya untuk debug)
+                else if (!chatLink && chatId) {
+                    let cleanId = chatId.replace('-100', '');
+                    chatLink = `https://t.me/${cleanId}`;
                 }
                 
-                // Avatar URL
                 const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
                 const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
                 
@@ -400,13 +394,12 @@
             
             elements.chatListContainer.innerHTML = html;
             
-            // Event listener untuk chat item
             document.querySelectorAll('.chat-info-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
                     hapticMedium();
                     const chatLink = item.dataset.chatLink;
-                    if (chatLink) {
+                    if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
                         window.open(chatLink, '_blank');
                         showToast('Membuka chat...', 'info');
                     } else {
