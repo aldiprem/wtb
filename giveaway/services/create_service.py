@@ -83,7 +83,7 @@ def test_route():
         'bot_client_available': bot_client is not None
     })
 
-# giveaway/services/create_service.py - VERSI SIMPLIFIED UNTUK TESTING
+# giveaway/services/create_service.py - Update validate_chat function
 
 @create_bp.route('/validate-chat', methods=['POST', 'OPTIONS'])
 def validate_chat():
@@ -96,23 +96,38 @@ def validate_chat():
     
     data = request.get_json()
     chat_input = data.get('chat_input') or data.get('chat_id')
+    user_id = data.get('user_id')
     
     if not chat_input:
         return jsonify({'success': False, 'error': 'Chat ID atau username diperlukan'}), 400
     
-    # 🔥 MOCK RESPONSE UNTUK TESTING
-    # Asumsikan chat valid dan user adalah admin
+    # 🔥 MOCK RESPONSE DENGAN DATA LENGKAP
+    # Untuk channel: -1001234567890
+    # Untuk group: -1234567890
+    
+    is_channel = chat_input.startswith('-100') or chat_input.startswith('@')
+    
+    # Generate mock data
+    chat_id = chat_input if chat_input.startswith('-100') else f'-100{chat_input}' if not chat_input.startswith('@') else chat_input
+    chat_title = f"Chat {chat_input}"
+    chat_type = 'channel' if is_channel else 'group'
+    visibility = 'public' if chat_input.startswith('@') else 'private'
+    username = chat_input[1:] if chat_input.startswith('@') else None
+    
+    # 🔥 TAMBAHKAN PHOTO_URL (menggunakan UI Avatars atau placeholder)
+    photo_url = f"https://ui-avatars.com/api/?name={chat_title[0:2]}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2"
+    
     return jsonify({
         'success': True,
         'has_access': True,
         'is_admin': True,
-        'chat_id': chat_input if chat_input.startswith('-100') else f'-100{chat_input}',
-        'chat_title': f'Chat {chat_input}',
-        'chat_type': 'channel' if chat_input.startswith('-100') else 'group',
-        'visibility': 'private',
-        'username': None,
+        'chat_id': chat_id,
+        'chat_title': chat_title,
+        'chat_type': chat_type,
+        'visibility': visibility,
+        'username': username,
         'invite_link': None,
-        'photo_url': None
+        'photo_url': photo_url  # 🔥 KIRIM PHOTO_URL
     })
 
 @create_bp.route('/validation-status/<validation_id>', methods=['GET'])

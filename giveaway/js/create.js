@@ -296,29 +296,68 @@
         
         let html = '';
         giveawayData.chats.forEach((chat, index) => {
-            const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Supergroup';
-            const visibilityIcon = chat.visibility === 'public' ? '🌐' : '🔒';
-            
-            // Foto profil chat
-            let photoHtml = '';
-            if (chat.photo_url) {
-                photoHtml = `<img src="${chat.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">`;
+            // Tentukan type chat
+            let chatType = '';
+            let typeIcon = '';
+            if (chat.type === 'channel') {
+                chatType = 'Channel';
+                typeIcon = '<i class="fas fa-broadcast-tower"></i>';
+            } else if (chat.type === 'group') {
+                chatType = 'Group';
+                typeIcon = '<i class="fas fa-users"></i>';
+            } else if (chat.type === 'supergroup') {
+                chatType = 'Supergroup';
+                typeIcon = '<i class="fas fa-users"></i>';
             } else {
-                const initial = (chat.title || 'C').charAt(0).toUpperCase();
-                photoHtml = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: white;">${initial}</div>`;
+                chatType = chat.type || 'Chat';
+                typeIcon = '<i class="fas fa-comment"></i>';
             }
+            
+            // Tampilkan username jika public, atau ID jika private
+            let identifier = '';
+            let identifierIcon = '';
+            if (chat.username && chat.username !== 'null' && chat.username !== '') {
+                identifier = `@${chat.username}`;
+                identifierIcon = '<i class="fas fa-globe"></i>';
+            } else if (chat.visibility === 'public' && chat.username) {
+                identifier = `@${chat.username}`;
+                identifierIcon = '<i class="fas fa-globe"></i>';
+            } else {
+                identifier = chat.chat_id;
+                identifierIcon = '<i class="fas fa-lock"></i>';
+            }
+            
+            // Foto profil chat - PRIORITAS dari data API
+            let photoUrl = chat.photo_url;
+            let photoHtml = '';
+            
+            if (photoUrl && photoUrl !== 'null' && photoUrl !== '') {
+                // Gunakan foto profil asli jika ada
+                photoHtml = `<img src="${photoUrl}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;" 
+                                onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent((chat.title || 'C').charAt(0).toUpperCase())}&background=40a7e3&color=fff&size=80&rounded=true&bold=true'">`;
+            } else {
+                // Fallback ke UI Avatars
+                const initial = (chat.title || chat.chat_id || 'C').charAt(0).toUpperCase();
+                photoHtml = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: white;">${initial}</div>`;
+            }
+            
+            // Visibility icon
+            const visibilityIcon = chat.visibility === 'public' ? '🌐' : '🔒';
             
             html += `
                 <div class="chat-item" data-index="${index}">
-                    <div class="chat-icon" style="overflow: hidden;">
+                    <div class="chat-icon" style="overflow: hidden; background: linear-gradient(135deg, var(--primary), var(--primary-dark));">
                         ${photoHtml}
                     </div>
                     <div class="chat-info">
-                        <div class="chat-title">${escapeHtml(chat.title || chat.chat_id)}</div>
+                        <div class="chat-title" style="display: flex; align-items: center; gap: 8px;">
+                            <span>${escapeHtml(chat.title || chat.chat_id)}</span>
+                            <span style="font-size: 10px; background: rgba(64, 167, 227, 0.15); padding: 2px 6px; border-radius: 20px;">${visibilityIcon} ${chatType}</span>
+                        </div>
                         <div class="chat-meta">
-                            <span class="chat-type">${visibilityIcon} ${chatType}</span>
-                            <span style="font-size: 10px; color: var(--text-muted);">${escapeHtml(chat.chat_id)}</span>
-                            ${chat.username ? `<span style="font-size: 10px; color: var(--primary);">@${chat.username}</span>` : ''}
+                            <span style="font-size: 10px; color: var(--primary); display: flex; align-items: center; gap: 4px;">
+                                ${identifierIcon} ${escapeHtml(identifier)}
+                            </span>
                         </div>
                     </div>
                     <button class="chat-delete" data-index="${index}"><i class="fas fa-trash"></i></button>
@@ -327,6 +366,7 @@
         });
         elements.chatList.innerHTML = html;
         
+        // Re-attach delete event listeners
         document.querySelectorAll('.chat-delete').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -717,9 +757,6 @@
                 body: JSON.stringify(payload)
             });
             
-            console.log('[DEBUG] Response status:', response.status);
-            console.log('[DEBUG] Response headers:', [...response.headers.entries()]);
-            
             const responseText = await response.text();
             console.log('[DEBUG] Response text:', responseText);
             
@@ -738,6 +775,7 @@
                 if (exists) {
                     showToast(`Chat "${data.chat_title}" sudah ditambahkan`, 'warning');
                 } else {
+                    // 🔥 SIMPAN SEMUA DATA CHAT DENGAN LENGKAP
                     giveawayData.chats.push({
                         chat_id: data.chat_id,
                         title: data.chat_title,
@@ -745,7 +783,7 @@
                         visibility: data.visibility,
                         username: data.username,
                         invite_link: data.invite_link,
-                        photo_url: data.photo_url || null
+                        photo_url: data.photo_url || null  // Simpan photo_url
                     });
                     renderChats();
                     checkFormValidity();
