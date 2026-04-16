@@ -700,14 +700,13 @@
         showLoading(true);
         
         try {
-            // 🔥 PERBAIKAN: Pastikan payload dikirim dengan benar
             const payload = {
                 chat_input: chatInput,
                 user_id: telegramUser?.id
             };
             
             console.log('[DEBUG] Sending validate-chat request to:', `${API_BASE_URL}/api/giveaway/validate-chat`);
-            console.log('[DEBUG] Payload:', JSON.stringify(payload, null, 2));
+            console.log('[DEBUG] Payload:', JSON.stringify(payload));
             
             const response = await fetch(`${API_BASE_URL}/api/giveaway/validate-chat`, {
                 method: 'POST',
@@ -719,8 +718,8 @@
             });
             
             console.log('[DEBUG] Response status:', response.status);
+            console.log('[DEBUG] Response headers:', [...response.headers.entries()]);
             
-            // Coba baca response text terlebih dahulu untuk debugging
             const responseText = await response.text();
             console.log('[DEBUG] Response text:', responseText);
             
@@ -734,13 +733,11 @@
             }
             
             if (response.ok && data.success) {
-                // Cek apakah chat sudah ada
                 const exists = giveawayData.chats.some(chat => chat.chat_id === data.chat_id);
                 
                 if (exists) {
                     showToast(`Chat "${data.chat_title}" sudah ditambahkan`, 'warning');
                 } else {
-                    // Tambahkan chat dengan data lengkap
                     giveawayData.chats.push({
                         chat_id: data.chat_id,
                         title: data.chat_title,
@@ -754,7 +751,6 @@
                     checkFormValidity();
                     showToast(`✅ Chat "${data.chat_title}" berhasil ditambahkan`, 'success');
                     
-                    // Tutup modal
                     const modal = document.getElementById('chatInputModal');
                     if (modal) {
                         document.body.classList.remove('modal-open');
