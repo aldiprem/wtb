@@ -168,11 +168,18 @@ def validate_chat():
     """Validate chat access for bot and user, and return chat info"""
     try:
         data = request.get_json()
+        
+        # 🔥 TAMBAHKAN LOGGING UNTUK DEBUG
+        print(f"[DEBUG] validate-chat received data: {data}")
+        
         if not data:
             return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
         
-        chat_input = data.get('chat_input')  # Bisa ID atau username
+        # 🔥 PERBAIKAN: Support kedua format (chat_input dan chat_id)
+        chat_input = data.get('chat_input') or data.get('chat_id')
         user_id = data.get('user_id')
+        
+        print(f"[DEBUG] chat_input: {chat_input}, user_id: {user_id}")
         
         if not chat_input:
             return jsonify({'success': False, 'error': 'Chat ID atau username diperlukan'}), 400
@@ -180,40 +187,51 @@ def validate_chat():
         # Proses input untuk mendapatkan chat_id integer
         chat_id = None
         is_username = False
+        username = None
         
         # Cek apakah input adalah username (dimulai dengan @ atau t.me/)
         if chat_input.startswith('@'):
             username = chat_input[1:]  # Hapus @
             is_username = True
+            print(f"[DEBUG] Detected username with @: {username}")
         elif chat_input.startswith('https://t.me/'):
             username = chat_input.replace('https://t.me/', '').split('/')[0]
             is_username = True
+            print(f"[DEBUG] Detected t.me URL: {username}")
         elif chat_input.startswith('t.me/'):
             username = chat_input.replace('t.me/', '').split('/')[0]
             is_username = True
+            print(f"[DEBUG] Detected t.me short URL: {username}")
         else:
             # Coba parse sebagai integer ID
             try:
                 chat_id = int(chat_input)
+                print(f"[DEBUG] Parsed as integer ID: {chat_id}")
             except ValueError:
                 # Mungkin username tanpa @
                 username = chat_input
                 is_username = True
+                print(f"[DEBUG] Assuming username without @: {username}")
         
         # Jika menggunakan username, perlu resolve ke chat_id via bot_client
         if is_username and bot_client:
             try:
+                print(f"[DEBUG] Resolving username: {username} using bot_client")
                 # Buat event loop untuk async operation
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 entity = loop.run_until_complete(bot_client.get_entity(username))
                 loop.close()
                 
+                print(f"[DEBUG] Resolved entity: id={entity.id}, title={getattr(entity, 'title', None)}")
+                
                 chat_id = entity.id
                 if hasattr(entity, 'broadcast') and entity.broadcast:
                     chat_id = int(f"-100{entity.id}")
+                    print(f"[DEBUG] This is a channel, adjusted chat_id: {chat_id}")
                 
             except Exception as e:
+                print(f"[ERROR] Failed to resolve username: {e}")
                 return jsonify({
                     'success': False, 
                     'error': f'Tidak dapat menemukan chat dengan username "{chat_input}": {str(e)[:100]}'
@@ -222,8 +240,11 @@ def validate_chat():
         if not chat_id:
             return jsonify({'success': False, 'error': 'Chat ID tidak valid'}), 400
         
+        print(f"[DEBUG] Final chat_id: {chat_id}")
+        
         # Cek akses bot menggunakan bot_client
         if not bot_client:
+            print("[WARNING] bot_client not available, returning mock response")
             return jsonify({
                 'success': True,
                 'has_access': True,
@@ -241,6 +262,7 @@ def validate_chat():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             
+            print(f"[DEBUG] Getting entity for chat_id: {chat_id}")
             # Dapatkan entity chat
             entity = loop.run_until_complete(bot_client.get_entity(chat_id))
             
@@ -253,6 +275,8 @@ def validate_chat():
             chat_username = getattr(entity, 'username', None)
             visibility = 'public' if chat_username else 'private'
             
+            print(f"[DEBUG] Chat info: title={chat_title}, type={chat_type}, username={chat_username}, visibility={visibility}")
+            
             # Dapatkan foto profil
             photo_url = None
             try:
@@ -260,16 +284,20 @@ def validate_chat():
                     # Untuk mendapatkan URL foto, perlu menggunakan file reference
                     # Untuk sementara gunakan placeholder
                     photo_url = None
-            except:
-                pass
+                    print(f"[DEBUG] Chat has photo, but URL extraction not implemented")
+            except Exception as e:
+                print(f"[DEBUG] Error getting photo: {e}")
             
             # Cek apakah bot memiliki akses (bisa kirim pesan)
             bot_has_access = True
             try:
+                print(f"[DEBUG] Testing bot access to chat {chat_id}")
                 test_msg = loop.run_until_complete(bot_client.send_message(chat_id, "test"))
                 loop.run_until_complete(test_msg.delete())
+                print(f"[DEBUG] Bot has access to chat")
             except Exception as e:
                 bot_has_access = False
+                print(f"[ERROR] Bot has no access: {e}")
                 return jsonify({
                     'success': False,
                     'error': 'Bot tidak memiliki akses mengirim pesan ke chat ini. Pastikan bot sudah menjadi admin.'
@@ -281,14 +309,17 @@ def validate_chat():
                 from telethon.tl.functions.channels import GetParticipantRequest
                 from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
                 
+                print(f"[DEBUG] Checking if user {user_id} is admin of chat {chat_id}")
                 participant = loop.run_until_complete(bot_client(GetParticipantRequest(
                     channel=chat_id,
                     participant=user_id
                 )))
                 
                 is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
+                print(f"[DEBUG] User is admin: {is_admin}")
                 
             except Exception as e:
+                print(f"[DEBUG] Admin check via GetParticipantRequest failed: {e}")
                 # Mungkin group biasa
                 try:
                     from telethon.tl.functions.messages import GetFullChatRequest
@@ -298,7 +329,9 @@ def validate_chat():
                             if hasattr(participant, 'is_creator') and participant.is_creator:
                                 is_admin = True
                             break
-                except:
+                    print(f"[DEBUG] User is admin (via GetFullChatRequest): {is_admin}")
+                except Exception as e2:
+                    print(f"[ERROR] Admin check via GetFullChatRequest also failed: {e2}")
                     is_admin = False
             
             if not is_admin:
@@ -312,6 +345,7 @@ def validate_chat():
             if visibility == 'private':
                 try:
                     from telethon.tl.functions.messages import ExportChatInviteRequest
+                    print(f"[DEBUG] Creating invite link for private chat {chat_id}")
                     invite = loop.run_until_complete(bot_client(ExportChatInviteRequest(
                         peer=chat_id,
                         expire_date=None,
@@ -319,12 +353,13 @@ def validate_chat():
                         title="Giveaway Join Link"
                     )))
                     invite_link = invite.link
+                    print(f"[DEBUG] Invite link created: {invite_link}")
                 except Exception as e:
-                    print(f"Warning: Cannot create invite link: {e}")
+                    print(f"[WARNING] Cannot create invite link: {e}")
             
             loop.close()
             
-            return jsonify({
+            result = {
                 'success': True,
                 'has_access': bot_has_access,
                 'is_admin': is_admin,
@@ -335,16 +370,22 @@ def validate_chat():
                 'username': chat_username,
                 'invite_link': invite_link,
                 'photo_url': photo_url
-            })
+            }
+            
+            print(f"[DEBUG] Returning result: {result}")
+            return jsonify(result)
             
         except Exception as e:
+            print(f"[ERROR] Exception in validate-chat: {e}")
+            import traceback
+            traceback.print_exc()
             return jsonify({
                 'success': False,
                 'error': f'Error saat memvalidasi chat: {str(e)[:200]}'
             }), 500
             
     except Exception as e:
-        print(f"Error validating chat: {e}")
+        print(f"[ERROR] validate-chat outer exception: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

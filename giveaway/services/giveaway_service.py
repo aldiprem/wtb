@@ -376,6 +376,15 @@ def get_giveaway_stats():
             'error': str(e)
         }), 500
 
+@giveaway_bp.route('/debug/bot-status', methods=['GET'])
+def debug_bot_status():
+    """Debug endpoint to check bot_client status"""
+    from giveaway.services.create_service import bot_client as create_bot_client
+    
+    return jsonify({
+        'bot_client_available': create_bot_client is not None,
+        'bot_client_type': str(type(create_bot_client)) if create_bot_client else None
+    })
 
 # ==================== DEBUG ENDPOINT ====================
 

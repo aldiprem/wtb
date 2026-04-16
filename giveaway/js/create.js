@@ -700,14 +700,24 @@
         showLoading(true);
         
         try {
-            // Panggil API untuk validasi chat
+            // 🔥 PERBAIKAN: Kirim data dengan format yang benar
+            const payload = {
+                chat_input: chatInput,  // Pastikan pakai chat_input, bukan chat_id
+                user_id: telegramUser?.id
+            };
+            
+            console.log('[DEBUG] Sending validate-chat request:', payload);
+            
             const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/validate-chat`, {
                 method: 'POST',
-                body: JSON.stringify({
-                    chat_input: chatInput,  // Bisa ID atau username
-                    user_id: telegramUser?.id
-                })
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
             });
+            
+            console.log('[DEBUG] Validate-chat response:', response);
             
             if (response.success) {
                 // Cek apakah chat sudah ada
@@ -742,7 +752,7 @@
             }
         } catch (error) {
             console.error('Error validating chat:', error);
-            showToast('Terjadi kesalahan saat validasi chat', 'error');
+            showToast('Terjadi kesalahan saat validasi chat: ' + (error.message || 'Unknown error'), 'error');
         } finally {
             showLoading(false);
         }
