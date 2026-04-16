@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT_DIR))
 from giveaway.database.giveaway import GiveawayDatabase
 
 # Create blueprint
-giveaway_bp = Blueprint('giveaway', __name__, url_prefix='/api/giveaway')
+giveaway_bp = Blueprint('giveaway', __name__)
 
 # Initialize database
 db = GiveawayDatabase()
