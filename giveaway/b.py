@@ -2398,12 +2398,15 @@ async def main():
     await bot.start(bot_token=BOT_TOKEN)
     logger.info("✅ Giveaway Bot is running")
     
+    # 🔥 PENTING: Set bot client ke create_service
+    set_bot_client(bot)
+    
     # Start monitoring expired giveaways
     asyncio.create_task(check_on_giveaway_expired())
     
-    # Start membership checker (baru)
+    # Start membership checker
     asyncio.create_task(check_pending_membership())
-    set_bot_client(bot)
+    
     await bot.run_until_disconnected()
 
 if __name__ == '__main__':

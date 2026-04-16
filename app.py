@@ -10,6 +10,7 @@ from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
 from collections import defaultdict, Counter
 import logging
+import requests
 
 # Menambahkan direktori root ke path
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))

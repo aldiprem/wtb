@@ -1,4 +1,4 @@
-# giveaway/services/create_service.py - PERBAIKAN LENGKAP
+# giveaway/services/create_service.py - PERBAIKAN
 
 import sqlite3
 import json
@@ -18,7 +18,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from giveaway.database.giveaway import GiveawayDatabase
 
-# Create blueprint WITHOUT url_prefix (akan ditambahkan di app.py)
+# Create blueprint
 create_bp = Blueprint('create', __name__)
 
 # Initialize database
@@ -37,14 +37,18 @@ except ImportError:
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 CHANNEL_INFO = os.getenv("CHANNEL_INFO", "@giftfreebies")
 
-# Bot client reference
-bot_client = None
+# Global bot client reference
+_bot_client = None
 
 def set_bot_client(client):
     """Set bot client reference for sending messages"""
-    global bot_client
-    bot_client = client
-    print(f"[INFO] Bot client set: {bot_client is not None}")
+    global _bot_client
+    _bot_client = client
+    print(f"[INFO] Bot client set in create_service: {_bot_client is not None}")
+
+def get_bot_client():
+    """Get bot client reference"""
+    return _bot_client
 
 def get_jakarta_time() -> datetime:
     if JAKARTA_TZ:
@@ -62,9 +66,17 @@ def generate_giveaway_code() -> str:
 
 
 # ==================== TEST ROUTE ====================
-@create_bp.route('/test', methods=['GET'])
+@create_bp.route('/test', methods=['GET', 'OPTIONS'])
 def test_route():
     """Test route to check if blueprint is working"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        return response
+    
+    bot_client = get_bot_client()
     return jsonify({
         'success': True,
         'message': 'Create blueprint is working!',
@@ -82,7 +94,7 @@ def validate_chat():
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
     
     print(f"[DEBUG] ========== VALIDATE-CHAT START ==========")
@@ -150,10 +162,21 @@ def validate_chat():
             is_username = True
             print(f"[DEBUG] Assuming username without @: {username}")
     
+    # Dapatkan bot client
+    bot_client = get_bot_client()
+    
     # Jika menggunakan username, perlu resolve ke chat_id via bot_client
-    if is_username and bot_client:
+    if is_username:
+        if not bot_client:
+            print(f"[ERROR] Bot client not available for username resolution")
+            return jsonify({
+                'success': False, 
+                'error': 'Bot sedang dalam perbaikan, silakan coba lagi nanti'
+            }), 503
+        
         try:
             print(f"[DEBUG] Resolving username: {username} using bot_client")
+            # Gunakan asyncio dengan event loop yang benar
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             entity = loop.run_until_complete(bot_client.get_entity(username))
@@ -162,6 +185,7 @@ def validate_chat():
             print(f"[DEBUG] Resolved entity: id={entity.id}, title={getattr(entity, 'title', None)}")
             
             chat_id = entity.id
+            # Untuk channel, ID perlu ditambah -100 prefix
             if hasattr(entity, 'broadcast') and entity.broadcast:
                 chat_id = int(f"-100{entity.id}")
                 print(f"[DEBUG] This is a channel, adjusted chat_id: {chat_id}")
@@ -179,21 +203,13 @@ def validate_chat():
     
     print(f"[DEBUG] Final chat_id: {chat_id}")
     
-    # Jika tidak ada bot_client, return mock response untuk testing
+    # Jika tidak ada bot_client, return error
     if not bot_client:
-        print("[WARNING] bot_client not available, returning mock response")
+        print("[ERROR] bot_client not available")
         return jsonify({
-            'success': True,
-            'has_access': True,
-            'is_admin': True,
-            'chat_id': str(chat_id),
-            'chat_title': str(chat_id),
-            'chat_type': 'channel' if str(chat_id).startswith('-100') else 'group',
-            'visibility': 'private',
-            'username': None,
-            'invite_link': None,
-            'photo_url': None
-        })
+            'success': False,
+            'error': 'Bot tidak tersedia, silakan coba lagi nanti'
+        }), 503
     
     try:
         loop = asyncio.new_event_loop()
@@ -229,7 +245,7 @@ def validate_chat():
             }), 403
         
         # Check admin status (skip if user_id not provided or is None)
-        is_admin = True  # Default to True for testing
+        is_admin = True  # Default to True untuk sementara
         if user_id:
             try:
                 from telethon.tl.functions.channels import GetParticipantRequest
@@ -246,7 +262,7 @@ def validate_chat():
                 
             except Exception as e:
                 print(f"[DEBUG] Admin check failed: {e}")
-                # For now, assume admin for testing
+                # Untuk sementara, asumsikan admin untuk testing
                 is_admin = True
         
         if not is_admin and user_id:
@@ -270,6 +286,10 @@ def validate_chat():
                 )))
                 invite_link = invite.link
                 print(f"[DEBUG] Invite link created: {invite_link}")
+                
+                # Simpan ke database
+                db.save_chat_invite_link(str(chat_id), invite_link)
+                
             except Exception as e:
                 print(f"[WARNING] Cannot create invite link: {e}")
         
@@ -310,7 +330,7 @@ def create_giveaway():
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
     
     try:
@@ -435,6 +455,9 @@ def create_giveaway():
         # Get force subs
         force_subs = db.get_all_force_subs()
         
+        # Get bot client
+        bot_client = get_bot_client()
+        
         # Send messages to each chat
         sent_messages = []
         creator_name = f"{first_name} {last_name}".strip() or username or str(user_id)
@@ -486,6 +509,7 @@ def create_giveaway():
                     msg = loop.run_until_complete(bot_client.send_message(chat_id, message_text))
                     loop.close()
                 else:
+                    # Mock response for testing
                     msg = type('obj', (object,), {'id': 123456})()
                     print(f"[MOCK] Would send to {chat_id}: {message_text[:100]}...")
                 
