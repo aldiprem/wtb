@@ -700,15 +700,16 @@
         showLoading(true);
         
         try {
-            // 🔥 PERBAIKAN: Kirim data dengan format yang benar
+            // 🔥 PERBAIKAN: Pastikan payload dikirim dengan benar
             const payload = {
-                chat_input: chatInput,  // Pastikan pakai chat_input, bukan chat_id
+                chat_input: chatInput,
                 user_id: telegramUser?.id
             };
             
-            console.log('[DEBUG] Sending validate-chat request:', payload);
+            console.log('[DEBUG] Sending validate-chat request to:', `${API_BASE_URL}/api/giveaway/validate-chat`);
+            console.log('[DEBUG] Payload:', JSON.stringify(payload, null, 2));
             
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/validate-chat`, {
+            const response = await fetch(`${API_BASE_URL}/api/giveaway/validate-chat`, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -717,28 +718,41 @@
                 body: JSON.stringify(payload)
             });
             
-            console.log('[DEBUG] Validate-chat response:', response);
+            console.log('[DEBUG] Response status:', response.status);
             
-            if (response.success) {
+            // Coba baca response text terlebih dahulu untuk debugging
+            const responseText = await response.text();
+            console.log('[DEBUG] Response text:', responseText);
+            
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('[ERROR] Failed to parse JSON:', e);
+                showToast('Respons server tidak valid', 'error');
+                return;
+            }
+            
+            if (response.ok && data.success) {
                 // Cek apakah chat sudah ada
-                const exists = giveawayData.chats.some(chat => chat.chat_id === response.chat_id);
+                const exists = giveawayData.chats.some(chat => chat.chat_id === data.chat_id);
                 
                 if (exists) {
-                    showToast(`Chat "${response.chat_title}" sudah ditambahkan`, 'warning');
+                    showToast(`Chat "${data.chat_title}" sudah ditambahkan`, 'warning');
                 } else {
                     // Tambahkan chat dengan data lengkap
                     giveawayData.chats.push({
-                        chat_id: response.chat_id,
-                        title: response.chat_title,
-                        type: response.chat_type,
-                        visibility: response.visibility,
-                        username: response.username,
-                        invite_link: response.invite_link,
-                        photo_url: response.photo_url || null
+                        chat_id: data.chat_id,
+                        title: data.chat_title,
+                        type: data.chat_type,
+                        visibility: data.visibility,
+                        username: data.username,
+                        invite_link: data.invite_link,
+                        photo_url: data.photo_url || null
                     });
                     renderChats();
                     checkFormValidity();
-                    showToast(`✅ Chat "${response.chat_title}" berhasil ditambahkan`, 'success');
+                    showToast(`✅ Chat "${data.chat_title}" berhasil ditambahkan`, 'success');
                     
                     // Tutup modal
                     const modal = document.getElementById('chatInputModal');
@@ -748,7 +762,7 @@
                     }
                 }
             } else {
-                showToast(response.error || 'Gagal memvalidasi chat', 'error');
+                showToast(data.error || 'Gagal memvalidasi chat', 'error');
             }
         } catch (error) {
             console.error('Error validating chat:', error);
