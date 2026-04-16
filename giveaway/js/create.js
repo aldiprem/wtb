@@ -1,4 +1,4 @@
-// create.js - Create Giveaway Page with Telegram Integration
+// create.js - PERBAIKAN TOTAL
 
 (function() {
     'use strict';
@@ -76,54 +76,66 @@
 
     // ==================== DOM ELEMENTS ====================
     
-    const elements = {
-        loadingOverlay: document.getElementById('loadingOverlay'),
-        toastContainer: document.getElementById('toastContainer'),
+    // Tunggu DOM siap sebelum mengambil elemen
+    let elements = {};
+    
+    function initElements() {
+        elements = {
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            toastContainer: document.getElementById('toastContainer'),
+            
+            userAvatar: document.getElementById('userAvatar'),
+            userName: document.getElementById('userName'),
+            userUsername: document.getElementById('userUsername'),
+            
+            prizeList: document.getElementById('prizeList'),
+            chatList: document.getElementById('chatList'),
+            durationDisplay: document.getElementById('durationDisplay'),
+            linkDisplay: document.getElementById('linkDisplay'),
+            
+            addPrizeBtn: document.getElementById('addPrizeBtn'),
+            addChatBtn: document.getElementById('addChatBtn'),
+            addLinkBtn: document.getElementById('addLinkBtn'),
+            editDurationBtn: document.getElementById('editDurationBtn'),
+            
+            requirementBtns: document.querySelectorAll('.req-btn'),
+            captchaToggle: document.getElementById('captchaToggle'),
+            
+            startGiveawayBtn: document.getElementById('startGiveawayBtn'),
+            
+            // Modals
+            prizeModal: document.getElementById('prizeModal'),
+            prizeInput: document.getElementById('prizeInput'),
+            savePrizeBtn: document.getElementById('savePrizeBtn'),
+            cancelPrizeBtn: document.getElementById('cancelPrizeBtn'),
+            closePrizeModal: document.getElementById('closePrizeModal'),
+            
+            chatModal: document.getElementById('chatModal'),
+            chatModalBody: document.getElementById('chatModalBody'),
+            closeChatModal: document.getElementById('closeChatModal'),
+            
+            linkModal: document.getElementById('linkModal'),
+            linkInput: document.getElementById('linkInput'),
+            saveLinkBtn: document.getElementById('saveLinkBtn'),
+            cancelLinkBtn: document.getElementById('cancelLinkBtn'),
+            closeLinkModal: document.getElementById('closeLinkModal'),
+            
+            durationModal: document.getElementById('durationModal'),
+            durationValue: document.getElementById('durationValue'),
+            durationUnit: document.getElementById('durationUnit'),
+            datetimePicker: document.getElementById('datetimePicker'),
+            saveDurationBtn: document.getElementById('saveDurationBtn'),
+            cancelDurationBtn: document.getElementById('cancelDurationBtn'),
+            closeDurationModal: document.getElementById('closeDurationModal')
+        };
         
-        userAvatar: document.getElementById('userAvatar'),
-        userName: document.getElementById('userName'),
-        userUsername: document.getElementById('userUsername'),
-        
-        prizeList: document.getElementById('prizeList'),
-        chatList: document.getElementById('chatList'),
-        durationDisplay: document.getElementById('durationDisplay'),
-        linkDisplay: document.getElementById('linkDisplay'),
-        
-        addPrizeBtn: document.getElementById('addPrizeBtn'),
-        addChatBtn: document.getElementById('addChatBtn'),
-        addLinkBtn: document.getElementById('addLinkBtn'),
-        editDurationBtn: document.getElementById('editDurationBtn'),
-        
-        requirementBtns: document.querySelectorAll('.req-btn'),
-        captchaToggle: document.getElementById('captchaToggle'),
-        
-        startGiveawayBtn: document.getElementById('startGiveawayBtn'),
-        
-        // Modals
-        prizeModal: document.getElementById('prizeModal'),
-        prizeInput: document.getElementById('prizeInput'),
-        savePrizeBtn: document.getElementById('savePrizeBtn'),
-        cancelPrizeBtn: document.getElementById('cancelPrizeBtn'),
-        closePrizeModal: document.getElementById('closePrizeModal'),
-        
-        chatModal: document.getElementById('chatModal'),
-        chatModalBody: document.getElementById('chatModalBody'),
-        closeChatModal: document.getElementById('closeChatModal'),
-        
-        linkModal: document.getElementById('linkModal'),
-        linkInput: document.getElementById('linkInput'),
-        saveLinkBtn: document.getElementById('saveLinkBtn'),
-        cancelLinkBtn: document.getElementById('cancelLinkBtn'),
-        closeLinkModal: document.getElementById('closeLinkModal'),
-        
-        durationModal: document.getElementById('durationModal'),
-        durationValue: document.getElementById('durationValue'),
-        durationUnit: document.getElementById('durationUnit'),
-        datetimePicker: document.getElementById('datetimePicker'),
-        saveDurationBtn: document.getElementById('saveDurationBtn'),
-        cancelDurationBtn: document.getElementById('cancelDurationBtn'),
-        closeDurationModal: document.getElementById('closeDurationModal')
-    };
+        console.log('Elements initialized:', {
+            addPrizeBtn: !!elements.addPrizeBtn,
+            addChatBtn: !!elements.addChatBtn,
+            addLinkBtn: !!elements.addLinkBtn,
+            editDurationBtn: !!elements.editDurationBtn
+        });
+    }
 
     // ==================== UTILITY FUNCTIONS ====================
     
@@ -274,7 +286,6 @@
         if (elements.prizeInput) {
             elements.prizeInput.value = prize;
         }
-        // Store edit index for later
         elements.prizeModal.dataset.editIndex = index;
         openModal(elements.prizeModal);
     }
@@ -297,19 +308,22 @@
         
         let html = '';
         giveawayData.chats.forEach((chat, index) => {
-            const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Chat';
+            const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Supergroup';
             const visibilityIcon = chat.visibility === 'public' ? '🌐' : '🔒';
+            
+            const hasPhoto = chat.photo_url && chat.photo_url !== '';
             
             html += `
                 <div class="chat-item" data-index="${index}">
-                    <div class="chat-icon">
-                        <i class="fas ${chat.type === 'channel' ? 'fa-broadcast-tower' : 'fa-users'}"></i>
+                    <div class="chat-icon" style="background: ${hasPhoto ? 'transparent' : 'linear-gradient(135deg, var(--primary), var(--primary-dark))'}; overflow: hidden;">
+                        ${hasPhoto ? `<img src="${chat.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas ${chat.type === 'channel' ? 'fa-broadcast-tower' : 'fa-users'}"></i>`}
                     </div>
                     <div class="chat-info">
                         <div class="chat-title">${escapeHtml(chat.title || chat.chat_id)}</div>
                         <div class="chat-meta">
                             <span class="chat-type">${visibilityIcon} ${chatType}</span>
                             <span>${escapeHtml(chat.chat_id)}</span>
+                            ${chat.username ? `<span>@${escapeHtml(chat.username)}</span>` : ''}
                         </div>
                     </div>
                     <button class="chat-delete" data-index="${index}"><i class="fas fa-trash"></i></button>
@@ -394,22 +408,20 @@
         if (!modal) return;
         document.body.classList.add('modal-open');
         modal.style.display = 'flex';
+        console.log('Modal opened:', modal.id);
     }
     
     function closeModal(modal) {
         if (!modal) return;
         document.body.classList.remove('modal-open');
         modal.style.display = 'none';
+        console.log('Modal closed:', modal.id);
     }
     
-    function closeAllModals() {
-        const modals = [elements.prizeModal, elements.chatModal, elements.linkModal, elements.durationModal];
-        modals.forEach(modal => closeModal(modal));
-    }
-
     // ==================== PRIZE HANDLERS ====================
     
     function openPrizeModal() {
+        console.log('openPrizeModal called');
         hapticMedium();
         if (elements.prizeInput) {
             elements.prizeInput.value = '';
@@ -419,6 +431,7 @@
     }
     
     function savePrize() {
+        console.log('savePrize called');
         hapticMedium();
         const input = elements.prizeInput?.value.trim();
         if (!input) {
@@ -426,7 +439,6 @@
             return;
         }
         
-        // Split by new line
         const prizes = input.split('\n').filter(line => line.trim().length > 0);
         
         if (prizes.length === 0) {
@@ -434,15 +446,12 @@
             return;
         }
         
-        // Check if editing existing
         const editIndex = elements.prizeModal.dataset.editIndex;
         if (editIndex !== undefined && editIndex !== 'undefined') {
-            // Replace existing
             giveawayData.prizes[parseInt(editIndex)] = prizes[0];
             delete elements.prizeModal.dataset.editIndex;
             showToast('Hadiah diperbarui', 'success');
         } else {
-            // Add new prizes
             giveawayData.prizes.push(...prizes);
             showToast(`${prizes.length} hadiah ditambahkan`, 'success');
         }
@@ -452,53 +461,83 @@
         checkFormValidity();
     }
 
-    // ==================== CHAT HANDLERS (Peer Selection) ====================
+    // ==================== CHAT HANDLERS ====================
     
     function openChatModal() {
+        console.log('openChatModal called');
         hapticMedium();
         
-        // Create peer selection buttons using Telegram WebApp
-        const tg = getTelegramWebApp();
-        if (tg && tg.showPopup) {
-            // Use Telegram's native peer selection
-            tg.showPopup({
-                title: 'Tambah Chat',
-                message: 'Pilih channel atau group yang ingin ditambahkan',
-                buttons: [
-                    { id: 'channel', type: 'default', text: '📢 Channel' },
-                    { id: 'group', type: 'default', text: '💬 Group' },
-                    { id: 'cancel', type: 'cancel', text: 'Batal' }
-                ]
-            }, (buttonId) => {
-                if (buttonId === 'channel') {
-                    requestPeerSelection('channel');
-                } else if (buttonId === 'group') {
-                    requestPeerSelection('group');
+        let chatInputModal = document.getElementById('chatInputModal');
+        if (!chatInputModal) {
+            chatInputModal = document.createElement('div');
+            chatInputModal.id = 'chatInputModal';
+            chatInputModal.className = 'modal-overlay';
+            chatInputModal.innerHTML = `
+                <div class="modal-container" style="max-width: 360px;">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-plus-circle"></i> Tambah Chat</h3>
+                        <button class="modal-close" id="closeChatInputModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p style="margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
+                            <i class="fas fa-info-circle"></i> Masukkan ID Chat (Channel/Group)
+                        </p>
+                        <input type="text" id="chatIdInput" placeholder="Contoh: -1001234567890" style="margin-bottom: 16px;">
+                        <div id="chatPreview" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--surface-light); border-radius: 14px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div id="previewAvatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                    <i class="fas fa-users" style="color: white; font-size: 24px;"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div id="previewTitle" style="font-weight: 600; margin-bottom: 4px;">-</div>
+                                    <div id="previewMeta" style="font-size: 11px; color: var(--text-muted);">-</div>
+                                </div>
+                                <div id="previewStatus" style="font-size: 11px;"></div>
+                            </div>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-primary" id="confirmAddChatBtn" disabled>Tambahkan</button>
+                            <button class="btn-secondary" id="cancelChatInputBtn">Batal</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(chatInputModal);
+            
+            document.getElementById('closeChatInputModal')?.addEventListener('click', () => {
+                closeModal(chatInputModal);
+            });
+            
+            document.getElementById('cancelChatInputBtn')?.addEventListener('click', () => {
+                closeModal(chatInputModal);
+            });
+            
+            document.getElementById('confirmAddChatBtn')?.addEventListener('click', async () => {
+                const chatIdInput = document.getElementById('chatIdInput');
+                const chatId = chatIdInput?.value.trim();
+                if (chatId) {
+                    await addChatManually(chatId);
+                    closeModal(chatInputModal);
                 }
             });
-        } else {
-            // Fallback: manual input
-            const chatId = prompt('Masukkan ID Chat (contoh: -1001234567890):');
-            if (chatId && chatId.trim()) {
-                addChatManually(chatId.trim());
-            }
-        }
-    }
-    
-    function requestPeerSelection(peerType) {
-        const tg = getTelegramWebApp();
-        if (!tg) {
-            showToast('Tidak dapat membuka Telegram WebApp', 'error');
-            return;
+            
+            chatInputModal.addEventListener('click', (e) => {
+                if (e.target === chatInputModal) closeModal(chatInputModal);
+            });
         }
         
-        const chatId = prompt(`Masukkan ID ${peerType === 'channel' ? 'Channel' : 'Group'}:\nContoh: -1001234567890`);
-        if (chatId && chatId.trim()) {
-            addChatManually(chatId.trim(), peerType);
-        }
+        const chatIdInput = document.getElementById('chatIdInput');
+        const chatPreview = document.getElementById('chatPreview');
+        const confirmBtn = document.getElementById('confirmAddChatBtn');
+        
+        if (chatIdInput) chatIdInput.value = '';
+        if (chatPreview) chatPreview.style.display = 'none';
+        if (confirmBtn) confirmBtn.disabled = true;
+        
+        openModal(chatInputModal);
+        setTimeout(() => chatIdInput?.focus(), 100);
     }
     
-    // Fungsi baru: Fetch entity chat dari ID
     async function fetchChatEntity(chatId) {
         try {
             const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/fetch-chat-entity`, {
@@ -535,200 +574,15 @@
             };
         }
     }
-
-    // Perbaiki fungsi openChatModal
-    function openChatModal() {
-        hapticMedium();
-        
-        // Buat modal chat yang lebih baik dengan input ID
-        let chatInputModal = document.getElementById('chatInputModal');
-        if (!chatInputModal) {
-            chatInputModal = document.createElement('div');
-            chatInputModal.id = 'chatInputModal';
-            chatInputModal.className = 'modal-overlay';
-            chatInputModal.innerHTML = `
-                <div class="modal-container" style="max-width: 360px;">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-plus-circle"></i> Tambah Chat</h3>
-                        <button class="modal-close" id="closeChatInputModal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <p style="margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
-                            <i class="fas fa-info-circle"></i> Masukkan ID Chat (Channel/Group)
-                        </p>
-                        <input type="text" id="chatIdInput" placeholder="Contoh: -1001234567890" style="margin-bottom: 16px;">
-                        <div id="chatPreview" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--surface-light); border-radius: 14px;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div id="previewAvatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                    <i class="fas fa-users" style="color: white; font-size: 24px;"></i>
-                                </div>
-                                <div style="flex: 1;">
-                                    <div id="previewTitle" style="font-weight: 600; margin-bottom: 4px;">-</div>
-                                    <div id="previewMeta" style="font-size: 11px; color: var(--text-muted);">-</div>
-                                </div>
-                                <div id="previewStatus" style="font-size: 11px;">
-                                    <span class="loading-spinner-small" style="display: none; width: 16px; height: 16px;"></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn-primary" id="confirmAddChatBtn" disabled>Tambahkan</button>
-                            <button class="btn-secondary" id="cancelChatInputBtn">Batal</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(chatInputModal);
-            
-            // Event listeners
-            document.getElementById('closeChatInputModal')?.addEventListener('click', () => {
-                closeModal(chatInputModal);
-            });
-            
-            document.getElementById('cancelChatInputBtn')?.addEventListener('click', () => {
-                closeModal(chatInputModal);
-            });
-            
-            document.getElementById('confirmAddChatBtn')?.addEventListener('click', async () => {
-                const chatIdInput = document.getElementById('chatIdInput');
-                const chatId = chatIdInput?.value.trim();
-                if (chatId) {
-                    await addChatManually(chatId);
-                    closeModal(chatInputModal);
-                }
-            });
-            
-            // Live preview saat input berubah
-            const chatIdInput = document.getElementById('chatIdInput');
-            const confirmBtn = document.getElementById('confirmAddChatBtn');
-            
-            chatIdInput?.addEventListener('input', debounce(async (e) => {
-                const chatId = e.target.value.trim();
-                if (chatId) {
-                    await previewChatEntity(chatId);
-                    if (confirmBtn) confirmBtn.disabled = false;
-                } else {
-                    document.getElementById('chatPreview').style.display = 'none';
-                    if (confirmBtn) confirmBtn.disabled = true;
-                }
-            }, 500));
-            
-            chatInputModal.addEventListener('click', (e) => {
-                if (e.target === chatInputModal) closeModal(chatInputModal);
-            });
-        }
-        
-        // Reset form
-        const chatIdInput = document.getElementById('chatIdInput');
-        const chatPreview = document.getElementById('chatPreview');
-        const confirmBtn = document.getElementById('confirmAddChatBtn');
-        
-        if (chatIdInput) chatIdInput.value = '';
-        if (chatPreview) chatPreview.style.display = 'none';
-        if (confirmBtn) confirmBtn.disabled = true;
-        
-        openModal(chatInputModal);
-        setTimeout(() => chatIdInput?.focus(), 100);
-    }
-
-    // Fungsi preview chat entity
-    async function previewChatEntity(chatId) {
-        const chatPreview = document.getElementById('chatPreview');
-        const previewAvatar = document.getElementById('previewAvatar');
-        const previewTitle = document.getElementById('previewTitle');
-        const previewMeta = document.getElementById('previewMeta');
-        const previewStatus = document.getElementById('previewStatus');
-        const loadingSpan = previewStatus?.querySelector('.loading-spinner-small');
-        
-        if (chatPreview) chatPreview.style.display = 'block';
-        if (previewStatus) {
-            if (loadingSpan) loadingSpan.style.display = 'inline-block';
-            previewStatus.innerHTML = '<span class="loading-spinner-small" style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(64,167,227,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite;"></span> Mengecek...';
-        }
-        
-        try {
-            const entity = await fetchChatEntity(chatId);
-            
-            if (entity.success) {
-                // Update preview
-                if (previewTitle) previewTitle.textContent = entity.title || entity.chat_id;
-                
-                let metaText = `${entity.type === 'channel' ? 'Channel' : entity.type === 'group' ? 'Group' : 'Supergroup'}`;
-                if (entity.visibility === 'public' && entity.username) {
-                    metaText += ` • @${entity.username}`;
-                } else {
-                    metaText += ` • Private`;
-                }
-                if (entity.member_count) {
-                    metaText += ` • ${entity.member_count.toLocaleString()} members`;
-                }
-                if (previewMeta) previewMeta.textContent = metaText;
-                
-                // Update avatar
-                if (previewAvatar) {
-                    if (entity.photo_url) {
-                        previewAvatar.innerHTML = `<img src="${entity.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">`;
-                    } else {
-                        const initial = (entity.title || 'C').charAt(0).toUpperCase();
-                        previewAvatar.innerHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary), var(--primary-dark));"><span style="color: white; font-weight: 600;">${initial}</span></div>`;
-                    }
-                }
-                
-                if (previewStatus) {
-                    previewStatus.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Valid';
-                }
-                
-                // Store entity data untuk digunakan saat add
-                window.pendingChatEntity = entity;
-                
-            } else {
-                if (previewTitle) previewTitle.textContent = 'Chat tidak ditemukan';
-                if (previewMeta) previewMeta.textContent = entity.error || 'Periksa ID Chat';
-                if (previewStatus) {
-                    previewStatus.innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger);"></i> Tidak valid';
-                }
-                window.pendingChatEntity = null;
-            }
-        } catch (error) {
-            console.error('Preview error:', error);
-            if (previewTitle) previewTitle.textContent = 'Error';
-            if (previewMeta) previewMeta.textContent = 'Gagal mengambil data';
-            if (previewStatus) {
-                previewStatus.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i> Error';
-            }
-            window.pendingChatEntity = null;
-        }
-    }
-
-    // Fungsi debounce helper
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-
-    // Perbaiki fungsi addChatManually
+    
     async function addChatManually(chatId, type = null) {
         hapticMedium();
         showLoading(true);
         
         try {
-            // Gunakan entity yang sudah di-preview jika ada
-            let entity = window.pendingChatEntity;
-            
-            if (!entity || entity.chat_id !== chatId) {
-                // Fetch ulang jika belum ada preview
-                entity = await fetchChatEntity(chatId);
-            }
+            const entity = await fetchChatEntity(chatId);
             
             if (entity && entity.success) {
-                // Cek apakah chat sudah ada
                 const exists = giveawayData.chats.some(c => c.chat_id === entity.chat_id);
                 if (exists) {
                     showToast(`Chat "${entity.title}" sudah ditambahkan`, 'warning');
@@ -748,9 +602,6 @@
                 renderChats();
                 checkFormValidity();
                 showToast(`Chat "${entity.title || chatId}" ditambahkan`, 'success');
-                
-                // Clear preview
-                window.pendingChatEntity = null;
             } else {
                 showToast(entity?.error || 'Gagal menambahkan chat', 'error');
             }
@@ -759,59 +610,13 @@
             showToast('Gagal menambahkan chat', 'error');
         } finally {
             showLoading(false);
-            window.pendingChatEntity = null;
         }
-    }
-
-    // Perbaiki renderChats untuk menampilkan foto profil
-    function renderChats() {
-        if (!elements.chatList) return;
-        
-        if (giveawayData.chats.length === 0) {
-            elements.chatList.innerHTML = '<div class="value-text empty">Belum ada chat</div>';
-            return;
-        }
-        
-        let html = '';
-        giveawayData.chats.forEach((chat, index) => {
-            const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Supergroup';
-            const visibilityIcon = chat.visibility === 'public' ? '🌐' : '🔒';
-            
-            // Gunakan photo_url jika ada
-            const hasPhoto = chat.photo_url && chat.photo_url !== '';
-            const initial = (chat.title || 'C').charAt(0).toUpperCase();
-            
-            html += `
-                <div class="chat-item" data-index="${index}">
-                    <div class="chat-icon" style="background: ${hasPhoto ? 'transparent' : 'linear-gradient(135deg, var(--primary), var(--primary-dark))'}; overflow: hidden;">
-                        ${hasPhoto ? `<img src="${chat.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">` : `<i class="fas ${chat.type === 'channel' ? 'fa-broadcast-tower' : 'fa-users'}"></i>`}
-                    </div>
-                    <div class="chat-info">
-                        <div class="chat-title">${escapeHtml(chat.title || chat.chat_id)}</div>
-                        <div class="chat-meta">
-                            <span class="chat-type">${visibilityIcon} ${chatType}</span>
-                            <span>${escapeHtml(chat.chat_id)}</span>
-                            ${chat.username ? `<span>@${escapeHtml(chat.username)}</span>` : ''}
-                        </div>
-                    </div>
-                    <button class="chat-delete" data-index="${index}"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-        });
-        elements.chatList.innerHTML = html;
-        
-        document.querySelectorAll('.chat-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = parseInt(btn.dataset.index);
-                deleteChat(index);
-            });
-        });
     }
 
     // ==================== LINK HANDLERS ====================
     
     function openLinkModal() {
+        console.log('openLinkModal called');
         hapticMedium();
         if (elements.linkInput) {
             elements.linkInput.value = giveawayData.links.join('\n');
@@ -820,6 +625,7 @@
     }
     
     function saveLinks() {
+        console.log('saveLinks called');
         hapticMedium();
         const input = elements.linkInput?.value.trim();
         if (!input) {
@@ -833,7 +639,6 @@
         
         const links = input.split('\n').filter(line => line.trim().length > 0);
         
-        // Validate links
         const validLinks = [];
         const invalidLinks = [];
         
@@ -853,7 +658,6 @@
         renderLinks();
         closeModal(elements.linkModal);
         
-        // If Tap Link requirement is selected, update it
         if (selectedRequirements.has('taplink') && validLinks.length === 0) {
             selectedRequirements.delete('taplink');
             renderRequirements();
@@ -867,8 +671,8 @@
     // ==================== DURATION HANDLERS ====================
     
     function openDurationModal() {
+        console.log('openDurationModal called');
         hapticMedium();
-        // Reset form
         if (elements.durationValue) elements.durationValue.value = '1';
         if (elements.durationUnit) elements.durationUnit.value = 'days';
         if (elements.datetimePicker) elements.datetimePicker.value = '';
@@ -876,10 +680,10 @@
     }
     
     function saveDuration() {
+        console.log('saveDuration called');
         hapticMedium();
         let endTime = null;
         
-        // Check if using datetime picker
         const datetimeValue = elements.datetimePicker?.value;
         if (datetimeValue) {
             endTime = new Date(datetimeValue);
@@ -888,7 +692,6 @@
                 return;
             }
         } else {
-            // Calculate from duration
             const value = parseInt(elements.durationValue?.value);
             const unit = elements.durationUnit?.value;
             
@@ -916,7 +719,6 @@
             }
         }
         
-        // Check if end time is in the future
         if (endTime <= new Date()) {
             showToast('Waktu berakhir harus di masa depan', 'error');
             return;
@@ -932,6 +734,7 @@
     // ==================== REQUIREMENT HANDLERS ====================
     
     function toggleRequirement(type) {
+        console.log('toggleRequirement called:', type);
         hapticLight();
         
         if (type === 'taplink' && giveawayData.links.length === 0) {
@@ -948,7 +751,6 @@
         }
         
         renderRequirements();
-        updateStartButtonText();
     }
     
     function getRequirementName(type) {
@@ -957,14 +759,6 @@
             case 'boost': return 'Boost';
             case 'taplink': return 'Tap Link';
             default: return type;
-        }
-    }
-    
-    function updateStartButtonText() {
-        if (!elements.startGiveawayBtn) return;
-        const btnSpan = elements.startGiveawayBtn.querySelector('span');
-        if (btnSpan) {
-            btnSpan.textContent = 'Start Giveaway';
         }
     }
 
@@ -999,7 +793,6 @@
         hapticHeavy();
         showLoading(true);
         
-        // Update button state
         if (elements.startGiveawayBtn) {
             elements.startGiveawayBtn.disabled = true;
             elements.startGiveawayBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
@@ -1019,6 +812,8 @@
                 captcha: elements.captchaToggle?.checked || false
             };
             
+            console.log('Sending payload:', payload);
+            
             const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/create`, {
                 method: 'POST',
                 body: JSON.stringify(payload)
@@ -1028,7 +823,6 @@
                 hapticSuccess();
                 showToast('Giveaway berhasil dibuat!', 'success');
                 
-                // Close WebApp or redirect
                 const tg = getTelegramWebApp();
                 if (tg && tg.close) {
                     setTimeout(() => tg.close(), 2000);
@@ -1048,7 +842,7 @@
         } catch (error) {
             console.error('Error creating giveaway:', error);
             hapticError();
-            showToast('Terjadi kesalahan', 'error');
+            showToast('Terjadi kesalahan: ' + error.message, 'error');
             if (elements.startGiveawayBtn) {
                 elements.startGiveawayBtn.disabled = false;
                 elements.startGiveawayBtn.innerHTML = '<i class="fas fa-play"></i><span>Start Giveaway</span>';
@@ -1071,24 +865,50 @@
     }
     
     function setupEventListeners() {
+        console.log('Setting up event listeners...');
+        
         // Prize
-        if (elements.addPrizeBtn) elements.addPrizeBtn.addEventListener('click', openPrizeModal);
+        if (elements.addPrizeBtn) {
+            elements.addPrizeBtn.addEventListener('click', openPrizeModal);
+            console.log('✅ addPrizeBtn listener attached');
+        } else {
+            console.error('❌ addPrizeBtn not found!');
+        }
+        
         if (elements.savePrizeBtn) elements.savePrizeBtn.addEventListener('click', savePrize);
         if (elements.cancelPrizeBtn) elements.cancelPrizeBtn.addEventListener('click', () => closeModal(elements.prizeModal));
         if (elements.closePrizeModal) elements.closePrizeModal.addEventListener('click', () => closeModal(elements.prizeModal));
         
         // Chat
-        if (elements.addChatBtn) elements.addChatBtn.addEventListener('click', openChatModal);
+        if (elements.addChatBtn) {
+            elements.addChatBtn.addEventListener('click', openChatModal);
+            console.log('✅ addChatBtn listener attached');
+        } else {
+            console.error('❌ addChatBtn not found!');
+        }
+        
         if (elements.closeChatModal) elements.closeChatModal.addEventListener('click', () => closeModal(elements.chatModal));
         
         // Link
-        if (elements.addLinkBtn) elements.addLinkBtn.addEventListener('click', openLinkModal);
+        if (elements.addLinkBtn) {
+            elements.addLinkBtn.addEventListener('click', openLinkModal);
+            console.log('✅ addLinkBtn listener attached');
+        } else {
+            console.error('❌ addLinkBtn not found!');
+        }
+        
         if (elements.saveLinkBtn) elements.saveLinkBtn.addEventListener('click', saveLinks);
         if (elements.cancelLinkBtn) elements.cancelLinkBtn.addEventListener('click', () => closeModal(elements.linkModal));
         if (elements.closeLinkModal) elements.closeLinkModal.addEventListener('click', () => closeModal(elements.linkModal));
         
         // Duration
-        if (elements.editDurationBtn) elements.editDurationBtn.addEventListener('click', openDurationModal);
+        if (elements.editDurationBtn) {
+            elements.editDurationBtn.addEventListener('click', openDurationModal);
+            console.log('✅ editDurationBtn listener attached');
+        } else {
+            console.error('❌ editDurationBtn not found!');
+        }
+        
         if (elements.saveDurationBtn) elements.saveDurationBtn.addEventListener('click', saveDuration);
         if (elements.cancelDurationBtn) elements.cancelDurationBtn.addEventListener('click', () => closeModal(elements.durationModal));
         if (elements.closeDurationModal) elements.closeDurationModal.addEventListener('click', () => closeModal(elements.durationModal));
@@ -1113,20 +933,31 @@
                 });
             }
         });
+        
+        console.log('✅ All event listeners setup complete');
     }
     
     async function init() {
+        console.log('Initializing Create Giveaway page...');
+        
         initTelegram();
         showLoading(true);
+        
+        // Initialize elements after DOM is ready
+        initElements();
         
         telegramUser = getTelegramUser();
         if (telegramUser) {
             updateUserUI();
+            console.log('Telegram user loaded:', telegramUser.id);
         } else {
+            console.warn('No Telegram user found');
             showToast('Tidak dapat mengambil data user', 'error');
         }
         
         setupEventListeners();
+        
+        // Initial render
         renderPrizes();
         renderChats();
         renderLinks();
@@ -1138,5 +969,6 @@
         console.log('✅ Create Giveaway page initialized');
     }
     
+    // Start initialization
     init();
 })();
