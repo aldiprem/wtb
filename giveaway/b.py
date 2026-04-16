@@ -740,6 +740,202 @@ __Bot ini adalah bot create giveaway, anda dapat membuat giveaway disini dan den
     
     await event.respond(msg, buttons=buttons)
 
+@bot.on(events.CallbackQuery(pattern="^stats$"))
+async def show_statistics(event):
+    """Display detailed statistics about the bot usage"""
+    user = await event.get_sender()
+    user_id = user.id
+    
+    # Kirim loading indicator
+    loading_msg = await event.respond("📊 **Mengambil data statistik...**")
+    await event.delete()
+    
+    try:
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # ============ STATISTIK PENGGUNA ============
+            # Total users
+            cursor.execute("SELECT COUNT(*) FROM users")
+            total_users = cursor.fetchone()[0] or 0
+            
+            # Users created today
+            today_start = get_jakarta_time().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+            cursor.execute("SELECT COUNT(*) FROM users WHERE first_seen >= ?", (today_start,))
+            users_today = cursor.fetchone()[0] or 0
+            
+            # Users created this week
+            week_start = (get_jakarta_time() - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+            cursor.execute("SELECT COUNT(*) FROM users WHERE first_seen >= ?", (week_start,))
+            users_this_week = cursor.fetchone()[0] or 0
+            
+            # Users created this month
+            month_start = (get_jakarta_time().replace(day=1, hour=0, minute=0, second=0, microsecond=0)).isoformat()
+            cursor.execute("SELECT COUNT(*) FROM users WHERE first_seen >= ?", (month_start,))
+            users_this_month = cursor.fetchone()[0] or 0
+            
+            # ============ STATISTIK GIVEAWAY ============
+            # Total giveaways created
+            cursor.execute("SELECT COUNT(*) FROM giveaways")
+            total_giveaways = cursor.fetchone()[0] or 0
+            
+            # Giveaways created today
+            cursor.execute("SELECT COUNT(*) FROM giveaways WHERE created_at >= ?", (today_start,))
+            giveaways_today = cursor.fetchone()[0] or 0
+            
+            # Giveaways created this week
+            cursor.execute("SELECT COUNT(*) FROM giveaways WHERE created_at >= ?", (week_start,))
+            giveaways_this_week = cursor.fetchone()[0] or 0
+            
+            # Giveaways created this month
+            cursor.execute("SELECT COUNT(*) FROM giveaways WHERE created_at >= ?", (month_start,))
+            giveaways_this_month = cursor.fetchone()[0] or 0
+            
+            # ============ STATISTIK ON_GIVEAWAY ============
+            # Active giveaways
+            cursor.execute("SELECT COUNT(*) FROM on_giveaway WHERE status = 'active' AND is_ended = 0")
+            active_giveaways = cursor.fetchone()[0] or 0
+            
+            # Ended giveaways
+            cursor.execute("SELECT COUNT(*) FROM on_giveaway WHERE is_ended = 1")
+            ended_giveaways = cursor.fetchone()[0] or 0
+            
+            # ============ STATISTIK PARTISIPASI ============
+            # Total participants across all giveaways
+            cursor.execute("SELECT participants FROM on_giveaway")
+            rows = cursor.fetchall()
+            total_participants = 0
+            total_unique_participants = set()
+            
+            for row in rows:
+                if row[0]:
+                    participants = json.loads(row[0])
+                    total_participants += len(participants)
+                    total_unique_participants.update(participants)
+            
+            unique_participants = len(total_unique_participants)
+            
+            # Participants today
+            cursor.execute("SELECT joined_at FROM giveaway_entries")
+            rows = cursor.fetchall()
+            participants_today = 0
+            for row in rows:
+                if row[0]:
+                    joined_at = datetime.fromisoformat(row[0]) if isinstance(row[0], str) else row[0]
+                    if joined_at.date() == get_jakarta_time().date():
+                        participants_today += 1
+            
+            # Average participants per giveaway
+            avg_participants = round(total_participants / total_giveaways, 2) if total_giveaways > 0 else 0
+            
+            # ============ STATISTIK WINNERS ============
+            # Total winners
+            cursor.execute("SELECT winners FROM on_giveaway WHERE is_ended = 1")
+            rows = cursor.fetchall()
+            total_winners = 0
+            unique_winners = set()
+            
+            for row in rows:
+                if row[0]:
+                    winners = json.loads(row[0])
+                    total_winners += len(winners)
+                    unique_winners.update(winners)
+            
+            # ============ STATISTIK ADMIN ============
+            cursor.execute("SELECT COUNT(*) FROM users WHERE is_admin = 1")
+            total_admins = cursor.fetchone()[0] or 0
+            
+            # ============ TOP CREATOR ============
+            cursor.execute('''
+                SELECT user_id, COUNT(*) as total 
+                FROM giveaways 
+                GROUP BY user_id 
+                ORDER BY total DESC 
+                LIMIT 1
+            ''')
+            top_creator_row = cursor.fetchone()
+            top_creator = None
+            if top_creator_row:
+                top_user = db.get_user(top_creator_row[0])
+                if top_user:
+                    top_creator = {
+                        'name': f"{top_user.get('first_name', '')} {top_user.get('last_name', '')}".strip() or top_user.get('username', str(top_creator_row[0])),
+                        'total': top_creator_row[1]
+                    }
+            
+            # ============ TOP PARTICIPANT ============
+            # Hitung partisipasi per user
+            participant_counts = {}
+            cursor.execute("SELECT participants FROM on_giveaway")
+            rows = cursor.fetchall()
+            for row in rows:
+                if row[0]:
+                    participants = json.loads(row[0])
+                    for p_id in participants:
+                        participant_counts[p_id] = participant_counts.get(p_id, 0) + 1
+            
+            top_participant = None
+            if participant_counts:
+                top_participant_id = max(participant_counts, key=participant_counts.get)
+                top_user = db.get_user(top_participant_id)
+                if top_user:
+                    top_participant = {
+                        'name': f"{top_user.get('first_name', '')} {top_user.get('last_name', '')}".strip() or top_user.get('username', str(top_participant_id)),
+                        'total': participant_counts[top_participant_id]
+                    }
+            
+            # ============ BUAT PESAN STATISTIK ============
+            msg = f"""
+[📊](tg://emoji?id=5231200819986047254) **STATISTIK BOT GIVEAWAY**
+
+━━━━━━━━━━━━━━━━━━━━━
+**👥 STATISTIK PENGGUNA:**
+^^• Total Pengguna: `{total_users:,}`
+• Pengguna Baru Hari Ini: `+{users_today:,}`
+• Pengguna Baru Minggu Ini: `+{users_this_week:,}`
+• Pengguna Baru Bulan Ini: `+{users_this_month:,}`
+• Total Admin: `{total_admins}`^^
+
+━━━━━━━━━━━━━━━━━━━━━
+**🎁 STATISTIK GIVEAWAY:**
+^^• Total Giveaway Dibuat: `{total_giveaways:,}`
+• Giveaway Hari Ini: `+{giveaways_today:,}`
+• Giveaway Minggu Ini: `+{giveaways_this_week:,}`
+• Giveaway Bulan Ini: `+{giveaways_this_month:,}`
+• Giveaway Aktif: `{active_giveaways}`
+• Giveaway Berakhir: `{ended_giveaways}`^^
+
+━━━━━━━━━━━━━━━━━━━━━
+**👥 STATISTIK PARTISIPASI:**
+^^• Total Partisipasi: `{total_participants:,}`
+• Peserta Unik: `{unique_participants:,}`
+• Partisipasi Hari Ini: `{participants_today:,}`
+• Rata-rata per Giveaway: `{avg_participants}`^^
+
+━━━━━━━━━━━━━━━━━━━━━
+**🏆 STATISTIK PEMENANG:**
+^^• Total Pemenang: `{total_winners:,}`
+• Pemenang Unik: `{len(unique_winners):,}`^^
+
+━━━━━━━━━━━━━━━━━━━━━
+**⭐ TOP PERFORMER:**
+^^• Top Creator: `{top_creator['name'] if top_creator else '-'}` ({top_creator['total'] if top_creator else 0} giveaway)
+• Top Participant: `{top_participant['name'] if top_participant else '-'}` ({top_participant['total'] if top_participant else 0} partisipasi)^^
+
+━━━━━━━━━━━━━━━━━━━━━
+_Data terakhir diperbarui: {get_jakarta_time().strftime('%d %B %Y %H:%M:%S WIB')}_
+"""
+            
+            buttons = [[Button.inline("🔙 Kembali", data="kembali")]]
+            
+            await loading_msg.delete()
+            await event.respond(msg, buttons=buttons)
+            
+    except Exception as e:
+        logger.error(f"Error in show_statistics: {e}")
+        await loading_msg.delete()
+        await event.respond("❌ Gagal mengambil data statistik", buttons=[[Button.inline("🔙 Kembali", data="kembali")]])
+
 @bot.on(events.CallbackQuery(pattern="^profil$"))
 async def profile(event):
     user = await event.get_sender()
@@ -1881,9 +2077,7 @@ async def start_giveaway_handler(event):
     else:
         syarat = state.get('syarat', 'None')
     # ============ END FORCE SUBS ============
-    
-    # ============ PENTING: SIMPAN DATA KE TABEL GIVEAWAYS TERLEBIH DAHULU ============
-    # Pilih chat pertama sebagai default untuk tabel giveaways
+
     first_chat = saved_chats[0]
     first_chat_id = int(first_chat.get('chat_id'))
     
@@ -1948,10 +2142,21 @@ async def start_giveaway_handler(event):
         
         # Format chat info untuk ditampilkan
         chat_username = chat.get('username', '')
-        chat_display = f"📺 **CHAT ID:** [{chat_title}](https://t.me/{chat_username}) (`{chat_id}`)" if chat_username else f"📺 **CHAT ID:** {chat_title} (`{chat_id}`)"
+        visibility = chat.get('visibility', 'public')
+        invite_link = chat.get('invite_link', None)
+        
+        # Jika private dan ada invite link, gunakan hyperlink
+        if visibility == 'private' and invite_link:
+            chat_display = f"📺 **CHAT ID:** [{chat_title}]({invite_link}) (`{chat_id}`)"
+        elif chat_username:
+            chat_display = f"📺 **CHAT ID:** [{chat_title}](https://t.me/{chat_username}) (`{chat_id}`)"
+        else:
+            chat_display = f"📺 **CHAT ID:** {chat_title} (`{chat_id}`)"
         
         # Simpan info chat untuk channel info
-        if chat_username:
+        if visibility == 'private' and invite_link:
+            channel_chats_info.append(f"• {chat_title} ([klik]({invite_link}))")
+        elif chat_username:
             channel_chats_info.append(f"• {chat_title} (@{chat_username})")
         else:
             channel_chats_info.append(f"• {chat_title} (ID: {chat_id})")
@@ -2090,7 +2295,7 @@ async def start_giveaway_handler(event):
             except Exception as e:
                 print(f"Error editing message: {e}")
     
-    # ============ KIRIM NOTIFIKASI KE CHANNEL INFO ============
+    # ============ KIRIM NOTIFIKASI KE CHANNEL INFO (DENGAN KODE GIVEAWAY) ============
     try:
         # Format hadiah untuk channel info
         channel_prize_text = '\n'.join([f"   {i+1}. {h}" for i, h in enumerate(hadiah_list)])
@@ -2105,11 +2310,17 @@ async def start_giveaway_handler(event):
             for fs in force_subs:
                 fs_title = fs.get('title') or f"Force Sub {fs['chat_id']}"
                 fs_username = fs.get('username')
-                if fs_username:
+                fs_invite_link = fs.get('invite_link')
+                if fs_invite_link:
+                    force_subs_list.append(f"   • {fs_title} ([klik]({fs_invite_link}))")
+                elif fs_username:
                     force_subs_list.append(f"   • {fs_title} (@{fs_username})")
                 else:
                     force_subs_list.append(f"   • {fs_title} (ID: {fs['chat_id']})")
             force_subs_text = "\n📢 **FORCE SUBS:**\n" + '\n'.join(force_subs_list)
+        
+        # Dapatkan kode giveaway (string angka 15 digit)
+        giveaway_code_display = giveaway_codes[0] if giveaway_codes else '-'
         
         # Buat pesan untuk channel info (tanpa button)
         channel_message = f"""
@@ -2117,6 +2328,7 @@ async def start_giveaway_handler(event):
 
 ━━━━━━━━━━━━━━━━━━━━━
 🆔 **ID GIVEAWAY:** `{giveaway_id}`
+🔢 **KODE GIVEAWAY:** `{giveaway_code_display}`
 👤 **CREATOR:** {creator_name} ({creator_username})
 ━━━━━━━━━━━━━━━━━━━━━
 🎁 **HADIAH:**
