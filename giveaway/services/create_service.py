@@ -83,13 +83,10 @@ def test_route():
         'bot_client_available': bot_client is not None
     })
 
+# giveaway/services/create_service.py - VERSI SIMPLIFIED UNTUK TESTING
 
-# ==================== VALIDATE CHAT ROUTE ====================
 @create_bp.route('/validate-chat', methods=['POST', 'OPTIONS'])
 def validate_chat():
-    """Validate chat access for bot and user, and return chat info"""
-    
-    # Handle CORS preflight
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -97,230 +94,46 @@ def validate_chat():
         response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
     
-    print(f"[DEBUG] ========== VALIDATE-CHAT START ==========")
-    print(f"[DEBUG] Request method: {request.method}")
-    
-    # Cek content type
-    content_type = request.headers.get('Content-Type', '')
-    print(f"[DEBUG] Content-Type: {content_type}")
-    
-    # Coba baca raw data
-    raw_data = request.get_data(as_text=True)
-    print(f"[DEBUG] Raw request data: {raw_data[:200] if raw_data else 'empty'}")
-    
-    if not raw_data:
-        print(f"[ERROR] No raw data received")
-        return jsonify({'success': False, 'error': 'Tidak ada data yang dikirim'}), 400
-    
-    try:
-        data = request.get_json()
-        print(f"[DEBUG] Parsed JSON data: {data}")
-    except Exception as e:
-        print(f"[ERROR] Failed to parse JSON: {e}")
-        return jsonify({'success': False, 'error': f'Invalid JSON: {str(e)}'}), 400
-    
-    if not data:
-        print(f"[ERROR] No JSON data after parsing")
-        return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
-    
-    # Support kedua format
+    data = request.get_json()
     chat_input = data.get('chat_input') or data.get('chat_id')
-    user_id = data.get('user_id')
-    
-    print(f"[DEBUG] chat_input: {chat_input}, user_id: {user_id}")
     
     if not chat_input:
-        print(f"[ERROR] No chat_input or chat_id provided")
         return jsonify({'success': False, 'error': 'Chat ID atau username diperlukan'}), 400
     
-    # Proses input untuk mendapatkan chat_id integer
-    chat_id = None
-    is_username = False
-    username = None
-    
-    # Cek apakah input adalah username
-    if chat_input.startswith('@'):
-        username = chat_input[1:]
-        is_username = True
-        print(f"[DEBUG] Detected username with @: {username}")
-    elif chat_input.startswith('https://t.me/'):
-        username = chat_input.replace('https://t.me/', '').split('/')[0]
-        is_username = True
-        print(f"[DEBUG] Detected t.me URL: {username}")
-    elif chat_input.startswith('t.me/'):
-        username = chat_input.replace('t.me/', '').split('/')[0]
-        is_username = True
-        print(f"[DEBUG] Detected t.me short URL: {username}")
-    else:
-        # Coba parse sebagai integer ID
-        try:
-            chat_id = int(chat_input)
-            print(f"[DEBUG] Parsed as integer ID: {chat_id}")
-        except ValueError:
-            # Mungkin username tanpa @
-            username = chat_input
-            is_username = True
-            print(f"[DEBUG] Assuming username without @: {username}")
-    
-    # Dapatkan bot client
-    bot_client = get_bot_client()
-    
-    # Jika menggunakan username, perlu resolve ke chat_id via bot_client
-    if is_username:
-        if not bot_client:
-            print(f"[ERROR] Bot client not available for username resolution")
-            return jsonify({
-                'success': False, 
-                'error': 'Bot sedang dalam perbaikan, silakan coba lagi nanti'
-            }), 503
-        
-        try:
-            print(f"[DEBUG] Resolving username: {username} using bot_client")
-            # Gunakan asyncio dengan event loop yang benar
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            entity = loop.run_until_complete(bot_client.get_entity(username))
-            loop.close()
-            
-            print(f"[DEBUG] Resolved entity: id={entity.id}, title={getattr(entity, 'title', None)}")
-            
-            chat_id = entity.id
-            # Untuk channel, ID perlu ditambah -100 prefix
-            if hasattr(entity, 'broadcast') and entity.broadcast:
-                chat_id = int(f"-100{entity.id}")
-                print(f"[DEBUG] This is a channel, adjusted chat_id: {chat_id}")
-            
-        except Exception as e:
-            print(f"[ERROR] Failed to resolve username: {e}")
-            return jsonify({
-                'success': False, 
-                'error': f'Tidak dapat menemukan chat dengan username "{chat_input}": {str(e)[:100]}'
-            }), 404
-    
-    if not chat_id:
-        print(f"[ERROR] No valid chat_id after processing")
-        return jsonify({'success': False, 'error': 'Chat ID tidak valid'}), 400
-    
-    print(f"[DEBUG] Final chat_id: {chat_id}")
-    
-    # Jika tidak ada bot_client, return error
-    if not bot_client:
-        print("[ERROR] bot_client not available")
-        return jsonify({
-            'success': False,
-            'error': 'Bot tidak tersedia, silakan coba lagi nanti'
-        }), 503
-    
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        print(f"[DEBUG] Getting entity for chat_id: {chat_id}")
-        entity = loop.run_until_complete(bot_client.get_entity(chat_id))
-        
-        chat_title = getattr(entity, 'title', None) or str(chat_id)
-        chat_type = 'channel' if hasattr(entity, 'broadcast') and entity.broadcast else 'group'
-        if hasattr(entity, 'megagroup') and entity.megagroup:
-            chat_type = 'supergroup'
-        
-        chat_username = getattr(entity, 'username', None)
-        visibility = 'public' if chat_username else 'private'
-        
-        print(f"[DEBUG] Chat info: title={chat_title}, type={chat_type}, username={chat_username}, visibility={visibility}")
-        
-        # Test bot access
-        bot_has_access = True
-        try:
-            print(f"[DEBUG] Testing bot access to chat {chat_id}")
-            test_msg = loop.run_until_complete(bot_client.send_message(chat_id, "test"))
-            loop.run_until_complete(test_msg.delete())
-            print(f"[DEBUG] Bot has access to chat")
-        except Exception as e:
-            bot_has_access = False
-            print(f"[ERROR] Bot has no access: {e}")
-            loop.close()
-            return jsonify({
-                'success': False,
-                'error': 'Bot tidak memiliki akses mengirim pesan ke chat ini. Pastikan bot sudah menjadi admin.'
-            }), 403
-        
-        # Check admin status (skip if user_id not provided or is None)
-        is_admin = True  # Default to True untuk sementara
-        if user_id:
-            try:
-                from telethon.tl.functions.channels import GetParticipantRequest
-                from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
-                
-                print(f"[DEBUG] Checking if user {user_id} is admin of chat {chat_id}")
-                participant = loop.run_until_complete(bot_client(GetParticipantRequest(
-                    channel=chat_id,
-                    participant=user_id
-                )))
-                
-                is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
-                print(f"[DEBUG] User is admin: {is_admin}")
-                
-            except Exception as e:
-                print(f"[DEBUG] Admin check failed: {e}")
-                # Untuk sementara, asumsikan admin untuk testing
-                is_admin = True
-        
-        if not is_admin and user_id:
-            loop.close()
-            return jsonify({
-                'success': False,
-                'error': 'Anda bukan admin/owner di chat ini! Bot hanya bisa digunakan oleh admin atau owner chat.'
-            }), 403
-        
-        # Create invite link for private chat
-        invite_link = None
-        if visibility == 'private':
-            try:
-                from telethon.tl.functions.messages import ExportChatInviteRequest
-                print(f"[DEBUG] Creating invite link for private chat {chat_id}")
-                invite = loop.run_until_complete(bot_client(ExportChatInviteRequest(
-                    peer=chat_id,
-                    expire_date=None,
-                    usage_limit=None,
-                    title="Giveaway Join Link"
-                )))
-                invite_link = invite.link
-                print(f"[DEBUG] Invite link created: {invite_link}")
-                
-                # Simpan ke database
-                db.save_chat_invite_link(str(chat_id), invite_link)
-                
-            except Exception as e:
-                print(f"[WARNING] Cannot create invite link: {e}")
-        
-        loop.close()
-        
-        result = {
-            'success': True,
-            'has_access': bot_has_access,
-            'is_admin': is_admin,
-            'chat_id': str(chat_id),
-            'chat_title': chat_title,
-            'chat_type': chat_type,
-            'visibility': visibility,
-            'username': chat_username,
-            'invite_link': invite_link,
-            'photo_url': None
-        }
-        
-        print(f"[DEBUG] Returning result: {result}")
-        print(f"[DEBUG] ========== VALIDATE-CHAT END ==========")
-        return jsonify(result)
-        
-    except Exception as e:
-        print(f"[ERROR] Exception in validate-chat: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'error': f'Error saat memvalidasi chat: {str(e)[:200]}'
-        }), 500
+    # 🔥 MOCK RESPONSE UNTUK TESTING
+    # Asumsikan chat valid dan user adalah admin
+    return jsonify({
+        'success': True,
+        'has_access': True,
+        'is_admin': True,
+        'chat_id': chat_input if chat_input.startswith('-100') else f'-100{chat_input}',
+        'chat_title': f'Chat {chat_input}',
+        'chat_type': 'channel' if chat_input.startswith('-100') else 'group',
+        'visibility': 'private',
+        'username': None,
+        'invite_link': None,
+        'photo_url': None
+    })
 
+@create_bp.route('/validation-status/<validation_id>', methods=['GET'])
+def get_validation_status(validation_id):
+    """Cek status validasi chat"""
+    with sqlite3.connect(db.db_path) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT status, result FROM pending_validations WHERE id = ?', (validation_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            return jsonify({'success': False, 'error': 'Validation not found'}), 404
+        
+        status, result_json = row
+        if status == 'done' and result_json:
+            result = json.loads(result_json)
+            return jsonify({'success': True, 'status': 'done', 'result': result})
+        elif status == 'error':
+            return jsonify({'success': False, 'status': 'error', 'error': result_json})
+        else:
+            return jsonify({'success': False, 'status': 'pending'})
 
 # ==================== CREATE GIVEAWAY ROUTE ====================
 @create_bp.route('/create', methods=['POST', 'OPTIONS'])
@@ -609,3 +422,20 @@ def create_giveaway():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@create_bp.route('/register-bot', methods=['POST'])
+def register_bot():
+    """Endpoint untuk bot mendaftarkan dirinya"""
+    from flask import request
+    data = request.get_json()
+    bot_token = data.get('bot_token')
+    
+    # Simpan ke database bahwa bot sudah siap
+    # Atau cukup return success
+    print(f"[INFO] Bot registered with token: {bot_token}")
+    
+    # Set global variable (masih tetap di proses yang sama)
+    global _bot_client_registered
+    _bot_client_registered = True
+    
+    return jsonify({'success': True, 'message': 'Bot registered'})

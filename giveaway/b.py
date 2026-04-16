@@ -42,6 +42,11 @@ from telethon.tl import functions, types
 from telethon import errors
 import json
 from giveaway.services.create_service import set_bot_client
+import aiohttp
+from telethon.tl.functions.channels import GetParticipantRequest
+from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator, ChannelParticipantBanned, ChannelParticipantLeft
+from telethon.tl.functions.messages import ExportChatInviteRequest
+from telethon import errors
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
@@ -126,6 +131,151 @@ class AaycoBot:
         return markdown.unparse(text, entities)
 
 bot.parse_mode = AaycoBot()
+
+# Tambahkan fungsi ini di b.py (di dalam file yang sama dengan bot)
+
+async def process_pending_validations():
+    await asyncio.sleep(2)
+    
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get('http://localhost:5050/api/giveaway/pending-validations') as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        for val in data.get('validations', []):
+                            await process_validation(session, val)
+                    elif resp.status == 404:
+                        pass  # Endpoint belum ada
+        except aiohttp.ClientConnectorError:
+            pass  # Flask belum ready
+        except Exception as e:
+            logger.error(f"Error processing validations: {e}")
+        
+        await asyncio.sleep(2)
+
+
+async def process_validation(session, validation):
+    """Proses single chat validation"""
+    try:
+        validation_id = validation['id']
+        chat_input = validation['chat_input']
+        user_id = validation.get('user_id')
+        
+        print(f"[VALIDATION] Processing {validation_id}: {chat_input}")
+        
+        # ========== RESOLVE CHAT ID ==========
+        chat_id = None
+        username = None
+        
+        if chat_input.startswith('@'):
+            username = chat_input[1:]
+        elif chat_input.startswith('https://t.me/'):
+            username = chat_input.replace('https://t.me/', '').split('/')[0]
+        elif chat_input.startswith('t.me/'):
+            username = chat_input.replace('t.me/', '').split('/')[0]
+        else:
+            try:
+                chat_id = int(chat_input)
+            except ValueError:
+                username = chat_input
+        
+        # Resolve username ke ID pake bot
+        if username:
+            try:
+                entity = await bot.get_entity(username)
+                chat_id = entity.id
+                if hasattr(entity, 'broadcast') and entity.broadcast:
+                    chat_id = int(f"-100{entity.id}")
+            except Exception as e:
+                await send_validation_result(session, validation_id, False, f"Username tidak ditemukan: {str(e)[:100]}")
+                return
+        
+        if not chat_id:
+            await send_validation_result(session, validation_id, False, "Chat ID tidak valid")
+            return
+        
+        # ========== GET CHAT INFO ==========
+        try:
+            entity = await bot.get_entity(chat_id)
+            chat_title = getattr(entity, 'title', None) or str(chat_id)
+            chat_type = 'channel' if hasattr(entity, 'broadcast') and entity.broadcast else 'group'
+            if hasattr(entity, 'megagroup') and entity.megagroup:
+                chat_type = 'supergroup'
+            chat_username = getattr(entity, 'username', None)
+            visibility = 'public' if chat_username else 'private'
+        except Exception as e:
+            await send_validation_result(session, validation_id, False, f"Gagal get info chat: {str(e)[:100]}")
+            return
+        
+        # ========== CEK AKSES BOT ==========
+        try:
+            test_msg = await bot.send_message(chat_id, "test")
+            await test_msg.delete()
+        except Exception as e:
+            await send_validation_result(session, validation_id, False, "Bot tidak punya akses ke chat ini. Pastikan bot sudah menjadi admin.")
+            return
+        
+        # ========== CEK ADMIN USER ==========
+        is_admin = False
+        if user_id:
+            try:
+                participant = await bot(GetParticipantRequest(channel=chat_id, participant=user_id))
+                is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
+            except:
+                is_admin = False
+        
+        if not is_admin:
+            await send_validation_result(session, validation_id, False, "Anda bukan admin/owner di chat ini!")
+            return
+        
+        # ========== BUAT INVITE LINK UNTUK PRIVATE CHAT ==========
+        invite_link = None
+        if visibility == 'private':
+            try:
+                invite = await bot(ExportChatInviteRequest(peer=chat_id, expire_date=None, usage_limit=None, title="Giveaway Join Link"))
+                invite_link = invite.link
+                db.save_chat_invite_link(str(chat_id), invite_link)
+            except Exception as e:
+                print(f"[WARNING] Cannot create invite link: {e}")
+        
+        # ========== KIRIM HASIL SUKSES ==========
+        result = {
+            'success': True,
+            'has_access': True,
+            'is_admin': True,
+            'chat_id': str(chat_id),
+            'chat_title': chat_title,
+            'chat_type': chat_type,
+            'visibility': visibility,
+            'username': chat_username,
+            'invite_link': invite_link,
+            'photo_url': None
+        }
+        
+        await send_validation_result(session, validation_id, True, result)
+        print(f"[VALIDATION] Success: {chat_title} ({chat_id})")
+        
+    except Exception as e:
+        print(f"[VALIDATION ERROR] {validation.get('id')}: {e}")
+        await send_validation_result(session, validation.get('id'), False, str(e)[:200])
+
+
+async def send_validation_result(session, validation_id, success, data):
+    """Kirim hasil validasi ke Flask"""
+    try:
+        payload = {
+            'validation_id': validation_id,
+            'success': success
+        }
+        if success:
+            payload['result'] = data
+        else:
+            payload['error'] = data
+        
+        await session.post('http://localhost:5050/api/giveaway/validation-result', json=payload)
+    except Exception as e:
+        print(f"Error sending validation result: {e}")
 
 async def check_bot_access(chat_id: int) -> tuple:
     try:
@@ -2391,20 +2541,22 @@ https://t.me/freebiestbot/giveaway?startapp={giveaway_codes[0] if giveaway_codes
 async def main():
     logger.info("🚀 Starting Giveaway Bot...")
     
-    # Initialize database
     db.init_database()
-    
-    # Start master bot
     await bot.start(bot_token=BOT_TOKEN)
     logger.info("✅ Giveaway Bot is running")
     
-    # 🔥 PENTING: Set bot client ke create_service
-    set_bot_client(bot)
+    # 🔥 REGISTRASI KE FLASK (tanpa perlu passing client)
+    try:
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            await session.post('http://localhost:5050/api/giveaway/register-bot', 
+                              json={'bot_token': BOT_TOKEN})
+            logger.info("✅ Bot registered to Flask")
+    except Exception as e:
+        logger.warning(f"Failed to register bot to Flask: {e}")
     
-    # Start monitoring expired giveaways
+    # Start monitoring
     asyncio.create_task(check_on_giveaway_expired())
-    
-    # Start membership checker
     asyncio.create_task(check_pending_membership())
     
     await bot.run_until_disconnected()
