@@ -32,6 +32,7 @@ from games.services.games_plinko_service import plinko_bp
 from giveaway.services.giveaway_service import giveaway_bp
 from services.crash_service import crash_bp
 from games.services.games_service import games_bp
+from indotag.services.data_service import indotag_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -235,6 +236,21 @@ app.register_blueprint(plinko_bp)
 app.register_blueprint(giveaway_bp)
 app.register_blueprint(crash_bp, url_prefix='/api/crash')
 app.register_blueprint(games_bp)
+app.register_blueprint(indotag_bp, url_prefix='/api/indotag')
+
+@app.route('/indotag')
+def serve_indotag_page():
+    return send_from_directory(os.path.join(base_dir, 'indotag', 'html'), 'web.html')
+
+# Route untuk CSS giveaway
+@app.route('/indotag/css/<path:filename>')
+def serve_indotag_css(filename):
+    return send_from_directory(os.path.join(base_dir, 'indotag', 'css'), filename)
+
+# Route untuk JS giveaway
+@app.route('/indotag/js/<path:filename>')
+def serve_indotag_js(filename):
+    return send_from_directory(os.path.join(base_dir, 'indotag', 'js'), filename)
 
 @app.route('/giveaways')
 def serve_giveaways_page():

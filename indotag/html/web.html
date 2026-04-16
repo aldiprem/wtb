@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>INDOTAG MARKET - Marketplace Username Telegram</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/indotag/css/web.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat INDOTAG...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fas fa-tag"></i>
+                <span>INDOTAG</span>
+            </div>
+            <div class="balance-card" id="balanceCard">
+                <i class="fas fa-coins"></i>
+                <span id="userBalance">0</span>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content" id="mainContent">
+            <!-- Market Section -->
+            <div class="page-section active" id="marketSection">
+                <!-- Search Bar -->
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Cari username..." autocomplete="off">
+                </div>
+
+                <!-- Category Filter -->
+                <div class="categories-container" id="categoriesContainer">
+                    <div class="category-chip active" data-category="all">
+                        <i class="fas fa-globe"></i>
+                        <span>Semua</span>
+                    </div>
+                </div>
+
+                <!-- Listings Grid -->
+                <div class="listings-grid" id="listingsGrid">
+                    <div class="loading-placeholder">Memuat listing...</div>
+                </div>
+            </div>
+
+            <!-- Activity Section -->
+            <div class="page-section" id="activitySection">
+                <div class="section-header">
+                    <i class="fas fa-history"></i>
+                    <h3>Aktivitas Terbaru</h3>
+                </div>
+                <div class="activities-list" id="activitiesList">
+                    <div class="loading-placeholder">Memuat aktivitas...</div>
+                </div>
+            </div>
+
+            <!-- Storage Section -->
+            <div class="page-section" id="storageSection">
+                <div class="section-header">
+                    <i class="fas fa-database"></i>
+                    <h3>Storage Saya</h3>
+                </div>
+                <div class="storage-list" id="storageList">
+                    <div class="loading-placeholder">Memuat storage...</div>
+                </div>
+            </div>
+
+            <!-- Profile Section -->
+            <div class="page-section" id="profileSection">
+                <div class="profile-header-section">
+                    <div class="profile-avatar-large" id="profileAvatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="profile-info-large">
+                        <div class="profile-name-large" id="profileName">Memuat...</div>
+                        <div class="profile-username-large" id="profileUsername">@username</div>
+                        <div class="profile-id-large" id="profileId">ID: --</div>
+                    </div>
+                </div>
+                
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <i class="fas fa-tag"></i>
+                        <div class="profile-stat-info">
+                            <span class="profile-stat-value" id="statListings">0</span>
+                            <span class="profile-stat-label">Listing</span>
+                        </div>
+                    </div>
+                    <div class="profile-stat">
+                        <i class="fas fa-shopping-cart"></i>
+                        <div class="profile-stat-info">
+                            <span class="profile-stat-value" id="statPurchases">0</span>
+                            <span class="profile-stat-label">Pembelian</span>
+                        </div>
+                    </div>
+                    <div class="profile-stat">
+                        <i class="fas fa-database"></i>
+                        <div class="profile-stat-info">
+                            <span class="profile-stat-value" id="statStorage">0</span>
+                            <span class="profile-stat-label">Storage</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="create-listing-btn" id="createListingBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Jual Username</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <div class="nav-item active" data-page="market">
+                <i class="fas fa-store"></i>
+                <span>Market</span>
+            </div>
+            <div class="nav-item" data-page="activity">
+                <i class="fas fa-history"></i>
+                <span>Activity</span>
+            </div>
+            <div class="nav-item" data-page="storage">
+                <i class="fas fa-database"></i>
+                <span>Storage</span>
+            </div>
+            <div class="nav-item" data-page="profile">
+                <i class="fas fa-user"></i>
+                <span>Profil</span>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Create Listing Modal -->
+    <div class="modal-overlay" id="createListingModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fas fa-tag"></i> Jual Username</h3>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label><i class="fab fa-telegram"></i> Username</label>
+                    <input type="text" id="listingUsername" placeholder="Contoh: johndoe" autocomplete="off">
+                    <small>Tanpa tanda @</small>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-coins"></i> Harga (Stars)</label>
+                    <input type="number" id="listingPrice" placeholder="Masukkan harga" min="1">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-layer-group"></i> Kategori</label>
+                    <select id="listingCategory">
+                        <option value="general">General</option>
+                        <option value="premium">Premium</option>
+                        <option value="rare">Rare</option>
+                        <option value="old">Old School</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-align-left"></i> Deskripsi (Opsional)</label>
+                    <textarea id="listingDescription" rows="3" placeholder="Tambahkan deskripsi..."></textarea>
+                </div>
+                <button class="submit-btn" id="submitListingBtn">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Submit Listing</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Listing Detail Modal -->
+    <div class="modal-overlay" id="listingDetailModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fas fa-tag"></i> Detail Username</h3>
+                <button class="modal-close" id="closeDetailModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="listingDetailBody">
+                <!-- Dynamic content -->
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/indotag/js/web.js"></script>
+</body>
+</html>

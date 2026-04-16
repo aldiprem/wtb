@@ -15,7 +15,11 @@ class IndotagDatabase:
     def _get_now(self) -> str:
         return datetime.now(self.timezone).isoformat()
     
+    def _get_now_datetime(self) -> datetime:
+        return datetime.now(self.timezone)
+
     def init_database(self):
+        """Initialize database tables"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
@@ -26,25 +30,30 @@ class IndotagDatabase:
                     username TEXT,
                     first_name TEXT,
                     last_name TEXT,
+                    photo_url TEXT,
                     balance INTEGER DEFAULT 0,
-                    is_admin INTEGER DEFAULT 0,
-                    joined_at TEXT,
-                    last_seen TEXT
+                    is_admin BOOLEAN DEFAULT 0,
+                    created_at TIMESTAMP,
+                    last_seen TIMESTAMP
                 )
             ''')
             
-            # Tabel usernames (yang dijual)
+            # Tabel username listings (marketplace)
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS usernames (
+                CREATE TABLE IF NOT EXISTS username_listings (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
+                    listing_id TEXT UNIQUE NOT NULL,
                     seller_id INTEGER NOT NULL,
+                    username TEXT NOT NULL,
+                    category TEXT DEFAULT 'general',
                     price INTEGER NOT NULL,
-                    status TEXT DEFAULT 'available',
                     description TEXT,
-                    created_at TEXT,
-                    sold_at TEXT,
-                    buyer_id INTEGER,
+                    is_premium BOOLEAN DEFAULT 0,
+                    status TEXT DEFAULT 'active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    views INTEGER DEFAULT 0,
+                    likes INTEGER DEFAULT 0,
                     FOREIGN KEY (seller_id) REFERENCES users(user_id)
                 )
             ''')
@@ -54,177 +63,71 @@ class IndotagDatabase:
                 CREATE TABLE IF NOT EXISTS transactions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     transaction_id TEXT UNIQUE NOT NULL,
-                    username TEXT NOT NULL,
-                    seller_id INTEGER NOT NULL,
+                    listing_id TEXT NOT NULL,
                     buyer_id INTEGER NOT NULL,
-                    price INTEGER NOT NULL,
+                    seller_id INTEGER NOT NULL,
+                    amount INTEGER NOT NULL,
                     status TEXT DEFAULT 'pending',
-                    created_at TEXT,
-                    completed_at TEXT,
-                    payment_proof TEXT,
-                    FOREIGN KEY (seller_id) REFERENCES users(user_id),
-                    FOREIGN KEY (buyer_id) REFERENCES users(user_id)
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    FOREIGN KEY (listing_id) REFERENCES username_listings(listing_id),
+                    FOREIGN KEY (buyer_id) REFERENCES users(user_id),
+                    FOREIGN KEY (seller_id) REFERENCES users(user_id)
                 )
             ''')
             
-            # Tabel pending payments
+            # Tabel user activities
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pending_payments (
+                CREATE TABLE IF NOT EXISTS user_activities (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
-                    username TEXT NOT NULL,
-                    amount INTEGER NOT NULL,
-                    transaction_id TEXT NOT NULL,
-                    created_at TEXT,
-                    status TEXT DEFAULT 'pending',
+                    activity_type TEXT NOT NULL,
+                    description TEXT,
+                    reference_id TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )
             ''')
             
-            conn.commit()
-
-    def init_pending_table(self):
-        """Initialize pending verifications table"""
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+            # Tabel user storage (purchased usernames)
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pending_verifications (
+                CREATE TABLE IF NOT EXISTS user_storage (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    verification_id TEXT UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    listing_id TEXT NOT NULL,
                     username TEXT NOT NULL,
-                    seller_id INTEGER NOT NULL,
-                    seller_name TEXT,
-                    price INTEGER DEFAULT 0,
-                    description TEXT,
-                    target_id INTEGER NOT NULL,
-                    target_type TEXT NOT NULL,
-                    status TEXT DEFAULT 'pending',
-                    created_at TEXT,
-                    FOREIGN KEY (seller_id) REFERENCES users(user_id)
+                    purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    is_used BOOLEAN DEFAULT 0,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id),
+                    FOREIGN KEY (listing_id) REFERENCES username_listings(listing_id)
                 )
             ''')
+            
             conn.commit()
+            print("✅ Indotag database initialized")
     
-    def save_pending_verification(self, verification_id, username, seller_id, seller_name, 
-                                   price, description, target_id, target_type):
-        """Save pending verification to database"""
+    # ==================== USER METHODS ====================
+    
+    def save_user(self, user_id: int, username: str = "", first_name: str = "", 
+                  last_name: str = "", photo_url: str = "") -> bool:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                now = self._get_now()
-                cursor.execute('''
-                    INSERT INTO pending_verifications 
-                    (verification_id, username, seller_id, seller_name, price, description, target_id, target_type, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (verification_id, username, seller_id, seller_name, price, description, target_id, target_type, now))
-                conn.commit()
-                return True
-        except Exception as e:
-            print(f"Error saving pending: {e}")
-            return False
-    
-    def get_pending_verification(self, verification_id):
-        """Get pending verification by ID"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT * FROM pending_verifications WHERE verification_id = ? AND status = "pending"', (verification_id,))
-                row = cursor.fetchone()
-                if row:
-                    return {
-                        'id': row[0],
-                        'verification_id': row[1],
-                        'username': row[2],
-                        'seller_id': row[3],
-                        'seller_name': row[4],
-                        'price': row[5],
-                        'description': row[6],
-                        'target_id': row[7],
-                        'target_type': row[8],
-                        'status': row[9],
-                        'created_at': row[10]
-                    }
-                return None
-        except Exception as e:
-            print(f"Error getting pending: {e}")
-            return None
-    
-    def update_pending_price_description(self, verification_id, price, description):
-        """Update price and description for pending verification"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE pending_verifications 
-                    SET price = ?, description = ?
-                    WHERE verification_id = ?
-                ''', (price, description, verification_id))
-                conn.commit()
-                return True
-        except Exception as e:
-            print(f"Error updating pending: {e}")
-            return False
-    
-    def delete_pending_verification(self, verification_id):
-        """Delete pending verification"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('DELETE FROM pending_verifications WHERE verification_id = ?', (verification_id,))
-                conn.commit()
-                return True
-        except Exception as e:
-            print(f"Error deleting pending: {e}")
-            return False
-    
-    def get_all_pending_verifications(self):
-        """Get all pending verifications for admin"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT * FROM pending_verifications WHERE status = "pending" ORDER BY created_at DESC')
-                rows = cursor.fetchall()
-                result = []
-                for row in rows:
-                    result.append({
-                        'id': row[0],
-                        'verification_id': row[1],
-                        'username': row[2],
-                        'seller_id': row[3],
-                        'seller_name': row[4],
-                        'price': row[5],
-                        'description': row[6],
-                        'target_id': row[7],
-                        'target_type': row[8],
-                        'created_at': row[10]
-                    })
-                return result
-        except Exception as e:
-            print(f"Error getting all pending: {e}")
-            return []
-
-    def generate_transaction_id(self) -> str:
-        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
-    
-    def save_user(self, user_id: int, username: str = "", first_name: str = "", last_name: str = "") -> bool:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                now = self._get_now()
-                
                 cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
                 existing = cursor.fetchone()
+                now = self._get_now()
                 
                 if existing:
                     cursor.execute('''
-                        UPDATE users SET username = ?, first_name = ?, last_name = ?, last_seen = ?
-                        WHERE user_id = ?
-                    ''', (username, first_name, last_name, now, user_id))
+                        UPDATE users SET username = ?, first_name = ?, last_name = ?, 
+                        photo_url = ?, last_seen = ? WHERE user_id = ?
+                    ''', (username, first_name, last_name, photo_url, now, user_id))
                 else:
                     cursor.execute('''
-                        INSERT INTO users (user_id, username, first_name, last_name, joined_at, last_seen)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (user_id, username, first_name, last_name, now, now))
+                        INSERT INTO users (user_id, username, first_name, last_name, 
+                        photo_url, created_at, last_seen)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ''', (user_id, username, first_name, last_name, photo_url, now, now))
                 
                 conn.commit()
                 return True
@@ -232,250 +135,247 @@ class IndotagDatabase:
             print(f"Error saving user: {e}")
             return False
     
-    def get_user(self, user_id: int) -> Optional[Dict]:
+    def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT user_id, username, first_name, last_name, balance, is_admin, joined_at, last_seen
+                    SELECT user_id, username, first_name, last_name, photo_url, 
+                    balance, is_admin, created_at, last_seen
                     FROM users WHERE user_id = ?
                 ''', (user_id,))
                 row = cursor.fetchone()
-                
                 if row:
                     return {
-                        'user_id': row[0],
-                        'username': row[1],
-                        'first_name': row[2],
-                        'last_name': row[3],
-                        'balance': row[4],
-                        'is_admin': bool(row[5]),
-                        'joined_at': row[6],
-                        'last_seen': row[7]
+                        'user_id': row[0], 'username': row[1], 'first_name': row[2],
+                        'last_name': row[3], 'photo_url': row[4], 'balance': row[5],
+                        'is_admin': bool(row[6]), 'created_at': row[7], 'last_seen': row[8]
                     }
                 return None
         except Exception as e:
             print(f"Error getting user: {e}")
             return None
     
-    def add_username(self, username: str, seller_id: int, price: int, description: str = "") -> bool:
+    def get_user_balance(self, user_id: int) -> int:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                now = self._get_now()
-                
-                cursor.execute('''
-                    INSERT INTO usernames (username, seller_id, price, description, created_at, status)
-                    VALUES (?, ?, ?, ?, ?, 'available')
-                ''', (username, seller_id, price, description, now))
+                cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+                row = cursor.fetchone()
+                return row[0] if row else 0
+        except Exception as e:
+            print(f"Error getting balance: {e}")
+            return 0
+    
+    def update_balance(self, user_id: int, amount: int, operation: str = 'add') -> bool:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                current = self.get_user_balance(user_id)
+                new_balance = current + amount if operation == 'add' else current - amount
+                if new_balance < 0:
+                    return False
+                cursor.execute('UPDATE users SET balance = ? WHERE user_id = ?', (new_balance, user_id))
                 conn.commit()
                 return True
-        except sqlite3.IntegrityError:
-            return False
         except Exception as e:
-            print(f"Error adding username: {e}")
+            print(f"Error updating balance: {e}")
             return False
     
-    def get_username(self, username: str) -> Optional[Dict]:
+    # ==================== LISTING METHODS ====================
+    
+    def generate_listing_id(self) -> str:
+        return ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    
+    def create_listing(self, seller_id: int, username: str, price: int, 
+                       category: str = 'general', description: str = '') -> Optional[str]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                listing_id = self.generate_listing_id()
+                cursor.execute('''
+                    INSERT INTO username_listings 
+                    (listing_id, seller_id, username, category, price, description)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (listing_id, seller_id, username, category, price, description))
+                conn.commit()
+                return listing_id
+        except Exception as e:
+            print(f"Error creating listing: {e}")
+            return None
+    
+    def get_listings(self, category: str = None, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                if category and category != 'all':
+                    cursor.execute('''
+                        SELECT l.*, u.username as seller_username, u.first_name as seller_first_name,
+                               u.photo_url as seller_photo_url
+                        FROM username_listings l
+                        JOIN users u ON l.seller_id = u.user_id
+                        WHERE l.status = 'active' AND l.category = ?
+                        ORDER BY l.is_premium DESC, l.created_at DESC
+                        LIMIT ? OFFSET ?
+                    ''', (category, limit, offset))
+                else:
+                    cursor.execute('''
+                        SELECT l.*, u.username as seller_username, u.first_name as seller_first_name,
+                               u.photo_url as seller_photo_url
+                        FROM username_listings l
+                        JOIN users u ON l.seller_id = u.user_id
+                        WHERE l.status = 'active'
+                        ORDER BY l.is_premium DESC, l.created_at DESC
+                        LIMIT ? OFFSET ?
+                    ''', (limit, offset))
+                
+                rows = cursor.fetchall()
+                columns = [description[0] for description in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            print(f"Error getting listings: {e}")
+            return []
+    
+    def get_listing_by_id(self, listing_id: str) -> Optional[Dict[str, Any]]:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT id, username, seller_id, price, status, description, created_at, sold_at, buyer_id
-                    FROM usernames WHERE username = ?
-                ''', (username,))
+                    SELECT l.*, u.username as seller_username, u.first_name as seller_first_name,
+                           u.photo_url as seller_photo_url
+                    FROM username_listings l
+                    JOIN users u ON l.seller_id = u.user_id
+                    WHERE l.listing_id = ?
+                ''', (listing_id,))
                 row = cursor.fetchone()
-                
                 if row:
-                    return {
-                        'id': row[0],
-                        'username': row[1],
-                        'seller_id': row[2],
-                        'price': row[3],
-                        'status': row[4],
-                        'description': row[5],
-                        'created_at': row[6],
-                        'sold_at': row[7],
-                        'buyer_id': row[8]
-                    }
+                    columns = [description[0] for description in cursor.description]
+                    return dict(zip(columns, row))
                 return None
         except Exception as e:
-            print(f"Error getting username: {e}")
+            print(f"Error getting listing: {e}")
             return None
     
-    def get_my_usernames(self, seller_id: int) -> List[Dict]:
+    def increment_listing_views(self, listing_id: str) -> bool:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('UPDATE username_listings SET views = views + 1 WHERE listing_id = ?', (listing_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error incrementing views: {e}")
+            return False
+    
+    # ==================== STORAGE METHODS ====================
+    
+    def add_to_storage(self, user_id: int, listing_id: str, username: str) -> bool:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT id, username, price, status, description, created_at
-                    FROM usernames WHERE seller_id = ? ORDER BY created_at DESC
-                ''', (seller_id,))
-                rows = cursor.fetchall()
-                
-                return [{
-                    'id': r[0],
-                    'username': r[1],
-                    'price': r[2],
-                    'status': r[3],
-                    'description': r[4],
-                    'created_at': r[5]
-                } for r in rows]
+                    INSERT INTO user_storage (user_id, listing_id, username)
+                    VALUES (?, ?, ?)
+                ''', (user_id, listing_id, username))
+                conn.commit()
+                return True
         except Exception as e:
-            print(f"Error getting my usernames: {e}")
+            print(f"Error adding to storage: {e}")
+            return False
+    
+    def get_user_storage(self, user_id: int) -> List[Dict[str, Any]]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT * FROM user_storage WHERE user_id = ? ORDER BY purchased_at DESC
+                ''', (user_id,))
+                rows = cursor.fetchall()
+                columns = [description[0] for description in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            print(f"Error getting storage: {e}")
             return []
     
-    def get_all_available_usernames(self, limit: int = 50, offset: int = 0) -> List[Dict]:
+    # ==================== ACTIVITY METHODS ====================
+    
+    def add_activity(self, user_id: int, activity_type: str, description: str, reference_id: str = '') -> bool:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                    SELECT id, username, seller_id, price, description, created_at
-                    FROM usernames WHERE status = 'available'
-                    ORDER BY created_at DESC LIMIT ? OFFSET ?
-                ''', (limit, offset))
-                rows = cursor.fetchall()
-                
-                return [{
-                    'id': r[0],
-                    'username': r[1],
-                    'seller_id': r[2],
-                    'price': r[3],
-                    'description': r[4],
-                    'created_at': r[5]
-                } for r in rows]
+                    INSERT INTO user_activities (user_id, activity_type, description, reference_id)
+                    VALUES (?, ?, ?, ?)
+                ''', (user_id, activity_type, description, reference_id))
+                conn.commit()
+                return True
         except Exception as e:
-            print(f"Error getting available usernames: {e}")
+            print(f"Error adding activity: {e}")
+            return False
+    
+    def get_user_activities(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT * FROM user_activities WHERE user_id = ? 
+                    ORDER BY created_at DESC LIMIT ?
+                ''', (user_id, limit))
+                rows = cursor.fetchall()
+                columns = [description[0] for description in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            print(f"Error getting activities: {e}")
             return []
     
-    def search_usernames(self, query: str) -> List[Dict]:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT id, username, seller_id, price, description, created_at
-                    FROM usernames WHERE status = 'available' AND username LIKE ?
-                    ORDER BY created_at DESC LIMIT 50
-                ''', (f'%{query}%',))
-                rows = cursor.fetchall()
-                
-                return [{
-                    'id': r[0],
-                    'username': r[1],
-                    'seller_id': r[2],
-                    'price': r[3],
-                    'description': r[4],
-                    'created_at': r[5]
-                } for r in rows]
-        except Exception as e:
-            print(f"Error searching usernames: {e}")
-            return []
+    # ==================== STATS METHODS ====================
     
-    def delete_username(self, username_id: int, seller_id: int) -> bool:
+    def get_user_stats(self, user_id: int) -> Dict[str, Any]:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    DELETE FROM usernames WHERE id = ? AND seller_id = ? AND status = 'available'
-                ''', (username_id, seller_id))
-                conn.commit()
-                return cursor.rowcount > 0
-        except Exception as e:
-            print(f"Error deleting username: {e}")
-            return False
-    
-    def create_transaction(self, username: str, seller_id: int, buyer_id: int, price: int) -> Optional[str]:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                now = self._get_now()
-                transaction_id = self.generate_transaction_id()
                 
-                cursor.execute('''
-                    INSERT INTO transactions (transaction_id, username, seller_id, buyer_id, price, status, created_at)
-                    VALUES (?, ?, ?, ?, ?, 'pending', ?)
-                ''', (transaction_id, username, seller_id, buyer_id, price, now))
-                conn.commit()
-                return transaction_id
+                # Total listings created
+                cursor.execute('SELECT COUNT(*) FROM username_listings WHERE seller_id = ?', (user_id,))
+                total_listings = cursor.fetchone()[0] or 0
+                
+                # Total purchases (from transactions as buyer)
+                cursor.execute('SELECT COUNT(*) FROM transactions WHERE buyer_id = ? AND status = "completed"', (user_id,))
+                total_purchases = cursor.fetchone()[0] or 0
+                
+                # Total storage items
+                cursor.execute('SELECT COUNT(*) FROM user_storage WHERE user_id = ?', (user_id,))
+                total_storage = cursor.fetchone()[0] or 0
+                
+                return {
+                    'total_listings': total_listings,
+                    'total_purchases': total_purchases,
+                    'total_storage': total_storage
+                }
         except Exception as e:
-            print(f"Error creating transaction: {e}")
-            return None
+            print(f"Error getting user stats: {e}")
+            return {'total_listings': 0, 'total_purchases': 0, 'total_storage': 0}
     
-    def get_transaction(self, transaction_id: str) -> Optional[Dict]:
+    def get_market_stats(self) -> Dict[str, Any]:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT id, transaction_id, username, seller_id, buyer_id, price, status, created_at, completed_at
-                    FROM transactions WHERE transaction_id = ?
-                ''', (transaction_id,))
-                row = cursor.fetchone()
                 
-                if row:
-                    return {
-                        'id': row[0],
-                        'transaction_id': row[1],
-                        'username': row[2],
-                        'seller_id': row[3],
-                        'buyer_id': row[4],
-                        'price': row[5],
-                        'status': row[6],
-                        'created_at': row[7],
-                        'completed_at': row[8]
-                    }
-                return None
-        except Exception as e:
-            print(f"Error getting transaction: {e}")
-            return None
-    
-    def complete_transaction(self, transaction_id: str, buyer_id: int) -> bool:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                now = self._get_now()
+                cursor.execute('SELECT COUNT(*) FROM username_listings WHERE status = "active"')
+                total_listings = cursor.fetchone()[0] or 0
                 
-                # Update status username
-                cursor.execute('''
-                    UPDATE usernames 
-                    SET status = 'sold', sold_at = ?, buyer_id = ?
-                    WHERE username = (SELECT username FROM transactions WHERE transaction_id = ?)
-                ''', (now, buyer_id, transaction_id))
+                cursor.execute('SELECT COUNT(*) FROM transactions WHERE status = "completed"')
+                total_transactions = cursor.fetchone()[0] or 0
                 
-                # Update transaction
-                cursor.execute('''
-                    UPDATE transactions 
-                    SET status = 'completed', completed_at = ?
-                    WHERE transaction_id = ? AND buyer_id = ?
-                ''', (now, transaction_id, buyer_id))
+                cursor.execute('SELECT SUM(amount) FROM transactions WHERE status = "completed"')
+                total_volume = cursor.fetchone()[0] or 0
                 
-                conn.commit()
-                return cursor.rowcount > 0
+                return {
+                    'total_listings': total_listings,
+                    'total_transactions': total_transactions,
+                    'total_volume': total_volume
+                }
         except Exception as e:
-            print(f"Error completing transaction: {e}")
-            return False
-    
-    def add_balance(self, user_id: int, amount: int) -> bool:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE users SET balance = balance + ? WHERE user_id = ?
-                ''', (amount, user_id))
-                conn.commit()
-                return cursor.rowcount > 0
-        except Exception as e:
-            print(f"Error adding balance: {e}")
-            return False
-    
-    def deduct_balance(self, user_id: int, amount: int) -> bool:
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE users SET balance = balance - ? WHERE user_id = ? AND balance >= ?
-                ''', (amount, user_id, amount))
-                conn.commit()
-                return cursor.rowcount > 0
-        except Exception as e:
-            print(f"Error deducting balance: {e}")
-            return False
+            print(f"Error getting market stats: {e}")
+            return {'total_listings': 0, 'total_transactions': 0, 'total_volume': 0}
