@@ -890,7 +890,7 @@ async def show_statistics(event):
 [📊](tg://emoji?id=5231200819986047254) **STATISTIK BOT GIVEAWAY**
 
 ━━━━━━━━━━━━━━━━━━━━━
-**👥 STATISTIK PENGGUNA:**
+**[👤](tg://emoji?id=5316727448644103237) STATISTIK PENGGUNA:**
 ^^• Total Pengguna: `{total_users:,}`
 • Pengguna Baru Hari Ini: `+{users_today:,}`
 • Pengguna Baru Minggu Ini: `+{users_this_week:,}`
@@ -898,7 +898,7 @@ async def show_statistics(event):
 • Total Admin: `{total_admins}`^^
 
 ━━━━━━━━━━━━━━━━━━━━━
-**🎁 STATISTIK GIVEAWAY:**
+**[🎁](tg://emoji?id=5199749070830197566) STATISTIK GIVEAWAY:**
 ^^• Total Giveaway Dibuat: `{total_giveaways:,}`
 • Giveaway Hari Ini: `+{giveaways_today:,}`
 • Giveaway Minggu Ini: `+{giveaways_this_week:,}`
@@ -907,24 +907,25 @@ async def show_statistics(event):
 • Giveaway Berakhir: `{ended_giveaways}`^^
 
 ━━━━━━━━━━━━━━━━━━━━━
-**👥 STATISTIK PARTISIPASI:**
+**[👥](tg://emoji?id=5944970130554359187) STATISTIK PARTISIPASI:**
 ^^• Total Partisipasi: `{total_participants:,}`
 • Peserta Unik: `{unique_participants:,}`
 • Partisipasi Hari Ini: `{participants_today:,}`
 • Rata-rata per Giveaway: `{avg_participants}`^^
 
 ━━━━━━━━━━━━━━━━━━━━━
-**🏆 STATISTIK PEMENANG:**
+**[🏆](tg://emoji?id=5188344996356448758) STATISTIK PEMENANG:**
 ^^• Total Pemenang: `{total_winners:,}`
 • Pemenang Unik: `{len(unique_winners):,}`^^
 
 ━━━━━━━━━━━━━━━━━━━━━
-**⭐ TOP PERFORMER:**
+**[⭐](tg://emoji?id=5897692655273383739) TOP PERFORMER:**
 ^^• Top Creator: `{top_creator['name'] if top_creator else '-'}` ({top_creator['total'] if top_creator else 0} giveaway)
 • Top Participant: `{top_participant['name'] if top_participant else '-'}` ({top_participant['total'] if top_participant else 0} partisipasi)^^
 
 ━━━━━━━━━━━━━━━━━━━━━
-_Data terakhir diperbarui: {get_jakarta_time().strftime('%d %B %Y %H:%M:%S WIB')}_
+__Data terakhir diperbarui: 
+{get_jakarta_time().strftime('%d %B %Y %H:%M:%S WIB')}__
 """
             
             buttons = [[Button.inline("🔙 Kembali", data="kembali")]]
