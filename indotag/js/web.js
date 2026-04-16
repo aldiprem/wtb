@@ -684,6 +684,15 @@
             tg.expand();
             tg.setHeaderColor('#0a0a0a');
             tg.setBackgroundColor('#0a0a0a');
+            
+            // Set viewport height untuk safe area
+            document.body.style.height = `${tg.viewportStableHeight}px`;
+            
+            // Enable haptic feedback
+            if (tg.HapticFeedback) {
+                console.log('✅ Haptic feedback enabled');
+            }
+            
             console.log('✅ Telegram WebApp initialized');
         }
     }

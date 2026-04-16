@@ -128,7 +128,7 @@ body {
     position: relative;
 }
 
-/* Header */
+/* Header - Satukan warna hitam dengan main content */
 .app-header {
     position: fixed;
     top: 0;
@@ -139,12 +139,23 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    padding: 12px 20px;
+    background: var(--bg);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     border-bottom: 1px solid var(--border);
     z-index: 100;
+}
+
+/* Tambahkan safe-area-inset untuk iOS dan Telegram WebApp */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .app-header {
+        padding-top: max(12px, env(safe-area-inset-top));
+    }
+    
+    .main-content {
+        margin-top: calc(70px + env(safe-area-inset-top));
+    }
 }
 
 .logo {
@@ -205,11 +216,11 @@ body {
     color: var(--text);
 }
 
-/* Main Content */
 .main-content {
     margin-top: 70px;
-    margin-bottom: 70px;
+    margin-bottom: 80px;
     padding: 16px;
+    padding-bottom: 20px;
     flex: 1;
 }
 
@@ -661,21 +672,39 @@ body {
     transform: scale(0.98);
 }
 
-/* Bottom Navigation */
+/* Bottom Navigation - Jarak dari bawah, radius besar, blur */
 .bottom-nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    max-width: 500px;
+    bottom: 12px;
+    left: 16px;
+    right: 16px;
+    max-width: calc(500px - 32px);
     margin: 0 auto;
     display: flex;
     justify-content: space-around;
-    padding: 12px 20px;
+    padding: 8px 16px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
-    border-top: 1px solid var(--border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 40px;
+    border: none;
     z-index: 100;
+    box-shadow: var(--shadow);
+}
+
+/* Efek border 3D untuk bottom-nav */
+.bottom-nav::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 40px;
+    padding: 1px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.2) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .nav-item {
@@ -683,11 +712,34 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    padding: 6px 12px;
+    padding: 8px 16px;
     border-radius: 30px;
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-muted);
+    position: relative;
+}
+
+/* Warna nav yang di klik - bening dengan efek 3D border */
+.nav-item.active {
+    color: var(--text);
+    background: transparent;
+    position: relative;
+}
+
+/* Efek 3D border untuk active nav (putih di kiri atas dan kanan bawah) */
+.nav-item.active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 30px;
+    padding: 1px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .nav-item i {
@@ -696,11 +748,6 @@ body {
 
 .nav-item span {
     font-size: 10px;
-}
-
-.nav-item.active {
-    color: var(--primary);
-    background: var(--primary-glass);
 }
 
 /* Modal Overlay */
@@ -998,5 +1045,17 @@ body.modal-open {
     
     .profile-name-large {
         font-size: 16px;
+    }
+}
+
+/* Safe area untuk bottom navigation */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .bottom-nav {
+        padding-bottom: max(8px, env(safe-area-inset-bottom));
+        bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    
+    .toast-container {
+        bottom: calc(90px + env(safe-area-inset-bottom));
     }
 }
