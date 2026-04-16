@@ -703,20 +703,18 @@ input:checked + .toggle-slider:before {
     font-size: 12px;
 }
 
-/* Modal */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
+.modal-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 28px;
     width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(8px);
-    z-index: 4000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+    max-width: 400px;
+    max-height: 85vh;
+    overflow: hidden;
+    animation: modalFadeIn 0.2s ease;
+    display: flex;
+    flex-direction: column; 
+    pointer-events: auto;
 }
 
 body.modal-open {
@@ -792,6 +790,7 @@ body.modal-open {
     border-radius: 18px;
     overflow-y: auto;
     flex: 1;
+    pointer-events: auto;
 }
 
 .modal-body textarea {
@@ -805,6 +804,11 @@ body.modal-open {
     font-family: inherit;
     resize: vertical;
     margin-bottom: 16px;
+    /* Pastikan pointer-events aktif */
+    pointer-events: auto;
+    /* Pastikan z-index tinggi */
+    z-index: 10;
+    position: relative;
 }
 
 .modal-body input {
@@ -816,6 +820,9 @@ body.modal-open {
     color: var(--text);
     font-size: 14px;
     margin-bottom: 16px;
+    pointer-events: auto;
+    z-index: 10;
+    position: relative;
 }
 
 .modal-body input:focus,
