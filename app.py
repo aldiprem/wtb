@@ -238,7 +238,7 @@ app.register_blueprint(giveaway_bp)
 app.register_blueprint(crash_bp, url_prefix='/api/crash')
 app.register_blueprint(games_bp)
 app.register_blueprint(indotag_bp, url_prefix='/api/indotag')
-app.register_blueprint(create_bp)
+app.register_blueprint(create_bp, url_prefix='/api/giveaway')
 
 @app.route('/indotag')
 def serve_indotag_page():
