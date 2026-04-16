@@ -1,4 +1,4 @@
-// create.js - PERBAIKAN TOTAL
+// create.js - Create Giveaway Page with Telegram Integration (FIXED)
 
 (function() {
     'use strict';
@@ -73,10 +73,10 @@
     };
     
     let selectedRequirements = new Set();
+    let activeModal = null; // Track active modal
 
     // ==================== DOM ELEMENTS ====================
     
-    // Tunggu DOM siap sebelum mengambil elemen
     let elements = {};
     
     function initElements() {
@@ -98,9 +98,7 @@
             addLinkBtn: document.getElementById('addLinkBtn'),
             editDurationBtn: document.getElementById('editDurationBtn'),
             
-            requirementBtns: document.querySelectorAll('.req-btn'),
             captchaToggle: document.getElementById('captchaToggle'),
-            
             startGiveawayBtn: document.getElementById('startGiveawayBtn'),
             
             // Modals
@@ -109,10 +107,6 @@
             savePrizeBtn: document.getElementById('savePrizeBtn'),
             cancelPrizeBtn: document.getElementById('cancelPrizeBtn'),
             closePrizeModal: document.getElementById('closePrizeModal'),
-            
-            chatModal: document.getElementById('chatModal'),
-            chatModalBody: document.getElementById('chatModalBody'),
-            closeChatModal: document.getElementById('closeChatModal'),
             
             linkModal: document.getElementById('linkModal'),
             linkInput: document.getElementById('linkInput'),
@@ -262,25 +256,20 @@
         });
         elements.prizeList.innerHTML = html;
         
-        // Add event listeners
         document.querySelectorAll('.prize-edit').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = parseInt(btn.dataset.index);
-                editPrize(index);
-            });
+            btn.removeEventListener('click', handlePrizeEdit);
+            btn.addEventListener('click', handlePrizeEdit);
         });
         
         document.querySelectorAll('.prize-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = parseInt(btn.dataset.index);
-                deletePrize(index);
-            });
+            btn.removeEventListener('click', handlePrizeDelete);
+            btn.addEventListener('click', handlePrizeDelete);
         });
     }
     
-    function editPrize(index) {
+    function handlePrizeEdit(e) {
+        e.stopPropagation();
+        const index = parseInt(e.currentTarget.dataset.index);
         hapticMedium();
         const prize = giveawayData.prizes[index];
         if (elements.prizeInput) {
@@ -290,7 +279,9 @@
         openModal(elements.prizeModal);
     }
     
-    function deletePrize(index) {
+    function handlePrizeDelete(e) {
+        e.stopPropagation();
+        const index = parseInt(e.currentTarget.dataset.index);
         hapticMedium();
         giveawayData.prizes.splice(index, 1);
         renderPrizes();
@@ -310,7 +301,6 @@
         giveawayData.chats.forEach((chat, index) => {
             const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Supergroup';
             const visibilityIcon = chat.visibility === 'public' ? '🌐' : '🔒';
-            
             const hasPhoto = chat.photo_url && chat.photo_url !== '';
             
             html += `
@@ -333,15 +323,14 @@
         elements.chatList.innerHTML = html;
         
         document.querySelectorAll('.chat-delete').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const index = parseInt(btn.dataset.index);
-                deleteChat(index);
-            });
+            btn.removeEventListener('click', handleChatDelete);
+            btn.addEventListener('click', handleChatDelete);
         });
     }
     
-    function deleteChat(index) {
+    function handleChatDelete(e) {
+        e.stopPropagation();
+        const index = parseInt(e.currentTarget.dataset.index);
         hapticMedium();
         giveawayData.chats.splice(index, 1);
         renderChats();
@@ -392,13 +381,8 @@
             giveawayData.endTime !== null;
         
         if (elements.startGiveawayBtn) {
-            if (isValid) {
-                elements.startGiveawayBtn.disabled = false;
-                elements.startGiveawayBtn.style.opacity = '1';
-            } else {
-                elements.startGiveawayBtn.disabled = true;
-                elements.startGiveawayBtn.style.opacity = '0.6';
-            }
+            elements.startGiveawayBtn.disabled = !isValid;
+            elements.startGiveawayBtn.style.opacity = isValid ? '1' : '0.6';
         }
     }
 
@@ -406,8 +390,13 @@
     
     function openModal(modal) {
         if (!modal) return;
+        // Close current modal first
+        if (activeModal && activeModal !== modal) {
+            closeModal(activeModal);
+        }
         document.body.classList.add('modal-open');
         modal.style.display = 'flex';
+        activeModal = modal;
         console.log('Modal opened:', modal.id);
     }
     
@@ -415,9 +404,26 @@
         if (!modal) return;
         document.body.classList.remove('modal-open');
         modal.style.display = 'none';
+        if (activeModal === modal) {
+            activeModal = null;
+        }
         console.log('Modal closed:', modal.id);
     }
     
+    function closeAllModals() {
+        const modals = [elements.prizeModal, elements.linkModal, elements.durationModal];
+        modals.forEach(modal => {
+            if (modal && modal.style.display === 'flex') {
+                closeModal(modal);
+            }
+        });
+        // Also close any custom chat modal
+        const chatInputModal = document.getElementById('chatInputModal');
+        if (chatInputModal && chatInputModal.style.display === 'flex') {
+            closeModal(chatInputModal);
+        }
+    }
+
     // ==================== PRIZE HANDLERS ====================
     
     function openPrizeModal() {
@@ -463,69 +469,17 @@
 
     // ==================== CHAT HANDLERS ====================
     
+    let chatInputModal = null;
+    
     function openChatModal() {
         console.log('openChatModal called');
         hapticMedium();
         
-        let chatInputModal = document.getElementById('chatInputModal');
         if (!chatInputModal) {
-            chatInputModal = document.createElement('div');
-            chatInputModal.id = 'chatInputModal';
-            chatInputModal.className = 'modal-overlay';
-            chatInputModal.innerHTML = `
-                <div class="modal-container" style="max-width: 360px;">
-                    <div class="modal-header">
-                        <h3><i class="fas fa-plus-circle"></i> Tambah Chat</h3>
-                        <button class="modal-close" id="closeChatInputModal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <p style="margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
-                            <i class="fas fa-info-circle"></i> Masukkan ID Chat (Channel/Group)
-                        </p>
-                        <input type="text" id="chatIdInput" placeholder="Contoh: -1001234567890" style="margin-bottom: 16px;">
-                        <div id="chatPreview" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--surface-light); border-radius: 14px;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div id="previewAvatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                    <i class="fas fa-users" style="color: white; font-size: 24px;"></i>
-                                </div>
-                                <div style="flex: 1;">
-                                    <div id="previewTitle" style="font-weight: 600; margin-bottom: 4px;">-</div>
-                                    <div id="previewMeta" style="font-size: 11px; color: var(--text-muted);">-</div>
-                                </div>
-                                <div id="previewStatus" style="font-size: 11px;"></div>
-                            </div>
-                        </div>
-                        <div class="btn-group">
-                            <button class="btn-primary" id="confirmAddChatBtn" disabled>Tambahkan</button>
-                            <button class="btn-secondary" id="cancelChatInputBtn">Batal</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(chatInputModal);
-            
-            document.getElementById('closeChatInputModal')?.addEventListener('click', () => {
-                closeModal(chatInputModal);
-            });
-            
-            document.getElementById('cancelChatInputBtn')?.addEventListener('click', () => {
-                closeModal(chatInputModal);
-            });
-            
-            document.getElementById('confirmAddChatBtn')?.addEventListener('click', async () => {
-                const chatIdInput = document.getElementById('chatIdInput');
-                const chatId = chatIdInput?.value.trim();
-                if (chatId) {
-                    await addChatManually(chatId);
-                    closeModal(chatInputModal);
-                }
-            });
-            
-            chatInputModal.addEventListener('click', (e) => {
-                if (e.target === chatInputModal) closeModal(chatInputModal);
-            });
+            createChatInputModal();
         }
         
+        // Reset form
         const chatIdInput = document.getElementById('chatIdInput');
         const chatPreview = document.getElementById('chatPreview');
         const confirmBtn = document.getElementById('confirmAddChatBtn');
@@ -536,6 +490,83 @@
         
         openModal(chatInputModal);
         setTimeout(() => chatIdInput?.focus(), 100);
+    }
+    
+    function createChatInputModal() {
+        chatInputModal = document.createElement('div');
+        chatInputModal.id = 'chatInputModal';
+        chatInputModal.className = 'modal-overlay';
+        chatInputModal.style.display = 'none';
+        chatInputModal.innerHTML = `
+            <div class="modal-container" style="max-width: 360px;">
+                <div class="modal-header">
+                    <h3><i class="fas fa-plus-circle"></i> Tambah Chat</h3>
+                    <button class="modal-close" id="closeChatInputModalBtn">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="margin-bottom: 12px; font-size: 13px; color: var(--text-secondary);">
+                        <i class="fas fa-info-circle"></i> Masukkan ID Chat (Channel/Group)
+                    </p>
+                    <input type="text" id="chatIdInput" placeholder="Contoh: -1001234567890" style="margin-bottom: 16px;">
+                    <div id="chatPreview" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--surface-light); border-radius: 14px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div id="previewAvatar" style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <i class="fas fa-users" style="color: white; font-size: 24px;"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <div id="previewTitle" style="font-weight: 600; margin-bottom: 4px;">-</div>
+                                <div id="previewMeta" style="font-size: 11px; color: var(--text-muted);">-</div>
+                            </div>
+                            <div id="previewStatus" style="font-size: 11px;"></div>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn-primary" id="confirmAddChatBtn" disabled>Tambahkan</button>
+                        <button class="btn-secondary" id="cancelChatInputBtn">Batal</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(chatInputModal);
+        
+        // Event listeners
+        document.getElementById('closeChatInputModalBtn')?.addEventListener('click', () => {
+            closeModal(chatInputModal);
+        });
+        
+        document.getElementById('cancelChatInputBtn')?.addEventListener('click', () => {
+            closeModal(chatInputModal);
+        });
+        
+        document.getElementById('confirmAddChatBtn')?.addEventListener('click', async () => {
+            const chatIdInput = document.getElementById('chatIdInput');
+            const chatId = chatIdInput?.value.trim();
+            if (chatId) {
+                await addChatManually(chatId);
+                closeModal(chatInputModal);
+            }
+        });
+        
+        const chatIdInputField = document.getElementById('chatIdInput');
+        let debounceTimer;
+        chatIdInputField?.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async () => {
+                const chatId = e.target.value.trim();
+                const confirmBtn = document.getElementById('confirmAddChatBtn');
+                if (chatId) {
+                    await previewChatEntity(chatId);
+                    if (confirmBtn) confirmBtn.disabled = false;
+                } else {
+                    document.getElementById('chatPreview').style.display = 'none';
+                    if (confirmBtn) confirmBtn.disabled = true;
+                }
+            }, 500);
+        });
+        
+        chatInputModal.addEventListener('click', (e) => {
+            if (e.target === chatInputModal) closeModal(chatInputModal);
+        });
     }
     
     async function fetchChatEntity(chatId) {
@@ -575,12 +606,79 @@
         }
     }
     
-    async function addChatManually(chatId, type = null) {
+    async function previewChatEntity(chatId) {
+        const chatPreview = document.getElementById('chatPreview');
+        const previewAvatar = document.getElementById('previewAvatar');
+        const previewTitle = document.getElementById('previewTitle');
+        const previewMeta = document.getElementById('previewMeta');
+        const previewStatus = document.getElementById('previewStatus');
+        
+        if (chatPreview) chatPreview.style.display = 'block';
+        if (previewStatus) {
+            previewStatus.innerHTML = '<span class="loading-spinner-small" style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(64,167,227,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.6s linear infinite;"></span> Mengecek...';
+        }
+        
+        try {
+            const entity = await fetchChatEntity(chatId);
+            
+            if (entity.success) {
+                if (previewTitle) previewTitle.textContent = entity.title || entity.chat_id;
+                
+                let metaText = `${entity.type === 'channel' ? 'Channel' : entity.type === 'group' ? 'Group' : 'Supergroup'}`;
+                if (entity.visibility === 'public' && entity.username) {
+                    metaText += ` • @${entity.username}`;
+                } else {
+                    metaText += ` • Private`;
+                }
+                if (entity.member_count) {
+                    metaText += ` • ${entity.member_count.toLocaleString()} members`;
+                }
+                if (previewMeta) previewMeta.textContent = metaText;
+                
+                if (previewAvatar) {
+                    if (entity.photo_url) {
+                        previewAvatar.innerHTML = `<img src="${entity.photo_url}" style="width: 100%; height: 100%; object-fit: cover;">`;
+                    } else {
+                        const initial = (entity.title || 'C').charAt(0).toUpperCase();
+                        previewAvatar.innerHTML = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--primary), var(--primary-dark));"><span style="color: white; font-weight: 600;">${initial}</span></div>`;
+                    }
+                }
+                
+                if (previewStatus) {
+                    previewStatus.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success);"></i> Valid';
+                }
+                
+                window.pendingChatEntity = entity;
+                
+            } else {
+                if (previewTitle) previewTitle.textContent = 'Chat tidak ditemukan';
+                if (previewMeta) previewMeta.textContent = entity.error || 'Periksa ID Chat';
+                if (previewStatus) {
+                    previewStatus.innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger);"></i> Tidak valid';
+                }
+                window.pendingChatEntity = null;
+            }
+        } catch (error) {
+            console.error('Preview error:', error);
+            if (previewTitle) previewTitle.textContent = 'Error';
+            if (previewMeta) previewMeta.textContent = 'Gagal mengambil data';
+            if (previewStatus) {
+                previewStatus.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i> Error';
+            }
+            window.pendingChatEntity = null;
+        }
+    }
+    
+    async function addChatManually(chatId) {
         hapticMedium();
         showLoading(true);
         
         try {
-            const entity = await fetchChatEntity(chatId);
+            let entity = window.pendingChatEntity;
+            
+            if (!entity || entity.chat_id !== chatId) {
+                entity = await fetchChatEntity(chatId);
+            }
             
             if (entity && entity.success) {
                 const exists = giveawayData.chats.some(c => c.chat_id === entity.chat_id);
@@ -602,6 +700,7 @@
                 renderChats();
                 checkFormValidity();
                 showToast(`Chat "${entity.title || chatId}" ditambahkan`, 'success');
+                window.pendingChatEntity = null;
             } else {
                 showToast(entity?.error || 'Gagal menambahkan chat', 'error');
             }
@@ -793,6 +892,7 @@
         hapticHeavy();
         showLoading(true);
         
+        const originalBtnHtml = elements.startGiveawayBtn.innerHTML;
         if (elements.startGiveawayBtn) {
             elements.startGiveawayBtn.disabled = true;
             elements.startGiveawayBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
@@ -836,7 +936,7 @@
                 showToast(response.error || 'Gagal membuat giveaway', 'error');
                 if (elements.startGiveawayBtn) {
                     elements.startGiveawayBtn.disabled = false;
-                    elements.startGiveawayBtn.innerHTML = '<i class="fas fa-play"></i><span>Start Giveaway</span>';
+                    elements.startGiveawayBtn.innerHTML = originalBtnHtml;
                 }
             }
         } catch (error) {
@@ -845,7 +945,7 @@
             showToast('Terjadi kesalahan: ' + error.message, 'error');
             if (elements.startGiveawayBtn) {
                 elements.startGiveawayBtn.disabled = false;
-                elements.startGiveawayBtn.innerHTML = '<i class="fas fa-play"></i><span>Start Giveaway</span>';
+                elements.startGiveawayBtn.innerHTML = originalBtnHtml;
             }
         } finally {
             showLoading(false);
@@ -869,72 +969,103 @@
         
         // Prize
         if (elements.addPrizeBtn) {
+            elements.addPrizeBtn.removeEventListener('click', openPrizeModal);
             elements.addPrizeBtn.addEventListener('click', openPrizeModal);
             console.log('✅ addPrizeBtn listener attached');
-        } else {
-            console.error('❌ addPrizeBtn not found!');
         }
         
-        if (elements.savePrizeBtn) elements.savePrizeBtn.addEventListener('click', savePrize);
-        if (elements.cancelPrizeBtn) elements.cancelPrizeBtn.addEventListener('click', () => closeModal(elements.prizeModal));
-        if (elements.closePrizeModal) elements.closePrizeModal.addEventListener('click', () => closeModal(elements.prizeModal));
+        if (elements.savePrizeBtn) {
+            elements.savePrizeBtn.removeEventListener('click', savePrize);
+            elements.savePrizeBtn.addEventListener('click', savePrize);
+        }
+        if (elements.cancelPrizeBtn) {
+            elements.cancelPrizeBtn.removeEventListener('click', () => closeModal(elements.prizeModal));
+            elements.cancelPrizeBtn.addEventListener('click', () => closeModal(elements.prizeModal));
+        }
+        if (elements.closePrizeModal) {
+            elements.closePrizeModal.removeEventListener('click', () => closeModal(elements.prizeModal));
+            elements.closePrizeModal.addEventListener('click', () => closeModal(elements.prizeModal));
+        }
         
         // Chat
         if (elements.addChatBtn) {
+            elements.addChatBtn.removeEventListener('click', openChatModal);
             elements.addChatBtn.addEventListener('click', openChatModal);
             console.log('✅ addChatBtn listener attached');
-        } else {
-            console.error('❌ addChatBtn not found!');
         }
-        
-        if (elements.closeChatModal) elements.closeChatModal.addEventListener('click', () => closeModal(elements.chatModal));
         
         // Link
         if (elements.addLinkBtn) {
+            elements.addLinkBtn.removeEventListener('click', openLinkModal);
             elements.addLinkBtn.addEventListener('click', openLinkModal);
             console.log('✅ addLinkBtn listener attached');
-        } else {
-            console.error('❌ addLinkBtn not found!');
         }
-        
-        if (elements.saveLinkBtn) elements.saveLinkBtn.addEventListener('click', saveLinks);
-        if (elements.cancelLinkBtn) elements.cancelLinkBtn.addEventListener('click', () => closeModal(elements.linkModal));
-        if (elements.closeLinkModal) elements.closeLinkModal.addEventListener('click', () => closeModal(elements.linkModal));
+        if (elements.saveLinkBtn) {
+            elements.saveLinkBtn.removeEventListener('click', saveLinks);
+            elements.saveLinkBtn.addEventListener('click', saveLinks);
+        }
+        if (elements.cancelLinkBtn) {
+            elements.cancelLinkBtn.removeEventListener('click', () => closeModal(elements.linkModal));
+            elements.cancelLinkBtn.addEventListener('click', () => closeModal(elements.linkModal));
+        }
+        if (elements.closeLinkModal) {
+            elements.closeLinkModal.removeEventListener('click', () => closeModal(elements.linkModal));
+            elements.closeLinkModal.addEventListener('click', () => closeModal(elements.linkModal));
+        }
         
         // Duration
         if (elements.editDurationBtn) {
+            elements.editDurationBtn.removeEventListener('click', openDurationModal);
             elements.editDurationBtn.addEventListener('click', openDurationModal);
             console.log('✅ editDurationBtn listener attached');
-        } else {
-            console.error('❌ editDurationBtn not found!');
         }
-        
-        if (elements.saveDurationBtn) elements.saveDurationBtn.addEventListener('click', saveDuration);
-        if (elements.cancelDurationBtn) elements.cancelDurationBtn.addEventListener('click', () => closeModal(elements.durationModal));
-        if (elements.closeDurationModal) elements.closeDurationModal.addEventListener('click', () => closeModal(elements.durationModal));
+        if (elements.saveDurationBtn) {
+            elements.saveDurationBtn.removeEventListener('click', saveDuration);
+            elements.saveDurationBtn.addEventListener('click', saveDuration);
+        }
+        if (elements.cancelDurationBtn) {
+            elements.cancelDurationBtn.removeEventListener('click', () => closeModal(elements.durationModal));
+            elements.cancelDurationBtn.addEventListener('click', () => closeModal(elements.durationModal));
+        }
+        if (elements.closeDurationModal) {
+            elements.closeDurationModal.removeEventListener('click', () => closeModal(elements.durationModal));
+            elements.closeDurationModal.addEventListener('click', () => closeModal(elements.durationModal));
+        }
         
         // Requirements
         document.querySelectorAll('.req-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const type = btn.dataset.type;
-                toggleRequirement(type);
-            });
+            btn.removeEventListener('click', handleRequirementClick);
+            btn.addEventListener('click', handleRequirementClick);
         });
         
         // Start button
-        if (elements.startGiveawayBtn) elements.startGiveawayBtn.addEventListener('click', startGiveaway);
+        if (elements.startGiveawayBtn) {
+            elements.startGiveawayBtn.removeEventListener('click', startGiveaway);
+            elements.startGiveawayBtn.addEventListener('click', startGiveaway);
+        }
         
         // Close modals on overlay click
-        const modals = [elements.prizeModal, elements.chatModal, elements.linkModal, elements.durationModal];
+        const modals = [elements.prizeModal, elements.linkModal, elements.durationModal];
         modals.forEach(modal => {
             if (modal) {
-                modal.addEventListener('click', (e) => {
-                    if (e.target === modal) closeModal(modal);
-                });
+                modal.removeEventListener('click', handleOverlayClick);
+                modal.addEventListener('click', handleOverlayClick);
             }
         });
         
         console.log('✅ All event listeners setup complete');
+    }
+    
+    function handleRequirementClick(e) {
+        const btn = e.currentTarget;
+        const type = btn.dataset.type;
+        toggleRequirement(type);
+    }
+    
+    function handleOverlayClick(e) {
+        if (e.target === e.currentTarget) {
+            closeModal(e.currentTarget);
+        }
     }
     
     async function init() {
@@ -943,7 +1074,6 @@
         initTelegram();
         showLoading(true);
         
-        // Initialize elements after DOM is ready
         initElements();
         
         telegramUser = getTelegramUser();
@@ -952,12 +1082,10 @@
             console.log('Telegram user loaded:', telegramUser.id);
         } else {
             console.warn('No Telegram user found');
-            showToast('Tidak dapat mengambil data user', 'error');
         }
         
         setupEventListeners();
         
-        // Initial render
         renderPrizes();
         renderChats();
         renderLinks();
