@@ -226,7 +226,6 @@
     }
 
     // ==================== RENDER FUNCTIONS ====================
-    
     function renderPrizes() {
         if (!elements.prizeList) return;
         
@@ -240,7 +239,7 @@
             html += `
                 <div class="prize-item" data-index="${index}">
                     <div class="prize-number">${index + 1}</div>
-                    <div class="prize-name">${escapeHtml(prize)}</div>
+                    <div class="prize-name" data-field="prize-name-${index}">${escapeHtml(prize)}</div>
                     <div class="prize-actions">
                         <button class="prize-edit" data-index="${index}"><i class="fas fa-pen"></i></button>
                         <button class="prize-delete" data-index="${index}"><i class="fas fa-trash"></i></button>
@@ -255,7 +254,7 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const index = parseInt(btn.dataset.index);
-                editPrize(index);
+                openEditPrizeModal(index);
             });
         });
         
@@ -297,19 +296,29 @@
         
         let html = '';
         giveawayData.chats.forEach((chat, index) => {
-            const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Chat';
+            const chatType = chat.type === 'channel' ? 'Channel' : chat.type === 'group' ? 'Group' : 'Supergroup';
             const visibilityIcon = chat.visibility === 'public' ? '🌐' : '🔒';
+            
+            // Foto profil chat
+            let photoHtml = '';
+            if (chat.photo_url) {
+                photoHtml = `<img src="${chat.photo_url}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">`;
+            } else {
+                const initial = (chat.title || 'C').charAt(0).toUpperCase();
+                photoHtml = `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: white;">${initial}</div>`;
+            }
             
             html += `
                 <div class="chat-item" data-index="${index}">
-                    <div class="chat-icon">
-                        <i class="fas ${chat.type === 'channel' ? 'fa-broadcast-tower' : 'fa-users'}"></i>
+                    <div class="chat-icon" style="overflow: hidden;">
+                        ${photoHtml}
                     </div>
                     <div class="chat-info">
                         <div class="chat-title">${escapeHtml(chat.title || chat.chat_id)}</div>
                         <div class="chat-meta">
                             <span class="chat-type">${visibilityIcon} ${chatType}</span>
-                            <span>${escapeHtml(chat.chat_id)}</span>
+                            <span style="font-size: 10px; color: var(--text-muted);">${escapeHtml(chat.chat_id)}</span>
+                            ${chat.username ? `<span style="font-size: 10px; color: var(--primary);">@${chat.username}</span>` : ''}
                         </div>
                     </div>
                     <button class="chat-delete" data-index="${index}"><i class="fas fa-trash"></i></button>
@@ -389,7 +398,84 @@
     }
 
     // ==================== MODAL FUNCTIONS ====================
-    
+
+    function openEditPrizeModal(index) {
+        hapticMedium();
+        const prize = giveawayData.prizes[index];
+        
+        // Buat modal khusus untuk edit dengan textarea yang bisa diinput
+        let editModal = document.getElementById('editPrizeModal');
+        if (!editModal) {
+            editModal = document.createElement('div');
+            editModal.id = 'editPrizeModal';
+            editModal.className = 'modal-overlay';
+            editModal.innerHTML = `
+                <div class="modal-container">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-pen"></i> Edit Hadiah</h3>
+                        <button class="modal-close" id="closeEditPrizeModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <textarea id="editPrizeInput" rows="3" placeholder="Masukkan hadiah" style="
+                            width: 100%;
+                            padding: 12px;
+                            background: var(--surface-light);
+                            border: 1px solid var(--border);
+                            border-radius: 14px;
+                            color: var(--text);
+                            font-size: 14px;
+                            font-family: inherit;
+                            resize: vertical;
+                            margin-bottom: 16px;
+                        "></textarea>
+                        <div class="btn-group">
+                            <button class="btn-primary" id="saveEditPrizeBtn">Simpan</button>
+                            <button class="btn-secondary" id="cancelEditPrizeBtn">Batal</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(editModal);
+            
+            document.getElementById('closeEditPrizeModal')?.addEventListener('click', () => closeEditModal());
+            document.getElementById('cancelEditPrizeBtn')?.addEventListener('click', () => closeEditModal());
+            document.getElementById('saveEditPrizeBtn')?.addEventListener('click', () => {
+                const newValue = document.getElementById('editPrizeInput')?.value.trim();
+                if (newValue) {
+                    giveawayData.prizes[index] = newValue;
+                    renderPrizes();
+                    checkFormValidity();
+                    showToast('Hadiah diperbarui', 'success');
+                    closeEditModal();
+                } else {
+                    showToast('Hadiah tidak boleh kosong', 'warning');
+                }
+            });
+            
+            editModal.addEventListener('click', (e) => {
+                if (e.target === editModal) closeEditModal();
+            });
+        }
+        
+        const textarea = document.getElementById('editPrizeInput');
+        if (textarea) {
+            textarea.value = prize;
+            // Fokus dan pindahkan kursor ke akhir teks
+            setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }, 100);
+        }
+        
+        document.body.classList.add('modal-open');
+        editModal.style.display = 'flex';
+        
+        function closeEditModal() {
+            document.body.classList.remove('modal-open');
+            if (editModal) editModal.style.display = 'none';
+        }
+    }
+
     function openModal(modal) {
         if (!modal) return;
         document.body.classList.add('modal-open');
@@ -408,14 +494,83 @@
     }
 
     // ==================== PRIZE HANDLERS ====================
-    
     function openPrizeModal() {
         hapticMedium();
-        if (elements.prizeInput) {
-            elements.prizeInput.value = '';
+        
+        // Buat modal untuk tambah hadiah baru
+        let addModal = document.getElementById('addPrizeModal');
+        if (!addModal) {
+            addModal = document.createElement('div');
+            addModal.id = 'addPrizeModal';
+            addModal.className = 'modal-overlay';
+            addModal.innerHTML = `
+                <div class="modal-container">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-gift"></i> Tambah Hadiah</h3>
+                        <button class="modal-close" id="closeAddPrizeModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <textarea id="addPrizeInput" rows="5" placeholder="Masukkan hadiah&#10;Contoh:&#10;Plush Pepe&#10;NFT Username&#10;Telegram Premium 1 Bulan" style="
+                            width: 100%;
+                            padding: 12px;
+                            background: var(--surface-light);
+                            border: 1px solid var(--border);
+                            border-radius: 14px;
+                            color: var(--text);
+                            font-size: 14px;
+                            font-family: inherit;
+                            resize: vertical;
+                            margin-bottom: 16px;
+                        "></textarea>
+                        <div class="btn-group">
+                            <button class="btn-primary" id="saveAddPrizeBtn">Simpan</button>
+                            <button class="btn-secondary" id="cancelAddPrizeBtn">Batal</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(addModal);
+            
+            document.getElementById('closeAddPrizeModal')?.addEventListener('click', () => closeAddModal());
+            document.getElementById('cancelAddPrizeBtn')?.addEventListener('click', () => closeAddModal());
+            document.getElementById('saveAddPrizeBtn')?.addEventListener('click', () => {
+                const input = document.getElementById('addPrizeInput')?.value.trim();
+                if (!input) {
+                    showToast('Masukkan hadiah terlebih dahulu', 'warning');
+                    return;
+                }
+                
+                const prizes = input.split('\n').filter(line => line.trim().length > 0);
+                if (prizes.length === 0) {
+                    showToast('Masukkan minimal satu hadiah', 'warning');
+                    return;
+                }
+                
+                giveawayData.prizes.push(...prizes);
+                renderPrizes();
+                checkFormValidity();
+                showToast(`${prizes.length} hadiah ditambahkan`, 'success');
+                closeAddModal();
+            });
+            
+            addModal.addEventListener('click', (e) => {
+                if (e.target === addModal) closeAddModal();
+            });
         }
-        delete elements.prizeModal.dataset.editIndex;
-        openModal(elements.prizeModal);
+        
+        const textarea = document.getElementById('addPrizeInput');
+        if (textarea) {
+            textarea.value = '';
+            setTimeout(() => textarea.focus(), 100);
+        }
+        
+        document.body.classList.add('modal-open');
+        addModal.style.display = 'flex';
+        
+        function closeAddModal() {
+            document.body.classList.remove('modal-open');
+            if (addModal) addModal.style.display = 'none';
+        }
     }
     
     function savePrize() {
@@ -457,34 +612,142 @@
     function openChatModal() {
         hapticMedium();
         
-        // Create peer selection buttons using Telegram WebApp
-        const tg = getTelegramWebApp();
-        if (tg && tg.showPopup) {
-            // Use Telegram's native peer selection
-            tg.showPopup({
-                title: 'Tambah Chat',
-                message: 'Pilih channel atau group yang ingin ditambahkan',
-                buttons: [
-                    { id: 'channel', type: 'default', text: '📢 Channel' },
-                    { id: 'group', type: 'default', text: '💬 Group' },
-                    { id: 'cancel', type: 'cancel', text: 'Batal' }
-                ]
-            }, (buttonId) => {
-                if (buttonId === 'channel') {
-                    requestPeerSelection('channel');
-                } else if (buttonId === 'group') {
-                    requestPeerSelection('group');
-                }
+        // Buat modal input chat ID
+        let chatInputModal = document.getElementById('chatInputModal');
+        if (!chatInputModal) {
+            chatInputModal = document.createElement('div');
+            chatInputModal.id = 'chatInputModal';
+            chatInputModal.className = 'modal-overlay';
+            chatInputModal.innerHTML = `
+                <div class="modal-container">
+                    <div class="modal-header">
+                        <h3><i class="fas fa-plus-circle"></i> Tambah Chat ID</h3>
+                        <button class="modal-close" id="closeChatInputModal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" id="chatIdInput" placeholder="Masukkan ID Chat / Username" style="
+                            width: 100%;
+                            padding: 12px;
+                            background: var(--surface-light);
+                            border: 1px solid var(--border);
+                            border-radius: 14px;
+                            color: var(--text);
+                            font-size: 14px;
+                            margin-bottom: 16px;
+                        ">
+                        <div class="info-text" style="
+                            font-size: 12px;
+                            color: var(--text-muted);
+                            margin-bottom: 16px;
+                            padding: 10px;
+                            background: rgba(64, 167, 227, 0.1);
+                            border-radius: 10px;
+                        ">
+                            <i class="fas fa-info-circle"></i> 
+                            Masukkan ID Chat (contoh: -1001234567890) atau username (contoh: @channelname)
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn-primary" id="validateAndAddChatBtn">Validasi & Tambah</button>
+                            <button class="btn-secondary" id="cancelChatInputBtn">Batal</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(chatInputModal);
+            
+            document.getElementById('closeChatInputModal')?.addEventListener('click', () => closeChatInputModal());
+            document.getElementById('cancelChatInputBtn')?.addEventListener('click', () => closeChatInputModal());
+            document.getElementById('validateAndAddChatBtn')?.addEventListener('click', () => validateAndAddChat());
+            
+            chatInputModal.addEventListener('click', (e) => {
+                if (e.target === chatInputModal) closeChatInputModal();
             });
-        } else {
-            // Fallback: manual input
-            const chatId = prompt('Masukkan ID Chat (contoh: -1001234567890):');
-            if (chatId && chatId.trim()) {
-                addChatManually(chatId.trim());
+            
+            // Enter key support
+            const chatIdInput = document.getElementById('chatIdInput');
+            if (chatIdInput) {
+                chatIdInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') validateAndAddChat();
+                });
             }
         }
+        
+        const chatIdInput = document.getElementById('chatIdInput');
+        if (chatIdInput) {
+            chatIdInput.value = '';
+            setTimeout(() => chatIdInput.focus(), 100);
+        }
+        
+        document.body.classList.add('modal-open');
+        chatInputModal.style.display = 'flex';
+        
+        function closeChatInputModal() {
+            document.body.classList.remove('modal-open');
+            if (chatInputModal) chatInputModal.style.display = 'none';
+        }
     }
-    
+
+    async function validateAndAddChat() {
+        const chatIdInput = document.getElementById('chatIdInput');
+        const chatInput = chatIdInput?.value.trim();
+        
+        if (!chatInput) {
+            showToast('Masukkan ID Chat atau Username', 'warning');
+            return;
+        }
+        
+        hapticMedium();
+        showLoading(true);
+        
+        try {
+            // Panggil API untuk validasi chat
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/validate-chat`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    chat_input: chatInput,  // Bisa ID atau username
+                    user_id: telegramUser?.id
+                })
+            });
+            
+            if (response.success) {
+                // Cek apakah chat sudah ada
+                const exists = giveawayData.chats.some(chat => chat.chat_id === response.chat_id);
+                
+                if (exists) {
+                    showToast(`Chat "${response.chat_title}" sudah ditambahkan`, 'warning');
+                } else {
+                    // Tambahkan chat dengan data lengkap
+                    giveawayData.chats.push({
+                        chat_id: response.chat_id,
+                        title: response.chat_title,
+                        type: response.chat_type,
+                        visibility: response.visibility,
+                        username: response.username,
+                        invite_link: response.invite_link,
+                        photo_url: response.photo_url || null
+                    });
+                    renderChats();
+                    checkFormValidity();
+                    showToast(`✅ Chat "${response.chat_title}" berhasil ditambahkan`, 'success');
+                    
+                    // Tutup modal
+                    const modal = document.getElementById('chatInputModal');
+                    if (modal) {
+                        document.body.classList.remove('modal-open');
+                        modal.style.display = 'none';
+                    }
+                }
+            } else {
+                showToast(response.error || 'Gagal memvalidasi chat', 'error');
+            }
+        } catch (error) {
+            console.error('Error validating chat:', error);
+            showToast('Terjadi kesalahan saat validasi chat', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
     function requestPeerSelection(peerType) {
         const tg = getTelegramWebApp();
         if (!tg) {

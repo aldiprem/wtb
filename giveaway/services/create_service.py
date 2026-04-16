@@ -163,69 +163,191 @@ def send_sync_to_channel(channel: str, message: str):
         print(f"Error sending to channel: {e}")
         return None
 
-
-# ==================== API ROUTES ====================
-
 @create_bp.route('/validate-chat', methods=['POST'])
 def validate_chat():
-    """Validate chat access for bot and user"""
+    """Validate chat access for bot and user, and return chat info"""
     try:
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
         
-        chat_id = data.get('chat_id')
+        chat_input = data.get('chat_input')  # Bisa ID atau username
         user_id = data.get('user_id')
         
-        if not chat_id:
-            return jsonify({'success': False, 'error': 'Chat ID diperlukan'}), 400
+        if not chat_input:
+            return jsonify({'success': False, 'error': 'Chat ID atau username diperlukan'}), 400
         
-        # Convert to int if needed
-        try:
-            chat_id_int = int(chat_id)
-        except ValueError:
-            chat_id_int = chat_id
+        # Proses input untuk mendapatkan chat_id integer
+        chat_id = None
+        is_username = False
         
-        # Validate using bot client (if available)
-        if bot_client:
-            try:
-                # This would be the actual validation using telethon
-                # For now, return mock response
-                result = {
-                    'success': True,
-                    'has_access': True,
-                    'is_admin': True,
-                    'chat_title': str(chat_id),
-                    'chat_type': 'channel' if str(chat_id).startswith('-100') else 'group',
-                    'visibility': 'private',
-                    'username': None,
-                    'invite_link': None
-                }
-                
-                if result['success']:
-                    return jsonify(result)
-                else:
-                    return jsonify({'success': False, 'error': result.get('error', 'Akses ditolak')}), 403
-                    
-            except Exception as e:
-                return jsonify({'success': False, 'error': str(e)}), 500
+        # Cek apakah input adalah username (dimulai dengan @ atau t.me/)
+        if chat_input.startswith('@'):
+            username = chat_input[1:]  # Hapus @
+            is_username = True
+        elif chat_input.startswith('https://t.me/'):
+            username = chat_input.replace('https://t.me/', '').split('/')[0]
+            is_username = True
+        elif chat_input.startswith('t.me/'):
+            username = chat_input.replace('t.me/', '').split('/')[0]
+            is_username = True
         else:
-            # Bot client not available - return mock success for testing
+            # Coba parse sebagai integer ID
+            try:
+                chat_id = int(chat_input)
+            except ValueError:
+                # Mungkin username tanpa @
+                username = chat_input
+                is_username = True
+        
+        # Jika menggunakan username, perlu resolve ke chat_id via bot_client
+        if is_username and bot_client:
+            try:
+                # Buat event loop untuk async operation
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                entity = loop.run_until_complete(bot_client.get_entity(username))
+                loop.close()
+                
+                chat_id = entity.id
+                if hasattr(entity, 'broadcast') and entity.broadcast:
+                    chat_id = int(f"-100{entity.id}")
+                
+            except Exception as e:
+                return jsonify({
+                    'success': False, 
+                    'error': f'Tidak dapat menemukan chat dengan username "{chat_input}": {str(e)[:100]}'
+                }), 404
+        
+        if not chat_id:
+            return jsonify({'success': False, 'error': 'Chat ID tidak valid'}), 400
+        
+        # Cek akses bot menggunakan bot_client
+        if not bot_client:
             return jsonify({
                 'success': True,
                 'has_access': True,
                 'is_admin': True,
+                'chat_id': str(chat_id),
                 'chat_title': str(chat_id),
                 'chat_type': 'channel' if str(chat_id).startswith('-100') else 'group',
                 'visibility': 'private',
                 'username': None,
-                'invite_link': None
+                'invite_link': None,
+                'photo_url': None
             })
+        
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # Dapatkan entity chat
+            entity = loop.run_until_complete(bot_client.get_entity(chat_id))
+            
+            # Dapatkan info chat
+            chat_title = getattr(entity, 'title', None) or str(chat_id)
+            chat_type = 'channel' if hasattr(entity, 'broadcast') and entity.broadcast else 'group'
+            if hasattr(entity, 'megagroup') and entity.megagroup:
+                chat_type = 'supergroup'
+            
+            chat_username = getattr(entity, 'username', None)
+            visibility = 'public' if chat_username else 'private'
+            
+            # Dapatkan foto profil
+            photo_url = None
+            try:
+                if hasattr(entity, 'photo') and entity.photo:
+                    # Untuk mendapatkan URL foto, perlu menggunakan file reference
+                    # Untuk sementara gunakan placeholder
+                    photo_url = None
+            except:
+                pass
+            
+            # Cek apakah bot memiliki akses (bisa kirim pesan)
+            bot_has_access = True
+            try:
+                test_msg = loop.run_until_complete(bot_client.send_message(chat_id, "test"))
+                loop.run_until_complete(test_msg.delete())
+            except Exception as e:
+                bot_has_access = False
+                return jsonify({
+                    'success': False,
+                    'error': 'Bot tidak memiliki akses mengirim pesan ke chat ini. Pastikan bot sudah menjadi admin.'
+                }), 403
+            
+            # Cek apakah user adalah admin
+            is_admin = False
+            try:
+                from telethon.tl.functions.channels import GetParticipantRequest
+                from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
+                
+                participant = loop.run_until_complete(bot_client(GetParticipantRequest(
+                    channel=chat_id,
+                    participant=user_id
+                )))
+                
+                is_admin = isinstance(participant.participant, (ChannelParticipantAdmin, ChannelParticipantCreator))
+                
+            except Exception as e:
+                # Mungkin group biasa
+                try:
+                    from telethon.tl.functions.messages import GetFullChatRequest
+                    full_chat = loop.run_until_complete(bot_client(GetFullChatRequest(chat_id=-abs(chat_id))))
+                    for participant in full_chat.full_chat.participants.participants:
+                        if participant.user_id == user_id:
+                            if hasattr(participant, 'is_creator') and participant.is_creator:
+                                is_admin = True
+                            break
+                except:
+                    is_admin = False
+            
+            if not is_admin:
+                return jsonify({
+                    'success': False,
+                    'error': 'Anda bukan admin/owner di chat ini! Bot hanya bisa digunakan oleh admin atau owner chat.'
+                }), 403
+            
+            # Buat invite link untuk private chat
+            invite_link = None
+            if visibility == 'private':
+                try:
+                    from telethon.tl.functions.messages import ExportChatInviteRequest
+                    invite = loop.run_until_complete(bot_client(ExportChatInviteRequest(
+                        peer=chat_id,
+                        expire_date=None,
+                        usage_limit=None,
+                        title="Giveaway Join Link"
+                    )))
+                    invite_link = invite.link
+                except Exception as e:
+                    print(f"Warning: Cannot create invite link: {e}")
+            
+            loop.close()
+            
+            return jsonify({
+                'success': True,
+                'has_access': bot_has_access,
+                'is_admin': is_admin,
+                'chat_id': str(chat_id),
+                'chat_title': chat_title,
+                'chat_type': chat_type,
+                'visibility': visibility,
+                'username': chat_username,
+                'invite_link': invite_link,
+                'photo_url': photo_url
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error saat memvalidasi chat: {str(e)[:200]}'
+            }), 500
             
     except Exception as e:
         print(f"Error validating chat: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @create_bp.route('/create', methods=['POST'])
 def create_giveaway():
