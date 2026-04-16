@@ -238,7 +238,7 @@ app.register_blueprint(games_bp)
 
 @app.route('/giveaways')
 def serve_giveaway_page():
-    return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
+    return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'lobby.html')
 
 @app.route('/crash')
 def serve_crash_page():
