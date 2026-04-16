@@ -12,9 +12,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 from database.data import IndotagDatabase
 
-indotag_bp = Blueprint('indotag', __name__, url_prefix='/api/indotag')
 db = IndotagDatabase()
-
 
 def validate_telegram_user():
     """Extract Telegram user from request"""

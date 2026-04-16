@@ -379,3 +379,169 @@ class IndotagDatabase:
         except Exception as e:
             print(f"Error getting market stats: {e}")
             return {'total_listings': 0, 'total_transactions': 0, 'total_volume': 0}
+    
+    def init_pending_table(self):
+        """Initialize pending verifications table"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pending_verifications (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    verification_id TEXT UNIQUE NOT NULL,
+                    username TEXT NOT NULL,
+                    seller_id INTEGER NOT NULL,
+                    seller_name TEXT,
+                    price INTEGER DEFAULT 0,
+                    description TEXT,
+                    target_id INTEGER NOT NULL,
+                    target_type TEXT DEFAULT 'user',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            conn.commit()
+            print("✅ Pending verifications table initialized")
+    
+    def save_pending_verification(self, verification_id: str, username: str, seller_id: int,
+                                   seller_name: str, price: int, description: str,
+                                   target_id: int, target_type: str = 'user') -> bool:
+        """Save pending verification to database"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO pending_verifications 
+                    (verification_id, username, seller_id, seller_name, price, description, target_id, target_type)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (verification_id, username, seller_id, seller_name, price, description, target_id, target_type))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving pending verification: {e}")
+            return False
+    
+    def get_pending_verification(self, verification_id: str) -> Optional[Dict[str, Any]]:
+        """Get pending verification by ID"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT * FROM pending_verifications WHERE verification_id = ?
+                ''', (verification_id,))
+                row = cursor.fetchone()
+                if row:
+                    columns = [description[0] for description in cursor.description]
+                    return dict(zip(columns, row))
+                return None
+        except Exception as e:
+            print(f"Error getting pending verification: {e}")
+            return None
+    
+    def get_all_pending_verifications(self) -> List[Dict[str, Any]]:
+        """Get all pending verifications"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT * FROM pending_verifications ORDER BY created_at DESC')
+                rows = cursor.fetchall()
+                columns = [description[0] for description in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            print(f"Error getting pending verifications: {e}")
+            return []
+    
+    def update_pending_price_description(self, verification_id: str, price: int, description: str) -> bool:
+        """Update price and description in pending verification"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE pending_verifications 
+                    SET price = ?, description = ?
+                    WHERE verification_id = ?
+                ''', (price, description, verification_id))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error updating pending: {e}")
+            return False
+    
+    def delete_pending_verification(self, verification_id: str) -> bool:
+        """Delete pending verification"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM pending_verifications WHERE verification_id = ?', (verification_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error deleting pending: {e}")
+            return False
+    
+    def add_username(self, username: str, seller_id: int, price: int, description: str = '') -> bool:
+        """Add verified username to marketplace"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah username sudah ada
+                cursor.execute('SELECT id FROM username_listings WHERE username = ? AND status = "active"', (username,))
+                if cursor.fetchone():
+                    return False
+                
+                listing_id = self.generate_listing_id()
+                cursor.execute('''
+                    INSERT INTO username_listings 
+                    (listing_id, seller_id, username, price, description, status)
+                    VALUES (?, ?, ?, ?, ?, 'active')
+                ''', (listing_id, seller_id, username, price, description))
+                conn.commit()
+                
+                # Add activity
+                self.add_activity(seller_id, 'create_listing', f'Membuat listing untuk @{username}', listing_id)
+                
+                return True
+        except Exception as e:
+            print(f"Error adding username: {e}")
+            return False
+    
+    def get_my_usernames(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get all usernames listed by user"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT * FROM username_listings WHERE seller_id = ? ORDER BY created_at DESC
+                ''', (user_id,))
+                rows = cursor.fetchall()
+                columns = [description[0] for description in cursor.description]
+                return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            print(f"Error getting my usernames: {e}")
+            return []
+    
+    def delete_username(self, username_id: int, user_id: int) -> bool:
+        """Delete username listing (only if owner and status available)"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    DELETE FROM username_listings 
+                    WHERE id = ? AND seller_id = ? AND status = 'active'
+                ''', (username_id, user_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error deleting username: {e}")
+            return False
+    
+    def add_balance(self, user_id: int, amount: int) -> bool:
+        """Add balance to user (admin only)"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error adding balance: {e}")
+            return False
