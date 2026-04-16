@@ -37,7 +37,6 @@ except ImportError:
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 CHANNEL_INFO = os.getenv("CHANNEL_INFO", "@giftfreebies")
 
-# Global bot client reference
 _bot_client = None
 
 def set_bot_client(client):
@@ -48,6 +47,7 @@ def set_bot_client(client):
 
 def get_bot_client():
     """Get bot client reference"""
+    global _bot_client
     return _bot_client
 
 def get_jakarta_time() -> datetime:
