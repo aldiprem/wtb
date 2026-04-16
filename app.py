@@ -236,20 +236,12 @@ app.register_blueprint(giveaway_bp)
 app.register_blueprint(crash_bp, url_prefix='/api/crash')
 app.register_blueprint(games_bp)
 
-# ==================== GIVEAWAY ROUTES ====================
 @app.route('/giveaways')
 def serve_giveaways_page():
-    giveaway_id = request.args.get('id')
-    startapp = request.args.get('startapp')
-    
-    if giveaway_id or startapp:
-        return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
-    
-    return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'lobby.html')
+    return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
 
 @app.route('/giveaway')
-def serve_giveaway_lobby():
-    """Halaman lobby giveaway"""
+def serve_giveaway_page():
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'lobby.html')
 
 @app.route('/crash')
