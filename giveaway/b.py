@@ -41,6 +41,7 @@ import pytz
 from telethon.tl import functions, types
 from telethon import errors
 import json
+from giveaway.services.create_service import set_bot_client
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
@@ -2402,7 +2403,7 @@ async def main():
     
     # Start membership checker (baru)
     asyncio.create_task(check_pending_membership())
-    
+    set_bot_client(bot)
     await bot.run_until_disconnected()
 
 if __name__ == '__main__':

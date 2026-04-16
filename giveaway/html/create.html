@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Buat Giveaway</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/giveaway/css/create.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="create-container">
+        
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <div class="profile-avatar" id="userAvatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="profile-info">
+                <div class="profile-name" id="userName">Memuat...</div>
+                <div class="profile-username" id="userUsername">@username</div>
+            </div>
+        </div>
+
+        <!-- Prize Section -->
+        <div class="section-card">
+            <div class="card-header">
+                <i class="fas fa-trophy"></i>
+                <h3>Hadiah Giveaway</h3>
+                <button class="btn-add" id="addPrizeBtn" style="background: none; border: none; color: var(--primary); cursor: pointer;">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="prize-list" id="prizeList">
+                <div class="value-text empty">Belum ada hadiah</div>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="section-card">
+            <div class="card-header">
+                <i class="fas fa-users"></i>
+                <h3>Chat Target</h3>
+                <button class="btn-add" id="addChatBtn" style="background: none; border: none; color: var(--primary); cursor: pointer;">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="chat-list" id="chatList">
+                <div class="value-text empty">Belum ada chat</div>
+            </div>
+        </div>
+
+        <!-- Duration Section -->
+        <div class="section-card">
+            <div class="card-header">
+                <i class="fas fa-hourglass-half"></i>
+                <h3>Durasi</h3>
+                <button class="btn-add" id="editDurationBtn" style="background: none; border: none; color: var(--primary); cursor: pointer;">
+                    <i class="fas fa-pen"></i>
+                </button>
+            </div>
+            <div class="value-display">
+                <div class="value-label">Waktu Berakhir</div>
+                <div class="value-text" id="durationDisplay">Belum diatur</div>
+            </div>
+        </div>
+
+        <!-- Link Section -->
+        <div class="section-card">
+            <div class="card-header">
+                <i class="fas fa-link"></i>
+                <h3>Link (Tap Link)</h3>
+                <button class="btn-add" id="addLinkBtn" style="background: none; border: none; color: var(--primary); cursor: pointer;">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div class="value-display">
+                <div class="value-label">Link yang harus dikunjungi</div>
+                <div class="value-text" id="linkDisplay">Belum ada link</div>
+            </div>
+        </div>
+
+        <!-- Requirement Section -->
+        <div class="section-card">
+            <div class="card-header">
+                <i class="fas fa-clipboard-list"></i>
+                <h3>Syarat</h3>
+            </div>
+            <div class="requirement-buttons" id="requirementButtons">
+                <!-- Subscribe -->
+                <div class="req-btn" data-type="subscribe">
+                    <div class="req-icon"><i class="fab fa-telegram"></i></div>
+                    <div class="req-info">
+                        <div class="req-title">Subscribe</div>
+                        <div class="req-desc">Harus join channel/group</div>
+                    </div>
+                    <div class="req-check"><i class="fas fa-check"></i></div>
+                </div>
+                <!-- Boost -->
+                <div class="req-btn" data-type="boost">
+                    <div class="req-icon"><i class="fas fa-rocket"></i></div>
+                    <div class="req-info">
+                        <div class="req-title">Boost</div>
+                        <div class="req-desc">Harus boost channel</div>
+                    </div>
+                    <div class="req-check"><i class="fas fa-check"></i></div>
+                </div>
+                <!-- Tap Link -->
+                <div class="req-btn" data-type="taplink">
+                    <div class="req-icon"><i class="fas fa-hand-pointer"></i></div>
+                    <div class="req-info">
+                        <div class="req-title">Tap Link</div>
+                        <div class="req-desc">Harus klik link</div>
+                    </div>
+                    <div class="req-check"><i class="fas fa-check"></i></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Captcha Section -->
+        <div class="section-card">
+            <div class="card-header">
+                <i class="fas fa-shield-alt"></i>
+                <h3>Captcha</h3>
+            </div>
+            <div class="toggle-container">
+                <div class="toggle-label">
+                    <i class="fas fa-robot"></i>
+                    <span>Aktifkan Captcha</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="captchaToggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Floating Action Button -->
+        <div class="fab-container">
+            <button class="fab-button" id="startGiveawayBtn" disabled>
+                <i class="fas fa-play"></i>
+                <span>Start Giveaway</span>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Modal Add Prize -->
+    <div class="modal-overlay" id="prizeModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fas fa-gift"></i> Tambah Hadiah</h3>
+                <button class="modal-close" id="closePrizeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="prizeInput" rows="5" placeholder="Masukkan hadiah&#10;Contoh:&#10;Plush Pepe&#10;NFT Username&#10;Telegram Premium 1 Bulan"></textarea>
+                <div class="btn-group">
+                    <button class="btn-primary" id="savePrizeBtn">Simpan</button>
+                    <button class="btn-secondary" id="cancelPrizeBtn">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Add Chat (Peer Selection via Telegram) -->
+    <div class="modal-overlay" id="chatModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus-circle"></i> Tambah Chat</h3>
+                <button class="modal-close" id="closeChatModal">&times;</button>
+            </div>
+            <div class="modal-body" id="chatModalBody">
+                <p style="margin-bottom: 16px; font-size: 13px; color: var(--text-secondary);">
+                    <i class="fas fa-info-circle"></i> Pilih channel atau group yang ingin ditambahkan
+                </p>
+                <div id="peerButtonsContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Add Link -->
+    <div class="modal-overlay" id="linkModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fas fa-link"></i> Tambah Link</h3>
+                <button class="modal-close" id="closeLinkModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <textarea id="linkInput" rows="5" placeholder="Masukkan link (satu per baris)&#10;Contoh:&#10;https://t.me/channel1&#10;https://t.me/channel2"></textarea>
+                <div class="btn-group">
+                    <button class="btn-primary" id="saveLinkBtn">Simpan</button>
+                    <button class="btn-secondary" id="cancelLinkBtn">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Duration -->
+    <div class="modal-overlay" id="durationModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3><i class="fas fa-hourglass-half"></i> Atur Durasi</h3>
+                <button class="modal-close" id="closeDurationModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="duration-input-group">
+                    <input type="text" id="durationValue" placeholder="1, 2, 3, ..." value="1">
+                    <select id="durationUnit" class="duration-type">
+                        <option value="minutes">Menit</option>
+                        <option value="hours">Jam</option>
+                        <option value="days">Hari</option>
+                        <option value="weeks">Minggu</option>
+                    </select>
+                </div>
+                <div style="text-align: center; margin: 12px 0; color: var(--text-muted);">atau</div>
+                <input type="datetime-local" id="datetimePicker">
+                <div class="btn-group" style="margin-top: 16px;">
+                    <button class="btn-primary" id="saveDurationBtn">Simpan</button>
+                    <button class="btn-secondary" id="cancelDurationBtn">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/giveaway/js/create.js"></script>
+</body>
+</html>
