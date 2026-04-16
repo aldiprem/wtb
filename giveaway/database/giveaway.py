@@ -5,6 +5,8 @@ from typing import List, Dict, Optional, Any
 import pytz
 import string
 import random
+import os
+import json
 
 class GiveawayDatabase:
     def __init__(self, db_path: str = "/root/wtb/giveaway/giveaway.db"):

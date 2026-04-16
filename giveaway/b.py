@@ -40,6 +40,7 @@ import sqlite3
 import pytz
 from telethon.tl import functions, types
 from telethon import errors
+import json
 
 # Logging seperti fragment_bot.py
 logging.basicConfig(
