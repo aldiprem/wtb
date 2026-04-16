@@ -7,14 +7,18 @@ from flask import Blueprint, request, jsonify
 import sys
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).parent.parent
+# ==================== PERBAIKAN IMPORT PATH ====================
+# Tambahkan path ke root directory
+ROOT_DIR = Path(__file__).parent.parent.parent  # Naik 3 level ke /root/wtb/
 sys.path.insert(0, str(ROOT_DIR))
 
-from database.data import IndotagDatabase
+# Sekarang import dari indotag.database.data (bukan database.data)
+from indotag.database.data import IndotagDatabase
+# ================================================================
 
-# ==================== INI YANG KURANG! BUAT BLUEPRINT ====================
+# ==================== BUAT BLUEPRINT ====================
 indotag_bp = Blueprint('indotag', __name__, url_prefix='/api/indotag')
-# ========================================================================
+# =========================================================
 
 db = IndotagDatabase()
 
