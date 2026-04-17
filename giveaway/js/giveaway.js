@@ -358,6 +358,8 @@
             const displayCount = Math.min(3, allChats.length);
             const remainingCount = allChats.length - 3;
             
+            console.log('[DEBUG] Rendering chats, total:', allChats.length, 'display:', displayCount, 'remaining:', remainingCount);
+            
             let html = '';
             
             // Tampilkan maksimal 3 chat
@@ -436,6 +438,9 @@
             window.allChatsData = allChats;
             window.inviteLinkMap = inviteLinkMap;
             
+            // Setup tombol show all chats
+            setupShowAllChatsButton();
+            
         } catch (error) {
             console.error('Error loading chat info:', error);
             if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'none';
@@ -445,18 +450,24 @@
     function showAllChatsModal() {
         hapticMedium();
         
+        console.log('[DEBUG] showAllChatsModal called');
+        
         if (!window.allChatsData || window.allChatsData.length === 0) {
             showToast('Tidak ada data chat', 'warning');
+            console.log('[DEBUG] No chat data available');
             return;
         }
         
-        let chatModal = document.getElementById('chatModal');
+        let chatModal = document.getElementById('allChatsModal');
         const allChatsList = document.getElementById('allChatsList');
         
         if (!chatModal || !allChatsList) {
             console.error('Chat modal elements not found');
+            showToast('Error: Elemen modal tidak ditemukan', 'error');
             return;
         }
+        
+        console.log('[DEBUG] Rendering all chats, count:', window.allChatsData.length);
         
         let html = '';
         
@@ -484,7 +495,7 @@
                     display: flex;
                     align-items: center;
                     gap: 12px;
-                    padding: 10px 12px;
+                    padding: 12px;
                     background: var(--bg);
                     backdrop-filter: var(--glass-blur);
                     border-radius: 14px;
@@ -552,6 +563,14 @@
         
         document.body.classList.add('modal-open');
         chatModal.style.display = 'flex';
+    }
+
+    function closeAllChatsModal() {
+        const chatModal = document.getElementById('allChatsModal');
+        if (chatModal) {
+            document.body.classList.remove('modal-open');
+            chatModal.style.display = 'none';
+        }
     }
 
     function closeChatModal() {
@@ -1685,25 +1704,33 @@
 
     function setupShowAllChatsButton() {
         const showAllChatsBtn = document.getElementById('showAllChatsBtn');
+        console.log('[DEBUG] setupShowAllChatsButton, button found:', showAllChatsBtn !== null);
+        
         if (showAllChatsBtn) {
-            showAllChatsBtn.addEventListener('click', (e) => {
+            // Hapus event listener lama jika ada
+            const newBtn = showAllChatsBtn.cloneNode(true);
+            showAllChatsBtn.parentNode.replaceChild(newBtn, showAllChatsBtn);
+            
+            newBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                e.preventDefault();
+                console.log('[DEBUG] Show all chats button clicked');
                 showAllChatsModal();
             });
         }
         
-        const closeChatModalBtn = document.getElementById('closeChatModal');
-        if (closeChatModalBtn) {
-            closeChatModalBtn.addEventListener('click', () => {
-                closeChatModal();
+        const closeAllChatsModalBtn = document.getElementById('closeAllChatsModalBtn');
+        if (closeAllChatsModalBtn) {
+            closeAllChatsModalBtn.addEventListener('click', () => {
+                closeAllChatsModal();
             });
         }
         
-        const chatModal = document.getElementById('chatModal');
+        const chatModal = document.getElementById('allChatsModal');
         if (chatModal) {
             chatModal.addEventListener('click', (e) => {
                 if (e.target === chatModal) {
-                    closeChatModal();
+                    closeAllChatsModal();
                 }
             });
         }
@@ -2113,8 +2140,7 @@
             // 🔥 Setup refresh button (reload page)
             setupRefreshButton();
             
-            // 🔥 Setup show all chats button
-            setupShowAllChatsButton();
+            // 🔥 Setup show all chats button (akan dipanggil lagi setelah renderChatInfo)
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
