@@ -498,6 +498,8 @@ def get_giveaway_chats(giveaway_code):
         # Ambil chat info dari database
         chats = db.get_chat_info_by_giveaway_id(giveaway_id)
         
+        print(f"[DEBUG] get_giveaway_chats - giveaway_code={giveaway_code}, giveaway_id={giveaway_id}, chats_count={len(chats)}")
+        
         return jsonify({
             'success': True,
             'chats': chats,

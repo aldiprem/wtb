@@ -331,26 +331,38 @@
             const response = await fetch(`${API_BASE_URL}/api/giveaway/chats/${giveawayData.code}`);
             const data = await response.json();
             
+            console.log('[DEBUG] Chat info response:', data);
+            
             if (!data.success || !data.chats || data.chats.length === 0) {
                 if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'none';
                 return;
             }
             
             // Ambil invite links untuk private chats
-            const inviteLinksResponse = await fetch(`${API_BASE_URL}/api/giveaway/invite-links`);
-            const inviteLinksData = await inviteLinksResponse.json();
-            const inviteLinkMap = new Map();
-            if (inviteLinksData.success && inviteLinksData.invite_links) {
-                for (const item of inviteLinksData.invite_links) {
-                    inviteLinkMap.set(item.chat_id, item.invite_link);
+            let inviteLinkMap = new Map();
+            try {
+                const inviteLinksResponse = await fetch(`${API_BASE_URL}/api/giveaway/invite-links`);
+                const inviteLinksData = await inviteLinksResponse.json();
+                if (inviteLinksData.success && inviteLinksData.invite_links) {
+                    for (const item of inviteLinksData.invite_links) {
+                        inviteLinkMap.set(item.chat_id, item.invite_link);
+                    }
                 }
+            } catch (e) {
+                console.warn('Failed to fetch invite links:', e);
             }
             
             if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'block';
             
+            const allChats = data.chats;
+            const displayCount = Math.min(3, allChats.length);
+            const remainingCount = allChats.length - 3;
+            
             let html = '';
             
-            for (const chat of data.chats) {
+            // Tampilkan maksimal 3 chat
+            for (let i = 0; i < displayCount; i++) {
+                const chat = allChats[i];
                 const chatName = chat.chat_title || 'Chat';
                 const chatType = chat.chat_type || 'Chat';
                 const chatId = chat.chat_id;
@@ -394,6 +406,18 @@
             
             elements.chatListContainer.innerHTML = html;
             
+            // Tampilkan tombol "Chat Lainnya" jika lebih dari 3
+            const chatMore = document.getElementById('chatMore');
+            const remainingChatsCount = document.getElementById('remainingChatsCount');
+            
+            if (remainingCount > 0) {
+                if (chatMore) chatMore.style.display = 'block';
+                if (remainingChatsCount) remainingChatsCount.textContent = remainingCount;
+            } else {
+                if (chatMore) chatMore.style.display = 'none';
+            }
+            
+            // Event listener untuk setiap chat item
             document.querySelectorAll('.chat-info-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -408,9 +432,133 @@
                 });
             });
             
+            // Simpan semua chats untuk modal
+            window.allChatsData = allChats;
+            window.inviteLinkMap = inviteLinkMap;
+            
         } catch (error) {
             console.error('Error loading chat info:', error);
             if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'none';
+        }
+    }
+
+    function showAllChatsModal() {
+        hapticMedium();
+        
+        if (!window.allChatsData || window.allChatsData.length === 0) {
+            showToast('Tidak ada data chat', 'warning');
+            return;
+        }
+        
+        let chatModal = document.getElementById('chatModal');
+        const allChatsList = document.getElementById('allChatsList');
+        
+        if (!chatModal || !allChatsList) {
+            console.error('Chat modal elements not found');
+            return;
+        }
+        
+        let html = '';
+        
+        for (const chat of window.allChatsData) {
+            const chatName = chat.chat_title || 'Chat';
+            const chatType = chat.chat_type || 'Chat';
+            const chatId = chat.chat_id;
+            const chatUsername = chat.chat_username || '';
+            
+            // Dapatkan link dari map
+            let chatLink = window.inviteLinkMap?.get(chatId);
+            
+            if (!chatLink && chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                chatLink = `https://t.me/${chatUsername}`;
+            } else if (!chatLink && chatId) {
+                let cleanId = chatId.replace('-100', '');
+                chatLink = `https://t.me/${cleanId}`;
+            }
+            
+            const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
+            const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
+            
+            html += `
+                <div class="modal-chat-item" data-chat-link="${escapeHtml(chatLink)}" style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 10px 12px;
+                    background: var(--bg);
+                    backdrop-filter: var(--glass-blur);
+                    border-radius: 14px;
+                    margin-bottom: 10px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                ">
+                    <div class="chat-avatar" style="
+                        width: 44px;
+                        height: 44px;
+                        border-radius: 50%;
+                        overflow: hidden;
+                        flex-shrink: 0;
+                        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    ">
+                        <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div class="chat-info" style="flex: 1; min-width: 0;">
+                        <div class="chat-title" style="font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            ${escapeHtml(chatName)}
+                        </div>
+                        <div class="chat-detail" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span class="chat-type" style="font-size: 10px; color: var(--primary); background: rgba(64, 167, 227, 0.15); padding: 2px 8px; border-radius: 20px;">${escapeHtml(chatType)}</span>
+                            <span class="chat-id" style="font-size: 10px; color: var(--text-muted); font-family: monospace;">${escapeHtml(chatId)}</span>
+                        </div>
+                    </div>
+                    <div class="chat-visit-btn" style="
+                        width: 32px;
+                        height: 32px;
+                        background: rgba(64, 167, 227, 0.15);
+                        border: none;
+                        border-radius: 10px;
+                        color: var(--primary);
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+            `;
+        }
+        
+        allChatsList.innerHTML = html;
+        
+        // Event listener untuk setiap item modal chat
+        document.querySelectorAll('#allChatsList .modal-chat-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hapticMedium();
+                const chatLink = item.dataset.chatLink;
+                if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
+                    window.open(chatLink, '_blank');
+                    showToast('Membuka chat...', 'info');
+                } else {
+                    showToast('Link tidak tersedia', 'error');
+                }
+            });
+        });
+        
+        document.body.classList.add('modal-open');
+        chatModal.style.display = 'flex';
+    }
+
+    function closeChatModal() {
+        const chatModal = document.getElementById('chatModal');
+        if (chatModal) {
+            document.body.classList.remove('modal-open');
+            chatModal.style.display = 'none';
         }
     }
 
@@ -1225,7 +1373,6 @@
         observer.observe(elements.requirementsList, { childList: true, subtree: true });
     }
 
-    // ==================== CHAT LIST MODAL ====================
     async function showChatListModal() {
         hapticMedium();
         
@@ -1240,6 +1387,8 @@
             const response = await fetch(`${API_BASE_URL}/api/giveaway/chats/${giveawayData.code}`);
             const data = await response.json();
             
+            console.log('[DEBUG] showChatListModal response:', data);
+            
             if (!data.success) {
                 showToast(data.error || 'Gagal memuat daftar chat', 'error');
                 return;
@@ -1252,78 +1401,69 @@
                 return;
             }
             
-            // Ambil semua force subs untuk mendapatkan invite_link
-            const forceSubsResponse = await fetch(`${API_BASE_URL}/api/giveaway/force-subs`);
-            const forceSubsData = await forceSubsResponse.json();
-            
-            // Buat map chat_id -> invite_link dari force_subs
-            const inviteLinkMap = new Map();
-            if (forceSubsData.success && forceSubsData.force_subs) {
-                for (const fs of forceSubsData.force_subs) {
-                    if (fs.invite_link) {
-                        inviteLinkMap.set(fs.chat_id, fs.invite_link);
-                    }
-                }
-            }
-            
-            // Buat modal container jika belum ada
-            let chatModal = document.getElementById('chatModal');
-            if (!chatModal) {
-                chatModal = document.createElement('div');
-                chatModal.id = 'chatModal';
-                chatModal.className = 'modal-overlay';
-                chatModal.innerHTML = `
+            // Gunakan modal yang sudah ada atau buat baru
+            let chatListModal = document.getElementById('chatListModal');
+            if (!chatListModal) {
+                chatListModal = document.createElement('div');
+                chatListModal.id = 'chatListModal';
+                chatListModal.className = 'modal-overlay';
+                chatListModal.innerHTML = `
                     <div class="modal-container" style="max-width: 320px;">
                         <div class="modal-header" style="padding: 12px 16px;">
                             <h3 style="font-size: 14px;"><i class="fas fa-telegram"></i> Daftar Chat</h3>
-                            <button class="modal-close" id="closeChatModal" style="width: 30px; height: 30px;">&times;</button>
+                            <button class="modal-close" id="closeChatListModal" style="width: 30px; height: 30px;">&times;</button>
                         </div>
-                        <div class="modal-body" id="chatListContainer" style="padding: 12px 16px;"></div>
+                        <div class="modal-body" id="chatListModalBody" style="padding: 12px 16px;"></div>
                     </div>
                 `;
-                document.body.appendChild(chatModal);
+                document.body.appendChild(chatListModal);
                 
-                // Event listener untuk close
-                document.getElementById('closeChatModal')?.addEventListener('click', () => {
-                    hapticLight();
-                    closeChatModal();
+                document.getElementById('closeChatListModal')?.addEventListener('click', () => {
+                    document.body.classList.remove('modal-open');
+                    chatListModal.style.display = 'none';
                 });
                 
-                chatModal.addEventListener('click', (e) => {
-                    if (e.target === chatModal) {
-                        hapticLight();
-                        closeChatModal();
+                chatListModal.addEventListener('click', (e) => {
+                    if (e.target === chatListModal) {
+                        document.body.classList.remove('modal-open');
+                        chatListModal.style.display = 'none';
                     }
                 });
             }
             
-            // Render daftar chat dengan ukuran lebih kecil
-            const chatContainer = document.getElementById('chatListContainer');
+            // Ambil invite links
+            let inviteLinkMap = new Map();
+            try {
+                const inviteLinksResponse = await fetch(`${API_BASE_URL}/api/giveaway/invite-links`);
+                const inviteLinksData = await inviteLinksResponse.json();
+                if (inviteLinksData.success && inviteLinksData.invite_links) {
+                    for (const item of inviteLinksData.invite_links) {
+                        inviteLinkMap.set(item.chat_id, item.invite_link);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to fetch invite links:', e);
+            }
+            
+            const chatContainer = document.getElementById('chatListModalBody');
             if (chatContainer) {
                 let html = '';
                 
                 for (const chat of chats) {
-                    // Generate nama dari chat_title atau fallback
                     const chatName = chat.chat_title || 'Chat';
                     const chatType = chat.chat_type || 'Chat';
                     const chatId = chat.chat_id;
                     const chatUsername = chat.chat_username || '';
                     
-                    // 🔥 PRIORITAS: Gunakan invite_link dari force_subs jika ada
                     let chatLink = inviteLinkMap.get(chatId);
                     
-                    // Jika tidak ada invite_link, fallback ke username atau ID
-                    if (!chatLink) {
-                        if (chatUsername && chatUsername !== 'null' && chatUsername !== '') {
-                            chatLink = `https://t.me/${chatUsername}`;
-                        } else if (chatId) {
-                            // Hapus tanda -100 untuk channel
-                            let cleanId = chatId.replace('-100', '');
-                            chatLink = `https://t.me/${cleanId}`;
-                        }
+                    if (!chatLink && chatUsername && chatUsername !== 'null' && chatUsername !== '') {
+                        chatLink = `https://t.me/${chatUsername}`;
+                    } else if (!chatLink && chatId) {
+                        let cleanId = chatId.replace('-100', '');
+                        chatLink = `https://t.me/${cleanId}`;
                     }
                     
-                    // Avatar URL - lebih kecil
                     const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
                     const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=60&rounded=true&bold=true&length=2`;
                     
@@ -1335,11 +1475,8 @@
                             padding: 8px 12px;
                             background: var(--bg);
                             backdrop-filter: var(--glass-blur);
-                            -webkit-backdrop-filter: var(--glass-blur);
                             border-radius: 12px;
                             margin-bottom: 8px;
-                            position: relative;
-                            overflow: hidden;
                             cursor: pointer;
                             transition: all 0.2s;
                         ">
@@ -1354,7 +1491,7 @@
                                 align-items: center;
                                 justify-content: center;
                             ">
-                                <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://ui-avatars.com/api/?name=TG&background=40a7e3&color=fff&size=60&rounded=true'">
+                                <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" style="width: 100%; height: 100%; object-fit: cover;">
                             </div>
                             <div class="chat-list-info" style="flex: 1; min-width: 0;">
                                 <div class="chat-list-name" style="
@@ -1392,14 +1529,12 @@
                 
                 chatContainer.innerHTML = html;
                 
-                // Tambah event listener untuk seluruh chat item (klik di mana saja)
-                document.querySelectorAll('.chat-list-item').forEach(item => {
+                document.querySelectorAll('#chatListModalBody .chat-list-item').forEach(item => {
                     item.addEventListener('click', (e) => {
                         e.stopPropagation();
                         hapticMedium();
                         const chatLink = item.dataset.chatLink;
-                        
-                        if (chatLink) {
+                        if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
                             window.open(chatLink, '_blank');
                             showToast('Membuka chat...', 'info');
                         } else {
@@ -1410,7 +1545,7 @@
             }
             
             document.body.classList.add('modal-open');
-            chatModal.style.display = 'flex';
+            chatListModal.style.display = 'flex';
             
         } catch (error) {
             console.error('Error loading chats:', error);
@@ -1544,6 +1679,32 @@
             refreshBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 refreshPage();
+            });
+        }
+    }
+
+    function setupShowAllChatsButton() {
+        const showAllChatsBtn = document.getElementById('showAllChatsBtn');
+        if (showAllChatsBtn) {
+            showAllChatsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showAllChatsModal();
+            });
+        }
+        
+        const closeChatModalBtn = document.getElementById('closeChatModal');
+        if (closeChatModalBtn) {
+            closeChatModalBtn.addEventListener('click', () => {
+                closeChatModal();
+            });
+        }
+        
+        const chatModal = document.getElementById('chatModal');
+        if (chatModal) {
+            chatModal.addEventListener('click', (e) => {
+                if (e.target === chatModal) {
+                    closeChatModal();
+                }
             });
         }
     }
@@ -1951,6 +2112,9 @@
             
             // 🔥 Setup refresh button (reload page)
             setupRefreshButton();
+            
+            // 🔥 Setup show all chats button
+            setupShowAllChatsButton();
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
