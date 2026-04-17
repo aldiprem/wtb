@@ -2,6 +2,8 @@
 const CONFIG = {
     TUNNEL_URL: 'https://companel.shop',
     API_BASE: '/winedash',
+    // Gunakan manifest dari root (bukan dari winedash)
+    MANIFEST_URL: 'https://companel.shop/tonconnect-manifest.json',
     NETWORK: 'mainnet',
     MIN_DEPOSIT: 0.1,
     DEBUG: true
@@ -110,7 +112,8 @@ async function authenticateUser(user) {
 // ==================== TON CONNECT FUNCTIONS ====================
 function initTonConnect() {
     try {
-        const manifestUrl = `${CONFIG.TUNNEL_URL}${CONFIG.API_BASE}/tonconnect-manifest.json`;
+        // Gunakan manifest dari root (bukan dari winedash)
+        const manifestUrl = CONFIG.MANIFEST_URL;
         
         tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: manifestUrl,
@@ -118,7 +121,7 @@ function initTonConnect() {
             language: 'en'
         });
 
-        debugLog('✅ TON Connect initialized');
+        debugLog('✅ TON Connect initialized with manifest:', manifestUrl);
 
         tonConnectUI.onStatusChange(async (wallet) => {
             debugLog('📱 Wallet status changed:', wallet);
@@ -439,13 +442,6 @@ async function processDeposit() {
         sendBtn.disabled = false;
         sendBtn.innerHTML = originalText;
     }
-}
-
-function showTransactionSuccess(txHash, reference) {
-    document.getElementById('deposit-form').classList.add('hidden');
-    document.getElementById('deposit-instructions').classList.remove('hidden');
-    document.getElementById('tx-hash').textContent = txHash.slice(0, 40) + '...';
-    document.getElementById('tx-reference').textContent = reference;
 }
 
 function showTransactionSuccess(txHash, reference) {

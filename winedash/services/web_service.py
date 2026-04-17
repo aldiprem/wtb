@@ -12,7 +12,6 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # PERBAIKAN: Import langsung dari file web.py di folder database
-# Karena folder database ada di dalam folder winedash
 from winedash.database.web import WinedashDatabase
 
 # Create blueprint
@@ -256,50 +255,6 @@ def verify_deposit():
     })
 
 
-# ==================== TON CONNECT MANIFEST ====================
-
-@winedash_bp.route('/tonconnect-manifest.json', methods=['GET'])
-def get_ton_manifest():
-    """Serve TON Connect manifest"""
-    domain = request.host.split(':')[0]
-    
-    # Get manifest from database
-    manifest = db.get_ton_manifest(domain)
-    
-    if not manifest:
-        # Return default manifest
-        manifest = {
-            "url": f"https://{domain}",
-            "name": "Winedash",
-            "iconUrl": f"https://{domain}/images/winedash-icon.png",
-            "termsOfUseUrl": f"https://{domain}/terms",
-            "privacyPolicyUrl": f"https://{domain}/privacy"
-        }
-    
-    return jsonify(manifest)
-
-
-@winedash_bp.route('/manifest/save', methods=['POST'])
-def save_manifest():
-    """Save TON Connect manifest (admin only)"""
-    data = request.json
-    domain = data.get('domain')
-    name = data.get('name')
-    icon_url = data.get('icon_url')
-    terms_url = data.get('terms_url')
-    privacy_url = data.get('privacy_url')
-    
-    if not domain:
-        return jsonify({'success': False, 'error': 'Domain required'}), 400
-    
-    manifest = db.save_ton_manifest(domain, name, icon_url, terms_url, privacy_url)
-    
-    return jsonify({
-        'success': True,
-        'manifest': manifest
-    })
-
-
 # ==================== TRANSACTION HISTORY ====================
 
 @winedash_bp.route('/transactions/<telegram_id>', methods=['GET'])
@@ -328,3 +283,23 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
+
+
+# ==================== STATIC FILES ====================
+
+@winedash_bp.route('/', methods=['GET'])
+def serve_index():
+    """Serve main HTML page"""
+    return send_from_directory(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'html'), 'web.html')
+
+
+@winedash_bp.route('/css/<path:filename>', methods=['GET'])
+def serve_css(filename):
+    """Serve CSS files"""
+    return send_from_directory(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'css'), filename)
+
+
+@winedash_bp.route('/js/<path:filename>', methods=['GET'])
+def serve_js(filename):
+    """Serve JS files"""
+    return send_from_directory(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'js'), filename)
