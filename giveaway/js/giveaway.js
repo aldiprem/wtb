@@ -324,7 +324,7 @@
         }
     }
 
-    // giveaway.js - Perbaiki bagian renderChatInfo yang memanggil setupShowAllChatsButton
+    // giveaway.js - Perbaiki bagian renderChatInfo
 
     async function renderChatInfo() {
         if (!elements.chatListContainer || !giveawayData?.code) return;
@@ -377,24 +377,32 @@
                 if (!chatLink && chatUsername && chatUsername !== 'null' && chatUsername !== '') {
                     chatLink = `https://t.me/${chatUsername}`;
                 } else if (!chatLink && chatId) {
-                    let cleanId = chatId.replace('-100', '');
+                    let cleanId = String(chatId).replace('-100', '');
                     chatLink = `https://t.me/${cleanId}`;
                 }
                 
-                const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
+                // 🔥 PERBAIKAN: Gunakan escapeHtml untuk nama chat sebelum encodeURIComponent
+                const safeChatName = escapeHtml(chatName);
+                const nameForAvatar = encodeURIComponent(safeChatName.substring(0, 2) || 'TG');
                 const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
                 
+                // 🔥 PERBAIKAN: Gunakan escapeHtml untuk semua data
+                const escapedChatName = escapeHtml(chatName);
+                const escapedChatType = escapeHtml(chatType);
+                const escapedChatId = escapeHtml(String(chatId));
+                const escapedChatLink = escapeHtml(chatLink || '');
+                
                 html += `
-                    <div class="chat-info-item" data-chat-link="${escapeHtml(chatLink)}">
+                    <div class="chat-info-item" data-chat-link="${escapedChatLink}">
                         <div class="chat-info-avatar">
-                            <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" 
+                            <img src="${avatarUrl}" alt="${escapedChatName}" 
                                 onerror="this.src='https://ui-avatars.com/api/?name=TG&background=40a7e3&color=fff&size=100&rounded=true'">
                         </div>
                         <div class="chat-info-details">
-                            <div class="chat-info-name">${escapeHtml(chatName)}</div>
+                            <div class="chat-info-name">${escapedChatName}</div>
                             <div class="chat-info-meta">
-                                <span class="chat-info-type">${escapeHtml(chatType)}</span>
-                                <span class="chat-info-id">${escapeHtml(chatId)}</span>
+                                <span class="chat-info-type">${escapedChatType}</span>
+                                <span class="chat-info-id">${escapedChatId}</span>
                             </div>
                         </div>
                         <div class="chat-info-arrow">
@@ -427,7 +435,7 @@
                     e.stopPropagation();
                     hapticMedium();
                     const chatLink = newItem.dataset.chatLink;
-                    if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
+                    if (chatLink && chatLink !== 'null' && chatLink !== 'undefined' && chatLink !== '') {
                         window.open(chatLink, '_blank');
                         showToast('Membuka chat...', 'info');
                     } else {
@@ -440,7 +448,7 @@
             window.allChatsData = allChats;
             window.inviteLinkMap = inviteLinkMap;
             
-            // Setup tombol show all chats - PASTIKAN DIPANGGIL
+            // Setup tombol show all chats
             setupShowAllChatsButton();
             
         } catch (error) {
@@ -487,15 +495,23 @@
             if (!chatLink && chatUsername && chatUsername !== 'null' && chatUsername !== '') {
                 chatLink = `https://t.me/${chatUsername}`;
             } else if (!chatLink && chatId) {
-                let cleanId = chatId.replace('-100', '');
+                let cleanId = String(chatId).replace('-100', '');
                 chatLink = `https://t.me/${cleanId}`;
             }
             
-            const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
+            // 🔥 PERBAIKAN: Gunakan escapeHtml untuk nama chat sebelum encodeURIComponent
+            const safeChatName = escapeHtml(chatName);
+            const nameForAvatar = encodeURIComponent(safeChatName.substring(0, 2) || 'TG');
             const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
             
+            // 🔥 PERBAIKAN: Gunakan escapeHtml untuk semua data
+            const escapedChatName = escapeHtml(chatName);
+            const escapedChatType = escapeHtml(chatType);
+            const escapedChatId = escapeHtml(String(chatId));
+            const escapedChatLink = escapeHtml(chatLink || '');
+            
             html += `
-                <div class="modal-chat-item" data-chat-link="${escapeHtml(chatLink)}" style="
+                <div class="modal-chat-item" data-chat-link="${escapedChatLink}" style="
                     display: flex;
                     align-items: center;
                     gap: 12px;
@@ -518,15 +534,15 @@
                         align-items: center;
                         justify-content: center;
                     ">
-                        <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="${avatarUrl}" alt="${escapedChatName}" style="width: 100%; height: 100%; object-fit: cover;">
                     </div>
                     <div class="chat-info" style="flex: 1; min-width: 0;">
                         <div class="chat-title" style="font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${escapeHtml(chatName)}
+                            ${escapedChatName}
                         </div>
                         <div class="chat-detail" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <span class="chat-type" style="font-size: 10px; color: var(--primary); background: rgba(64, 167, 227, 0.15); padding: 2px 8px; border-radius: 20px;">${escapeHtml(chatType)}</span>
-                            <span class="chat-id" style="font-size: 10px; color: var(--text-muted); font-family: monospace;">${escapeHtml(chatId)}</span>
+                            <span class="chat-type" style="font-size: 10px; color: var(--primary); background: rgba(64, 167, 227, 0.15); padding: 2px 8px; border-radius: 20px;">${escapedChatType}</span>
+                            <span class="chat-id" style="font-size: 10px; color: var(--text-muted); font-family: monospace;">${escapedChatId}</span>
                         </div>
                     </div>
                     <div class="chat-visit-btn" style="
@@ -560,7 +576,7 @@
                 e.stopPropagation();
                 hapticMedium();
                 const chatLink = newItem.dataset.chatLink;
-                if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
+                if (chatLink && chatLink !== 'null' && chatLink !== 'undefined' && chatLink !== '') {
                     window.open(chatLink, '_blank');
                     showToast('Membuka chat...', 'info');
                 } else {
@@ -1710,7 +1726,7 @@
         }
     }
 
-    // giveaway.js - Perbaikan fungsi setupShowAllChatsButton
+    // giveaway.js - Perbaiki fungsi setupShowAllChatsButton
 
     function setupShowAllChatsButton() {
         const showAllChatsBtn = document.getElementById('showAllChatsBtn');
@@ -1751,9 +1767,6 @@
                     closeAllChatsModal();
                 }
             });
-            
-            // Update referensi
-            window.allChatsModal = newModal;
         }
     }
 
