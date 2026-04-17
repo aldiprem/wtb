@@ -585,8 +585,6 @@ def get_stats():
     except Exception as e:
         print(f"Error in get_stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-    
-# winedash/services/web_service.py - Tambahkan method PUT di bagian user
 
 @winedash_bp.route('/user/<int:user_id>', methods=['PUT', 'OPTIONS'])
 def update_user(user_id):
@@ -619,4 +617,82 @@ def update_user(user_id):
         
     except Exception as e:
         print(f"Error in update_user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+# winedash/services/web_service.py - Tambahkan endpoint deposit confirm
+
+@winedash_bp.route('/deposit/confirm', methods=['POST', 'OPTIONS'])
+def confirm_deposit_web():
+    """Confirm a deposit and add balance to user"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        user_id = data.get('user_id')
+        amount = data.get('amount')
+        transaction_hash = data.get('transaction_hash')
+        from_address = data.get('from_address')
+        memo = data.get('memo', '')
+        
+        if not user_id or not amount or amount <= 0:
+            return jsonify({'success': False, 'error': 'Parameter tidak valid'}), 400
+        
+        # Generate unique transaction ID if not provided
+        if not transaction_hash:
+            import uuid
+            transaction_hash = f"deposit_{uuid.uuid4().hex[:16]}_{int(datetime.now().timestamp())}"
+        
+        # Create transaction record
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            now = get_jakarta_time().isoformat()
+            
+            # Check if transaction already exists
+            cursor.execute('SELECT id FROM deposits WHERE transaction_id = ?', (transaction_hash,))
+            existing = cursor.fetchone()
+            
+            if existing:
+                return jsonify({'success': False, 'error': 'Transaction already processed'}), 400
+            
+            # Insert deposit record
+            cursor.execute('''
+                INSERT INTO deposits (user_id, amount, wallet_address, transaction_id, status, created_at, completed_at)
+                VALUES (?, ?, ?, ?, 'completed', ?, ?)
+            ''', (user_id, amount, from_address or '', transaction_hash, now, now))
+            
+            # Update user balance
+            cursor.execute('''
+                UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
+                WHERE user_id = ?
+            ''', (amount, amount, user_id))
+            
+            # Create transaction record
+            cursor.execute('''
+                INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
+                VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
+            ''', (transaction_hash, user_id, amount, f"Deposit via TON Connect", now, now))
+            
+            conn.commit()
+        
+        print(f"✅ Deposit confirmed: {amount} TON for user {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Deposit confirmed successfully',
+            'transaction_id': transaction_hash
+        })
+        
+    except Exception as e:
+        print(f"Error in confirm_deposit_web: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

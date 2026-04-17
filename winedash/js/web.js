@@ -1,4 +1,4 @@
-// winedash/js/web.js - Perbaikan untuk TON Connect
+// winedash/js/web.js - Perbaikan TON Connect
 
 (function() {
     'use strict';
@@ -9,7 +9,7 @@
     const TON_CONNECT_MANIFEST_URL = `${API_BASE_URL}/winedash/tonconnect-manifest.json`;
     
     let telegramUser = null;
-    let tonConnector = null;
+    let tonConnectUI = null;
     let isWalletConnected = false;
     let walletAddress = null;
 
@@ -124,6 +124,12 @@
         return parseFloat(num).toFixed(4);
     }
 
+    function formatAddress(address) {
+        if (!address) return 'Not connected';
+        if (address.length < 10) return address;
+        return `${address.slice(0, 6)}...${address.slice(-4)}`;
+    }
+
     function formatDate(dateStr) {
         if (!dateStr) return '-';
         try {
@@ -208,41 +214,36 @@
         }
     }
 
-    // ==================== TON CONNECT ====================
+    // ==================== TON CONNECT (SEPERTI PLANE GIFT) ====================
     
     async function initTonConnect() {
         try {
-            // Cek apakah TON Connect SDK tersedia
-            if (typeof window.TONConnectSDK === 'undefined' && typeof TONConnectSDK === 'undefined') {
-                console.warn('TON Connect SDK not loaded, using fallback mode');
-                // Fallback mode: simulate wallet connection
-                showToast('TON Connect SDK not available, using demo mode', 'warning');
-                return;
-            }
-            
-            const TONConnect = window.TONConnectSDK?.TONConnect || TONConnectSDK?.TONConnect;
-            if (!TONConnect) {
-                console.warn('TONConnect class not found');
-                return;
-            }
-            
-            tonConnector = new TONConnect({
-                manifestUrl: TON_CONNECT_MANIFEST_URL
-            });
-            
-            // Check if already connected
-            if (tonConnector.connected) {
-                const wallet = tonConnector.wallet;
-                if (wallet) {
-                    isWalletConnected = true;
-                    walletAddress = wallet.account.address;
-                    updateWalletUI();
-                    await saveWalletAddress(walletAddress);
+            // Cek apakah TON Connect UI tersedia
+            if (typeof window.TON_CONNECT_UI === 'undefined') {
+                console.warn('TON Connect UI not loaded, waiting...');
+                // Tunggu sebentar untuk loading script
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                if (typeof window.TON_CONNECT_UI === 'undefined') {
+                    console.error('TON Connect UI still not available');
+                    showToast('TON Connect not available', 'error');
+                    return;
                 }
             }
             
-            // Subscribe to connection status changes
-            tonConnector.onStatusChange(async (wallet) => {
+            const manifestUrl = `${API_BASE_URL}/winedash/tonconnect-manifest.json`;
+            
+            tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
+                manifestUrl: manifestUrl,
+                buttonRootId: 'ton-connect',
+                language: 'en'
+            });
+            
+            console.log('✅ TON Connect UI initialized');
+            
+            // Subscribe to status changes
+            tonConnectUI.onStatusChange(async (wallet) => {
+                console.log('📱 Wallet status changed:', wallet);
+                
                 if (wallet) {
                     isWalletConnected = true;
                     walletAddress = wallet.account.address;
@@ -256,34 +257,49 @@
                 }
             });
             
+            // Check if already connected
+            if (tonConnectUI.connected) {
+                const wallet = tonConnectUI.wallet;
+                if (wallet) {
+                    isWalletConnected = true;
+                    walletAddress = wallet.account.address;
+                    updateWalletUI();
+                    await saveWalletAddress(walletAddress);
+                }
+            }
+            
         } catch (error) {
             console.error('Error initializing TON Connect:', error);
-            // Fallback: provide demo wallet button
-            showToast('TON Connect in demo mode', 'warning');
+            showToast('Failed to initialize TON Connect', 'error');
         }
     }
 
     async function connectWallet() {
         hapticMedium();
         
-        if (!tonConnector) {
-            // Demo mode: simulate wallet connection
-            showToast('Demo mode: Wallet connected!', 'success');
-            isWalletConnected = true;
-            walletAddress = '0QDsAjsd7hjksd8f7g6f5d4s3a2s1d5f6g7h8j9k0l';
-            updateWalletUI();
-            await saveWalletAddress(walletAddress);
+        if (!tonConnectUI) {
+            showToast('TON Connect not initialized', 'error');
             return;
         }
         
         try {
             showLoading(true);
-            await tonConnector.connect();
+            await tonConnectUI.connect();
         } catch (error) {
             console.error('Error connecting wallet:', error);
             showToast('Failed to connect wallet', 'error');
         } finally {
             showLoading(false);
+        }
+    }
+
+    function disconnectWallet() {
+        if (tonConnectUI) {
+            tonConnectUI.disconnect();
+            isWalletConnected = false;
+            walletAddress = null;
+            updateWalletUI();
+            showToast('Wallet disconnected', 'info');
         }
     }
 
@@ -295,14 +311,12 @@
                 elements.walletStatus.style.color = 'var(--success)';
             }
             if (elements.connectWalletBtn) {
-                elements.connectWalletBtn.style.display = 'none';
+                elements.connectWalletBtn.textContent = 'Disconnect Wallet';
+                elements.connectWalletBtn.onclick = () => disconnectWallet();
             }
             if (elements.walletAddress) {
                 elements.walletAddress.style.display = 'block';
-                const shortAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-                if (elements.walletAddressText) {
-                    elements.walletAddressText.textContent = shortAddress;
-                }
+                elements.walletAddressText.textContent = formatAddress(walletAddress);
             }
         } else {
             if (elements.walletStatus) {
@@ -311,7 +325,8 @@
                 elements.walletStatus.style.color = '';
             }
             if (elements.connectWalletBtn) {
-                elements.connectWalletBtn.style.display = 'flex';
+                elements.connectWalletBtn.textContent = 'Hubungkan Wallet';
+                elements.connectWalletBtn.onclick = () => connectWallet();
             }
             if (elements.walletAddress) {
                 elements.walletAddress.style.display = 'none';
@@ -333,8 +348,30 @@
         }
     }
 
-    // ==================== DEPOSIT ====================
+    // ==================== DEPOSIT (SEPERTI PLANE GIFT) ====================
     
+    function base64EncodeComment(comment) {
+        try {
+            if (comment.length > 120) {
+                comment = comment.substring(0, 120);
+            }
+            const encoder = new TextEncoder();
+            const commentBytes = encoder.encode(comment);
+            const prefix = new Uint8Array([0, 0, 0, 0]);
+            const fullBytes = new Uint8Array(prefix.length + commentBytes.length);
+            fullBytes.set(prefix);
+            fullBytes.set(commentBytes, prefix.length);
+            let binary = '';
+            for (let i = 0; i < fullBytes.length; i++) {
+                binary += String.fromCharCode(fullBytes[i]);
+            }
+            return btoa(binary);
+        } catch (e) {
+            console.error('Error encoding comment:', e);
+            return undefined;
+        }
+    }
+
     async function deposit() {
         const amount = parseFloat(elements.depositAmount?.value);
         
@@ -343,8 +380,14 @@
             return;
         }
         
-        if (!isWalletConnected || !walletAddress) {
+        if (amount < 0.1) {
+            showToast('Minimal deposit 0.1 TON', 'warning');
+            return;
+        }
+        
+        if (!tonConnectUI?.connected) {
             showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+            await connectWallet();
             return;
         }
         
@@ -352,58 +395,56 @@
         showLoading(true);
         
         try {
-            // Create deposit request
-            const response = await fetch(`${API_BASE_URL}/api/winedash/deposit/create`, {
+            const senderAddress = tonConnectUI.account?.address;
+            const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
+            const amountNano = Math.floor(amount * 1_000_000_000).toString();
+            
+            console.log('📤 Processing deposit:', { amount, senderAddress, amountNano });
+            
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [{
+                    address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
+                    amount: amountNano,
+                    payload: base64EncodeComment(memo)
+                }]
+            };
+            
+            const result = await tonConnectUI.sendTransaction(transaction);
+            console.log('✅ Transaction sent:', result);
+            
+            // Record transaction di backend
+            const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: telegramUser.id,
                     amount: amount,
-                    wallet_address: walletAddress
+                    transaction_hash: result.boc,
+                    from_address: senderAddress,
+                    memo: memo
                 })
             });
             
-            const data = await response.json();
+            const verifyData = await verifyResponse.json();
             
-            if (data.success) {
-                showToast(`Deposit request created: ${amount} TON`, 'success');
-                
-                // For demo, show QR code instruction
-                showToast(`Demo: Transfer ${amount} TON to: ${walletAddress.slice(0, 10)}...`, 'info');
-                
-                // Simulate confirmation after 3 seconds (for demo)
-                setTimeout(async () => {
-                    await confirmDeposit(data.transaction_id);
-                }, 3000);
-                
+            if (verifyData.success) {
+                showToast(`Deposit ${amount} TON berhasil!`, 'success');
                 if (elements.depositAmount) elements.depositAmount.value = '';
+                refreshAllData();
             } else {
-                showToast(data.error || 'Failed to create deposit', 'error');
+                showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
             }
+            
         } catch (error) {
             console.error('Error creating deposit:', error);
-            showToast('Error creating deposit', 'error');
+            if (error.message?.includes('rejected')) {
+                showToast('Transaksi dibatalkan', 'warning');
+            } else {
+                showToast('Error creating deposit: ' + error.message, 'error');
+            }
         } finally {
             showLoading(false);
-        }
-    }
-
-    async function confirmDeposit(transactionId) {
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ transaction_id: transactionId })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showToast('Deposit confirmed!', 'success');
-                refreshAllData();
-            }
-        } catch (error) {
-            console.error('Error confirming deposit:', error);
         }
     }
 
@@ -422,8 +463,9 @@
             return;
         }
         
-        if (!isWalletConnected || !walletAddress) {
+        if (!tonConnectUI?.connected) {
             showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+            await connectWallet();
             return;
         }
         
@@ -437,7 +479,7 @@
                 body: JSON.stringify({
                     user_id: telegramUser.id,
                     amount: amount,
-                    wallet_address: walletAddress
+                    wallet_address: tonConnectUI.account?.address
                 })
             });
             
@@ -490,7 +532,6 @@
                 }
                 elements.usernameList.innerHTML = html;
                 
-                // Add buy event listeners
                 document.querySelectorAll('.username-buy-btn').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -516,7 +557,6 @@
             return;
         }
         
-        // Check balance
         const balance = parseFloat(elements.balanceAmount?.textContent || '0');
         if (balance < price) {
             showToast(`Saldo tidak mencukupi. Butuh ${price} TON`, 'error');
@@ -740,7 +780,6 @@
                 const activeTab = document.getElementById(`${tabId}Tab`);
                 if (activeTab) activeTab.classList.add('active');
                 
-                // Load data when switching tabs
                 if (tabId === 'my-usernames') {
                     loadPurchasedUsernames();
                 } else if (tabId === 'history') {
@@ -765,9 +804,6 @@
     }
 
     function setupEventListeners() {
-        if (elements.connectWalletBtn) {
-            elements.connectWalletBtn.addEventListener('click', connectWallet);
-        }
         if (elements.depositBtn) {
             elements.depositBtn.addEventListener('click', deposit);
         }
