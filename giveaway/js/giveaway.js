@@ -494,7 +494,6 @@
             const chatId = chat.chat_id;
             const chatUsername = chat.chat_username || '';
             
-            // Dapatkan link dari map
             let chatLink = window.inviteLinkMap?.get(chatId);
             
             if (!chatLink && chatUsername && chatUsername !== 'null' && chatUsername !== '') {
@@ -504,10 +503,8 @@
                 chatLink = `https://t.me/${cleanId}`;
             }
             
-            // 🔥 PERBAIKAN: Sanitasi nama chat untuk menghindari URIError
             let sanitizedName = chatName;
             try {
-                // Hapus karakter yang tidak valid untuk URL encoding
                 sanitizedName = sanitizedName.replace(/[^\w\s]/gi, '').trim();
                 if (!sanitizedName || sanitizedName.length === 0) {
                     sanitizedName = 'TG';
@@ -516,11 +513,9 @@
                 sanitizedName = 'TG';
             }
             
-            // Gunakan substring yang aman untuk avatar
             const nameForAvatar = encodeURIComponent(sanitizedName.substring(0, 2) || 'TG');
             const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
             
-            // 🔥 PERBAIKAN: Gunakan escapeHtml untuk semua data
             const escapedChatName = escapeHtml(chatName);
             const escapedChatType = escapeHtml(chatType);
             const escapedChatId = escapeHtml(String(chatId));
@@ -585,7 +580,6 @@
         
         // Event listener untuk setiap item modal chat
         document.querySelectorAll('#allChatsList .modal-chat-item').forEach(item => {
-            // Hapus event listener lama dengan clone
             const newItem = item.cloneNode(true);
             item.parentNode.replaceChild(newItem, item);
             
@@ -600,6 +594,29 @@
                     showToast('Link tidak tersedia', 'error');
                 }
             });
+        });
+        
+        // 🔥 PERBAIKAN: Pastikan tombol close di modal allChatsModal bekerja
+        const closeAllChatsModalBtn = document.getElementById('closeAllChatsModalBtn');
+        if (closeAllChatsModalBtn) {
+            const newCloseBtn = closeAllChatsModalBtn.cloneNode(true);
+            closeAllChatsModalBtn.parentNode.replaceChild(newCloseBtn, closeAllChatsModalBtn);
+            
+            newCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeAllChatsModal();
+            });
+        }
+        
+        // 🔥 PERBAIKAN: Event listener untuk overlay click
+        const newModal = chatModal.cloneNode(true);
+        chatModal.parentNode.replaceChild(newModal, chatModal);
+        chatModal = newModal;
+        
+        chatModal.addEventListener('click', (e) => {
+            if (e.target === chatModal) {
+                closeAllChatsModal();
+            }
         });
         
         document.body.classList.add('modal-open');
@@ -1471,17 +1488,34 @@
                     <div class="modal-container" style="max-width: 320px;">
                         <div class="modal-header" style="padding: 12px 16px;">
                             <h3 style="font-size: 14px;"><i class="fas fa-telegram"></i> Daftar Chat</h3>
-                            <button class="modal-close" id="closeChatListModal" style="width: 30px; height: 30px;">&times;</button>
+                            <button class="modal-close" id="closeChatListModalBtn" style="width: 30px; height: 30px;">&times;</button>
                         </div>
                         <div class="modal-body" id="chatListModalBody" style="padding: 12px 16px;"></div>
                     </div>
                 `;
                 document.body.appendChild(chatListModal);
+            }
+            
+            // 🔥 PERBAIKAN: Dapatkan elemen tombol close dengan ID yang benar
+            const closeBtn = document.getElementById('closeChatListModalBtn');
+            if (closeBtn) {
+                // Hapus event listener lama dengan clone
+                const newCloseBtn = closeBtn.cloneNode(true);
+                closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
                 
-                document.getElementById('closeChatListModal')?.addEventListener('click', () => {
+                newCloseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     document.body.classList.remove('modal-open');
-                    chatListModal.style.display = 'none';
+                    if (chatListModal) chatListModal.style.display = 'none';
                 });
+            }
+            
+            // 🔥 PERBAIKAN: Event listener untuk overlay click
+            if (chatListModal) {
+                // Hapus event listener lama
+                const newModal = chatListModal.cloneNode(true);
+                chatListModal.parentNode.replaceChild(newModal, chatListModal);
+                chatListModal = newModal;
                 
                 chatListModal.addEventListener('click', (e) => {
                     if (e.target === chatListModal) {
@@ -1524,7 +1558,7 @@
                         chatLink = `https://t.me/${cleanId}`;
                     }
                     
-                    // 🔥 PERBAIKAN: Sanitasi nama chat
+                    // Sanitasi nama chat
                     let sanitizedName = chatName;
                     try {
                         sanitizedName = sanitizedName.replace(/[^\w\s]/gi, '').trim();
@@ -1602,10 +1636,14 @@
                 chatContainer.innerHTML = html;
                 
                 document.querySelectorAll('#chatListModalBody .chat-list-item').forEach(item => {
-                    item.addEventListener('click', (e) => {
+                    // Hapus event listener lama dengan clone
+                    const newItem = item.cloneNode(true);
+                    item.parentNode.replaceChild(newItem, item);
+                    
+                    newItem.addEventListener('click', (e) => {
                         e.stopPropagation();
                         hapticMedium();
-                        const chatLink = item.dataset.chatLink;
+                        const chatLink = newItem.dataset.chatLink;
                         if (chatLink && chatLink !== 'null' && chatLink !== 'undefined' && chatLink !== '') {
                             window.open(chatLink, '_blank');
                             showToast('Membuka chat...', 'info');
