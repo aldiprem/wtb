@@ -324,6 +324,8 @@
         }
     }
 
+    // giveaway.js - Perbaiki bagian renderChatInfo yang memanggil setupShowAllChatsButton
+
     async function renderChatInfo() {
         if (!elements.chatListContainer || !giveawayData?.code) return;
         
@@ -370,15 +372,11 @@
                 const chatId = chat.chat_id;
                 const chatUsername = chat.chat_username || '';
                 
-                // PRIORITAS: Gunakan invite link jika ada (untuk private chat)
                 let chatLink = inviteLinkMap.get(chatId);
                 
-                // Jika tidak ada invite link, fallback ke username
                 if (!chatLink && chatUsername && chatUsername !== 'null' && chatUsername !== '') {
                     chatLink = `https://t.me/${chatUsername}`;
-                }
-                // Jika masih tidak ada, fallback ke ID (hanya untuk debug)
-                else if (!chatLink && chatId) {
+                } else if (!chatLink && chatId) {
                     let cleanId = chatId.replace('-100', '');
                     chatLink = `https://t.me/${cleanId}`;
                 }
@@ -421,10 +419,14 @@
             
             // Event listener untuk setiap chat item
             document.querySelectorAll('.chat-info-item').forEach(item => {
-                item.addEventListener('click', (e) => {
+                // Hapus event listener lama dengan clone
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
+                newItem.addEventListener('click', (e) => {
                     e.stopPropagation();
                     hapticMedium();
-                    const chatLink = item.dataset.chatLink;
+                    const chatLink = newItem.dataset.chatLink;
                     if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
                         window.open(chatLink, '_blank');
                         showToast('Membuka chat...', 'info');
@@ -438,7 +440,7 @@
             window.allChatsData = allChats;
             window.inviteLinkMap = inviteLinkMap;
             
-            // Setup tombol show all chats
+            // Setup tombol show all chats - PASTIKAN DIPANGGIL
             setupShowAllChatsButton();
             
         } catch (error) {
@@ -446,6 +448,8 @@
             if (elements.chatInfoCard) elements.chatInfoCard.style.display = 'none';
         }
     }
+
+    // giveaway.js - Perbaiki fungsi showAllChatsModal
 
     function showAllChatsModal() {
         hapticMedium();
@@ -548,10 +552,14 @@
         
         // Event listener untuk setiap item modal chat
         document.querySelectorAll('#allChatsList .modal-chat-item').forEach(item => {
-            item.addEventListener('click', (e) => {
+            // Hapus event listener lama dengan clone
+            const newItem = item.cloneNode(true);
+            item.parentNode.replaceChild(newItem, item);
+            
+            newItem.addEventListener('click', (e) => {
                 e.stopPropagation();
                 hapticMedium();
-                const chatLink = item.dataset.chatLink;
+                const chatLink = newItem.dataset.chatLink;
                 if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
                     window.open(chatLink, '_blank');
                     showToast('Membuka chat...', 'info');
@@ -1702,12 +1710,14 @@
         }
     }
 
+    // giveaway.js - Perbaikan fungsi setupShowAllChatsButton
+
     function setupShowAllChatsButton() {
         const showAllChatsBtn = document.getElementById('showAllChatsBtn');
         console.log('[DEBUG] setupShowAllChatsButton, button found:', showAllChatsBtn !== null);
         
         if (showAllChatsBtn) {
-            // Hapus event listener lama jika ada
+            // Hapus event listener lama dengan clone
             const newBtn = showAllChatsBtn.cloneNode(true);
             showAllChatsBtn.parentNode.replaceChild(newBtn, showAllChatsBtn);
             
@@ -1721,18 +1731,29 @@
         
         const closeAllChatsModalBtn = document.getElementById('closeAllChatsModalBtn');
         if (closeAllChatsModalBtn) {
-            closeAllChatsModalBtn.addEventListener('click', () => {
+            // Hapus event listener lama
+            const newCloseBtn = closeAllChatsModalBtn.cloneNode(true);
+            closeAllChatsModalBtn.parentNode.replaceChild(newCloseBtn, closeAllChatsModalBtn);
+            
+            newCloseBtn.addEventListener('click', () => {
                 closeAllChatsModal();
             });
         }
         
         const chatModal = document.getElementById('allChatsModal');
         if (chatModal) {
-            chatModal.addEventListener('click', (e) => {
-                if (e.target === chatModal) {
+            // Hapus event listener lama
+            const newModal = chatModal.cloneNode(true);
+            chatModal.parentNode.replaceChild(newModal, chatModal);
+            
+            newModal.addEventListener('click', (e) => {
+                if (e.target === newModal) {
                     closeAllChatsModal();
                 }
             });
+            
+            // Update referensi
+            window.allChatsModal = newModal;
         }
     }
 
