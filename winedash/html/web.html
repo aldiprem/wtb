@@ -1,173 +1,196 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Winedash - Telegram Username Marketplace</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Winedash - Marketplace Username Telegram</title>
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="/winedash/css/web.css">
     
-    <!-- Telegram Web App -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- TON Connect UI -->
-    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <!-- TON Connect 2.0 SDK -->
+    <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <h1>🍷 Winedash</h1>
-                <p class="tagline">Telegram Username Marketplace</p>
-            </div>
-            <div class="network-badge" id="network-badge">Mainnet</div>
-        </header>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
 
-        <!-- Telegram Profile Section -->
-        <section class="card profile-card">
-            <div class="card-header">
-                <h2>👤 Profile</h2>
-                <span class="status-badge" id="telegram-status">Loading...</span>
-            </div>
-            <div id="telegram-profile" class="profile-content">
-                <div class="loading-spinner">Loading profile...</div>
-            </div>
-        </section>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
-        <!-- Wallet Section -->
-        <section class="card wallet-card">
-            <div class="card-header">
-                <h2>🔌 TON Wallet</h2>
-                <span class="status-badge" id="wallet-status">Disconnected</span>
+    <!-- Main Container -->
+    <div class="winedash-container">
+        
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <div class="profile-avatar" id="userAvatar">
+                <i class="fas fa-user"></i>
             </div>
-            <div class="wallet-content">
-                <div id="ton-connect" class="ton-connect-button"></div>
-                
-                <div id="wallet-info" class="wallet-info hidden">
-                    <div class="info-row">
-                        <span class="info-label">Address:</span>
-                        <div class="address-container">
-                            <span id="wallet-address" class="wallet-address"></span>
-                            <button class="icon-btn copy-btn" onclick="window.copyWalletAddress()" title="Copy">📋</button>
-                        </div>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Balance:</span>
-                        <span id="wallet-balance" class="wallet-balance">0 TON</span>
-                    </div>
+            <div class="profile-info">
+                <div class="profile-name" id="userName">Memuat...</div>
+                <div class="profile-username" id="userUsername">@username</div>
+            </div>
+            <div class="profile-balance" id="userBalance">
+                <i class="fas fa-coins"></i>
+                <span id="balanceAmount">0</span>
+                <small>TON</small>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="tabs-container">
+            <button class="tab-btn active" data-tab="marketplace">
+                <i class="fas fa-store"></i>
+                <span>Marketplace</span>
+            </button>
+            <button class="tab-btn" data-tab="my-usernames">
+                <i class="fas fa-tag"></i>
+                <span>Username Saya</span>
+            </button>
+            <button class="tab-btn" data-tab="wallet">
+                <i class="fas fa-wallet"></i>
+                <span>Wallet</span>
+            </button>
+            <button class="tab-btn" data-tab="history">
+                <i class="fas fa-history"></i>
+                <span>Riwayat</span>
+            </button>
+        </div>
+
+        <!-- Tab Content: Marketplace -->
+        <div class="tab-content active" id="marketplaceTab">
+            <div class="section-card">
+                <div class="card-header">
+                    <i class="fas fa-fire"></i>
+                    <h3>Username Populer</h3>
+                </div>
+                <div class="username-list" id="usernameList">
+                    <div class="loading-placeholder">Memuat username...</div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Balance Section -->
-        <section class="card balance-card">
-            <div class="card-header">
-                <h2>💰 Your Balance</h2>
-                <button class="icon-btn" onclick="window.refreshBalance()" title="Refresh">🔄</button>
+        <!-- Tab Content: My Usernames -->
+        <div class="tab-content" id="myUsernamesTab">
+            <div class="section-card">
+                <div class="card-header">
+                    <i class="fas fa-tag"></i>
+                    <h3>Username Saya</h3>
+                </div>
+                <div class="purchased-list" id="purchasedList">
+                    <div class="loading-placeholder">Memuat...</div>
+                </div>
             </div>
-            <div class="balance-content">
-                <div class="balance-amount" id="user-balance">0 TON</div>
-                <div class="balance-actions">
-                    <button class="btn-primary btn-small" onclick="window.showDepositModal()">
-                        💰 Deposit
+            
+            <div class="section-card">
+                <div class="card-header">
+                    <i class="fas fa-plus-circle"></i>
+                    <h3>Jual Username</h3>
+                </div>
+                <div class="sell-form">
+                    <input type="text" id="sellUsername" placeholder="Username (contoh: @username)" class="form-input">
+                    <input type="number" id="sellPrice" placeholder="Harga (TON)" class="form-input" step="0.1" min="0.1">
+                    <select id="sellCategory" class="form-input">
+                        <option value="default">Default</option>
+                        <option value="premium">Premium</option>
+                        <option value="vip">VIP</option>
+                        <option value="rare">Langka</option>
+                    </select>
+                    <button class="btn-primary" id="sellUsernameBtn">
+                        <i class="fas fa-rocket"></i> Jual Username
                     </button>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Stats Section -->
-        <section class="card stats-card">
-            <div class="card-header">
-                <h2>📊 Statistics</h2>
-            </div>
-            <div class="stats-grid" id="user-stats">
-                <div class="stat-item">
-                    <div class="stat-value" id="total-deposited">0</div>
-                    <div class="stat-label">Total Deposited</div>
+        <!-- Tab Content: Wallet -->
+        <div class="tab-content" id="walletTab">
+            <div class="section-card">
+                <div class="card-header">
+                    <i class="fas fa-wallet"></i>
+                    <h3>TON Wallet</h3>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="total-withdrawn">0</div>
-                    <div class="stat-label">Total Withdrawn</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="deposit-count">0</div>
-                    <div class="stat-label">Deposits</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="withdraw-count">0</div>
-                    <div class="stat-label">Withdrawals</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Transactions Section -->
-        <section class="card transactions-card">
-            <div class="card-header">
-                <h2>📜 Transaction History</h2>
-                <button class="icon-btn" onclick="window.refreshTransactions()" title="Refresh">🔄</button>
-            </div>
-            <div id="transactions-list" class="transactions-content">
-                <div class="loading-spinner">Loading transactions...</div>
-            </div>
-        </section>
-    </div>
-
-    <!-- Deposit Modal -->
-    <div id="deposit-modal" class="modal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="window.closeModal()">&times;</button>
-            <h3 class="modal-title">💎 Deposit TON</h3>
-            
-            <div id="deposit-status" class="status-message hidden"></div>
-            
-            <div class="deposit-form" id="deposit-form">
-                <div class="form-group">
-                    <label for="deposit-amount">Amount (TON):</label>
-                    <input type="number" id="deposit-amount" class="form-input" 
-                           min="0.1" step="0.1" value="1.0">
-                    <small class="input-hint">Minimum: 0.1 TON</small>
-                </div>
-                
-                <div class="info-box">
-                    <p>💡 <strong>Important:</strong> Send exactly the amount you entered</p>
-                    <p>📝 Funds will be credited automatically after confirmation</p>
-                </div>
-
-                <button id="send-deposit-btn" class="btn-primary btn-large" onclick="window.processDeposit()">
-                    💸 Send from Wallet
-                </button>
-            </div>
-
-            <div id="deposit-instructions" class="deposit-instructions hidden">
-                <div class="success-icon">✅</div>
-                <h4>Transaction Sent!</h4>
-                <p>Waiting for blockchain confirmation...</p>
-                
-                <div class="info-box">
-                    <div class="info-row">
-                        <span class="info-label">Transaction:</span>
-                        <code id="tx-hash" class="tx-hash"></code>
+                <div class="wallet-info">
+                    <div class="wallet-status" id="walletStatus">
+                        <i class="fas fa-plug"></i>
+                        <span>Belum terhubung</span>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">Reference:</span>
-                        <code id="tx-reference" class="tx-reference"></code>
+                    <button class="btn-primary" id="connectWalletBtn">
+                        <i class="fab fa-telegram"></i> Hubungkan Wallet
+                    </button>
+                    <div class="wallet-address" id="walletAddress" style="display: none;">
+                        <i class="fas fa-qrcode"></i>
+                        <span id="walletAddressText"></span>
                     </div>
                 </div>
-                
-                <button class="btn-secondary btn-full" onclick="window.closeModal()">Close</button>
+            </div>
+
+            <div class="section-card">
+                <div class="card-header">
+                    <i class="fas fa-arrow-up"></i>
+                    <h3>Deposit TON</h3>
+                </div>
+                <div class="deposit-form">
+                    <input type="number" id="depositAmount" placeholder="Jumlah TON" class="form-input" step="0.1" min="0.1">
+                    <button class="btn-primary" id="depositBtn">
+                        <i class="fas fa-arrow-down"></i> Deposit
+                    </button>
+                </div>
+            </div>
+
+            <div class="section-card">
+                <div class="card-header">
+                    <i class="fas fa-arrow-down"></i>
+                    <h3>Withdraw TON</h3>
+                </div>
+                <div class="withdraw-form">
+                    <input type="number" id="withdrawAmount" placeholder="Jumlah TON" class="form-input" step="0.1" min="1">
+                    <button class="btn-primary" id="withdrawBtn">
+                        <i class="fas fa-arrow-up"></i> Withdraw
+                    </button>
+                </div>
+                <div class="info-text">
+                    <i class="fas fa-info-circle"></i> Minimal withdraw: 1 TON
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Debug Panel -->
-    <div class="debug-panel" id="debug-panel">
-        <div class="debug-header" onclick="window.toggleDebug()">
-            <span>🐛 Debug Info</span>
-            <span class="toggle-icon">▼</span>
+        <!-- Tab Content: History -->
+        <div class="tab-content" id="historyTab">
+            <div class="section-card">
+                <div class="card-header">
+                    <i class="fas fa-history"></i>
+                    <h3>Riwayat Transaksi</h3>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div class="loading-placeholder">Memuat riwayat...</div>
+                </div>
+            </div>
         </div>
-        <pre id="debug-info" class="debug-content hidden"></pre>
+
+        <!-- Floating Action Button -->
+        <div class="fab-container">
+            <button class="fab-button" id="refreshBtn">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh</span>
+            </button>
+        </div>
+
     </div>
 
+    <!-- JavaScript -->
     <script src="/winedash/js/web.js"></script>
 </body>
 </html>

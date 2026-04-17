@@ -1,449 +1,636 @@
 import sqlite3
 import json
 from datetime import datetime
-from pathlib import Path
-import hashlib
-import secrets
+from typing import List, Dict, Optional, Any
+import pytz
+import os
 
 class WinedashDatabase:
-    def __init__(self, db_path):
+    def __init__(self, db_path: str = "/root/wtb/winedash/database/winedash.db"):
         self.db_path = db_path
+        self.timezone = pytz.timezone('Asia/Jakarta')
         self.init_database()
     
-    def get_connection(self):
-        """Get database connection"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+    def _get_now(self) -> str:
+        """Get current time in Asia/Jakarta timezone as ISO format string"""
+        return datetime.now(self.timezone).isoformat()
     
+    def _get_now_datetime(self) -> datetime:
+        """Get current datetime in Asia/Jakarta timezone"""
+        return datetime.now(self.timezone)
+
     def init_database(self):
-        """Initialize all tables for Winedash marketplace"""
-        with self.get_connection() as conn:
-            # ========== USERS TABLE (Telegram Auth) ==========
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS wd_users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    telegram_id TEXT UNIQUE NOT NULL,
-                    telegram_username TEXT,
-                    telegram_first_name TEXT,
-                    telegram_last_name TEXT,
-                    telegram_photo_url TEXT,
+        """Initialize database tables"""
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
+            # ============ USERS TABLE (Telegram Auth) ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    first_name TEXT,
+                    last_name TEXT,
+                    photo_url TEXT,
                     wallet_address TEXT,
-                    balance_ton REAL DEFAULT 0,
-                    total_deposited REAL DEFAULT 0,
-                    total_withdrawn REAL DEFAULT 0,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    balance DECIMAL(20, 8) DEFAULT 0,
+                    total_deposit DECIMAL(20, 8) DEFAULT 0,
+                    total_withdraw DECIMAL(20, 8) DEFAULT 0,
+                    is_admin BOOLEAN DEFAULT 0,
+                    first_seen TIMESTAMP,
+                    last_seen TIMESTAMP
                 )
             ''')
-            
-            # ========== TON CONNECT MANIFEST ==========
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS wd_ton_manifest (
+
+            # ============ TONCONNECT MANIFEST TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS ton_manifest (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     domain TEXT UNIQUE NOT NULL,
-                    name TEXT NOT NULL,
+                    name TEXT,
                     icon_url TEXT,
-                    terms_url TEXT,
-                    privacy_url TEXT,
+                    terms_of_use_url TEXT,
+                    privacy_policy_url TEXT,
                     manifest_json TEXT,
-                    is_active BOOLEAN DEFAULT 1,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    updated_at TIMESTAMP
                 )
             ''')
-            
-            # ========== TRANSACTIONS TABLE ==========
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS wd_transactions (
+
+            # ============ DEPOSITS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS deposits (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    transaction_hash TEXT UNIQUE,
-                    amount_ton REAL NOT NULL,
-                    amount_nano TEXT,
-                    from_address TEXT,
-                    to_address TEXT,
-                    memo TEXT,
-                    transaction_type TEXT CHECK(transaction_type IN ('deposit', 'withdraw', 'purchase', 'refund')),
+                    user_id INTEGER NOT NULL,
+                    amount DECIMAL(20, 8) NOT NULL,
+                    wallet_address TEXT,
+                    transaction_id TEXT UNIQUE,
                     status TEXT DEFAULT 'pending',
-                    reference TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    confirmed_at TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES wd_users (id)
+                    created_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )
             ''')
-            
-            # ========== BALANCE HISTORY ==========
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS wd_balance_history (
+
+            # ============ WITHDRAWALS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS withdrawals (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    previous_balance REAL,
-                    new_balance REAL,
-                    change_amount REAL,
-                    transaction_id INTEGER,
-                    reason TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES wd_users (id),
-                    FOREIGN KEY (transaction_id) REFERENCES wd_transactions (id)
-                )
-            ''')
-            
-            # ========== SESSIONS ==========
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS wd_sessions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    session_id TEXT UNIQUE,
-                    wallet_connected BOOLEAN DEFAULT 0,
-                    last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES wd_users (id)
-                )
-            ''')
-            
-            # ========== PAYMENT TRACKING ==========
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS wd_payment_tracking (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    reference TEXT UNIQUE,
-                    body_base64_hash TEXT,
-                    telegram_id TEXT,
-                    amount REAL,
+                    user_id INTEGER NOT NULL,
+                    amount DECIMAL(20, 8) NOT NULL,
+                    wallet_address TEXT NOT NULL,
+                    transaction_id TEXT UNIQUE,
                     status TEXT DEFAULT 'pending',
-                    transaction_hash TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )
             ''')
-            
+
+            # ============ USERNAMES MARKETPLACE TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS usernames (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    category TEXT,
+                    price DECIMAL(20, 8) NOT NULL,
+                    seller_id INTEGER,
+                    seller_wallet TEXT,
+                    status TEXT DEFAULT 'available',
+                    created_at TIMESTAMP,
+                    sold_at TIMESTAMP,
+                    buyer_id INTEGER,
+                    transaction_id TEXT,
+                    FOREIGN KEY (seller_id) REFERENCES users(user_id),
+                    FOREIGN KEY (buyer_id) REFERENCES users(user_id)
+                )
+            ''')
+
+            # ============ TRANSACTIONS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    transaction_id TEXT UNIQUE NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    type TEXT NOT NULL,
+                    amount DECIMAL(20, 8) NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    details TEXT,
+                    created_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+            ''')
+
             conn.commit()
-            
-            # Insert default manifest for companel.shop
-            self._insert_default_manifest(conn)
-            
-            print("✅ Winedash database initialized successfully")
+            print("✅ Winedash Database initialized successfully")
+
+    # ==================== USER MANAGEMENT ====================
     
-    def _insert_default_manifest(self, conn):
-        """Insert default TON Connect manifest for companel.shop"""
-        manifest_data = {
-            "url": "https://companel.shop",
-            "name": "Winedash",
-            "iconUrl": "https://companel.shop/images/winedash-icon.png",
-            "termsOfUseUrl": "https://companel.shop/terms",
-            "privacyPolicyUrl": "https://companel.shop/privacy"
-        }
-        
-        cursor = conn.execute('''
-            INSERT OR IGNORE INTO wd_ton_manifest 
-            (domain, name, icon_url, terms_url, privacy_url, manifest_json, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
-        ''', (
-            "companel.shop",
-            "Winedash",
-            "https://companel.shop/images/winedash-icon.png",
-            "https://companel.shop/terms",
-            "https://companel.shop/privacy",
-            json.dumps(manifest_data)
-        ))
-        conn.commit()
-        
-        if cursor.rowcount > 0:
-            print("✅ Default TON manifest inserted for companel.shop")
-    
-    # ==================== USER METHODS ====================
-    
-    def save_user(self, telegram_id, telegram_username=None, 
-                  telegram_first_name=None, telegram_last_name=None,
-                  telegram_photo_url=None, wallet_address=None):
-        """Save or update user from Telegram data"""
-        with self.get_connection() as conn:
-            # Check if user exists
-            existing = conn.execute('SELECT id, balance_ton FROM wd_users WHERE telegram_id = ?', (telegram_id,)).fetchone()
-            
-            if existing:
-                # Update existing user
-                conn.execute('''
-                    UPDATE wd_users 
-                    SET telegram_username = ?,
-                        telegram_first_name = ?,
-                        telegram_last_name = ?,
-                        telegram_photo_url = ?,
-                        wallet_address = COALESCE(?, wallet_address),
-                        updated_at = CURRENT_TIMESTAMP,
-                        last_active = CURRENT_TIMESTAMP
-                    WHERE telegram_id = ?
-                ''', (telegram_username, telegram_first_name, telegram_last_name, 
-                      telegram_photo_url, wallet_address, telegram_id))
-                user_id = existing['id']
-                balance = existing['balance_ton']
-            else:
-                # Create new user
-                cursor = conn.execute('''
-                    INSERT INTO wd_users (
-                        telegram_id, telegram_username, telegram_first_name,
-                        telegram_last_name, telegram_photo_url, wallet_address,
-                        balance_ton
-                    ) VALUES (?, ?, ?, ?, ?, ?, 0)
-                    RETURNING id
-                ''', (telegram_id, telegram_username, telegram_first_name,
-                      telegram_last_name, telegram_photo_url, wallet_address))
-                result = cursor.fetchone()
-                user_id = result[0] if result else None
-                balance = 0
-            
-            conn.commit()
-            return user_id, balance
-    
-    def get_user(self, telegram_id):
-        """Get user by telegram ID"""
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT * FROM wd_users WHERE telegram_id = ?
-            ''', (telegram_id,))
-            return cursor.fetchone()
-    
-    def get_user_by_id(self, user_id):
-        """Get user by database ID"""
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT * FROM wd_users WHERE id = ?
-            ''', (user_id,))
-            return cursor.fetchone()
-    
-    def update_wallet_address(self, telegram_id, wallet_address):
-        """Update user's TON wallet address"""
-        with self.get_connection() as conn:
-            conn.execute('''
-                UPDATE wd_users 
-                SET wallet_address = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE telegram_id = ?
-            ''', (wallet_address, telegram_id))
-            conn.commit()
-    
-    def update_last_active(self, telegram_id):
-        """Update user's last active timestamp"""
-        with self.get_connection() as conn:
-            conn.execute('''
-                UPDATE wd_users SET last_active = CURRENT_TIMESTAMP
-                WHERE telegram_id = ?
-            ''', (telegram_id,))
-            conn.commit()
-    
-    # ==================== BALANCE METHODS ====================
-    
-    def get_user_balance(self, telegram_id):
-        """Get user's current balance"""
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT balance_ton FROM wd_users WHERE telegram_id = ?
-            ''', (telegram_id,))
-            result = cursor.fetchone()
-            return float(result[0]) if result else 0.0
-    
-    def add_balance(self, telegram_id, amount_ton, transaction_id=None, reason="deposit"):
-        """Add balance to user (for deposits)"""
-        with self.get_connection() as conn:
-            # Get current balance
-            current = self.get_user_balance(telegram_id)
-            new_balance = current + amount_ton
-            
-            # Update user balance
-            conn.execute('''
-                UPDATE wd_users 
-                SET balance_ton = ?,
-                    total_deposited = total_deposited + ?,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE telegram_id = ?
-            ''', (new_balance, amount_ton, telegram_id))
-            
-            # Record balance history
-            user = self.get_user(telegram_id)
-            if user:
-                conn.execute('''
-                    INSERT INTO wd_balance_history 
-                    (user_id, previous_balance, new_balance, change_amount, transaction_id, reason)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (user['id'], current, new_balance, amount_ton, transaction_id, reason))
-            
-            conn.commit()
-            return new_balance
-    
-    def deduct_balance(self, telegram_id, amount_ton, transaction_id=None, reason="withdraw"):
-        """Deduct balance from user (for withdrawals or purchases)"""
-        with self.get_connection() as conn:
-            # Get current balance
-            current = self.get_user_balance(telegram_id)
-            
-            if current < amount_ton:
-                raise ValueError(f"Insufficient balance. Current: {current}, Requested: {amount_ton}")
-            
-            new_balance = current - amount_ton
-            
-            # Update user balance
-            conn.execute('''
-                UPDATE wd_users 
-                SET balance_ton = ?,
-                    total_withdrawn = total_withdrawn + ?,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE telegram_id = ?
-            ''', (new_balance, amount_ton, telegram_id))
-            
-            # Record balance history
-            user = self.get_user(telegram_id)
-            if user:
-                conn.execute('''
-                    INSERT INTO wd_balance_history 
-                    (user_id, previous_balance, new_balance, change_amount, transaction_id, reason)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ''', (user['id'], current, new_balance, -amount_ton, transaction_id, reason))
-            
-            conn.commit()
-            return new_balance
-    
-    # ==================== TRANSACTION METHODS ====================
-    
-    def save_transaction(self, user_id, transaction_hash, amount_ton, from_address, 
-                         to_address, memo="", transaction_type="deposit", reference=None):
-        """Save transaction record"""
-        with self.get_connection() as conn:
-            # Convert TON to nano
-            amount_nano = str(int(amount_ton * 1_000_000_000))
-            
-            cursor = conn.execute('''
-                INSERT INTO wd_transactions (
-                    user_id, transaction_hash, amount_ton, amount_nano, 
-                    from_address, to_address, memo, transaction_type, 
-                    status, reference, confirmed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(transaction_hash) DO UPDATE SET
-                    status = 'confirmed',
-                    confirmed_at = CURRENT_TIMESTAMP
-                RETURNING id
-            ''', (
-                user_id, transaction_hash, amount_ton, amount_nano,
-                from_address, to_address, memo, transaction_type,
-                'confirmed', reference
-            ))
-            result = cursor.fetchone()
-            tx_id = result[0] if result else None
-            
-            conn.commit()
-            return tx_id
-    
-    def get_user_transactions(self, telegram_id, limit=50, offset=0):
-        """Get user transactions with pagination"""
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT t.* FROM wd_transactions t
-                JOIN wd_users u ON t.user_id = u.id
-                WHERE u.telegram_id = ?
-                ORDER BY t.created_at DESC
-                LIMIT ? OFFSET ?
-            ''', (telegram_id, limit, offset))
-            return [dict(row) for row in cursor.fetchall()]
-    
-    def get_transaction_by_reference(self, reference):
-        """Get transaction by reference"""
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT * FROM wd_transactions WHERE reference = ?
-            ''', (reference,))
-            return cursor.fetchone()
-    
-    # ==================== TON MANIFEST METHODS ====================
-    
-    def get_ton_manifest(self, domain):
-        """Get TON Connect manifest for domain"""
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT manifest_json, name, icon_url, terms_url, privacy_url
-                FROM wd_ton_manifest 
-                WHERE domain = ? AND is_active = 1
-            ''', (domain,))
-            result = cursor.fetchone()
-            
-            if result:
-                return json.loads(result['manifest_json'])
+    def save_user(self, user_id: int, username: str = "", first_name: str = "", 
+                  last_name: str = "", photo_url: str = "", wallet_address: str = "") -> bool:
+        """Save or update user information"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('SELECT user_id FROM users WHERE user_id = ?', (user_id,))
+                existing = cursor.fetchone()
+                
+                now = self._get_now()
+                
+                if existing:
+                    cursor.execute('''
+                        UPDATE users 
+                        SET username = ?, first_name = ?, last_name = ?, 
+                            photo_url = ?, wallet_address = ?, last_seen = ?
+                        WHERE user_id = ?
+                    ''', (username, first_name, last_name, photo_url, wallet_address, now, user_id))
+                else:
+                    cursor.execute('''
+                        INSERT INTO users (user_id, username, first_name, last_name, photo_url, wallet_address, first_seen, last_seen)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (user_id, username, first_name, last_name, photo_url, wallet_address, now, now))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving user: {e}")
+            return False
+
+    def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
+        """Get user information by user_id"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT user_id, username, first_name, last_name, photo_url, 
+                           wallet_address, balance, total_deposit, total_withdraw, is_admin, first_seen, last_seen
+                    FROM users WHERE user_id = ?
+                ''', (user_id,))
+                row = cursor.fetchone()
+                
+                if row:
+                    return {
+                        'user_id': row[0],
+                        'username': row[1],
+                        'first_name': row[2],
+                        'last_name': row[3],
+                        'photo_url': row[4],
+                        'wallet_address': row[5],
+                        'balance': float(row[6]),
+                        'total_deposit': float(row[7]),
+                        'total_withdraw': float(row[8]),
+                        'is_admin': bool(row[9]),
+                        'first_seen': row[10],
+                        'last_seen': row[11]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting user: {e}")
             return None
+
+    def update_user_balance(self, user_id: int, amount: float, is_deposit: bool = True) -> bool:
+        """Update user balance"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                if is_deposit:
+                    cursor.execute('''
+                        UPDATE users 
+                        SET balance = balance + ?, total_deposit = total_deposit + ?
+                        WHERE user_id = ?
+                    ''', (amount, amount, user_id))
+                else:
+                    cursor.execute('''
+                        UPDATE users 
+                        SET balance = balance - ?, total_withdraw = total_withdraw + ?
+                        WHERE user_id = ? AND balance >= ?
+                    ''', (amount, amount, user_id, amount))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating user balance: {e}")
+            return False
+
+    # ==================== TON MANIFEST ====================
     
-    def save_ton_manifest(self, domain, name, icon_url, terms_url, privacy_url):
+    def save_ton_manifest(self, domain: str, name: str, icon_url: str, 
+                          terms_url: str, privacy_url: str, manifest_json: str) -> bool:
         """Save or update TON Connect manifest"""
-        manifest_data = {
-            "url": f"https://{domain}",
-            "name": name,
-            "iconUrl": icon_url,
-            "termsOfUseUrl": terms_url,
-            "privacyPolicyUrl": privacy_url
-        }
-        
-        with self.get_connection() as conn:
-            conn.execute('''
-                INSERT OR REPLACE INTO wd_ton_manifest 
-                (domain, name, icon_url, terms_url, privacy_url, manifest_json, is_active, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-            ''', (domain, name, icon_url, terms_url, privacy_url, json.dumps(manifest_data)))
-            conn.commit()
-            return manifest_data
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    INSERT OR REPLACE INTO ton_manifest 
+                    (domain, name, icon_url, terms_of_use_url, privacy_policy_url, manifest_json, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (domain, name, icon_url, terms_url, privacy_url, manifest_json, now))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error saving TON manifest: {e}")
+            return False
+
+    def get_ton_manifest(self, domain: str) -> Optional[Dict[str, Any]]:
+        """Get TON Connect manifest by domain"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT domain, name, icon_url, terms_of_use_url, privacy_policy_url, manifest_json, updated_at
+                    FROM ton_manifest WHERE domain = ?
+                ''', (domain,))
+                row = cursor.fetchone()
+                
+                if row:
+                    return {
+                        'domain': row[0],
+                        'name': row[1],
+                        'icon_url': row[2],
+                        'terms_of_use_url': row[3],
+                        'privacy_policy_url': row[4],
+                        'manifest_json': json.loads(row[5]) if row[5] else {},
+                        'updated_at': row[6]
+                    }
+                return None
+        except Exception as e:
+            print(f"Error getting TON manifest: {e}")
+            return None
+
+    # ==================== DEPOSITS ====================
     
-    # ==================== PAYMENT TRACKING ====================
+    def create_deposit(self, user_id: int, amount: float, wallet_address: str, 
+                       transaction_id: str) -> Optional[int]:
+        """Create a new deposit record"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    INSERT INTO deposits (user_id, amount, wallet_address, transaction_id, status, created_at)
+                    VALUES (?, ?, ?, ?, 'pending', ?)
+                ''', (user_id, amount, wallet_address, transaction_id, now))
+                
+                conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"Error creating deposit: {e}")
+            return None
+
+    def confirm_deposit(self, transaction_id: str) -> bool:
+        """Confirm a deposit and add balance to user"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    SELECT id, user_id, amount FROM deposits 
+                    WHERE transaction_id = ? AND status = 'pending'
+                ''', (transaction_id,))
+                deposit = cursor.fetchone()
+                
+                if not deposit:
+                    return False
+                
+                deposit_id, user_id, amount = deposit
+                
+                # Update deposit status
+                cursor.execute('''
+                    UPDATE deposits SET status = 'completed', completed_at = ?
+                    WHERE id = ?
+                ''', (now, deposit_id))
+                
+                # Update user balance
+                cursor.execute('''
+                    UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
+                    WHERE user_id = ?
+                ''', (amount, amount, user_id))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error confirming deposit: {e}")
+            return False
+
+    def get_user_deposits(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get user deposit history"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, amount, wallet_address, transaction_id, status, created_at, completed_at
+                    FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
+                ''', (user_id, limit))
+                rows = cursor.fetchall()
+                
+                deposits = []
+                for row in rows:
+                    deposits.append({
+                        'id': row[0],
+                        'amount': float(row[1]),
+                        'wallet_address': row[2],
+                        'transaction_id': row[3],
+                        'status': row[4],
+                        'created_at': row[5],
+                        'completed_at': row[6]
+                    })
+                return deposits
+        except Exception as e:
+            print(f"Error getting user deposits: {e}")
+            return []
+
+    # ==================== WITHDRAWALS ====================
     
-    def save_payment_tracking(self, reference, body_base64_hash, telegram_id, amount):
-        """Save payment tracking data"""
-        with self.get_connection() as conn:
-            conn.execute('''
-                INSERT OR IGNORE INTO wd_payment_tracking 
-                (reference, body_base64_hash, telegram_id, amount, status)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (reference, body_base64_hash, telegram_id, amount, 'pending'))
-            conn.commit()
+    def create_withdrawal(self, user_id: int, amount: float, wallet_address: str) -> Optional[int]:
+        """Create a new withdrawal request"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                # Check balance first
+                cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+                row = cursor.fetchone()
+                if not row or float(row[0]) < amount:
+                    return None
+                
+                cursor.execute('''
+                    INSERT INTO withdrawals (user_id, amount, wallet_address, status, created_at)
+                    VALUES (?, ?, ?, 'pending', ?)
+                ''', (user_id, amount, wallet_address, now))
+                
+                conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"Error creating withdrawal: {e}")
+            return None
+
+    def confirm_withdrawal(self, withdrawal_id: int, transaction_id: str) -> bool:
+        """Confirm a withdrawal and deduct balance"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    SELECT id, user_id, amount FROM withdrawals 
+                    WHERE id = ? AND status = 'pending'
+                ''', (withdrawal_id,))
+                withdrawal = cursor.fetchone()
+                
+                if not withdrawal:
+                    return False
+                
+                withdraw_id, user_id, amount = withdrawal
+                
+                # Update withdrawal status
+                cursor.execute('''
+                    UPDATE withdrawals SET status = 'completed', transaction_id = ?, completed_at = ?
+                    WHERE id = ?
+                ''', (transaction_id, now, withdraw_id))
+                
+                # Deduct user balance
+                cursor.execute('''
+                    UPDATE users SET balance = balance - ?, total_withdraw = total_withdraw + ?
+                    WHERE user_id = ? AND balance >= ?
+                ''', (amount, amount, user_id, amount))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error confirming withdrawal: {e}")
+            return False
+
+    def get_user_withdrawals(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get user withdrawal history"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, amount, wallet_address, transaction_id, status, created_at, completed_at
+                    FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
+                ''', (user_id, limit))
+                rows = cursor.fetchall()
+                
+                withdrawals = []
+                for row in rows:
+                    withdrawals.append({
+                        'id': row[0],
+                        'amount': float(row[1]),
+                        'wallet_address': row[2],
+                        'transaction_id': row[3],
+                        'status': row[4],
+                        'created_at': row[5],
+                        'completed_at': row[6]
+                    })
+                return withdrawals
+        except Exception as e:
+            print(f"Error getting user withdrawals: {e}")
+            return []
+
+    # ==================== USERNAMES MARKETPLACE ====================
     
-    def update_payment_tracking(self, reference, status='completed', transaction_hash=None):
-        """Update payment tracking status"""
-        with self.get_connection() as conn:
-            conn.execute('''
-                UPDATE wd_payment_tracking 
-                SET status = ?, transaction_hash = ?
-                WHERE reference = ?
-            ''', (status, transaction_hash, reference))
-            conn.commit()
+    def add_username(self, username: str, price: float, seller_id: int, 
+                     seller_wallet: str, category: str = "default") -> Optional[int]:
+        """Add a username to marketplace"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, 'available', ?)
+                ''', (username, category, price, seller_id, seller_wallet, now))
+                
+                conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding username: {e}")
+            return None
+
+    def buy_username(self, username_id: int, buyer_id: int, transaction_id: str) -> bool:
+        """Buy a username from marketplace"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    SELECT id, price, seller_id FROM usernames 
+                    WHERE id = ? AND status = 'available'
+                ''', (username_id,))
+                username = cursor.fetchone()
+                
+                if not username:
+                    return False
+                
+                username_id, price, seller_id = username
+                
+                # Check buyer balance
+                cursor.execute('SELECT balance FROM users WHERE user_id = ?', (buyer_id,))
+                row = cursor.fetchone()
+                if not row or float(row[0]) < price:
+                    return False
+                
+                # Deduct buyer balance
+                cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (price, buyer_id))
+                
+                # Add balance to seller
+                if seller_id:
+                    cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (price, seller_id))
+                
+                # Update username status
+                cursor.execute('''
+                    UPDATE usernames 
+                    SET status = 'sold', buyer_id = ?, transaction_id = ?, sold_at = ?
+                    WHERE id = ?
+                ''', (buyer_id, transaction_id, now, username_id))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error buying username: {e}")
+            return False
+
+    def get_available_usernames(self, category: str = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get all available usernames"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                if category:
+                    cursor.execute('''
+                        SELECT id, username, category, price, seller_id, seller_wallet, created_at
+                        FROM usernames WHERE status = 'available' AND category = ?
+                        ORDER BY price ASC LIMIT ?
+                    ''', (category, limit))
+                else:
+                    cursor.execute('''
+                        SELECT id, username, category, price, seller_id, seller_wallet, created_at
+                        FROM usernames WHERE status = 'available'
+                        ORDER BY price ASC LIMIT ?
+                    ''', (limit,))
+                
+                rows = cursor.fetchall()
+                usernames = []
+                for row in rows:
+                    usernames.append({
+                        'id': row[0],
+                        'username': row[1],
+                        'category': row[2],
+                        'price': float(row[3]),
+                        'seller_id': row[4],
+                        'seller_wallet': row[5],
+                        'created_at': row[6]
+                    })
+                return usernames
+        except Exception as e:
+            print(f"Error getting available usernames: {e}")
+            return []
+
+    def get_user_purchases(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get usernames purchased by user"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, username, category, price, seller_id, seller_wallet, created_at, sold_at, transaction_id
+                    FROM usernames WHERE buyer_id = ? AND status = 'sold'
+                    ORDER BY sold_at DESC
+                ''', (user_id,))
+                rows = cursor.fetchall()
+                
+                purchases = []
+                for row in rows:
+                    purchases.append({
+                        'id': row[0],
+                        'username': row[1],
+                        'category': row[2],
+                        'price': float(row[3]),
+                        'seller_id': row[4],
+                        'seller_wallet': row[5],
+                        'created_at': row[6],
+                        'sold_at': row[7],
+                        'transaction_id': row[8]
+                    })
+                return purchases
+        except Exception as e:
+            print(f"Error getting user purchases: {e}")
+            return []
+
+    # ==================== TRANSACTIONS ====================
     
-    # ==================== SESSION METHODS ====================
-    
-    def create_session(self, user_id, session_id):
-        """Create new session"""
-        with self.get_connection() as conn:
-            conn.execute('''
-                INSERT INTO wd_sessions (user_id, session_id)
-                VALUES (?, ?)
-            ''', (user_id, session_id))
-            conn.commit()
-    
-    def update_session_wallet(self, session_id, wallet_connected):
-        """Update session wallet status"""
-        with self.get_connection() as conn:
-            conn.execute('''
-                UPDATE wd_sessions 
-                SET wallet_connected = ?, last_active = CURRENT_TIMESTAMP
-                WHERE session_id = ?
-            ''', (wallet_connected, session_id))
-            conn.commit()
-    
-    # ==================== STATISTICS ====================
-    
-    def get_user_stats(self, telegram_id):
-        """Get user statistics"""
-        with self.get_connection() as conn:
-            cursor = conn.execute('''
-                SELECT 
-                    balance_ton,
-                    total_deposited,
-                    total_withdrawn,
-                    (SELECT COUNT(*) FROM wd_transactions t 
-                     WHERE t.user_id = u.id AND t.transaction_type = 'deposit') as deposit_count,
-                    (SELECT COUNT(*) FROM wd_transactions t 
-                     WHERE t.user_id = u.id AND t.transaction_type = 'withdraw') as withdraw_count,
-                    julianday('now') - julianday(created_at) as days_member
-                FROM wd_users u
-                WHERE u.telegram_id = ?
-            ''', (telegram_id,))
-            return dict(cursor.fetchone()) if cursor.fetchone() else None
+    def create_transaction(self, transaction_id: str, user_id: int, 
+                           tx_type: str, amount: float, details: str = "") -> bool:
+        """Create a transaction record"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at)
+                    VALUES (?, ?, ?, ?, 'pending', ?, ?)
+                ''', (transaction_id, user_id, tx_type, amount, details, now))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error creating transaction: {e}")
+            return False
+
+    def update_transaction_status(self, transaction_id: str, status: str) -> bool:
+        """Update transaction status"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    UPDATE transactions 
+                    SET status = ?, completed_at = ?
+                    WHERE transaction_id = ?
+                ''', (status, now, transaction_id))
+                
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error updating transaction: {e}")
+            return False
+
+    def get_user_transactions(self, user_id: int, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get user transaction history"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT transaction_id, type, amount, status, details, created_at, completed_at
+                    FROM transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?
+                ''', (user_id, limit))
+                rows = cursor.fetchall()
+                
+                transactions = []
+                for row in rows:
+                    transactions.append({
+                        'transaction_id': row[0],
+                        'type': row[1],
+                        'amount': float(row[2]),
+                        'status': row[3],
+                        'details': row[4],
+                        'created_at': row[5],
+                        'completed_at': row[6]
+                    })
+                return transactions
+        except Exception as e:
+            print(f"Error getting user transactions: {e}")
+            return []

@@ -263,6 +263,18 @@ def serve_winedash_database(filename):
     """Serve database files (if needed)"""
     return send_from_directory(os.path.join(base_dir, 'winedash', 'database'), filename)
 
+@app.route('/winedash/tonconnect-manifest.json')
+def serve_winedash_ton_manifest():
+    """Serve TON Connect manifest for Winedash"""
+    manifest = {
+        "url": "https://companel.shop",
+        "name": "Winedash",
+        "iconUrl": "https://companel.shop/winedash/images/logo.png",
+        "termsOfUseUrl": "https://companel.shop/terms",
+        "privacyPolicyUrl": "https://companel.shop/privacy"
+    }
+    return jsonify(manifest)
+
 @app.route('/giveaways')
 def serve_giveaways_page():
     """Halaman Giveaways"""
