@@ -324,8 +324,6 @@
         }
     }
 
-    // giveaway.js - Perbaiki bagian renderChatInfo
-
     async function renderChatInfo() {
         if (!elements.chatListContainer || !giveawayData?.code) return;
         
@@ -381,9 +379,18 @@
                     chatLink = `https://t.me/${cleanId}`;
                 }
                 
-                // 🔥 PERBAIKAN: Gunakan escapeHtml untuk nama chat sebelum encodeURIComponent
-                const safeChatName = escapeHtml(chatName);
-                const nameForAvatar = encodeURIComponent(safeChatName.substring(0, 2) || 'TG');
+                // 🔥 PERBAIKAN: Sanitasi nama chat untuk menghindari URIError
+                let sanitizedName = chatName;
+                try {
+                    sanitizedName = sanitizedName.replace(/[^\w\s]/gi, '').trim();
+                    if (!sanitizedName || sanitizedName.length === 0) {
+                        sanitizedName = 'TG';
+                    }
+                } catch(e) {
+                    sanitizedName = 'TG';
+                }
+                
+                const nameForAvatar = encodeURIComponent(sanitizedName.substring(0, 2) || 'TG');
                 const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
                 
                 // 🔥 PERBAIKAN: Gunakan escapeHtml untuk semua data
@@ -457,8 +464,6 @@
         }
     }
 
-    // giveaway.js - Perbaiki fungsi showAllChatsModal
-
     function showAllChatsModal() {
         hapticMedium();
         
@@ -499,9 +504,20 @@
                 chatLink = `https://t.me/${cleanId}`;
             }
             
-            // 🔥 PERBAIKAN: Gunakan escapeHtml untuk nama chat sebelum encodeURIComponent
-            const safeChatName = escapeHtml(chatName);
-            const nameForAvatar = encodeURIComponent(safeChatName.substring(0, 2) || 'TG');
+            // 🔥 PERBAIKAN: Sanitasi nama chat untuk menghindari URIError
+            let sanitizedName = chatName;
+            try {
+                // Hapus karakter yang tidak valid untuk URL encoding
+                sanitizedName = sanitizedName.replace(/[^\w\s]/gi, '').trim();
+                if (!sanitizedName || sanitizedName.length === 0) {
+                    sanitizedName = 'TG';
+                }
+            } catch(e) {
+                sanitizedName = 'TG';
+            }
+            
+            // Gunakan substring yang aman untuk avatar
+            const nameForAvatar = encodeURIComponent(sanitizedName.substring(0, 2) || 'TG');
             const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
             
             // 🔥 PERBAIKAN: Gunakan escapeHtml untuk semua data
@@ -534,7 +550,8 @@
                         align-items: center;
                         justify-content: center;
                     ">
-                        <img src="${avatarUrl}" alt="${escapedChatName}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="${avatarUrl}" alt="${escapedChatName}" style="width: 100%; height: 100%; object-fit: cover;" 
+                            onerror="this.src='https://ui-avatars.com/api/?name=TG&background=40a7e3&color=fff&size=80&rounded=true'">
                     </div>
                     <div class="chat-info" style="flex: 1; min-width: 0;">
                         <div class="chat-title" style="font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -1507,11 +1524,22 @@
                         chatLink = `https://t.me/${cleanId}`;
                     }
                     
-                    const nameForAvatar = encodeURIComponent(chatName.substring(0, 2));
+                    // 🔥 PERBAIKAN: Sanitasi nama chat
+                    let sanitizedName = chatName;
+                    try {
+                        sanitizedName = sanitizedName.replace(/[^\w\s]/gi, '').trim();
+                        if (!sanitizedName || sanitizedName.length === 0) {
+                            sanitizedName = 'TG';
+                        }
+                    } catch(e) {
+                        sanitizedName = 'TG';
+                    }
+                    
+                    const nameForAvatar = encodeURIComponent(sanitizedName.substring(0, 2) || 'TG');
                     const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=60&rounded=true&bold=true&length=2`;
                     
                     html += `
-                        <div class="chat-list-item" data-chat-link="${escapeHtml(chatLink)}" style="
+                        <div class="chat-list-item" data-chat-link="${escapeHtml(chatLink || '')}" style="
                             display: flex;
                             align-items: center;
                             gap: 10px;
@@ -1534,7 +1562,8 @@
                                 align-items: center;
                                 justify-content: center;
                             ">
-                                <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" style="width: 100%; height: 100%; object-fit: cover;">
+                                <img src="${avatarUrl}" alt="${escapeHtml(chatName)}" style="width: 100%; height: 100%; object-fit: cover;" 
+                                    onerror="this.src='https://ui-avatars.com/api/?name=TG&background=40a7e3&color=fff&size=60&rounded=true'">
                             </div>
                             <div class="chat-list-info" style="flex: 1; min-width: 0;">
                                 <div class="chat-list-name" style="
@@ -1577,7 +1606,7 @@
                         e.stopPropagation();
                         hapticMedium();
                         const chatLink = item.dataset.chatLink;
-                        if (chatLink && chatLink !== 'null' && chatLink !== 'undefined') {
+                        if (chatLink && chatLink !== 'null' && chatLink !== 'undefined' && chatLink !== '') {
                             window.open(chatLink, '_blank');
                             showToast('Membuka chat...', 'info');
                         } else {
