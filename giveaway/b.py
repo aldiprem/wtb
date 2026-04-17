@@ -1750,7 +1750,7 @@ async def handle_peer_selection(event):
     username = None
     title = None
     invite_link = None
-    visibility = "unknown"  # public atau private
+    visibility = "unknown"
     
     try:
         if hasattr(peer, 'channel_id'):
@@ -1773,7 +1773,6 @@ async def handle_peer_selection(event):
                 chat_type = "Supergroup"
             
             # DETEKSI PUBLIC ATAU PRIVATE
-            # Channel/Group dianggap PUBLIC jika memiliki username
             if username:
                 visibility = "public"
             else:
@@ -1799,47 +1798,53 @@ async def handle_peer_selection(event):
             return
         
         # ========== CEK APAKAH USER ADALAH ADMIN/OWNER ==========
+        # 🔥 PERUBAHAN: Jika user adalah OWNER_ID, SKIP pengecekan admin
         is_admin = False
         is_creator = False
         
-        try:
-            from telethon.tl.functions.channels import GetParticipantRequest
-            from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
-            
-            participant = await bot(GetParticipantRequest(
-                channel=int(chat_id),
-                participant=user_id
-            ))
-            
-            is_admin = isinstance(participant.participant, ChannelParticipantAdmin)
-            is_creator = isinstance(participant.participant, ChannelParticipantCreator)
-            
-        except Exception as e:
-            # Coba cek untuk group biasa
+        if user_id == OWNER_ID:
+            # Owner bebas menambahkan chat apapun tanpa perlu jadi admin
+            is_admin = True
+            is_creator = True
+            print(f"[INFO] Owner {user_id} adding chat {chat_id} - bypassing admin check")
+        else:
+            # Untuk non-owner, lakukan pengecekan admin seperti biasa
             try:
-                from telethon.tl.functions.messages import GetFullChatRequest
-                full_chat = await bot(GetFullChatRequest(chat_id=-int(chat_id)))
-                for participant in full_chat.full_chat.participants.participants:
-                    if participant.user_id == user_id:
-                        # Di group biasa, semua member bisa jadi? Perlu cek lebih lanjut
-                        # Untuk group biasa, kita cek apakah user adalah creator
-                        if hasattr(participant, 'is_creator') and participant.is_creator:
-                            is_creator = True
-                            is_admin = True
-                        break
-            except:
-                is_admin = False
-                is_creator = False
-        
-        # Jika user BUKAN admin DAN BUKAN creator, TOLAK
-        if not is_admin and not is_creator:
-            error_msg = "Anda bukan admin/owner di chat ini! Bot hanya bisa digunakan oleh admin atau owner chat."
-            await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
-            try:
-                await bot.delete_messages(msg.chat_id, msg.id)
-            except:
-                pass
-            return
+                from telethon.tl.functions.channels import GetParticipantRequest
+                from telethon.tl.types import ChannelParticipantAdmin, ChannelParticipantCreator
+                
+                participant = await bot(GetParticipantRequest(
+                    channel=int(chat_id),
+                    participant=user_id
+                ))
+                
+                is_admin = isinstance(participant.participant, ChannelParticipantAdmin)
+                is_creator = isinstance(participant.participant, ChannelParticipantCreator)
+                
+            except Exception as e:
+                # Coba cek untuk group biasa
+                try:
+                    from telethon.tl.functions.messages import GetFullChatRequest
+                    full_chat = await bot(GetFullChatRequest(chat_id=-int(chat_id)))
+                    for participant in full_chat.full_chat.participants.participants:
+                        if participant.user_id == user_id:
+                            if hasattr(participant, 'is_creator') and participant.is_creator:
+                                is_creator = True
+                                is_admin = True
+                            break
+                except:
+                    is_admin = False
+                    is_creator = False
+            
+            # Jika user BUKAN admin DAN BUKAN creator, TOLAK
+            if not is_admin and not is_creator:
+                error_msg = "Anda bukan admin/owner di chat ini! Bot hanya bisa digunakan oleh admin atau owner chat."
+                await bot.send_message(user_id, f"❌ **Gagal Menambahkan Chat!**\n\n{error_msg}")
+                try:
+                    await bot.delete_messages(msg.chat_id, msg.id)
+                except:
+                    pass
+                return
         
         # ========== JIKA CHAT PRIVATE, BUAT INVITE LINK ==========
         if visibility == "private":
@@ -1881,7 +1886,7 @@ async def handle_peer_selection(event):
                 chat_type=chat_type
             )
             
-            # Jika private, simpan invite link ke tabel terpisah
+            # Jika private dan ada invite link, simpan ke tabel terpisah
             if visibility == "private" and invite_link:
                 db.save_chat_invite_link(chat_id, invite_link)
                 
@@ -1924,7 +1929,7 @@ async def handle_peer_selection(event):
                 f"• Nama: {title or '-'}\n"
                 f"• Username: @{username if username else '-'}{invite_text}\n\n"
                 f"✅ Bot memiliki akses\n"
-                f"✅ Anda adalah admin/owner"
+                f"{'✅ Anda adalah owner (bebas menambah)' if user_id == OWNER_ID else '✅ Anda adalah admin/owner'}"
             )
             
             # Simpan ke user_state untuk ditampilkan di menu
