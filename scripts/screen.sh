@@ -13,7 +13,6 @@ SESSIONS[1]="flask_server:Flask Server (Port 5050):cd /root/wtb && source myenv/
 SESSIONS[2]="fragment_bot:Fragment Bot:cd /root/wtb && source myenv/bin/activate && python3 fragment/fragment_bot.py"
 SESSIONS[3]="giveaway_bot:Giveaway Bot:cd /root/wtb/giveaway && source ../myenv/bin/activate && python3 b.py"
 SESSIONS[4]="games_module:Games Module (via Flask):cd /root/wtb && source myenv/bin/activate && python3 app.py"
-SESSIONS[5]="indotag_bot:INDOTAG Bot:cd /root/wtb/indotag && source ../myenv/bin/activate && python3 b.py"
 
 show_help() {
     echo -e "${GREEN}========================================${NC}"
@@ -209,7 +208,7 @@ show_status() {
     echo -e "${GREEN}📊 STATUS SERVICE${NC}"
     echo -e "${GREEN}========================================${NC}"
     
-    for num in 1 2 3 4 5; do
+    for num in 1 2 3 4; do
         local name=$(echo "${SESSIONS[$num]}" | cut -d':' -f1)
         local desc=$(echo "${SESSIONS[$num]}" | cut -d':' -f2)
         
@@ -225,11 +224,6 @@ show_status() {
     # Tambahan info untuk giveaway bot
     if [ -f "/root/wtb/giveaway/giveaway.db" ]; then
         echo -e "${BLUE}🎁 Giveaway Database: EXISTS${NC}"
-    fi
-    
-    # Tambahan info untuk indotag bot
-    if [ -f "/root/wtb/indotag/indotag.db" ]; then
-        echo -e "${BLUE}🏷️ INDOTAG Database: EXISTS${NC}"
     fi
 }
 

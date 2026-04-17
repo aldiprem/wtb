@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script untuk menjalankan aplikasi (app.py + fragment_bot.py + giveaway/b.py + indotag/b.py)
+# Script untuk menjalankan aplikasi (app.py + fragment_bot.py + giveaway/b.py)
 
 # Warna untuk output
 GREEN='\033[0;32m'
@@ -142,59 +142,9 @@ kill_giveaway_bot() {
     fi
 }
 
-# ==================== FUNGSI MEMATIKAN INDOTAG BOT ====================
-kill_indotag_bot() {
-    echo -e "${YELLOW}🔍 Memeriksa INDOTAG Bot...${NC}"
-    
-    # Cek dari PID file
-    if [ -f "/tmp/indotag_bot.pid" ]; then
-        PID=$(cat /tmp/indotag_bot.pid)
-        if kill -0 $PID 2>/dev/null; then
-            echo -e "${YELLOW}📡 Menghentikan INDOTAG Bot (PID: $PID)...${NC}"
-            kill -15 $PID 2>/dev/null
-            sleep 2
-            if kill -0 $PID 2>/dev/null; then
-                kill -9 $PID 2>/dev/null
-            fi
-            echo -e "${GREEN}✅ INDOTAG Bot dihentikan${NC}"
-        fi
-        rm -f /tmp/indotag_bot.pid
-    fi
-    
-    # Cek dari nama proses
-    PIDS=$(ps aux | grep "indotag/b.py" | grep -v grep | awk '{print $2}')
-    if [ -n "$PIDS" ]; then
-        for PID in $PIDS; do
-            echo -e "${YELLOW}📡 Menghentikan INDOTAG Bot process (PID: $PID)...${NC}"
-            kill -15 $PID 2>/dev/null
-            sleep 1
-            kill -9 $PID 2>/dev/null
-        done
-        echo -e "${GREEN}✅ INDOTAG Bot processes dihentikan${NC}"
-    fi
-    
-    # Cek dari session Telethon
-    PIDS=$(lsof 2>/dev/null | grep "indotag_bot_session" | awk '{print $2}')
-    if [ -n "$PIDS" ]; then
-        for PID in $PIDS; do
-            echo -e "${YELLOW}📡 Menghentikan session Telethon (PID: $PID)...${NC}"
-            kill -9 $PID 2>/dev/null
-        done
-    fi
-    
-    # Hapus file session Telethon
-    rm -f indotag/*.session 2>/dev/null
-    
-    # Hentikan screen session jika ada
-    if screen -list | grep -q "indotag_bot"; then
-        screen -S indotag_bot -X quit 2>/dev/null
-        echo -e "${GREEN}✅ Screen session indotag_bot dihentikan${NC}"
-    fi
-}
-
 # ==================== FUNGSI MEMBERSIHKAN PID FILES ====================
 clean_pid_files() {
-    for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid indotag_bot.pid; do
+    for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid; do
         if [ -f "/tmp/$pid_file" ]; then
             OLD_PID=$(cat "/tmp/$pid_file")
             if ! kill -0 $OLD_PID 2>/dev/null; then
@@ -210,7 +160,6 @@ echo -e "${YELLOW}🛑 Membersihkan proses yang sudah berjalan...${NC}"
 kill_port_5050
 kill_fragment_bot
 kill_giveaway_bot
-kill_indotag_bot
 clean_pid_files
 
 # Tunggu sebentar agar proses benar-benar mati
@@ -254,25 +203,6 @@ else
     fi
 fi
 
-# ==================== CEK FOLDER INDOTAG ====================
-if [ ! -d "indotag" ]; then
-    echo -e "${YELLOW}⚠️  Folder indotag tidak ditemukan, membuat struktur folder...${NC}"
-    mkdir -p indotag/database
-fi
-
-if [ ! -f "indotag/b.py" ]; then
-    echo -e "${RED}❌ File indotag/b.py tidak ditemukan!${NC}"
-    INDOTAG_EXISTS=false
-else
-    echo -e "${GREEN}✅ INDOTAG module terdeteksi${NC}"
-    INDOTAG_EXISTS=true
-    
-    if [ ! -f "indotag/database/data.py" ]; then
-        echo -e "${RED}❌ File indotag/database/data.py tidak ditemukan!${NC}"
-        INDOTAG_EXISTS=false
-    fi
-fi
-
 # Aktifkan virtual environment
 if [ -z "$VIRTUAL_ENV" ]; then
     echo -e "${YELLOW}⚠️  Virtual environment belum aktif. Mengaktifkan...${NC}"
@@ -295,6 +225,9 @@ sleep 5
 
 if ! ps -p $APP_PID > /dev/null 2>&1; then
     echo -e "${RED}❌ Flask server gagal berjalan! Cek logs/flask.log${NC}"
+    # Tampilkan error log
+    echo -e "${YELLOW}--- Last 20 lines of flask.log ---${NC}"
+    tail -20 logs/flask.log
     exit 1
 fi
 
@@ -330,7 +263,7 @@ if [ "$GIVEAWAY_EXISTS" = true ]; then
     mkdir -p giveaway/database
     
     # Hapus session lama jika ada
-    rm -f giveaway/*.session
+    rm -f giveaway/*.session 2>/dev/null
     
     # Jalankan bot dari direktori yang benar
     cd giveaway
@@ -345,31 +278,6 @@ else
     GIVEAWAY_PID="N/A"
 fi
 
-# ==================== JALANKAN INDOTAG BOT DI BACKGROUND ====================
-echo -e "${BLUE}🏷️ Menjalankan INDOTAG Bot (Username Marketplace)...${NC}"
-if [ "$INDOTAG_EXISTS" = true ]; then
-    # Install dependencies
-    pip3 install telethon python-dotenv > /dev/null 2>&1
-    
-    # Buat folder database jika belum ada
-    mkdir -p indotag/database
-    
-    # Hapus session lama jika ada
-    rm -f indotag/*.session
-    
-    # Jalankan bot dari direktori yang benar
-    cd indotag
-    nohup python3 b.py > ../logs/indotag_bot.log 2>&1 &
-    INDOTAG_PID=$!
-    echo $INDOTAG_PID > ../tmp/indotag_bot.pid
-    cd ..
-    echo -e "${GREEN}✅ INDOTAG Bot berjalan dengan PID: $INDOTAG_PID${NC}"
-    echo "$INDOTAG_PID" > /tmp/indotag_bot.pid
-else
-    echo -e "${YELLOW}⚠️  INDOTAG Bot tidak bisa dijalankan - module tidak lengkap${NC}"
-    INDOTAG_PID="N/A"
-fi
-
 # ==================== OUTPUT STATUS ====================
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -379,7 +287,6 @@ echo -e "📊 Flask Server   : PID $APP_PID - Port 5050"
 echo -e "🎮 Games Module   : Terintegrasi di Flask (blueprint)"
 echo -e "🤖 Fragment Bot   : PID $BOT_PID"
 echo -e "🎁 Giveaway Bot   : PID $GIVEAWAY_PID"
-echo -e "🏷️ INDOTAG Bot    : PID $INDOTAG_PID"
 echo -e ""
 echo -e "${YELLOW}🌐 Akses: https://companel.shop${NC}"
 echo -e "${YELLOW}🌐 Akses Games: https://companel.shop/games${NC}"
@@ -388,15 +295,10 @@ echo -e "   /start - Start bot"
 echo -e "   /newgiveaway - Create giveaway"
 echo -e "   /join - Join active giveaway"
 echo -e ""
-echo -e "${BLUE}🏷️ INDOTAG Bot commands:${NC}"
-echo -e "   /start - Start bot"
-echo -e "   Menu: ADD USERNAME, MARKETPLACE, MY LISTINGS, etc."
-echo -e ""
 echo -e "${YELLOW}📋 Log files:${NC}"
 echo -e "   Flask log:      tail -f logs/flask.log"
 echo -e "   Fragment log:   tail -f logs/fragment_bot.log"
 echo -e "   Giveaway log:   tail -f logs/giveaway_bot.log"
-echo -e "   INDOTAG log:    tail -f logs/indotag_bot.log"
 echo -e ""
 echo -e "${YELLOW}Gunakan './stop.sh' untuk menghentikan semua server${NC}"
 echo -e "${GREEN}========================================${NC}"
