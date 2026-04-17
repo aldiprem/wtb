@@ -244,6 +244,7 @@ app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
 # ==================== WINEDASH ROUTES ====================
 
 @app.route('/winedash')
+@app.route('/winedash/')
 def serve_winedash_page():
     """Halaman utama Winedash Marketplace"""
     return send_from_directory(os.path.join(base_dir, 'winedash', 'html'), 'web.html')

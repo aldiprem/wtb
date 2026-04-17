@@ -585,3 +585,38 @@ def get_stats():
     except Exception as e:
         print(f"Error in get_stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+# winedash/services/web_service.py - Tambahkan method PUT di bagian user
+
+@winedash_bp.route('/user/<int:user_id>', methods=['PUT', 'OPTIONS'])
+def update_user(user_id):
+    """Update user information (wallet address, etc)"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'PUT, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        wallet_address = data.get('wallet_address')
+        
+        # Update wallet address
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE users SET wallet_address = ?, last_seen = ?
+                WHERE user_id = ?
+            ''', (wallet_address, get_jakarta_time().isoformat(), user_id))
+            conn.commit()
+        
+        return jsonify({'success': True, 'message': 'User updated'})
+        
+    except Exception as e:
+        print(f"Error in update_user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
