@@ -1,25 +1,25 @@
+# web_service.py yang benar - HANYA UNTUK API
+
 import os
 import json
 import hashlib
 import base64
 import time
-import secrets
 from datetime import datetime
-from flask import Blueprint, request, jsonify, send_from_directory
+from flask import Blueprint, request, jsonify
 import sys
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# PERBAIKAN: Import langsung dari file web.py di folder database
 from winedash.database.web import WinedashDatabase
 
-# Create blueprint
-winedash_bp = Blueprint('winedash', __name__, url_prefix='/winedash')
+# Create blueprint (tanpa url_prefix karena app.py sudah handle static)
+# Atau biarkan dengan url_prefix untuk API
+winedash_bp = Blueprint('winedash', __name__, url_prefix='/api/winedash')
 
 # Database path
 DB_PATH = os.getenv('WINEDASH_DB_PATH', '/root/winedash/users.db')
-# Pastikan direktori untuk database ada
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 db = WinedashDatabase(DB_PATH)
 
@@ -171,7 +171,7 @@ def create_deposit_payload():
     
     # Create payload (comment in TON)
     memo_bytes = memo_plain.encode('utf-8')
-    comment_prefix = b'\x00\x00\x00\x00'  # Text comment prefix
+    comment_prefix = b'\x00\x00\x00\x00'
     full_bytes = comment_prefix + memo_bytes
     payload_base64 = base64.b64encode(full_bytes).decode('utf-8')
     
@@ -283,23 +283,3 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
-
-
-# ==================== STATIC FILES ====================
-
-@winedash_bp.route('/', methods=['GET'])
-def serve_index():
-    """Serve main HTML page"""
-    return send_from_directory(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'html'), 'web.html')
-
-
-@winedash_bp.route('/css/<path:filename>', methods=['GET'])
-def serve_css(filename):
-    """Serve CSS files"""
-    return send_from_directory(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'css'), filename)
-
-
-@winedash_bp.route('/js/<path:filename>', methods=['GET'])
-def serve_js(filename):
-    """Serve JS files"""
-    return send_from_directory(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'js'), filename)

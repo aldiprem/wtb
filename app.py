@@ -241,62 +241,78 @@ app.register_blueprint(games_bp)
 app.register_blueprint(create_bp, url_prefix='/api/giveaway')
 app.register_blueprint(winedash_bp)
 
+# ==================== WINEDASH ROUTES ====================
+
 @app.route('/winedash')
 def serve_winedash_page():
-    return send_from_directory(os.path.join(base_dir, 'winedash'), 'web.html')
+    """Halaman utama Winedash Marketplace"""
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'html'), 'web.html')
 
 @app.route('/winedash/css/<path:filename>')
 def serve_winedash_css(filename):
+    """Serve CSS files for Winedash"""
     return send_from_directory(os.path.join(base_dir, 'winedash', 'css'), filename)
 
 @app.route('/winedash/js/<path:filename>')
 def serve_winedash_js(filename):
+    """Serve JS files for Winedash"""
     return send_from_directory(os.path.join(base_dir, 'winedash', 'js'), filename)
 
 @app.route('/winedash/database/<path:filename>')
 def serve_winedash_database(filename):
+    """Serve database files (if needed)"""
     return send_from_directory(os.path.join(base_dir, 'winedash', 'database'), filename)
 
 @app.route('/giveaways')
 def serve_giveaways_page():
+    """Halaman Giveaways"""
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
 
 @app.route('/giveaway/create')
 def serve_giveaway_create_page():
+    """Halaman Create Giveaway"""
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'create.html')
 
 @app.route('/giveaway')
 def serve_giveaway_page():
+    """Halaman Lobby Giveaway"""
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'lobby.html')
 
 @app.route('/crash')
 def serve_crash_page():
+    """Halaman Crash Game"""
     return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'crash.html')
 
 # Route untuk CSS giveaway
 @app.route('/giveaway/css/<path:filename>')
 def serve_giveaway_css(filename):
+    """Serve CSS files for Giveaway"""
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'css'), filename)
 
 # Route untuk JS giveaway
 @app.route('/giveaway/js/<path:filename>')
 def serve_giveaway_js(filename):
+    """Serve JS files for Giveaway"""
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'js'), filename)
 
 @app.route('/games')
 def serve_games_page():
-    return send_from_directory(os.path.join(base_dir, 'games'), 'games.html')
+    """Halaman Games"""
+    return send_from_directory(os.path.join(base_dir, 'games', 'html'), 'games.html')
 
 @app.route('/games/css/<path:filename>')
 def serve_games_css(filename):
+    """Serve CSS files for Games"""
     return send_from_directory(os.path.join(base_dir, 'games', 'css'), filename)
 
 @app.route('/games/js/<path:filename>')
 def serve_games_js(filename):
+    """Serve JS files for Games"""
     return send_from_directory(os.path.join(base_dir, 'games', 'js'), filename)
 
 @app.route('/games/database/<path:filename>')
 def serve_games_database(filename):
+    """Serve database files (if needed)"""
     return send_from_directory(os.path.join(base_dir, 'games', 'database'), filename)
 
 @app.route('/plinko-games')

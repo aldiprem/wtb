@@ -1,8 +1,7 @@
 // ==================== CONFIGURATION ====================
 const CONFIG = {
     TUNNEL_URL: 'https://companel.shop',
-    API_BASE: '/winedash',
-    // Gunakan manifest dari root (bukan dari winedash)
+    API_BASE: '/api/winedash',
     MANIFEST_URL: 'https://companel.shop/tonconnect-manifest.json',
     NETWORK: 'mainnet',
     MIN_DEPOSIT: 0.1,
