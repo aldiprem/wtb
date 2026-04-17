@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Winedash - Telegram Username Marketplace</title>
+    <link rel="stylesheet" href="/winedash/css/web.css">
+    
+    <!-- Telegram Web App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- TON Connect UI -->
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>🍷 Winedash</h1>
+                <p class="tagline">Telegram Username Marketplace</p>
+            </div>
+            <div class="network-badge" id="network-badge">Mainnet</div>
+        </header>
+
+        <!-- Telegram Profile Section -->
+        <section class="card profile-card">
+            <div class="card-header">
+                <h2>👤 Profile</h2>
+                <span class="status-badge" id="telegram-status">Loading...</span>
+            </div>
+            <div id="telegram-profile" class="profile-content">
+                <div class="loading-spinner">Loading profile...</div>
+            </div>
+        </section>
+
+        <!-- Wallet Section -->
+        <section class="card wallet-card">
+            <div class="card-header">
+                <h2>🔌 TON Wallet</h2>
+                <span class="status-badge" id="wallet-status">Disconnected</span>
+            </div>
+            <div class="wallet-content">
+                <div id="ton-connect" class="ton-connect-button"></div>
+                
+                <div id="wallet-info" class="wallet-info hidden">
+                    <div class="info-row">
+                        <span class="info-label">Address:</span>
+                        <div class="address-container">
+                            <span id="wallet-address" class="wallet-address"></span>
+                            <button class="icon-btn copy-btn" onclick="window.copyWalletAddress()" title="Copy">📋</button>
+                        </div>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Balance:</span>
+                        <span id="wallet-balance" class="wallet-balance">0 TON</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Balance Section -->
+        <section class="card balance-card">
+            <div class="card-header">
+                <h2>💰 Your Balance</h2>
+                <button class="icon-btn" onclick="window.refreshBalance()" title="Refresh">🔄</button>
+            </div>
+            <div class="balance-content">
+                <div class="balance-amount" id="user-balance">0 TON</div>
+                <div class="balance-actions">
+                    <button class="btn-primary btn-small" onclick="window.showDepositModal()">
+                        💰 Deposit
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Section -->
+        <section class="card stats-card">
+            <div class="card-header">
+                <h2>📊 Statistics</h2>
+            </div>
+            <div class="stats-grid" id="user-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-deposited">0</div>
+                    <div class="stat-label">Total Deposited</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="total-withdrawn">0</div>
+                    <div class="stat-label">Total Withdrawn</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="deposit-count">0</div>
+                    <div class="stat-label">Deposits</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="withdraw-count">0</div>
+                    <div class="stat-label">Withdrawals</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transactions Section -->
+        <section class="card transactions-card">
+            <div class="card-header">
+                <h2>📜 Transaction History</h2>
+                <button class="icon-btn" onclick="window.refreshTransactions()" title="Refresh">🔄</button>
+            </div>
+            <div id="transactions-list" class="transactions-content">
+                <div class="loading-spinner">Loading transactions...</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div id="deposit-modal" class="modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="window.closeModal()">&times;</button>
+            <h3 class="modal-title">💎 Deposit TON</h3>
+            
+            <div id="deposit-status" class="status-message hidden"></div>
+            
+            <div class="deposit-form" id="deposit-form">
+                <div class="form-group">
+                    <label for="deposit-amount">Amount (TON):</label>
+                    <input type="number" id="deposit-amount" class="form-input" 
+                           min="0.1" step="0.1" value="1.0">
+                    <small class="input-hint">Minimum: 0.1 TON</small>
+                </div>
+                
+                <div class="info-box">
+                    <p>💡 <strong>Important:</strong> Send exactly the amount you entered</p>
+                    <p>📝 Funds will be credited automatically after confirmation</p>
+                </div>
+
+                <button id="send-deposit-btn" class="btn-primary btn-large" onclick="window.processDeposit()">
+                    💸 Send from Wallet
+                </button>
+            </div>
+
+            <div id="deposit-instructions" class="deposit-instructions hidden">
+                <div class="success-icon">✅</div>
+                <h4>Transaction Sent!</h4>
+                <p>Waiting for blockchain confirmation...</p>
+                
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Transaction:</span>
+                        <code id="tx-hash" class="tx-hash"></code>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Reference:</span>
+                        <code id="tx-reference" class="tx-reference"></code>
+                    </div>
+                </div>
+                
+                <button class="btn-secondary btn-full" onclick="window.closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Debug Panel -->
+    <div class="debug-panel" id="debug-panel">
+        <div class="debug-header" onclick="window.toggleDebug()">
+            <span>🐛 Debug Info</span>
+            <span class="toggle-icon">▼</span>
+        </div>
+        <pre id="debug-info" class="debug-content hidden"></pre>
+    </div>
+
+    <script src="/winedash/js/web.js"></script>
+</body>
+</html>
