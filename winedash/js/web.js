@@ -434,7 +434,14 @@
         }
         
         hapticMedium();
-        showLoading(true);
+        
+        // Disable button sementara
+        const depositBtn = elements.depositBtn;
+        const originalText = depositBtn?.innerHTML;
+        if (depositBtn) {
+            depositBtn.disabled = true;
+            depositBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
+        }
         
         try {
             const senderAddress = tonConnectUI.account?.address;
@@ -454,7 +461,6 @@
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
                     amount: amountNano
-                    // TIDAK ADA payload - kirim tanpa comment
                 }]
             };
             
@@ -508,12 +514,15 @@
             
             showToast(errorMessage, 'error');
         } finally {
-            showLoading(false);
+            // Restore button
+            if (depositBtn) {
+                depositBtn.disabled = false;
+                depositBtn.innerHTML = originalText || '<i class="fas fa-arrow-down"></i> Deposit';
+            }
         }
     }
 
     // ==================== WITHDRAW ====================
-    
     async function withdraw() {
         const amount = parseFloat(elements.withdrawAmount?.value);
         
@@ -534,7 +543,14 @@
         }
         
         hapticMedium();
-        showLoading(true);
+        
+        // Disable button sementara
+        const withdrawBtn = elements.withdrawBtn;
+        const originalText = withdrawBtn?.innerHTML;
+        if (withdrawBtn) {
+            withdrawBtn.disabled = true;
+            withdrawBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
+        }
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/winedash/withdraw/create`, {
@@ -560,7 +576,11 @@
             console.error('Error creating withdrawal:', error);
             showToast('Error creating withdrawal', 'error');
         } finally {
-            showLoading(false);
+            // Restore button
+            if (withdrawBtn) {
+                withdrawBtn.disabled = false;
+                withdrawBtn.innerHTML = originalText || '<i class="fas fa-arrow-up"></i> Withdraw';
+            }
         }
     }
 
@@ -627,7 +647,13 @@
             return;
         }
         
-        showLoading(true);
+        // Disable button yang diklik
+        const buyBtn = document.querySelector(`.username-buy-btn[data-id="${usernameId}"]`);
+        const originalText = buyBtn?.innerHTML;
+        if (buyBtn) {
+            buyBtn.disabled = true;
+            buyBtn.innerHTML = '<span class="btn-loading"></span>';
+        }
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/buy`, {
@@ -652,7 +678,11 @@
             console.error('Error buying username:', error);
             showToast('Error buying username', 'error');
         } finally {
-            showLoading(false);
+            // Restore button
+            if (buyBtn) {
+                buyBtn.disabled = false;
+                buyBtn.innerHTML = originalText || '<i class="fas fa-shopping-cart"></i> Beli';
+            }
         }
     }
 
@@ -677,7 +707,14 @@
         }
         
         hapticMedium();
-        showLoading(true);
+        
+        // Disable button
+        const sellBtn = elements.sellUsernameBtn;
+        const originalText = sellBtn?.innerHTML;
+        if (sellBtn) {
+            sellBtn.disabled = true;
+            sellBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
+        }
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/add`, {
@@ -707,7 +744,11 @@
             console.error('Error selling username:', error);
             showToast('Error selling username', 'error');
         } finally {
-            showLoading(false);
+            // Restore button
+            if (sellBtn) {
+                sellBtn.disabled = false;
+                sellBtn.innerHTML = originalText || '<i class="fas fa-rocket"></i> Jual Username';
+            }
         }
     }
 
@@ -819,7 +860,6 @@
     
     async function refreshAllData() {
         hapticLight();
-        showToast('Memperbarui data...', 'info', 1000);
         
         await authenticateUser();
         await loadUsernames();
