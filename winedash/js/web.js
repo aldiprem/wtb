@@ -438,41 +438,34 @@
         
         try {
             const senderAddress = tonConnectUI.account?.address;
-            const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
             
             // Konversi amount ke nanoTON (1 TON = 1,000,000,000 nanoTON)
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
             
-            // Buat payload dengan format yang benar
-            const payload = createTextPayload(memo);
-            
             console.log('📤 Processing deposit:', { 
                 amount, 
                 amountNano, 
-                senderAddress, 
-                memo,
-                hasPayload: !!payload 
+                senderAddress
             });
             
-            // Buat transaction dengan format yang benar
+            // Buat transaction TANPA payload (kirim kosong)
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600, // 10 menit
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
                     amount: amountNano
+                    // TIDAK ADA payload - kirim tanpa comment
                 }]
             };
-            
-            // Tambahkan payload hanya jika berhasil dibuat
-            if (payload) {
-                transaction.messages[0].payload = payload;
-            }
             
             console.log('📤 Sending transaction:', JSON.stringify(transaction, null, 2));
             
             // Kirim transaksi
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
+            
+            // Buat memo untuk record di database (tanpa payload)
+            const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
             
             // Record transaction di backend
             const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
@@ -506,8 +499,6 @@
             if (error.message) {
                 if (error.message.includes('rejected')) {
                     errorMessage = 'Transaksi dibatalkan oleh user';
-                } else if (error.message.includes('Invalid payload')) {
-                    errorMessage = 'Error: Invalid payload format. Silakan coba lagi.';
                 } else if (error.message.includes('insufficient funds')) {
                     errorMessage = 'Saldo wallet tidak mencukupi';
                 } else {
