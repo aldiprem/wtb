@@ -328,26 +328,3 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
-
-
-# ==================== STATIC FILES ====================
-
-@winedash_bp.route('/', methods=['GET'])
-def serve_index():
-    """Serve main HTML page"""
-    html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'html', 'web.html')
-    return send_from_directory(os.path.dirname(html_path), 'web.html')
-
-
-@winedash_bp.route('/css/<path:filename>', methods=['GET'])
-def serve_css(filename):
-    """Serve CSS files"""
-    css_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'css')
-    return send_from_directory(css_path, filename)
-
-
-@winedash_bp.route('/js/<path:filename>', methods=['GET'])
-def serve_js(filename):
-    """Serve JS files"""
-    js_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'js')
-    return send_from_directory(js_path, filename)

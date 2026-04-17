@@ -241,6 +241,22 @@ app.register_blueprint(games_bp)
 app.register_blueprint(create_bp, url_prefix='/api/giveaway')
 app.register_blueprint(winedash_bp)
 
+@app.route('/winedash')
+def serve_winedash_page():
+    return send_from_directory(os.path.join(base_dir, 'winedash'), 'web.html')
+
+@app.route('/winedash/css/<path:filename>')
+def serve_winedash_css(filename):
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'css'), filename)
+
+@app.route('/winedash/js/<path:filename>')
+def serve_winedash_js(filename):
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'js'), filename)
+
+@app.route('/winedash/database/<path:filename>')
+def serve_winedash_database(filename):
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'database'), filename)
+
 @app.route('/giveaways')
 def serve_giveaways_page():
     return send_from_directory(os.path.join(base_dir, 'giveaway', 'html'), 'giveaway.html')
