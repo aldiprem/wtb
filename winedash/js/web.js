@@ -874,17 +874,40 @@
         const navBtns = document.querySelectorAll('.nav-btn');
         const tabContents = document.querySelectorAll('.tab-content');
         
+        console.log('Setting up tabs, found buttons:', navBtns.length);
+        
         navBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
+            // Remove existing listeners to avoid duplicates
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const tabId = newBtn.dataset.tab;
+                console.log('Tab clicked:', tabId);
+                
                 hapticLight();
-                const tabId = btn.dataset.tab;
                 
-                navBtns.forEach(b => b.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
+                // Update active state on buttons
+                document.querySelectorAll('.nav-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+                newBtn.classList.add('active');
                 
-                btn.classList.add('active');
+                // Update active tab content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                
                 const activeTab = document.getElementById(`${tabId}Tab`);
-                if (activeTab) activeTab.classList.add('active');
+                if (activeTab) {
+                    activeTab.classList.add('active');
+                    console.log('Activated tab:', tabId);
+                } else {
+                    console.error('Tab not found:', `${tabId}Tab`);
+                }
                 
                 // Load data when switching tabs
                 if (tabId === 'my-usernames') {
@@ -899,7 +922,6 @@
     }
 
     // ==================== INITIALIZATION ====================
-    
     function initTelegram() {
         const tg = getTelegramWebApp();
         if (tg) {
@@ -915,25 +937,31 @@
             tg.setHeaderColor('#0a0a0a');
             tg.setBackgroundColor('#0a0a0a');
             
-            // Apply safe area insets to body
-            if (tg.safeAreaInset) {
-                document.body.style.paddingTop = tg.safeAreaInset.top + 'px';
-                document.body.style.paddingBottom = tg.safeAreaInset.bottom + 'px';
-                document.body.style.paddingLeft = tg.safeAreaInset.left + 'px';
-                document.body.style.paddingRight = tg.safeAreaInset.right + 'px';
-            }
-            
-            // Listen for safe area changes
-            tg.onEvent('safeAreaChanged', () => {
+            // Apply safe area insets to body (PENTING: ini yang membuat header turun)
+            const applySafeAreaInsets = () => {
                 if (tg.safeAreaInset) {
                     document.body.style.paddingTop = tg.safeAreaInset.top + 'px';
                     document.body.style.paddingBottom = tg.safeAreaInset.bottom + 'px';
                     document.body.style.paddingLeft = tg.safeAreaInset.left + 'px';
                     document.body.style.paddingRight = tg.safeAreaInset.right + 'px';
+                    console.log('Safe area insets applied:', tg.safeAreaInset);
                 }
+            };
+            
+            // Apply immediately
+            applySafeAreaInsets();
+            
+            // Listen for safe area changes
+            tg.onEvent('safeAreaChanged', () => {
+                applySafeAreaInsets();
             });
             
-            console.log('✅ Telegram WebApp initialized with fullscreen');
+            // Also listen for viewport changes
+            tg.onEvent('viewportChanged', () => {
+                applySafeAreaInsets();
+            });
+            
+            console.log('✅ Telegram WebApp initialized with fullscreen and safe area');
         }
     }
 

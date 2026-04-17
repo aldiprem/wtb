@@ -41,7 +41,14 @@ body {
     min-height: 100vh;
     line-height: 1.4;
     -webkit-font-smoothing: antialiased;
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* Safe area insets - applied via JS */
+body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
 }
 
 /* Loading Overlay */
@@ -82,7 +89,7 @@ body {
 /* Toast Notifications */
 .toast-container {
     position: fixed;
-    bottom: 70px;
+    bottom: 80px;
     left: 12px;
     right: 12px;
     z-index: 3000;
@@ -124,7 +131,7 @@ body {
     max-width: 480px;
     margin: 0 auto;
     padding: 12px;
-    padding-bottom: 70px;
+    padding-bottom: 80px;
     min-height: 100vh;
 }
 
@@ -534,19 +541,50 @@ button:disabled {
     font-size: 11px;
 }
 
-/* Bottom Navigation */
-.bottom-nav {
+/* Bottom Navigation - Floating with Glassmorphism */
+.bottom-nav-container {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     display: flex;
+    justify-content: center;
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    z-index: 100;
+}
+
+.bottom-nav {
+    display: flex;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
-    border-top: 1px solid var(--border);
-    padding: 8px 16px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-    z-index: 100;
+    border-radius: 40px;
+    padding: 6px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    gap: 4px;
+    max-width: 320px;
+    width: 100%;
+}
+
+.bottom-nav::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 40px;
+    padding: 1.5px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .nav-btn {
@@ -557,15 +595,17 @@ button:disabled {
     flex-direction: column;
     align-items: center;
     gap: 4px;
-    padding: 6px 0;
-    border-radius: 12px;
+    padding: 8px 0;
+    border-radius: 30px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     color: var(--text-muted);
+    font-weight: 500;
 }
 
 .nav-btn i {
-    font-size: 18px;
+    font-size: 20px;
+    transition: transform 0.2s;
 }
 
 .nav-btn span {
@@ -578,6 +618,15 @@ button:disabled {
     background: var(--primary-glass);
 }
 
+.nav-btn.active i {
+    transform: translateY(-1px);
+}
+
+.nav-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
 /* Tab Content */
 .tab-content {
     display: none;
@@ -585,6 +634,12 @@ button:disabled {
 
 .tab-content.active {
     display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Scrollbar */
@@ -606,19 +661,23 @@ button:disabled {
 @media (max-width: 480px) {
     .winedash-container {
         padding: 10px;
-        padding-bottom: 70px;
+        padding-bottom: 80px;
     }
     
     .nav-btn span {
-        display: none;
+        font-size: 9px;
     }
     
     .nav-btn i {
-        font-size: 20px;
+        font-size: 18px;
     }
     
     .nav-btn {
-        padding: 8px 0;
+        padding: 6px 0;
+    }
+    
+    .bottom-nav {
+        padding: 4px;
     }
     
     .header-balance span {
