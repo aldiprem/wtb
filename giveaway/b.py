@@ -344,66 +344,69 @@ async def check_on_giveaway_expired():
             for giveaway in active_giveaways:
                 # Cek apakah sudah expired
                 if giveaway['end_time'] <= now:
-                    # Pilih pemenang sesuai jumlah winners_count
-                    winners_count = giveaway['winners_count']
-                    participants = giveaway.get('participants', [])
-                    total_participants = len(participants)
-                    
-                    # Jika peserta kurang dari jumlah hadiah, pemenang hanya sesuai jumlah peserta
-                    actual_winners_count = min(winners_count, total_participants)
-                    
-                    winners = []
-                    if actual_winners_count > 0:
-                        winners = db.select_winners_from_on_giveaway(
-                            giveaway['giveaway_code'], 
-                            actual_winners_count
-                        )
-                    
-                    # Parse prize list
-                    prize_lines = [p.strip() for p in giveaway['prize'].split('\n') if p.strip()]
-                    
-                    # Ambil info chat dari database
-                    chat_info = db.get_chat_info_by_giveaway_id(giveaway['giveaway_id'])
-                    chat_display = ""
-                    if chat_info:
-                        for chat in chat_info:
-                            chat_title = chat.get('chat_title', 'Unknown')
-                            chat_id = chat.get('chat_id', '')
-                            chat_username = chat.get('chat_username', '')
-                            if chat_username:
-                                chat_display = f"📺 **CHAT ID:** [{chat_title}](https://t.me/{chat_username}) (`{chat_id}`)"
-                            else:
-                                chat_display = f"📺 **CHAT ID:** {chat_title} (`{chat_id}`)"
-                            break
-                    
-                    if winners:
-                        winner_mentions = []
-                        winner_details = []
+                    # 🔥 PERBAIKAN: Wrap dalam try-except untuk handle entity error
+                    try:
+                        # Pilih pemenang sesuai jumlah winners_count
+                        winners_count = giveaway['winners_count']
+                        participants = giveaway.get('participants', [])
+                        total_participants = len(participants)
                         
-                        for i, winner_id in enumerate(winners, 1):
-                            try:
-                                user = await bot.get_entity(winner_id)
-                                full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
-                                username = f"@{user.username}" if user.username else ""
-                                winner_mentions.append(f"{i}. 🎉 [{full_name}](tg://user?id={winner_id}) {username}")
-                                winner_details.append(f"{i}. {full_name} | ID: `{winner_id}` | {username}")
-                            except:
-                                winner_mentions.append(f"{i}. 🎉 User {winner_id}")
-                                winner_details.append(f"{i}. User ID: `{winner_id}`")
+                        # Jika peserta kurang dari jumlah hadiah, pemenang hanya sesuai jumlah peserta
+                        actual_winners_count = min(winners_count, total_participants)
                         
-                        # Buat daftar winner dengan hadiah yang sesuai
-                        winner_list = []
-                        for i, winner_id in enumerate(winners):
-                            prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
-                            try:
-                                user = await bot.get_entity(winner_id)
-                                full_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "User"
-                                username = f"@{user.username}" if user.username else ""
-                                winner_list.append(f"{i+1}. {prize_text} - {full_name} {username}")
-                            except:
-                                winner_list.append(f"{i+1}. {prize_text} - User {winner_id}")
+                        winners = []
+                        if actual_winners_count > 0:
+                            winners = db.select_winners_from_on_giveaway(
+                                giveaway['giveaway_code'], 
+                                actual_winners_count
+                            )
                         
-                        winner_text = f"""🏆 **GIVEAWAY BERAKHIR** 🏆
+                        # Parse prize list
+                        prize_lines = [p.strip() for p in giveaway['prize'].split('\n') if p.strip()]
+                        
+                        # Ambil info chat dari database
+                        chat_info = db.get_chat_info_by_giveaway_id(giveaway['giveaway_id'])
+                        chat_display = ""
+                        if chat_info:
+                            for chat in chat_info:
+                                chat_title = chat.get('chat_title', 'Unknown')
+                                chat_id = chat.get('chat_id', '')
+                                chat_username = chat.get('chat_username', '')
+                                if chat_username:
+                                    chat_display = f"📺 **CHAT ID:** [{chat_title}](https://t.me/{chat_username}) (`{chat_id}`)"
+                                else:
+                                    chat_display = f"📺 **CHAT ID:** {chat_title} (`{chat_id}`)"
+                                break
+                        
+                        if winners:
+                            winner_mentions = []
+                            winner_details = []
+                            
+                            for i, winner_id in enumerate(winners, 1):
+                                try:
+                                    user = await bot.get_entity(winner_id)
+                                    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip()
+                                    username = f"@{user.username}" if user.username else ""
+                                    winner_mentions.append(f"{i}. 🎉 [{full_name}](tg://user?id={winner_id}) {username}")
+                                    winner_details.append(f"{i}. {full_name} | ID: `{winner_id}` | {username}")
+                                except Exception as e:
+                                    logger.warning(f"Could not get entity for winner {winner_id}: {e}")
+                                    winner_mentions.append(f"{i}. 🎉 User {winner_id}")
+                                    winner_details.append(f"{i}. User ID: `{winner_id}`")
+                            
+                            # Buat daftar winner dengan hadiah yang sesuai
+                            winner_list = []
+                            for i, winner_id in enumerate(winners):
+                                prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
+                                try:
+                                    user = await bot.get_entity(winner_id)
+                                    full_name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "User"
+                                    username = f"@{user.username}" if user.username else ""
+                                    winner_list.append(f"{i+1}. {prize_text} - {full_name} {username}")
+                                except:
+                                    winner_list.append(f"{i+1}. {prize_text} - User {winner_id}")
+                            
+                            winner_text = f"""🏆 **GIVEAWAY BERAKHIR** 🏆
 
 ━━━━━━━━━━━━━━━━━━━━━
 👥 **LIST WINNER:**
@@ -416,24 +419,28 @@ async def check_on_giveaway_expired():
 
 ━━━━━━━━━━━━━━━━━━━━━
 #{giveaway['giveaway_id']}"""
-                        
-                        # Kirim pengumuman ke chat
-                        try:
-                            await bot.send_message(
-                                giveaway['chat_id'],
-                                winner_text,
-                                reply_to=giveaway['message_id']
-                            )
-                        except Exception as e:
-                            await bot.send_message(giveaway['chat_id'], winner_text)
-                        
-                        # Kirim notifikasi private ke setiap pemenang
-                        for i, winner_id in enumerate(winners):
+                            
+                            # Kirim pengumuman ke chat - dengan error handling
                             try:
-                                prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
                                 await bot.send_message(
-                                    winner_id,
-                                    f"""🏆 **SELAMAT! ANDA MEMENANGKAN GIVEAWAY!** 🏆
+                                    giveaway['chat_id'],
+                                    winner_text,
+                                    reply_to=giveaway['message_id']
+                                )
+                            except Exception as e:
+                                logger.warning(f"Cannot send to chat {giveaway['chat_id']}: {e}")
+                                try:
+                                    await bot.send_message(giveaway['chat_id'], winner_text)
+                                except Exception as e2:
+                                    logger.error(f"Failed to send winner message to {giveaway['chat_id']}: {e2}")
+                            
+                            # Kirim notifikasi private ke setiap pemenang
+                            for i, winner_id in enumerate(winners):
+                                try:
+                                    prize_text = prize_lines[i] if i < len(prize_lines) else f"Hadiah ke-{i+1}"
+                                    await bot.send_message(
+                                        winner_id,
+                                        f"""🏆 **SELAMAT! ANDA MEMENANGKAN GIVEAWAY!** 🏆
 
 🎁 **Hadiah yang Anda menangkan:**
 {prize_text}
@@ -447,13 +454,13 @@ Terima kasih telah berpartisipasi! ❤️
 
 ━━━━━━━━━━━━━━━━━━━━━
 #{giveaway['giveaway_id']}"""
-                                )
-                            except Exception as e:
-                                logger.error(f"Gagal mengirim DM ke {winner_id}: {e}")
-                    
-                    else:
-                        # Tidak ada pemenang (tidak ada peserta)
-                        no_winner_text = f"""🏆 **GIVEAWAY BERAKHIR** 🏆
+                                    )
+                                except Exception as e:
+                                    logger.error(f"Gagal mengirim DM ke {winner_id}: {e}")
+                        
+                        else:
+                            # Tidak ada pemenang (tidak ada peserta)
+                            no_winner_text = f"""🏆 **GIVEAWAY BERAKHIR** 🏆
 
 ━━━━━━━━━━━━━━━━━━━━━
 **Hadiah:**
@@ -470,30 +477,91 @@ Terima kasih telah berpartisipasi! ❤️
 
 ━━━━━━━━━━━━━━━━━━━━━
 #{giveaway['giveaway_id']}"""
+                            try:
+                                await bot.send_message(
+                                    giveaway['chat_id'],
+                                    no_winner_text,
+                                    reply_to=giveaway['message_id']
+                                )
+                            except Exception as e:
+                                logger.warning(f"Cannot send to chat {giveaway['chat_id']}: {e}")
+                                try:
+                                    await bot.send_message(giveaway['chat_id'], no_winner_text)
+                                except:
+                                    pass
+                        
+                        # 🔥 PENTING: Mark giveaway sebagai ended
+                        db.mark_giveaway_ended(giveaway['giveaway_code'])
+                        
+                        # Update status giveaway di tabel utama
                         try:
-                            await bot.send_message(
-                                giveaway['chat_id'],
-                                no_winner_text,
-                                reply_to=giveaway['message_id']
-                            )
+                            db.update_giveaway_status(giveaway['giveaway_id'], 'ended')
                         except:
-                            await bot.send_message(giveaway['chat_id'], no_winner_text)
-                    
-                    # 🔥 PENTING: Mark giveaway sebagai ended
-                    db.mark_giveaway_ended(giveaway['giveaway_code'])
-                    
-                    # Update status giveaway di tabel utama
-                    try:
-                        db.update_giveaway_status(giveaway['giveaway_id'], 'ended')
-                    except:
-                        pass
-                    
-                    logger.info(f"✅ Giveaway {giveaway['giveaway_code']} telah berakhir dan diproses. Peserta: {total_participants}, Pemenang: {len(winners)}")
+                            pass
+                        
+                        logger.info(f"✅ Giveaway {giveaway['giveaway_code']} telah berakhir dan diproses. Peserta: {total_participants}, Pemenang: {len(winners)}")
+                        
+                    except errors.FloodWaitError as e:
+                        logger.warning(f"Flood wait for {e.seconds} seconds, skipping this giveaway for now")
+                        await asyncio.sleep(e.seconds)
+                        continue
+                    except errors.rpcerrorlist.PeerFloodError as e:
+                        logger.error(f"Peer flood error: {e}")
+                        continue
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "Could not find the input entity" in error_msg:
+                            logger.warning(f"Chat entity not found for giveaway {giveaway['giveaway_code']}, marking as ended to prevent repeated errors")
+                            # Mark as ended so it won't be checked again
+                            db.mark_giveaway_ended(giveaway['giveaway_code'])
+                        else:
+                            logger.error(f"Error processing giveaway {giveaway['giveaway_code']}: {e}")
+                        continue
                     
         except Exception as e:
-            logger.error(f"Error checking on_giveaway expired: {e}")
+            logger.error(f"Error in check_on_giveaway_expired loop: {e}")
         
         await asyncio.sleep(1)
+
+async def cleanup_invalid_giveaways():
+    """Clean up giveaways with invalid chat entities"""
+    while True:
+        try:
+            active_giveaways = db.get_active_on_giveaways()
+            
+            for giveaway in active_giveaways:
+                try:
+                    # Test if we can get the chat entity
+                    await bot.get_entity(giveaway['chat_id'])
+                except Exception as e:
+                    error_msg = str(e)
+                    if "Could not find the input entity" in error_msg or "CHANNEL_INVALID" in error_msg:
+                        logger.warning(f"Invalid chat {giveaway['chat_id']} for giveaway {giveaway['giveaway_code']}, marking as ended")
+                        db.mark_giveaway_ended(giveaway['giveaway_code'])
+                        
+                        # Also try to notify the creator
+                        try:
+                            await bot.send_message(
+                                giveaway['user_id'],
+                                f"⚠️ **Giveaway dihentikan secara otomatis**\n\n"
+                                f"Giveaway dengan ID `{giveaway['giveaway_code']}` dihentikan karena "
+                                f"chat target tidak dapat diakses. Kemungkinan bot telah dikeluarkan dari chat tersebut.\n\n"
+                                f"Silakan periksa kembali status bot di chat target Anda."
+                            )
+                        except:
+                            pass
+                        
+                except errors.FloodWaitError as e:
+                    logger.warning(f"Flood wait during cleanup: {e.seconds}s")
+                    await asyncio.sleep(e.seconds)
+                except Exception as e:
+                    # Other errors, just log
+                    pass
+                    
+        except Exception as e:
+            logger.error(f"Error in cleanup_invalid_giveaways: {e}")
+            
+        await asyncio.sleep(60)
 
 async def check_pending_membership():
     import aiohttp
@@ -2563,6 +2631,7 @@ async def main():
     # Start monitoring
     asyncio.create_task(check_on_giveaway_expired())
     asyncio.create_task(check_pending_membership())
+    asyncio.create_task(cleanup_invalid_giveaways())
     
     await bot.run_until_disconnected()
 
