@@ -870,20 +870,23 @@
     }
 
     // ==================== TABS ====================
-    
     function setupTabs() {
-        elements.tabBtns.forEach(btn => {
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        navBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 hapticLight();
                 const tabId = btn.dataset.tab;
                 
-                elements.tabBtns.forEach(b => b.classList.remove('active'));
-                elements.tabContents.forEach(c => c.classList.remove('active'));
+                navBtns.forEach(b => b.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
                 
                 btn.classList.add('active');
                 const activeTab = document.getElementById(`${tabId}Tab`);
                 if (activeTab) activeTab.classList.add('active');
                 
+                // Load data when switching tabs
                 if (tabId === 'my-usernames') {
                     loadPurchasedUsernames();
                 } else if (tabId === 'history') {
@@ -900,10 +903,37 @@
     function initTelegram() {
         const tg = getTelegramWebApp();
         if (tg) {
+            // Expand to full height
             tg.expand();
-            tg.setHeaderColor('#0f0f0f');
-            tg.setBackgroundColor('#0f0f0f');
-            console.log('✅ Telegram WebApp initialized');
+            
+            // Request fullscreen mode
+            if (tg.requestFullscreen) {
+                tg.requestFullscreen().catch(e => console.log('Fullscreen not supported:', e));
+            }
+            
+            // Set colors
+            tg.setHeaderColor('#0a0a0a');
+            tg.setBackgroundColor('#0a0a0a');
+            
+            // Apply safe area insets to body
+            if (tg.safeAreaInset) {
+                document.body.style.paddingTop = tg.safeAreaInset.top + 'px';
+                document.body.style.paddingBottom = tg.safeAreaInset.bottom + 'px';
+                document.body.style.paddingLeft = tg.safeAreaInset.left + 'px';
+                document.body.style.paddingRight = tg.safeAreaInset.right + 'px';
+            }
+            
+            // Listen for safe area changes
+            tg.onEvent('safeAreaChanged', () => {
+                if (tg.safeAreaInset) {
+                    document.body.style.paddingTop = tg.safeAreaInset.top + 'px';
+                    document.body.style.paddingBottom = tg.safeAreaInset.bottom + 'px';
+                    document.body.style.paddingLeft = tg.safeAreaInset.left + 'px';
+                    document.body.style.paddingRight = tg.safeAreaInset.right + 'px';
+                }
+            });
+            
+            console.log('✅ Telegram WebApp initialized with fullscreen');
         }
     }
 

@@ -14,11 +14,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
-    <!-- TON Connect UI SDK (WAJIB) -->
+    <!-- TON Connect UI SDK -->
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     
     <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?62"></script>
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -33,40 +33,15 @@
     <!-- Main Container -->
     <div class="winedash-container">
         
-        <!-- Profile Header -->
-        <div class="profile-header">
-            <div class="profile-avatar" id="userAvatar">
+        <!-- Header Bar - Minimalis -->
+        <div class="header-bar">
+            <div class="header-avatar" id="userAvatar">
                 <i class="fas fa-user"></i>
             </div>
-            <div class="profile-info">
-                <div class="profile-name" id="userName">Memuat...</div>
-                <div class="profile-username" id="userUsername">@username</div>
-            </div>
-            <div class="profile-balance" id="userBalance">
+            <div class="header-balance" id="userBalance">
                 <i class="fas fa-coins"></i>
                 <span id="balanceAmount">0</span>
-                <small>TON</small>
             </div>
-        </div>
-
-        <!-- Tabs Navigation -->
-        <div class="tabs-container">
-            <button class="tab-btn active" data-tab="marketplace">
-                <i class="fas fa-store"></i>
-                <span>Marketplace</span>
-            </button>
-            <button class="tab-btn" data-tab="my-usernames">
-                <i class="fas fa-tag"></i>
-                <span>Username Saya</span>
-            </button>
-            <button class="tab-btn" data-tab="wallet">
-                <i class="fas fa-wallet"></i>
-                <span>Wallet</span>
-            </button>
-            <button class="tab-btn" data-tab="history">
-                <i class="fas fa-history"></i>
-                <span>Riwayat</span>
-            </button>
         </div>
 
         <!-- Tab Content: Marketplace -->
@@ -100,7 +75,7 @@
                     <h3>Jual Username</h3>
                 </div>
                 <div class="sell-form">
-                    <input type="text" id="sellUsername" placeholder="Username (contoh: @username)" class="form-input">
+                    <input type="text" id="sellUsername" placeholder="Username" class="form-input">
                     <input type="number" id="sellPrice" placeholder="Harga (TON)" class="form-input" step="0.1" min="0.1">
                     <select id="sellCategory" class="form-input">
                         <option value="default">Default</option>
@@ -109,7 +84,7 @@
                         <option value="rare">Langka</option>
                     </select>
                     <button class="btn-primary" id="sellUsernameBtn">
-                        <i class="fas fa-rocket"></i> Jual Username
+                        <i class="fas fa-rocket"></i> Jual
                     </button>
                 </div>
             </div>
@@ -138,7 +113,7 @@
             <div class="section-card">
                 <div class="card-header">
                     <i class="fas fa-arrow-up"></i>
-                    <h3>Deposit TON</h3>
+                    <h3>Deposit</h3>
                 </div>
                 <div class="deposit-form">
                     <input type="number" id="depositAmount" placeholder="Jumlah TON" class="form-input" step="0.1" min="0.1">
@@ -151,7 +126,7 @@
             <div class="section-card">
                 <div class="card-header">
                     <i class="fas fa-arrow-down"></i>
-                    <h3>Withdraw TON</h3>
+                    <h3>Withdraw</h3>
                 </div>
                 <div class="withdraw-form">
                     <input type="number" id="withdrawAmount" placeholder="Jumlah TON" class="form-input" step="0.1" min="1">
@@ -160,7 +135,7 @@
                     </button>
                 </div>
                 <div class="info-text">
-                    <i class="fas fa-info-circle"></i> Minimal withdraw: 1 TON
+                    <i class="fas fa-info-circle"></i> Minimal 1 TON
                 </div>
             </div>
         </div>
@@ -170,7 +145,7 @@
             <div class="section-card">
                 <div class="card-header">
                     <i class="fas fa-history"></i>
-                    <h3>Riwayat Transaksi</h3>
+                    <h3>Riwayat</h3>
                 </div>
                 <div class="history-list" id="historyList">
                     <div class="loading-placeholder">Memuat riwayat...</div>
@@ -178,11 +153,23 @@
             </div>
         </div>
 
-        <!-- Floating Action Button -->
-        <div class="fab-container">
-            <button class="fab-button" id="refreshBtn">
-                <i class="fas fa-sync-alt"></i>
-                <span>Refresh</span>
+        <!-- Bottom Navigation -->
+        <div class="bottom-nav">
+            <button class="nav-btn active" data-tab="marketplace">
+                <i class="fas fa-store"></i>
+                <span>Market</span>
+            </button>
+            <button class="nav-btn" data-tab="my-usernames">
+                <i class="fas fa-tag"></i>
+                <span>My Tags</span>
+            </button>
+            <button class="nav-btn" data-tab="wallet">
+                <i class="fas fa-wallet"></i>
+                <span>Wallet</span>
+            </button>
+            <button class="nav-btn" data-tab="history">
+                <i class="fas fa-history"></i>
+                <span>History</span>
             </button>
         </div>
 
