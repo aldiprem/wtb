@@ -34,7 +34,7 @@ from giveaway.services.giveaway_service import giveaway_bp
 from services.crash_service import crash_bp
 from games.services.games_service import games_bp
 from giveaway.services.create_service import create_bp, set_bot_client
-from winedash.services.web_service import winedash_bp
+from winedash.services import winedash_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 

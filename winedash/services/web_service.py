@@ -11,13 +11,17 @@ import sys
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from database.web import WinedashDatabase
+# PERBAIKAN: Import langsung dari file web.py di folder database
+# Karena folder database ada di dalam folder winedash
+from winedash.database.web import WinedashDatabase
 
 # Create blueprint
 winedash_bp = Blueprint('winedash', __name__, url_prefix='/winedash')
 
 # Database path
 DB_PATH = os.getenv('WINEDASH_DB_PATH', '/root/winedash/users.db')
+# Pastikan direktori untuk database ada
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 db = WinedashDatabase(DB_PATH)
 
 # Configuration
@@ -331,20 +335,19 @@ def health_check():
 @winedash_bp.route('/', methods=['GET'])
 def serve_index():
     """Serve main HTML page"""
-    from flask import current_app
-    html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'html', 'web.html')
+    html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'html', 'web.html')
     return send_from_directory(os.path.dirname(html_path), 'web.html')
 
 
 @winedash_bp.route('/css/<path:filename>', methods=['GET'])
 def serve_css(filename):
     """Serve CSS files"""
-    css_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'css')
+    css_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'css')
     return send_from_directory(css_path, filename)
 
 
 @winedash_bp.route('/js/<path:filename>', methods=['GET'])
 def serve_js(filename):
     """Serve JS files"""
-    js_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'js')
+    js_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'winedash', 'js')
     return send_from_directory(js_path, filename)
