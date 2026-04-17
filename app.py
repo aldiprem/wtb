@@ -239,7 +239,7 @@ app.register_blueprint(giveaway_bp, url_prefix='/api/giveaway')
 app.register_blueprint(crash_bp, url_prefix='/api/crash')
 app.register_blueprint(games_bp)
 app.register_blueprint(create_bp, url_prefix='/api/giveaway')
-app.register_blueprint(winedash_bp)
+app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
 
 # ==================== WINEDASH ROUTES ====================
 

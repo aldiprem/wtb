@@ -14,9 +14,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from winedash.database.web import WinedashDatabase
 
-# Create blueprint (tanpa url_prefix karena app.py sudah handle static)
 # Atau biarkan dengan url_prefix untuk API
-winedash_bp = Blueprint('winedash', __name__, url_prefix='/api/winedash')
+winedash_bp = Blueprint('winedash', __name__)
 
 # Database path
 DB_PATH = os.getenv('WINEDASH_DB_PATH', '/root/winedash/users.db')

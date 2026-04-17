@@ -1,7 +1,7 @@
 // ==================== CONFIGURATION ====================
 const CONFIG = {
     TUNNEL_URL: 'https://companel.shop',
-    API_BASE: '/api/winedash',
+    API_BASE: '/winedash',
     MANIFEST_URL: 'https://companel.shop/tonconnect-manifest.json',
     NETWORK: 'mainnet',
     MIN_DEPOSIT: 0.1,
