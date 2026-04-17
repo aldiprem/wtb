@@ -372,6 +372,48 @@
         }
     }
 
+    function createTextPayload(text) {
+        try {
+            if (!text) return undefined;
+            
+            // Batasi panjang text (maksimal 120 karakter untuk aman)
+            if (text.length > 120) {
+                text = text.substring(0, 120);
+            }
+            
+            // Encode text ke UTF-8
+            const encoder = new TextEncoder();
+            const textBytes = encoder.encode(text);
+            
+            // Buat buffer dengan prefix 4 byte 0 (format comment di TON)
+            const buffer = new Uint8Array(4 + textBytes.length);
+            buffer[0] = 0;
+            buffer[1] = 0;
+            buffer[2] = 0;
+            buffer[3] = 0;
+            buffer.set(textBytes, 4);
+            
+            // Konversi ke Base64
+            let binary = '';
+            for (let i = 0; i < buffer.length; i++) {
+                binary += String.fromCharCode(buffer[i]);
+            }
+            const base64Payload = btoa(binary);
+            
+            console.log('📝 Created payload:', {
+                originalText: text,
+                textLength: text.length,
+                payloadLength: base64Payload.length,
+                payloadPreview: base64Payload.substring(0, 30) + '...'
+            });
+            
+            return base64Payload;
+        } catch (error) {
+            console.error('Error creating payload:', error);
+            return undefined;
+        }
+    }
+
     async function deposit() {
         const amount = parseFloat(elements.depositAmount?.value);
         
@@ -397,19 +439,38 @@
         try {
             const senderAddress = tonConnectUI.account?.address;
             const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
+            
+            // Konversi amount ke nanoTON (1 TON = 1,000,000,000 nanoTON)
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
             
-            console.log('📤 Processing deposit:', { amount, senderAddress, amountNano });
+            // Buat payload dengan format yang benar
+            const payload = createTextPayload(memo);
             
+            console.log('📤 Processing deposit:', { 
+                amount, 
+                amountNano, 
+                senderAddress, 
+                memo,
+                hasPayload: !!payload 
+            });
+            
+            // Buat transaction dengan format yang benar
             const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 600,
+                validUntil: Math.floor(Date.now() / 1000) + 600, // 10 menit
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
-                    amount: amountNano,
-                    payload: base64EncodeComment(memo)
+                    amount: amountNano
                 }]
             };
             
+            // Tambahkan payload hanya jika berhasil dibuat
+            if (payload) {
+                transaction.messages[0].payload = payload;
+            }
+            
+            console.log('📤 Sending transaction:', JSON.stringify(transaction, null, 2));
+            
+            // Kirim transaksi
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
             
@@ -434,15 +495,27 @@
                 refreshAllData();
             } else {
                 showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
+                refreshAllData();
             }
             
         } catch (error) {
             console.error('Error creating deposit:', error);
-            if (error.message?.includes('rejected')) {
-                showToast('Transaksi dibatalkan', 'warning');
-            } else {
-                showToast('Error creating deposit: ' + error.message, 'error');
+            
+            // Parse error message untuk user-friendly
+            let errorMessage = 'Error creating deposit';
+            if (error.message) {
+                if (error.message.includes('rejected')) {
+                    errorMessage = 'Transaksi dibatalkan oleh user';
+                } else if (error.message.includes('Invalid payload')) {
+                    errorMessage = 'Error: Invalid payload format. Silakan coba lagi.';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = 'Saldo wallet tidak mencukupi';
+                } else {
+                    errorMessage = error.message;
+                }
             }
+            
+            showToast(errorMessage, 'error');
         } finally {
             showLoading(false);
         }

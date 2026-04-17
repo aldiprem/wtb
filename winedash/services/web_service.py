@@ -618,8 +618,6 @@ def update_user(user_id):
     except Exception as e:
         print(f"Error in update_user: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-    
-# winedash/services/web_service.py - Tambahkan endpoint deposit confirm
 
 @winedash_bp.route('/deposit/confirm', methods=['POST', 'OPTIONS'])
 def confirm_deposit_web():
@@ -643,13 +641,19 @@ def confirm_deposit_web():
         from_address = data.get('from_address')
         memo = data.get('memo', '')
         
-        if not user_id or not amount or amount <= 0:
-            return jsonify({'success': False, 'error': 'Parameter tidak valid'}), 400
+        print(f"📥 Deposit confirmation request: user_id={user_id}, amount={amount}, tx_hash={transaction_hash}")
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User ID diperlukan'}), 400
+        
+        if not amount or amount <= 0:
+            return jsonify({'success': False, 'error': 'Amount tidak valid'}), 400
         
         # Generate unique transaction ID if not provided
         if not transaction_hash:
             import uuid
             transaction_hash = f"deposit_{uuid.uuid4().hex[:16]}_{int(datetime.now().timestamp())}"
+            print(f"⚠️ No transaction hash provided, generated: {transaction_hash}")
         
         # Create transaction record
         with sqlite3.connect(db.db_path) as conn:
@@ -661,6 +665,7 @@ def confirm_deposit_web():
             existing = cursor.fetchone()
             
             if existing:
+                print(f"⚠️ Transaction already exists: {transaction_hash}")
                 return jsonify({'success': False, 'error': 'Transaction already processed'}), 400
             
             # Insert deposit record
@@ -679,16 +684,21 @@ def confirm_deposit_web():
             cursor.execute('''
                 INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
                 VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
-            ''', (transaction_hash, user_id, amount, f"Deposit via TON Connect", now, now))
+            ''', (transaction_hash, user_id, amount, f"Deposit via TON Connect - {memo[:50] if memo else ''}", now, now))
             
             conn.commit()
         
         print(f"✅ Deposit confirmed: {amount} TON for user {user_id}")
         
+        # Get updated balance
+        cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+        new_balance = cursor.fetchone()[0] if cursor else 0
+        
         return jsonify({
             'success': True,
             'message': 'Deposit confirmed successfully',
-            'transaction_id': transaction_hash
+            'transaction_id': transaction_hash,
+            'new_balance': float(new_balance)
         })
         
     except Exception as e:
