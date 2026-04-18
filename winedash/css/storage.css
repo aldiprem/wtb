@@ -205,20 +205,36 @@ body {
     cursor: pointer;
 }
 
-/* Pastikan action-bar menampilkan semua tombol */
 .action-bar {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 16px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    scrollbar-width: thin;
     align-items: center;
 }
 
 .action-bar .action-btn {
     flex-shrink: 0;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+    .action-bar {
+        flex-wrap: wrap;
+    }
+    
+    .action-bar .action-btn {
+        font-size: 10px;
+        padding: 5px 10px;
+    }
+    
+    .inbox-badge {
+        top: -4px;
+        right: -4px;
+        min-width: 14px;
+        height: 14px;
+        font-size: 8px;
+    }
 }
 
 /* Style untuk toggle button states */
@@ -965,26 +981,29 @@ body {
     display: flex !important;
 }
 
-/* Inbox Panel Styles */
 .inbox-wrapper {
+    display: inline-flex;
     position: relative;
+    margin: 0;
+    padding: 0;
 }
 
 .inbox-badge {
     position: absolute;
-    top: -8px;
-    right: -8px;
+    top: -6px;
+    right: -6px;
     background: var(--danger);
     color: white;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: bold;
-    min-width: 18px;
-    height: 18px;
-    border-radius: 9px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0 4px;
+    padding: 0 3px;
+    z-index: 10;
 }
 
 .inbox-panel {
