@@ -763,6 +763,86 @@ body {
     color: var(--danger);
 }
 
+/* Action Row Baru - antara mode-toggle dan search */
+.action-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+}
+
+.action-row::-webkit-scrollbar {
+    height: 3px;
+}
+
+.action-row .action-btn {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 8px 16px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.action-row .action-btn i {
+    font-size: 14px;
+}
+
+.action-row .action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.action-row .add-action-btn {
+    background: linear-gradient(135deg, var(--success), #0d9488);
+    border-color: var(--success);
+    color: white;
+}
+
+/* Perbaikan bottom nav - hanya icon */
+.nav-link {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 8px;
+    border-radius: 22px;
+    color: var(--text-secondary);
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.nav-link span {
+    display: none;
+}
+
+.nav-link i {
+    font-size: 18px;
+}
+
+.nav-link.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+/* Marketplace icon khusus */
+.nav-circle.market-icon i {
+    font-size: 18px;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .storage-container {

@@ -39,9 +39,6 @@
         sortSelect: document.getElementById('sortSelect'),
         gridLayoutBtn: document.getElementById('gridLayoutBtn'),
         listLayoutBtn: document.getElementById('listLayoutBtn'),
-        toggleListedBtn: document.getElementById('toggleListedBtn'),
-        toggleListedBtnListed: document.getElementById('toggleListedBtnListed'),
-        toggleListedBtnUnlisted: document.getElementById('toggleListedBtnUnlisted'),
         modeBtns: document.querySelectorAll('.mode-btn')
     };
 
@@ -407,7 +404,40 @@
     // ==================== EVENT HANDLERS ====================
     
     function setupEventListeners() {
-        // Back to home button
+        // Action Row Buttons
+        const addActionBtn = document.getElementById('addUsernameActionBtn');
+        if (addActionBtn) {
+            addActionBtn.addEventListener('click', () => {
+                elements.addModal.style.display = 'flex';
+                hapticLight();
+            });
+        }
+
+        const sendBtn = document.getElementById('sendUsernameBtn');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', () => {
+                showToast('Send username feature coming soon', 'info');
+                hapticLight();
+            });
+        }
+
+        const withdrawBtnAction = document.getElementById('withdrawUsernameBtn');
+        if (withdrawBtnAction) {
+            withdrawBtnAction.addEventListener('click', () => {
+                showToast('Withdraw username feature coming soon', 'info');
+                hapticLight();
+            });
+        }
+
+        const offerBtn = document.getElementById('offerUsernameBtn');
+        if (offerBtn) {
+            offerBtn.addEventListener('click', () => {
+                showToast('Offer username feature coming soon', 'info');
+                hapticLight();
+            });
+        }
+
+        // Back to home button - sudah menggunakan icon store
         const backToHomeBtn = document.getElementById('backToHomeBtn');
         if (backToHomeBtn) {
             backToHomeBtn.addEventListener('click', () => {
@@ -434,20 +464,20 @@
             });
         }
 
-        // Navigation links
+        // Navigation links - update urutan
         const navLinks = document.querySelectorAll('.nav-link');
         navLinks.forEach(link => {
             link.addEventListener('click', () => {
                 navLinks.forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
                 const navType = link.dataset.nav;
-                // Filter berdasarkan navType
-                if (navType === 'activity') {
-                    // Tampilkan aktivitas
-                } else if (navType === 'offers') {
-                    // Tampilkan offers
-                } else if (navType === 'store') {
+                
+                if (navType === 'store') {
                     loadUsernames();
+                } else if (navType === 'offers') {
+                    showToast('Offers feature coming soon', 'info');
+                } else if (navType === 'activity') {
+                    showToast('Activity feature coming soon', 'info');
                 }
                 hapticLight();
             });
@@ -582,12 +612,15 @@
         const toggleBtn = document.getElementById('toggleStatusBtn');
         
         if (toggleBtn) {
+            // Set initial state
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
+            
             toggleBtn.addEventListener('click', () => {
-                // Cycle status: all -> listed -> unlisted -> all
                 if (currentStatus === 'all') {
                     currentStatus = 'listed';
                     toggleBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Listed</span>';
                     toggleBtn.classList.add('toggle-active');
+                    toggleBtn.classList.remove('toggle-active-unlisted');
                 } else if (currentStatus === 'listed') {
                     currentStatus = 'unlisted';
                     toggleBtn.innerHTML = '<i class="fas fa-times-circle"></i><span>Unlisted</span>';

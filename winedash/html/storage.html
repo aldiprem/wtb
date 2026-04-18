@@ -44,15 +44,24 @@
             </div>
         </div>
 
-        <!-- Bottom Navigation - Floating dengan lingkaran kiri -->
+        <!-- Bottom Navigation - Floating dengan lingkaran kiri (Market icon) -->
         <div class="storage-bottom-nav">
-            <div class="nav-circle" id="backToHomeBtn">
-                <i class="fas fa-arrow-left"></i>
+            <div class="nav-circle market-icon" id="backToHomeBtn">
+                <i class="fas fa-store"></i>
             </div>
             <div class="nav-links-container">
-                <button class="nav-link active" data-nav="activity">Activity</button>
-                <button class="nav-link" data-nav="offers">Offers</button>
-                <button class="nav-link" data-nav="store">Store</button>
+                <button class="nav-link active" data-nav="store">
+                    <i class="fas fa-database"></i>
+                    <span>Store</span>
+                </button>
+                <button class="nav-link" data-nav="offers">
+                    <i class="fas fa-tag"></i>
+                    <span>Offers</span>
+                </button>
+                <button class="nav-link" data-nav="activity">
+                    <i class="fas fa-history"></i>
+                    <span>Activity</span>
+                </button>
             </div>
         </div>
 
@@ -60,6 +69,32 @@
         <div class="mode-toggle">
             <button class="mode-btn active" data-mode="onchain">On-Chain</button>
             <button class="mode-btn" data-mode="offchain">Off-Chain</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchStorage" placeholder="🔍 Cari username...">
+            <button class="search-apply-btn" id="searchApplyBtn">Apply</button>
+        </div>
+
+        <!-- Action Row Baru - Tombol-tombol aksi -->
+        <div class="action-row">
+            <button class="action-btn add-action-btn" id="addUsernameActionBtn">
+                <i class="fas fa-plus"></i>
+                <span>Add</span>
+            </button>
+            <button class="action-btn" id="sendUsernameBtn">
+                <i class="fas fa-paper-plane"></i>
+                <span>Send</span>
+            </button>
+            <button class="action-btn" id="withdrawUsernameBtn">
+                <i class="fas fa-arrow-up"></i>
+                <span>Withdraw</span>
+            </button>
+            <button class="action-btn" id="offerUsernameBtn">
+                <i class="fas fa-tag"></i>
+                <span>Offer</span>
+            </button>
         </div>
 
         <!-- Search Bar -->
@@ -86,9 +121,6 @@
             
             <button class="action-btn" id="sortBtn">
                 <i class="fas fa-sort-amount-down-alt"></i>
-            </button>
-            <button class="action-btn add-btn" id="addUsernameBtn">
-                <i class="fas fa-plus"></i>
             </button>
         </div>
 
