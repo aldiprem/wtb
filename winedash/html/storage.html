@@ -118,6 +118,41 @@
             </button>
         </div>
 
+        <!-- Tambahkan di action-bar setelah toggleStatusBtn -->
+        <div class="inbox-wrapper">
+            <button class="action-btn" id="inboxBtn">
+                <i class="fas fa-inbox"></i>
+                <span>Inbox</span>
+                <span class="inbox-badge" id="inboxBadge" style="display: none;">0</span>
+            </button>
+        </div>
+
+        <!-- Panel Inbox (slide from bottom) -->
+        <div class="inbox-panel" id="inboxPanel" style="display: none;">
+            <div class="inbox-header">
+                <h3><i class="fas fa-inbox"></i> Verifikasi Pending</h3>
+                <button class="inbox-close" id="closeInboxBtn">&times;</button>
+            </div>
+            <div class="inbox-content" id="inboxContent">
+                <div class="loading-placeholder">Memuat...</div>
+            </div>
+        </div>
+
+        <!-- OTP Verification Modal -->
+        <div id="otpModal" class="modal-overlay">
+            <div class="modal-content" style="max-width: 300px;">
+                <h3>Verifikasi OTP</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                    Masukkan kode OTP yang dikirim ke username Anda
+                </p>
+                <input type="text" id="otpInput" placeholder="Kode 6 digit" class="form-input" maxlength="6" style="text-align: center; letter-spacing: 4px;">
+                <div class="modal-buttons">
+                    <button class="modal-cancel" id="cancelOtpBtn">Batal</button>
+                    <button class="modal-confirm" id="confirmOtpBtn">Verifikasi</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Sort Dropdown (hidden by default) -->
         <div id="sortDropdown" style="display: none; margin-bottom: 12px;">
             <select id="sortSelect" class="form-input" style="margin-bottom: 0;">

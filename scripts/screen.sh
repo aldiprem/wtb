@@ -13,6 +13,7 @@ SESSIONS[1]="flask_server:Flask Server (Port 5050):cd /root/wtb && source myenv/
 SESSIONS[2]="fragment_bot:Fragment Bot:cd /root/wtb && source myenv/bin/activate && python3 fragment/fragment_bot.py"
 SESSIONS[3]="giveaway_bot:Giveaway Bot:cd /root/wtb/giveaway && source ../myenv/bin/activate && python3 b.py"
 SESSIONS[4]="games_module:Games Module (via Flask):cd /root/wtb && source myenv/bin/activate && python3 app.py"
+SESSIONS[5]="winedash_bot:Winedash Bot:cd /root/wtb/winedash && source ../myenv/bin/activate && python3 b.py"
 
 show_help() {
     echo -e "${GREEN}========================================${NC}"
@@ -46,6 +47,7 @@ show_menu() {
     echo -e "  ${CYAN}2.${NC} Fragment Bot"
     echo -e "  ${CYAN}3.${NC} Giveaway Bot"
     echo -e "  ${CYAN}4.${NC} Games Module (via Flask)"
+    echo -e "  ${CYAN}5.${NC} Winedash Bot"
     echo -e "  ${CYAN}0.${NC} SEMUA SESSION"
     echo -e "${GREEN}========================================${NC}"
 }
@@ -55,7 +57,7 @@ parse_selection() {
     local selected=()
     
     if [[ "$input" == "0" ]] || [[ "$input" == "all" ]]; then
-        echo "1 2 3 4"
+        echo "1 2 3 4 5"
         return
     fi
     
@@ -81,7 +83,6 @@ start_session() {
     local desc=$(echo "${SESSIONS[$num]}" | cut -d':' -f2)
     local cmd=$(echo "${SESSIONS[$num]}" | cut -d':' -f3-)
     
-    # Cek apakah session sudah berjalan
     if screen -list | grep -q "$name"; then
         echo -e "${YELLOW}⚠️  Session $name sudah berjalan${NC}"
         return 1
@@ -89,7 +90,6 @@ start_session() {
     
     echo -e "${GREEN}🚀 Menjalankan $desc...${NC}"
     
-    # Buat command dengan handling yang baik
     screen -dmS "$name" bash -c "$cmd; echo 'Session $name exited'; exec bash"
     
     sleep 2
@@ -208,7 +208,7 @@ show_status() {
     echo -e "${GREEN}📊 STATUS SERVICE${NC}"
     echo -e "${GREEN}========================================${NC}"
     
-    for num in 1 2 3 4; do
+    for num in 1 2 3 4 5; do
         local name=$(echo "${SESSIONS[$num]}" | cut -d':' -f1)
         local desc=$(echo "${SESSIONS[$num]}" | cut -d':' -f2)
         
@@ -221,9 +221,12 @@ show_status() {
     
     echo -e "${GREEN}========================================${NC}"
     
-    # Tambahan info untuk giveaway bot
     if [ -f "/root/wtb/giveaway/giveaway.db" ]; then
         echo -e "${BLUE}🎁 Giveaway Database: EXISTS${NC}"
+    fi
+    
+    if [ -f "/root/wtb/winedash/database/winedash.db" ]; then
+        echo -e "${BLUE}💎 Winedash Database: EXISTS${NC}"
     fi
 }
 
@@ -234,7 +237,8 @@ view_logs() {
     echo -e "  ${CYAN}1.${NC} Flask Server Log"
     echo -e "  ${CYAN}2.${NC} Fragment Bot Log"
     echo -e "  ${CYAN}3.${NC} Giveaway Bot Log"
-    echo -e "  ${CYAN}4.${NC} Semua Log (multitail)"
+    echo -e "  ${CYAN}4.${NC} Winedash Bot Log"
+    echo -e "  ${CYAN}5.${NC} Semua Log (multitail)"
     echo -e "${GREEN}========================================${NC}"
     read -p "Pilihan: " choice
     
@@ -261,8 +265,15 @@ view_logs() {
             fi
             ;;
         4)
+            if [ -f "/root/wtb/logs/winedash_bot.log" ]; then
+                tail -f /root/wtb/logs/winedash_bot.log
+            else
+                echo -e "${RED}Log file not found${NC}"
+            fi
+            ;;
+        5)
             if command -v multitail &> /dev/null; then
-                multitail /root/wtb/logs/flask.log /root/wtb/logs/fragment_bot.log /root/wtb/logs/giveaway_bot.log
+                multitail /root/wtb/logs/flask.log /root/wtb/logs/fragment_bot.log /root/wtb/logs/giveaway_bot.log /root/wtb/logs/winedash_bot.log
             else
                 echo -e "${YELLOW}Multitail tidak terinstall. Install dengan: apt install multitail${NC}"
                 tail -f /root/wtb/logs/*.log
@@ -276,7 +287,7 @@ view_logs() {
 
 start_all() {
     echo -e "${GREEN}🚀 Menjalankan SEMUA session...${NC}"
-    for num in 1 2 3 4; do
+    for num in 1 2 3 4 5; do
         start_session "$num"
         sleep 2
     done
@@ -285,7 +296,7 @@ start_all() {
 
 stop_all() {
     echo -e "${YELLOW}🛑 Menghentikan SEMUA session...${NC}"
-    for num in 1 2 3 4; do
+    for num in 1 2 3 4 5; do
         stop_session "$num"
         sleep 1
     done
@@ -332,7 +343,6 @@ interactive_menu() {
 case "$1" in
     start)
         if [ -n "$2" ]; then
-            # Jika ada parameter langsung
             selections=$(parse_selection "$2")
             for num in $selections; do
                 start_session "$num"
@@ -390,7 +400,6 @@ case "$1" in
         show_help
         ;;
     *)
-        # Jika tidak ada argumen, tampilkan help
         show_help
         echo ""
         echo -e "${CYAN}Atau jalankan './screen.sh menu' untuk mode interaktif${NC}"

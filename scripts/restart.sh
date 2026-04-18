@@ -18,4 +18,4 @@ sleep 3
 ./scripts/start.sh
 
 echo -e "${GREEN}✅ Restart selesai!${NC}"
-echo -e "${BLUE}🎁 Giveaway Bot termasuk dalam service yang direstart${NC}"
+echo -e "${BLUE}🎁 Giveaway Bot & 💎 Winedash Bot termasuk dalam service yang direstart${NC}"

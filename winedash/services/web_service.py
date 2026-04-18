@@ -706,3 +706,130 @@ def confirm_deposit_web():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+# Tambahkan di web_service.py
+
+@winedash_bp.route('/username/pending/add', methods=['POST', 'OPTIONS'])
+def add_pending_username():
+    """Add username to pending verification"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        username = data.get('username')
+        price = data.get('price')
+        seller_id = data.get('seller_id')
+        seller_wallet = data.get('seller_wallet')
+        category = data.get('category', 'default')
+        
+        if not username or not price or price <= 0 or not seller_id:
+            return jsonify({'success': False, 'error': 'Parameter tidak valid'}), 400
+        
+        # Detect username type
+        username_clean = username.lstrip('@')
+        
+        # Add pending record
+        pending_id = db.add_pending_username(
+            username=username_clean,
+            price=price,
+            seller_id=seller_id,
+            seller_wallet=seller_wallet,
+            category=category,
+            verification_type='pending_detect'
+        )
+        
+        if not pending_id:
+            return jsonify({'success': False, 'error': 'Gagal menambahkan username'}), 500
+        
+        return jsonify({
+            'success': True,
+            'pending_id': pending_id,
+            'username': username_clean,
+            'message': 'Username pending verification. Please wait for bot to process.'
+        })
+        
+    except Exception as e:
+        print(f"Error in add_pending_username: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@winedash_bp.route('/username/pending/list/<int:user_id>', methods=['GET'])
+def get_pending_usernames(user_id):
+    """Get pending usernames for user"""
+    try:
+        pendings = db.get_pending_usernames(user_id)
+        
+        return jsonify({
+            'success': True,
+            'pendings': pendings,
+            'total': len(pendings)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_pending_usernames: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@winedash_bp.route('/username/pending/confirm', methods=['POST', 'OPTIONS'])
+def confirm_pending_username():
+    """Confirm pending username with OTP code"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        pending_id = data.get('pending_id')
+        code = data.get('code')
+        
+        if not pending_id:
+            return jsonify({'success': False, 'error': 'Pending ID required'}), 400
+        
+        success = db.confirm_pending_username(pending_id, code)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Username confirmed and added to marketplace!'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid code or pending expired'
+            }), 400
+        
+    except Exception as e:
+        print(f"Error in confirm_pending_username: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@winedash_bp.route('/username/pending/count/<int:user_id>', methods=['GET'])
+def get_pending_count(user_id):
+    """Get pending count for user inbox"""
+    try:
+        count = db.get_user_pending_count(user_id)
+        
+        return jsonify({
+            'success': True,
+            'count': count
+        })
+        
+    except Exception as e:
+        print(f"Error in get_pending_count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

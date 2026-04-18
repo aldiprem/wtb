@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script untuk menjalankan aplikasi (app.py + fragment_bot.py + giveaway/b.py)
+# Script untuk menjalankan aplikasi (app.py + fragment_bot.py + giveaway/b.py + winedash/b.py)
 
 # Warna untuk output
 GREEN='\033[0;32m'
@@ -58,7 +58,6 @@ kill_port_5050() {
 kill_fragment_bot() {
     echo -e "${YELLOW}🔍 Memeriksa Fragment Bot...${NC}"
     
-    # Cek dari PID file
     if [ -f "/tmp/fragment_bot.pid" ]; then
         PID=$(cat /tmp/fragment_bot.pid)
         if kill -0 $PID 2>/dev/null; then
@@ -73,7 +72,6 @@ kill_fragment_bot() {
         rm -f /tmp/fragment_bot.pid
     fi
     
-    # Cek dari nama proses
     PIDS=$(ps aux | grep "fragment_bot.py" | grep -v grep | awk '{print $2}')
     if [ -n "$PIDS" ]; then
         for PID in $PIDS; do
@@ -85,7 +83,6 @@ kill_fragment_bot() {
         echo -e "${GREEN}✅ Fragment Bot processes dihentikan${NC}"
     fi
     
-    # Hentikan screen session jika ada
     if screen -list | grep -q "fragment_bot"; then
         screen -S fragment_bot -X quit 2>/dev/null
         echo -e "${GREEN}✅ Screen session fragment_bot dihentikan${NC}"
@@ -96,7 +93,6 @@ kill_fragment_bot() {
 kill_giveaway_bot() {
     echo -e "${YELLOW}🔍 Memeriksa Giveaway Bot...${NC}"
     
-    # Cek dari PID file
     if [ -f "/tmp/giveaway_bot.pid" ]; then
         PID=$(cat /tmp/giveaway_bot.pid)
         if kill -0 $PID 2>/dev/null; then
@@ -111,7 +107,6 @@ kill_giveaway_bot() {
         rm -f /tmp/giveaway_bot.pid
     fi
     
-    # Cek dari nama proses
     PIDS=$(ps aux | grep "giveaway/b.py" | grep -v grep | awk '{print $2}')
     if [ -n "$PIDS" ]; then
         for PID in $PIDS; do
@@ -123,7 +118,6 @@ kill_giveaway_bot() {
         echo -e "${GREEN}✅ Giveaway Bot processes dihentikan${NC}"
     fi
     
-    # Cek dari session Telethon
     PIDS=$(lsof 2>/dev/null | grep "giveaway_bot_session" | awk '{print $2}')
     if [ -n "$PIDS" ]; then
         for PID in $PIDS; do
@@ -132,19 +126,62 @@ kill_giveaway_bot() {
         done
     fi
     
-    # Hapus file session Telethon
     rm -f giveaway/giveaway_bot_session.session 2>/dev/null
     
-    # Hentikan screen session jika ada
     if screen -list | grep -q "giveaway_bot"; then
         screen -S giveaway_bot -X quit 2>/dev/null
         echo -e "${GREEN}✅ Screen session giveaway_bot dihentikan${NC}"
     fi
 }
 
+# ==================== FUNGSI MEMATIKAN WINEDASH BOT ====================
+kill_winedash_bot() {
+    echo -e "${YELLOW}🔍 Memeriksa Winedash Bot...${NC}"
+    
+    if [ -f "/tmp/winedash_bot.pid" ]; then
+        PID=$(cat /tmp/winedash_bot.pid)
+        if kill -0 $PID 2>/dev/null; then
+            echo -e "${YELLOW}📡 Menghentikan Winedash Bot (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 2
+            if kill -0 $PID 2>/dev/null; then
+                kill -9 $PID 2>/dev/null
+            fi
+            echo -e "${GREEN}✅ Winedash Bot dihentikan${NC}"
+        fi
+        rm -f /tmp/winedash_bot.pid
+    fi
+    
+    PIDS=$(ps aux | grep "winedash/b.py" | grep -v grep | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan Winedash Bot process (PID: $PID)...${NC}"
+            kill -15 $PID 2>/dev/null
+            sleep 1
+            kill -9 $PID 2>/dev/null
+        done
+        echo -e "${GREEN}✅ Winedash Bot processes dihentikan${NC}"
+    fi
+    
+    PIDS=$(lsof 2>/dev/null | grep "winedash_bot_session" | awk '{print $2}')
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            echo -e "${YELLOW}📡 Menghentikan session Telethon (PID: $PID)...${NC}"
+            kill -9 $PID 2>/dev/null
+        done
+    fi
+    
+    rm -f winedash/winedash_bot_session.session 2>/dev/null
+    
+    if screen -list | grep -q "winedash_bot"; then
+        screen -S winedash_bot -X quit 2>/dev/null
+        echo -e "${GREEN}✅ Screen session winedash_bot dihentikan${NC}"
+    fi
+}
+
 # ==================== FUNGSI MEMBERSIHKAN PID FILES ====================
 clean_pid_files() {
-    for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid; do
+    for pid_file in flask_server.pid fragment_bot.pid giveaway_bot.pid winedash_bot.pid; do
         if [ -f "/tmp/$pid_file" ]; then
             OLD_PID=$(cat "/tmp/$pid_file")
             if ! kill -0 $OLD_PID 2>/dev/null; then
@@ -160,6 +197,7 @@ echo -e "${YELLOW}🛑 Membersihkan proses yang sudah berjalan...${NC}"
 kill_port_5050
 kill_fragment_bot
 kill_giveaway_bot
+kill_winedash_bot
 clean_pid_files
 
 # Tunggu sebentar agar proses benar-benar mati
@@ -203,6 +241,20 @@ else
     fi
 fi
 
+# ==================== CEK FOLDER WINEDASH ====================
+if [ ! -d "winedash" ]; then
+    echo -e "${YELLOW}⚠️  Folder winedash tidak ditemukan, membuat struktur folder...${NC}"
+    mkdir -p winedash/database winedash/html winedash/css winedash/js
+fi
+
+if [ ! -f "winedash/b.py" ]; then
+    echo -e "${RED}❌ File winedash/b.py tidak ditemukan!${NC}"
+    WINEDASH_EXISTS=false
+else
+    echo -e "${GREEN}✅ Winedash module terdeteksi${NC}"
+    WINEDASH_EXISTS=true
+fi
+
 # Aktifkan virtual environment
 if [ -z "$VIRTUAL_ENV" ]; then
     echo -e "${YELLOW}⚠️  Virtual environment belum aktif. Mengaktifkan...${NC}"
@@ -225,7 +277,6 @@ sleep 5
 
 if ! ps -p $APP_PID > /dev/null 2>&1; then
     echo -e "${RED}❌ Flask server gagal berjalan! Cek logs/flask.log${NC}"
-    # Tampilkan error log
     echo -e "${YELLOW}--- Last 20 lines of flask.log ---${NC}"
     tail -20 logs/flask.log
     exit 1
@@ -241,7 +292,6 @@ fi
 # ==================== JALANKAN FRAGMENT_BOT.PY DI BACKGROUND ====================
 echo -e "${GREEN}🤖 Menjalankan Fragment Bot (Telegram)...${NC}"
 if [ -f "fragment/fragment_bot.py" ]; then
-    # Install dependencies jika perlu
     pip3 install telethon python-dotenv > /dev/null 2>&1
     
     nohup python3 fragment/fragment_bot.py > logs/fragment_bot.log 2>&1 &
@@ -256,16 +306,12 @@ fi
 # ==================== JALANKAN GIVEAWAY BOT DI BACKGROUND ====================
 echo -e "${BLUE}🎁 Menjalankan Giveaway Bot...${NC}"
 if [ "$GIVEAWAY_EXISTS" = true ]; then
-    # Install dependencies
     pip3 install telethon python-dotenv > /dev/null 2>&1
     
-    # Buat folder database jika belum ada
     mkdir -p giveaway/database
     
-    # Hapus session lama jika ada
     rm -f giveaway/*.session 2>/dev/null
     
-    # Jalankan bot dari direktori yang benar
     cd giveaway
     nohup python3 b.py > ../logs/giveaway_bot.log 2>&1 &
     GIVEAWAY_PID=$!
@@ -278,6 +324,27 @@ else
     GIVEAWAY_PID="N/A"
 fi
 
+# ==================== JALANKAN WINEDASH BOT DI BACKGROUND ====================
+echo -e "${BLUE}💎 Menjalankan Winedash Bot...${NC}"
+if [ "$WINEDASH_EXISTS" = true ]; then
+    pip3 install telethon python-dotenv aiohttp > /dev/null 2>&1
+    
+    mkdir -p winedash/database
+    
+    rm -f winedash/*.session 2>/dev/null
+    
+    cd winedash
+    nohup python3 b.py > ../logs/winedash_bot.log 2>&1 &
+    WINEDASH_PID=$!
+    echo $WINEDASH_PID > ../tmp/winedash_bot.pid
+    cd ..
+    echo -e "${GREEN}✅ Winedash Bot berjalan dengan PID: $WINEDASH_PID${NC}"
+    echo "$WINEDASH_PID" > /tmp/winedash_bot.pid
+else
+    echo -e "${YELLOW}⚠️  Winedash Bot tidak bisa dijalankan - file winedash/b.py tidak ditemukan${NC}"
+    WINEDASH_PID="N/A"
+fi
+
 # ==================== OUTPUT STATUS ====================
 echo ""
 echo -e "${GREEN}========================================${NC}"
@@ -287,9 +354,11 @@ echo -e "📊 Flask Server   : PID $APP_PID - Port 5050"
 echo -e "🎮 Games Module   : Terintegrasi di Flask (blueprint)"
 echo -e "🤖 Fragment Bot   : PID $BOT_PID"
 echo -e "🎁 Giveaway Bot   : PID $GIVEAWAY_PID"
+echo -e "💎 Winedash Bot   : PID $WINEDASH_PID"
 echo -e ""
 echo -e "${YELLOW}🌐 Akses: https://companel.shop${NC}"
 echo -e "${YELLOW}🌐 Akses Games: https://companel.shop/games${NC}"
+echo -e "${YELLOW}🌐 Akses Winedash: https://companel.shop/winedash${NC}"
 echo -e "${BLUE}🎁 Giveaway Bot commands:${NC}"
 echo -e "   /start - Start bot"
 echo -e "   /newgiveaway - Create giveaway"
@@ -299,6 +368,7 @@ echo -e "${YELLOW}📋 Log files:${NC}"
 echo -e "   Flask log:      tail -f logs/flask.log"
 echo -e "   Fragment log:   tail -f logs/fragment_bot.log"
 echo -e "   Giveaway log:   tail -f logs/giveaway_bot.log"
+echo -e "   Winedash log:   tail -f logs/winedash_bot.log"
 echo -e ""
 echo -e "${YELLOW}Gunakan './stop.sh' untuk menghentikan semua server${NC}"
 echo -e "${GREEN}========================================${NC}"

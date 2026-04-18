@@ -19,7 +19,9 @@
     let currentSort = 'price_asc';
     let currentLayout = 'grid';
     let currentSearchTerm = '';
-    
+    let pendingList = [];
+    let currentOtpPendingId = null;
+
     // DOM Elements
     const elements = {
         loadingOverlay: document.getElementById('loadingOverlay'),
@@ -167,19 +169,201 @@
             showLoading(false);
         }
     }
-    
+
+    async function loadPendingCount() {
+        if (!telegramUser) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/count/${telegramUser.id}`);
+            const data = await response.json();
+            
+            const badge = document.getElementById('inboxBadge');
+            if (badge) {
+                if (data.count > 0) {
+                    badge.textContent = data.count > 99 ? '99+' : data.count;
+                    badge.style.display = 'flex';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Error loading pending count:', error);
+        }
+    }
+
+    async function loadPendingList() {
+        if (!telegramUser) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/list/${telegramUser.id}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                pendingList = data.pendings;
+                renderInboxContent();
+            }
+        } catch (error) {
+            console.error('Error loading pending list:', error);
+            const inboxContent = document.getElementById('inboxContent');
+            if (inboxContent) {
+                inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+            }
+        }
+    }
+
+    function renderInboxContent() {
+        const container = document.getElementById('inboxContent');
+        if (!container) return;
+        
+        if (pendingList.length === 0) {
+            container.innerHTML = `
+                <div class="inbox-empty">
+                    <i class="fas fa-inbox"></i>
+                    <p>Tidak ada verifikasi pending</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        for (const pending of pendingList) {
+            const statusText = pending.status === 'pending' ? 'Menunggu' : pending.status;
+            const typeIcon = pending.verification_type === 'user' ? '👤' : '📢';
+            
+            html += `
+                <div class="inbox-item" data-id="${pending.id}" data-type="${pending.verification_type}">
+                    <div class="inbox-icon">${typeIcon}</div>
+                    <div class="inbox-info">
+                        <div class="inbox-username">@${escapeHtml(pending.username)}</div>
+                        <div class="inbox-price">${formatNumber(pending.price)} TON</div>
+                        <div class="inbox-status ${pending.status}">${statusText}</div>
+                    </div>
+                    ${pending.verification_type === 'user' && pending.status === 'pending' ? 
+                        '<button class="inbox-verify-btn" data-id="' + pending.id + '"><i class="fas fa-check"></i> Verifikasi</button>' : ''}
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        
+        // Add event listeners to verify buttons
+        document.querySelectorAll('.inbox-verify-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const pendingId = btn.dataset.id;
+                showOtpModal(pendingId);
+            });
+        });
+    }
+
+    function showOtpModal(pendingId) {
+        currentOtpPendingId = pendingId;
+        const modal = document.getElementById('otpModal');
+        const input = document.getElementById('otpInput');
+        
+        if (input) input.value = '';
+        
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.classList.add('modal-open');
+            if (input) setTimeout(() => input.focus(), 100);
+        }
+    }
+
+    async function verifyOtp() {
+        const otpInput = document.getElementById('otpInput');
+        const otp = otpInput?.value.trim();
+        
+        if (!otp || otp.length !== 6) {
+            showToast('Masukkan kode OTP 6 digit', 'warning');
+            return;
+        }
+        
+        if (!currentOtpPendingId) {
+            showToast('Invalid pending ID', 'error');
+            return;
+        }
+        
+        hapticMedium();
+        showLoading(true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pending_id: currentOtpPendingId,
+                    code: otp
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                hapticSuccess();
+                showToast('Username berhasil diverifikasi!', 'success');
+                closeOtpModal();
+                closeInboxPanel();
+                await loadUsernames();
+                await loadPendingCount();
+            } else {
+                hapticError();
+                showToast(data.error || 'Verifikasi gagal', 'error');
+            }
+        } catch (error) {
+            console.error('Error verifying OTP:', error);
+            showToast('Error verifikasi', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function closeOtpModal() {
+        const modal = document.getElementById('otpModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+        currentOtpPendingId = null;
+    }
+
+    function openInboxPanel() {
+        const panel = document.getElementById('inboxPanel');
+        if (panel) {
+            panel.style.display = 'flex';
+            loadPendingList();
+            hapticLight();
+        }
+    }
+
+    function closeInboxPanel() {
+        const panel = document.getElementById('inboxPanel');
+        if (panel) {
+            panel.style.display = 'none';
+        }
+    }
+
     async function addUsername(username, price, category) {
         if (!telegramUser) {
             showToast('Login terlebih dahulu', 'warning');
             return false;
         }
         
+        // Clean username
+        let cleanUsername = username.trim();
+        if (cleanUsername.startsWith('@')) {
+            cleanUsername = cleanUsername.substring(1);
+        }
+        
+        hapticMedium();
+        showLoading(true);
+        
         try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/username/add`, {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/add`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    username: username,
+                    username: cleanUsername,
                     price: price,
                     seller_id: telegramUser.id,
                     seller_wallet: walletAddress || '',
@@ -190,8 +374,9 @@
             const data = await response.json();
             
             if (data.success) {
-                showToast('Username berhasil ditambahkan!', 'success');
-                await loadUsernames();
+                hapticSuccess();
+                showToast('Verifikasi dikirim! Cek Inbox.', 'success');
+                await loadPendingCount();
                 return true;
             } else {
                 showToast(data.error || 'Gagal menambahkan username', 'error');
@@ -199,8 +384,10 @@
             }
         } catch (error) {
             console.error('Error adding username:', error);
-            showToast('Error adding username', 'error');
+            showToast('Error menambahkan username', 'error');
             return false;
+        } finally {
+            showLoading(false);
         }
     }
     
@@ -237,7 +424,54 @@
             return false;
         }
     }
-    
+
+    function setupInboxEventListeners() {
+        const inboxBtn = document.getElementById('inboxBtn');
+        if (inboxBtn) {
+            inboxBtn.addEventListener('click', openInboxPanel);
+        }
+        
+        const closeInboxBtn = document.getElementById('closeInboxBtn');
+        if (closeInboxBtn) {
+            closeInboxBtn.addEventListener('click', closeInboxPanel);
+        }
+        
+        // Close panel on outside click
+        const panel = document.getElementById('inboxPanel');
+        if (panel) {
+            panel.addEventListener('click', (e) => {
+                if (e.target === panel) {
+                    closeInboxPanel();
+                }
+            });
+        }
+        
+        // OTP Modal
+        const cancelOtpBtn = document.getElementById('cancelOtpBtn');
+        if (cancelOtpBtn) {
+            cancelOtpBtn.addEventListener('click', closeOtpModal);
+        }
+        
+        const confirmOtpBtn = document.getElementById('confirmOtpBtn');
+        if (confirmOtpBtn) {
+            confirmOtpBtn.addEventListener('click', verifyOtp);
+        }
+        
+        const otpModal = document.getElementById('otpModal');
+        if (otpModal) {
+            otpModal.addEventListener('click', (e) => {
+                if (e.target === otpModal) closeOtpModal();
+            });
+        }
+        
+        const otpInput = document.getElementById('otpInput');
+        if (otpInput) {
+            otpInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') verifyOtp();
+            });
+        }
+    }
+
     async function toggleListStatus(usernameId, currentStatus) {
         if (!telegramUser) return false;
         
@@ -899,8 +1133,8 @@
         showLoading(true);
         
         setupEventListeners();
+        setupInboxEventListeners()
         
-        // Pastikan toggle button siap sebelum setup
         setTimeout(() => {
             setupToggleButtons();
         }, 100);
@@ -918,6 +1152,7 @@
         }
         
         showLoading(false);
+        loadPendingCount()
         console.log('✅ Winedash Storage initialized');
     }
     init();
