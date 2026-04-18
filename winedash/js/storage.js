@@ -174,8 +174,12 @@
         if (!telegramUser) return;
         
         try {
+            console.log('[DEBUG] Loading pending count for user:', telegramUser.id);
+            
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/count/${telegramUser.id}`);
             const data = await response.json();
+            
+            console.log('[DEBUG] Pending count response:', data);
             
             const badge = document.getElementById('inboxBadge');
             if (badge) {
@@ -195,9 +199,12 @@
         if (!telegramUser) return;
         
         try {
-            // Gunakan endpoint dengan user_id
+            console.log('[DEBUG] Loading pending list for user:', telegramUser.id);
+            
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/list/${telegramUser.id}`);
             const data = await response.json();
+            
+            console.log('[DEBUG] Pending list response:', data);
             
             if (data.success) {
                 pendingList = data.pendings || [];
@@ -206,14 +213,14 @@
                 console.error('Failed to load pending list:', data.error);
                 const inboxContent = document.getElementById('inboxContent');
                 if (inboxContent) {
-                    inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+                    inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data: ' + (data.error || 'Unknown error') + '</div>';
                 }
             }
         } catch (error) {
             console.error('Error loading pending list:', error);
             const inboxContent = document.getElementById('inboxContent');
             if (inboxContent) {
-                inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+                inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data: ' + (error.message || 'Network error') + '</div>';
             }
         }
     }
@@ -222,7 +229,7 @@
         const container = document.getElementById('inboxContent');
         if (!container) return;
         
-        if (pendingList.length === 0) {
+        if (!pendingList || pendingList.length === 0) {
             container.innerHTML = `
                 <div class="inbox-empty">
                     <i class="fas fa-inbox"></i>
@@ -255,9 +262,13 @@
         
         // Add event listeners to verify buttons
         document.querySelectorAll('.inbox-verify-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            // Hapus event listener lama dengan clone
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const pendingId = btn.dataset.id;
+                const pendingId = newBtn.dataset.id;
                 showOtpModal(pendingId);
             });
         });

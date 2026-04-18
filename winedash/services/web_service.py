@@ -818,9 +818,15 @@ def confirm_pending_username():
         print(f"Error in confirm_pending_username: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@winedash_bp.route('/username/pending/count/<int:user_id>', methods=['GET'])
+@winedash_bp.route('/username/pending/count/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_pending_count(user_id):
     """Get pending count for user inbox"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
     try:
         count = db.get_user_pending_count(user_id)
         return jsonify({
@@ -829,11 +835,19 @@ def get_pending_count(user_id):
         })
     except Exception as e:
         print(f"Error in get_pending_count: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@winedash_bp.route('/username/pending/list', methods=['GET'])
+@winedash_bp.route('/username/pending/list', methods=['GET', 'OPTIONS'])
 def get_pending_usernames_global():
     """Get pending usernames (global, for bot)"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
     try:
         pendings = db.get_pending_usernames()  # Tanpa user_id, ambil semua
         return jsonify({
@@ -843,12 +857,19 @@ def get_pending_usernames_global():
         })
     except Exception as e:
         print(f"Error in get_pending_usernames_global: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-@winedash_bp.route('/username/pending/list/<int:user_id>', methods=['GET'])
+@winedash_bp.route('/username/pending/list/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_pending_usernames_by_user(user_id):
     """Get pending usernames for specific user"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
     try:
         pendings = db.get_pending_usernames(user_id)
         return jsonify({
@@ -858,4 +879,6 @@ def get_pending_usernames_by_user(user_id):
         })
     except Exception as e:
         print(f"Error in get_pending_usernames_by_user: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500

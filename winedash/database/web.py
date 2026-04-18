@@ -1,6 +1,6 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 import pytz
 import os
@@ -689,26 +689,36 @@ def add_pending_username(self, username: str, price: float, seller_id: int,
         print(f"Error adding pending username: {e}")
         return None
 
-# Tambahkan method berikut di class WinedashDatabase (web.py)
-
 def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
     """Get pending usernames for a user (or all if user_id is None)"""
     try:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
+            # Cek kolom yang tersedia di tabel
+            cursor.execute("PRAGMA table_info(pending_usernames)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            # Tentukan kolom yang akan diambil
+            select_cols = ['id', 'username', 'category', 'price', 'seller_id', 'seller_wallet',
+                          'verification_type', 'verification_code', 'status', 'created_at']
+            
+            # Tambahkan expires_at jika ada
+            if 'expires_at' in columns:
+                select_cols.append('expires_at')
+            
+            select_str = ', '.join(select_cols)
+            
             if user_id:
-                cursor.execute('''
-                    SELECT id, username, category, price, seller_id, seller_wallet,
-                           verification_type, verification_code, status, created_at, expires_at
+                cursor.execute(f'''
+                    SELECT {select_str}
                     FROM pending_usernames 
                     WHERE seller_id = ? AND status = 'pending'
                     ORDER BY created_at DESC
                 ''', (user_id,))
             else:
-                cursor.execute('''
-                    SELECT id, username, category, price, seller_id, seller_wallet,
-                           verification_type, verification_code, status, created_at, expires_at
+                cursor.execute(f'''
+                    SELECT {select_str}
                     FROM pending_usernames 
                     WHERE status = 'pending'
                     ORDER BY created_at DESC
@@ -717,7 +727,7 @@ def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
             rows = cursor.fetchall()
             results = []
             for row in rows:
-                results.append({
+                result = {
                     'id': row[0],
                     'username': row[1],
                     'category': row[2],
@@ -727,12 +737,20 @@ def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
                     'verification_type': row[6],
                     'verification_code': row[7],
                     'status': row[8],
-                    'created_at': row[9],
-                    'expires_at': row[10]
-                })
+                    'created_at': row[9]
+                }
+                # Tambahkan expires_at jika ada
+                if 'expires_at' in columns and len(row) > 10:
+                    result['expires_at'] = row[10]
+                else:
+                    result['expires_at'] = None
+                
+                results.append(result)
             return results
     except Exception as e:
         print(f"Error getting pending usernames: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
@@ -812,4 +830,6 @@ def get_user_pending_count(self, user_id: int) -> int:
             return row[0] if row else 0
     except Exception as e:
         print(f"Error getting pending count: {e}")
+        import traceback
+        traceback.print_exc()
         return 0
