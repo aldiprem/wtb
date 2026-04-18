@@ -318,7 +318,29 @@
         if (!elements.usernameContainer) return;
         
         if (usernames.length === 0) {
-            elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Belum ada username</div>';
+            // Tampilkan animasi TGS
+            elements.usernameContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-animation" id="emptyAnimation"></div>
+                    <div class="empty-title">No Usernames Yet</div>
+                    <div class="empty-subtitle">Add your first username to get started</div>
+                    <button class="empty-btn" id="emptyAddBtn">
+                        <i class="fas fa-plus"></i> Add Username
+                    </button>
+                </div>
+            `;
+            
+            // Load TGS animation
+            loadTGSAnimation();
+            
+            // Add event listener to empty state button
+            const emptyAddBtn = document.getElementById('emptyAddBtn');
+            if (emptyAddBtn) {
+                emptyAddBtn.addEventListener('click', () => {
+                    elements.addModal.style.display = 'flex';
+                    hapticLight();
+                });
+            }
             return;
         }
         
@@ -400,7 +422,40 @@
             });
         });
     }
-    
+
+    // Fungsi untuk load animasi TGS
+    function loadTGSAnimation() {
+        const container = document.getElementById('emptyAnimation');
+        if (!container) return;
+        
+        // Cek apakah TGS Player tersedia
+        if (typeof window.TGSPlayer === 'undefined') {
+            // Load script TGS Player jika belum ada
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/@tgs/core@latest/dist/tgs-player.min.js';
+            script.onload = () => {
+                initTGSPlayer(container);
+            };
+            document.head.appendChild(script);
+        } else {
+            initTGSPlayer(container);
+        }
+    }
+
+    function initTGSPlayer(container) {
+        if (typeof window.TGSPlayer === 'undefined') return;
+        
+        const player = new window.TGSPlayer(container, {
+            file: '/image/none-username-storage.tgs',
+            autoplay: true,
+            loop: true,
+            width: 120,
+            height: 120
+        });
+        
+        player.play();
+    }
+
     // ==================== EVENT HANDLERS ====================
     
     function setupEventListeners() {
@@ -612,28 +667,48 @@
         const toggleBtn = document.getElementById('toggleStatusBtn');
         
         if (toggleBtn) {
+            // Pastikan button visible
+            toggleBtn.style.display = 'flex';
+            
             // Set initial state
             toggleBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
+            toggleBtn.classList.remove('toggle-active', 'toggle-active-unlisted');
             
-            toggleBtn.addEventListener('click', () => {
+            // Remove existing listeners to avoid duplicates
+            const newToggleBtn = toggleBtn.cloneNode(true);
+            toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+            
+            newToggleBtn.addEventListener('click', () => {
                 if (currentStatus === 'all') {
                     currentStatus = 'listed';
-                    toggleBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Listed</span>';
-                    toggleBtn.classList.add('toggle-active');
-                    toggleBtn.classList.remove('toggle-active-unlisted');
+                    newToggleBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Listed</span>';
+                    newToggleBtn.classList.add('toggle-active');
+                    newToggleBtn.classList.remove('toggle-active-unlisted');
                 } else if (currentStatus === 'listed') {
                     currentStatus = 'unlisted';
-                    toggleBtn.innerHTML = '<i class="fas fa-times-circle"></i><span>Unlisted</span>';
-                    toggleBtn.classList.remove('toggle-active');
-                    toggleBtn.classList.add('toggle-active-unlisted');
+                    newToggleBtn.innerHTML = '<i class="fas fa-times-circle"></i><span>Unlisted</span>';
+                    newToggleBtn.classList.remove('toggle-active');
+                    newToggleBtn.classList.add('toggle-active-unlisted');
                 } else {
                     currentStatus = 'all';
-                    toggleBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
-                    toggleBtn.classList.remove('toggle-active', 'toggle-active-unlisted');
+                    newToggleBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
+                    newToggleBtn.classList.remove('toggle-active', 'toggle-active-unlisted');
                 }
                 filterAndRender();
                 hapticLight();
             });
+        } else {
+            console.warn('Toggle button not found, creating fallback');
+            // Fallback: create toggle button if not exists
+            const actionBar = document.querySelector('.action-bar');
+            if (actionBar) {
+                const fallbackBtn = document.createElement('button');
+                fallbackBtn.className = 'action-btn';
+                fallbackBtn.id = 'toggleStatusBtn';
+                fallbackBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
+                actionBar.insertBefore(fallbackBtn, actionBar.firstChild);
+                setupToggleButtons(); // Recursive call
+            }
         }
     }
 
@@ -702,8 +777,13 @@
         showLoading(true);
         
         setupEventListeners();
-        setupToggleButtons();
-        setupSearch();  // Pastikan fungsi ini sudah didefinisikan
+        
+        // Pastikan toggle button siap sebelum setup
+        setTimeout(() => {
+            setupToggleButtons();
+        }, 100);
+        
+        setupSearch();
         
         telegramUser = getTelegramUserFromWebApp();
         if (telegramUser) {
