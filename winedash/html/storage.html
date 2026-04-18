@@ -33,16 +33,26 @@
 
     <!-- Main Container -->
     <div class="storage-container">
-        
-        <!-- Header dengan back button dan navigation -->
-        <div class="storage-header">
-            <div class="back-circle" id="backButton">
+
+        <!-- Profile Header - Sama seperti web.html -->
+        <div class="storage-profile-header">
+            <div class="storage-profile-avatar" id="storageUserAvatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="storage-balance" id="storageBalanceCard">
+                <!-- Konten akan diisi JS -->
+            </div>
+        </div>
+
+        <!-- Bottom Navigation - Floating dengan lingkaran kiri -->
+        <div class="storage-bottom-nav">
+            <div class="nav-circle" id="backToHomeBtn">
                 <i class="fas fa-arrow-left"></i>
             </div>
-            <div class="nav-links">
-                <a href="#" class="active">Activity</a>
-                <a href="#">Offers</a>
-                <a href="#">Store</a>
+            <div class="nav-links-container">
+                <button class="nav-link active" data-nav="activity">Activity</button>
+                <button class="nav-link" data-nav="offers">Offers</button>
+                <button class="nav-link" data-nav="store">Store</button>
             </div>
         </div>
 

@@ -27,7 +27,6 @@
         usernameContainer: document.getElementById('usernameContainer'),
         searchInput: document.getElementById('searchStorage'),
         searchApplyBtn: document.getElementById('searchApplyBtn'),
-        backButton: document.getElementById('backButton'),
         addUsernameBtn: document.getElementById('addUsernameBtn'),
         addModal: document.getElementById('addModal'),
         cancelModalBtn: document.getElementById('cancelModalBtn'),
@@ -408,13 +407,14 @@
     // ==================== EVENT HANDLERS ====================
     
     function setupEventListeners() {
-        // Back button
-        if (elements.backButton) {
-            elements.backButton.addEventListener('click', () => {
+        // Back to home button
+        const backToHomeBtn = document.getElementById('backToHomeBtn');
+        if (backToHomeBtn) {
+            backToHomeBtn.addEventListener('click', () => {
                 window.location.href = '/winedash';
             });
         }
-        
+
         // Search
         if (elements.searchApplyBtn) {
             elements.searchApplyBtn.addEventListener('click', () => {
@@ -433,6 +433,25 @@
                 }
             });
         }
+
+        // Navigation links
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                const navType = link.dataset.nav;
+                // Filter berdasarkan navType
+                if (navType === 'activity') {
+                    // Tampilkan aktivitas
+                } else if (navType === 'offers') {
+                    // Tampilkan offers
+                } else if (navType === 'store') {
+                    loadUsernames();
+                }
+                hapticLight();
+            });
+        });
         
         // Mode toggle
         elements.modeBtns.forEach(btn => {
@@ -563,20 +582,63 @@
             });
         }
     }
-    
-    function updateStatusButtons(activeStatus) {
-        const btns = [elements.toggleListedBtn, elements.toggleListedBtnListed, elements.toggleListedBtnUnlisted];
-        const statuses = ['all', 'listed', 'unlisted'];
+
+    // Balance Card Functions
+    async function loadStorageBalance() {
+        if (!telegramUser) return;
         
-        btns.forEach((btn, index) => {
-            if (btn) {
-                if (statuses[index] === activeStatus) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const balanceCard = document.getElementById('storageBalanceCard');
+                if (balanceCard && data.user) {
+                    const formattedBalance = parseFloat(data.user.balance).toFixed(2);
+                    balanceCard.innerHTML = `
+                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
+                        <span class="balance-amount">${formattedBalance}</span>
+                    `;
                 }
             }
-        });
+        } catch (error) {
+            console.error('Error loading balance:', error);
+        }
+    }
+
+    function setupToggleButtons() {
+        const listedBtn = document.getElementById('toggleListedBtn');
+        const unlistedBtn = document.getElementById('toggleListedBtnUnlisted');
+        
+        if (listedBtn) {
+            listedBtn.addEventListener('click', () => {
+                if (currentStatus === 'listed') {
+                    currentStatus = 'all';
+                    listedBtn.classList.remove('toggle-active');
+                } else {
+                    currentStatus = 'listed';
+                    listedBtn.classList.add('toggle-active');
+                    if (unlistedBtn) unlistedBtn.classList.remove('toggle-active');
+                }
+                filterAndRender();
+                hapticLight();
+            });
+        }
+        
+        if (unlistedBtn) {
+            unlistedBtn.addEventListener('click', () => {
+                if (currentStatus === 'unlisted') {
+                    currentStatus = 'all';
+                    unlistedBtn.classList.remove('toggle-active');
+                } else {
+                    currentStatus = 'unlisted';
+                    unlistedBtn.classList.add('toggle-active');
+                    if (listedBtn) listedBtn.classList.remove('toggle-active');
+                }
+                filterAndRender();
+                hapticLight();
+            });
+        }
     }
     
     function clearModal() {
@@ -584,7 +646,23 @@
         if (elements.modalPrice) elements.modalPrice.value = '';
         if (elements.modalCategory) elements.modalCategory.value = 'default';
     }
-    
+
+    function updateStorageUserUI() {
+        if (!telegramUser) return;
+        
+        const avatarContainer = document.getElementById('storageUserAvatar');
+        if (avatarContainer) {
+            if (telegramUser.photo_url) {
+                avatarContainer.innerHTML = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            } else {
+                const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
+                const nameForAvatar = encodeURIComponent(fullName || telegramUser.username || 'User');
+                const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
+                avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            }
+        }
+    }
+
     // ==================== INITIALIZATION ====================
     
     function initTelegram() {
@@ -602,10 +680,14 @@
         showLoading(true);
         
         setupEventListeners();
+        setupToggleButtons(); // Tambahkan ini
+        setupSearch();
         
         telegramUser = getTelegramUserFromWebApp();
         if (telegramUser) {
+            updateStorageUserUI(); // Buat fungsi ini
             await authenticateUser();
+            await loadStorageBalance(); // Tambahkan ini
             await loadUsernames();
         } else {
             showToast('Tidak dapat mengambil data user', 'error');
@@ -614,6 +696,5 @@
         showLoading(false);
         console.log('✅ Winedash Storage initialized');
     }
-    
     init();
 })();
