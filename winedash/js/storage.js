@@ -29,7 +29,7 @@
         usernameContainer: document.getElementById('usernameContainer'),
         searchInput: document.getElementById('searchStorage'),
         searchApplyBtn: document.getElementById('searchApplyBtn'),
-        addUsernameBtn: document.getElementById('addUsernameBtn'),
+        addUsernameActionBtn: document.getElementById('addUsernameActionBtn'),
         addModal: document.getElementById('addModal'),
         cancelModalBtn: document.getElementById('cancelModalBtn'),
         confirmAddBtn: document.getElementById('confirmAddBtn'),
@@ -66,7 +66,21 @@
             tg.HapticFeedback.notificationOccurred('success');
         }
     }
-    
+
+    function hapticMedium() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.impactOccurred('medium');
+        }
+    }
+
+    function hapticError() {
+        const tg = getTelegramWebApp();
+        if (tg && tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('error');
+        }
+    }
+
     function showToast(message, type = 'info', duration = 3000) {
         if (!elements.toastContainer) return;
         
@@ -374,13 +388,12 @@
             cleanUsername = cleanUsername.substring(1);
         }
         
-        // Validasi username tidak boleh kosong
+        // Validasi
         if (!cleanUsername) {
             showToast('Username tidak boleh kosong', 'warning');
             return false;
         }
         
-        // Validasi price
         if (!price || price <= 0) {
             showToast('Harga harus lebih dari 0', 'warning');
             return false;
@@ -391,6 +404,7 @@
         
         try {
             console.log('[DEBUG] Adding username:', cleanUsername, price, category);
+            console.log('[DEBUG] Telegram user ID:', telegramUser.id);
             
             const requestBody = {
                 username: cleanUsername,
@@ -400,9 +414,13 @@
                 category: category || 'default'
             };
             
-            console.log('[DEBUG] Request body:', requestBody);
+            console.log('[DEBUG] Request body:', JSON.stringify(requestBody));
             
-            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/add`, {
+            // Pastikan URL endpoint benar
+            const url = `${API_BASE_URL}/api/winedash/username/pending/add`;
+            console.log('[DEBUG] POST to:', url);
+            
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 
                     'Accept': 'application/json',
@@ -413,13 +431,26 @@
             
             console.log('[DEBUG] Response status:', response.status);
             
-            const data = await response.json();
+            // Baca response text terlebih dahulu untuk debugging
+            const responseText = await response.text();
+            console.log('[DEBUG] Raw response:', responseText);
+            
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('[DEBUG] Failed to parse JSON:', e);
+                showToast('Server error: invalid response', 'error');
+                return false;
+            }
+            
             console.log('[DEBUG] Add username response:', data);
             
             if (data.success) {
                 hapticSuccess();
                 showToast('Verifikasi dikirim! Cek Inbox.', 'success');
                 await loadPendingCount();
+                
                 // Refresh inbox content if open
                 const panel = document.getElementById('inboxPanel');
                 if (panel && panel.style.display === 'flex') {
@@ -431,7 +462,7 @@
                 return false;
             }
         } catch (error) {
-            console.error('Error adding username:', error);
+            console.error('[DEBUG] Error adding username:', error);
             showToast('Error: ' + (error.message || 'Unknown error'), 'error');
             return false;
         } finally {
@@ -785,7 +816,6 @@
         // Action Row Buttons
         const addActionBtn = document.getElementById('addUsernameActionBtn');
         if (addActionBtn) {
-            // Hapus listener lama
             const newAddActionBtn = addActionBtn.cloneNode(true);
             addActionBtn.parentNode.replaceChild(newAddActionBtn, addActionBtn);
             
@@ -802,10 +832,24 @@
                     hapticLight();
                 } else {
                     console.error('[DEBUG] addModal element not found');
+                    // Fallback: coba cari modal dengan ID lain
+                    const modal = document.getElementById('addModal');
+                    if (modal) {
+                        modal.style.display = 'flex';
+                        elements.addModal = modal;
+                    }
                 }
             });
         } else {
             console.warn('[DEBUG] addUsernameActionBtn not found');
+            // Fallback: cari tombol dengan class atau ID alternatif
+            const fallbackBtn = document.querySelector('.add-action-btn');
+            if (fallbackBtn) {
+                fallbackBtn.addEventListener('click', () => {
+                    const modal = document.getElementById('addModal');
+                    if (modal) modal.style.display = 'flex';
+                });
+            }
         }
 
         const sendBtn = document.getElementById('sendUsernameBtn');
