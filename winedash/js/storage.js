@@ -17,7 +17,7 @@
     let currentMode = 'onchain';
     let currentStatus = 'all';
     let currentSort = 'price_asc';
-    let currentLayout = 'grid';
+    let currentLayout = localStorage.getItem('storage_layout') || 'grid';
     let currentSearchTerm = '';
     let pendingList = [];
     let currentOtpPendingId = null;
@@ -851,7 +851,10 @@
                         <div class="username-card-info">
                             <div class="card-username">@${escapeHtml(username.username)}</div>
                             <div class="card-price-row">
-                                <div class="card-price">${formatNumber(username.price)} TON</div>
+                                <div class="price-with-logo">
+                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
+                                    <span class="card-price">${formatNumber(username.price)}</span>
+                                </div>
                                 <div class="card-status ${statusClass}">${statusText}</div>
                             </div>
                         </div>
@@ -1273,16 +1276,26 @@
         if (elements.gridLayoutBtn) {
             elements.gridLayoutBtn.addEventListener('click', () => {
                 currentLayout = 'grid';
+                localStorage.setItem('storage_layout', 'grid');
                 elements.gridLayoutBtn.classList.add('active');
                 elements.listLayoutBtn.classList.remove('active');
                 filterAndRender();
                 hapticLight();
             });
         }
-        
+
+        if (currentLayout === 'grid') {
+            if (elements.gridLayoutBtn) elements.gridLayoutBtn.classList.add('active');
+            if (elements.listLayoutBtn) elements.listLayoutBtn.classList.remove('active');
+        } else {
+            if (elements.listLayoutBtn) elements.listLayoutBtn.classList.add('active');
+            if (elements.gridLayoutBtn) elements.gridLayoutBtn.classList.remove('active');
+        }
+
         if (elements.listLayoutBtn) {
             elements.listLayoutBtn.addEventListener('click', () => {
                 currentLayout = 'list';
+                localStorage.setItem('storage_layout', 'list');
                 elements.listLayoutBtn.classList.add('active');
                 elements.gridLayoutBtn.classList.remove('active');
                 filterAndRender();

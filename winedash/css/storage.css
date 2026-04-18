@@ -330,6 +330,7 @@ body {
     color: var(--primary);
 }
 
+/* Username Grid - Fixed height card */
 .username-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -345,8 +346,7 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    height: auto;
-    min-height: 180px;
+    height: 170px;  /* Fixed height, tidak auto */
     width: 100%;
 }
 
@@ -355,15 +355,11 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-/* Hapus pseudo-element ::after yang lama */
-.username-grid .username-card::after {
-    display: none;
-}
-
+/* Card Image Background */
 .username-card-image {
     position: relative;
     width: 100%;
-    height: 100px;  /* Kurangi dari 120px ke 100px */
+    height: 110px;  /* Fixed height */
     background-image: url('https://companel.shop/image/bg-storage-card.jpg');
     background-size: cover;
     background-position: center;
@@ -373,10 +369,10 @@ body {
     flex-shrink: 0;
 }
 
-/* Avatar lebih kecil */
+/* Avatar di card */
 .card-avatar {
-    width: 50px;
-    height: 50px;
+    width: 55px;
+    height: 55px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border-radius: 50%;
     display: flex;
@@ -386,6 +382,16 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     flex-shrink: 0;
+}
+
+/* Card Info - bagian bawah */
+.username-card-info {
+    padding: 10px 8px 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: var(--surface-light);
+    flex: 1;
 }
 
 .card-avatar img {
@@ -399,14 +405,7 @@ body {
     color: white;
 }
 
-.username-card-info {
-    padding: 12px 10px 10px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    background: var(--surface-light);
-}
-
+/* Username text - tidak menimpa background, posisi di dalam card-info */
 .username-card .card-username {
     font-size: 12px;
     font-weight: 600;
@@ -416,27 +415,43 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: rgba(0, 0, 0, 0.5);  /* Tambahkan background transparan */
-    padding: 4px 8px;  /* Tambahkan padding */
-    border-radius: 20px;  /* Tambahkan border-radius */
-    margin: -30px auto 0 auto;  /* Naikkan ke atas background */
-    position: relative;  /* Tambahkan positioning */
-    z-index: 2;  /* Pastikan di atas background */
-    width: calc(100% - 16px);
-    backdrop-filter: blur(4px);  /* Efek blur agar terbaca */
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
+    margin: 0;
+    position: static;
+    z-index: auto;
+    width: 100%;
+    backdrop-filter: none;
+    color: var(--text);
 }
 
+/* Baris harga - dengan logo TON */
 .card-price-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-top: 4px;
+    gap: 8px;
+}
+
+/* Container harga dengan logo */
+.price-with-logo {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.price-logo {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
 }
 
 .username-card .card-price {
     font-size: 13px;
     font-weight: 700;
-    color: var(--success);
+    color: var(--text);
     margin: 0;
 }
 
@@ -446,6 +461,7 @@ body {
     border-radius: 20px;
     display: inline-block;
     margin: 0;
+    flex-shrink: 0;
 }
 
 .username-card .card-price {
