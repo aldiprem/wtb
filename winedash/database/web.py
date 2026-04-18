@@ -635,202 +635,200 @@ class WinedashDatabase:
         except Exception as e:
             print(f"Error getting user transactions: {e}")
             return []
-        
-# Tambahkan method berikut ke class WinedashDatabase
 
-def add_pending_username(self, username: str, price: float, seller_id: int, 
-                         seller_wallet: str, category: str = "default", 
-                         verification_type: str = "channel") -> Optional[int]:
-    """Add a username to pending verification"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            now = self._get_now()
-            
-            # Buat tabel pending_usernames jika belum ada
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pending_usernames (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    category TEXT,
-                    price DECIMAL(20, 8) NOT NULL,
-                    seller_id INTEGER NOT NULL,
-                    seller_wallet TEXT,
-                    verification_type TEXT DEFAULT 'channel',
-                    verification_code TEXT,
-                    status TEXT DEFAULT 'pending',
-                    target_chat_id TEXT,
-                    target_chat_title TEXT,
-                    created_at TIMESTAMP,
-                    expires_at TIMESTAMP,
-                    confirmed_at TIMESTAMP,
-                    FOREIGN KEY (seller_id) REFERENCES users(user_id)
-                )
-            ''')
-            
-            # Generate verification code for user type
-            verification_code = None
-            expires_at = None
-            if verification_type == 'user':
-                import random
-                verification_code = ''.join(random.choices(string.digits, k=6))
-                expires_at = (datetime.now() + timedelta(minutes=5)).isoformat()
-            
-            cursor.execute('''
-                INSERT INTO pending_usernames 
-                (username, category, price, seller_id, seller_wallet, verification_type, 
-                 verification_code, status, created_at, expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-            ''', (username, category, price, seller_id, seller_wallet, 
-                  verification_type, verification_code, now, expires_at))
-            
-            conn.commit()
-            return cursor.lastrowid
-    except Exception as e:
-        print(f"Error adding pending username: {e}")
-        return None
-
-def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
-    """Get pending usernames for a user (or all if user_id is None)"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            
-            # Cek kolom yang tersedia di tabel
-            cursor.execute("PRAGMA table_info(pending_usernames)")
-            columns = [col[1] for col in cursor.fetchall()]
-            
-            # Tentukan kolom yang akan diambil
-            select_cols = ['id', 'username', 'category', 'price', 'seller_id', 'seller_wallet',
-                          'verification_type', 'verification_code', 'status', 'created_at']
-            
-            # Tambahkan expires_at jika ada
-            if 'expires_at' in columns:
-                select_cols.append('expires_at')
-            
-            select_str = ', '.join(select_cols)
-            
-            if user_id:
-                cursor.execute(f'''
-                    SELECT {select_str}
-                    FROM pending_usernames 
-                    WHERE seller_id = ? AND status = 'pending'
-                    ORDER BY created_at DESC
-                ''', (user_id,))
-            else:
-                cursor.execute(f'''
-                    SELECT {select_str}
-                    FROM pending_usernames 
-                    WHERE status = 'pending'
-                    ORDER BY created_at DESC
-                ''')
-            
-            rows = cursor.fetchall()
-            results = []
-            for row in rows:
-                result = {
-                    'id': row[0],
-                    'username': row[1],
-                    'category': row[2],
-                    'price': float(row[3]),
-                    'seller_id': row[4],
-                    'seller_wallet': row[5],
-                    'verification_type': row[6],
-                    'verification_code': row[7],
-                    'status': row[8],
-                    'created_at': row[9]
-                }
-                # Tambahkan expires_at jika ada
-                if 'expires_at' in columns and len(row) > 10:
-                    result['expires_at'] = row[10]
-                else:
-                    result['expires_at'] = None
+    def add_pending_username(self, username: str, price: float, seller_id: int, 
+                            seller_wallet: str, category: str = "default", 
+                            verification_type: str = "channel") -> Optional[int]:
+        """Add a username to pending verification"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
                 
-                results.append(result)
-            return results
-    except Exception as e:
-        print(f"Error getting pending usernames: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
+                # Buat tabel pending_usernames jika belum ada
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS pending_usernames (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        category TEXT,
+                        price DECIMAL(20, 8) NOT NULL,
+                        seller_id INTEGER NOT NULL,
+                        seller_wallet TEXT,
+                        verification_type TEXT DEFAULT 'channel',
+                        verification_code TEXT,
+                        status TEXT DEFAULT 'pending',
+                        target_chat_id TEXT,
+                        target_chat_title TEXT,
+                        created_at TIMESTAMP,
+                        expires_at TIMESTAMP,
+                        confirmed_at TIMESTAMP,
+                        FOREIGN KEY (seller_id) REFERENCES users(user_id)
+                    )
+                ''')
+                
+                # Generate verification code for user type
+                verification_code = None
+                expires_at = None
+                if verification_type == 'user':
+                    import random
+                    verification_code = ''.join(random.choices(string.digits, k=6))
+                    expires_at = (datetime.now() + timedelta(minutes=5)).isoformat()
+                
+                cursor.execute('''
+                    INSERT INTO pending_usernames 
+                    (username, category, price, seller_id, seller_wallet, verification_type, 
+                    verification_code, status, created_at, expires_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                ''', (username, category, price, seller_id, seller_wallet, 
+                    verification_type, verification_code, now, expires_at))
+                
+                conn.commit()
+                return cursor.lastrowid
+        except Exception as e:
+            print(f"Error adding pending username: {e}")
+            return None
 
-def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
-    """Confirm pending username and move to available"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            now = self._get_now()
-            
-            # Get pending record
-            cursor.execute('''
-                SELECT username, price, seller_id, seller_wallet, category, verification_type, verification_code
-                FROM pending_usernames WHERE id = ? AND status = 'pending'
-            ''', (pending_id,))
-            row = cursor.fetchone()
-            
-            if not row:
-                return False
-            
-            username, price, seller_id, seller_wallet, category, v_type, v_code = row
-            
-            # Verify code if needed
-            if v_type == 'user' and code:
-                if v_code != code:
+    def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
+        """Get pending usernames for a user (or all if user_id is None)"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek kolom yang tersedia di tabel
+                cursor.execute("PRAGMA table_info(pending_usernames)")
+                columns = [col[1] for col in cursor.fetchall()]
+                
+                # Tentukan kolom yang akan diambil
+                select_cols = ['id', 'username', 'category', 'price', 'seller_id', 'seller_wallet',
+                            'verification_type', 'verification_code', 'status', 'created_at']
+                
+                # Tambahkan expires_at jika ada
+                if 'expires_at' in columns:
+                    select_cols.append('expires_at')
+                
+                select_str = ', '.join(select_cols)
+                
+                if user_id:
+                    cursor.execute(f'''
+                        SELECT {select_str}
+                        FROM pending_usernames 
+                        WHERE seller_id = ? AND status = 'pending'
+                        ORDER BY created_at DESC
+                    ''', (user_id,))
+                else:
+                    cursor.execute(f'''
+                        SELECT {select_str}
+                        FROM pending_usernames 
+                        WHERE status = 'pending'
+                        ORDER BY created_at DESC
+                    ''')
+                
+                rows = cursor.fetchall()
+                results = []
+                for row in rows:
+                    result = {
+                        'id': row[0],
+                        'username': row[1],
+                        'category': row[2],
+                        'price': float(row[3]),
+                        'seller_id': row[4],
+                        'seller_wallet': row[5],
+                        'verification_type': row[6],
+                        'verification_code': row[7],
+                        'status': row[8],
+                        'created_at': row[9]
+                    }
+                    # Tambahkan expires_at jika ada
+                    if 'expires_at' in columns and len(row) > 10:
+                        result['expires_at'] = row[10]
+                    else:
+                        result['expires_at'] = None
+                    
+                    results.append(result)
+                return results
+        except Exception as e:
+            print(f"Error getting pending usernames: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
+        """Confirm pending username and move to available"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                # Get pending record
+                cursor.execute('''
+                    SELECT username, price, seller_id, seller_wallet, category, verification_type, verification_code
+                    FROM pending_usernames WHERE id = ? AND status = 'pending'
+                ''', (pending_id,))
+                row = cursor.fetchone()
+                
+                if not row:
                     return False
-                # Check expiration
-                cursor.execute('SELECT expires_at FROM pending_usernames WHERE id = ?', (pending_id,))
-                exp_row = cursor.fetchone()
-                if exp_row and exp_row[0]:
-                    expires_at = datetime.fromisoformat(exp_row[0])
-                    if datetime.now() > expires_at:
+                
+                username, price, seller_id, seller_wallet, category, v_type, v_code = row
+                
+                # Verify code if needed
+                if v_type == 'user' and code:
+                    if v_code != code:
                         return False
-            
-            # Move to usernames table
-            cursor.execute('''
-                INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
-                VALUES (?, ?, ?, ?, ?, 'available', ?)
-            ''', (username, category, price, seller_id, seller_wallet, now))
-            
-            # Update pending status
-            cursor.execute('''
-                UPDATE pending_usernames 
-                SET status = 'confirmed', confirmed_at = ?
-                WHERE id = ?
-            ''', (now, pending_id))
-            
-            conn.commit()
-            return True
-    except Exception as e:
-        print(f"Error confirming pending username: {e}")
-        return False
+                    # Check expiration
+                    cursor.execute('SELECT expires_at FROM pending_usernames WHERE id = ?', (pending_id,))
+                    exp_row = cursor.fetchone()
+                    if exp_row and exp_row[0]:
+                        expires_at = datetime.fromisoformat(exp_row[0])
+                        if datetime.now() > expires_at:
+                            return False
+                
+                # Move to usernames table
+                cursor.execute('''
+                    INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, 'available', ?)
+                ''', (username, category, price, seller_id, seller_wallet, now))
+                
+                # Update pending status
+                cursor.execute('''
+                    UPDATE pending_usernames 
+                    SET status = 'confirmed', confirmed_at = ?
+                    WHERE id = ?
+                ''', (now, pending_id))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error confirming pending username: {e}")
+            return False
 
-def reject_pending_username(self, pending_id: int) -> bool:
-    """Reject pending username"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE pending_usernames SET status = 'rejected' WHERE id = ?
-            ''', (pending_id,))
-            conn.commit()
-            return cursor.rowcount > 0
-    except Exception as e:
-        print(f"Error rejecting pending username: {e}")
-        return False
+    def reject_pending_username(self, pending_id: int) -> bool:
+        """Reject pending username"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE pending_usernames SET status = 'rejected' WHERE id = ?
+                ''', (pending_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error rejecting pending username: {e}")
+            return False
 
-def get_user_pending_count(self, user_id: int) -> int:
-    """Get count of pending usernames for a user"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT COUNT(*) FROM pending_usernames 
-                WHERE seller_id = ? AND status = 'pending'
-            ''', (user_id,))
-            row = cursor.fetchone()
-            return row[0] if row else 0
-    except Exception as e:
-        print(f"Error getting pending count: {e}")
-        import traceback
-        traceback.print_exc()
-        return 0
+    def get_user_pending_count(self, user_id: int) -> int:
+        """Get count of pending usernames for a user"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT COUNT(*) FROM pending_usernames 
+                    WHERE seller_id = ? AND status = 'pending'
+                ''', (user_id,))
+                row = cursor.fetchone()
+                return row[0] if row else 0
+        except Exception as e:
+            print(f"Error getting pending count: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
