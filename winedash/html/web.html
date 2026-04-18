@@ -32,26 +32,21 @@
 
     <!-- Main Container -->
     <div class="winedash-container">
-        
-        <!-- Profile Header - Tanpa border foto, avatar di kiri, balance di kanan -->
+                
+        <!-- Profile Header - Hanya avatar tanpa teks -->
         <div class="profile-header">
-            <div class="profile-left">
-                <div class="profile-avatar" id="userAvatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="profile-info">
-                    <div class="profile-name" id="userName">Memuat...</div>
-                    <div class="profile-username" id="userUsername">@username</div>
-                </div>
+            <div class="profile-avatar" id="userAvatar">
+                <i class="fas fa-user"></i>
             </div>
             <div class="profile-balance" id="balanceCard">
-                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
-                <span class="balance-amount" id="balanceAmount">0</span>
-                <small>TON</small>
-                <span class="deposit-icon" id="depositTrigger">
-                    <i class="fas fa-plus"></i>
-                </span>
+                <!-- Konten akan diisi JS -->
             </div>
+        </div>
+
+        <!-- Search Bar dengan tombol Apply -->
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchUsername" placeholder="🔍 Cari username...">
+            <button class="search-apply-btn" id="searchApplyBtn">Apply</button>
         </div>
 
         <!-- Tab Content: Marketplace -->

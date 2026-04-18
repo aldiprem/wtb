@@ -121,8 +121,8 @@
     }
 
     function formatNumber(num) {
-        if (num === undefined || num === null) return '0';
-        return parseFloat(num).toFixed(4);
+        if (num === undefined || num === null) return '0.00';
+        return parseFloat(num).toFixed(2);
     }
 
     function formatAddress(address) {
@@ -173,16 +173,13 @@
     function updateUserUI() {
         if (!telegramUser) return;
         
-        const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
-        
-        if (elements.userName) elements.userName.textContent = fullName || 'Pengguna Telegram';
-        if (elements.userUsername) elements.userUsername.textContent = telegramUser.username ? `@${telegramUser.username}` : 'Tidak ada username';
-        
+        // Hanya update avatar, tidak tampilkan nama/username
         const avatarContainer = elements.userAvatar;
         if (avatarContainer) {
             if (telegramUser.photo_url) {
                 avatarContainer.innerHTML = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
             } else {
+                const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
                 const nameForAvatar = encodeURIComponent(fullName || telegramUser.username || 'User');
                 const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2`;
                 avatarContainer.innerHTML = `<img src="${avatarUrl}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
@@ -311,38 +308,51 @@
         if (!balanceCard) return;
         
         if (isWalletConnected && walletAddress) {
-            // Wallet connected - show deposit plus button
+            // Tampilkan balance card dengan logo, balance, dan tombol deposit
+            balanceCard.classList.remove('hidden');
             balanceCard.style.cursor = 'pointer';
-            const depositIcon = balanceCard.querySelector('.deposit-icon');
-            if (depositIcon) {
-                depositIcon.style.display = 'inline-flex';
-            }
-        } else {
-            // Wallet not connected - show connect button
-            balanceCard.style.cursor = 'pointer';
-            const depositIcon = balanceCard.querySelector('.deposit-icon');
-            if (depositIcon) {
-                depositIcon.style.display = 'none';
+            
+            // Format balance dengan 2 desimal
+            const currentBalance = parseFloat(elements.balanceAmount?.textContent || '0');
+            const formattedBalance = currentBalance.toFixed(2);
+            
+            balanceCard.innerHTML = `
+                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
+                <span class="balance-amount" id="balanceAmount">${formattedBalance}</span>
+                <div class="deposit-icon" id="depositTrigger">
+                    <i class="fas fa-plus"></i>
+                    <span>Deposit</span>
+                </div>
+            `;
+            
+            // Re-attach event listener
+            const newDepositTrigger = document.getElementById('depositTrigger');
+            if (newDepositTrigger) {
+                newDepositTrigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showDepositModal();
+                });
             }
             
-            // Check if connect button already exists
-            let connectBtn = balanceCard.querySelector('.connect-wallet-btn');
-            if (!connectBtn) {
-                connectBtn = document.createElement('button');
-                connectBtn.className = 'connect-wallet-btn';
-                connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect';
+            // Update balanceAmount reference
+            elements.balanceAmount = document.getElementById('balanceAmount');
+            
+        } else {
+            // Wallet not connected - tampilkan tombol connect full
+            balanceCard.classList.remove('hidden');
+            balanceCard.innerHTML = `
+                <button class="connect-wallet-btn" id="connectWalletFullBtn">
+                    <i class="fas fa-plug"></i> Connect Wallet
+                </button>
+            `;
+            
+            const connectBtn = document.getElementById('connectWalletFullBtn');
+            if (connectBtn) {
                 connectBtn.onclick = (e) => {
                     e.stopPropagation();
                     connectWallet();
                 };
-                balanceCard.appendChild(connectBtn);
             }
-        }
-        
-        // Remove connect button if wallet connected
-        if (isWalletConnected && walletAddress) {
-            const connectBtn = balanceCard.querySelector('.connect-wallet-btn');
-            if (connectBtn) connectBtn.remove();
         }
     }
 
@@ -613,6 +623,8 @@
             username.category.toLowerCase().includes(term)
         );
         renderUsernames(filtered);
+
+        document.getElementById('searchUsername').value = '';
     }
     
     async function loadUsernames() {
@@ -683,6 +695,29 @@
                 buyBtn.disabled = false;
                 buyBtn.innerHTML = originalText || '<i class="fas fa-shopping-cart"></i> Beli';
             }
+        }
+    }
+
+    function setupSearch() {
+        const searchInput = document.getElementById('searchUsername');
+        const searchApplyBtn = document.getElementById('searchApplyBtn');
+        
+        if (searchApplyBtn) {
+            searchApplyBtn.addEventListener('click', () => {
+                const searchTerm = searchInput?.value || '';
+                filterUsernames(searchTerm);
+                hapticLight();
+            });
+        }
+        
+        // Optional: Enter key juga bisa search
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    filterUsernames(searchInput.value);
+                    hapticLight();
+                }
+            });
         }
     }
 
@@ -863,6 +898,7 @@
         await loadUsernames();
         await loadPurchasedUsernames();
         await loadTransactionHistory();
+        updateBalanceCardUI();
         
         showToast('Data diperbarui!', 'success');
     }
@@ -946,6 +982,7 @@
         
         setupTabs();
         setupEventListeners();
+        setupSearch();
         
         telegramUser = getTelegramUserFromWebApp();
         if (telegramUser) {

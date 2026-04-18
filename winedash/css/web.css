@@ -127,11 +127,10 @@ body {
     min-height: 100vh;
 }
 
-/* Profile Header - Tanpa border foto, hanya avatar dan balance */
 .profile-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-bottom: 16px;
     padding: 8px 12px;
 }
@@ -152,6 +151,7 @@ body {
     justify-content: center;
     overflow: hidden;
     flex-shrink: 0;
+    margin-right: auto;
 }
 
 .profile-avatar img {
@@ -166,7 +166,7 @@ body {
 }
 
 .profile-info {
-    flex: 1;
+    display: none;
 }
 
 .profile-name {
@@ -181,15 +181,14 @@ body {
     opacity: 0.8;
 }
 
-/* Balance Card dengan tombol deposit */
 .profile-balance {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     border-radius: 20px;
-    padding: 8px 12px;
+    padding: 8px 16px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
     position: relative;
     overflow: hidden;
     border: none;
@@ -216,6 +215,10 @@ body {
     pointer-events: none;
 }
 
+.profile-balance.hidden {
+    display: none;
+}
+
 .profile-balance:hover {
     background: rgba(255, 255, 255, 0.08);
 }
@@ -227,8 +230,9 @@ body {
 }
 
 .balance-amount {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
+    color: var(--text);
 }
 
 .balance-amount small {
@@ -238,49 +242,69 @@ body {
 }
 
 .deposit-icon {
-    color: var(--success);
-    font-size: 14px;
-    background: rgba(16, 185, 129, 0.15);
-    border-radius: 12px;
-    padding: 4px 6px;
-    margin-left: 4px;
+    background: #ffffff;
+    border-radius: 30px;
+    padding: 6px 12px;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .deposit-icon i {
-    font-size: 10px;
+    font-size: 12px;
+    color: #000000;
 }
 
-/* Connect Wallet Button di balance */
+.deposit-icon span {
+    font-size: 12px;
+    font-weight: 600;
+    color: #000000;
+}
+
+.deposit-icon:hover {
+    transform: scale(1.02);
+    background: #f0f0f0;
+}
+
+/* Connect Wallet Button di balance - tampil full */
 .connect-wallet-btn {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border: none;
-    border-radius: 16px;
-    padding: 6px 12px;
+    border-radius: 20px;
+    padding: 10px 20px;
     color: white;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     transition: all 0.2s;
+    width: 100%;
+    justify-content: center;
 }
 
 .connect-wallet-btn i {
-    font-size: 10px;
+    font-size: 14px;
 }
 
 .connect-wallet-btn:hover {
     transform: scale(1.02);
+    box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-/* Search Bar */
+/* Search container dengan tombol Apply */
 .search-container {
+    display: flex;
+    gap: 10px;
     margin-bottom: 16px;
 }
 
 .search-input {
-    width: 100%;
+    flex: 1;
     padding: 12px 16px;
     background: var(--surface-light);
     border: 1px solid var(--border);
@@ -298,6 +322,24 @@ body {
 
 .search-input::placeholder {
     color: var(--text-muted);
+}
+
+.search-apply-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    border-radius: 20px;
+    padding: 0 20px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.search-apply-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 /* Tabs Navigation - Bottom Floating */
