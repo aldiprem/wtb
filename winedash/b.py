@@ -480,8 +480,8 @@ async def process_verification(session, pending):
             pass
         return
     
-    # Check entity type
-    entity_type, chat_id, title = await check_entity_type(username)
+    # Check entity type (now returns 4 values including photo_url)
+    entity_type, chat_id, title, photo_url = await check_entity_type(username)
     
     if not entity_type:
         reject_pending(pending_id)
@@ -511,7 +511,7 @@ async def process_verification(session, pending):
         except:
             pass
         
-    else:  # User
+    else:
         # Generate OTP
         otp = generate_otp()
         update_pending_code(pending_id, otp)
@@ -524,7 +524,6 @@ async def process_verification(session, pending):
             await bot.send_message(seller_id, f"✅ Kode OTP telah dikirim ke @{username}!\n\nMasukkan kode di halaman Storage untuk verifikasi.")
         except:
             pass
-
 
 async def process_pending_verifications():
     """Process pending verifications from Flask"""
@@ -577,6 +576,85 @@ async def process_pending_verifications():
             logger.error(f"Error processing: {e}")
         
         await asyncio.sleep(5)
+
+# Tambahkan fungsi ini di bagian HELPER FUNCTIONS
+
+async def get_profile_photo_url(entity, is_big: bool = False):
+    """Get profile photo URL from entity (user, chat, or channel)"""
+    try:
+        # Get full entity if needed
+        if hasattr(entity, 'input_entity'):
+            full_entity = await bot.get_entity(entity.id)
+        else:
+            full_entity = entity
+        
+        # Get profile photos
+        photos = await bot.get_profile_photos(full_entity, limit=1)
+        
+        if photos and len(photos) > 0:
+            photo = photos[0]
+            # Get the appropriate photo size
+            if is_big and hasattr(photo, 'sizes'):
+                # Find the biggest size
+                biggest = max(photo.sizes, key=lambda s: getattr(s, 'size', 0))
+                return await _get_photo_url(bot, biggest)
+            elif hasattr(photo, 'sizes') and len(photo.sizes) > 0:
+                # Get the smallest thumbnail
+                return await _get_photo_url(bot, photo.sizes[0])
+        
+        # Return default avatar URL if no photo
+        return None
+    except Exception as e:
+        logger.error(f"Error getting profile photo for {entity}: {e}")
+        return None
+
+async def _get_photo_url(client, photo_size):
+    """Helper to get download URL for photo size"""
+    try:
+        # For newer Telegram versions, we can construct a URL
+        # This is a fallback - actual download would require file reference
+        if hasattr(photo_size, 'location'):
+            # Try to get a direct URL (not always available)
+            return None
+        return None
+    except:
+        return None
+
+# Perbaiki fungsi check_entity_type untuk juga mengembalikan foto profil
+async def check_entity_type(username: str):
+    """Check if username is channel, group, or user, and get profile photo"""
+    try:
+        if not username:
+            return None, None, None, None
+        
+        # Coba get entity
+        entity = await bot.get_entity(username)
+        
+        # Get profile photo URL (optional)
+        photo_url = None
+        try:
+            photos = await bot.get_profile_photos(entity, limit=1)
+            if photos:
+                # We'll use a placeholder since direct URL is complex
+                photo_url = f"https://ui-avatars.com/api/?name={username[0]}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        except:
+            photo_url = f"https://ui-avatars.com/api/?name={username[0]}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        
+        if hasattr(entity, 'broadcast') and entity.broadcast:
+            return 'channel', entity.id, getattr(entity, 'title', username), photo_url
+        elif hasattr(entity, 'megagroup') and entity.megagroup:
+            return 'supergroup', entity.id, getattr(entity, 'title', username), photo_url
+        elif hasattr(entity, 'participants_count'):
+            return 'group', entity.id, getattr(entity, 'title', username), photo_url
+        else:
+            # Ini adalah user biasa
+            user_name = getattr(entity, 'first_name', username)
+            if hasattr(entity, 'last_name') and entity.last_name:
+                user_name = f"{user_name} {entity.last_name}"
+            return 'user', entity.id, user_name, photo_url
+    except Exception as e:
+        logger.error(f"Error getting entity for {username}: {e}")
+        return None, None, None, None
 
 async def main():
     logger.info("🚀 Starting Winedash Bot...")

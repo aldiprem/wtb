@@ -807,7 +807,7 @@
         
         renderUsernames(filtered);
     }
-    
+        
     function renderUsernames(usernames) {
         if (!elements.usernameContainer) return;
         
@@ -839,7 +839,8 @@
             for (const username of usernames) {
                 const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
                 const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
-                const avatarUrl = getAvatarForUsername(username.username);
+                // Gunakan username untuk avatar, nanti akan ditimpa dengan foto profil jika ada
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(username.username[0] || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
                 
                 html += `
                     <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(username)}'>
@@ -852,23 +853,13 @@
                             <div class="card-username">@${escapeHtml(username.username)}</div>
                             <div class="card-price">${formatNumber(username.price)} TON</div>
                             <div class="card-status ${statusClass}">${statusText}</div>
-                            <div class="card-actions">
-                                <button class="card-action-btn toggle-status-btn" data-id="${username.id}" data-status="${username.status}">
-                                    <i class="fas fa-${username.status === 'available' ? 'eye-slash' : 'eye'}"></i>
-                                    <span>${username.status === 'available' ? 'Unlist' : 'List'}</span>
-                                </button>
-                                <button class="card-action-btn delete-btn" data-id="${username.id}">
-                                    <i class="fas fa-trash"></i>
-                                    <span>Delete</span>
-                                </button>
-                            </div>
                         </div>
                     </div>
                 `;
             }
             elements.usernameContainer.innerHTML = html;
         } else {
-            // List layout tetap sama
+            // List layout tetap sama dengan tombol
             elements.usernameContainer.className = 'username-list';
             let html = '';
             for (const username of usernames) {
@@ -899,7 +890,7 @@
             elements.usernameContainer.innerHTML = html;
         }
         
-        // Attach event listeners
+        // Attach event listeners untuk card (grid layout)
         document.querySelectorAll('.username-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.card-action-btn')) return;
@@ -908,6 +899,7 @@
             });
         });
         
+        // Attach event listeners untuk list layout
         document.querySelectorAll('.toggle-status-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -934,7 +926,6 @@
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
     }
 
-    // Fungsi untuk menampilkan detail panel
     function showDetailPanel(username) {
         // Hapus panel yang sudah ada
         const existingPanel = document.querySelector('.detail-panel');
@@ -944,8 +935,9 @@
         
         const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
         const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
-        const avatarUrl = getAvatarForUsername(username.username);
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(username.username[0] || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
         const createdAt = formatDateIndonesia(username.created_at);
+        const isListed = username.status === 'available';
         
         const panel = document.createElement('div');
         panel.className = 'detail-panel';
@@ -984,6 +976,16 @@
                     <div class="detail-label">Ditambahkan Pada</div>
                     <div class="detail-value">${createdAt}</div>
                 </div>
+                <div class="detail-actions">
+                    <button class="detail-action-btn toggle-status-detail" data-id="${username.id}" data-status="${username.status}">
+                        <i class="fas fa-${isListed ? 'eye-slash' : 'eye'}"></i>
+                        <span>${isListed ? 'Unlist' : 'List'}</span>
+                    </button>
+                    <button class="detail-action-btn delete-detail" data-id="${username.id}">
+                        <i class="fas fa-trash"></i>
+                        <span>Delete</span>
+                    </button>
+                </div>
             </div>
         `;
         
@@ -1003,6 +1005,26 @@
         // Close on outside click
         panel.addEventListener('click', (e) => {
             if (e.target === panel) {
+                panel.classList.remove('open');
+                setTimeout(() => panel.remove(), 300);
+            }
+        });
+        
+        // Action buttons in panel
+        panel.querySelector('.toggle-status-detail').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = parseInt(e.currentTarget.dataset.id);
+            const status = e.currentTarget.dataset.status;
+            await toggleListStatus(id, status);
+            panel.classList.remove('open');
+            setTimeout(() => panel.remove(), 300);
+        });
+        
+        panel.querySelector('.delete-detail').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = parseInt(e.currentTarget.dataset.id);
+            if (confirm('Yakin ingin menghapus username ini?')) {
+                await deleteUsername(id);
                 panel.classList.remove('open');
                 setTimeout(() => panel.remove(), 300);
             }

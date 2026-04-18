@@ -334,18 +334,20 @@ body {
 .username-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 10px;
 }
 
 .username-grid .username-card {
     background: var(--surface-light);
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
     transition: all 0.2s;
     cursor: pointer;
     position: relative;
     display: flex;
     flex-direction: column;
+    height: 200px;
+    width: 100%;
 }
 
 .username-grid .username-card:hover {
@@ -369,6 +371,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 /* Avatar di dalam card */
@@ -383,6 +386,7 @@ body {
     overflow: hidden;
     border: 3px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
 }
 
 .card-avatar img {
@@ -396,36 +400,43 @@ body {
     color: white;
 }
 
-/* Card Info */
+/* Card Info - Fixed height */
 .username-card-info {
-    padding: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    background: var(--surface-light);
 }
 
 .username-card .card-username {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     font-family: monospace;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     text-align: center;
     word-break: break-all;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .username-card .card-price {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--success);
     text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .username-card .card-status {
-    font-size: 10px;
-    padding: 4px 10px;
+    font-size: 9px;
+    padding: 3px 8px;
     border-radius: 20px;
     display: inline-block;
-    width: 100%;
+    width: fit-content;
     text-align: center;
-    margin-bottom: 10px;
+    margin: 0 auto 8px;
 }
 
 .username-card .card-status.listed {
@@ -438,10 +449,9 @@ body {
     color: var(--danger);
 }
 
+/* Hilangkan tombol di card - pindahkan ke panel */
 .username-card .card-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 8px;
+    display: none;
 }
 
 .username-card .card-action-btn {
@@ -1464,5 +1474,44 @@ body.modal-open {
 
 .detail-panel .detail-status.unlisted {
     background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+/* Tombol aksi di detail panel */
+.detail-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-light);
+}
+
+.detail-action-btn {
+    flex: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.detail-action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.detail-action-btn.toggle-status-detail:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.detail-action-btn.delete-detail:hover {
+    border-color: var(--danger);
     color: var(--danger);
 }
