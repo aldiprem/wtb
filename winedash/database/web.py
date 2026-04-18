@@ -665,49 +665,37 @@ class WinedashDatabase:
                     )
                 ''')
                 
-                # Cek apakah username sudah ada di pending dengan status pending ATAU rejected
-                # Jika rejected, kita bisa menambahkan ulang (update status jadi pending)
+                # Cek apakah username sudah ada di usernames (available) - BELUM TERJUAL
+                cursor.execute('SELECT id FROM usernames WHERE username = ? AND status = "available"', (username,))
+                if cursor.fetchone():
+                    print(f"Username {username} already exists in marketplace (available)")
+                    return None
+                
+                # Cek apakah username sudah ada di pending dengan status 'pending' (masih dalam antrian)
                 cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username,))
                 existing = cursor.fetchone()
                 
                 if existing:
                     existing_id, existing_status = existing
+                    # Hanya blokir jika masih dalam status 'pending'
                     if existing_status == 'pending':
-                        print(f"Username {username} already in pending")
+                        print(f"Username {username} already in pending queue")
                         return None
-                    elif existing_status == 'rejected':
-                        # Update rejected menjadi pending
-                        cursor.execute('''
-                            UPDATE pending_usernames 
-                            SET status = 'pending', price = ?, seller_id = ?, seller_wallet = ?, 
-                                category = ?, verification_type = ?, created_at = ?, 
-                                target_chat_id = NULL, target_chat_title = NULL,
-                                verification_code = NULL, expires_at = NULL
-                            WHERE id = ?
-                        ''', (price, seller_id, seller_wallet, category, verification_type, now, existing_id))
-                        conn.commit()
-                        return existing_id
                     else:
-                        # Status confirmed - sudah ada di marketplace
-                        return None
-                
-                # Cek apakah username sudah ada di usernames (available)
-                cursor.execute('SELECT id FROM usernames WHERE username = ? AND status = "available"', (username,))
-                if cursor.fetchone():
-                    print(f"Username {username} already exists in marketplace")
-                    return None
+                        # Untuk status 'confirmed', 'rejected', atau lainnya, kita update menjadi pending baru
+                        # Hapus record lama terlebih dahulu agar bisa insert baru dengan clean state
+                        cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (existing_id,))
+                        conn.commit()
+                        # Lanjutkan ke insert baru di bawah
                 
                 # Insert new pending
-                verification_code = None
-                expires_at = None
-                
                 cursor.execute('''
                     INSERT INTO pending_usernames 
                     (username, category, price, seller_id, seller_wallet, verification_type, 
                     verification_code, status, created_at, expires_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                 ''', (username, category, price, seller_id, seller_wallet, 
-                    verification_type, verification_code, now, expires_at))
+                    verification_type, None, now, None))
                 
                 conn.commit()
                 return cursor.lastrowid
@@ -822,12 +810,9 @@ class WinedashDatabase:
                     VALUES (?, ?, ?, ?, ?, 'available', ?)
                 ''', (username, category, price, seller_id, seller_wallet, now))
                 
-                # Update pending status
-                cursor.execute('''
-                    UPDATE pending_usernames 
-                    SET status = 'confirmed', confirmed_at = ?
-                    WHERE id = ?
-                ''', (now, pending_id))
+                # HAPUS pending record setelah confirmed (bukan update status)
+                # Ini penting agar username bisa ditambahkan lagi nanti jika dihapus dari usernames
+                cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
                 
                 conn.commit()
                 return True
@@ -836,13 +821,12 @@ class WinedashDatabase:
             return False
 
     def reject_pending_username(self, pending_id: int) -> bool:
-        """Reject pending username"""
+        """Reject pending username - hapus record agar bisa ditambahkan ulang nanti"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                    UPDATE pending_usernames SET status = 'rejected' WHERE id = ?
-                ''', (pending_id,))
+                # Hapus record, jangan hanya update status
+                cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
                 conn.commit()
                 return cursor.rowcount > 0
         except Exception as e:

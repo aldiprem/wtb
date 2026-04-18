@@ -960,8 +960,8 @@ def delete_username():
         with sqlite3.connect(db.db_path) as conn:
             cursor = conn.cursor()
             
-            # Cek apakah username milik user ini
-            cursor.execute('SELECT seller_id FROM usernames WHERE id = ?', (username_id,))
+            # Dapatkan username sebelum dihapus
+            cursor.execute('SELECT seller_id, username FROM usernames WHERE id = ?', (username_id,))
             row = cursor.fetchone()
             
             if not row:
@@ -970,8 +970,14 @@ def delete_username():
             if row[0] != user_id:
                 return jsonify({'success': False, 'error': 'Anda tidak memiliki akses'}), 403
             
+            username_deleted = row[1]
+            
             # Delete username
             cursor.execute('DELETE FROM usernames WHERE id = ?', (username_id,))
+            
+            # Juga hapus record pending yang mungkin terkait dengan username yang sama
+            cursor.execute('DELETE FROM pending_usernames WHERE username = ?', (username_deleted,))
+            
             conn.commit()
         
         return jsonify({
@@ -982,7 +988,6 @@ def delete_username():
     except Exception as e:
         print(f"Error in delete_username: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @winedash_bp.route('/username/toggle', methods=['POST', 'OPTIONS'])
 def toggle_username_status():
