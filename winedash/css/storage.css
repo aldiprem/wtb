@@ -1167,6 +1167,54 @@ body {
     opacity: 0.5;
 }
 
+/* Tambahkan di storage.css */
+
+.inbox-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.inbox-verify-btn {
+    background: linear-gradient(135deg, var(--success), #0d9488);
+    border: none;
+    border-radius: 10px;
+    padding: 8px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inbox-verify-btn:hover {
+    transform: scale(1.05);
+}
+
+.inbox-reject-btn {
+    background: linear-gradient(135deg, var(--danger), #dc2626);
+    border: none;
+    border-radius: 10px;
+    padding: 8px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inbox-reject-btn:hover {
+    transform: scale(1.05);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .storage-container {

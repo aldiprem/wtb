@@ -896,3 +896,41 @@ def get_pending_count(user_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@winedash_bp.route('/username/pending/reject', methods=['POST', 'OPTIONS'])
+def reject_pending_username_route():
+    """Reject pending username"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        pending_id = data.get('pending_id')
+        
+        if not pending_id:
+            return jsonify({'success': False, 'error': 'Pending ID required'}), 400
+        
+        success = db.reject_pending_username(pending_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Username rejected!'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to reject'
+            }), 400
+        
+    except Exception as e:
+        print(f"Error in reject_pending_username_route: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

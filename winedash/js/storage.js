@@ -267,8 +267,14 @@
                         <div class="inbox-price">${formatNumber(pending.price)} TON</div>
                         <div class="inbox-status ${pending.status}">${statusText}</div>
                     </div>
-                    ${pending.verification_type === 'user' && pending.status === 'pending' ? 
-                        '<button class="inbox-verify-btn" data-id="' + pending.id + '"><i class="fas fa-check"></i> Verifikasi</button>' : ''}
+                    <div class="inbox-actions">
+                        <button class="inbox-verify-btn" data-id="${pending.id}" data-username="${pending.username}">
+                            <i class="fas fa-check-circle"></i>
+                        </button>
+                        <button class="inbox-reject-btn" data-id="${pending.id}" data-username="${pending.username}">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
                 </div>
             `;
         }
@@ -277,16 +283,151 @@
         
         // Add event listeners to verify buttons
         document.querySelectorAll('.inbox-verify-btn').forEach(btn => {
-            // Hapus event listener lama dengan clone
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            
-            newBtn.addEventListener('click', (e) => {
+            btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const pendingId = newBtn.dataset.id;
-                showOtpModal(pendingId);
+                const pendingId = btn.dataset.id;
+                const username = btn.dataset.username;
+                showConfirmModal(pendingId, username);
             });
         });
+        
+        // Add event listeners to reject buttons
+        document.querySelectorAll('.inbox-reject-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const pendingId = btn.dataset.id;
+                const username = btn.dataset.username;
+                showRejectConfirmModal(pendingId, username);
+            });
+        });
+    }
+
+    function showConfirmModal(pendingId, username) {
+        // Buat modal konfirmasi
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 300px;">
+                <h3>Konfirmasi Verifikasi</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                    Apakah Anda yakin ingin memverifikasi username <strong>@${escapeHtml(username)}</strong>?
+                </p>
+                <div class="modal-buttons">
+                    <button class="modal-cancel" id="cancelConfirmBtn">Batal</button>
+                    <button class="modal-confirm" id="confirmVerifyBtn">Verifikasi</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('cancelConfirmBtn').addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        document.getElementById('confirmVerifyBtn').addEventListener('click', async () => {
+            modal.remove();
+            await confirmPendingUsername(pendingId);
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+
+    // Tambahkan fungsi untuk showRejectConfirmModal
+    function showRejectConfirmModal(pendingId, username) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 300px;">
+                <h3>Konfirmasi Penolakan</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                    Apakah Anda yakin ingin menolak username <strong>@${escapeHtml(username)}</strong>?
+                </p>
+                <div class="modal-buttons">
+                    <button class="modal-cancel" id="cancelRejectBtn">Batal</button>
+                    <button class="modal-confirm" id="confirmRejectBtn" style="background: linear-gradient(135deg, var(--danger), #dc2626);">Tolak</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('cancelRejectBtn').addEventListener('click', () => {
+            modal.remove();
+        });
+        
+        document.getElementById('confirmRejectBtn').addEventListener('click', async () => {
+            modal.remove();
+            await rejectPendingUsername(pendingId);
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+
+    async function confirmPendingUsername(pendingId) {
+        showLoading(true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pending_id: pendingId,
+                    code: null  // Untuk channel/group, tidak perlu OTP
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                hapticSuccess();
+                showToast('Username berhasil diverifikasi!', 'success');
+                closeInboxPanel();
+                await loadUsernames();
+                await loadPendingCount();
+            } else {
+                showToast(data.error || 'Verifikasi gagal', 'error');
+            }
+        } catch (error) {
+            console.error('Error confirming pending:', error);
+            showToast('Error verifikasi', 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    async function rejectPendingUsername(pendingId) {
+        showLoading(true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/reject`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pending_id: pendingId
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                hapticSuccess();
+                showToast('Username ditolak!', 'warning');
+                closeInboxPanel();
+                await loadPendingCount();
+            } else {
+                showToast(data.error || 'Gagal menolak', 'error');
+            }
+        } catch (error) {
+            console.error('Error rejecting pending:', error);
+            showToast('Error', 'error');
+        } finally {
+            showLoading(false);
+        }
     }
 
     function showOtpModal(pendingId) {
