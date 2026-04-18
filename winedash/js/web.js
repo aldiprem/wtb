@@ -1,4 +1,4 @@
-// winedash/js/web.js - Perbaikan TON Connect + Fullscreen + Safe Area
+// winedash/js/web.js - Perbaikan TON Connect
 
 (function() {
     'use strict';
@@ -19,12 +19,15 @@
         toastContainer: document.getElementById('toastContainer'),
         
         userAvatar: document.getElementById('userAvatar'),
+        userName: document.getElementById('userName'),
+        userUsername: document.getElementById('userUsername'),
         balanceAmount: document.getElementById('balanceAmount'),
         
         usernameList: document.getElementById('usernameList'),
         purchasedList: document.getElementById('purchasedList'),
         historyList: document.getElementById('historyList'),
         
+        connectWalletBtn: document.getElementById('connectWalletBtn'),
         walletStatus: document.getElementById('walletStatus'),
         walletAddress: document.getElementById('walletAddress'),
         walletAddressText: document.getElementById('walletAddressText'),
@@ -40,107 +43,45 @@
         sellCategory: document.getElementById('sellCategory'),
         sellUsernameBtn: document.getElementById('sellUsernameBtn'),
         
-        refreshNavBtn: document.getElementById('refreshNavBtn'),
+        refreshBtn: document.getElementById('refreshBtn'),
         
-        navItems: document.querySelectorAll('.nav-item'),
+        tabBtns: document.querySelectorAll('.tab-btn'),
         tabContents: document.querySelectorAll('.tab-content')
     };
 
-    // ==================== TELEGRAM WEBAPP INITIALIZATION ====================
-    
-    function initTelegramWebApp() {
-        const tg = window.Telegram?.WebApp;
-        if (!tg) {
-            console.warn('Telegram WebApp not available');
-            return null;
-        }
-        
-        // Expand to full height
-        tg.expand();
-        
-        // Request fullscreen mode (Bot API 8.0+)
-        if (tg.requestFullscreen && typeof tg.requestFullscreen === 'function') {
-            tg.requestFullscreen().catch(e => console.log('Fullscreen request:', e));
-        }
-        
-        // Set header color to match theme
-        if (tg.setHeaderColor) {
-            tg.setHeaderColor('bg_color');
-        }
-        
-        if (tg.setBackgroundColor) {
-            tg.setBackgroundColor('bg_color');
-        }
-        
-        // Apply safe area insets to body
-        if (tg.safeAreaInset) {
-            document.body.style.setProperty('--tg-safe-area-inset-top', `${tg.safeAreaInset.top}px`);
-            document.body.style.setProperty('--tg-safe-area-inset-bottom', `${tg.safeAreaInset.bottom}px`);
-            document.body.style.setProperty('--tg-safe-area-inset-left', `${tg.safeAreaInset.left}px`);
-            document.body.style.setProperty('--tg-safe-area-inset-right', `${tg.safeAreaInset.right}px`);
-        }
-        
-        if (tg.contentSafeAreaInset) {
-            document.body.style.setProperty('--tg-content-safe-area-inset-top', `${tg.contentSafeAreaInset.top}px`);
-            document.body.style.setProperty('--tg-content-safe-area-inset-bottom', `${tg.contentSafeAreaInset.bottom}px`);
-        }
-        
-        // Listen for safe area changes
-        if (tg.onEvent) {
-            tg.onEvent('safeAreaChanged', () => {
-                if (tg.safeAreaInset) {
-                    document.body.style.setProperty('--tg-safe-area-inset-top', `${tg.safeAreaInset.top}px`);
-                    document.body.style.setProperty('--tg-safe-area-inset-bottom', `${tg.safeAreaInset.bottom}px`);
-                }
-            });
-            
-            tg.onEvent('contentSafeAreaChanged', () => {
-                if (tg.contentSafeAreaInset) {
-                    document.body.style.setProperty('--tg-content-safe-area-inset-top', `${tg.contentSafeAreaInset.top}px`);
-                    document.body.style.setProperty('--tg-content-safe-area-inset-bottom', `${tg.contentSafeAreaInset.bottom}px`);
-                }
-            });
-        }
-        
-        // Enable vertical swipes for better UX
-        if (tg.enableVerticalSwipes) {
-            tg.enableVerticalSwipes();
-        }
-        
-        console.log('✅ Telegram WebApp initialized with fullscreen + safe area');
-        return tg;
-    }
-    
     // ==================== TELEGRAM HAPTIC FEEDBACK ====================
     
     function getTelegramWebApp() {
-        return window.Telegram?.WebApp || null;
+        if (window.Telegram && window.Telegram.WebApp) {
+            return window.Telegram.WebApp;
+        }
+        return null;
     }
     
     function hapticLight() {
         const tg = getTelegramWebApp();
-        if (tg?.HapticFeedback) {
+        if (tg && tg.HapticFeedback) {
             tg.HapticFeedback.impactOccurred('light');
         }
     }
     
     function hapticMedium() {
         const tg = getTelegramWebApp();
-        if (tg?.HapticFeedback) {
+        if (tg && tg.HapticFeedback) {
             tg.HapticFeedback.impactOccurred('medium');
         }
     }
     
     function hapticSuccess() {
         const tg = getTelegramWebApp();
-        if (tg?.HapticFeedback) {
+        if (tg && tg.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('success');
         }
     }
     
     function hapticError() {
         const tg = getTelegramWebApp();
-        if (tg?.HapticFeedback) {
+        if (tg && tg.HapticFeedback) {
             tg.HapticFeedback.notificationOccurred('error');
         }
     }
@@ -196,6 +137,7 @@
             return date.toLocaleDateString('id-ID', {
                 day: 'numeric',
                 month: 'short',
+                year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             });
@@ -208,16 +150,17 @@
     
     function getTelegramUserFromWebApp() {
         try {
-            const tg = getTelegramWebApp();
-            if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-                return {
-                    id: user.id,
-                    username: user.username || '',
-                    first_name: user.first_name || '',
-                    last_name: user.last_name || '',
-                    photo_url: user.photo_url || null
-                };
+            if (window.Telegram && window.Telegram.WebApp) {
+                const initData = window.Telegram.WebApp.initDataUnsafe;
+                if (initData && initData.user) {
+                    return {
+                        id: initData.user.id,
+                        username: initData.user.username || '',
+                        first_name: initData.user.first_name || '',
+                        last_name: initData.user.last_name || '',
+                        photo_url: initData.user.photo_url || null
+                    };
+                }
             }
             return null;
         } catch (error) {
@@ -230,6 +173,9 @@
         if (!telegramUser) return;
         
         const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
+        
+        if (elements.userName) elements.userName.textContent = fullName || 'Pengguna Telegram';
+        if (elements.userUsername) elements.userUsername.textContent = telegramUser.username ? `@${telegramUser.username}` : 'Tidak ada username';
         
         const avatarContainer = elements.userAvatar;
         if (avatarContainer) {
@@ -268,11 +214,14 @@
         }
     }
 
-    // ==================== TON CONNECT ====================
+    // ==================== TON CONNECT (SEPERTI PLANE GIFT) ====================
     
     async function initTonConnect() {
         try {
+            // Cek apakah TON Connect UI tersedia
             if (typeof window.TON_CONNECT_UI === 'undefined') {
+                console.warn('TON Connect UI not loaded, waiting...');
+                // Tunggu sebentar untuk loading script
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 if (typeof window.TON_CONNECT_UI === 'undefined') {
                     console.error('TON Connect UI still not available');
@@ -291,7 +240,10 @@
             
             console.log('✅ TON Connect UI initialized');
             
+            // Subscribe to status changes
             tonConnectUI.onStatusChange(async (wallet) => {
+                console.log('📱 Wallet status changed:', wallet);
+                
                 if (wallet) {
                     isWalletConnected = true;
                     walletAddress = wallet.account.address;
@@ -305,6 +257,7 @@
                 }
             });
             
+            // Check if already connected
             if (tonConnectUI.connected) {
                 const wallet = tonConnectUI.wallet;
                 if (wallet) {
@@ -357,6 +310,10 @@
                 elements.walletStatus.style.background = 'rgba(16, 185, 129, 0.15)';
                 elements.walletStatus.style.color = 'var(--success)';
             }
+            if (elements.connectWalletBtn) {
+                elements.connectWalletBtn.textContent = 'Disconnect Wallet';
+                elements.connectWalletBtn.onclick = () => disconnectWallet();
+            }
             if (elements.walletAddress) {
                 elements.walletAddress.style.display = 'block';
                 elements.walletAddressText.textContent = formatAddress(walletAddress);
@@ -366,6 +323,10 @@
                 elements.walletStatus.innerHTML = `<i class="fas fa-plug"></i><span>Belum terhubung</span>`;
                 elements.walletStatus.style.background = '';
                 elements.walletStatus.style.color = '';
+            }
+            if (elements.connectWalletBtn) {
+                elements.connectWalletBtn.textContent = 'Hubungkan Wallet';
+                elements.connectWalletBtn.onclick = () => connectWallet();
             }
             if (elements.walletAddress) {
                 elements.walletAddress.style.display = 'none';
@@ -387,8 +348,72 @@
         }
     }
 
-    // ==================== DEPOSIT ====================
+    // ==================== DEPOSIT (SEPERTI PLANE GIFT) ====================
     
+    function base64EncodeComment(comment) {
+        try {
+            if (comment.length > 120) {
+                comment = comment.substring(0, 120);
+            }
+            const encoder = new TextEncoder();
+            const commentBytes = encoder.encode(comment);
+            const prefix = new Uint8Array([0, 0, 0, 0]);
+            const fullBytes = new Uint8Array(prefix.length + commentBytes.length);
+            fullBytes.set(prefix);
+            fullBytes.set(commentBytes, prefix.length);
+            let binary = '';
+            for (let i = 0; i < fullBytes.length; i++) {
+                binary += String.fromCharCode(fullBytes[i]);
+            }
+            return btoa(binary);
+        } catch (e) {
+            console.error('Error encoding comment:', e);
+            return undefined;
+        }
+    }
+
+    function createTextPayload(text) {
+        try {
+            if (!text) return undefined;
+            
+            // Batasi panjang text (maksimal 120 karakter untuk aman)
+            if (text.length > 120) {
+                text = text.substring(0, 120);
+            }
+            
+            // Encode text ke UTF-8
+            const encoder = new TextEncoder();
+            const textBytes = encoder.encode(text);
+            
+            // Buat buffer dengan prefix 4 byte 0 (format comment di TON)
+            const buffer = new Uint8Array(4 + textBytes.length);
+            buffer[0] = 0;
+            buffer[1] = 0;
+            buffer[2] = 0;
+            buffer[3] = 0;
+            buffer.set(textBytes, 4);
+            
+            // Konversi ke Base64
+            let binary = '';
+            for (let i = 0; i < buffer.length; i++) {
+                binary += String.fromCharCode(buffer[i]);
+            }
+            const base64Payload = btoa(binary);
+            
+            console.log('📝 Created payload:', {
+                originalText: text,
+                textLength: text.length,
+                payloadLength: base64Payload.length,
+                payloadPreview: base64Payload.substring(0, 30) + '...'
+            });
+            
+            return base64Payload;
+        } catch (error) {
+            console.error('Error creating payload:', error);
+            return undefined;
+        }
+    }
+
     async function deposit() {
         const amount = parseFloat(elements.depositAmount?.value);
         
@@ -410,6 +435,7 @@
         
         hapticMedium();
         
+        // Disable button sementara
         const depositBtn = elements.depositBtn;
         const originalText = depositBtn?.innerHTML;
         if (depositBtn) {
@@ -419,20 +445,35 @@
         
         try {
             const senderAddress = tonConnectUI.account?.address;
+            
+            // Konversi amount ke nanoTON (1 TON = 1,000,000,000 nanoTON)
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
             
+            console.log('📤 Processing deposit:', { 
+                amount, 
+                amountNano, 
+                senderAddress
+            });
+            
+            // Buat transaction TANPA payload (kirim kosong)
             const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 600,
+                validUntil: Math.floor(Date.now() / 1000) + 600, // 10 menit
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
                     amount: amountNano
                 }]
             };
             
-            const result = await tonConnectUI.sendTransaction(transaction);
+            console.log('📤 Sending transaction:', JSON.stringify(transaction, null, 2));
             
+            // Kirim transaksi
+            const result = await tonConnectUI.sendTransaction(transaction);
+            console.log('✅ Transaction sent:', result);
+            
+            // Buat memo untuk record di database (tanpa payload)
             const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
             
+            // Record transaction di backend
             const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -458,6 +499,8 @@
             
         } catch (error) {
             console.error('Error creating deposit:', error);
+            
+            // Parse error message untuk user-friendly
             let errorMessage = 'Error creating deposit';
             if (error.message) {
                 if (error.message.includes('rejected')) {
@@ -468,8 +511,10 @@
                     errorMessage = error.message;
                 }
             }
+            
             showToast(errorMessage, 'error');
         } finally {
+            // Restore button
             if (depositBtn) {
                 depositBtn.disabled = false;
                 depositBtn.innerHTML = originalText || '<i class="fas fa-arrow-down"></i> Deposit';
@@ -478,7 +523,6 @@
     }
 
     // ==================== WITHDRAW ====================
-    
     async function withdraw() {
         const amount = parseFloat(elements.withdrawAmount?.value);
         
@@ -500,6 +544,7 @@
         
         hapticMedium();
         
+        // Disable button sementara
         const withdrawBtn = elements.withdrawBtn;
         const originalText = withdrawBtn?.innerHTML;
         if (withdrawBtn) {
@@ -531,6 +576,7 @@
             console.error('Error creating withdrawal:', error);
             showToast('Error creating withdrawal', 'error');
         } finally {
+            // Restore button
             if (withdrawBtn) {
                 withdrawBtn.disabled = false;
                 withdrawBtn.innerHTML = originalText || '<i class="fas fa-arrow-up"></i> Withdraw';
@@ -601,6 +647,7 @@
             return;
         }
         
+        // Disable button yang diklik
         const buyBtn = document.querySelector(`.username-buy-btn[data-id="${usernameId}"]`);
         const originalText = buyBtn?.innerHTML;
         if (buyBtn) {
@@ -631,6 +678,7 @@
             console.error('Error buying username:', error);
             showToast('Error buying username', 'error');
         } finally {
+            // Restore button
             if (buyBtn) {
                 buyBtn.disabled = false;
                 buyBtn.innerHTML = originalText || '<i class="fas fa-shopping-cart"></i> Beli';
@@ -660,6 +708,7 @@
         
         hapticMedium();
         
+        // Disable button
         const sellBtn = elements.sellUsernameBtn;
         const originalText = sellBtn?.innerHTML;
         if (sellBtn) {
@@ -695,6 +744,7 @@
             console.error('Error selling username:', error);
             showToast('Error selling username', 'error');
         } finally {
+            // Restore button
             if (sellBtn) {
                 sellBtn.disabled = false;
                 sellBtn.innerHTML = originalText || '<i class="fas fa-rocket"></i> Jual Username';
@@ -810,78 +860,53 @@
     
     async function refreshAllData() {
         hapticLight();
-        showLoading(true);
         
-        try {
-            await authenticateUser();
-            await Promise.all([
-                loadUsernames(),
-                loadPurchasedUsernames(),
-                loadTransactionHistory()
-            ]);
-            showToast('Data diperbarui!', 'success');
-        } catch (error) {
-            console.error('Error refreshing data:', error);
-            showToast('Gagal memperbarui data', 'error');
-        } finally {
-            showLoading(false);
-        }
+        await authenticateUser();
+        await loadUsernames();
+        await loadPurchasedUsernames();
+        await loadTransactionHistory();
+        
+        showToast('Data diperbarui!', 'success');
     }
 
-    function setupBottomNav() {
-        elements.navItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
+    // ==================== TABS ====================
+    
+    function setupTabs() {
+        elements.tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
                 hapticLight();
+                const tabId = btn.dataset.tab;
                 
-                // Handle refresh button (tanpa data-tab)
-                if (item.id === 'refreshNavBtn' || item.classList.contains('refresh-btn')) {
-                    refreshAllData();
-                    return;
-                }
+                elements.tabBtns.forEach(b => b.classList.remove('active'));
+                elements.tabContents.forEach(c => c.classList.remove('active'));
                 
-                const tabId = item.dataset.tab;
-                if (!tabId) return;
-                
-                // Update active state on nav items
-                elements.navItems.forEach(nav => {
-                    nav.classList.remove('active');
-                });
-                item.classList.add('active');
-                
-                // Update active tab content
-                elements.tabContents.forEach(content => {
-                    content.classList.remove('active');
-                });
-                
+                btn.classList.add('active');
                 const activeTab = document.getElementById(`${tabId}Tab`);
-                if (activeTab) {
-                    activeTab.classList.add('active');
-                }
+                if (activeTab) activeTab.classList.add('active');
                 
-                // Load data based on tab
                 if (tabId === 'my-usernames') {
                     loadPurchasedUsernames();
                 } else if (tabId === 'history') {
                     loadTransactionHistory();
                 } else if (tabId === 'marketplace') {
                     loadUsernames();
-                } else if (tabId === 'wallet') {
-                    // Update wallet UI if needed
-                    if (tonConnectUI?.connected) {
-                        updateWalletUI();
-                    }
                 }
-                
-                console.log('Tab switched to:', tabId);
             });
         });
     }
 
     // ==================== INITIALIZATION ====================
     
+    function initTelegram() {
+        const tg = getTelegramWebApp();
+        if (tg) {
+            tg.expand();
+            tg.setHeaderColor('#0f0f0f');
+            tg.setBackgroundColor('#0f0f0f');
+            console.log('✅ Telegram WebApp initialized');
+        }
+    }
+
     function setupEventListeners() {
         if (elements.depositBtn) {
             elements.depositBtn.addEventListener('click', deposit);
@@ -892,41 +917,34 @@
         if (elements.sellUsernameBtn) {
             elements.sellUsernameBtn.addEventListener('click', sellUsername);
         }
+        if (elements.refreshBtn) {
+            elements.refreshBtn.addEventListener('click', refreshAllData);
+        }
     }
 
     async function init() {
-        // Initialize Telegram WebApp first
-        initTelegramWebApp();
-        
+        initTelegram();
         showLoading(true);
         
-        setupBottomNav();
+        setupTabs();
         setupEventListeners();
         
         telegramUser = getTelegramUserFromWebApp();
         if (telegramUser) {
             updateUserUI();
             await authenticateUser();
-            await Promise.all([
-                loadUsernames(),
-                loadPurchasedUsernames(),
-                loadTransactionHistory()
-            ]);
+            await loadUsernames();
+            await loadPurchasedUsernames();
+            await loadTransactionHistory();
         } else {
             showToast('Tidak dapat mengambil data user', 'error');
         }
         
         await initTonConnect();
         
-        // Call ready() to hide loading placeholder
-        const tg = getTelegramWebApp();
-        if (tg && tg.ready) {
-            tg.ready();
-        }
-        
         showLoading(false);
         console.log('✅ Winedash Marketplace initialized');
     }
     
     init();
-})(); 
+})();
