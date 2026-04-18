@@ -346,7 +346,7 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    height: 170px;  /* Fixed height, tidak auto */
+    height: 180px;  /* Fixed height */
     width: 100%;
 }
 
@@ -355,11 +355,11 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-/* Card Image Background */
+/* Card Image Background - lebih pendek untuk ruang text username */
 .username-card-image {
     position: relative;
     width: 100%;
-    height: 110px;  /* Fixed height */
+    height: 100px;
     background-image: url('https://companel.shop/image/bg-storage-card.jpg');
     background-size: cover;
     background-position: center;
@@ -369,10 +369,10 @@ body {
     flex-shrink: 0;
 }
 
-/* Avatar di card */
+/* Avatar lebih kecil */
 .card-avatar {
-    width: 55px;
-    height: 55px;
+    width: 48px;  /* Diperkecil dari 55px */
+    height: 48px;  /* Diperkecil dari 55px */
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border-radius: 50%;
     display: flex;
@@ -384,12 +384,12 @@ body {
     flex-shrink: 0;
 }
 
-/* Card Info - bagian bawah */
+/* Card Info - bagian bawah background */
 .username-card-info {
-    padding: 10px 8px 8px 8px;
+    padding: 8px 10px 10px 10px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     background: var(--surface-light);
     flex: 1;
 }
@@ -405,9 +405,9 @@ body {
     color: white;
 }
 
-/* Username text - tidak menimpa background, posisi di dalam card-info */
+/* Username text - di dalam background, di bawah avatar */
 .username-card .card-username {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     font-family: monospace;
     text-align: center;
@@ -415,61 +415,60 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: transparent;
-    padding: 0;
-    border-radius: 0;
-    margin: 0;
-    position: static;
-    z-index: auto;
-    width: 100%;
-    backdrop-filter: none;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 4px 8px;
+    border-radius: 16px;
+    margin-top: -20px;  /* Naikkan sedikit ke area background */
+    position: relative;
+    z-index: 2;
+    width: calc(100% - 20px);
+    margin-left: auto;
+    margin-right: auto;
+    backdrop-filter: blur(4px);
     color: var(--text);
 }
 
-/* Baris harga - dengan logo TON */
+/* Baris harga - dengan logo TON, sebaris kiri-kanan */
 .card-price-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-top: 4px;
     gap: 8px;
+    width: 100%;
 }
 
-/* Container harga dengan logo */
+/* Container harga dengan logo - rata kiri */
 .price-with-logo {
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-shrink: 0;
 }
 
 .price-logo {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
 }
 
+/* Harga - warna putih, rata kiri */
 .username-card .card-price {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    color: var(--text);
+    color: var(--text);  /* Warna putih */
     margin: 0;
 }
 
+/* Status - rata kanan, tidak melebihi border */
 .username-card .card-status {
-    font-size: 9px;
+    font-size: 8px;
     padding: 3px 8px;
     border-radius: 20px;
     display: inline-block;
     margin: 0;
     flex-shrink: 0;
-}
-
-.username-card .card-price {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--success);
-    text-align: center;
-    margin-bottom: 6px;
+    white-space: nowrap;
 }
 
 .username-card .card-status {
@@ -492,7 +491,6 @@ body {
     color: var(--danger);
 }
 
-/* Hilangkan tombol di card - pindahkan ke panel */
 .username-card .card-actions {
     display: none;
 }
@@ -646,32 +644,44 @@ body {
     }
     
     .username-grid .username-card {
-        min-height: auto;
+        height: 165px;  /* Sesuaikan untuk mobile */
     }
     
     .username-card-image {
-        height: 100px;
+        height: 90px;
     }
     
     .card-avatar {
-        width: 50px;
-        height: 50px;
+        width: 42px;
+        height: 42px;
     }
     
     .card-avatar i {
-        font-size: 24px;
+        font-size: 20px;
     }
     
     .username-card-info {
-        padding: 10px;
+        padding: 6px 8px 8px 8px;
     }
     
     .username-card .card-username {
-        font-size: 12px;
+        font-size: 10px;
+        margin-top: -18px;
+        padding: 3px 6px;
+    }
+    
+    .price-logo {
+        width: 12px;
+        height: 12px;
     }
     
     .username-card .card-price {
-        font-size: 14px;
+        font-size: 11px;
+    }
+    
+    .username-card .card-status {
+        font-size: 7px;
+        padding: 2px 6px;
     }
     
     .username-list .username-item {

@@ -360,7 +360,6 @@
     }
 
     function showConfirmModal(pendingId, username) {
-        // Buat modal konfirmasi
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.style.display = 'flex';
