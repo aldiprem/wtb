@@ -12,6 +12,7 @@
     let tonConnectUI = null;
     let isWalletConnected = false;
     let walletAddress = null;
+    let allUsernames = []; // Store all usernames for search
 
     // DOM Elements
     const elements = {
@@ -22,12 +23,14 @@
         userName: document.getElementById('userName'),
         userUsername: document.getElementById('userUsername'),
         balanceAmount: document.getElementById('balanceAmount'),
+        balanceCard: document.getElementById('balanceCard'),
+        depositTrigger: document.getElementById('depositTrigger'),
         
         usernameList: document.getElementById('usernameList'),
         purchasedList: document.getElementById('purchasedList'),
         historyList: document.getElementById('historyList'),
+        searchInput: document.getElementById('searchUsername'),
         
-        connectWalletBtn: document.getElementById('connectWalletBtn'),
         walletStatus: document.getElementById('walletStatus'),
         walletAddress: document.getElementById('walletAddress'),
         walletAddressText: document.getElementById('walletAddressText'),
@@ -42,8 +45,6 @@
         sellPrice: document.getElementById('sellPrice'),
         sellCategory: document.getElementById('sellCategory'),
         sellUsernameBtn: document.getElementById('sellUsernameBtn'),
-        
-        refreshBtn: document.getElementById('refreshBtn'),
         
         tabBtns: document.querySelectorAll('.tab-btn'),
         tabContents: document.querySelectorAll('.tab-content')
@@ -214,14 +215,12 @@
         }
     }
 
-    // ==================== TON CONNECT (SEPERTI PLANE GIFT) ====================
+    // ==================== TON CONNECT ====================
     
     async function initTonConnect() {
         try {
-            // Cek apakah TON Connect UI tersedia
             if (typeof window.TON_CONNECT_UI === 'undefined') {
                 console.warn('TON Connect UI not loaded, waiting...');
-                // Tunggu sebentar untuk loading script
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 if (typeof window.TON_CONNECT_UI === 'undefined') {
                     console.error('TON Connect UI still not available');
@@ -240,7 +239,6 @@
             
             console.log('✅ TON Connect UI initialized');
             
-            // Subscribe to status changes
             tonConnectUI.onStatusChange(async (wallet) => {
                 console.log('📱 Wallet status changed:', wallet);
                 
@@ -250,14 +248,15 @@
                     updateWalletUI();
                     await saveWalletAddress(walletAddress);
                     showToast('Wallet connected!', 'success');
+                    updateBalanceCardUI();
                 } else {
                     isWalletConnected = false;
                     walletAddress = null;
                     updateWalletUI();
+                    updateBalanceCardUI();
                 }
             });
             
-            // Check if already connected
             if (tonConnectUI.connected) {
                 const wallet = tonConnectUI.wallet;
                 if (wallet) {
@@ -265,8 +264,11 @@
                     walletAddress = wallet.account.address;
                     updateWalletUI();
                     await saveWalletAddress(walletAddress);
+                    updateBalanceCardUI();
                 }
             }
+            
+            updateBalanceCardUI();
             
         } catch (error) {
             console.error('Error initializing TON Connect:', error);
@@ -299,7 +301,48 @@
             isWalletConnected = false;
             walletAddress = null;
             updateWalletUI();
+            updateBalanceCardUI();
             showToast('Wallet disconnected', 'info');
+        }
+    }
+
+    function updateBalanceCardUI() {
+        const balanceCard = elements.balanceCard;
+        if (!balanceCard) return;
+        
+        if (isWalletConnected && walletAddress) {
+            // Wallet connected - show deposit plus button
+            balanceCard.style.cursor = 'pointer';
+            const depositIcon = balanceCard.querySelector('.deposit-icon');
+            if (depositIcon) {
+                depositIcon.style.display = 'inline-flex';
+            }
+        } else {
+            // Wallet not connected - show connect button
+            balanceCard.style.cursor = 'pointer';
+            const depositIcon = balanceCard.querySelector('.deposit-icon');
+            if (depositIcon) {
+                depositIcon.style.display = 'none';
+            }
+            
+            // Check if connect button already exists
+            let connectBtn = balanceCard.querySelector('.connect-wallet-btn');
+            if (!connectBtn) {
+                connectBtn = document.createElement('button');
+                connectBtn.className = 'connect-wallet-btn';
+                connectBtn.innerHTML = '<i class="fas fa-plug"></i> Connect';
+                connectBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    connectWallet();
+                };
+                balanceCard.appendChild(connectBtn);
+            }
+        }
+        
+        // Remove connect button if wallet connected
+        if (isWalletConnected && walletAddress) {
+            const connectBtn = balanceCard.querySelector('.connect-wallet-btn');
+            if (connectBtn) connectBtn.remove();
         }
     }
 
@@ -310,10 +353,6 @@
                 elements.walletStatus.style.background = 'rgba(16, 185, 129, 0.15)';
                 elements.walletStatus.style.color = 'var(--success)';
             }
-            if (elements.connectWalletBtn) {
-                elements.connectWalletBtn.textContent = 'Disconnect Wallet';
-                elements.connectWalletBtn.onclick = () => disconnectWallet();
-            }
             if (elements.walletAddress) {
                 elements.walletAddress.style.display = 'block';
                 elements.walletAddressText.textContent = formatAddress(walletAddress);
@@ -323,10 +362,6 @@
                 elements.walletStatus.innerHTML = `<i class="fas fa-plug"></i><span>Belum terhubung</span>`;
                 elements.walletStatus.style.background = '';
                 elements.walletStatus.style.color = '';
-            }
-            if (elements.connectWalletBtn) {
-                elements.connectWalletBtn.textContent = 'Hubungkan Wallet';
-                elements.connectWalletBtn.onclick = () => connectWallet();
             }
             if (elements.walletAddress) {
                 elements.walletAddress.style.display = 'none';
@@ -348,69 +383,27 @@
         }
     }
 
-    // ==================== DEPOSIT (SEPERTI PLANE GIFT) ====================
+    // ==================== DEPOSIT ====================
     
-    function base64EncodeComment(comment) {
-        try {
-            if (comment.length > 120) {
-                comment = comment.substring(0, 120);
-            }
-            const encoder = new TextEncoder();
-            const commentBytes = encoder.encode(comment);
-            const prefix = new Uint8Array([0, 0, 0, 0]);
-            const fullBytes = new Uint8Array(prefix.length + commentBytes.length);
-            fullBytes.set(prefix);
-            fullBytes.set(commentBytes, prefix.length);
-            let binary = '';
-            for (let i = 0; i < fullBytes.length; i++) {
-                binary += String.fromCharCode(fullBytes[i]);
-            }
-            return btoa(binary);
-        } catch (e) {
-            console.error('Error encoding comment:', e);
-            return undefined;
+    function showDepositModal() {
+        if (!isWalletConnected) {
+            connectWallet();
+            return;
         }
-    }
-
-    function createTextPayload(text) {
-        try {
-            if (!text) return undefined;
-            
-            // Batasi panjang text (maksimal 120 karakter untuk aman)
-            if (text.length > 120) {
-                text = text.substring(0, 120);
+        
+        // Scroll to deposit section and highlight
+        const depositSection = document.querySelector('#walletTab .deposit-form');
+        if (depositSection) {
+            // Switch to wallet tab
+            const walletTabBtn = document.querySelector('.tab-btn[data-tab="wallet"]');
+            if (walletTabBtn) {
+                walletTabBtn.click();
             }
-            
-            // Encode text ke UTF-8
-            const encoder = new TextEncoder();
-            const textBytes = encoder.encode(text);
-            
-            // Buat buffer dengan prefix 4 byte 0 (format comment di TON)
-            const buffer = new Uint8Array(4 + textBytes.length);
-            buffer[0] = 0;
-            buffer[1] = 0;
-            buffer[2] = 0;
-            buffer[3] = 0;
-            buffer.set(textBytes, 4);
-            
-            // Konversi ke Base64
-            let binary = '';
-            for (let i = 0; i < buffer.length; i++) {
-                binary += String.fromCharCode(buffer[i]);
-            }
-            const base64Payload = btoa(binary);
-            
-            console.log('📝 Created payload:', {
-                originalText: text,
-                textLength: text.length,
-                payloadLength: base64Payload.length,
-                payloadPreview: base64Payload.substring(0, 30) + '...'
-            });
-            
-            return base64Payload;
-        } catch (error) {
-            console.error('Error creating payload:', error);
-            return undefined;
+            setTimeout(() => {
+                depositSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const depositInput = document.getElementById('depositAmount');
+                if (depositInput) depositInput.focus();
+            }, 300);
         }
     }
 
@@ -435,7 +428,6 @@
         
         hapticMedium();
         
-        // Disable button sementara
         const depositBtn = elements.depositBtn;
         const originalText = depositBtn?.innerHTML;
         if (depositBtn) {
@@ -445,35 +437,23 @@
         
         try {
             const senderAddress = tonConnectUI.account?.address;
-            
-            // Konversi amount ke nanoTON (1 TON = 1,000,000,000 nanoTON)
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
             
-            console.log('📤 Processing deposit:', { 
-                amount, 
-                amountNano, 
-                senderAddress
-            });
+            console.log('📤 Processing deposit:', { amount, amountNano, senderAddress });
             
-            // Buat transaction TANPA payload (kirim kosong)
             const transaction = {
-                validUntil: Math.floor(Date.now() / 1000) + 600, // 10 menit
+                validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
                     amount: amountNano
                 }]
             };
             
-            console.log('📤 Sending transaction:', JSON.stringify(transaction, null, 2));
-            
-            // Kirim transaksi
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
             
-            // Buat memo untuk record di database (tanpa payload)
             const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
             
-            // Record transaction di backend
             const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -500,7 +480,6 @@
         } catch (error) {
             console.error('Error creating deposit:', error);
             
-            // Parse error message untuk user-friendly
             let errorMessage = 'Error creating deposit';
             if (error.message) {
                 if (error.message.includes('rejected')) {
@@ -514,7 +493,6 @@
             
             showToast(errorMessage, 'error');
         } finally {
-            // Restore button
             if (depositBtn) {
                 depositBtn.disabled = false;
                 depositBtn.innerHTML = originalText || '<i class="fas fa-arrow-down"></i> Deposit';
@@ -544,7 +522,6 @@
         
         hapticMedium();
         
-        // Disable button sementara
         const withdrawBtn = elements.withdrawBtn;
         const originalText = withdrawBtn?.innerHTML;
         if (withdrawBtn) {
@@ -576,7 +553,6 @@
             console.error('Error creating withdrawal:', error);
             showToast('Error creating withdrawal', 'error');
         } finally {
-            // Restore button
             if (withdrawBtn) {
                 withdrawBtn.disabled = false;
                 withdrawBtn.innerHTML = originalText || '<i class="fas fa-arrow-up"></i> Withdraw';
@@ -586,45 +562,71 @@
 
     // ==================== USERNAME MARKETPLACE ====================
     
+    function renderUsernames(usernames) {
+        if (!elements.usernameList) return;
+        
+        if (usernames.length > 0) {
+            let html = '';
+            for (const username of usernames) {
+                html += `
+                    <div class="username-item" data-id="${username.id}">
+                        <div class="username-icon">
+                            <i class="fas fa-tag"></i>
+                        </div>
+                        <div class="username-info">
+                            <div class="username-name">${escapeHtml(username.username)}</div>
+                            <div class="username-category">${escapeHtml(username.category)}</div>
+                        </div>
+                        <div class="username-price">
+                            ${formatNumber(username.price)} <small>TON</small>
+                        </div>
+                        <button class="username-buy-btn" data-id="${username.id}" data-price="${username.price}">
+                            <i class="fas fa-shopping-cart"></i> Beli
+                        </button>
+                    </div>
+                `;
+            }
+            elements.usernameList.innerHTML = html;
+            
+            document.querySelectorAll('.username-buy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    const price = parseFloat(btn.dataset.price);
+                    buyUsername(id, price);
+                });
+            });
+        } else {
+            elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
+        }
+    }
+    
+    function filterUsernames(searchTerm) {
+        if (!searchTerm || searchTerm.trim() === '') {
+            renderUsernames(allUsernames);
+            return;
+        }
+        
+        const term = searchTerm.toLowerCase().trim();
+        const filtered = allUsernames.filter(username => 
+            username.username.toLowerCase().includes(term) ||
+            username.category.toLowerCase().includes(term)
+        );
+        renderUsernames(filtered);
+    }
+    
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=50`);
+            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=100`);
             const data = await response.json();
             
             if (data.success && data.usernames.length > 0) {
-                let html = '';
-                for (const username of data.usernames) {
-                    html += `
-                        <div class="username-item" data-id="${username.id}">
-                            <div class="username-icon">
-                                <i class="fas fa-tag"></i>
-                            </div>
-                            <div class="username-info">
-                                <div class="username-name">${escapeHtml(username.username)}</div>
-                                <div class="username-category">${escapeHtml(username.category)}</div>
-                            </div>
-                            <div class="username-price">
-                                ${formatNumber(username.price)} <small>TON</small>
-                            </div>
-                            <button class="username-buy-btn" data-id="${username.id}" data-price="${username.price}">
-                                <i class="fas fa-shopping-cart"></i> Beli
-                            </button>
-                        </div>
-                    `;
-                }
-                elements.usernameList.innerHTML = html;
-                
-                document.querySelectorAll('.username-buy-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        const id = btn.dataset.id;
-                        const price = parseFloat(btn.dataset.price);
-                        buyUsername(id, price);
-                    });
-                });
+                allUsernames = data.usernames;
+                renderUsernames(allUsernames);
             } else {
+                allUsernames = [];
                 elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
             }
         } catch (error) {
@@ -647,7 +649,6 @@
             return;
         }
         
-        // Disable button yang diklik
         const buyBtn = document.querySelector(`.username-buy-btn[data-id="${usernameId}"]`);
         const originalText = buyBtn?.innerHTML;
         if (buyBtn) {
@@ -678,7 +679,6 @@
             console.error('Error buying username:', error);
             showToast('Error buying username', 'error');
         } finally {
-            // Restore button
             if (buyBtn) {
                 buyBtn.disabled = false;
                 buyBtn.innerHTML = originalText || '<i class="fas fa-shopping-cart"></i> Beli';
@@ -708,7 +708,6 @@
         
         hapticMedium();
         
-        // Disable button
         const sellBtn = elements.sellUsernameBtn;
         const originalText = sellBtn?.innerHTML;
         if (sellBtn) {
@@ -744,7 +743,6 @@
             console.error('Error selling username:', error);
             showToast('Error selling username', 'error');
         } finally {
-            // Restore button
             if (sellBtn) {
                 sellBtn.disabled = false;
                 sellBtn.innerHTML = originalText || '<i class="fas fa-rocket"></i> Jual Username';
@@ -917,8 +915,28 @@
         if (elements.sellUsernameBtn) {
             elements.sellUsernameBtn.addEventListener('click', sellUsername);
         }
-        if (elements.refreshBtn) {
-            elements.refreshBtn.addEventListener('click', refreshAllData);
+        if (elements.balanceCard) {
+            elements.balanceCard.addEventListener('click', (e) => {
+                // Don't trigger if clicking on connect button
+                if (!e.target.closest('.connect-wallet-btn')) {
+                    if (isWalletConnected) {
+                        showDepositModal();
+                    } else {
+                        connectWallet();
+                    }
+                }
+            });
+        }
+        if (elements.depositTrigger) {
+            elements.depositTrigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showDepositModal();
+            });
+        }
+        if (elements.searchInput) {
+            elements.searchInput.addEventListener('input', (e) => {
+                filterUsernames(e.target.value);
+            });
         }
     }
 

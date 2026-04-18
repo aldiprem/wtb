@@ -33,44 +33,33 @@
     <!-- Main Container -->
     <div class="winedash-container">
         
-        <!-- Profile Header -->
+        <!-- Profile Header - Tanpa border foto, avatar di kiri, balance di kanan -->
         <div class="profile-header">
-            <div class="profile-avatar" id="userAvatar">
-                <i class="fas fa-user"></i>
+            <div class="profile-left">
+                <div class="profile-avatar" id="userAvatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="profile-info">
+                    <div class="profile-name" id="userName">Memuat...</div>
+                    <div class="profile-username" id="userUsername">@username</div>
+                </div>
             </div>
-            <div class="profile-info">
-                <div class="profile-name" id="userName">Memuat...</div>
-                <div class="profile-username" id="userUsername">@username</div>
-            </div>
-            <div class="profile-balance" id="userBalance">
-                <i class="fas fa-coins"></i>
-                <span id="balanceAmount">0</span>
+            <div class="profile-balance" id="balanceCard">
+                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
+                <span class="balance-amount" id="balanceAmount">0</span>
                 <small>TON</small>
+                <span class="deposit-icon" id="depositTrigger">
+                    <i class="fas fa-plus"></i>
+                </span>
             </div>
-        </div>
-
-        <!-- Tabs Navigation -->
-        <div class="tabs-container">
-            <button class="tab-btn active" data-tab="marketplace">
-                <i class="fas fa-store"></i>
-                <span>Marketplace</span>
-            </button>
-            <button class="tab-btn" data-tab="my-usernames">
-                <i class="fas fa-tag"></i>
-                <span>Username Saya</span>
-            </button>
-            <button class="tab-btn" data-tab="wallet">
-                <i class="fas fa-wallet"></i>
-                <span>Wallet</span>
-            </button>
-            <button class="tab-btn" data-tab="history">
-                <i class="fas fa-history"></i>
-                <span>Riwayat</span>
-            </button>
         </div>
 
         <!-- Tab Content: Marketplace -->
         <div class="tab-content active" id="marketplaceTab">
+            <!-- Search Bar -->
+            <div class="search-container">
+                <input type="text" class="search-input" id="searchUsername" placeholder="🔍 Cari username...">
+            </div>
             <div class="section-card">
                 <div class="card-header">
                     <i class="fas fa-fire"></i>
@@ -178,11 +167,23 @@
             </div>
         </div>
 
-        <!-- Floating Action Button -->
-        <div class="fab-container">
-            <button class="fab-button" id="refreshBtn">
-                <i class="fas fa-sync-alt"></i>
-                <span>Refresh</span>
+        <!-- Bottom Floating Tabs Navigation -->
+        <div class="tabs-container">
+            <button class="tab-btn active" data-tab="marketplace">
+                <i class="fas fa-store"></i>
+                <span>Market</span>
+            </button>
+            <button class="tab-btn" data-tab="my-usernames">
+                <i class="fas fa-tag"></i>
+                <span>My Tags</span>
+            </button>
+            <button class="tab-btn" data-tab="wallet">
+                <i class="fas fa-wallet"></i>
+                <span>Wallet</span>
+            </button>
+            <button class="tab-btn" data-tab="history">
+                <i class="fas fa-history"></i>
+                <span>History</span>
             </button>
         </div>
 
