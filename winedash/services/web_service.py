@@ -745,14 +745,16 @@ def add_pending_username():
         # Clean username
         username_clean = username.lstrip('@')
         
-        # HAPUS verification_type, biarkan default 'channel' dari database method
+        # KIRIM PERMINTAAN KE BOT UNTUK DETEKSI TIPE USERNAME
+        # Bot akan menentukan verification_type berdasarkan entity type
+        # Kita set verification_type = 'auto' agar bot yang menentukan
         pending_id = db.add_pending_username(
             username=username_clean,
             price=float(price),
             seller_id=seller_id,
             seller_wallet=seller_wallet or '',
-            category=category
-            # verification_type dihapus, akan menggunakan default 'channel'
+            category=category,
+            verification_type='auto'  # Biarkan bot yang menentukan
         )
         
         print(f"[DEBUG] add_pending_username result: pending_id={pending_id}")
@@ -764,7 +766,7 @@ def add_pending_username():
             'success': True,
             'pending_id': pending_id,
             'username': username_clean,
-            'message': 'Username pending verification. Bot akan mengirim verifikasi ke channel/group.'
+            'message': 'Username pending verification. Bot akan mendeteksi tipe dan mengirim verifikasi.'
         })
         
     except Exception as e:

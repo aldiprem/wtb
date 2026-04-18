@@ -281,7 +281,20 @@
         let html = '';
         for (const pending of pendingList) {
             const statusText = pending.status === 'pending' ? 'Menunggu' : pending.status;
-            const typeIcon = pending.verification_type === 'user' ? '👤' : '📢';
+            // Tampilkan icon berdasarkan verification_type yang dideteksi bot
+            let typeIcon = '📢'; // default channel
+            let typeText = 'Channel/Group';
+            
+            if (pending.verification_type === 'user') {
+                typeIcon = '👤';
+                typeText = 'User (OTP)';
+            } else if (pending.verification_type === 'channel') {
+                typeIcon = '📢';
+                typeText = 'Channel/Group';
+            } else if (pending.verification_type === 'auto') {
+                typeIcon = '⏳';
+                typeText = 'Menunggu deteksi...';
+            }
             
             html += `
                 <div class="inbox-item" data-id="${pending.id}" data-type="${pending.verification_type}">
@@ -289,6 +302,7 @@
                     <div class="inbox-info">
                         <div class="inbox-username">@${escapeHtml(pending.username)}</div>
                         <div class="inbox-price">${formatNumber(pending.price)} TON</div>
+                        <div class="inbox-type">${typeText}</div>
                         <div class="inbox-status ${pending.status}">${statusText}</div>
                     </div>
                     <div class="inbox-actions">

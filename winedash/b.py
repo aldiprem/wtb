@@ -465,11 +465,14 @@ async def process_verification(session, pending):
     # Cek lagi apakah sudah diproses (double check)
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT target_chat_id FROM pending_usernames WHERE id = ?', (pending_id,))
+        cursor.execute('SELECT target_chat_id, verification_type FROM pending_usernames WHERE id = ?', (pending_id,))
         row = cursor.fetchone()
         if row and row[0]:
             logger.info(f"Pending {pending_id} already has target_chat_id, skipping...")
             return
+        
+        # Jika verification_type sudah ditentukan sebelumnya (bukan 'auto'), gunakan itu
+        existing_v_type = row[1] if row else None
     
     # Check if username already exists in marketplace
     if await check_username_exists(username):
@@ -480,7 +483,7 @@ async def process_verification(session, pending):
             pass
         return
     
-    # Check entity type (now returns 4 values including photo_url)
+    # DETEKSI ENTITY TYPE MENGGUNAKAN TELEGRAM BOT
     entity_type, chat_id, title, photo_url = await check_entity_type(username)
     
     if not entity_type:
@@ -491,8 +494,22 @@ async def process_verification(session, pending):
             pass
         return
     
+    logger.info(f"Detected entity type for @{username}: {entity_type} (chat_id: {chat_id})")
+    
+    # Kirim notifikasi ke seller tentang tipe yang terdeteksi
+    try:
+        type_emoji = "📢" if entity_type in ['channel', 'group', 'supergroup'] else "👤"
+        await bot.send_message(
+            seller_id,
+            f"{type_emoji} Username @{username} terdeteksi sebagai **{entity_type.upper()}**\n\n"
+            f"Bot akan mengirim verifikasi sesuai tipe ini."
+        )
+    except:
+        pass
+    
     # Check bot access for channels/groups
     if entity_type in ['channel', 'group', 'supergroup']:
+        # Cek apakah bot bisa mengirim pesan ke chat
         if not await check_bot_access(chat_id):
             try:
                 await bot.send_message(seller_id, f"❌ Bot tidak memiliki akses ke @{username}! Pastikan bot sudah menjadi admin.")
@@ -500,7 +517,7 @@ async def process_verification(session, pending):
                 pass
             return
         
-        # Update pending with chat info
+        # Update pending with chat info - verification_type sesuai entity
         update_pending_verification(pending_id, str(chat_id), title, entity_type)
         
         # Send verification message to channel/group
@@ -511,7 +528,7 @@ async def process_verification(session, pending):
         except:
             pass
         
-    else:
+    else:  # User
         # Generate OTP
         otp = generate_otp()
         update_pending_code(pending_id, otp)
@@ -521,7 +538,7 @@ async def process_verification(session, pending):
         await send_user_verification(chat_id, username, price, pending_id, otp)
         
         try:
-            await bot.send_message(seller_id, f"✅ Kode OTP telah dikirim ke @{username}!\n\nMasukkan kode di halaman Storage untuk verifikasi.")
+            await bot.send_message(seller_id, f"✅ Kode OTP 6 digit telah dikirim ke DM @{username}!\n\nMasukkan kode di halaman Storage untuk verifikasi.")
         except:
             pass
 

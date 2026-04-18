@@ -331,7 +331,6 @@ body {
 }
 
 /* Username Grid - Fixed height card */
-/* Username Grid - Fixed height card */
 .username-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -371,7 +370,7 @@ body {
     pointer-events: none;
 }
 
-/* Card Image Background - lebih tinggi untuk ruang text username */
+/* Card Image Background */
 .username-card-image {
     position: relative;
     width: 100%;
@@ -385,7 +384,7 @@ body {
     flex-shrink: 0;
 }
 
-/* Avatar di card - diposisikan di tengah background */
+/* Avatar di card */
 .card-avatar {
     width: 55px;
     height: 55px;
@@ -401,7 +400,7 @@ body {
     margin-top: -30px;
 }
 
-/* Username text - di dalam background, biru dengan panjang menyesuaikan */
+/* Username text - di dalam background, tidak keluar */
 .username-card .card-username {
     font-size: 11px;
     font-weight: 600;
@@ -415,6 +414,7 @@ body {
     padding: 5px 14px;
     border-radius: 20px;
     margin-top: -15px;
+    margin-bottom: 5px;
     position: relative;
     z-index: 2;
     width: auto;
@@ -427,14 +427,15 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Card Info - bagian bawah background */
+/* Card Info - bagian bawah background, dipisah dengan border */
 .username-card-info {
-    padding: 12px 12px 10px 12px;
+    padding: 10px 12px 12px 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
     background: var(--surface-light);
     flex: 1;
+    border-top: 1px solid var(--border-light);
 }
 
 /* Baris harga - dengan logo TON, sebaris kiri-kanan */
@@ -442,7 +443,6 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 4px;
     width: 100%;
 }
 
@@ -460,7 +460,7 @@ body {
     object-fit: contain;
 }
 
-/* Harga - warna putih, lebih besar */
+/* Harga - warna putih */
 .username-card .card-price {
     font-size: 14px;
     font-weight: 700;
@@ -468,7 +468,7 @@ body {
     margin: 0;
 }
 
-/* Status - rata kanan, bubble lebih besar */
+/* Status - rata kanan */
 .username-card .card-status {
     font-size: 10px;
     padding: 4px 12px;
@@ -1497,11 +1497,23 @@ body.modal-open {
     padding-bottom: 80px;
 }
 
-/* Avatar di detail panel */
+/* Detail Panel Avatar - dengan background seperti card */
 .detail-panel .detail-avatar {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    background-image: url('https://companel.shop/image/bg-storage-card.jpg');
+    background-size: cover;
+    background-position: center;
     display: flex;
+    align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
+    margin-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    margin-top: -20px;
+    margin-left: -20px;
+    margin-right: -20px;
+    width: calc(100% + 40px);
 }
 
 .detail-panel .detail-avatar-img {
@@ -1513,6 +1525,27 @@ body.modal-open {
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    margin-top: 40px;
+}
+
+/* Username di detail panel - di dalam background */
+.detail-username-badge {
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    padding: 5px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: monospace;
+    color: var(--text);
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 2;
 }
 
 .detail-panel .detail-avatar-img img {
