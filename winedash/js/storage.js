@@ -201,6 +201,7 @@
         try {
             console.log('[DEBUG] Loading pending list for user:', telegramUser.id);
             
+            // Gunakan endpoint dengan user_id
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/list/${telegramUser.id}`);
             const data = await response.json();
             
