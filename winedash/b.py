@@ -390,7 +390,6 @@ async def handle_verify_reject(event):
         await event.answer("Gagal menolak!", alert=True)
 
 # ==================== MAIN BOT ====================
-
 async def process_pending_verifications():
     """Process pending verifications from Flask"""
     import aiohttp
@@ -400,12 +399,14 @@ async def process_pending_verifications():
     while True:
         try:
             async with aiohttp.ClientSession() as session:
-                # Get pending from Flask (all pending_detect)
+                # Get pending from Flask (semua pending)
                 async with session.get('http://localhost:5050/api/winedash/username/pending/list') as resp:
                     if resp.status == 200:
                         data = await resp.json()
                         for pending in data.get('pendings', []):
-                            if pending.get('verification_type') == 'pending_detect':
+                            # Proses semua pending yang statusnya 'pending' dan belum diproses
+                            # Jangan hanya filter 'pending_detect'
+                            if pending.get('status') == 'pending' and not pending.get('target_chat_id'):
                                 await process_verification(session, pending)
         except aiohttp.ClientConnectorError:
             logger.debug("Flask server not ready yet...")
@@ -413,7 +414,6 @@ async def process_pending_verifications():
             logger.error(f"Error processing: {e}")
         
         await asyncio.sleep(3)
-
 
 async def process_verification(session, pending):
     """Process single verification"""

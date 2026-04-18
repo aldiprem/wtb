@@ -745,14 +745,14 @@ def add_pending_username():
         # Clean username
         username_clean = username.lstrip('@')
         
-        # Add pending record
+        # HAPUS verification_type, biarkan default 'channel' dari database method
         pending_id = db.add_pending_username(
             username=username_clean,
             price=float(price),
             seller_id=seller_id,
             seller_wallet=seller_wallet or '',
-            category=category,
-            verification_type='pending_detect'
+            category=category
+            # verification_type dihapus, akan menggunakan default 'channel'
         )
         
         print(f"[DEBUG] add_pending_username result: pending_id={pending_id}")
@@ -764,7 +764,7 @@ def add_pending_username():
             'success': True,
             'pending_id': pending_id,
             'username': username_clean,
-            'message': 'Username pending verification. Please wait for bot to process.'
+            'message': 'Username pending verification. Bot akan mengirim verifikasi ke channel/group.'
         })
         
     except Exception as e:

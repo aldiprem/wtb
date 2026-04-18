@@ -677,15 +677,9 @@ class WinedashDatabase:
                     print(f"Username {username} already exists in marketplace")
                     return None
                 
-                # Generate verification code for user type
+                # Untuk channel/group, tidak perlu verification_code
                 verification_code = None
                 expires_at = None
-                if verification_type == 'user':
-                    import random
-                    import string
-                    verification_code = ''.join(random.choices(string.digits, k=6))
-                    from datetime import timedelta
-                    expires_at = (datetime.now() + timedelta(minutes=5)).isoformat()
                 
                 cursor.execute('''
                     INSERT INTO pending_usernames 

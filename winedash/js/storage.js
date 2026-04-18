@@ -404,7 +404,6 @@
         
         try {
             console.log('[DEBUG] Adding username:', cleanUsername, price, category);
-            console.log('[DEBUG] Telegram user ID:', telegramUser.id);
             
             const requestBody = {
                 username: cleanUsername,
@@ -412,15 +411,12 @@
                 seller_id: telegramUser.id,
                 seller_wallet: walletAddress || '',
                 category: category || 'default'
+                // HAPUS verification_type, biarkan default 'channel' dari backend
             };
             
             console.log('[DEBUG] Request body:', JSON.stringify(requestBody));
             
-            // Pastikan URL endpoint benar
-            const url = `${API_BASE_URL}/api/winedash/username/pending/add`;
-            console.log('[DEBUG] POST to:', url);
-            
-            const response = await fetch(url, {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/add`, {
                 method: 'POST',
                 headers: { 
                     'Accept': 'application/json',
@@ -429,33 +425,13 @@
                 body: JSON.stringify(requestBody)
             });
             
-            console.log('[DEBUG] Response status:', response.status);
-            
-            // Baca response text terlebih dahulu untuk debugging
-            const responseText = await response.text();
-            console.log('[DEBUG] Raw response:', responseText);
-            
-            let data;
-            try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('[DEBUG] Failed to parse JSON:', e);
-                showToast('Server error: invalid response', 'error');
-                return false;
-            }
-            
+            const data = await response.json();
             console.log('[DEBUG] Add username response:', data);
             
             if (data.success) {
                 hapticSuccess();
-                showToast('Verifikasi dikirim! Cek Inbox.', 'success');
+                showToast('Verifikasi dikirim ke channel/group!', 'success');
                 await loadPendingCount();
-                
-                // Refresh inbox content if open
-                const panel = document.getElementById('inboxPanel');
-                if (panel && panel.style.display === 'flex') {
-                    await loadPendingList();
-                }
                 return true;
             } else {
                 showToast(data.error || 'Gagal menambahkan username', 'error');
