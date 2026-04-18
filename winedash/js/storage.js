@@ -839,8 +839,7 @@
             for (const username of usernames) {
                 const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
                 const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
-                // Gunakan username untuk avatar, nanti akan ditimpa dengan foto profil jika ada
-                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(username.username[0] || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(username.username[0] || 'U')}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=1`;
                 
                 html += `
                     <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(username)}'>
@@ -851,8 +850,10 @@
                         </div>
                         <div class="username-card-info">
                             <div class="card-username">@${escapeHtml(username.username)}</div>
-                            <div class="card-price">${formatNumber(username.price)} TON</div>
-                            <div class="card-status ${statusClass}">${statusText}</div>
+                            <div class="card-price-row">
+                                <div class="card-price">${formatNumber(username.price)} TON</div>
+                                <div class="card-status ${statusClass}">${statusText}</div>
+                            </div>
                         </div>
                     </div>
                 `;

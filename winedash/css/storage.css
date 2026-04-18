@@ -330,7 +330,6 @@ body {
     color: var(--primary);
 }
 
-/* Username Grid - 2 Cards per row - Desain dengan background gambar */
 .username-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -346,7 +345,8 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    height: 200px;
+    height: auto;
+    min-height: 180px;
     width: 100%;
 }
 
@@ -360,11 +360,10 @@ body {
     display: none;
 }
 
-/* Card Image Background */
 .username-card-image {
     position: relative;
     width: 100%;
-    height: 120px;
+    height: 100px;  /* Kurangi dari 120px ke 100px */
     background-image: url('https://companel.shop/image/bg-storage-card.jpg');
     background-size: cover;
     background-position: center;
@@ -374,17 +373,17 @@ body {
     flex-shrink: 0;
 }
 
-/* Avatar di dalam card */
+/* Avatar lebih kecil */
 .card-avatar {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 3px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     flex-shrink: 0;
 }
@@ -400,12 +399,11 @@ body {
     color: white;
 }
 
-/* Card Info - Fixed height */
 .username-card-info {
-    padding: 10px;
+    padding: 12px 10px 10px 10px;
     display: flex;
     flex-direction: column;
-    flex: 1;
+    gap: 8px;
     background: var(--surface-light);
 }
 
@@ -413,12 +411,41 @@ body {
     font-size: 12px;
     font-weight: 600;
     font-family: monospace;
-    margin-bottom: 4px;
     text-align: center;
     word-break: break-all;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    background: rgba(0, 0, 0, 0.5);  /* Tambahkan background transparan */
+    padding: 4px 8px;  /* Tambahkan padding */
+    border-radius: 20px;  /* Tambahkan border-radius */
+    margin: -30px auto 0 auto;  /* Naikkan ke atas background */
+    position: relative;  /* Tambahkan positioning */
+    z-index: 2;  /* Pastikan di atas background */
+    width: calc(100% - 16px);
+    backdrop-filter: blur(4px);  /* Efek blur agar terbaca */
+}
+
+.card-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.username-card .card-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--success);
+    margin: 0;
+}
+
+.username-card .card-status {
+    font-size: 9px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin: 0;
 }
 
 .username-card .card-price {
@@ -657,14 +684,13 @@ body {
     font-size: 12px;
 }
 
-/* Modal untuk Add Username */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(8px);
     z-index: 2000;
     display: none;
@@ -679,6 +705,8 @@ body {
     width: calc(100% - 40px);
     max-width: 400px;
     position: relative;
+    z-index: 2001;
+    pointer-events: auto;
 }
 
 .modal-content h3 {
@@ -687,7 +715,19 @@ body {
 }
 
 .modal-content .form-input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    font-size: 14px;
     margin-bottom: 12px;
+    transition: all 0.2s;
+    outline: none;
+    pointer-events: auto;
+    z-index: 2001;  /* Tambahkan ini */
+    position: relative;  /* Tambahkan ini */
 }
 
 .modal-buttons {
@@ -1514,4 +1554,17 @@ body.modal-open {
 .detail-action-btn.delete-detail:hover {
     border-color: var(--danger);
     color: var(--danger);
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content button {
+    pointer-events: auto;
+}
+
+.modal-content input:focus,
+.modal-content select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
 }
