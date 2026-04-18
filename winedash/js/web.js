@@ -964,6 +964,56 @@
         });
     }
 
+    // ==================== SAFE AREA INSET ====================
+
+    function applySafeAreaInsets() {
+        const tg = getTelegramWebApp();
+        if (!tg) return;
+        
+        // Gunakan safeAreaInset untuk padding body
+        const safeArea = tg.safeAreaInset;
+        const contentSafeArea = tg.contentSafeAreaInset;
+        
+        if (safeArea) {
+            document.body.style.paddingTop = `${safeArea.top}px`;
+            document.body.style.paddingBottom = `${safeArea.bottom}px`;
+            document.body.style.paddingLeft = `${safeArea.left}px`;
+            document.body.style.paddingRight = `${safeArea.right}px`;
+        }
+        
+        // Untuk container utama, gunakan contentSafeAreaInset
+        const container = document.querySelector('.winedash-container');
+        if (container && contentSafeArea) {
+            container.style.paddingTop = `${contentSafeArea.top + 16}px`;
+            container.style.paddingBottom = `${contentSafeArea.bottom + 90}px`;
+        }
+        
+        console.log('✅ Safe area insets applied:', { safeArea, contentSafeArea });
+    }
+
+    // Panggil saat resize atau perubahan safe area
+    function initSafeArea() {
+        const tg = getTelegramWebApp();
+        if (!tg) return;
+        
+        // Apply initial
+        applySafeAreaInsets();
+        
+        // Listen for safe area changes
+        tg.onEvent('safeAreaChanged', () => {
+            applySafeAreaInsets();
+        });
+        
+        tg.onEvent('contentSafeAreaChanged', () => {
+            applySafeAreaInsets();
+        });
+        
+        // Listen for viewport changes (fullscreen, expand, etc)
+        tg.onEvent('viewportChanged', () => {
+            applySafeAreaInsets();
+        });
+    }
+
     // ==================== INITIALIZATION ====================
     
     function initTelegram() {
@@ -1008,6 +1058,7 @@
 
     async function init() {
         initTelegram();
+        initSafeArea();
         showLoading(true);
         
         setupTabs();

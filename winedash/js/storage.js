@@ -802,6 +802,42 @@
         }
     }
 
+    // ==================== SAFE AREA INSET ====================
+
+    function applySafeAreaInsets() {
+        const tg = getTelegramWebApp();
+        if (!tg) return;
+        
+        const safeArea = tg.safeAreaInset;
+        const contentSafeArea = tg.contentSafeAreaInset;
+        
+        if (safeArea) {
+            document.body.style.paddingTop = `${safeArea.top}px`;
+            document.body.style.paddingBottom = `${safeArea.bottom}px`;
+            document.body.style.paddingLeft = `${safeArea.left}px`;
+            document.body.style.paddingRight = `${safeArea.right}px`;
+        }
+        
+        const container = document.querySelector('.storage-container');
+        if (container && contentSafeArea) {
+            container.style.paddingTop = `${contentSafeArea.top + 12}px`;
+            container.style.paddingBottom = `${contentSafeArea.bottom + 90}px`;
+        }
+        
+        console.log('✅ Storage safe area insets applied:', { safeArea, contentSafeArea });
+    }
+
+    function initSafeArea() {
+        const tg = getTelegramWebApp();
+        if (!tg) return;
+        
+        applySafeAreaInsets();
+        
+        tg.onEvent('safeAreaChanged', () => applySafeAreaInsets());
+        tg.onEvent('contentSafeAreaChanged', () => applySafeAreaInsets());
+        tg.onEvent('viewportChanged', () => applySafeAreaInsets());
+    }
+
     // ==================== INITIALIZATION ====================
     
     function initTelegram() {
@@ -816,6 +852,7 @@
         
     async function init() {
         initTelegram();
+        initSafeArea();
         showLoading(true);
         
         setupEventListeners();
