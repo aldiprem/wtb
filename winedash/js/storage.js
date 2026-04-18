@@ -639,8 +639,12 @@
             return false;
         }
         
+        hapticMedium();
+        showLoading(true);
+        
         try {
-            // Note: You need to implement delete endpoint in backend
+            console.log('[DEBUG] Deleting username:', usernameId);
+            
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/delete`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -651,8 +655,10 @@
             });
             
             const data = await response.json();
+            console.log('[DEBUG] Delete response:', data);
             
             if (data.success) {
+                hapticSuccess();
                 showToast('Username berhasil dihapus!', 'success');
                 await loadUsernames();
                 return true;
@@ -661,9 +667,54 @@
                 return false;
             }
         } catch (error) {
-            console.error('Error deleting username:', error);
-            showToast('Error deleting username', 'error');
+            console.error('[DEBUG] Error deleting username:', error);
+            showToast('Error: ' + (error.message || 'Unknown error'), 'error');
             return false;
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // Perbaiki fungsi toggleListStatus
+    async function toggleListStatus(usernameId, currentStatus) {
+        if (!telegramUser) return false;
+        
+        const newStatus = currentStatus === 'available' ? 'unlisted' : 'available';
+        
+        hapticMedium();
+        showLoading(true);
+        
+        try {
+            console.log('[DEBUG] Toggling status:', { usernameId, currentStatus, newStatus });
+            
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/toggle`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username_id: usernameId,
+                    status: newStatus,
+                    user_id: telegramUser.id
+                })
+            });
+            
+            const data = await response.json();
+            console.log('[DEBUG] Toggle response:', data);
+            
+            if (data.success) {
+                hapticSuccess();
+                showToast(`Username ${newStatus === 'available' ? 'listed' : 'unlisted'}!`, 'success');
+                await loadUsernames();
+                return true;
+            } else {
+                showToast(data.error || 'Gagal mengubah status', 'error');
+                return false;
+            }
+        } catch (error) {
+            console.error('[DEBUG] Error toggling status:', error);
+            showToast('Error: ' + (error.message || 'Unknown error'), 'error');
+            return false;
+        } finally {
+            showLoading(false);
         }
     }
 
@@ -711,39 +762,6 @@
             otpInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') verifyOtp();
             });
-        }
-    }
-
-    async function toggleListStatus(usernameId, currentStatus) {
-        if (!telegramUser) return false;
-        
-        const newStatus = currentStatus === 'available' ? 'unlisted' : 'available';
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/username/toggle`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username_id: usernameId,
-                    status: newStatus,
-                    user_id: telegramUser.id
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showToast(`Username ${newStatus === 'available' ? 'listed' : 'unlisted'}!`, 'success');
-                await loadUsernames();
-                return true;
-            } else {
-                showToast(data.error || 'Gagal mengubah status', 'error');
-                return false;
-            }
-        } catch (error) {
-            console.error('Error toggling status:', error);
-            showToast('Error toggling status', 'error');
-            return false;
         }
     }
     

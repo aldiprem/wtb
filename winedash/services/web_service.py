@@ -934,3 +934,105 @@ def reject_pending_username_route():
     except Exception as e:
         print(f"Error in reject_pending_username_route: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@winedash_bp.route('/username/delete', methods=['POST', 'OPTIONS'])
+def delete_username():
+    """Delete a username from storage"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        username_id = data.get('username_id')
+        user_id = data.get('user_id')
+        
+        if not username_id or not user_id:
+            return jsonify({'success': False, 'error': 'Parameter tidak valid'}), 400
+        
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Cek apakah username milik user ini
+            cursor.execute('SELECT seller_id FROM usernames WHERE id = ?', (username_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                return jsonify({'success': False, 'error': 'Username tidak ditemukan'}), 404
+            
+            if row[0] != user_id:
+                return jsonify({'success': False, 'error': 'Anda tidak memiliki akses'}), 403
+            
+            # Delete username
+            cursor.execute('DELETE FROM usernames WHERE id = ?', (username_id,))
+            conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Username berhasil dihapus!'
+        })
+        
+    except Exception as e:
+        print(f"Error in delete_username: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@winedash_bp.route('/username/toggle', methods=['POST', 'OPTIONS'])
+def toggle_username_status():
+    """Toggle username status (listed/unlisted)"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        username_id = data.get('username_id')
+        new_status = data.get('status')
+        user_id = data.get('user_id')
+        
+        if not username_id or not new_status or not user_id:
+            return jsonify({'success': False, 'error': 'Parameter tidak valid'}), 400
+        
+        # Validasi status
+        if new_status not in ['available', 'unlisted']:
+            return jsonify({'success': False, 'error': 'Status tidak valid'}), 400
+        
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Cek apakah username milik user ini
+            cursor.execute('SELECT seller_id FROM usernames WHERE id = ?', (username_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                return jsonify({'success': False, 'error': 'Username tidak ditemukan'}), 404
+            
+            if row[0] != user_id:
+                return jsonify({'success': False, 'error': 'Anda tidak memiliki akses'}), 403
+            
+            # Update status
+            cursor.execute('UPDATE usernames SET status = ? WHERE id = ?', (new_status, username_id))
+            conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Username berhasil di{new_status == "available" and "listed" or "unlisted"}!'
+        })
+        
+    except Exception as e:
+        print(f"Error in toggle_username_status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
