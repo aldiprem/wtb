@@ -213,7 +213,7 @@
     }
 
     // ==================== TON CONNECT ====================
-    
+
     async function initTonConnect() {
         try {
             if (typeof window.TON_CONNECT_UI === 'undefined') {
@@ -228,6 +228,7 @@
             
             const manifestUrl = `${API_BASE_URL}/winedash/tonconnect-manifest.json`;
             
+            // Inisialisasi TON Connect UI
             tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
                 manifestUrl: manifestUrl,
                 buttonRootId: 'ton-connect',
@@ -236,6 +237,7 @@
             
             console.log('✅ TON Connect UI initialized');
             
+            // Subscribe to status changes
             tonConnectUI.onStatusChange(async (wallet) => {
                 console.log('📱 Wallet status changed:', wallet);
                 
@@ -254,6 +256,7 @@
                 }
             });
             
+            // Check if already connected
             if (tonConnectUI.connected) {
                 const wallet = tonConnectUI.wallet;
                 if (wallet) {
@@ -283,10 +286,26 @@
         
         try {
             showLoading(true);
-            await tonConnectUI.connect();
+            // Gunakan openModal() untuk versi terbaru TON Connect UI
+            if (typeof tonConnectUI.openModal === 'function') {
+                await tonConnectUI.openModal();
+            } else if (typeof tonConnectUI.connectWallet === 'function') {
+                await tonConnectUI.connectWallet();
+            } else if (typeof tonConnectUI.connection === 'object') {
+                // Alternatif lain
+                tonConnectUI.connection.connect();
+            } else {
+                // Fallback: trigger button click
+                const connectBtn = document.querySelector('#ton-connect button');
+                if (connectBtn) {
+                    connectBtn.click();
+                } else {
+                    throw new Error('No connect method available');
+                }
+            }
         } catch (error) {
             console.error('Error connecting wallet:', error);
-            showToast('Failed to connect wallet', 'error');
+            showToast('Failed to connect wallet: ' + (error.message || 'Unknown error'), 'error');
         } finally {
             showLoading(false);
         }
@@ -294,7 +313,11 @@
 
     function disconnectWallet() {
         if (tonConnectUI) {
-            tonConnectUI.disconnect();
+            if (typeof tonConnectUI.disconnect === 'function') {
+                tonConnectUI.disconnect();
+            } else if (tonConnectUI.connection && typeof tonConnectUI.connection.disconnect === 'function') {
+                tonConnectUI.connection.disconnect();
+            }
             isWalletConnected = false;
             walletAddress = null;
             updateWalletUI();
