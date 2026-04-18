@@ -330,11 +330,11 @@ body {
     color: var(--primary);
 }
 
-/* Username Grid - 2 Cards per row */
+/* Username Grid - 2 Cards per row - Perbaikan ukuran */
 .username-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
 }
 
 .username-grid .username-card {
@@ -346,6 +346,10 @@ body {
     overflow: hidden;
     border: none;
     transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 160px;
 }
 
 .username-grid .username-card::after {
@@ -368,10 +372,10 @@ body {
 }
 
 .username-grid .card-icon {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border-radius: 12px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -379,7 +383,7 @@ body {
 }
 
 .username-grid .card-icon i {
-    font-size: 20px;
+    font-size: 18px;
     color: white;
 }
 
@@ -389,6 +393,9 @@ body {
     font-family: monospace;
     margin-bottom: 4px;
     word-break: break-all;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .username-grid .card-category {
@@ -399,6 +406,7 @@ body {
     border-radius: 12px;
     display: inline-block;
     margin-bottom: 8px;
+    width: fit-content;
 }
 
 .username-grid .card-price {
@@ -414,6 +422,7 @@ body {
     border-radius: 12px;
     display: inline-block;
     margin-bottom: 10px;
+    width: fit-content;
 }
 
 .username-grid .card-status.listed {
@@ -429,18 +438,21 @@ body {
 .username-grid .card-actions {
     display: flex;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: auto;
+    padding-top: 8px;
 }
 
 .username-grid .card-action-btn {
     background: var(--glass-bg);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 5px 10px;
     font-size: 10px;
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-secondary);
+    flex: 1;
+    text-align: center;
 }
 
 .username-grid .card-action-btn:hover {
@@ -452,7 +464,7 @@ body {
     color: var(--danger);
 }
 
-/* Username List - Layout kebawah */
+/* Username List - Layout kebawah - Perbaikan */
 .username-list {
     display: flex;
     flex-direction: column;
@@ -470,25 +482,7 @@ body {
     position: relative;
     overflow: hidden;
     border: none;
-}
-
-.username-list .username-item::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 14px;
-    padding: 1px;
-    background: linear-gradient(176deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(255, 255, 255, 0.4) 100%
-    );
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+    flex-wrap: wrap;
 }
 
 .username-list .username-icon {
@@ -508,7 +502,8 @@ body {
 }
 
 .username-list .username-info {
-    flex: 1;
+    flex: 2;
+    min-width: 100px;
 }
 
 .username-list .username-name {
@@ -516,6 +511,7 @@ body {
     font-weight: 600;
     font-family: monospace;
     margin-bottom: 2px;
+    word-break: break-all;
 }
 
 .username-list .username-category {
@@ -532,6 +528,7 @@ body {
     font-weight: 700;
     color: var(--success);
     margin-right: 10px;
+    flex-shrink: 0;
 }
 
 .username-list .username-status {
@@ -539,6 +536,7 @@ body {
     padding: 2px 8px;
     border-radius: 12px;
     margin-right: 10px;
+    flex-shrink: 0;
 }
 
 .username-list .username-status.listed {
@@ -554,6 +552,7 @@ body {
 .username-list .list-actions {
     display: flex;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .username-list .list-action-btn {
@@ -572,6 +571,30 @@ body {
 
 .username-list .list-delete-btn:hover {
     color: var(--danger);
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+    .username-grid {
+        gap: 8px;
+    }
+    
+    .username-grid .username-card {
+        padding: 10px;
+        min-height: 150px;
+    }
+    
+    .username-list .username-item {
+        gap: 8px;
+    }
+    
+    .username-list .username-info {
+        min-width: 80px;
+    }
+    
+    .username-list .username-price {
+        font-size: 12px;
+    }
 }
 
 /* Loading Placeholder */

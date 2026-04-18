@@ -292,12 +292,20 @@
                         <div class="inbox-status ${pending.status}">${statusText}</div>
                     </div>
                     <div class="inbox-actions">
-                        <button class="inbox-verify-btn" data-id="${pending.id}" data-username="${pending.username}">
-                            <i class="fas fa-check-circle"></i>
-                        </button>
-                        <button class="inbox-reject-btn" data-id="${pending.id}" data-username="${pending.username}">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
+                        ${pending.verification_type === 'user' ? 
+                            `<button class="inbox-verify-btn" data-id="${pending.id}" data-username="${pending.username}" data-type="user">
+                                <i class="fas fa-check-circle"></i>
+                            </button>
+                            <button class="inbox-reject-btn" data-id="${pending.id}" data-username="${pending.username}">
+                                <i class="fas fa-times-circle"></i>
+                            </button>` :
+                            `<button class="inbox-verify-btn" data-id="${pending.id}" data-username="${pending.username}" data-type="channel">
+                                <i class="fas fa-check-circle"></i>
+                            </button>
+                            <button class="inbox-reject-btn" data-id="${pending.id}" data-username="${pending.username}">
+                                <i class="fas fa-times-circle"></i>
+                            </button>`
+                        }
                     </div>
                 </div>
             `;
@@ -311,7 +319,13 @@
                 e.stopPropagation();
                 const pendingId = btn.dataset.id;
                 const username = btn.dataset.username;
-                showConfirmModal(pendingId, username);
+                const type = btn.dataset.type;
+                
+                if (type === 'user') {
+                    showOtpModal(pendingId, username);
+                } else {
+                    showConfirmModal(pendingId, username);
+                }
             });
         });
         
@@ -324,6 +338,25 @@
                 showRejectConfirmModal(pendingId, username);
             });
         });
+    }
+
+    // Perbaiki fungsi showOtpModal
+    function showOtpModal(pendingId, username) {
+        currentOtpPendingId = pendingId;
+        const modal = document.getElementById('otpModal');
+        const input = document.getElementById('otpInput');
+        const title = document.querySelector('#otpModal h3');
+        const desc = document.querySelector('#otpModal p');
+        
+        if (title) title.textContent = 'Verifikasi OTP';
+        if (desc) desc.innerHTML = `Masukkan kode OTP 6 digit yang dikirim ke <strong>@${escapeHtml(username)}</strong>`;
+        if (input) input.value = '';
+        
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.classList.add('modal-open');
+            if (input) setTimeout(() => input.focus(), 100);
+        }
     }
 
     function showConfirmModal(pendingId, username) {
@@ -451,20 +484,6 @@
             showToast('Error', 'error');
         } finally {
             showLoading(false);
-        }
-    }
-
-    function showOtpModal(pendingId) {
-        currentOtpPendingId = pendingId;
-        const modal = document.getElementById('otpModal');
-        const input = document.getElementById('otpInput');
-        
-        if (input) input.value = '';
-        
-        if (modal) {
-            modal.style.display = 'flex';
-            document.body.classList.add('modal-open');
-            if (input) setTimeout(() => input.focus(), 100);
         }
     }
 
