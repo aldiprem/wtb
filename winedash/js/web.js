@@ -938,16 +938,27 @@
                 elements.tabContents.forEach(c => c.classList.remove('active'));
                 
                 btn.classList.add('active');
-                const activeTab = document.getElementById(`${tabId}Tab`);
+                
                 if (tabId === 'storage') {
                     window.location.href = '/winedash/storage';
+                    return;
                 }
+                
+                const activeTab = document.getElementById(`${tabId}Tab`);
+                if (activeTab) activeTab.classList.add('active');
+                
                 if (tabId === 'my-usernames') {
                     loadPurchasedUsernames();
                 } else if (tabId === 'history') {
                     loadTransactionHistory();
                 } else if (tabId === 'marketplace') {
                     loadUsernames();
+                } else if (tabId === 'wallet') {
+                    // Refresh wallet UI jika perlu
+                    if (tonConnectUI) {
+                        updateWalletUI();
+                        updateBalanceCardUI();
+                    }
                 }
             });
         });

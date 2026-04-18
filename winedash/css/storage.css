@@ -750,6 +750,19 @@ body {
     color: var(--primary);
 }
 
+/* Single Toggle Button Styles */
+.action-btn.toggle-active {
+    background: var(--primary-glass);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.action-btn.toggle-active-unlisted {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .storage-container {

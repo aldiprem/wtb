@@ -464,34 +464,6 @@
             });
         });
         
-        // Status filters
-        if (elements.toggleListedBtn) {
-            elements.toggleListedBtn.addEventListener('click', () => {
-                currentStatus = 'all';
-                updateStatusButtons('all');
-                filterAndRender();
-                hapticLight();
-            });
-        }
-        
-        if (elements.toggleListedBtnListed) {
-            elements.toggleListedBtnListed.addEventListener('click', () => {
-                currentStatus = 'listed';
-                updateStatusButtons('listed');
-                filterAndRender();
-                hapticLight();
-            });
-        }
-        
-        if (elements.toggleListedBtnUnlisted) {
-            elements.toggleListedBtnUnlisted.addEventListener('click', () => {
-                currentStatus = 'unlisted';
-                updateStatusButtons('unlisted');
-                filterAndRender();
-                hapticLight();
-            });
-        }
-        
         // Sort
         if (elements.sortBtn) {
             elements.sortBtn.addEventListener('click', () => {
@@ -607,33 +579,24 @@
     }
 
     function setupToggleButtons() {
-        const listedBtn = document.getElementById('toggleListedBtn');
-        const unlistedBtn = document.getElementById('toggleListedBtnUnlisted');
+        const toggleBtn = document.getElementById('toggleStatusBtn');
         
-        if (listedBtn) {
-            listedBtn.addEventListener('click', () => {
-                if (currentStatus === 'listed') {
-                    currentStatus = 'all';
-                    listedBtn.classList.remove('toggle-active');
-                } else {
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                // Cycle status: all -> listed -> unlisted -> all
+                if (currentStatus === 'all') {
                     currentStatus = 'listed';
-                    listedBtn.classList.add('toggle-active');
-                    if (unlistedBtn) unlistedBtn.classList.remove('toggle-active');
-                }
-                filterAndRender();
-                hapticLight();
-            });
-        }
-        
-        if (unlistedBtn) {
-            unlistedBtn.addEventListener('click', () => {
-                if (currentStatus === 'unlisted') {
-                    currentStatus = 'all';
-                    unlistedBtn.classList.remove('toggle-active');
-                } else {
+                    toggleBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Listed</span>';
+                    toggleBtn.classList.add('toggle-active');
+                } else if (currentStatus === 'listed') {
                     currentStatus = 'unlisted';
-                    unlistedBtn.classList.add('toggle-active');
-                    if (listedBtn) listedBtn.classList.remove('toggle-active');
+                    toggleBtn.innerHTML = '<i class="fas fa-times-circle"></i><span>Unlisted</span>';
+                    toggleBtn.classList.remove('toggle-active');
+                    toggleBtn.classList.add('toggle-active-unlisted');
+                } else {
+                    currentStatus = 'all';
+                    toggleBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
+                    toggleBtn.classList.remove('toggle-active', 'toggle-active-unlisted');
                 }
                 filterAndRender();
                 hapticLight();
