@@ -557,6 +557,11 @@ Terima kasih telah menggunakan BarackGift! 🎉
         print(f"Error sending notification: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/image/<path:filename>')
+def serve_image_files(filename):
+    """Serve image files including .tgs"""
+    return send_from_directory('image', filename)
+
 # ==================== MAIN ====================
 
 if __name__ == '__main__':

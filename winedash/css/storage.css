@@ -862,40 +862,54 @@ body {
     font-size: 18px;
 }
 
-/* Empty State dengan Animasi */
+/* Empty State dengan Animasi - Rata Tengah */
 .empty-state {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
     text-align: center;
+    padding: 60px 20px;
+    min-height: 400px;
 }
 
 .empty-animation {
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.empty-animation canvas,
+.empty-animation img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .empty-title {
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 600;
     color: var(--text);
     margin-bottom: 8px;
 }
 
 .empty-subtitle {
-    font-size: 12px;
+    font-size: 13px;
     color: var(--text-muted);
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    max-width: 200px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .empty-btn {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border: none;
-    border-radius: 24px;
-    padding: 10px 24px;
+    border-radius: 28px;
+    padding: 8px 20px;
     color: white;
     font-size: 13px;
     font-weight: 600;
@@ -904,11 +918,28 @@ body {
     align-items: center;
     gap: 8px;
     transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.empty-btn i {
+    font-size: 12px;
 }
 
 .empty-btn:hover {
     transform: scale(1.02);
     box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+/* TGS Player Container */
+.empty-animation canvas {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+}
+
+/* Pastikan container empty state full width */
+#usernameContainer {
+    width: 100%;
 }
 
 /* Pastikan toggle button visible */

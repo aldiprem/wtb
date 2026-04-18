@@ -423,7 +423,6 @@
         });
     }
 
-    // Fungsi untuk load animasi TGS
     function loadTGSAnimation() {
         const container = document.getElementById('emptyAnimation');
         if (!container) return;
@@ -434,7 +433,11 @@
             const script = document.createElement('script');
             script.src = 'https://unpkg.com/@tgs/core@latest/dist/tgs-player.min.js';
             script.onload = () => {
-                initTGSPlayer(container);
+                setTimeout(() => initTGSPlayer(container), 100);
+            };
+            script.onerror = () => {
+                console.error('Failed to load TGS player script');
+                container.innerHTML = '<i class="fas fa-box-open" style="font-size: 64px; color: var(--text-muted);"></i>';
             };
             document.head.appendChild(script);
         } else {
@@ -443,17 +446,29 @@
     }
 
     function initTGSPlayer(container) {
-        if (typeof window.TGSPlayer === 'undefined') return;
+        if (typeof window.TGSPlayer === 'undefined') {
+            console.warn('TGSPlayer not loaded yet');
+            return;
+        }
         
-        const player = new window.TGSPlayer(container, {
-            file: '/image/none-username-storage.tgs',
-            autoplay: true,
-            loop: true,
-            width: 120,
-            height: 120
-        });
-        
-        player.play();
+        try {
+            // Gunakan path absolut yang benar
+            const player = new window.TGSPlayer(container, {
+                file: '/image/none-username-storage.tgs',
+                autoplay: true,
+                loop: true,
+                width: 120,
+                height: 120
+            });
+            
+            player.play().catch(err => {
+                console.error('Error playing TGS animation:', err);
+                container.innerHTML = '<i class="fas fa-box-open" style="font-size: 64px; color: var(--text-muted);"></i>';
+            });
+        } catch (error) {
+            console.error('Error initializing TGS player:', error);
+            container.innerHTML = '<i class="fas fa-box-open" style="font-size: 64px; color: var(--text-muted);"></i>';
+        }
     }
 
     // ==================== EVENT HANDLERS ====================
