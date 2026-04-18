@@ -452,78 +452,131 @@ async def process_pending_verifications():
             logger.error(f"Error processing: {e}")
         
         await asyncio.sleep(5)
-                
-    async def process_verification(session, pending):
-        """Process single verification"""
-        pending_id = pending['id']
-        username = pending['username']
-        price = pending['price']
-        seller_id = pending['seller_id']
-        
-        logger.info(f"Processing verification for {username} (pending_id: {pending_id})")
-        
-        # Cek lagi apakah sudah diproses (double check)
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT target_chat_id FROM pending_usernames WHERE id = ?', (pending_id,))
-            row = cursor.fetchone()
-            if row and row[0]:
-                logger.info(f"Pending {pending_id} already has target_chat_id, skipping...")
-                return
-        
-        # Check if username already exists in marketplace
-        if await check_username_exists(username):
-            reject_pending(pending_id)
+
+async def process_verification(session, pending):
+    """Process single verification"""
+    pending_id = pending['id']
+    username = pending['username']
+    price = pending['price']
+    seller_id = pending['seller_id']
+    
+    logger.info(f"Processing verification for {username} (pending_id: {pending_id})")
+    
+    # Cek lagi apakah sudah diproses (double check)
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT target_chat_id FROM pending_usernames WHERE id = ?', (pending_id,))
+        row = cursor.fetchone()
+        if row and row[0]:
+            logger.info(f"Pending {pending_id} already has target_chat_id, skipping...")
+            return
+    
+    # Check if username already exists in marketplace
+    if await check_username_exists(username):
+        reject_pending(pending_id)
+        try:
+            await bot.send_message(seller_id, f"❌ Username @{username} sudah ada di marketplace!")
+        except:
+            pass
+        return
+    
+    # Check entity type
+    entity_type, chat_id, title = await check_entity_type(username)
+    
+    if not entity_type:
+        reject_pending(pending_id)
+        try:
+            await bot.send_message(seller_id, f"❌ Username @{username} tidak ditemukan!")
+        except:
+            pass
+        return
+    
+    # Check bot access for channels/groups
+    if entity_type in ['channel', 'group', 'supergroup']:
+        if not await check_bot_access(chat_id):
             try:
-                await bot.send_message(seller_id, f"❌ Username @{username} sudah ada di marketplace!")
+                await bot.send_message(seller_id, f"❌ Bot tidak memiliki akses ke @{username}! Pastikan bot sudah menjadi admin.")
             except:
                 pass
             return
         
-        # Check entity type
-        entity_type, chat_id, title = await check_entity_type(username)
+        # Update pending with chat info
+        update_pending_verification(pending_id, str(chat_id), title, entity_type)
         
-        if not entity_type:
-            reject_pending(pending_id)
-            try:
-                await bot.send_message(seller_id, f"❌ Username @{username} tidak ditemukan!")
-            except:
-                pass
-            return
+        # Send verification message to channel/group
+        await send_channel_verification(chat_id, username, price, pending_id)
         
-        # Check bot access for channels/groups
-        if entity_type in ['channel', 'group', 'supergroup']:
-            if not await check_bot_access(chat_id):
-                try:
-                    await bot.send_message(seller_id, f"❌ Bot tidak memiliki akses ke @{username}! Pastikan bot sudah menjadi admin.")
-                except:
-                    pass
-                return
+        try:
+            await bot.send_message(seller_id, f"✅ Verifikasi telah dikirim ke @{username}!\n\nTunggu admin channel/group untuk mengkonfirmasi.")
+        except:
+            pass
+        
+    else:  # User
+        # Generate OTP
+        otp = generate_otp()
+        update_pending_code(pending_id, otp)
+        update_pending_verification(pending_id, str(chat_id), title, 'user')
+        
+        # Send OTP to user
+        await send_user_verification(chat_id, username, price, pending_id, otp)
+        
+        try:
+            await bot.send_message(seller_id, f"✅ Kode OTP telah dikirim ke @{username}!\n\nMasukkan kode di halaman Storage untuk verifikasi.")
+        except:
+            pass
+
+
+async def process_pending_verifications():
+    """Process pending verifications from Flask"""
+    import aiohttp
+    
+    await asyncio.sleep(5)
+    
+    while True:
+        try:
+            # Bersihkan processed IDs yang sudah lebih dari 5 menit
+            current_time = time.time()
+            to_remove = []
+            for pid, timestamp in processed_pending_ids.items():
+                if current_time - timestamp > 300:  # 5 menit
+                    to_remove.append(pid)
+            for pid in to_remove:
+                del processed_pending_ids[pid]
             
-            # Update pending with chat info
-            update_pending_verification(pending_id, str(chat_id), title, entity_type)
-            
-            # Send verification message to channel/group
-            await send_channel_verification(chat_id, username, price, pending_id)
-            
-            try:
-                await bot.send_message(seller_id, f"✅ Verifikasi telah dikirim ke @{username}!\n\nTunggu admin channel/group untuk mengkonfirmasi.")
-            except:
-                pass
-            
-        else:  # User
-            # Generate OTP
-            otp = generate_otp()
-            update_pending_code(pending_id, otp)
-            update_pending_verification(pending_id, str(chat_id), title, 'user')
-            
-            # Send OTP to user
-            await send_user_verification(chat_id, username, price, pending_id, otp)
-            
-            try:
-                await bot.send_message(seller_id, f"✅ Kode OTP telah dikirim ke @{username}!\n\nMasukkan kode di halaman Storage untuk verifikasi.")
-            except:
-                pass
+            async with aiohttp.ClientSession() as session:
+                async with session.get('http://localhost:5050/api/winedash/username/pending/list') as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        for pending in data.get('pendings', []):
+                            pending_id = pending.get('id')
+                            
+                            # Skip jika sudah diproses dalam 5 menit terakhir
+                            if pending_id in processed_pending_ids:
+                                continue
+                            
+                            # Proses hanya yang statusnya 'pending' dan belum diproses (target_chat_id kosong)
+                            if (pending.get('status') == 'pending' and 
+                                not pending.get('target_chat_id')):
+                                
+                                # Tandai sebagai sedang diproses
+                                processed_pending_ids[pending_id] = current_time
+                                
+                                try:
+                                    await process_verification(session, pending)
+                                except Exception as e:
+                                    logger.error(f"Error processing pending {pending_id}: {e}")
+                                    # Jika gagal, hapus dari dict agar bisa dicoba lagi nanti
+                                    processed_pending_ids.pop(pending_id, None)
+                                
+                                # Beri jeda antar proses agar tidak terlalu cepat
+                                await asyncio.sleep(2)
+                        
+        except aiohttp.ClientConnectorError:
+            logger.debug("Flask server not ready yet...")
+        except Exception as e:
+            logger.error(f"Error processing: {e}")
+        
+        await asyncio.sleep(5)
 
 async def main():
     logger.info("🚀 Starting Winedash Bot...")
