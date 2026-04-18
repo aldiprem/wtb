@@ -275,12 +275,12 @@
     }
     
     // ==================== FILTERING & SORTING ====================
-    
+        
     function filterAndRender() {
         let filtered = [...allUsernames];
         
-        // Filter by search term
-        if (currentSearchTerm) {
+        // Filter by search term - gunakan currentSearchTerm dari state
+        if (currentSearchTerm && currentSearchTerm.trim() !== '') {
             const term = currentSearchTerm.toLowerCase().trim();
             filtered = filtered.filter(username => 
                 username.username.toLowerCase().includes(term) ||
@@ -288,7 +288,7 @@
             );
         }
         
-        // Filter by status (only for user's own usernames - for demo, using seller_id)
+        // Filter by status
         if (currentStatus !== 'all') {
             filtered = filtered.filter(username => {
                 const isListed = username.status === 'available';
@@ -415,7 +415,7 @@
             });
         }
 
-        // Search
+        // Search - dengan pengecekan
         if (elements.searchApplyBtn) {
             elements.searchApplyBtn.addEventListener('click', () => {
                 currentSearchTerm = elements.searchInput?.value || '';
@@ -640,7 +640,33 @@
             });
         }
     }
-    
+
+    function setupSearch() {
+        const searchInput = document.getElementById('searchStorage');
+        const searchApplyBtn = document.getElementById('searchApplyBtn');
+        
+        if (searchApplyBtn) {
+            searchApplyBtn.addEventListener('click', () => {
+                const searchTerm = searchInput?.value || '';
+                currentSearchTerm = searchTerm;
+                filterAndRender();
+                hapticLight();
+            });
+        }
+        
+        // Enter key juga bisa search
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    currentSearchTerm = searchInput.value;
+                    filterAndRender();
+                    hapticLight();
+                }
+            });
+        }
+    }
+
     function clearModal() {
         if (elements.modalUsername) elements.modalUsername.value = '';
         if (elements.modalPrice) elements.modalPrice.value = '';
@@ -674,20 +700,20 @@
             console.log('✅ Telegram WebApp initialized');
         }
     }
-    
+        
     async function init() {
         initTelegram();
         showLoading(true);
         
         setupEventListeners();
-        setupToggleButtons(); // Tambahkan ini
-        setupSearch();
+        setupToggleButtons();
+        setupSearch();  // Pastikan fungsi ini sudah didefinisikan
         
         telegramUser = getTelegramUserFromWebApp();
         if (telegramUser) {
-            updateStorageUserUI(); // Buat fungsi ini
+            updateStorageUserUI();
             await authenticateUser();
-            await loadStorageBalance(); // Tambahkan ini
+            await loadStorageBalance();
             await loadUsernames();
         } else {
             showToast('Tidak dapat mengambil data user', 'error');
