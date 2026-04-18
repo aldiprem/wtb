@@ -764,7 +764,7 @@
             });
         }
     }
-    
+
     // ==================== FILTERING & SORTING ====================
         
     function filterAndRender() {
@@ -812,7 +812,6 @@
         if (!elements.usernameContainer) return;
         
         if (usernames.length === 0) {
-            // Tampilkan animasi TGS
             elements.usernameContainer.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-animation" id="emptyAnimation"></div>
@@ -823,11 +822,7 @@
                     </button>
                 </div>
             `;
-            
-            // Load TGS animation
             loadTGSAnimation();
-            
-            // Add event listener to empty state button
             const emptyAddBtn = document.getElementById('emptyAddBtn');
             if (emptyAddBtn) {
                 emptyAddBtn.addEventListener('click', () => {
@@ -844,28 +839,36 @@
             for (const username of usernames) {
                 const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
                 const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+                const avatarUrl = getAvatarForUsername(username.username);
+                
                 html += `
-                    <div class="username-card" data-id="${username.id}">
-                        <div class="card-icon">
-                            <i class="fas fa-tag"></i>
+                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(username)}'>
+                        <div class="username-card-image">
+                            <div class="card-avatar">
+                                <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
+                            </div>
                         </div>
-                        <div class="card-name">${escapeHtml(username.username)}</div>
-                        <div class="card-category">${escapeHtml(username.category)}</div>
-                        <div class="card-price">${formatNumber(username.price)} TON</div>
-                        <div class="card-status ${statusClass}">${statusText}</div>
-                        <div class="card-actions">
-                            <button class="card-action-btn toggle-status-btn" data-id="${username.id}" data-status="${username.status}">
-                                <i class="fas fa-${username.status === 'available' ? 'eye-slash' : 'eye'}"></i>
-                            </button>
-                            <button class="card-action-btn delete-btn" data-id="${username.id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <div class="username-card-info">
+                            <div class="card-username">@${escapeHtml(username.username)}</div>
+                            <div class="card-price">${formatNumber(username.price)} TON</div>
+                            <div class="card-status ${statusClass}">${statusText}</div>
+                            <div class="card-actions">
+                                <button class="card-action-btn toggle-status-btn" data-id="${username.id}" data-status="${username.status}">
+                                    <i class="fas fa-${username.status === 'available' ? 'eye-slash' : 'eye'}"></i>
+                                    <span>${username.status === 'available' ? 'Unlist' : 'List'}</span>
+                                </button>
+                                <button class="card-action-btn delete-btn" data-id="${username.id}">
+                                    <i class="fas fa-trash"></i>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
             }
             elements.usernameContainer.innerHTML = html;
         } else {
+            // List layout tetap sama
             elements.usernameContainer.className = 'username-list';
             let html = '';
             for (const username of usernames) {
@@ -896,7 +899,15 @@
             elements.usernameContainer.innerHTML = html;
         }
         
-        // Attach event listeners to buttons
+        // Attach event listeners
+        document.querySelectorAll('.username-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.card-action-btn')) return;
+                const usernameData = JSON.parse(card.dataset.username);
+                showDetailPanel(usernameData);
+            });
+        });
+        
         document.querySelectorAll('.toggle-status-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -915,6 +926,106 @@
                 }
             });
         });
+    }
+
+    // Fungsi untuk mendapatkan avatar berdasarkan username
+    function getAvatarForUsername(username) {
+        // Gunakan API avatar dari ui-avatars
+        return `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
+    }
+
+    // Fungsi untuk menampilkan detail panel
+    function showDetailPanel(username) {
+        // Hapus panel yang sudah ada
+        const existingPanel = document.querySelector('.detail-panel');
+        if (existingPanel) {
+            existingPanel.remove();
+        }
+        
+        const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
+        const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+        const avatarUrl = getAvatarForUsername(username.username);
+        const createdAt = formatDateIndonesia(username.created_at);
+        
+        const panel = document.createElement('div');
+        panel.className = 'detail-panel';
+        panel.innerHTML = `
+            <div class="panel-header">
+                <h3><i class="fas fa-info-circle"></i> Detail Username</h3>
+                <button class="panel-close">&times;</button>
+            </div>
+            <div class="panel-content">
+                <div class="detail-avatar">
+                    <div class="detail-avatar-img">
+                        <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Username</div>
+                    <div class="detail-value">@${escapeHtml(username.username)}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Harga</div>
+                    <div class="detail-value price">${formatNumber(username.price)} TON</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-status ${statusClass}">${statusText}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Kategori</div>
+                    <div class="detail-value">${escapeHtml(username.category || 'Default')}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">ID Username</div>
+                    <div class="detail-value">#${username.id}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Ditambahkan Pada</div>
+                    <div class="detail-value">${createdAt}</div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(panel);
+        
+        // Trigger animation
+        setTimeout(() => {
+            panel.classList.add('open');
+        }, 10);
+        
+        // Close button
+        panel.querySelector('.panel-close').addEventListener('click', () => {
+            panel.classList.remove('open');
+            setTimeout(() => panel.remove(), 300);
+        });
+        
+        // Close on outside click
+        panel.addEventListener('click', (e) => {
+            if (e.target === panel) {
+                panel.classList.remove('open');
+                setTimeout(() => panel.remove(), 300);
+            }
+        });
+    }
+
+    // Fungsi format tanggal Indonesia (Asia/Jakarta)
+    function formatDateIndonesia(dateStr) {
+        if (!dateStr) return '-';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleString('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        } catch {
+            return dateStr;
+        }
     }
 
     function loadTGSAnimation() {
