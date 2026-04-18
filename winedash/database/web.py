@@ -636,90 +636,90 @@ class WinedashDatabase:
             print(f"Error getting user transactions: {e}")
             return []
 
-def add_pending_username(self, username: str, price: float, seller_id: int, 
-                        seller_wallet: str, category: str = "default", 
-                        verification_type: str = "channel") -> Optional[int]:
-    """Add a username to pending verification"""
-    try:
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            now = self._get_now()
-            
-            # Buat tabel pending_usernames jika belum ada
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS pending_usernames (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    category TEXT,
-                    price DECIMAL(20, 8) NOT NULL,
-                    seller_id INTEGER NOT NULL,
-                    seller_wallet TEXT,
-                    verification_type TEXT DEFAULT 'channel',
-                    verification_code TEXT,
-                    status TEXT DEFAULT 'pending',
-                    target_chat_id TEXT,
-                    target_chat_title TEXT,
-                    created_at TIMESTAMP,
-                    expires_at TIMESTAMP,
-                    confirmed_at TIMESTAMP
-                )
-            ''')
-            
-            # Cek apakah username sudah ada di pending dengan status pending ATAU rejected
-            # Jika rejected, kita bisa menambahkan ulang (update status jadi pending)
-            cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username,))
-            existing = cursor.fetchone()
-            
-            if existing:
-                existing_id, existing_status = existing
-                if existing_status == 'pending':
-                    print(f"Username {username} already in pending")
+    def add_pending_username(self, username: str, price: float, seller_id: int, 
+                            seller_wallet: str, category: str = "default", 
+                            verification_type: str = "channel") -> Optional[int]:
+        """Add a username to pending verification"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                # Buat tabel pending_usernames jika belum ada
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS pending_usernames (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        category TEXT,
+                        price DECIMAL(20, 8) NOT NULL,
+                        seller_id INTEGER NOT NULL,
+                        seller_wallet TEXT,
+                        verification_type TEXT DEFAULT 'channel',
+                        verification_code TEXT,
+                        status TEXT DEFAULT 'pending',
+                        target_chat_id TEXT,
+                        target_chat_title TEXT,
+                        created_at TIMESTAMP,
+                        expires_at TIMESTAMP,
+                        confirmed_at TIMESTAMP
+                    )
+                ''')
+                
+                # Cek apakah username sudah ada di pending dengan status pending ATAU rejected
+                # Jika rejected, kita bisa menambahkan ulang (update status jadi pending)
+                cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username,))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    existing_id, existing_status = existing
+                    if existing_status == 'pending':
+                        print(f"Username {username} already in pending")
+                        return None
+                    elif existing_status == 'rejected':
+                        # Update rejected menjadi pending
+                        cursor.execute('''
+                            UPDATE pending_usernames 
+                            SET status = 'pending', price = ?, seller_id = ?, seller_wallet = ?, 
+                                category = ?, verification_type = ?, created_at = ?, 
+                                target_chat_id = NULL, target_chat_title = NULL,
+                                verification_code = NULL, expires_at = NULL
+                            WHERE id = ?
+                        ''', (price, seller_id, seller_wallet, category, verification_type, now, existing_id))
+                        conn.commit()
+                        return existing_id
+                    else:
+                        # Status confirmed - sudah ada di marketplace
+                        return None
+                
+                # Cek apakah username sudah ada di usernames (available)
+                cursor.execute('SELECT id FROM usernames WHERE username = ? AND status = "available"', (username,))
+                if cursor.fetchone():
+                    print(f"Username {username} already exists in marketplace")
                     return None
-                elif existing_status == 'rejected':
-                    # Update rejected menjadi pending
-                    cursor.execute('''
-                        UPDATE pending_usernames 
-                        SET status = 'pending', price = ?, seller_id = ?, seller_wallet = ?, 
-                            category = ?, verification_type = ?, created_at = ?, 
-                            target_chat_id = NULL, target_chat_title = NULL,
-                            verification_code = NULL, expires_at = NULL
-                        WHERE id = ?
-                    ''', (price, seller_id, seller_wallet, category, verification_type, now, existing_id))
-                    conn.commit()
-                    return existing_id
-                else:
-                    # Status confirmed - sudah ada di marketplace
-                    return None
-            
-            # Cek apakah username sudah ada di usernames (available)
-            cursor.execute('SELECT id FROM usernames WHERE username = ? AND status = "available"', (username,))
-            if cursor.fetchone():
-                print(f"Username {username} already exists in marketplace")
-                return None
-            
-            # Insert new pending
-            verification_code = None
-            expires_at = None
-            
-            cursor.execute('''
-                INSERT INTO pending_usernames 
-                (username, category, price, seller_id, seller_wallet, verification_type, 
-                verification_code, status, created_at, expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-            ''', (username, category, price, seller_id, seller_wallet, 
-                verification_type, verification_code, now, expires_at))
-            
-            conn.commit()
-            return cursor.lastrowid
-            
-    except sqlite3.IntegrityError as e:
-        print(f"IntegrityError adding pending username: {e}")
-        return None
-    except Exception as e:
-        print(f"Error adding pending username: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+                
+                # Insert new pending
+                verification_code = None
+                expires_at = None
+                
+                cursor.execute('''
+                    INSERT INTO pending_usernames 
+                    (username, category, price, seller_id, seller_wallet, verification_type, 
+                    verification_code, status, created_at, expires_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                ''', (username, category, price, seller_id, seller_wallet, 
+                    verification_type, verification_code, now, expires_at))
+                
+                conn.commit()
+                return cursor.lastrowid
+                
+        except sqlite3.IntegrityError as e:
+            print(f"IntegrityError adding pending username: {e}")
+            return None
+        except Exception as e:
+            print(f"Error adding pending username: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
         """Get pending usernames for a user (or all if user_id is None)"""
