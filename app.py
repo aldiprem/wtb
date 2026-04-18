@@ -243,6 +243,11 @@ app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
 
 # ==================== WINEDASH ROUTES ====================
 
+@app.route('/winedash/storage')
+def serve_winedash_storage():
+    """Halaman Storage Winedash"""
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'html'), 'storage.html')
+
 @app.route('/winedash')
 @app.route('/winedash/')
 def serve_winedash_page():

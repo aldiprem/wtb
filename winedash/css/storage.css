@@ -1,0 +1,606 @@
+/* winedash/css/storage.css - Storage Page Style */
+
+:root {
+    --primary: #40a7e3;
+    --primary-dark: #2d8bcb;
+    --primary-glow: rgba(64, 167, 227, 0.4);
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --info: #3b82f6;
+    
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface-light: #1a1a1a;
+    
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --primary-glass: rgba(64, 167, 227, 0.2);
+    --glass-blur: blur(6px);
+    
+    --border: rgba(255, 255, 255, 0.08);
+    --border-light: rgba(255, 255, 255, 0.05);
+    
+    --text: #ffffff;
+    --text-secondary: #a0a0a0;
+    --text-muted: #6b6b6b;
+    
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+    font-size: 13px;
+}
+
+/* Main Container - Ukuran lebih kecil */
+.storage-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 12px;
+    padding-bottom: 90px;
+    min-height: 100vh;
+}
+
+/* Back Button dan Navigation */
+.storage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 8px 0;
+}
+
+.back-circle {
+    width: 40px;
+    height: 40px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.back-circle::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    padding: 1px;
+    background: linear-gradient(170deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 50%,
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.back-circle:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.back-circle i {
+    font-size: 18px;
+    color: var(--text);
+}
+
+.nav-links {
+    display: flex;
+    gap: 16px;
+}
+
+.nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.nav-links a.active {
+    color: var(--primary);
+}
+
+/* Mode Toggle - On-Chain / Off-Chain */
+.mode-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-radius: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    padding: 4px;
+    width: 100%;
+}
+
+.mode-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mode-btn.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+/* Search Container */
+.search-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.search-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+}
+
+.search-apply-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    border-radius: 16px;
+    padding: 0 16px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Action Bar - Tombol-tombol kecil */
+.action-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+}
+
+.action-bar::-webkit-scrollbar {
+    height: 3px;
+}
+
+.action-bar::-webkit-scrollbar-track {
+    background: var(--border-light);
+    border-radius: 3px;
+}
+
+.action-bar::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
+.action-btn {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 6px 14px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.action-btn i {
+    font-size: 12px;
+}
+
+.action-btn.active {
+    background: var(--primary-glass);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Tombol Add Username */
+.add-btn {
+    background: linear-gradient(135deg, var(--success), #0d9488);
+    border-color: var(--success);
+    color: white;
+}
+
+.add-btn i {
+    color: white;
+}
+
+/* Layout Toggle */
+.layout-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 3px;
+}
+
+.layout-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.layout-btn.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+/* Username Grid - 2 Cards per row */
+.username-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.username-grid .username-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 16px;
+    padding: 12px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    transition: all 0.2s;
+}
+
+.username-grid .username-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(176deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.username-grid .card-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+}
+
+.username-grid .card-icon i {
+    font-size: 20px;
+    color: white;
+}
+
+.username-grid .card-name {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: monospace;
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.username-grid .card-category {
+    font-size: 9px;
+    color: var(--primary);
+    background: rgba(64, 167, 227, 0.15);
+    padding: 2px 6px;
+    border-radius: 12px;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.username-grid .card-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--success);
+    margin-bottom: 10px;
+}
+
+.username-grid .card-status {
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    margin-bottom: 10px;
+}
+
+.username-grid .card-status.listed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.username-grid .card-status.unlisted {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+.username-grid .card-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.username-grid .card-action-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+}
+
+.username-grid .card-action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.username-grid .delete-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+/* Username List - Layout kebawah */
+.username-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.username-list .username-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.username-list .username-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: linear-gradient(176deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.username-list .username-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.username-list .username-icon i {
+    font-size: 18px;
+    color: white;
+}
+
+.username-list .username-info {
+    flex: 1;
+}
+
+.username-list .username-name {
+    font-size: 13px;
+    font-weight: 600;
+    font-family: monospace;
+    margin-bottom: 2px;
+}
+
+.username-list .username-category {
+    font-size: 9px;
+    color: var(--primary);
+    background: rgba(64, 167, 227, 0.15);
+    padding: 2px 6px;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.username-list .username-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--success);
+    margin-right: 10px;
+}
+
+.username-list .username-status {
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-right: 10px;
+}
+
+.username-list .username-status.listed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.username-list .username-status.unlisted {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+.username-list .list-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.username-list .list-action-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 8px;
+    font-size: 11px;
+}
+
+.username-list .list-action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.username-list .list-delete-btn:hover {
+    color: var(--danger);
+}
+
+/* Loading Placeholder */
+.loading-placeholder {
+    text-align: center;
+    padding: 30px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+/* Modal untuk Add Username */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--surface);
+    border-radius: 24px;
+    padding: 20px;
+    width: calc(100% - 40px);
+    max-width: 400px;
+    position: relative;
+}
+
+.modal-content h3 {
+    font-size: 16px;
+    margin-bottom: 16px;
+}
+
+.modal-content .form-input {
+    margin-bottom: 12px;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.modal-buttons button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.modal-cancel {
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.modal-confirm {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    color: white;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .storage-container {
+        padding: 10px;
+        padding-bottom: 80px;
+    }
+    
+    .username-grid {
+        gap: 8px;
+    }
+    
+    .username-grid .username-card {
+        padding: 10px;
+    }
+}

@@ -939,8 +939,9 @@
                 
                 btn.classList.add('active');
                 const activeTab = document.getElementById(`${tabId}Tab`);
-                if (activeTab) activeTab.classList.add('active');
-                
+                if (tabId === 'storage') {
+                    window.location.href = '/winedash/storage';
+                }
                 if (tabId === 'my-usernames') {
                     loadPurchasedUsernames();
                 } else if (tabId === 'history') {

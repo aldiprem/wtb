@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Winedash - Storage</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/winedash/css/web.css">
+    <link rel="stylesheet" href="/winedash/css/storage.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- TON Connect UI SDK -->
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="storage-container">
+        
+        <!-- Header dengan back button dan navigation -->
+        <div class="storage-header">
+            <div class="back-circle" id="backButton">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="active">Activity</a>
+                <a href="#">Offers</a>
+                <a href="#">Store</a>
+            </div>
+        </div>
+
+        <!-- Mode Toggle: On-Chain / Off-Chain -->
+        <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="onchain">On-Chain</button>
+            <button class="mode-btn" data-mode="offchain">Off-Chain</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchStorage" placeholder="🔍 Cari username...">
+            <button class="search-apply-btn" id="searchApplyBtn">Apply</button>
+        </div>
+
+        <!-- Action Bar - Tombol toggle dan filter -->
+        <div class="action-bar">
+            <button class="action-btn" id="toggleListedBtn" data-status="all">
+                <i class="fas fa-eye"></i>
+                <span>All</span>
+            </button>
+            <button class="action-btn" id="toggleListedBtnListed" data-status="listed">
+                <i class="fas fa-check-circle"></i>
+                <span>Listed</span>
+            </button>
+            <button class="action-btn" id="toggleListedBtnUnlisted" data-status="unlisted">
+                <i class="fas fa-times-circle"></i>
+                <span>Unlisted</span>
+            </button>
+            
+            <div class="layout-toggle">
+                <button class="layout-btn active" data-layout="grid" id="gridLayoutBtn">
+                    <i class="fas fa-th"></i>
+                </button>
+                <button class="layout-btn" data-layout="list" id="listLayoutBtn">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+            
+            <button class="action-btn" id="sortBtn">
+                <i class="fas fa-sort-amount-down-alt"></i>
+            </button>
+            <button class="action-btn add-btn" id="addUsernameBtn">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        <!-- Sort Dropdown (hidden by default) -->
+        <div id="sortDropdown" style="display: none; margin-bottom: 12px;">
+            <select id="sortSelect" class="form-input" style="margin-bottom: 0;">
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="date_desc">Latest</option>
+                <option value="name_asc">Name: A to Z</option>
+                <option value="name_desc">Name: Z to A</option>
+            </select>
+        </div>
+
+        <!-- Username Container -->
+        <div id="usernameContainer" class="username-grid">
+            <div class="loading-placeholder">Memuat username...</div>
+        </div>
+
+    </div>
+
+    <!-- Modal Add Username -->
+    <div id="addModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Tambah Username</h3>
+            <input type="text" id="modalUsername" placeholder="Username" class="form-input">
+            <input type="number" id="modalPrice" placeholder="Harga (TON)" class="form-input" step="0.1" min="0.1">
+            <select id="modalCategory" class="form-input">
+                <option value="default">Default</option>
+                <option value="premium">Premium</option>
+                <option value="vip">VIP</option>
+                <option value="rare">Langka</option>
+            </select>
+            <div class="modal-buttons">
+                <button class="modal-cancel" id="cancelModalBtn">Batal</button>
+                <button class="modal-confirm" id="confirmAddBtn">Tambah</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/winedash/js/storage.js"></script>
+</body>
+</html>
