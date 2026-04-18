@@ -661,17 +661,30 @@ class WinedashDatabase:
                         target_chat_title TEXT,
                         created_at TIMESTAMP,
                         expires_at TIMESTAMP,
-                        confirmed_at TIMESTAMP,
-                        FOREIGN KEY (seller_id) REFERENCES users(user_id)
+                        confirmed_at TIMESTAMP
                     )
                 ''')
+                
+                # Cek apakah username sudah ada di pending
+                cursor.execute('SELECT id FROM pending_usernames WHERE username = ? AND status = "pending"', (username,))
+                if cursor.fetchone():
+                    print(f"Username {username} already in pending")
+                    return None
+                
+                # Cek apakah username sudah ada di usernames
+                cursor.execute('SELECT id FROM usernames WHERE username = ? AND status = "available"', (username,))
+                if cursor.fetchone():
+                    print(f"Username {username} already exists in marketplace")
+                    return None
                 
                 # Generate verification code for user type
                 verification_code = None
                 expires_at = None
                 if verification_type == 'user':
                     import random
+                    import string
                     verification_code = ''.join(random.choices(string.digits, k=6))
+                    from datetime import timedelta
                     expires_at = (datetime.now() + timedelta(minutes=5)).isoformat()
                 
                 cursor.execute('''
@@ -684,8 +697,14 @@ class WinedashDatabase:
                 
                 conn.commit()
                 return cursor.lastrowid
+                
+        except sqlite3.IntegrityError as e:
+            print(f"IntegrityError adding pending username: {e}")
+            return None
         except Exception as e:
             print(f"Error adding pending username: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:

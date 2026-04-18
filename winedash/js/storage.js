@@ -392,20 +392,26 @@
         try {
             console.log('[DEBUG] Adding username:', cleanUsername, price, category);
             
+            const requestBody = {
+                username: cleanUsername,
+                price: parseFloat(price),
+                seller_id: telegramUser.id,
+                seller_wallet: walletAddress || '',
+                category: category || 'default'
+            };
+            
+            console.log('[DEBUG] Request body:', requestBody);
+            
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/add`, {
                 method: 'POST',
                 headers: { 
                     'Accept': 'application/json',
                     'Content-Type': 'application/json' 
                 },
-                body: JSON.stringify({
-                    username: cleanUsername,
-                    price: price,
-                    seller_id: telegramUser.id,
-                    seller_wallet: walletAddress || '',
-                    category: category
-                })
+                body: JSON.stringify(requestBody)
             });
+            
+            console.log('[DEBUG] Response status:', response.status);
             
             const data = await response.json();
             console.log('[DEBUG] Add username response:', data);
@@ -426,13 +432,13 @@
             }
         } catch (error) {
             console.error('Error adding username:', error);
-            showToast('Error menambahkan username: ' + (error.message || 'Unknown error'), 'error');
+            showToast('Error: ' + (error.message || 'Unknown error'), 'error');
             return false;
         } finally {
             showLoading(false);
         }
     }
-    
+
     async function deleteUsername(usernameId) {
         if (!telegramUser) {
             showToast('Login terlebih dahulu', 'warning');
@@ -775,15 +781,31 @@
     }
 
     // ==================== EVENT HANDLERS ====================
-    
     function setupEventListeners() {
         // Action Row Buttons
         const addActionBtn = document.getElementById('addUsernameActionBtn');
         if (addActionBtn) {
-            addActionBtn.addEventListener('click', () => {
-                elements.addModal.style.display = 'flex';
-                hapticLight();
+            // Hapus listener lama
+            const newAddActionBtn = addActionBtn.cloneNode(true);
+            addActionBtn.parentNode.replaceChild(newAddActionBtn, addActionBtn);
+            
+            newAddActionBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[DEBUG] Add button clicked');
+                if (elements.addModal) {
+                    elements.addModal.style.display = 'flex';
+                    // Reset form
+                    if (elements.modalUsername) elements.modalUsername.value = '';
+                    if (elements.modalPrice) elements.modalPrice.value = '';
+                    if (elements.modalCategory) elements.modalCategory.value = 'default';
+                    hapticLight();
+                } else {
+                    console.error('[DEBUG] addModal element not found');
+                }
             });
+        } else {
+            console.warn('[DEBUG] addUsernameActionBtn not found');
         }
 
         const sendBtn = document.getElementById('sendUsernameBtn');
@@ -810,7 +832,7 @@
             });
         }
 
-        // Back to home button - sudah menggunakan icon store
+        // Back to home button
         const backToHomeBtn = document.getElementById('backToHomeBtn');
         if (backToHomeBtn) {
             backToHomeBtn.addEventListener('click', () => {
@@ -818,7 +840,7 @@
             });
         }
 
-        // Search - dengan pengecekan
+        // Search
         if (elements.searchApplyBtn) {
             elements.searchApplyBtn.addEventListener('click', () => {
                 currentSearchTerm = elements.searchInput?.value || '';
@@ -837,7 +859,7 @@
             });
         }
 
-        // Navigation links - update urutan
+        // Navigation links
         const navLinks = document.querySelectorAll('.nav-link');
         navLinks.forEach(link => {
             link.addEventListener('click', () => {
@@ -909,41 +931,57 @@
             });
         }
         
-        // Add modal
-        if (elements.addUsernameBtn) {
-            elements.addUsernameBtn.addEventListener('click', () => {
-                elements.addModal.style.display = 'flex';
-                hapticLight();
-            });
-        }
-        
+        // MODAL HANDLERS - PERBAIKAN UTAMA
         if (elements.cancelModalBtn) {
+            // Hapus listener lama
+            const newCancelBtn = elements.cancelModalBtn.cloneNode(true);
+            elements.cancelModalBtn.parentNode.replaceChild(newCancelBtn, elements.cancelModalBtn);
+            elements.cancelModalBtn = newCancelBtn;
+            
             elements.cancelModalBtn.addEventListener('click', () => {
-                elements.addModal.style.display = 'none';
-                clearModal();
+                console.log('[DEBUG] Cancel button clicked');
+                if (elements.addModal) {
+                    elements.addModal.style.display = 'none';
+                    clearModal();
+                }
             });
         }
         
         if (elements.confirmAddBtn) {
-            elements.confirmAddBtn.addEventListener('click', async () => {
+            // Hapus listener lama
+            const newConfirmBtn = elements.confirmAddBtn.cloneNode(true);
+            elements.confirmAddBtn.parentNode.replaceChild(newConfirmBtn, elements.confirmAddBtn);
+            elements.confirmAddBtn = newConfirmBtn;
+            
+            elements.confirmAddBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[DEBUG] Confirm Add button clicked');
+                
                 const username = elements.modalUsername?.value.trim();
                 const price = parseFloat(elements.modalPrice?.value);
                 const category = elements.modalCategory?.value;
+                
+                console.log('[DEBUG] Form values:', { username, price, category });
                 
                 if (!username) {
                     showToast('Masukkan username', 'warning');
                     return;
                 }
                 
-                if (!price || price <= 0) {
+                if (isNaN(price) || price <= 0) {
                     showToast('Masukkan harga yang valid', 'warning');
                     return;
                 }
                 
-                await addUsername(username, price, category);
-                elements.addModal.style.display = 'none';
-                clearModal();
-                hapticSuccess();
+                const success = await addUsername(username, price, category);
+                
+                if (success && elements.addModal) {
+                    elements.addModal.style.display = 'none';
+                    clearModal();
+                    // Refresh daftar usernames
+                    await loadUsernames();
+                }
             });
         }
         
