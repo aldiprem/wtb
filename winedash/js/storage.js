@@ -802,40 +802,83 @@
         }
     }
 
-    // ==================== SAFE AREA INSET ====================
+    // ==================== SAFE AREA INSET & FULLSCREEN ====================
 
     function applySafeAreaInsets() {
-        const tg = getTelegramWebApp();
-        if (!tg) return;
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.warn('Telegram WebApp not available');
+            return;
+        }
         
-        const safeArea = tg.safeAreaInset;
-        const contentSafeArea = tg.contentSafeAreaInset;
+        // Gunakan CSS variables yang disediakan Telegram sebagai fallback
+        const root = document.documentElement;
         
-        if (safeArea) {
-            document.body.style.paddingTop = `${safeArea.top}px`;
-            document.body.style.paddingBottom = `${safeArea.bottom}px`;
-            document.body.style.paddingLeft = `${safeArea.left}px`;
-            document.body.style.paddingRight = `${safeArea.right}px`;
+        const topInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
+        const bottomInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
+        const leftInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
+        const rightInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
+        
+        let safeTop = topInset;
+        let safeBottom = bottomInset;
+        let safeLeft = leftInset;
+        let safeRight = rightInset;
+        
+        if (tg.safeAreaInset) {
+            safeTop = tg.safeAreaInset.top || safeTop;
+            safeBottom = tg.safeAreaInset.bottom || safeBottom;
+            safeLeft = tg.safeAreaInset.left || safeLeft;
+            safeRight = tg.safeAreaInset.right || safeRight;
+        }
+        
+        document.body.style.paddingTop = `${safeTop}px`;
+        document.body.style.paddingBottom = `${safeBottom}px`;
+        document.body.style.paddingLeft = `${safeLeft}px`;
+        document.body.style.paddingRight = `${safeRight}px`;
+        
+        let contentTop = safeTop;
+        let contentBottom = safeBottom;
+        
+        if (tg.contentSafeAreaInset) {
+            contentTop = tg.contentSafeAreaInset.top || safeTop;
+            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
         }
         
         const container = document.querySelector('.storage-container');
-        if (container && contentSafeArea) {
-            container.style.paddingTop = `${contentSafeArea.top + 12}px`;
-            container.style.paddingBottom = `${contentSafeArea.bottom + 90}px`;
+        if (container) {
+            container.style.paddingTop = `${contentTop + 12}px`;
+            container.style.paddingBottom = `${contentBottom + 90}px`;
         }
         
-        console.log('✅ Storage safe area insets applied:', { safeArea, contentSafeArea });
+        console.log('✅ Storage safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
     }
 
     function initSafeArea() {
-        const tg = getTelegramWebApp();
+        const tg = window.Telegram?.WebApp;
         if (!tg) return;
         
+        setTimeout(applySafeAreaInsets, 50);
         applySafeAreaInsets();
         
-        tg.onEvent('safeAreaChanged', () => applySafeAreaInsets());
-        tg.onEvent('contentSafeAreaChanged', () => applySafeAreaInsets());
-        tg.onEvent('viewportChanged', () => applySafeAreaInsets());
+        if (tg.onEvent) {
+            tg.onEvent('safeAreaChanged', () => applySafeAreaInsets());
+            tg.onEvent('contentSafeAreaChanged', () => applySafeAreaInsets());
+            tg.onEvent('viewportChanged', () => applySafeAreaInsets());
+        }
+    }
+
+    function requestFullscreenMode() {
+        const tg = window.Telegram?.WebApp;
+        if (tg && typeof tg.requestFullscreen === 'function') {
+            tg.requestFullscreen();
+        }
+    }
+
+    function exitFullscreenMode() {
+        const tg = window.Telegram?.WebApp;
+        if (tg && typeof tg.exitFullscreen === 'function') {
+            tg.exitFullscreen();
+        }
     }
 
     // ==================== INITIALIZATION ====================

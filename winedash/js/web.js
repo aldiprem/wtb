@@ -964,54 +964,126 @@
         });
     }
 
-    // ==================== SAFE AREA INSET ====================
+    // ==================== SAFE AREA INSET & FULLSCREEN ====================
 
     function applySafeAreaInsets() {
-        const tg = getTelegramWebApp();
-        if (!tg) return;
-        
-        // Gunakan safeAreaInset untuk padding body
-        const safeArea = tg.safeAreaInset;
-        const contentSafeArea = tg.contentSafeAreaInset;
-        
-        if (safeArea) {
-            document.body.style.paddingTop = `${safeArea.top}px`;
-            document.body.style.paddingBottom = `${safeArea.bottom}px`;
-            document.body.style.paddingLeft = `${safeArea.left}px`;
-            document.body.style.paddingRight = `${safeArea.right}px`;
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.warn('Telegram WebApp not available');
+            return;
         }
         
-        // Untuk container utama, gunakan contentSafeAreaInset
+        // Gunakan CSS variables yang disediakan Telegram sebagai fallback
+        const root = document.documentElement;
+        
+        // Baca dari CSS variables Telegram jika ada
+        const topInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
+        const bottomInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
+        const leftInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
+        const rightInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
+        
+        // Baca dari objek safeAreaInset (Bot API 8.0+)
+        let safeTop = topInset;
+        let safeBottom = bottomInset;
+        let safeLeft = leftInset;
+        let safeRight = rightInset;
+        
+        if (tg.safeAreaInset) {
+            safeTop = tg.safeAreaInset.top || safeTop;
+            safeBottom = tg.safeAreaInset.bottom || safeBottom;
+            safeLeft = tg.safeAreaInset.left || safeLeft;
+            safeRight = tg.safeAreaInset.right || safeRight;
+        }
+        
+        // Terapkan ke body
+        document.body.style.paddingTop = `${safeTop}px`;
+        document.body.style.paddingBottom = `${safeBottom}px`;
+        document.body.style.paddingLeft = `${safeLeft}px`;
+        document.body.style.paddingRight = `${safeRight}px`;
+        
+        // Untuk container, gunakan contentSafeAreaInset
+        let contentTop = safeTop;
+        let contentBottom = safeBottom;
+        
+        if (tg.contentSafeAreaInset) {
+            contentTop = tg.contentSafeAreaInset.top || safeTop;
+            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
+        }
+        
         const container = document.querySelector('.winedash-container');
-        if (container && contentSafeArea) {
-            container.style.paddingTop = `${contentSafeArea.top + 16}px`;
-            container.style.paddingBottom = `${contentSafeArea.bottom + 90}px`;
+        if (container) {
+            container.style.paddingTop = `${contentTop + 16}px`;
+            container.style.paddingBottom = `${contentBottom + 90}px`;
         }
         
-        console.log('✅ Safe area insets applied:', { safeArea, contentSafeArea });
+        console.log('✅ Safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
     }
 
-    // Panggil saat resize atau perubahan safe area
     function initSafeArea() {
-        const tg = getTelegramWebApp();
-        if (!tg) return;
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.warn('Telegram WebApp not available for safe area');
+            return;
+        }
         
-        // Apply initial
+        // Apply initial after a short delay to ensure DOM is ready
+        setTimeout(applySafeAreaInsets, 50);
         applySafeAreaInsets();
         
         // Listen for safe area changes
-        tg.onEvent('safeAreaChanged', () => {
-            applySafeAreaInsets();
-        });
+        if (tg.onEvent) {
+            tg.onEvent('safeAreaChanged', () => {
+                console.log('safeAreaChanged event received');
+                applySafeAreaInsets();
+            });
+            
+            tg.onEvent('contentSafeAreaChanged', () => {
+                console.log('contentSafeAreaChanged event received');
+                applySafeAreaInsets();
+            });
+            
+            tg.onEvent('viewportChanged', () => {
+                console.log('viewportChanged event received');
+                applySafeAreaInsets();
+            });
+        }
+    }
+
+    // Request fullscreen mode
+    function requestFullscreenMode() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
         
-        tg.onEvent('contentSafeAreaChanged', () => {
-            applySafeAreaInsets();
-        });
+        if (typeof tg.requestFullscreen === 'function') {
+            tg.requestFullscreen().catch(err => {
+                console.warn('Fullscreen request failed:', err);
+            });
+        } else {
+            console.warn('requestFullscreen not available in this Telegram version');
+        }
+    }
+
+    function exitFullscreenMode() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
         
-        // Listen for viewport changes (fullscreen, expand, etc)
-        tg.onEvent('viewportChanged', () => {
-            applySafeAreaInsets();
-        });
+        if (typeof tg.exitFullscreen === 'function') {
+            tg.exitFullscreen().catch(err => {
+                console.warn('Exit fullscreen failed:', err);
+            });
+        }
+    }
+
+    // Toggle fullscreen
+    function toggleFullscreen() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        if (tg.isFullscreen) {
+            exitFullscreenMode();
+        } else {
+            requestFullscreenMode();
+        }
     }
 
     // ==================== INITIALIZATION ====================
