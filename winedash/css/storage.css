@@ -331,6 +331,7 @@ body {
 }
 
 /* Username Grid - Fixed height card */
+/* Username Grid - Fixed height card */
 .username-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -346,12 +347,12 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    height: 190px;
+    height: 200px;
     width: 100%;
     border: none;
 }
 
-/* Border 3D dengan gradient - sama seperti ::after di komponen lain */
+/* Border 3D dengan gradient */
 .username-grid .username-card::after {
     content: "";
     position: absolute;
@@ -370,16 +371,11 @@ body {
     pointer-events: none;
 }
 
-.username-grid .username-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-}
-
-/* Card Image Background */
+/* Card Image Background - lebih tinggi untuk ruang text username */
 .username-card-image {
     position: relative;
     width: 100%;
-    height: 110px;
+    height: 120px;
     background-image: url('https://companel.shop/image/bg-storage-card.jpg');
     background-size: cover;
     background-position: center;
@@ -389,10 +385,10 @@ body {
     flex-shrink: 0;
 }
 
-/* Avatar di card - lebih kecil */
+/* Avatar di card - diposisikan di tengah background */
 .card-avatar {
-    width: 50px;
-    height: 50px;
+    width: 55px;
+    height: 55px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     border-radius: 50%;
     display: flex;
@@ -402,17 +398,7 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     flex-shrink: 0;
-}
-
-.card-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.card-avatar i {
-    font-size: 24px;
-    color: white;
+    margin-top: -30px;
 }
 
 /* Username text - di dalam background, biru dengan panjang menyesuaikan */
@@ -425,14 +411,14 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: var(--primary);  /* Warna biru */
-    padding: 4px 12px;
+    background: var(--primary);
+    padding: 5px 14px;
     border-radius: 20px;
-    margin-top: -18px;
+    margin-top: -15px;
     position: relative;
     z-index: 2;
-    width: auto;  /* Ukuran menyesuaikan panjang text */
-    max-width: calc(100% - 20px);
+    width: auto;
+    max-width: calc(100% - 24px);
     margin-left: auto;
     margin-right: auto;
     color: var(--text);
@@ -476,7 +462,7 @@ body {
 
 /* Harga - warna putih, lebih besar */
 .username-card .card-price {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--text);
     margin: 0;
@@ -658,61 +644,50 @@ body {
     }
     
     .username-grid .username-card {
-        height: 165px;  /* Sesuaikan untuk mobile */
+        height: 185px;
     }
     
     .username-card-image {
-        height: 90px;
+        height: 110px;
     }
     
     .card-avatar {
-        width: 42px;
-        height: 42px;
-    }
-    
-    .card-avatar i {
-        font-size: 20px;
+        width: 48px;
+        height: 48px;
+        margin-top: -25px;
     }
     
     .username-card-info {
-        padding: 6px 8px 8px 8px;
+        padding: 10px 10px 8px 10px;
     }
     
     .username-card .card-username {
         font-size: 10px;
-        margin-top: -18px;
-        padding: 3px 6px;
+        margin-top: -12px;
+        padding: 4px 10px;
     }
     
     .price-logo {
-        width: 12px;
-        height: 12px;
+        width: 16px;
+        height: 16px;
     }
     
     .username-card .card-price {
-        font-size: 11px;
+        font-size: 13px;
     }
     
     .username-card .card-status {
-        font-size: 7px;
-        padding: 2px 6px;
+        font-size: 9px;
+        padding: 3px 10px;
     }
     
-    .username-list .username-item {
-        gap: 8px;
+    /* Detail panel mobile */
+    .detail-panel .detail-label {
+        font-size: 11px;
     }
     
-    .username-list .username-info {
-        min-width: 80px;
-    }
-    
-    .username-list .username-price {
-        font-size: 12px;
-    }
-    
-    .username-list .list-action-btn {
-        padding: 4px 6px;
-        font-size: 10px;
+    .detail-panel .detail-value {
+        font-size: 13px;
     }
     
     .detail-actions {
@@ -774,9 +749,20 @@ body {
     margin-bottom: 12px;
     transition: all 0.2s;
     outline: none;
-    pointer-events: auto;
-    z-index: 2001;  /* Tambahkan ini */
-    position: relative;  /* Tambahkan ini */
+    pointer-events: auto !important;
+    z-index: 2002;
+    position: relative;
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content .form-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+}
+
+.modal-content .form-input::placeholder {
+    color: var(--text-muted);
 }
 
 .modal-buttons {
@@ -1454,10 +1440,10 @@ body.modal-open {
     inset: 0;
     border-radius: 24px 24px 0 0;
     padding: 1px;
-    background: linear-gradient(170deg, 
+    background: linear-gradient(176deg, 
         rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0) 20%,
+        rgba(255, 255, 255, 0) 80%, 
         rgba(255, 255, 255, 0.4) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
@@ -1470,7 +1456,7 @@ body.modal-open {
     transform: translateY(0);
 }
 
-/* Header panel - fixed */
+/* Header panel */
 .detail-panel .panel-header {
     display: flex;
     align-items: center;
@@ -1511,6 +1497,7 @@ body.modal-open {
     padding-bottom: 80px;
 }
 
+/* Avatar di detail panel */
 .detail-panel .detail-avatar {
     display: flex;
     justify-content: center;
@@ -1539,9 +1526,13 @@ body.modal-open {
     color: white;
 }
 
+/* Detail Panel - format label kiri, value kanan */
 .detail-panel .detail-field {
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--border-light);
 }
 
@@ -1552,22 +1543,26 @@ body.modal-open {
 }
 
 .detail-panel .detail-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 6px;
+    margin-bottom: 0;
+    flex-shrink: 0;
 }
 
 .detail-panel .detail-value {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 500;
     word-break: break-all;
+    text-align: right;
+    flex: 1;
+    margin-left: 16px;
 }
 
 .detail-panel .detail-value.price {
     color: var(--success);
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
 }
 
@@ -1575,7 +1570,8 @@ body.modal-open {
     display: inline-block;
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 11px;
+    text-align: right;
 }
 
 .detail-panel .detail-status.listed {
@@ -1636,8 +1632,9 @@ body.modal-open {
 
 .modal-content input,
 .modal-content select,
-.modal-content button {
-    pointer-events: auto;
+.modal-content textarea {
+    pointer-events: auto !important;
+    user-select: text !important;
 }
 
 .modal-content input:focus,
