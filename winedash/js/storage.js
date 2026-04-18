@@ -427,46 +427,73 @@
         const container = document.getElementById('emptyAnimation');
         if (!container) return;
         
-        // Cek apakah TGS Player tersedia
-        if (typeof window.TGSPlayer === 'undefined') {
-            // Load script TGS Player jika belum ada
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/@tgs/core@latest/dist/tgs-player.min.js';
-            script.onload = () => {
-                setTimeout(() => initTGSPlayer(container), 100);
-            };
-            script.onerror = () => {
-                console.error('Failed to load TGS player script');
-                container.innerHTML = '<i class="fas fa-box-open" style="font-size: 64px; color: var(--text-muted);"></i>';
-            };
-            document.head.appendChild(script);
-        } else {
-            initTGSPlayer(container);
-        }
+        // Load libraries yang diperlukan
+        loadLibraries().then(() => {
+            loadTGSFile(container);
+        }).catch(err => {
+            console.error('Error loading libraries:', err);
+            container.innerHTML = '<i class="fas fa-inbox" style="font-size: 64px; color: var(--text-muted);"></i>';
+        });
     }
 
-    function initTGSPlayer(container) {
-        if (typeof window.TGSPlayer === 'undefined') {
-            console.warn('TGSPlayer not loaded yet');
-            return;
-        }
-        
-        try {
-            // Gunakan path absolut yang benar
-            const player = new window.TGSPlayer(container, {
-                file: '/image/none-username-storage.tgs',
-                autoplay: true,
-                loop: true,
-                width: 120,
-                height: 120
-            });
+    function loadLibraries() {
+        return new Promise((resolve, reject) => {
+            let loaded = 0;
+            let total = 2;
             
-            player.play().catch(err => {
-                console.error('Error playing TGS animation:', err);
-                container.innerHTML = '<i class="fas fa-box-open" style="font-size: 64px; color: var(--text-muted);"></i>';
+            function checkLoaded() {
+                loaded++;
+                if (loaded === total) resolve();
+            }
+            
+            // Load lottie-web
+            if (typeof window.lottie === 'undefined') {
+                const lottieScript = document.createElement('script');
+                lottieScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js';
+                lottieScript.onload = checkLoaded;
+                lottieScript.onerror = reject;
+                document.head.appendChild(lottieScript);
+            } else {
+                checkLoaded();
+            }
+            
+            // Load pako
+            if (typeof window.pako === 'undefined') {
+                const pakoScript = document.createElement('script');
+                pakoScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+                pakoScript.onload = checkLoaded;
+                pakoScript.onerror = reject;
+                document.head.appendChild(pakoScript);
+            } else {
+                checkLoaded();
+            }
+        });
+    }
+
+    async function loadTGSFile(container) {
+        try {
+            // Fetch file .tgs
+            const response = await fetch('/image/none-username-storage.tgs');
+            const arrayBuffer = await response.arrayBuffer();
+            const compressed = new Uint8Array(arrayBuffer);
+            
+            // Decompress dengan pako
+            const decompressed = window.pako.ungzip(compressed, { to: 'string' });
+            const animationData = JSON.parse(decompressed);
+            
+            // Render dengan lottie
+            window.lottie.loadAnimation({
+                container: container,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: animationData,
+                rendererSettings: {
+                    preserveAspectRatio: 'xMidYMid meet'
+                }
             });
         } catch (error) {
-            console.error('Error initializing TGS player:', error);
+            console.error('Error loading TGS file:', error);
             container.innerHTML = '<i class="fas fa-box-open" style="font-size: 64px; color: var(--text-muted);"></i>';
         }
     }
