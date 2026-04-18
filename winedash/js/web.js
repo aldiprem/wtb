@@ -828,28 +828,38 @@
         }
     }
 
-    // ==================== BOTTOM NAVIGATION ====================
-    
     function setupBottomNav() {
         elements.navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                hapticLight();
-                const tabId = item.dataset.tab;
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 
-                // Handle refresh button
-                if (item.id === 'refreshNavBtn') {
+                hapticLight();
+                
+                // Handle refresh button (tanpa data-tab)
+                if (item.id === 'refreshNavBtn' || item.classList.contains('refresh-btn')) {
                     refreshAllData();
                     return;
                 }
                 
+                const tabId = item.dataset.tab;
+                if (!tabId) return;
+                
                 // Update active state on nav items
-                elements.navItems.forEach(nav => nav.classList.remove('active'));
+                elements.navItems.forEach(nav => {
+                    nav.classList.remove('active');
+                });
                 item.classList.add('active');
                 
                 // Update active tab content
-                elements.tabContents.forEach(content => content.classList.remove('active'));
+                elements.tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                
                 const activeTab = document.getElementById(`${tabId}Tab`);
-                if (activeTab) activeTab.classList.add('active');
+                if (activeTab) {
+                    activeTab.classList.add('active');
+                }
                 
                 // Load data based on tab
                 if (tabId === 'my-usernames') {
@@ -858,7 +868,14 @@
                     loadTransactionHistory();
                 } else if (tabId === 'marketplace') {
                     loadUsernames();
+                } else if (tabId === 'wallet') {
+                    // Update wallet UI if needed
+                    if (tonConnectUI?.connected) {
+                        updateWalletUI();
+                    }
                 }
+                
+                console.log('Tab switched to:', tabId);
             });
         });
     }
@@ -912,4 +929,4 @@
     }
     
     init();
-})();
+})(); 

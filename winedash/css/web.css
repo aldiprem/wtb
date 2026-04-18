@@ -237,6 +237,24 @@ body {
     background: var(--primary-glass);
 }
 
+.nav-item:hover {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+/* Refresh button specific */
+.refresh-btn {
+    cursor: pointer;
+}
+
+.refresh-btn i {
+    transition: transform 0.3s ease;
+}
+
+.refresh-btn:active i {
+    transform: rotate(180deg);
+}
+
 /* Tab Content */
 .tab-content {
     display: none;
