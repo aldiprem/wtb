@@ -179,7 +179,7 @@
             
             const badge = document.getElementById('inboxBadge');
             if (badge) {
-                if (data.count > 0) {
+                if (data.success && data.count > 0) {
                     badge.textContent = data.count > 99 ? '99+' : data.count;
                     badge.style.display = 'flex';
                 } else {
@@ -195,12 +195,19 @@
         if (!telegramUser) return;
         
         try {
+            // Gunakan endpoint dengan user_id
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/list/${telegramUser.id}`);
             const data = await response.json();
             
             if (data.success) {
-                pendingList = data.pendings;
+                pendingList = data.pendings || [];
                 renderInboxContent();
+            } else {
+                console.error('Failed to load pending list:', data.error);
+                const inboxContent = document.getElementById('inboxContent');
+                if (inboxContent) {
+                    inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+                }
             }
         } catch (error) {
             console.error('Error loading pending list:', error);
@@ -355,13 +362,30 @@
             cleanUsername = cleanUsername.substring(1);
         }
         
+        // Validasi username tidak boleh kosong
+        if (!cleanUsername) {
+            showToast('Username tidak boleh kosong', 'warning');
+            return false;
+        }
+        
+        // Validasi price
+        if (!price || price <= 0) {
+            showToast('Harga harus lebih dari 0', 'warning');
+            return false;
+        }
+        
         hapticMedium();
         showLoading(true);
         
         try {
+            console.log('[DEBUG] Adding username:', cleanUsername, price, category);
+            
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/add`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json' 
+                },
                 body: JSON.stringify({
                     username: cleanUsername,
                     price: price,
@@ -372,11 +396,17 @@
             });
             
             const data = await response.json();
+            console.log('[DEBUG] Add username response:', data);
             
             if (data.success) {
                 hapticSuccess();
                 showToast('Verifikasi dikirim! Cek Inbox.', 'success');
                 await loadPendingCount();
+                // Refresh inbox content if open
+                const panel = document.getElementById('inboxPanel');
+                if (panel && panel.style.display === 'flex') {
+                    await loadPendingList();
+                }
                 return true;
             } else {
                 showToast(data.error || 'Gagal menambahkan username', 'error');
@@ -384,7 +414,7 @@
             }
         } catch (error) {
             console.error('Error adding username:', error);
-            showToast('Error menambahkan username', 'error');
+            showToast('Error menambahkan username: ' + (error.message || 'Unknown error'), 'error');
             return false;
         } finally {
             showLoading(false);

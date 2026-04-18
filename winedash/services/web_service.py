@@ -818,18 +818,44 @@ def confirm_pending_username():
         print(f"Error in confirm_pending_username: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 @winedash_bp.route('/username/pending/count/<int:user_id>', methods=['GET'])
 def get_pending_count(user_id):
     """Get pending count for user inbox"""
     try:
         count = db.get_user_pending_count(user_id)
-        
         return jsonify({
             'success': True,
             'count': count
         })
-        
     except Exception as e:
         print(f"Error in get_pending_count: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@winedash_bp.route('/username/pending/list', methods=['GET'])
+def get_pending_usernames_global():
+    """Get pending usernames (global, for bot)"""
+    try:
+        pendings = db.get_pending_usernames()  # Tanpa user_id, ambil semua
+        return jsonify({
+            'success': True,
+            'pendings': pendings,
+            'total': len(pendings)
+        })
+    except Exception as e:
+        print(f"Error in get_pending_usernames_global: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@winedash_bp.route('/username/pending/list/<int:user_id>', methods=['GET'])
+def get_pending_usernames_by_user(user_id):
+    """Get pending usernames for specific user"""
+    try:
+        pendings = db.get_pending_usernames(user_id)
+        return jsonify({
+            'success': True,
+            'pendings': pendings,
+            'total': len(pendings)
+        })
+    except Exception as e:
+        print(f"Error in get_pending_usernames_by_user: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

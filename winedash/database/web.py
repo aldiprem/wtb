@@ -689,8 +689,10 @@ def add_pending_username(self, username: str, price: float, seller_id: int,
         print(f"Error adding pending username: {e}")
         return None
 
+# Tambahkan method berikut di class WinedashDatabase (web.py)
+
 def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
-    """Get pending usernames for a user"""
+    """Get pending usernames for a user (or all if user_id is None)"""
     try:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
