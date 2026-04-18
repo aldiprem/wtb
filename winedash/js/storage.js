@@ -86,7 +86,31 @@
         
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i><span>${message}</span>`;
+        
+        // Warna solid sesuai type
+        let icon = 'fa-info-circle';
+        let bgColor = '';
+        switch(type) {
+            case 'success':
+                icon = 'fa-check-circle';
+                bgColor = 'linear-gradient(135deg, #10b981, #0d9488)';
+                break;
+            case 'error':
+                icon = 'fa-exclamation-circle';
+                bgColor = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                break;
+            case 'warning':
+                icon = 'fa-exclamation-triangle';
+                bgColor = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                break;
+            default:
+                icon = 'fa-info-circle';
+                bgColor = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+        }
+        
+        toast.style.background = bgColor;
+        toast.style.border = 'none';
+        toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
         elements.toastContainer.appendChild(toast);
         
         setTimeout(() => {
@@ -544,18 +568,15 @@
         showLoading(true);
         
         try {
-            console.log('[DEBUG] Adding username:', cleanUsername, price, category);
-            
             const requestBody = {
                 username: cleanUsername,
                 price: parseFloat(price),
                 seller_id: telegramUser.id,
                 seller_wallet: walletAddress || '',
                 category: category || 'default'
-                // HAPUS verification_type, biarkan default 'channel' dari backend
             };
             
-            console.log('[DEBUG] Request body:', JSON.stringify(requestBody));
+            console.log('[DEBUG] Adding username:', requestBody);
             
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/add`, {
                 method: 'POST',
@@ -571,10 +592,16 @@
             
             if (data.success) {
                 hapticSuccess();
-                showToast('Verifikasi dikirim ke channel/group!', 'success');
+                showToast(data.message || 'Verifikasi akan diproses oleh bot!', 'success');
                 await loadPendingCount();
+                // Refresh inbox content if open
+                const panel = document.getElementById('inboxPanel');
+                if (panel && panel.style.display === 'flex') {
+                    await loadPendingList();
+                }
                 return true;
             } else {
+                // Tampilkan error dengan warna merah solid
                 showToast(data.error || 'Gagal menambahkan username', 'error');
                 return false;
             }

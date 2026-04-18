@@ -1167,7 +1167,7 @@ body {
     opacity: 0.5;
 }
 
-/* Tambahkan di storage.css */
+/* Ganti style inbox-verify-btn dan inbox-reject-btn di storage.css */
 
 .inbox-actions {
     display: flex;
@@ -1175,12 +1175,13 @@ body {
     flex-shrink: 0;
 }
 
+/* Tombol Verifikasi - hijau transparan */
 .inbox-verify-btn {
-    background: linear-gradient(135deg, var(--success), #0d9488);
-    border: none;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 10px;
     padding: 8px;
-    color: white;
+    color: var(--success);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
@@ -1192,15 +1193,17 @@ body {
 }
 
 .inbox-verify-btn:hover {
+    background: rgba(16, 185, 129, 0.3);
     transform: scale(1.05);
 }
 
+/* Tombol Tolak - merah transparan */
 .inbox-reject-btn {
-    background: linear-gradient(135deg, var(--danger), #dc2626);
-    border: none;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
     border-radius: 10px;
     padding: 8px;
-    color: white;
+    color: var(--danger);
     font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
@@ -1212,6 +1215,7 @@ body {
 }
 
 .inbox-reject-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
     transform: scale(1.05);
 }
 
@@ -1229,4 +1233,29 @@ body {
     .username-grid .username-card {
         padding: 10px;
     }
+}
+
+/* Pastikan toast error tidak transparan */
+.toast-error {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.toast-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.toast-success {
+    background: linear-gradient(135deg, #10b981, #0d9488) !important;
+    border: none !important;
+    color: white !important;
+}
+
+.toast-info {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+    border: none !important;
+    color: white !important;
 }
