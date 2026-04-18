@@ -646,8 +646,6 @@
             username.category.toLowerCase().includes(term)
         );
         renderUsernames(filtered);
-
-        document.getElementById('searchUsername').value = '';
     }
     
     async function loadUsernames() {
@@ -733,11 +731,13 @@
             });
         }
         
-        // Optional: Enter key juga bisa search
+        // Enter key juga bisa search
         if (searchInput) {
             searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    filterUsernames(searchInput.value);
+                    e.preventDefault(); // Prevent form submission if any
+                    const searchTerm = searchInput.value || '';
+                    filterUsernames(searchTerm);
                     hapticLight();
                 }
             });
@@ -990,11 +990,6 @@
             elements.depositTrigger.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showDepositModal();
-            });
-        }
-        if (elements.searchInput) {
-            elements.searchInput.addEventListener('input', (e) => {
-                filterUsernames(e.target.value);
             });
         }
     }
