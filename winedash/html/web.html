@@ -43,7 +43,6 @@
             </div>
         </div>
 
-        <!-- Search Bar dengan tombol Apply -->
         <div class="search-container">
             <input type="text" class="search-input" id="searchUsername" placeholder="🔍 Cari username...">
             <button class="search-apply-btn" id="searchApplyBtn">Apply</button>
@@ -51,6 +50,40 @@
 
         <!-- Tab Content: Marketplace -->
         <div class="tab-content active" id="marketplaceTab">
+            <div class="action-bar" id="marketActionBar">
+                <button class="action-btn" id="marketToggleStatusBtn">
+                    <i class="fas fa-eye"></i>
+                    <span>All</span>
+                </button>
+                <div class="layout-toggle">
+                    <button class="layout-btn active" data-layout="grid" id="marketGridBtn">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="layout-btn" data-layout="list" id="marketListBtn">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+                <button class="action-btn" id="marketSortBtn">
+                    <i class="fas fa-sort-amount-down-alt"></i>
+                </button>
+            </div>
+
+            <!-- Sort Dropdown Market -->
+            <div id="marketSortDropdown" style="display:none; margin-bottom:12px;">
+                <select id="marketSortSelect" class="form-input" style="margin-bottom:0;">
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="date_desc">Latest</option>
+                    <option value="name_asc">Name: A to Z</option>
+                    <option value="name_desc">Name: Z to A</option>
+                </select>
+            </div>
+
+            <!-- Username Container Market -->
+            <div id="usernameListContainer" style="width:100%; min-height:300px;">
+                <!-- akan diisi JS -->
+            </div>
+
             <div class="section-card">
                 <div class="card-header">
                     <i class="fas fa-fire"></i>

@@ -12,7 +12,10 @@
     let tonConnectUI = null;
     let isWalletConnected = false;
     let walletAddress = null;
-    let allUsernames = []; // Store all usernames for search
+    let allUsernames = [];
+    let marketLayout = localStorage.getItem('market_layout') || 'grid';
+    let marketSort = 'price_asc';
+    let marketStatusFilter = 'all';
 
     // DOM Elements
     const elements = {
@@ -403,14 +406,28 @@
     }
 
     async function saveWalletAddress(address) {
-        if (!telegramUser) return;
-        
+        if (!telegramUser) {
+            console.warn('saveWalletAddress: telegramUser belum ada');
+            return;
+        }
+
         try {
-            await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`, {
+            console.log(`💾 Saving wallet address for user ${telegramUser.id}:`, address);
+
+            const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ wallet_address: address })
             });
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('✅ Wallet address saved to database:', address);
+                showToast('Wallet tersambung & disimpan!', 'success');
+            } else {
+                console.error('❌ Failed to save wallet address:', data.error);
+            }
         } catch (error) {
             console.error('Error saving wallet address:', error);
         }
@@ -440,40 +457,41 @@
         }
     }
 
+    // ===== GANTI SELURUH FUNGSI INI DI web.js =====
     async function deposit() {
         const amount = parseFloat(elements.depositAmount?.value);
-        
+
         if (!amount || amount <= 0) {
             showToast('Masukkan jumlah deposit yang valid', 'warning');
             return;
         }
-        
+
         if (amount < 0.1) {
             showToast('Minimal deposit 0.1 TON', 'warning');
             return;
         }
-        
+
         if (!tonConnectUI?.connected) {
             showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
             await connectWallet();
             return;
         }
-        
+
         hapticMedium();
-        
+
         const depositBtn = elements.depositBtn;
         const originalText = depositBtn?.innerHTML;
         if (depositBtn) {
             depositBtn.disabled = true;
             depositBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
         }
-        
+
         try {
             const senderAddress = tonConnectUI.account?.address;
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
-            
+
             console.log('📤 Processing deposit:', { amount, amountNano, senderAddress });
-            
+
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
@@ -481,12 +499,14 @@
                     amount: amountNano
                 }]
             };
-            
+
+            // Kirim transaksi ke blockchain
             const result = await tonConnectUI.sendTransaction(transaction);
-            console.log('✅ Transaction sent:', result);
-            
+            console.log('✅ Transaction sent to blockchain:', result);
+
             const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
-            
+
+            // Konfirmasi ke backend dan update saldo
             const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -498,21 +518,35 @@
                     memo: memo
                 })
             });
-            
+
             const verifyData = await verifyResponse.json();
-            
+            console.log('📊 Deposit confirm response:', verifyData);
+
             if (verifyData.success) {
-                showToast(`Deposit ${amount} TON berhasil!`, 'success');
+                hapticSuccess();
+                showToast(`Deposit ${amount} TON berhasil! Saldo: ${parseFloat(verifyData.new_balance).toFixed(2)} TON`, 'success');
+
+                // Update saldo di UI langsung dari response server
+                if (verifyData.new_balance !== undefined) {
+                    const balanceEl = document.getElementById('balanceAmount');
+                    if (balanceEl) {
+                        balanceEl.textContent = parseFloat(verifyData.new_balance).toFixed(2);
+                    }
+                }
+
                 if (elements.depositAmount) elements.depositAmount.value = '';
-                refreshAllData();
+
+                // Refresh semua data
+                await authenticateUser();
+                updateBalanceCardUI();
+
             } else {
-                showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
-                refreshAllData();
+                showToast(verifyData.error || 'Deposit gagal dikonfirmasi', 'error');
             }
-            
+
         } catch (error) {
             console.error('Error creating deposit:', error);
-            
+
             let errorMessage = 'Error creating deposit';
             if (error.message) {
                 if (error.message.includes('rejected')) {
@@ -523,7 +557,7 @@
                     errorMessage = error.message;
                 }
             }
-            
+
             showToast(errorMessage, 'error');
         } finally {
             if (depositBtn) {
@@ -594,34 +628,104 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-    
     function renderUsernames(usernames) {
-        if (!elements.usernameList) return;
-        
-        if (usernames.length > 0) {
+        const container = document.getElementById('usernameListContainer');
+        if (!container) return;
+
+        if (!usernames || usernames.length === 0) {
+            container.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
+            return;
+        }
+
+        if (marketLayout === 'grid') {
+            container.className = 'username-grid';
             let html = '';
             for (const username of usernames) {
+                let usernameStr = String(username.username || '').replace(/^b['"]|['"]$/g, '');
+                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
+                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+
+                const cached = localStorage.getItem(`avatar_${usernameStr}`);
+                let avatarUrl = (cached && cached.startsWith('data:image'))
+                    ? cached
+                    : 'https://companel.shop/image/winedash-logo.png';
+
                 html += `
-                    <div class="username-item" data-id="${username.id}">
-                        <div class="username-icon">
-                            <i class="fas fa-tag"></i>
+                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify({id: username.id, username: usernameStr, price: username.price, status: username.status, category: username.category}).replace(/'/g, "&#39;")}'>
+                        <div class="username-card-image">
+                            <div class="card-avatar">
+                                <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                            </div>
+                            <div class="card-username">@${escapeHtml(usernameStr)}</div>
+                        </div>
+                        <div class="username-card-info">
+                            <div class="card-price-row">
+                                <div class="price-with-logo">
+                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
+                                    <span class="card-price">${formatNumber(username.price)}</span>
+                                </div>
+                                <div class="card-status ${statusClass}">${statusText}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+
+            // Attach click — buka detail / beli
+            document.querySelectorAll('#usernameListContainer .username-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    try {
+                        const data = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                        showBuyConfirm(data);
+                    } catch (e) { console.error(e); }
+                });
+            });
+
+        } else {
+            // List layout
+            container.className = 'username-list';
+            let html = '';
+            for (const username of usernames) {
+                let usernameStr = String(username.username || '').replace(/^b['"]|['"]$/g, '');
+
+                const cached = localStorage.getItem(`avatar_${usernameStr}`);
+                let avatarUrl = (cached && cached.startsWith('data:image'))
+                    ? cached
+                    : 'https://companel.shop/image/winedash-logo.png';
+
+                html += `
+                    <div class="username-item" data-id="${username.id}" data-price="${username.price}" data-username='${JSON.stringify({id: username.id, username: usernameStr, price: username.price, status: username.status}).replace(/'/g, "&#39;")}'>
+                        <div class="username-avatar">
+                            <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="username-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
                         <div class="username-info">
-                            <div class="username-name">${escapeHtml(username.username)}</div>
-                            <div class="username-category">${escapeHtml(username.category)}</div>
+                            <div class="username-name">@${escapeHtml(usernameStr)}</div>
+                            <div class="username-basedon" style="font-size:11px; color:var(--text-secondary); margin-top:2px;">${escapeHtml(username.category || '')}</div>
                         </div>
-                        <div class="username-price">
-                            ${formatNumber(username.price)} <small>TON</small>
+                        <div class="username-price-wrapper">
+                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
+                            <span class="username-price">${formatNumber(username.price)}</span>
                         </div>
                         <button class="username-buy-btn" data-id="${username.id}" data-price="${username.price}">
-                            <i class="fas fa-shopping-cart"></i> Beli
+                            <i class="fas fa-shopping-cart"></i>
                         </button>
                     </div>
                 `;
             }
-            elements.usernameList.innerHTML = html;
-            
-            document.querySelectorAll('.username-buy-btn').forEach(btn => {
+            container.innerHTML = html;
+
+            document.querySelectorAll('#usernameListContainer .username-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.username-buy-btn')) return;
+                    try {
+                        const data = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
+                        showBuyConfirm(data);
+                    } catch (e) { console.error(e); }
+                });
+            });
+
+            document.querySelectorAll('#usernameListContainer .username-buy-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const id = btn.dataset.id;
@@ -629,22 +733,95 @@
                     buyUsername(id, price);
                 });
             });
-        } else {
-            elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
+        }
+
+        // Fetch avatar async
+        setTimeout(() => fetchMarketAvatars(), 100);
+    }
+
+    async function fetchMarketAvatars() {
+        const imgs = document.querySelectorAll('#usernameListContainer [data-username].avatar-img, #usernameListContainer .username-avatar-img');
+        for (const img of imgs) {
+            const username = img.dataset.username || img.closest('[data-id]')?.dataset?.username;
+            if (!username) continue;
+
+            const cached = localStorage.getItem(`avatar_${username}`);
+            if (cached && cached.startsWith('data:image')) {
+                if (img.src !== cached) img.src = cached;
+                continue;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+                const data = await res.json();
+                if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                    localStorage.setItem(`avatar_${username}`, data.photo_url);
+                    img.src = data.photo_url;
+                }
+            } catch (e) { /* silent */ }
+
+            await new Promise(r => setTimeout(r, 100));
         }
     }
-    
-    function filterUsernames(searchTerm) {
-        if (!searchTerm || searchTerm.trim() === '') {
-            renderUsernames(allUsernames);
-            return;
+
+    function showBuyConfirm(usernameData) {
+        const price = parseFloat(usernameData.price);
+        const balance = parseFloat(document.getElementById('balanceAmount')?.textContent || '0');
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width:300px;">
+                <h3>Beli Username</h3>
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">
+                    @<strong>${escapeHtml(usernameData.username)}</strong><br>
+                    Harga: <strong>${formatNumber(price)} TON</strong><br>
+                    Saldo kamu: <strong>${balance.toFixed(2)} TON</strong>
+                </p>
+                <div class="modal-buttons">
+                    <button class="modal-cancel" id="cancelBuyBtn">Batal</button>
+                    <button class="modal-confirm" id="confirmBuyBtn">Beli</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        document.getElementById('cancelBuyBtn').onclick = () => modal.remove();
+        document.getElementById('confirmBuyBtn').onclick = async () => {
+            modal.remove();
+            await buyUsername(usernameData.id, price);
+        };
+        modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    }
+
+    function filterAndRenderMarket() {
+        let filtered = [...allUsernames];
+
+        // Filter hanya username yang available (di market)
+        filtered = filtered.filter(u => u.status === 'available');
+
+        // Filter search
+        const searchTerm = document.getElementById('searchUsername')?.value?.toLowerCase()?.trim() || '';
+        if (searchTerm) {
+            filtered = filtered.filter(u =>
+                u.username.toLowerCase().includes(searchTerm) ||
+                (u.category || '').toLowerCase().includes(searchTerm)
+            );
         }
-        
-        const term = searchTerm.toLowerCase().trim();
-        const filtered = allUsernames.filter(username => 
-            username.username.toLowerCase().includes(term) ||
-            username.category.toLowerCase().includes(term)
-        );
+
+        // Sort
+        filtered.sort((a, b) => {
+            switch (marketSort) {
+                case 'price_asc': return a.price - b.price;
+                case 'price_desc': return b.price - a.price;
+                case 'name_asc': return a.username.localeCompare(b.username);
+                case 'name_desc': return b.username.localeCompare(a.username);
+                case 'date_desc': return new Date(b.created_at) - new Date(a.created_at);
+                default: return a.price - b.price;
+            }
+        });
+
         renderUsernames(filtered);
     }
     
@@ -657,7 +834,7 @@
             
             if (data.success && data.usernames.length > 0) {
                 allUsernames = data.usernames;
-                renderUsernames(allUsernames);
+                filterAndRenderMarket();
             } else {
                 allUsernames = [];
                 elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
@@ -722,25 +899,78 @@
     function setupSearch() {
         const searchInput = document.getElementById('searchUsername');
         const searchApplyBtn = document.getElementById('searchApplyBtn');
-        
+
         if (searchApplyBtn) {
             searchApplyBtn.addEventListener('click', () => {
-                const searchTerm = searchInput?.value || '';
-                filterUsernames(searchTerm);
+                filterAndRenderMarket();
                 hapticLight();
             });
         }
-        
-        // Enter key juga bisa search
+
         if (searchInput) {
             searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    e.preventDefault(); // Prevent form submission if any
-                    const searchTerm = searchInput.value || '';
-                    filterUsernames(searchTerm);
+                    e.preventDefault();
+                    filterAndRenderMarket();
                     hapticLight();
                 }
             });
+        }
+    }
+
+    // ===== TAMBAHKAN FUNGSI BARU INI DI web.js (sebelum fungsi init) =====
+    function setupMarketActionBar() {
+        // Sort button
+        const sortBtn = document.getElementById('marketSortBtn');
+        const sortDropdown = document.getElementById('marketSortDropdown');
+        const sortSelect = document.getElementById('marketSortSelect');
+
+        if (sortBtn && sortDropdown) {
+            sortBtn.addEventListener('click', () => {
+                sortDropdown.style.display = sortDropdown.style.display === 'none' ? 'block' : 'none';
+                hapticLight();
+            });
+        }
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => {
+                marketSort = sortSelect.value;
+                if (sortDropdown) sortDropdown.style.display = 'none';
+                filterAndRenderMarket();
+                hapticLight();
+            });
+        }
+
+        // Layout toggle
+        const gridBtn = document.getElementById('marketGridBtn');
+        const listBtn = document.getElementById('marketListBtn');
+
+        if (gridBtn) {
+            gridBtn.addEventListener('click', () => {
+                marketLayout = 'grid';
+                localStorage.setItem('market_layout', 'grid');
+                gridBtn.classList.add('active');
+                if (listBtn) listBtn.classList.remove('active');
+                filterAndRenderMarket();
+                hapticLight();
+            });
+        }
+
+        if (listBtn) {
+            listBtn.addEventListener('click', () => {
+                marketLayout = 'list';
+                localStorage.setItem('market_layout', 'list');
+                listBtn.classList.add('active');
+                if (gridBtn) gridBtn.classList.remove('active');
+                filterAndRenderMarket();
+                hapticLight();
+            });
+        }
+
+        // Set initial layout button state
+        if (marketLayout === 'list') {
+            if (listBtn) listBtn.classList.add('active');
+            if (gridBtn) gridBtn.classList.remove('active');
         }
     }
 
@@ -1136,6 +1366,7 @@
         setupTabs();
         setupEventListeners();
         setupSearch();
+        setupMarketActionBar();
         
         telegramUser = getTelegramUserFromWebApp();
         if (telegramUser) {
