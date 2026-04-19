@@ -1114,7 +1114,6 @@ def get_profile_photo(username):
     try:
         print(f"[DEBUG] Fetching profile photo for username: {username}")
         
-        # Cek dari tabel usernames
         with sqlite3.connect(db.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
@@ -1123,7 +1122,7 @@ def get_profile_photo(username):
             cursor.execute('SELECT photo_url FROM usernames WHERE username = ?', (username,))
             row = cursor.fetchone()
             if row and row['photo_url']:
-                print(f"[DEBUG] Found photo_url in usernames")
+                print(f"[DEBUG] Found photo_url in usernames for {username}")
                 return jsonify({'success': True, 'photo_url': row['photo_url']})
             
             # Cek di tabel pending_usernames
@@ -1133,10 +1132,10 @@ def get_profile_photo(username):
                 cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username,))
                 row = cursor.fetchone()
                 if row and row['photo_url']:
-                    print(f"[DEBUG] Found photo_url in pending_usernames")
+                    print(f"[DEBUG] Found photo_url in pending_usernames for {username}")
                     return jsonify({'success': True, 'photo_url': row['photo_url']})
         
-        # Jika tidak ada, return default avatar
+        # Fallback ke default avatar
         initial = username[0] if username else 'U'
         default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
         return jsonify({'success': True, 'photo_url': default_avatar})
@@ -1195,4 +1194,45 @@ def get_direct_profile_photo(username):
         
     except Exception as e:
         print(f"Error in get_direct_profile_photo: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+@winedash_bp.route('/profile-photo/save', methods=['POST', 'OPTIONS'])
+def save_profile_photo():
+    """Save profile photo from bot (called by bot after downloading)"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        photo_url = data.get('photo_url')
+        
+        if not username or not photo_url:
+            return jsonify({'success': False, 'error': 'Missing data'}), 400
+        
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Cek di usernames
+            cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
+            if cursor.fetchone():
+                cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
+            else:
+                # Cek di pending_usernames
+                cursor.execute("PRAGMA table_info(pending_usernames)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'photo_url' not in columns:
+                    cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
+                cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
+            
+            conn.commit()
+        
+        print(f"[DEBUG] Saved profile photo for {username}: {photo_url[:50]}...")
+        return jsonify({'success': True, 'message': 'Photo saved'})
+        
+    except Exception as e:
+        print(f"Error saving profile photo: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

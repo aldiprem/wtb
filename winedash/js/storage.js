@@ -838,18 +838,15 @@
         }
         
         try {
-            // Coba ambil dari endpoint utama
             const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
             const data = await response.json();
             
             if (data.success && data.photo_url) {
-                // Simpan ke cache jika bukan default avatar
                 if (!data.photo_url.includes('ui-avatars.com')) {
                     localStorage.setItem(`avatar_${username}`, data.photo_url);
                 }
                 return data.photo_url;
             }
-            
             return null;
         } catch (error) {
             console.error('Error fetching profile photo:', error);

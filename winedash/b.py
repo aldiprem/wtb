@@ -439,28 +439,7 @@ async def process_verification(session, pending):
 
     # Simpan photo_url ke database (BUKAN update usernames karena username belum ada)
     if photo_url:
-        try:
-            with sqlite3.connect(DB_PATH) as conn:
-                cursor = conn.cursor()
-                # Simpan ke tabel usernames jika username sudah ada, atau ke pending_usernames
-                # Cek apakah username sudah ada di usernames
-                cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
-                existing = cursor.fetchone()
-                
-                if existing:
-                    # Update di usernames
-                    cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
-                else:
-                    # Simpan ke pending_usernames (tambah kolom photo_url jika belum ada)
-                    cursor.execute("PRAGMA table_info(pending_usernames)")
-                    columns = [col[1] for col in cursor.fetchall()]
-                    if 'photo_url' not in columns:
-                        cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
-                    cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
-                conn.commit()
-                logger.info(f"✅ Saved profile photo for {username}")
-        except Exception as e:
-            logger.error(f"Error saving photo_url: {e}")
+        await save_profile_photo_to_server(username, photo_url)
     
     if not entity_type:
         reject_pending(pending_id)
@@ -622,25 +601,17 @@ async def check_entity_type(username: str):
         # Coba get entity
         entity = await bot.get_entity(username)
         
-        # Download profile photo ke bytes dengan cara yang lebih baik
+        # Download profile photo ke bytes
         photo_url = None
+        photo_bytes = None
         try:
-            # Coba download foto profil
-            import io
-            import base64
-            
-            # download_profile_photo dengan file=bytes
             photo_bytes = await bot.download_profile_photo(entity, file=bytes)
-            
             if photo_bytes and len(photo_bytes) > 0:
-                # Konversi ke base64 untuk disimpan di database
+                import base64
                 photo_url = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
-                logger.info(f"✅ Successfully downloaded profile photo for {username}, size: {len(photo_bytes)} bytes")
-            else:
-                logger.debug(f"No profile photo for {username}")
-                
+                logger.info(f"✅ Downloaded profile photo for {username}, size: {len(photo_bytes)} bytes")
         except Exception as e:
-            logger.debug(f"Could not download profile photo for {username}: {e}")
+            logger.debug(f"No profile photo for {username}: {e}")
         
         # Tentukan tipe entity
         if hasattr(entity, 'broadcast') and entity.broadcast:
@@ -658,6 +629,24 @@ async def check_entity_type(username: str):
     except Exception as e:
         logger.error(f"Error getting entity for {username}: {e}")
         return None, None, None, None
+
+
+async def save_profile_photo_to_server(username: str, photo_url: str):
+    """Send profile photo to Flask server to save in database"""
+    if not photo_url:
+        return
+    
+    try:
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.post('http://localhost:5050/api/winedash/profile-photo/save', 
+                                   json={'username': username, 'photo_url': photo_url}) as resp:
+                if resp.status == 200:
+                    logger.info(f"✅ Profile photo saved to database for {username}")
+                else:
+                    logger.warning(f"Failed to save profile photo for {username}")
+    except Exception as e:
+        logger.error(f"Error saving profile photo to server: {e}")
 
 async def main():
     logger.info("🚀 Starting Winedash Bot...")
