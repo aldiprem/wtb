@@ -766,32 +766,28 @@
             return false;
         }
         
-        // Clean username
         let cleanUsername = username.trim();
         if (cleanUsername.startsWith('@')) {
             cleanUsername = cleanUsername.substring(1);
         }
         
-        // Validasi
         if (!cleanUsername) {
             showToast('Username tidak boleh kosong', 'warning');
             return false;
         }
         
-        // Validasi username hanya boleh huruf, angka, underscore
         const usernameRegex = /^[a-zA-Z0-9_]+$/;
         if (!usernameRegex.test(cleanUsername)) {
             showToast('Username hanya boleh berisi huruf, angka, dan underscore', 'warning');
             return false;
         }
         
-        // Validasi based_on
         if (!basedOn || basedOn.trim() === '') {
             showToast('Based On (nama asli) tidak boleh kosong', 'warning');
             return false;
         }
         
-        // CLIENT SIDE VALIDATION berdasarkan aturan
+        // Gunakan fungsi validateBasedOnClient yang sudah didefinisikan
         const clientValidation = validateBasedOnClient(cleanUsername, basedOn);
         if (!clientValidation.valid) {
             showToast(clientValidation.message, 'warning');
@@ -1782,28 +1778,11 @@
                     // Reset form
                     if (elements.modalUsername) elements.modalUsername.value = '';
                     if (elements.modalPrice) elements.modalPrice.value = '';
-                    if (elements.modalCategory) elements.modalCategory.value = 'default';
+                    const basedOnInput = document.getElementById('modalBasedOn');
+                    if (basedOnInput) basedOnInput.value = '';
                     hapticLight();
-                } else {
-                    console.error('[DEBUG] addModal element not found');
-                    // Fallback: coba cari modal dengan ID lain
-                    const modal = document.getElementById('addModal');
-                    if (modal) {
-                        modal.style.display = 'flex';
-                        elements.addModal = modal;
-                    }
                 }
             });
-        } else {
-            console.warn('[DEBUG] addUsernameActionBtn not found');
-            // Fallback: cari tombol dengan class atau ID alternatif
-            const fallbackBtn = document.querySelector('.add-action-btn');
-            if (fallbackBtn) {
-                fallbackBtn.addEventListener('click', () => {
-                    const modal = document.getElementById('addModal');
-                    if (modal) modal.style.display = 'flex';
-                });
-            }
         }
 
         const sendBtn = document.getElementById('sendUsernameBtn');
@@ -1939,9 +1918,8 @@
             });
         }
         
-        // MODAL HANDLERS - PERBAIKAN UTAMA
+        // MODAL HANDLERS
         if (elements.cancelModalBtn) {
-            // Hapus listener lama
             const newCancelBtn = elements.cancelModalBtn.cloneNode(true);
             elements.cancelModalBtn.parentNode.replaceChild(newCancelBtn, elements.cancelModalBtn);
             elements.cancelModalBtn = newCancelBtn;
@@ -1954,115 +1932,147 @@
                 }
             });
         }
-                
+        
+        // ============ FUNGSI VALIDASI BASED_ON CLIENT ============
+        function validateBasedOnClient(username, basedOn) {
+            if (!basedOn || basedOn.trim() === '') {
+                return { valid: false, message: 'Based On tidak boleh kosong' };
+            }
+            
+            const usernameClean = username.toLowerCase().trim();
+            const basedOnClean = basedOn.toLowerCase().trim();
+            
+            // 1. OP (On Point) - Exact match
+            if (usernameClean === basedOnClean) {
+                return { valid: true, message: '✓ OP (On Point) - Exact match', category: 'OP' };
+            }
+            
+            // 2. SOP (Semi On Point) - Double huruf
+            function removeConsecutiveDuplicates(s) {
+                let result = '';
+                let prev = '';
+                for (let char of s) {
+                    if (char !== prev) {
+                        result += char;
+                        prev = char;
+                    }
+                }
+                return result;
+            }
+            
+            const usernameNoDouble = removeConsecutiveDuplicates(usernameClean);
+            if (usernameNoDouble === basedOnClean && usernameClean.length > basedOnClean.length) {
+                return { valid: true, message: '✓ SOP (Semi On Point) - Double huruf', category: 'SOP' };
+            }
+            
+            // 3. SCANON - Tambah huruf S di akhir atau nama tanpa marga
+            if (usernameClean.endsWith('s') && usernameClean.slice(0, -1) === basedOnClean) {
+                return { valid: true, message: '✓ SCANON - Penambahan huruf S di akhir', category: 'SCANON' };
+            }
+            
+            // 4. CANON - Swap i/l
+            const usernameILSwap = usernameClean.replace(/i/g, 'L').replace(/l/g, 'i').toLowerCase();
+            if (usernameILSwap === basedOnClean) {
+                return { valid: true, message: '✓ CANON - Swap huruf i/l', category: 'CANON' };
+            }
+            
+            // 5. TAMPING - Tambah 1 huruf di pinggir
+            if (usernameClean.length === basedOnClean.length + 1) {
+                if (usernameClean.slice(1) === basedOnClean) {
+                    return { valid: true, message: '✓ TAMPING - Tambah huruf di depan', category: 'TAMPING' };
+                }
+                if (usernameClean.slice(0, -1) === basedOnClean) {
+                    return { valid: true, message: '✓ TAMPING - Tambah huruf di belakang', category: 'TAMPING' };
+                }
+            }
+            
+            if (basedOnClean.length === usernameClean.length + 1) {
+                if (basedOnClean.slice(1) === usernameClean) {
+                    return { valid: true, message: '✓ TAMPING - Based On lebih panjang (depan)', category: 'TAMPING' };
+                }
+                if (basedOnClean.slice(0, -1) === usernameClean) {
+                    return { valid: true, message: '✓ TAMPING - Based On lebih panjang (belakang)', category: 'TAMPING' };
+                }
+            }
+            
+            // 6. TAMDAL - Tambah 1 huruf di dalam
+            if (usernameClean.length === basedOnClean.length + 1) {
+                for (let i = 0; i < usernameClean.length; i++) {
+                    const temp = usernameClean.slice(0, i) + usernameClean.slice(i + 1);
+                    if (temp === basedOnClean) {
+                        return { valid: true, message: '✓ TAMDAL - Tambah huruf di dalam', category: 'TAMDAL' };
+                    }
+                }
+            }
+            
+            if (basedOnClean.length === usernameClean.length + 1) {
+                for (let i = 0; i < basedOnClean.length; i++) {
+                    const temp = basedOnClean.slice(0, i) + basedOnClean.slice(i + 1);
+                    if (temp === usernameClean) {
+                        return { valid: true, message: '✓ TAMDAL - Based On lebih panjang', category: 'TAMDAL' };
+                    }
+                }
+            }
+            
+            // 7. GANHUR - Ganti 1 huruf
+            if (usernameClean.length === basedOnClean.length) {
+                let diffCount = 0;
+                for (let i = 0; i < usernameClean.length; i++) {
+                    if (usernameClean[i] !== basedOnClean[i]) diffCount++;
+                }
+                if (diffCount === 1) {
+                    return { valid: true, message: '✓ GANHUR - Ganti 1 huruf', category: 'GANHUR' };
+                }
+            }
+            
+            // 8. SWITCH - Perpindahan huruf
+            if (usernameClean.length === basedOnClean.length) {
+                for (let i = 0; i < usernameClean.length - 1; i++) {
+                    const swapped = usernameClean.split('');
+                    [swapped[i], swapped[i + 1]] = [swapped[i + 1], swapped[i]];
+                    if (swapped.join('') === basedOnClean) {
+                        return { valid: true, message: '✓ SWITCH - Perpindahan huruf', category: 'SWITCH' };
+                    }
+                }
+            }
+            
+            // 9. KURHUF - Kurang 1 huruf
+            if (usernameClean.length === basedOnClean.length - 1) {
+                for (let i = 0; i < basedOnClean.length; i++) {
+                    const temp = basedOnClean.slice(0, i) + basedOnClean.slice(i + 1);
+                    if (temp === usernameClean) {
+                        return { valid: true, message: '✓ KURHUF - Kurang 1 huruf', category: 'KURHUF' };
+                    }
+                }
+            }
+            
+            // 10. Subset/Superset
+            if (basedOnClean.includes(usernameClean)) {
+                return { valid: true, message: `✓ Based On mengandung username`, category: 'SUPERSET' };
+            }
+            
+            if (usernameClean.includes(basedOnClean)) {
+                return { valid: true, message: `✓ Username mengandung Based On`, category: 'SUBSET' };
+            }
+            
+            return { valid: false, message: '✗ Based On tidak memiliki hubungan yang valid dengan username' };
+        }
+        
+        // ============ CONFIRM ADD BUTTON HANDLER ============
         if (elements.confirmAddBtn) {
             const newConfirmBtn = elements.confirmAddBtn.cloneNode(true);
             elements.confirmAddBtn.parentNode.replaceChild(newConfirmBtn, elements.confirmAddBtn);
             elements.confirmAddBtn = newConfirmBtn;
             
-            // Tambahkan validasi real-time untuk basedOn input
+            // Get DOM elements for validation
             const basedOnInput = document.getElementById('modalBasedOn');
             const basedOnError = document.getElementById('basedOnError');
-            
-            if (basedOnInput) {
-                basedOnInput.addEventListener('input', function() {
-                    const value = this.value.trim();
-                    const basedOnRegex = /^[a-zA-Z0-9\s]*$/;
-                    
-                    if (value === '') {
-                        basedOnError.style.display = 'block';
-                        basedOnError.textContent = 'Based On tidak boleh kosong';
-                        this.classList.add('error');
-                    } else if (!basedOnRegex.test(value)) {
-                        basedOnError.style.display = 'block';
-                        basedOnError.textContent = 'Based On hanya boleh berisi huruf, angka, dan spasi';
-                        this.classList.add('error');
-                    } else {
-                        basedOnError.style.display = 'none';
-                        this.classList.remove('error');
-                    }
-                });
-                
-                basedOnInput.addEventListener('blur', function() {
-                    const value = this.value.trim();
-                    if (value === '') {
-                        basedOnError.style.display = 'block';
-                        basedOnError.textContent = 'Based On tidak boleh kosong';
-                        this.classList.add('error');
-                    }
-                });
-            }
-            
-            elements.confirmAddBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('[DEBUG] Confirm Add button clicked');
-                
-                const username = elements.modalUsername?.value.trim();
-                const price = parseFloat(elements.modalPrice?.value);
-                const basedOn = basedOnInput?.value.trim();
-                
-                console.log('[DEBUG] Form values:', { username, price, basedOn });
-                
-                // Validasi sebelum submit
-                if (!username) {
-                    showToast('Masukkan username', 'warning');
-                    return;
-                }
-                
-                if (!basedOn) {
-                    showToast('Masukkan Based On (nama asli)', 'warning');
-                    if (basedOnInput) {
-                        basedOnInput.classList.add('error');
-                        if (basedOnError) {
-                            basedOnError.style.display = 'block';
-                            basedOnError.textContent = 'Based On tidak boleh kosong';
-                        }
-                    }
-                    return;
-                }
-                
-                // Validasi basedOn dengan regex
-                const basedOnRegex = /^[a-zA-Z0-9\s]+$/;
-                if (!basedOnRegex.test(basedOn)) {
-                    showToast('Based On hanya boleh berisi huruf, angka, dan spasi', 'warning');
-                    if (basedOnInput) {
-                        basedOnInput.classList.add('error');
-                        if (basedOnError) {
-                            basedOnError.style.display = 'block';
-                            basedOnError.textContent = 'Based On hanya boleh berisi huruf, angka, dan spasi';
-                        }
-                    }
-                    return;
-                }
-                
-                if (isNaN(price) || price <= 0) {
-                    showToast('Masukkan harga yang valid', 'warning');
-                    return;
-                }
-                
-                const success = await addUsername(username, price, basedOn);
-                
-                if (success && elements.addModal) {
-                    elements.addModal.style.display = 'none';
-                    clearModal();
-                    // Reset error state
-                    if (basedOnInput) {
-                        basedOnInput.classList.remove('error');
-                    }
-                    if (basedOnError) {
-                        basedOnError.style.display = 'none';
-                    }
-                    await loadUsernames();
-                }
-            });
-        }
-
-        // Update bagian validasi real-time untuk basedOn input
-        if (basedOnInput) {
             const usernameInput = elements.modalUsername;
             
+            // Real-time validation function
             function updateBasedOnValidation() {
+                if (!basedOnInput || !basedOnError) return;
+                
                 const username = usernameInput?.value.trim() || '';
                 const value = basedOnInput.value.trim();
                 
@@ -2097,15 +2107,76 @@
                 }
             }
             
-            basedOnInput.addEventListener('input', updateBasedOnValidation);
-            basedOnInput.addEventListener('blur', updateBasedOnValidation);
+            // Attach validation events
+            if (basedOnInput) {
+                basedOnInput.addEventListener('input', updateBasedOnValidation);
+                basedOnInput.addEventListener('blur', updateBasedOnValidation);
+            }
             
-            // Juga update saat username berubah
             if (usernameInput) {
                 usernameInput.addEventListener('input', updateBasedOnValidation);
             }
+            
+            // Confirm button click handler
+            elements.confirmAddBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[DEBUG] Confirm Add button clicked');
+                
+                const username = elements.modalUsername?.value.trim();
+                const price = parseFloat(elements.modalPrice?.value);
+                const basedOn = basedOnInput?.value.trim();
+                
+                console.log('[DEBUG] Form values:', { username, price, basedOn });
+                
+                // Validations
+                if (!username) {
+                    showToast('Masukkan username', 'warning');
+                    return;
+                }
+                
+                if (!basedOn) {
+                    showToast('Masukkan Based On (nama asli)', 'warning');
+                    if (basedOnInput) {
+                        basedOnInput.classList.add('error');
+                        if (basedOnError) {
+                            basedOnError.style.display = 'block';
+                            basedOnError.textContent = 'Based On tidak boleh kosong';
+                        }
+                    }
+                    return;
+                }
+                
+                const validation = validateBasedOnClient(username, basedOn);
+                if (!validation.valid) {
+                    showToast(validation.message, 'warning');
+                    if (basedOnInput) {
+                        basedOnInput.classList.add('error');
+                        if (basedOnError) {
+                            basedOnError.style.display = 'block';
+                            basedOnError.textContent = validation.message;
+                        }
+                    }
+                    return;
+                }
+                
+                if (isNaN(price) || price <= 0) {
+                    showToast('Masukkan harga yang valid', 'warning');
+                    return;
+                }
+                
+                const success = await addUsername(username, price, basedOn);
+                
+                if (success && elements.addModal) {
+                    elements.addModal.style.display = 'none';
+                    clearModal();
+                    if (basedOnInput) basedOnInput.classList.remove('error');
+                    if (basedOnError) basedOnError.style.display = 'none';
+                    await loadUsernames();
+                }
+            });
         }
-
+        
         // Close modal on overlay click
         if (elements.addModal) {
             elements.addModal.addEventListener('click', (e) => {
@@ -2245,131 +2316,6 @@
         }
     }
 
-    // Tambahkan fungsi validasi based_on di sisi client
-    function validateBasedOnClient(username, basedOn) {
-        if (!basedOn || basedOn.trim() === '') {
-            return { valid: false, message: 'Based On tidak boleh kosong' };
-        }
-        
-        const usernameClean = username.toLowerCase().trim();
-        const basedOnClean = basedOn.toLowerCase().trim();
-        
-        // 1. OP (On Point) - Exact match
-        if (usernameClean === basedOnClean) {
-            return { valid: true, message: '✓ OP (On Point) - Exact match', category: 'OP' };
-        }
-        
-        // 2. SOP (Semi On Point) - Double huruf
-        function removeConsecutiveDuplicates(s) {
-            let result = '';
-            let prev = '';
-            for (let char of s) {
-                if (char !== prev) {
-                    result += char;
-                    prev = char;
-                }
-            }
-            return result;
-        }
-        
-        const usernameNoDouble = removeConsecutiveDuplicates(usernameClean);
-        if (usernameNoDouble === basedOnClean && usernameClean.length > basedOnClean.length) {
-            return { valid: true, message: '✓ SOP (Semi On Point) - Double huruf', category: 'SOP' };
-        }
-        
-        // 3. SCANON - Tambah huruf S di akhir atau nama tanpa marga
-        if (usernameClean.endsWith('s') && usernameClean.slice(0, -1) === basedOnClean) {
-            return { valid: true, message: '✓ SCANON - Penambahan huruf S di akhir', category: 'SCANON' };
-        }
-        
-        // 4. CANON - Swap i/l
-        const usernameILSwap = usernameClean.replace(/i/g, 'L').replace(/l/g, 'i').toLowerCase();
-        if (usernameILSwap === basedOnClean) {
-            return { valid: true, message: '✓ CANON - Swap huruf i/l', category: 'CANON' };
-        }
-        
-        // 5. TAMPING - Tambah 1 huruf di pinggir
-        if (usernameClean.length === basedOnClean.length + 1) {
-            if (usernameClean.slice(1) === basedOnClean) {
-                return { valid: true, message: '✓ TAMPING - Tambah huruf di depan', category: 'TAMPING' };
-            }
-            if (usernameClean.slice(0, -1) === basedOnClean) {
-                return { valid: true, message: '✓ TAMPING - Tambah huruf di belakang', category: 'TAMPING' };
-            }
-        }
-        
-        if (basedOnClean.length === usernameClean.length + 1) {
-            if (basedOnClean.slice(1) === usernameClean) {
-                return { valid: true, message: '✓ TAMPING - Based On lebih panjang (depan)', category: 'TAMPING' };
-            }
-            if (basedOnClean.slice(0, -1) === usernameClean) {
-                return { valid: true, message: '✓ TAMPING - Based On lebih panjang (belakang)', category: 'TAMPING' };
-            }
-        }
-        
-        // 6. TAMDAL - Tambah 1 huruf di dalam
-        if (usernameClean.length === basedOnClean.length + 1) {
-            for (let i = 0; i < usernameClean.length; i++) {
-                const temp = usernameClean.slice(0, i) + usernameClean.slice(i + 1);
-                if (temp === basedOnClean) {
-                    return { valid: true, message: '✓ TAMDAL - Tambah huruf di dalam', category: 'TAMDAL' };
-                }
-            }
-        }
-        
-        if (basedOnClean.length === usernameClean.length + 1) {
-            for (let i = 0; i < basedOnClean.length; i++) {
-                const temp = basedOnClean.slice(0, i) + basedOnClean.slice(i + 1);
-                if (temp === usernameClean) {
-                    return { valid: true, message: '✓ TAMDAL - Based On lebih panjang', category: 'TAMDAL' };
-                }
-            }
-        }
-        
-        // 7. GANHUR - Ganti 1 huruf
-        if (usernameClean.length === basedOnClean.length) {
-            let diffCount = 0;
-            for (let i = 0; i < usernameClean.length; i++) {
-                if (usernameClean[i] !== basedOnClean[i]) diffCount++;
-            }
-            if (diffCount === 1) {
-                return { valid: true, message: '✓ GANHUR - Ganti 1 huruf', category: 'GANHUR' };
-            }
-        }
-        
-        // 8. SWITCH - Perpindahan huruf
-        if (usernameClean.length === basedOnClean.length) {
-            for (let i = 0; i < usernameClean.length - 1; i++) {
-                const swapped = usernameClean.split('');
-                [swapped[i], swapped[i + 1]] = [swapped[i + 1], swapped[i]];
-                if (swapped.join('') === basedOnClean) {
-                    return { valid: true, message: '✓ SWITCH - Perpindahan huruf', category: 'SWITCH' };
-                }
-            }
-        }
-        
-        // 9. KURHUF - Kurang 1 huruf
-        if (usernameClean.length === basedOnClean.length - 1) {
-            for (let i = 0; i < basedOnClean.length; i++) {
-                const temp = basedOnClean.slice(0, i) + basedOnClean.slice(i + 1);
-                if (temp === usernameClean) {
-                    return { valid: true, message: '✓ KURHUF - Kurang 1 huruf', category: 'KURHUF' };
-                }
-            }
-        }
-        
-        // 10. Subset/Superset
-        if (basedOnClean.includes(usernameClean)) {
-            return { valid: true, message: `✓ Based On mengandung username`, category: 'SUPERSET' };
-        }
-        
-        if (usernameClean.includes(basedOnClean)) {
-            return { valid: true, message: `✓ Username mengandung Based On`, category: 'SUBSET' };
-        }
-        
-        return { valid: false, message: '✗ Based On tidak memiliki hubungan yang valid dengan username' };
-    }
-    
     // ==================== SAFE AREA INSET & FULLSCREEN ====================
 
     function applySafeAreaInsets() {
