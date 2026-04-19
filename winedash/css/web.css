@@ -1350,37 +1350,15 @@ body.filter-open {
 
 /* Wallet Card - Padding lebih kecil */
 .wallet-card {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-radius: 24px;
-    padding: 16px 20px;
+    background: linear-gradient(135deg, #4d4d4d 0%, #000000 100%);
+    border-radius: 20px;
+    padding: 15px 15px;
     position: relative;
     overflow: hidden;
     border: none;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-/* Border 3D dengan gradient untuk wallet card - animasi membentang dari kanan */
-.wallet-card::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 24px;
-    padding: 1px;
-    background: linear-gradient(90deg, 
-        transparent 0%,
-        transparent 30%,
-        rgba(64, 167, 227, 0.3) 50%,
-        rgba(64, 167, 227, 0.8) 75%,
-        rgba(64, 167, 227, 1) 85%,
-        rgba(64, 167, 227, 1) 90%,
-        transparent 100%
-    );
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    animation: borderGlow 3s ease-in-out infinite;
+    margin-top: 0px;
+    margin-bottom: 10px;
 }
 
 /* Animasi border yang membentang */
@@ -1389,10 +1367,10 @@ body.filter-open {
         background: linear-gradient(90deg, 
             transparent 0%,
             transparent 30%,
-            rgba(64, 167, 227, 0.1) 50%,
-            rgba(64, 167, 227, 0.4) 75%,
-            rgba(64, 167, 227, 0.6) 85%,
-            rgba(64, 167, 227, 0.8) 90%,
+            rgb(0 161 255 / 10%) 50%,
+            rgb(0 161 255 / 40%) 75%,
+            rgb(0 161 255 / 60%) 85%,
+            rgb(0 161 255 / 80%) 90%,
             transparent 100%
         );
     }
@@ -1400,10 +1378,10 @@ body.filter-open {
         background: linear-gradient(90deg, 
             transparent 0%,
             transparent 30%,
-            rgba(64, 167, 227, 0.5) 50%,
-            rgba(64, 167, 227, 0.9) 75%,
-            rgba(64, 167, 227, 1) 85%,
-            rgba(64, 167, 227, 1) 90%,
+            rgb(0 161 255 / 50%) 50%,
+            rgb(0 161 255 / 90%) 75%,
+            rgb(0 161 255) 85%,
+            rgb(0 161 255) 90%,
             transparent 100%
         );
     }
@@ -1411,33 +1389,13 @@ body.filter-open {
         background: linear-gradient(90deg, 
             transparent 0%,
             transparent 30%,
-            rgba(64, 167, 227, 0.1) 50%,
-            rgba(64, 167, 227, 0.4) 75%,
-            rgba(64, 167, 227, 0.6) 85%,
-            rgba(64, 167, 227, 0.8) 90%,
+            rgb(0 161 255 / 10%) 50%,
+            rgb(0 161 255 / 40%) 75%,
+            rgb(0 161 255 / 60%) 85%,
+            rgb(0 161 255 / 80%) 90%,
             transparent 100%
         );
     }
-}
-
-/* Garis putih di ujung border */
-.wallet-card::before {
-    content: "";
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 4px;
-    height: calc(100% - 16px);
-    background: linear-gradient(180deg, 
-        rgba(255, 255, 255, 0) 0%,
-        rgba(255, 255, 255, 0.6) 30%,
-        rgba(255, 255, 255, 0.9) 50%,
-        rgba(255, 255, 255, 0.6) 70%,
-        rgba(255, 255, 255, 0) 100%
-    );
-    border-radius: 2px;
-    pointer-events: none;
-    z-index: 2;
 }
 
 /* Header horizontal - balance di kiri, TON Connect di kanan */
@@ -1446,7 +1404,7 @@ body.filter-open {
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
 }
 
@@ -1462,12 +1420,12 @@ body.filter-open {
 .wallet-balance-large {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: 5px;
 }
 
 .balance-logo-large {
-    width: 32px;
-    height: 32px;
+    width: 42px;
+    height: 42px;
     object-fit: contain;
 }
 
@@ -1479,7 +1437,7 @@ body.filter-open {
 }
 
 .balance-symbol {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     color: var(--text-muted);
 }
@@ -1491,13 +1449,10 @@ body.filter-open {
 }
 
 .address-value {
-    font-size: 11px;
+    font-size: 15px;
+    color: var(--text-muted);
     font-weight: 500;
     font-family: monospace;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 4px 10px;
-    border-radius: 20px;
-    display: inline-block;
 }
 
 /* TON Connect Container - di kanan, rata kanan */
@@ -1524,9 +1479,9 @@ body.filter-open {
 /* Wallet Card Actions */
 .wallet-card-actions {
     display: flex;
-    gap: 12px;
+    gap: 25%;
     justify-content: center;
-    margin-top: 8px;
+    margin-top: 5px;
 }
 
 .wallet-action-btn {
@@ -1546,12 +1501,14 @@ body.filter-open {
 }
 
 .wallet-action-btn.deposit-action {
-    background: white;
-    color: #1a1a2e;
+    background: var(--primary-glass);
+    border: 1px solid var(--text);
+    color: #ffffff;
+    color: #ffffff;
 }
 
 .wallet-action-btn.deposit-action i {
-    color: #1a1a2e;
+    color: #ffffff;
 }
 
 .wallet-action-btn.deposit-action:hover {
@@ -1560,19 +1517,15 @@ body.filter-open {
 }
 
 .wallet-action-btn.withdraw-action {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgb(0 0 0 / 15%);
+    color: #000000;
+    border: 1px solid var(--text);
+    color: var(--text);
 }
 
 .wallet-action-btn.withdraw-action:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgb(0 0 0 / 25%);
     transform: scale(1.02);
-}
-
-/* Hilangkan wallet-icon yang tidak terpakai */
-.wallet-icon {
-    display: none;
 }
 
 /* Responsive */
