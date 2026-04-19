@@ -17,6 +17,10 @@
     let currentSort = 'default';
     let currentPriceFilter = 'all';
     let filterOverlay = null;
+    let currentWalletBalance = 0;
+    let depositPanel = null;
+    let withdrawPanel = null;
+    let walletPanelOverlay = null;
 
     // DOM Elements
     const elements = {
@@ -1547,6 +1551,559 @@
         }
         
         renderUsernames(filtered);
+    }
+
+    function initWalletPanels() {
+        depositPanel = document.getElementById('depositPanel');
+        withdrawPanel = document.getElementById('withdrawPanel');
+        walletPanelOverlay = document.getElementById('walletPanelOverlay');
+        
+        if (!walletPanelOverlay) {
+            walletPanelOverlay = document.createElement('div');
+            walletPanelOverlay.id = 'walletPanelOverlay';
+            walletPanelOverlay.className = 'panel-overlay';
+            document.body.appendChild(walletPanelOverlay);
+        }
+        
+        // Deposit panel close
+        const closeDepositBtn = document.getElementById('closeDepositPanelBtn');
+        if (closeDepositBtn) {
+            closeDepositBtn.addEventListener('click', closeDepositPanel);
+        }
+        
+        // Withdraw panel close
+        const closeWithdrawBtn = document.getElementById('closeWithdrawPanelBtn');
+        if (closeWithdrawBtn) {
+            closeWithdrawBtn.addEventListener('click', closeWithdrawPanel);
+        }
+        
+        // Overlay click
+        walletPanelOverlay.addEventListener('click', () => {
+            closeDepositPanel();
+            closeWithdrawPanel();
+        });
+        
+        // Quick amount buttons
+        document.querySelectorAll('.quick-amount-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const percent = parseInt(btn.dataset.percent);
+                const isDeposit = btn.closest('#depositPanel') !== null;
+                const input = isDeposit ? document.getElementById('depositAmountInput') : document.getElementById('withdrawAmountInput');
+                
+                if (input && currentWalletBalance > 0) {
+                    let amount = 0;
+                    if (percent === 100) {
+                        amount = currentWalletBalance;
+                    } else {
+                        amount = (currentWalletBalance * percent) / 100;
+                    }
+                    // Untuk withdraw, bulatkan ke 2 desimal
+                    if (!isDeposit) {
+                        amount = Math.floor(amount * 100) / 100;
+                    }
+                    input.value = amount.toFixed(2);
+                    // Trigger input event untuk validasi
+                    input.dispatchEvent(new Event('input'));
+                }
+            });
+        });
+        
+        // Setup drag to close
+        setupPanelDragToClose(depositPanel, closeDepositPanel);
+        setupPanelDragToClose(withdrawPanel, closeWithdrawPanel);
+    }
+
+    function setupPanelDragToClose(panel, closeFunction) {
+        if (!panel) return;
+        
+        const dragHandle = panel.querySelector('.panel-drag-handle');
+        if (!dragHandle) return;
+        
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+        
+        const onTouchStart = (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            panel.style.transition = 'none';
+            hapticLight();
+        };
+        
+        const onTouchMove = (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            if (deltaY > 0) {
+                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+            }
+        };
+        
+        const onTouchEnd = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            const deltaY = currentY - startY;
+            if (deltaY > 100) {
+                closeFunction();
+            } else {
+                panel.style.transform = '';
+            }
+        };
+        
+        dragHandle.addEventListener('touchstart', onTouchStart);
+        dragHandle.addEventListener('touchmove', onTouchMove);
+        dragHandle.addEventListener('touchend', onTouchEnd);
+    }
+
+    function showDepositPanel() {
+        if (!depositPanel) return;
+        
+        // Reset transform
+        depositPanel.style.transform = '';
+        depositPanel.style.transition = '';
+        
+        // Reset input
+        const input = document.getElementById('depositAmountInput');
+        if (input) input.value = '';
+        
+        // Tampilkan overlay
+        walletPanelOverlay.classList.add('active');
+        document.body.classList.add('wallet-panel-open');
+        
+        // Tampilkan panel
+        depositPanel.style.display = 'flex';
+        setTimeout(() => {
+            depositPanel.classList.add('open');
+        }, 10);
+        
+        hapticLight();
+    }
+
+    function closeDepositPanel() {
+        if (!depositPanel) return;
+        depositPanel.classList.remove('open');
+        walletPanelOverlay.classList.remove('active');
+        document.body.classList.remove('wallet-panel-open');
+        setTimeout(() => {
+            depositPanel.style.display = 'none';
+        }, 300);
+        hapticLight();
+    }
+
+    function showWithdrawPanel() {
+        if (!withdrawPanel) return;
+        
+        // Reset transform
+        withdrawPanel.style.transform = '';
+        withdrawPanel.style.transition = '';
+        
+        // Reset input
+        const input = document.getElementById('withdrawAmountInput');
+        if (input) input.value = '';
+        
+        // Tampilkan overlay
+        walletPanelOverlay.classList.add('active');
+        document.body.classList.add('wallet-panel-open');
+        
+        // Tampilkan panel
+        withdrawPanel.style.display = 'flex';
+        setTimeout(() => {
+            withdrawPanel.classList.add('open');
+        }, 10);
+        
+        hapticLight();
+    }
+
+    function closeWithdrawPanel() {
+        if (!withdrawPanel) return;
+        withdrawPanel.classList.remove('open');
+        walletPanelOverlay.classList.remove('active');
+        document.body.classList.remove('wallet-panel-open');
+        setTimeout(() => {
+            withdrawPanel.style.display = 'none';
+        }, 300);
+        hapticLight();
+    }
+
+    // Update wallet UI dengan Tonkeeper style
+    function updateWalletMainUI() {
+        const walletMainCard = document.getElementById('walletMainCard');
+        const walletAddressDisplay = document.getElementById('walletAddressValue');
+        const walletBalanceAmount = document.getElementById('walletBalanceAmount');
+        
+        if (isWalletConnected && walletAddress) {
+            walletMainCard.style.display = 'block';
+            
+            // Format address
+            const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
+            if (walletAddressDisplay) walletAddressDisplay.textContent = formattedAddress;
+            
+            // Update balance - ambil dari user data
+            const getBalance = async () => {
+                if (telegramUser) {
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+                        const data = await response.json();
+                        if (data.success && data.user) {
+                            currentWalletBalance = parseFloat(data.user.balance);
+                            if (walletBalanceAmount) walletBalanceAmount.textContent = currentWalletBalance.toFixed(2);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching balance:', error);
+                    }
+                }
+            };
+            getBalance();
+            
+        } else {
+            walletMainCard.style.display = 'none';
+            currentWalletBalance = 0;
+        }
+    }
+
+    // Override deposit function dengan panel
+    async function depositFromPanel() {
+        const amountInput = document.getElementById('depositAmountInput');
+        const amount = parseFloat(amountInput?.value);
+        
+        if (!amount || amount <= 0) {
+            showToast('Masukkan jumlah deposit yang valid', 'warning');
+            return;
+        }
+        
+        if (amount < 0.1) {
+            showToast('Minimal deposit 0.1 TON', 'warning');
+            return;
+        }
+        
+        if (!tonConnectUI?.connected) {
+            showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+            closeDepositPanel();
+            await connectWallet();
+            return;
+        }
+        
+        hapticMedium();
+        
+        const confirmBtn = document.getElementById('confirmDepositBtn');
+        const originalText = confirmBtn?.innerHTML;
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span class="btn-loading"></span> Memproses...';
+        }
+        
+        try {
+            const senderAddress = tonConnectUI.account?.address;
+            const amountNano = Math.floor(amount * 1_000_000_000).toString();
+            const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
+            
+            const transaction = {
+                validUntil: Math.floor(Date.now() / 1000) + 600,
+                messages: [{
+                    address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
+                    amount: amountNano
+                }]
+            };
+            
+            const result = await tonConnectUI.sendTransaction(transaction);
+            const transactionHash = result.boc || result.hash || `tx_${Date.now()}`;
+            
+            const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: telegramUser.id,
+                    amount: amount,
+                    transaction_hash: transactionHash,
+                    from_address: senderAddress,
+                    memo: memo
+                })
+            });
+            
+            const verifyData = await verifyResponse.json();
+            
+            if (verifyData.success) {
+                showToast(`Deposit ${amount} TON berhasil!`, 'success');
+                amountInput.value = '';
+                closeDepositPanel();
+                await refreshAllData();
+                updateWalletMainUI();
+            } else {
+                showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
+                await refreshAllData();
+            }
+            
+        } catch (error) {
+            console.error('Error creating deposit:', error);
+            let errorMessage = 'Error creating deposit';
+            if (error.message) {
+                if (error.message.includes('rejected') || error.message.includes('cancelled')) {
+                    errorMessage = 'Transaksi dibatalkan oleh user';
+                } else if (error.message.includes('insufficient funds')) {
+                    errorMessage = 'Saldo wallet tidak mencukupi';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            showToast(errorMessage, 'error');
+        } finally {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalText || '<i class="fas fa-check"></i> Konfirmasi Deposit';
+            }
+        }
+    }
+
+    // Override withdraw function dengan panel
+    async function withdrawFromPanel() {
+        const amountInput = document.getElementById('withdrawAmountInput');
+        const amount = parseFloat(amountInput?.value);
+        
+        if (!amount || amount <= 0) {
+            showToast('Masukkan jumlah withdraw yang valid', 'warning');
+            return;
+        }
+        
+        if (amount < 1) {
+            showToast('Minimal withdraw 1 TON', 'warning');
+            return;
+        }
+        
+        if (!tonConnectUI?.connected) {
+            showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+            closeWithdrawPanel();
+            await connectWallet();
+            return;
+        }
+        
+        // Cek balance user
+        if (currentWalletBalance < amount) {
+            showToast(`Saldo tidak mencukupi. Saldo Anda: ${currentWalletBalance} TON`, 'error');
+            return;
+        }
+        
+        const WITHDRAW_FEE = 0.02;
+        const amountToReceive = amount - WITHDRAW_FEE;
+        
+        if (!confirm(`Anda akan withdraw ${amount} TON.\n\nBiaya jaringan (fee): ${WITHDRAW_FEE} TON\nJumlah yang akan diterima: ${amountToReceive.toFixed(2)} TON\n\nLanjutkan?`)) {
+            return;
+        }
+        
+        hapticMedium();
+        
+        const confirmBtn = document.getElementById('confirmWithdrawBtn');
+        const originalText = confirmBtn?.innerHTML;
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<span class="btn-loading"></span> Memproses...';
+        }
+        
+        try {
+            const destinationAddress = tonConnectUI.account?.address;
+            
+            // Generate unique reference untuk memo
+            const shortId = Math.random().toString(36).substring(2, 12);
+            const memo = `wd_${shortId}:${telegramUser.id}`;
+            
+            // Create withdrawal request
+            const createResponse = await fetch(`${API_BASE_URL}/api/winedash/withdraw/create`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: telegramUser.id,
+                    amount: amount,
+                    wallet_address: destinationAddress
+                })
+            });
+            
+            const createData = await createResponse.json();
+            
+            if (!createData.success) {
+                throw new Error(createData.error || 'Failed to create withdrawal request');
+            }
+            
+            showToast('⏳ Memproses withdraw, mohon tunggu...', 'info');
+            
+            const processResponse = await fetch(`${API_BASE_URL}/api/winedash/withdraw/process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: telegramUser.id,
+                    amount: amount,
+                    destination_address: destinationAddress,
+                    withdrawal_id: createData.withdrawal_id,
+                    memo: memo
+                })
+            });
+            
+            const processData = await processResponse.json();
+            
+            if (!processData.success) {
+                throw new Error(processData.error || 'Failed to process withdrawal');
+            }
+            
+            showToast(`✅ Withdraw ${amount} TON berhasil! (Fee ${WITHDRAW_FEE} TON, ${amountToReceive.toFixed(2)} TON dikirim)`, 'success');
+            
+            amountInput.value = '';
+            closeWithdrawPanel();
+            await refreshAllData();
+            updateWalletMainUI();
+            
+            // Buka link transaction di tonviewer jika ada
+            if (processData.transaction_hash) {
+                setTimeout(() => {
+                    if (confirm('Lihat detail transaksi di TonViewer?')) {
+                        window.open(`https://tonviewer.com/transaction/${processData.transaction_hash}`, '_blank');
+                    }
+                }, 500);
+            }
+            
+        } catch (error) {
+            console.error('❌ Withdraw error:', error);
+            let errorMessage = error.message;
+            if (error.message.includes('Insufficient balance')) {
+                errorMessage = 'Saldo tidak mencukupi';
+            } else if (error.message.includes('network')) {
+                errorMessage = 'Gangguan jaringan, coba lagi nanti';
+            }
+            showToast(`❌ ${errorMessage}`, 'error');
+        } finally {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = originalText || '<i class="fas fa-check"></i> Konfirmasi Withdraw';
+            }
+        }
+    }
+
+    // Update loadTransactionHistory untuk membuat klikable ke tonscan
+    async function loadTransactionHistory() {
+        if (!elements.historyList || !telegramUser) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/transactions/${telegramUser.id}`);
+            const data = await response.json();
+            
+            if (data.success && data.transactions.length > 0) {
+                let html = '';
+                for (const tx of data.transactions) {
+                    let iconClass = '';
+                    let icon = '';
+                    let amountClass = '';
+                    let amountPrefix = '';
+                    let txHash = tx.transaction_id;
+                    let explorerUrl = null;
+                    
+                    // Cek apakah transaction_id adalah hash yang valid (bukan generated)
+                    if (txHash && txHash.startsWith('0x') || (txHash.length === 64 && /^[a-fA-F0-9]{64}$/.test(txHash))) {
+                        explorerUrl = `https://tonviewer.com/transaction/${txHash}`;
+                    } else if (txHash && !txHash.startsWith('deposit_') && !txHash.startsWith('wd_')) {
+                        explorerUrl = `https://tonviewer.com/transaction/${txHash}`;
+                    }
+                    
+                    switch (tx.type) {
+                        case 'deposit':
+                            iconClass = 'deposit';
+                            icon = 'fa-arrow-down';
+                            amountClass = 'positive';
+                            amountPrefix = '+';
+                            break;
+                        case 'withdraw':
+                            iconClass = 'withdraw';
+                            icon = 'fa-arrow-up';
+                            amountClass = 'negative';
+                            amountPrefix = '-';
+                            break;
+                        default:
+                            iconClass = 'info';
+                            icon = 'fa-circle-info';
+                            amountClass = '';
+                            amountPrefix = '';
+                    }
+                    
+                    const clickableAttr = explorerUrl ? `data-url="${explorerUrl}" style="cursor: pointer;"` : '';
+                    const onClickAttr = explorerUrl ? `onclick="window.open('${explorerUrl}', '_blank')"` : '';
+                    
+                    html += `
+                        <div class="history-item" ${clickableAttr} ${onClickAttr}>
+                            <div class="history-icon ${iconClass}">
+                                <i class="fas ${icon}"></i>
+                            </div>
+                            <div class="history-info">
+                                <div class="history-title">${tx.type === 'deposit' ? 'Deposit' : tx.type === 'withdraw' ? 'Withdraw' : 'Pembelian Username'}</div>
+                                <div class="history-date">${formatDate(tx.created_at)}</div>
+                            </div>
+                            <div class="history-amount ${amountClass}">
+                                ${amountPrefix}${formatNumber(tx.amount)} TON
+                            </div>
+                            <div class="history-status ${tx.status}">
+                                ${tx.status === 'success' ? 'Sukses' : 'Pending'}
+                            </div>
+                        </div>
+                    `;
+                }
+                elements.historyList.innerHTML = html;
+            } else {
+                elements.historyList.innerHTML = '<div class="loading-placeholder">Belum ada riwayat transaksi</div>';
+            }
+        } catch (error) {
+            console.error('Error loading transaction history:', error);
+            elements.historyList.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+        }
+    }
+
+    // Update setupEventListeners untuk wallet
+    function setupWalletEventListeners() {
+        const walletDepositBtn = document.getElementById('walletDepositBtn');
+        if (walletDepositBtn) {
+            walletDepositBtn.addEventListener('click', showDepositPanel);
+        }
+        
+        const walletWithdrawBtn = document.getElementById('walletWithdrawBtn');
+        if (walletWithdrawBtn) {
+            walletWithdrawBtn.addEventListener('click', showWithdrawPanel);
+        }
+        
+        const confirmDepositBtn = document.getElementById('confirmDepositBtn');
+        if (confirmDepositBtn) {
+            confirmDepositBtn.addEventListener('click', depositFromPanel);
+        }
+        
+        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
+        if (confirmWithdrawBtn) {
+            confirmWithdrawBtn.addEventListener('click', withdrawFromPanel);
+        }
+    }
+
+    // Update init function untuk inisialisasi wallet panels
+    // Tambahkan di dalam init() setelah setupEventListeners
+    async function init() {
+        initTelegram();
+        initSafeArea();
+        showLoading(true);
+        
+        setupTabs();
+        setupEventListeners();
+        setupSearch();
+        setupWalletEventListeners();
+        initWalletPanels();
+        
+        telegramUser = getTelegramUserFromWebApp();
+        if (telegramUser) {
+            updateUserUI();
+            await authenticateUser();
+            await loadUsernames();
+            await loadPurchasedUsernames();
+            await loadTransactionHistory();
+            updateWalletMainUI();
+        } else {
+            showToast('Tidak dapat mengambil data user', 'error');
+        }
+        
+        await initTonConnect();
+        
+        showLoading(false);
+        console.log('✅ Winedash Marketplace initialized');
     }
 
     async function init() {

@@ -105,56 +105,108 @@
 
         <!-- Tab Content: Wallet -->
         <div class="tab-content" id="walletTab">
-            <div class="section-card">
+            <!-- HAPUS search container dari sini, tidak perlu search di wallet -->
+            
+            <div class="section-card wallet-main-card">
                 <div class="card-header">
                     <i class="fas fa-wallet"></i>
                     <h3>TON Wallet</h3>
                 </div>
                 <div class="wallet-info">
-                    <div class="wallet-status" id="walletStatus">
-                        <i class="fas fa-plug"></i>
-                        <span>Belum terhubung</span>
-                    </div>
+                    <!-- Wallet Connection Status akan diisi JS -->
                     <div id="ton-connect" style="min-height: 50px;"></div>
-                    <div class="wallet-address" id="walletAddress" style="display: none;">
-                        <i class="fas fa-qrcode"></i>
-                        <span id="walletAddressText"></span>
+                </div>
+            </div>
+
+            <!-- Wallet Main Card - Border besar dengan logo, address, balance, tombol -->
+            <div class="wallet-main-card" id="walletMainCard" style="display: none;">
+                <div class="wallet-card">
+                    <div class="wallet-card-header">
+                        <div class="wallet-icon">
+                            <i class="fab fa-telegram"></i>
+                        </div>
+                        <div class="wallet-address-display" id="walletAddressDisplay">
+                            <span class="address-label">TON Wallet</span>
+                            <span class="address-value" id="walletAddressValue">Not connected</span>
+                        </div>
+                        <div class="wallet-balance-large" id="walletBalanceLarge">
+                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo-large">
+                            <span class="balance-amount-large" id="walletBalanceAmount">0.00</span>
+                            <span class="balance-symbol">TON</span>
+                        </div>
+                    </div>
+                    <div class="wallet-card-actions">
+                        <button class="wallet-action-btn deposit-action" id="walletDepositBtn">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>Deposit</span>
+                        </button>
+                        <button class="wallet-action-btn withdraw-action" id="walletWithdrawBtn">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Withdraw</span>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div class="section-card">
-                <div class="card-header">
-                    <i class="fas fa-arrow-up"></i>
-                    <h3>Deposit TON</h3>
+            <!-- Deposit Panel (slide from bottom) -->
+            <div class="wallet-panel" id="depositPanel" style="display: none;">
+                <div class="panel-drag-handle"></div>
+                <div class="panel-header">
+                    <h3><i class="fas fa-arrow-down"></i> Deposit TON</h3>
+                    <button class="panel-close" id="closeDepositPanelBtn">&times;</button>
                 </div>
-                <div class="deposit-form">
-                    <input type="number" id="depositAmount" placeholder="Jumlah TON" class="form-input" step="0.1" min="0.1">
-                    <button class="btn-primary" id="depositBtn">
-                        <i class="fas fa-arrow-down"></i> Deposit
+                <div class="panel-content">
+                    <div class="amount-input-wrapper">
+                        <div class="amount-input-container">
+                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="input-logo">
+                            <input type="number" id="depositAmountInput" placeholder="0.00" class="amount-input" step="0.1" min="0.1">
+                        </div>
+                        <div class="quick-amount-buttons">
+                            <button class="quick-amount-btn" data-percent="25">25%</button>
+                            <button class="quick-amount-btn" data-percent="50">50%</button>
+                            <button class="quick-amount-btn" data-percent="75">75%</button>
+                            <button class="quick-amount-btn" data-percent="100">Max</button>
+                        </div>
+                    </div>
+                    <button class="panel-action-btn" id="confirmDepositBtn">
+                        <i class="fas fa-check"></i> Konfirmasi Deposit
                     </button>
                 </div>
             </div>
 
-            <div class="section-card">
-                <div class="card-header">
-                    <i class="fas fa-arrow-down"></i>
-                    <h3>Withdraw TON</h3>
+            <!-- Withdraw Panel (slide from bottom) -->
+            <div class="wallet-panel" id="withdrawPanel" style="display: none;">
+                <div class="panel-drag-handle"></div>
+                <div class="panel-header">
+                    <h3><i class="fas fa-arrow-up"></i> Withdraw TON</h3>
+                    <button class="panel-close" id="closeWithdrawPanelBtn">&times;</button>
                 </div>
-                <div class="withdraw-form">
-                    <input type="number" id="withdrawAmount" placeholder="Jumlah TON" class="form-input" step="0.1" min="1">
-                    <button class="btn-primary" id="withdrawBtn">
-                        <i class="fas fa-arrow-up"></i> Withdraw
+                <div class="panel-content">
+                    <div class="amount-input-wrapper">
+                        <div class="amount-input-container">
+                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="input-logo">
+                            <input type="number" id="withdrawAmountInput" placeholder="0.00" class="amount-input" step="0.1" min="1">
+                        </div>
+                        <div class="quick-amount-buttons">
+                            <button class="quick-amount-btn" data-percent="25">25%</button>
+                            <button class="quick-amount-btn" data-percent="50">50%</button>
+                            <button class="quick-amount-btn" data-percent="75">75%</button>
+                            <button class="quick-amount-btn" data-percent="100">Max</button>
+                        </div>
+                        <div class="info-text-small">
+                            <i class="fas fa-info-circle"></i> Minimal withdraw: 1 TON (Fee 0.02 TON)
+                        </div>
+                    </div>
+                    <button class="panel-action-btn" id="confirmWithdrawBtn">
+                        <i class="fas fa-check"></i> Konfirmasi Withdraw
                     </button>
                 </div>
-                <div class="info-text">
-                    <i class="fas fa-info-circle"></i> Minimal withdraw: 1 TON
-                </div>
             </div>
-        </div>
 
-        <!-- Tab Content: History -->
-        <div class="tab-content" id="historyTab">
+            <!-- Overlay untuk panel -->
+            <div id="walletPanelOverlay" class="panel-overlay" style="display: none;"></div>
+
+            <!-- History Section -->
             <div class="section-card">
                 <div class="card-header">
                     <i class="fas fa-history"></i>
