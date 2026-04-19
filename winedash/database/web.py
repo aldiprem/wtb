@@ -678,35 +678,40 @@ class WinedashDatabase:
                     )
                 ''')
                 
-                # Cek apakah username sudah ada di usernames (available atau unlisted)
-                cursor.execute('SELECT id, status FROM usernames WHERE username = ?', (username,))
+                # Pastikan username adalah string biasa, bukan bytes
+                if isinstance(username, bytes):
+                    username = username.decode('utf-8')
+                
+                # Clean username (hapus @ jika ada)
+                username_clean = username.lstrip('@').strip()
+                
+                # Cek apakah username sudah ada di usernames
+                cursor.execute('SELECT id, status FROM usernames WHERE username = ?', (username_clean,))
                 existing_username = cursor.fetchone()
                 if existing_username:
-                    print(f"[DB] Username {username} already exists in usernames with status: {existing_username[1]}")
+                    print(f"[DB] Username {username_clean} already exists in usernames")
                     return None
                 
-                # Cek apakah username sudah ada di pending dengan status 'pending'
-                cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username,))
+                # Cek apakah username sudah ada di pending
+                cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username_clean,))
                 existing = cursor.fetchone()
                 
                 if existing:
                     existing_id, existing_status = existing
                     if existing_status == 'pending':
-                        print(f"[DB] Username {username} already in pending queue")
+                        print(f"[DB] Username {username_clean} already in pending queue")
                         return None
                     else:
-                        # Hapus record lama
                         cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (existing_id,))
                         conn.commit()
-                        print(f"[DB] Deleted old pending record for {username}")
                 
-                # Insert new pending
+                # Insert new pending dengan username yang sudah dibersihkan
                 cursor.execute('''
                     INSERT INTO pending_usernames 
                     (username, category, price, seller_id, seller_wallet, verification_type, 
                     verification_code, status, created_at, expires_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-                ''', (username, category, price, seller_id, seller_wallet, 
+                ''', (username_clean, category, price, seller_id, seller_wallet, 
                     verification_type, None, now, None))
                 
                 pending_id = cursor.lastrowid

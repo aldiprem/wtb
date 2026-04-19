@@ -861,17 +861,39 @@
             for (const username of usernames) {
                 const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
                 const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
-                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(username.username[0] || 'U')}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=1`;
+                
+                // Pastikan username adalah string, bukan bytes
+                let usernameStr = username.username;
+                if (typeof usernameStr !== 'string') {
+                    usernameStr = String(usernameStr);
+                }
+                // Hapus karakter b'...' jika ada
+                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
+                const firstChar = usernameStr.charAt(0) || 'U';
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=1`;
+                
+                // Escape username untuk JSON
+                const usernameData = {
+                    id: username.id,
+                    username: usernameStr,
+                    category: username.category,
+                    price: username.price,
+                    seller_id: username.seller_id,
+                    seller_wallet: username.seller_wallet,
+                    status: username.status,
+                    created_at: username.created_at
+                };
                 
                 html += `
-                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(username)}'>
+                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData)}'>
                         <div class="username-card-image">
                             <div class="card-avatar">
-                                <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
+                                <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
                             </div>
+                            <div class="card-username">@${escapeHtml(usernameStr)}</div>
                         </div>
                         <div class="username-card-info">
-                            <div class="card-username">@${escapeHtml(username.username)}</div>
                             <div class="card-price-row">
                                 <div class="price-with-logo">
                                     <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
@@ -959,9 +981,17 @@
             existingPanel.remove();
         }
         
+        // Pastikan username adalah string yang bersih
+        let usernameStr = username.username;
+        if (typeof usernameStr !== 'string') {
+            usernameStr = String(usernameStr);
+        }
+        usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+        
         const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
         const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
-        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(username.username[0] || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
+        const firstChar = usernameStr.charAt(0) || 'U';
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
         const createdAt = formatDateIndonesia(username.created_at);
         const isListed = username.status === 'available';
         
@@ -975,12 +1005,9 @@
             <div class="panel-content">
                 <div class="detail-avatar">
                     <div class="detail-avatar-img">
-                        <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
+                        <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
                     </div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-label">Username</div>
-                    <div class="detail-value">@${escapeHtml(username.username)}</div>
+                    <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
                 </div>
                 <div class="detail-field">
                     <div class="detail-label">Harga</div>
