@@ -693,14 +693,13 @@ async def save_profile_photo_to_server(username: str, photo_url: str):
     except Exception as e:
         logger.error(f"Error saving profile photo to server: {e}")
 
-# Tambahkan di b.py setelah fungsi check_entity_type
-
-@bot.on(events.NewMessage(pattern=r'^/get(@?\S+)?$'))
+@bot.on(events.NewMessage(pattern=r'^/get(?:\s+@?(\S+))?$'))
 async def handle_get_profile(event):
     """Handle /get command to fetch profile photo"""
     # Parse command
     cmd_parts = event.raw_text.strip().split()
     
+    # Cek apakah ada parameter username
     if len(cmd_parts) < 2:
         await event.reply("📸 **Profile Photo Bot**\n\n"
                          "Usage: `/get @username`\n"
@@ -708,11 +707,17 @@ async def handle_get_profile(event):
                          "Supports: Users, Channels, Groups")
         return
     
+    # Ambil target (bisa dengan atau tanpa @)
     target = cmd_parts[1].strip()
     
-    # Remove @ if present
+    # Remove @ if present at the beginning only
     if target.startswith('@'):
         target = target[1:]
+    
+    # Validasi target tidak kosong
+    if not target:
+        await event.reply("❌ Please provide a username!\n\nUsage: `/get @username`")
+        return
     
     # Send initial message
     msg = await event.reply(f"🔍 Fetching profile photo for @{target}...")
@@ -737,22 +742,28 @@ async def handle_get_profile(event):
             if hasattr(entity, 'last_name') and entity.last_name:
                 entity_name = f"{entity_name} {entity.last_name}"
         
-        # Get profile photo - cara yang lebih reliable
-        photo_file = None
-        photo_base64 = None
+        # Get profile photo - multiple methods
+        photo_bytes = None
         
+        # Method 1: download_profile_photo
         try:
-            # Method 1: Download as file bytes
-            photo_file = await bot.download_profile_photo(entity, file=bytes)
-            if photo_file and len(photo_file) > 0:
-                import base64
-                photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(photo_file).decode('ascii')}"
-                logger.info(f"✅ Downloaded profile photo for @{target}, size: {len(photo_file)} bytes")
+            photo_bytes = await bot.download_profile_photo(entity, file=bytes)
+            if photo_bytes and len(photo_bytes) > 0:
+                logger.info(f"✅ Method 1 success for @{target}, size: {len(photo_bytes)} bytes")
         except Exception as e:
             logger.debug(f"Method 1 failed for @{target}: {e}")
         
+        # Method 2: download_media (fallback)
+        if not photo_bytes or len(photo_bytes) == 0:
+            try:
+                photo_bytes = await bot.download_media(entity, file=bytes)
+                if photo_bytes and len(photo_bytes) > 0:
+                    logger.info(f"✅ Method 2 success for @{target}, size: {len(photo_bytes)} bytes")
+            except Exception as e:
+                logger.debug(f"Method 2 failed for @{target}: {e}")
+        
         # If no photo found
-        if not photo_file:
+        if not photo_bytes or len(photo_bytes) == 0:
             await msg.edit(f"❌ **No Profile Photo**\n\n"
                           f"**Target:** @{target}\n"
                           f"**Type:** {entity_type}\n"
@@ -761,32 +772,36 @@ async def handle_get_profile(event):
             return
         
         # Get file size
-        file_size_kb = len(photo_file) / 1024
+        file_size_kb = len(photo_bytes) / 1024
+        
+        # Convert to base64 for database
+        import base64
+        photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
+        
+        # Save to database via Flask API
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.post('http://localhost:5050/api/winedash/profile-photo/save',
+                                       json={'username': target, 'photo_url': photo_base64}) as resp:
+                    if resp.status == 200:
+                        logger.info(f"✅ Profile photo saved to database for @{target}")
+                    else:
+                        logger.warning(f"Failed to save photo for @{target}: {resp.status}")
+        except Exception as e:
+            logger.error(f"Error saving to database: {e}")
         
         # Send photo directly
         await bot.send_file(
             event.chat_id,
-            photo_file,
+            photo_bytes,
             caption=f"📸 **Profile Photo Found!**\n\n"
                    f"**Target:** @{target}\n"
                    f"**Type:** {entity_type}\n"
                    f"**Name:** {entity_name}\n"
-                   f"**Size:** {file_size_kb:.1f} KB\n\n"
-                   f"🔗 **Preview URL:** `{target}`",
+                   f"**Size:** {file_size_kb:.1f} KB",
             force_document=False
         )
-        
-        # Save to database via Flask API
-        if photo_base64:
-            try:
-                import aiohttp
-                async with aiohttp.ClientSession() as session:
-                    async with session.post('http://localhost:5050/api/winedash/profile-photo/save',
-                                           json={'username': target, 'photo_url': photo_base64}) as resp:
-                        if resp.status == 200:
-                            logger.info(f"✅ Profile photo saved to database for @{target}")
-            except Exception as e:
-                logger.error(f"Error saving to database: {e}")
         
         await msg.delete()
         
