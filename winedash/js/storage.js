@@ -183,6 +183,29 @@
     }
 
     // ==================== CRUD OPERATIONS ====================
+    async function refreshDefaultProfilePhotos() {
+        // Cari semua avatar yang masih menggunakan logo default
+        const defaultAvatars = document.querySelectorAll('.username-card .card-avatar img[src*="winedash-logo.png"]');
+        
+        for (const img of defaultAvatars) {
+            const card = img.closest('.username-card');
+            if (card && card.dataset.username) {
+                try {
+                    const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                    const usernameStr = usernameData.username;
+                    
+                    const photoUrl = await fetchProfilePhoto(usernameStr);
+                    if (photoUrl && !photoUrl.includes('winedash-logo.png')) {
+                        img.src = photoUrl;
+                        console.log(`✅ Refreshed avatar for @${usernameStr}`);
+                    }
+                } catch (e) {
+                    console.error('Error refreshing avatar:', e);
+                }
+            }
+        }
+    }
+
     async function loadUsernames() {
         showLoading(true);
         
@@ -194,7 +217,6 @@
             console.log('[DEBUG] Load usernames response:', data);
             
             if (data.success && data.usernames) {
-                // Filter hanya username milik user yang login
                 if (telegramUser) {
                     allUsernames = data.usernames.filter(u => u.seller_id === telegramUser.id);
                     console.log(`[DEBUG] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
@@ -202,6 +224,11 @@
                     allUsernames = data.usernames;
                 }
                 filterAndRender();
+                
+                // Refresh foto profil yang masih default setelah render
+                setTimeout(() => {
+                    refreshDefaultProfilePhotos();
+                }, 500);
             } else {
                 console.log('[DEBUG] No usernames found or error:', data);
                 allUsernames = [];
@@ -841,17 +868,43 @@
             const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
             const data = await response.json();
             
-            if (data.success && data.photo_url) {
-                // Simpan ke cache jika bukan default logo
-                if (!data.photo_url.includes('winedash-logo.png')) {
-                    localStorage.setItem(`avatar_${username}`, data.photo_url);
-                }
+            if (data.success && data.photo_url && !data.photo_url.includes('ui-avatars.com')) {
+                // Simpan ke cache
+                localStorage.setItem(`avatar_${username}`, data.photo_url);
                 return data.photo_url;
             }
-            return "https://companel.shop/image/winedash-logo.png";
+            
+            // Jika tidak ada foto, return null agar bisa diambil ulang nanti
+            return null;
         } catch (error) {
             console.error('Error fetching profile photo:', error);
-            return "https://companel.shop/image/winedash-logo.png";
+            return null;
+        }
+    }
+
+    // Fungsi untuk memeriksa dan memperbarui foto profil yang masih default
+    async function checkAndUpdateDefaultPhotos() {
+        if (!telegramUser) return;
+        
+        // Ambil semua username yang fotonya masih default
+        const cardsWithDefaultPhoto = document.querySelectorAll('.username-card .card-avatar img[src*="winedash-logo.png"], .username-card .card-avatar img[src*="ui-avatars.com"]');
+        
+        for (const img of cardsWithDefaultPhoto) {
+            const card = img.closest('.username-card');
+            if (card && card.dataset.username) {
+                try {
+                    const usernameData = JSON.parse(card.dataset.username);
+                    const usernameStr = usernameData.username;
+                    
+                    const photoUrl = await fetchProfilePhoto(usernameStr);
+                    if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
+                        img.src = photoUrl;
+                        console.log(`✅ Updated profile photo for @${usernameStr}`);
+                    }
+                } catch (e) {
+                    console.error('Error updating card photo:', e);
+                }
+            }
         }
     }
 
@@ -873,7 +926,7 @@
             const emptyAddBtn = document.getElementById('emptyAddBtn');
             if (emptyAddBtn) {
                 emptyAddBtn.addEventListener('click', () => {
-                    elements.addModal.style.display = 'flex';
+                    if (elements.addModal) elements.addModal.style.display = 'flex';
                     hapticLight();
                 });
             }
@@ -887,26 +940,15 @@
                 const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
                 const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
                 
-                // Pastikan username adalah string, bukan bytes
                 let usernameStr = username.username;
                 if (typeof usernameStr !== 'string') {
                     usernameStr = String(usernameStr);
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
-                const firstChar = usernameStr.charAt(0) || 'U';
+                // Gunakan default logo sementara, nanti akan diupdate async
+                const defaultAvatar = "https://companel.shop/image/winedash-logo.png";
                 
-                // Avatar URL - coba ambil dari localStorage cache dulu
-                let cachedAvatar = localStorage.getItem(`avatar_${usernameStr}`);
-                let avatarUrl;
-                
-                if (cachedAvatar && !cachedAvatar.includes('ui-avatars.com')) {
-                    avatarUrl = cachedAvatar;
-                } else {
-                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
-                }
-                
-                // Escape username untuk JSON
                 const usernameData = {
                     id: username.id,
                     username: usernameStr,
@@ -919,10 +961,10 @@
                 };
                 
                 html += `
-                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData)}'>
+                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
                         <div class="username-card-image">
                             <div class="card-avatar">
-                                <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
+                                <img src="${defaultAvatar}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                             </div>
                             <div class="card-username">@${escapeHtml(usernameStr)}</div>
                         </div>
@@ -940,32 +982,10 @@
             }
             elements.usernameContainer.innerHTML = html;
             
-            // Fetch foto profil asli secara async untuk setiap card
-            for (const username of usernames) {
-                let usernameStr = username.username;
-                if (typeof usernameStr !== 'string') {
-                    usernameStr = String(usernameStr);
-                }
-                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
-                
-                // Cek apakah sudah ada di cache dan bukan default
-                let cachedAvatar = localStorage.getItem(`avatar_${usernameStr}`);
-                if (!cachedAvatar || cachedAvatar.includes('ui-avatars.com')) {
-                    // Fetch asynchronously
-                    fetchProfilePhoto(usernameStr).then(photoUrl => {
-                        if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
-                            localStorage.setItem(`avatar_${usernameStr}`, photoUrl);
-                            // Refresh card image jika card masih ada
-                            const cardImg = document.querySelector(`.username-card[data-id="${username.id}"] .card-avatar img`);
-                            if (cardImg && cardImg.src !== photoUrl) {
-                                cardImg.src = photoUrl;
-                            }
-                        }
-                    }).catch(error => {
-                        console.error('Error fetching profile photo for', usernameStr, error);
-                    });
-                }
-            }
+            // Update foto profil secara async
+            setTimeout(() => {
+                updateAllCardAvatars();
+            }, 100);
             
         } else {
             // List layout
@@ -975,7 +995,6 @@
                 const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
                 const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
                 
-                // Pastikan username adalah string
                 let usernameStr = username.username;
                 if (typeof usernameStr !== 'string') {
                     usernameStr = String(usernameStr);
@@ -1007,16 +1026,19 @@
             elements.usernameContainer.innerHTML = html;
         }
         
-        // Attach event listeners untuk card (grid layout)
+        // Attach event listeners
         document.querySelectorAll('.username-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.card-action-btn')) return;
-                const usernameData = JSON.parse(card.dataset.username);
-                showDetailPanel(usernameData);
+                try {
+                    const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                    showDetailPanel(usernameData);
+                } catch (err) {
+                    console.error('Error parsing username data:', err);
+                }
             });
         });
         
-        // Attach event listeners untuk list layout
         document.querySelectorAll('.toggle-status-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -1035,6 +1057,41 @@
                 }
             });
         });
+    }
+
+    async function updateAllCardAvatars() {
+        const avatars = document.querySelectorAll('.username-card .card-avatar img.avatar-img');
+        
+        for (const img of avatars) {
+            const username = img.dataset.username;
+            if (!username) continue;
+            
+            // Cek cache dulu
+            const cached = localStorage.getItem(`avatar_${username}`);
+            if (cached && !cached.includes('winedash-logo.png') && !cached.includes('ui-avatars.com')) {
+                if (img.src !== cached) {
+                    img.src = cached;
+                }
+                continue;
+            }
+            
+            // Fetch dari server
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+                const data = await response.json();
+                
+                if (data.success && data.photo_url && !data.photo_url.includes('ui-avatars.com')) {
+                    localStorage.setItem(`avatar_${username}`, data.photo_url);
+                    img.src = data.photo_url;
+                    console.log(`✅ Updated avatar for @${username}`);
+                }
+            } catch (error) {
+                console.error(`Error fetching avatar for @${username}:`, error);
+            }
+            
+            // Beri jeda agar tidak overload
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
     }
 
     // Fungsi untuk mendapatkan avatar berdasarkan username
@@ -1138,7 +1195,6 @@
         });
     }
 
-    // Perbaiki fungsi showDetailPanel
     async function showDetailPanel(username) {
         // Hapus panel dan overlay yang sudah ada
         const existingPanel = document.querySelector('.detail-panel');
@@ -1158,16 +1214,23 @@
         const createdAt = formatDateIndonesia(username.created_at);
         const isListed = username.status === 'available';
         
-        // Ambil foto profil asli dari server
-        let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(usernameStr.charAt(0) || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
+        // Loading state untuk avatar
+        let avatarUrl = "https://companel.shop/image/winedash-logo.png";
         
-        try {
-            const photoUrl = await fetchProfilePhoto(usernameStr);
-            if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
-                avatarUrl = photoUrl;
-            }
-        } catch (error) {
-            console.error('Error loading profile photo:', error);
+        // Cek cache
+        const cached = localStorage.getItem(`avatar_${usernameStr}`);
+        if (cached && !cached.includes('winedash-logo.png') && !cached.includes('ui-avatars.com')) {
+            avatarUrl = cached;
+        } else {
+            // Fetch async
+            fetchProfilePhoto(usernameStr).then(photoUrl => {
+                if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
+                    const detailImg = document.querySelector('.detail-panel .detail-avatar-img img');
+                    if (detailImg && detailImg.src !== photoUrl) {
+                        detailImg.src = photoUrl;
+                    }
+                }
+            }).catch(console.error);
         }
         
         // Buat overlay untuk blur
@@ -1185,7 +1248,7 @@
             </div>
             <div class="detail-avatar">
                 <div class="detail-avatar-img">
-                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.src='https://companel.shop/image/winedash-logo.png'">
+                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                 </div>
                 <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
             </div>
@@ -1224,6 +1287,15 @@
         `;
         
         document.body.appendChild(panel);
+        
+        // Update avatar di detail panel jika perlu
+        if (!cached || cached.includes('ui-avatars.com')) {
+            const photoUrl = await fetchProfilePhoto(usernameStr);
+            if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
+                const detailImg = panel.querySelector('.detail-avatar-img img');
+                if (detailImg) detailImg.src = photoUrl;
+            }
+        }
         
         // Prevent scroll pada body
         document.body.classList.add('panel-open');

@@ -1114,38 +1114,39 @@ def get_profile_photo(username):
     try:
         print(f"[DEBUG] Fetching profile photo for username: {username}")
         
+        # Bersihkan username
+        username_clean = username.lstrip('@').strip()
+        
         with sqlite3.connect(db.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
             # Cek di tabel usernames
-            cursor.execute('SELECT photo_url FROM usernames WHERE username = ?', (username,))
+            cursor.execute('SELECT photo_url FROM usernames WHERE username = ?', (username_clean,))
             row = cursor.fetchone()
-            if row and row['photo_url']:
-                print(f"[DEBUG] Found photo_url in usernames for {username}")
+            if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
+                print(f"[DEBUG] Found photo_url in usernames for {username_clean}")
                 return jsonify({'success': True, 'photo_url': row['photo_url']})
             
             # Cek di tabel pending_usernames
             cursor.execute("PRAGMA table_info(pending_usernames)")
             columns = [col[1] for col in cursor.fetchall()]
             if 'photo_url' in columns:
-                cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username,))
+                cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username_clean,))
                 row = cursor.fetchone()
-                if row and row['photo_url']:
-                    print(f"[DEBUG] Found photo_url in pending_usernames for {username}")
+                if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
+                    print(f"[DEBUG] Found photo_url in pending_usernames for {username_clean}")
                     return jsonify({'success': True, 'photo_url': row['photo_url']})
         
-        # Return default avatar using ui-avatars
-        initial = username[0] if username else 'U'
-        default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
-        print(f"[DEBUG] Returning default avatar for {username}")
-        return jsonify({'success': True, 'photo_url': default_avatar})
+        # Return null agar frontend bisa fetch ulang nanti
+        print(f"[DEBUG] No profile photo found for {username_clean}")
+        return jsonify({'success': False, 'photo_url': None, 'message': 'No photo found'})
         
     except Exception as e:
         print(f"Error in get_profile_photo: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': True, 'photo_url': "https://ui-avatars.com/api/?name=U&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"})
+        return jsonify({'success': False, 'photo_url': None, 'error': str(e)})
     
 @winedash_bp.route('/profile-photo/direct/<string:username>', methods=['GET', 'OPTIONS'])
 def get_direct_profile_photo(username):
