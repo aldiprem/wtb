@@ -718,7 +718,6 @@
         }
     }
 
-    // Perbaiki fungsi addUsername
     async function addUsername(username, price, category) {
         if (!telegramUser) {
             showToast('Login terlebih dahulu', 'warning');
@@ -734,6 +733,13 @@
         // Validasi
         if (!cleanUsername) {
             showToast('Username tidak boleh kosong', 'warning');
+            return false;
+        }
+        
+        // Validasi username hanya boleh huruf, angka, underscore
+        const usernameRegex = /^[a-zA-Z0-9_]+$/;
+        if (!usernameRegex.test(cleanUsername)) {
+            showToast('Username hanya boleh berisi huruf, angka, dan underscore', 'warning');
             return false;
         }
         
@@ -765,27 +771,22 @@
                 body: JSON.stringify(requestBody)
             });
             
-            const data = await response.json();
+            // Handle response dengan benar
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                console.error('[DEBUG] Failed to parse response:', e);
+                showToast('Server error, silakan coba lagi', 'error');
+                return false;
+            }
+            
             console.log('[DEBUG] Add username response:', data);
             
-            if (data.success) {
+            if (response.ok && data.success) {
                 hapticSuccess();
                 showToast(data.message || 'Username akan diproses oleh bot dalam beberapa saat!', 'success');
                 await loadPendingCount();
-                
-                // ==== PERBAIKAN UTAMA: Ambil foto profil langsung setelah add ====
-                // Ini akan memastikan foto profil langsung tersimpan
-                setTimeout(async () => {
-                    console.log(`[DEBUG] Fetching profile photo for @${cleanUsername} after add...`);
-                    const photoUrl = await fetchAndSaveProfilePhotoDirect(cleanUsername);
-                    if (photoUrl) {
-                        // Refresh tampilan username yang baru ditambahkan
-                        await loadUsernames();
-                        showToast(`✅ Foto profil @${cleanUsername} berhasil dimuat!`, 'success', 2000);
-                    } else {
-                        console.log(`[DEBUG] No profile photo available for @${cleanUsername} yet, will retry later`);
-                    }
-                }, 3000); // Tunggu 3 detik agar bot sempat memproses
                 
                 // Refresh inbox content if open
                 const panel = document.getElementById('inboxPanel');
@@ -793,14 +794,16 @@
                     await loadPendingList();
                 }
                 
+                // Reset form modal
+                if (elements.addModal) {
+                    elements.addModal.style.display = 'none';
+                    clearModal();
+                }
+                
                 return true;
             } else {
                 const errorMsg = data.error || 'Gagal menambahkan username';
                 showToast(errorMsg, 'error');
-                
-                if (errorMsg.includes('tidak ditemukan') || errorMsg.includes('not found')) {
-                    showToast('⚠️ Pastikan username Telegram benar dan sudah terdaftar!', 'warning', 5000);
-                }
                 return false;
             }
         } catch (error) {
@@ -998,17 +1001,51 @@
             const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
             const data = await response.json();
             
-            if (data.success && data.photo_url && !data.photo_url.includes('ui-avatars.com')) {
+            if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
                 // Simpan ke cache
                 localStorage.setItem(`avatar_${username}`, data.photo_url);
                 return data.photo_url;
             }
             
-            // Jika tidak ada foto, return null agar bisa diambil ulang nanti
             return null;
         } catch (error) {
             console.error('Error fetching profile photo:', error);
             return null;
+        }
+    }
+
+    async function autoRefreshAvatars() {
+        const defaultAvatars = document.querySelectorAll('.username-card .card-avatar img[src*="winedash-logo.png"]');
+        
+        for (const img of defaultAvatars) {
+            const username = img.dataset.username;
+            if (!username) continue;
+            
+            // Cek di cache
+            const cached = localStorage.getItem(`avatar_${username}`);
+            if (cached && cached !== 'https://companel.shop/image/winedash-logo.png') {
+                if (img.src !== cached) {
+                    img.src = cached;
+                }
+                continue;
+            }
+            
+            // Fetch dari server
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+                const data = await response.json();
+                
+                if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                    localStorage.setItem(`avatar_${username}`, data.photo_url);
+                    img.src = data.photo_url;
+                    console.log(`✅ Auto-refreshed avatar for @${username}`);
+                }
+            } catch (error) {
+                console.error(`Error auto-refreshing avatar for @${username}:`, error);
+            }
+            
+            // Delay agar tidak overload
+            await new Promise(resolve => setTimeout(resolve, 200));
         }
     }
 

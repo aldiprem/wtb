@@ -730,11 +730,12 @@ def add_pending_username():
         username = data.get('username')
         price = data.get('price')
         seller_id = data.get('seller_id')
-        seller_wallet = data.get('seller_wallet')
+        seller_wallet = data.get('seller_wallet', '')
         category = data.get('category', 'default')
         
         print(f"[DEBUG] Parsed: username={username}, price={price}, seller_id={seller_id}")
         
+        # Validasi input
         if not username:
             return jsonify({'success': False, 'error': 'Username tidak boleh kosong'}), 400
         
@@ -745,32 +746,10 @@ def add_pending_username():
             return jsonify({'success': False, 'error': 'Seller ID diperlukan'}), 400
         
         # Clean username
-        username_clean = username.lstrip('@')
+        username_clean = username.lstrip('@').strip()
         
-        # CEK APAKAH USERNAME VALID (BOT BISA MENDETEKSI)
-        # Kita coba deteksi dulu sebelum menambah ke pending
-        import requests
-        
-        BOT_TOKEN = os.getenv("BOT_WINEDASH", "")
-        
-        if BOT_TOKEN:
-            # Cek apakah username valid menggunakan Telegram Bot API
-            check_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChat"
-            check_params = {'chat_id': f"@{username_clean}"}
-            
-            try:
-                check_response = requests.get(check_url, params=check_params, timeout=10)
-                check_data = check_response.json()
-                
-                if not check_data.get('ok'):
-                    error_msg = check_data.get('description', 'Username tidak valid')
-                    print(f"[DEBUG] Username check failed: {error_msg}")
-                    return jsonify({'success': False, 'error': f'Username @{username_clean} tidak ditemukan di Telegram!'}), 400
-                else:
-                    print(f"[DEBUG] Username @{username_clean} is valid!")
-            except Exception as e:
-                print(f"[DEBUG] Error checking username: {e}")
-                # Lanjutkan meskipun gagal check, biar bot yang menentukan
+        if not username_clean:
+            return jsonify({'success': False, 'error': 'Username tidak valid'}), 400
         
         # Tambahkan ke pending
         pending_id = db.add_pending_username(
@@ -785,7 +764,7 @@ def add_pending_username():
         print(f"[DEBUG] add_pending_username result: pending_id={pending_id}")
         
         if not pending_id:
-            return jsonify({'success': False, 'error': 'Gagal menambahkan username (mungkin sudah ada)'}), 500
+            return jsonify({'success': False, 'error': 'Gagal menambahkan username (mungkin sudah ada atau username tidak valid)'}), 400
         
         return jsonify({
             'success': True,
@@ -1135,10 +1114,10 @@ def get_profile_photo(username):
         return response
     
     try:
-        print(f"[DEBUG] Fetching profile photo for username: {username}")
-        
         # Bersihkan username
         username_clean = username.lstrip('@').strip()
+        
+        print(f"[DEBUG] Fetching profile photo for username: {username_clean}")
         
         with sqlite3.connect(db.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -1147,7 +1126,7 @@ def get_profile_photo(username):
             # Cek di tabel usernames
             cursor.execute('SELECT photo_url FROM usernames WHERE username = ?', (username_clean,))
             row = cursor.fetchone()
-            if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
+            if row and row['photo_url']:
                 print(f"[DEBUG] Found photo_url in usernames for {username_clean}")
                 return jsonify({'success': True, 'photo_url': row['photo_url']})
             
@@ -1157,20 +1136,20 @@ def get_profile_photo(username):
             if 'photo_url' in columns:
                 cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username_clean,))
                 row = cursor.fetchone()
-                if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
+                if row and row['photo_url']:
                     print(f"[DEBUG] Found photo_url in pending_usernames for {username_clean}")
                     return jsonify({'success': True, 'photo_url': row['photo_url']})
         
-        # Return null agar frontend bisa fetch ulang nanti
+        # Tidak ada foto
         print(f"[DEBUG] No profile photo found for {username_clean}")
-        return jsonify({'success': False, 'photo_url': None, 'message': 'No photo found'})
+        return jsonify({'success': False, 'photo_url': None})
         
     except Exception as e:
         print(f"Error in get_profile_photo: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'photo_url': None, 'error': str(e)})
-    
+
 @winedash_bp.route('/profile-photo/direct/<string:username>', methods=['GET', 'OPTIONS'])
 def get_direct_profile_photo(username):
     """Get profile photo directly from Telegram (forward to bot)"""
@@ -1272,107 +1251,6 @@ def save_profile_photo():
         
     except Exception as e:
         print(f"Error saving profile photo: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
-    
-@winedash_bp.route('/profile-photo/fetch/<string:username>', methods=['POST', 'OPTIONS'])
-def fetch_profile_photo_via_bot(username):
-    """Fetch profile photo directly via bot (like /get command)"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'success': True})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
-    
-    try:
-        import requests
-        import base64
-        
-        username_clean = username.lstrip('@').strip()
-        BOT_TOKEN = os.getenv("BOT_WINEDASH", "")
-        
-        if not BOT_TOKEN:
-            return jsonify({'success': False, 'error': 'Bot not configured'}), 500
-        
-        print(f"[DEBUG] Fetching profile photo for @{username_clean} via bot...")
-        
-        # Gunakan Telegram Bot API untuk mendapatkan foto profil
-        # Method 1: getChat
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChat"
-        params = {'chat_id': f"@{username_clean}"}
-        
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json()
-        
-        photo_url = None
-        
-        if data.get('ok') and data.get('result', {}).get('photo'):
-            # Dapatkan file_id foto profil
-            photo = data['result']['photo']
-            if isinstance(photo, dict) and 'big_file_id' in photo:
-                file_id = photo['big_file_id']
-            elif isinstance(photo, list) and len(photo) > 0:
-                # Ambil ukuran terbesar
-                file_id = photo[-1]['file_id']
-            else:
-                file_id = None
-            
-            if file_id:
-                # Get file path
-                file_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getFile"
-                file_response = requests.get(file_url, params={'file_id': file_id}, timeout=10)
-                file_data = file_response.json()
-                
-                if file_data.get('ok'):
-                    file_path = file_data['result']['file_path']
-                    photo_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
-                    print(f"[DEBUG] Got photo URL: {photo_url[:100]}...")
-                    
-                    # Download dan konversi ke base64 untuk disimpan
-                    img_response = requests.get(photo_url, timeout=10)
-                    if img_response.status_code == 200:
-                        photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(img_response.content).decode('ascii')}"
-                        
-                        # Simpan ke database
-                        with sqlite3.connect(db.db_path) as conn:
-                            cursor = conn.cursor()
-                            
-                            # Pastikan kolom photo_url ada
-                            cursor.execute("PRAGMA table_info(usernames)")
-                            columns = [col[1] for col in cursor.fetchall()]
-                            if 'photo_url' not in columns:
-                                cursor.execute('ALTER TABLE usernames ADD COLUMN photo_url TEXT')
-                            
-                            # Update di usernames
-                            cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_base64, username_clean))
-                            
-                            # Juga update di pending_usernames
-                            cursor.execute("PRAGMA table_info(pending_usernames)")
-                            columns = [col[1] for col in cursor.fetchall()]
-                            if 'photo_url' in columns:
-                                cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_base64, username_clean))
-                            
-                            conn.commit()
-                        
-                        return jsonify({'success': True, 'photo_url': photo_base64})
-        
-        # Method 2: Gunakan getChatMember untuk user
-        if not photo_url:
-            try:
-                member_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
-                member_params = {'chat_id': f"@{username_clean}", 'user_id': username_clean}
-                # Ini mungkin tidak berhasil untuk channel/group
-            except:
-                pass
-        
-        # Jika tidak ada foto, kembalikan default
-        initial = username_clean[0] if username_clean else 'U'
-        default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
-        return jsonify({'success': False, 'photo_url': default_avatar, 'message': 'No profile photo'})
-        
-    except Exception as e:
-        print(f"Error in fetch_profile_photo_via_bot: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
