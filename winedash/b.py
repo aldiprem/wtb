@@ -5,10 +5,11 @@ import os
 import asyncio
 import random
 import string
+import base64
 from datetime import datetime, timedelta
 from pathlib import Path
 from dotenv import load_dotenv
-from telethon import TelegramClient, events, Button
+from telethon import TelegramClient, events, Button, types, errors
 import logging
 import sqlite3
 import json
@@ -692,6 +693,8 @@ async def save_profile_photo_to_server(username: str, photo_url: str):
     except Exception as e:
         logger.error(f"Error saving profile photo to server: {e}")
 
+# Tambahkan di b.py setelah fungsi check_entity_type
+
 @bot.on(events.NewMessage(pattern=r'^/get(@?\S+)?$'))
 async def handle_get_profile(event):
     """Handle /get command to fetch profile photo"""
@@ -734,10 +737,22 @@ async def handle_get_profile(event):
             if hasattr(entity, 'last_name') and entity.last_name:
                 entity_name = f"{entity_name} {entity.last_name}"
         
-        # Get profile photo
-        photo_bytes = await bot.download_profile_photo(entity, file=bytes)
+        # Get profile photo - cara yang lebih reliable
+        photo_file = None
+        photo_base64 = None
         
-        if not photo_bytes:
+        try:
+            # Method 1: Download as file bytes
+            photo_file = await bot.download_profile_photo(entity, file=bytes)
+            if photo_file and len(photo_file) > 0:
+                import base64
+                photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(photo_file).decode('ascii')}"
+                logger.info(f"✅ Downloaded profile photo for @{target}, size: {len(photo_file)} bytes")
+        except Exception as e:
+            logger.debug(f"Method 1 failed for @{target}: {e}")
+        
+        # If no photo found
+        if not photo_file:
             await msg.edit(f"❌ **No Profile Photo**\n\n"
                           f"**Target:** @{target}\n"
                           f"**Type:** {entity_type}\n"
@@ -745,33 +760,33 @@ async def handle_get_profile(event):
                           f"This {entity_type.lower()} doesn't have a profile photo.")
             return
         
-        # Save to database (optional)
-        import base64
-        photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
-        
-        async with aiohttp.ClientSession() as session:
-            async with session.post('http://localhost:5050/api/winedash/profile-photo/save',
-                                   json={'username': target, 'photo_url': photo_base64}) as resp:
-                pass
-        
         # Get file size
-        file_size_kb = len(photo_bytes) / 1024
+        file_size_kb = len(photo_file) / 1024
         
-        # Preview URL
-        preview_url = f"https://companel.shop/ii/{target}"
-        
-        # Send photo
+        # Send photo directly
         await bot.send_file(
             event.chat_id,
-            photo_bytes,
+            photo_file,
             caption=f"📸 **Profile Photo Found!**\n\n"
                    f"**Target:** @{target}\n"
                    f"**Type:** {entity_type}\n"
                    f"**Name:** {entity_name}\n"
                    f"**Size:** {file_size_kb:.1f} KB\n\n"
-                   f"🔗 **Preview URL:** {preview_url}",
+                   f"🔗 **Preview URL:** `{target}`",
             force_document=False
         )
+        
+        # Save to database via Flask API
+        if photo_base64:
+            try:
+                import aiohttp
+                async with aiohttp.ClientSession() as session:
+                    async with session.post('http://localhost:5050/api/winedash/profile-photo/save',
+                                           json={'username': target, 'photo_url': photo_base64}) as resp:
+                        if resp.status == 200:
+                            logger.info(f"✅ Profile photo saved to database for @{target}")
+            except Exception as e:
+                logger.error(f"Error saving to database: {e}")
         
         await msg.delete()
         

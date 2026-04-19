@@ -367,6 +367,91 @@ def serve_image_direct():
         print(f"❌ Error serving image: {e}")
         return "Image service error", 500
 
+# Tambahkan di app.py setelah route winedash lainnya
+
+@app.route('/winedash/photo/<string:username>')
+def serve_winedash_photo(username):
+    """Serve profile photo preview page"""
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Profile Photo - @{username}</title>
+        <style>
+            body {{
+                background: #0a0a0a;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                margin: 0;
+                padding: 20px;
+            }}
+            .container {{
+                text-align: center;
+            }}
+            .photo-container {{
+                background: #111111;
+                border-radius: 24px;
+                padding: 20px;
+                display: inline-block;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            }}
+            img {{
+                max-width: 300px;
+                max-height: 300px;
+                border-radius: 20px;
+                object-fit: cover;
+            }}
+            .username {{
+                color: white;
+                margin-top: 16px;
+                font-size: 18px;
+                font-weight: 600;
+            }}
+            .error {{
+                color: #ef4444;
+                font-size: 14px;
+            }}
+            .loading {{
+                color: #a0a0a0;
+                font-size: 14px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="photo-container">
+                <div id="photoContainer">
+                    <div class="loading">Loading profile photo...</div>
+                </div>
+                <div class="username">@{username}</div>
+            </div>
+        </div>
+        <script>
+            fetch('/api/winedash/profile-photo/{username}')
+                .then(res => res.json())
+                .then(data => {{
+                    if (data.success && data.photo_url) {{
+                        document.getElementById('photoContainer').innerHTML = 
+                            `<img src="${{data.photo_url}}" alt="@{username}">`;
+                    }} else {{
+                        document.getElementById('photoContainer').innerHTML = 
+                            `<div class="error">No profile photo found</div>`;
+                    }}
+                }})
+                .catch(err => {{
+                    document.getElementById('photoContainer').innerHTML = 
+                        `<div class="error">Error loading photo</div>`;
+                }});
+        </script>
+    </body>
+    </html>
+    '''
+
 # ==================== STATIC ROUTES (WEBSITE) ====================
 
 @app.route('/')

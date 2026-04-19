@@ -1121,7 +1121,7 @@ def get_profile_photo(username):
             # Cek di tabel usernames
             cursor.execute('SELECT photo_url FROM usernames WHERE username = ?', (username,))
             row = cursor.fetchone()
-            if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
+            if row and row['photo_url']:
                 print(f"[DEBUG] Found photo_url in usernames for {username}")
                 return jsonify({'success': True, 'photo_url': row['photo_url']})
             
@@ -1131,20 +1131,21 @@ def get_profile_photo(username):
             if 'photo_url' in columns:
                 cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username,))
                 row = cursor.fetchone()
-                if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
+                if row and row['photo_url']:
                     print(f"[DEBUG] Found photo_url in pending_usernames for {username}")
                     return jsonify({'success': True, 'photo_url': row['photo_url']})
         
-        # Return default logo
-        default_avatar = "https://companel.shop/image/winedash-logo.png"
-        print(f"[DEBUG] Returning default logo for {username}")
+        # Return default avatar using ui-avatars
+        initial = username[0] if username else 'U'
+        default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        print(f"[DEBUG] Returning default avatar for {username}")
         return jsonify({'success': True, 'photo_url': default_avatar})
         
     except Exception as e:
         print(f"Error in get_profile_photo: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': True, 'photo_url': "https://companel.shop/image/winedash-logo.png"})
+        return jsonify({'success': True, 'photo_url': "https://ui-avatars.com/api/?name=U&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"})
     
 @winedash_bp.route('/profile-photo/direct/<string:username>', methods=['GET', 'OPTIONS'])
 def get_direct_profile_photo(username):
@@ -1213,26 +1214,40 @@ def save_profile_photo():
         if not username or not photo_url:
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
+        print(f"[DEBUG] Saving profile photo for username: {username}")
+        print(f"[DEBUG] Photo URL length: {len(photo_url)} characters")
+        
         with sqlite3.connect(db.db_path) as conn:
             cursor = conn.cursor()
+            
+            # Pastikan kolom photo_url ada di usernames
+            cursor.execute("PRAGMA table_info(usernames)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'photo_url' not in columns:
+                cursor.execute('ALTER TABLE usernames ADD COLUMN photo_url TEXT')
+                print("✅ Added photo_url column to usernames")
             
             # Cek di usernames
             cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
             if cursor.fetchone():
                 cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
+                print(f"✅ Updated photo_url in usernames for {username}")
             else:
                 # Cek di pending_usernames
                 cursor.execute("PRAGMA table_info(pending_usernames)")
                 columns = [col[1] for col in cursor.fetchall()]
                 if 'photo_url' not in columns:
                     cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
+                    print("✅ Added photo_url column to pending_usernames")
                 cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
+                print(f"✅ Updated photo_url in pending_usernames for {username}")
             
             conn.commit()
         
-        print(f"[DEBUG] Saved profile photo for {username}: {photo_url[:50]}...")
         return jsonify({'success': True, 'message': 'Photo saved'})
         
     except Exception as e:
         print(f"Error saving profile photo: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
