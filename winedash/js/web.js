@@ -1132,29 +1132,55 @@
         }
     }
 
+    async function getMarketplaceBalance() {
+        if (!telegramUser) return 0;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+            const data = await response.json();
+            if (data.success && data.user) {
+                return parseFloat(data.user.balance);
+            }
+            return 0;
+        } catch (error) {
+            console.error('Error fetching marketplace balance:', error);
+            return 0;
+        }
+    }
+
     // ==================== REFRESH ====================
-            
+
     async function refreshAllData() {
         hapticLight();
         
-        // Refresh user data dari server
+        // Refresh user data dari server (balance marketplace)
         const user = await authenticateUser();
         
         if (user) {
-            // Update balance di UI
+            // Update balance marketplace di UI
             if (elements.balanceAmount) {
                 const newBalance = formatNumber(user.balance);
                 elements.balanceAmount.textContent = newBalance;
-                console.log(`💰 RefreshAllData - Balance updated to: ${newBalance} TON`);
+                console.log(`💰 Marketplace balance updated: ${newBalance} TON`);
             }
-            // Update currentWalletBalance
+            // Update currentWalletBalance (balance marketplace)
             currentWalletBalance = parseFloat(user.balance);
             
-            // Update wallet main card balance
+            // Update wallet main card balance marketplace
             const walletBalanceAmount = document.getElementById('walletBalanceAmount');
             if (walletBalanceAmount) {
                 walletBalanceAmount.textContent = currentWalletBalance.toFixed(2);
             }
+        }
+        
+        // ==================== PERBAIKAN: Refresh wallet TON Connect balance ====================
+        if (isWalletConnected && walletAddress) {
+            const tonBalance = await getWalletBalance(walletAddress);
+            const tonWalletBalanceElement = document.getElementById('walletBalanceAmount');
+            if (tonWalletBalanceElement) {
+                tonWalletBalanceElement.textContent = tonBalance.toFixed(2);
+            }
+            console.log(`💰 TON Wallet balance: ${tonBalance} TON`);
         }
         
         await loadUsernames();
@@ -1604,7 +1630,7 @@
             closeWithdrawPanel();
         });
         
-        // ==================== PERBAIKAN: Quick amount buttons dengan balance wallet TON ====================
+        // ==================== PERBAIKAN: Quick amount buttons ====================
         document.querySelectorAll('.quick-amount-btn').forEach(btn => {
             const newBtn = btn.cloneNode(true);
             btn.parentNode.replaceChild(newBtn, btn);
@@ -1622,8 +1648,19 @@
                             balance = await getWalletBalance(walletAddress);
                         }
                     } else {
-                        // Untuk withdraw, ambil balance dari database user
-                        balance = currentWalletBalance;
+                        // ==================== PERBAIKAN: Untuk withdraw, ambil balance dari DATABASE ====================
+                        if (telegramUser) {
+                            try {
+                                const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+                                const data = await response.json();
+                                if (data.success && data.user) {
+                                    balance = parseFloat(data.user.balance);
+                                    console.log(`💰 Marketplace balance for quick amount: ${balance} TON`);
+                                }
+                            } catch (error) {
+                                console.error('Error fetching marketplace balance:', error);
+                            }
+                        }
                     }
                     
                     if (balance > 0) {
@@ -1638,7 +1675,7 @@
                         input.value = amount.toFixed(2);
                         input.dispatchEvent(new Event('input'));
                     } else {
-                        showToast(isDeposit ? 'Wallet tidak memiliki saldo' : 'Saldo Anda 0 TON', 'warning');
+                        showToast(isDeposit ? 'Wallet tidak memiliki saldo' : 'Saldo marketplace Anda 0 TON', 'warning');
                     }
                 }
             });
@@ -1762,55 +1799,6 @@
         hapticLight();
     }
 
-    // Update wallet UI dengan Tonkeeper style
-    function updateWalletMainUI() {
-        const walletMainCard = document.getElementById('walletMainCard');
-        const walletAddressDisplay = document.getElementById('walletAddressValue');
-        const walletBalanceAmount = document.getElementById('walletBalanceAmount');
-        
-        console.log('🔄 updateWalletMainUI called - isWalletConnected:', isWalletConnected, 'walletAddress:', walletAddress);
-        
-        if (isWalletConnected && walletAddress) {
-            if (walletMainCard) walletMainCard.style.display = 'block';
-            
-            // Format address
-            const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-            if (walletAddressDisplay) walletAddressDisplay.textContent = formattedAddress;
-            
-            // Update balance - ambil dari user data
-            const getBalance = async () => {
-                if (telegramUser) {
-                    try {
-                        const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
-                        const data = await response.json();
-                        if (data.success && data.user) {
-                            currentWalletBalance = parseFloat(data.user.balance);
-                            if (walletBalanceAmount) walletBalanceAmount.textContent = currentWalletBalance.toFixed(2);
-                            console.log(`💰 Wallet balance updated: ${currentWalletBalance} TON`);
-                        } else {
-                            console.log('⚠️ User data not found, using default balance 0');
-                            if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
-                        }
-                    } catch (error) {
-                        console.error('Error fetching balance:', error);
-                        if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
-                    }
-                } else {
-                    console.log('⚠️ telegramUser not available yet');
-                    if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
-                }
-            };
-            getBalance();
-            
-        } else {
-            if (walletMainCard) {
-                walletMainCard.style.display = 'none';
-                console.log('⚠️ Wallet not connected, hiding main card');
-            }
-            currentWalletBalance = 0;
-        }
-    }
-
     // Update deposit function di depositFromPanel
     async function depositFromPanel() {
         const amountInput = document.getElementById('depositAmountInput');
@@ -1927,7 +1915,8 @@
         return hash;
     }
 
-    // Override withdraw function dengan panel
+    // ==================== WITHDRAW ====================
+
     async function withdrawFromPanel() {
         const amountInput = document.getElementById('withdrawAmountInput');
         const amount = parseFloat(amountInput?.value);
@@ -1943,22 +1932,36 @@
         }
         
         if (!tonConnectUI?.connected) {
-            showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+            showToast('Hubungkan wallet TON terlebih dahulu untuk menerima dana', 'warning');
             closeWithdrawPanel();
             await connectWallet();
             return;
         }
         
-        // Cek balance user
-        if (currentWalletBalance < amount) {
-            showToast(`Saldo tidak mencukupi. Saldo Anda: ${currentWalletBalance} TON`, 'error');
+        // ==================== PERBAIKAN: Cek balance dari DATABASE (bukan dari wallet) ====================
+        // Ambil balance dari database user (saldo marketplace)
+        let dbBalance = 0;
+        if (telegramUser) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+                const data = await response.json();
+                if (data.success && data.user) {
+                    dbBalance = parseFloat(data.user.balance);
+                }
+            } catch (error) {
+                console.error('Error fetching user balance:', error);
+            }
+        }
+        
+        if (dbBalance < amount) {
+            showToast(`Saldo marketplace tidak mencukupi. Saldo Anda: ${dbBalance} TON`, 'error');
             return;
         }
         
         const WITHDRAW_FEE = 0.02;
         const amountToReceive = amount - WITHDRAW_FEE;
         
-        if (!confirm(`Anda akan withdraw ${amount} TON.\n\nBiaya jaringan (fee): ${WITHDRAW_FEE} TON\nJumlah yang akan diterima: ${amountToReceive.toFixed(2)} TON\n\nLanjutkan?`)) {
+        if (!confirm(`Anda akan withdraw ${amount} TON dari marketplace.\n\nBiaya jaringan (fee): ${WITHDRAW_FEE} TON\nJumlah yang akan diterima di wallet: ${amountToReceive.toFixed(2)} TON\n\nLanjutkan?`)) {
             return;
         }
         
@@ -1978,7 +1981,7 @@
             const shortId = Math.random().toString(36).substring(2, 12);
             const memo = `wd_${shortId}:${telegramUser.id}`;
             
-            // Create withdrawal request
+            // Step 1: Create withdrawal request di database
             const createResponse = await fetch(`${API_BASE_URL}/api/winedash/withdraw/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1997,6 +2000,7 @@
             
             showToast('⏳ Memproses withdraw, mohon tunggu...', 'info');
             
+            // Step 2: Process withdrawal (kirim TON ke user)
             const processResponse = await fetch(`${API_BASE_URL}/api/winedash/withdraw/process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2021,6 +2025,7 @@
             closeWithdrawPanel();
             await refreshAllData();
             updateWalletMainUI();
+            updateBalanceCardUI();
             
             // Buka link transaction di tonviewer jika ada
             if (processData.transaction_hash) {
@@ -2035,7 +2040,7 @@
             console.error('❌ Withdraw error:', error);
             let errorMessage = error.message;
             if (error.message.includes('Insufficient balance')) {
-                errorMessage = 'Saldo tidak mencukupi';
+                errorMessage = 'Saldo marketplace tidak mencukupi';
             } else if (error.message.includes('network')) {
                 errorMessage = 'Gangguan jaringan, coba lagi nanti';
             }
@@ -2136,7 +2141,6 @@
     function setupWalletEventListeners() {
         const walletDepositBtn = document.getElementById('walletDepositBtn');
         if (walletDepositBtn) {
-            // Hapus listener lama dengan clone untuk menghindari duplikasi
             const newBtn = walletDepositBtn.cloneNode(true);
             walletDepositBtn.parentNode.replaceChild(newBtn, walletDepositBtn);
             newBtn.addEventListener('click', (e) => {
@@ -2156,19 +2160,25 @@
         if (walletWithdrawBtn) {
             const newBtn = walletWithdrawBtn.cloneNode(true);
             walletWithdrawBtn.parentNode.replaceChild(newBtn, walletWithdrawBtn);
-            newBtn.addEventListener('click', (e) => {
+            newBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('💰 Withdraw button clicked');
+                
                 if (!isWalletConnected) {
                     showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
                     connectWallet();
                     return;
                 }
-                if (currentWalletBalance <= 0) {
-                    showToast('Saldo Anda 0 TON, tidak bisa withdraw', 'warning');
+                
+                // ==================== PERBAIKAN: Cek balance marketplace ====================
+                const marketplaceBalance = await getMarketplaceBalance();
+                
+                if (marketplaceBalance <= 0) {
+                    showToast('Saldo marketplace Anda 0 TON, tidak bisa withdraw', 'warning');
                     return;
                 }
+                
                 showWithdrawPanel();
             });
         }
@@ -2188,18 +2198,23 @@
         }
     }
 
-    // ==================== GET WALLET BALANCE FROM TON CONNECT ====================
+    // ==================== GET WALLET BALANCE FROM TON CONNECT (PLANE GIFT STYLE) ====================
 
     async function getWalletBalance(walletAddress) {
         if (!walletAddress) return 0;
         
         try {
             // Gunakan API Toncenter untuk mendapatkan balance
+            // API Key public untuk testing (bisa diganti dengan API key sendiri)
             const TONCENTER_API_KEY = 'af0bd0bcfbea3c226c990fdce598de6c9f9f9a0a0b4c9e2f8e3c5a1d9b8f7e6d5';
             const url = `https://toncenter.com/api/v2/getAddressInformation?address=${walletAddress}&api_key=${TONCENTER_API_KEY}`;
             
+            console.log(`🔍 Fetching balance for address: ${walletAddress}`);
+            
             const response = await fetch(url);
             const data = await response.json();
+            
+            console.log('📊 Balance API response:', data);
             
             if (data.ok && data.result) {
                 // Balance dalam nano TON, konversi ke TON
@@ -2208,6 +2223,19 @@
                 console.log(`💰 Wallet balance: ${balanceTon} TON`);
                 return balanceTon;
             }
+            
+            // Fallback: coba endpoint lain
+            const fallbackUrl = `https://tonapi.io/v2/accounts/${walletAddress}`;
+            const fallbackResponse = await fetch(fallbackUrl);
+            const fallbackData = await fallbackResponse.json();
+            
+            if (fallbackData && fallbackData.balance) {
+                const balanceNano = parseFloat(fallbackData.balance);
+                const balanceTon = balanceNano / 1_000_000_000;
+                console.log(`💰 Wallet balance (fallback): ${balanceTon} TON`);
+                return balanceTon;
+            }
+            
             return 0;
         } catch (error) {
             console.error('Error fetching wallet balance:', error);
@@ -2215,7 +2243,21 @@
         }
     }
 
-    // Update fungsi updateWalletMainUI untuk menampilkan balance wallet TON Connect
+    // Fungsi untuk refresh balance wallet TON Connect
+    async function refreshTonWalletBalance() {
+        if (isWalletConnected && walletAddress) {
+            const balance = await getWalletBalance(walletAddress);
+            const walletBalanceElement = document.getElementById('walletBalanceAmount');
+            if (walletBalanceElement) {
+                walletBalanceElement.textContent = balance.toFixed(2);
+            }
+            console.log(`🔄 TonWallet balance refreshed: ${balance} TON`);
+            return balance;
+        }
+        return 0;
+    }
+
+    // Update wallet UI dengan Tonkeeper style
     function updateWalletMainUI() {
         const walletMainCard = document.getElementById('walletMainCard');
         const walletAddressDisplay = document.getElementById('walletAddressValue');
@@ -2226,17 +2268,17 @@
         if (isWalletConnected && walletAddress) {
             if (walletMainCard) walletMainCard.style.display = 'block';
             
-            // Tampilkan alamat (opsional, bisa disembunyikan)
+            // Tampilkan alamat yang dipersingkat
             const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
             if (walletAddressDisplay) walletAddressDisplay.textContent = formattedAddress;
             
-            // Ambil balance dari wallet TON Connect (bukan dari database)
+            // ==================== PERBAIKAN: Ambil balance dari wallet TON Connect (bukan dari database) ====================
             const fetchBalance = async () => {
                 const balance = await getWalletBalance(walletAddress);
                 if (walletBalanceAmount) {
                     walletBalanceAmount.textContent = balance.toFixed(2);
+                    console.log(`💰 Wallet TON Connect balance: ${balance} TON`);
                 }
-                console.log(`💰 Wallet TON Connect balance: ${balance} TON`);
             };
             fetchBalance();
             
