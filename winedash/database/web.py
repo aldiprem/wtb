@@ -344,18 +344,37 @@ class WinedashDatabase:
                 
                 print(f"[DB] confirm_deposit called with transaction_id: {transaction_id}")
                 
-                # Cek deposit dengan status 'pending'
+                # ==================== PERBAIKAN: CEK DOUBLE PROCESSING ====================
+                # Cek apakah deposit sudah pernah diproses sebelumnya
                 cursor.execute('''
                     SELECT id, user_id, amount, status FROM deposits 
-                    WHERE transaction_id = ? AND status = 'pending'
+                    WHERE transaction_id = ?
                 ''', (transaction_id,))
                 deposit = cursor.fetchone()
                 
                 if not deposit:
-                    print(f"[DB] Deposit not found or already processed: {transaction_id}")
+                    print(f"[DB] Deposit not found: {transaction_id}")
                     return False
                 
                 deposit_id, user_id, amount, current_status = deposit
+                
+                # Jika sudah completed, jangan proses lagi
+                if current_status == 'completed':
+                    print(f"[DB] Deposit {transaction_id} already completed, skipping...")
+                    return True
+                
+                # Cek apakah balance sudah pernah ditambahkan (cek di transactions)
+                cursor.execute('''
+                    SELECT 1 FROM transactions 
+                    WHERE transaction_id = ? AND type = 'deposit' AND status = 'success'
+                ''', (transaction_id,))
+                if cursor.fetchone():
+                    print(f"[DB] Deposit {transaction_id} already recorded in transactions, skipping...")
+                    # Update status deposit ke completed jika masih pending
+                    if current_status == 'pending':
+                        cursor.execute('UPDATE deposits SET status = "completed", completed_at = ? WHERE id = ?', (now, deposit_id))
+                        conn.commit()
+                    return True
                 
                 print(f"[DB] Found deposit: id={deposit_id}, user_id={user_id}, amount={amount}")
                 
@@ -371,7 +390,6 @@ class WinedashDatabase:
                     WHERE user_id = ?
                 ''', (amount, amount, user_id))
                 
-                # Cek apakah update balance berhasil
                 if cursor.rowcount == 0:
                     print(f"[DB] Failed to update balance for user {user_id}")
                     return False

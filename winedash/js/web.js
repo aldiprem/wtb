@@ -587,6 +587,14 @@
             return;
         }
         
+        // ==================== TAMBAHKAN KONFIRMASI FEE ====================
+        const WITHDRAW_FEE = 0.02;
+        const amountToReceive = amount - WITHDRAW_FEE;
+        
+        if (!confirm(`Anda akan withdraw ${amount} TON.\n\nBiaya jaringan (fee): ${WITHDRAW_FEE} TON\nJumlah yang akan diterima: ${amountToReceive.toFixed(2)} TON\n\nLanjutkan?`)) {
+            return;
+        }
+        
         hapticMedium();
         
         const withdrawBtn = elements.withdrawBtn;
@@ -642,7 +650,7 @@
             
             console.log('✅ Withdrawal processed:', processData);
             
-            showToast(`✅ Withdraw ${amount} TON berhasil! Dana akan segera masuk ke wallet Anda.`, 'success');
+            showToast(`✅ Withdraw ${amount} TON berhasil! (Fee ${WITHDRAW_FEE} TON, ${amountToReceive.toFixed(2)} TON dikirim)`, 'success');
             
             // Reset form
             if (elements.withdrawAmount) elements.withdrawAmount.value = '';
