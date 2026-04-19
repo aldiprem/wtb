@@ -725,7 +725,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                    
+                        
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -733,15 +733,18 @@
         
         if (usernames.length === 0) {
             if (emptyAnimationDiv) {
-                emptyAnimationDiv.style.display = 'block';
+                emptyAnimationDiv.style.display = 'flex';
+                emptyAnimationDiv.style.flexDirection = 'column';
+                emptyAnimationDiv.style.alignItems = 'center';
+                emptyAnimationDiv.style.justifyContent = 'center';
                 elements.usernameList.style.display = 'none';
                 loadMarketplaceTGSAnimation();
             } else {
                 elements.usernameList.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-animation" id="marketplaceEmptyAnimation"></div>
-                        <div class="empty-title">No Usernames Available</div>
-                        <div class="empty-subtitle">Be the first to list your username!</div>
+                    <div class="empty-state" style="min-height: 300px; padding: 40px 20px;">
+                        <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 80px; height: 80px; margin: 0 auto 16px;"></div>
+                        <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
+                        <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
                     </div>
                 `;
                 loadMarketplaceTGSAnimation();
@@ -902,7 +905,7 @@
         
         renderUsernames(filtered);
     }
-            
+                
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
@@ -913,21 +916,24 @@
             if (data.success && data.usernames.length > 0) {
                 // Hanya tampilkan username yang statusnya 'available'
                 allUsernames = data.usernames.filter(u => u.status === 'available');
-                applyFiltersAndRender();  // Gunakan applyFiltersAndRender
+                applyFiltersAndRender();
             } else {
                 allUsernames = [];
-                // PERBAIKAN: Tampilkan empty state dengan animasi, bukan teks biasa
+                // PERBAIKAN: Tampilkan empty state dengan animasi di dalam section-card
                 const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                 if (emptyAnimationDiv) {
-                    emptyAnimationDiv.style.display = 'block';
+                    emptyAnimationDiv.style.display = 'flex';
+                    emptyAnimationDiv.style.flexDirection = 'column';
+                    emptyAnimationDiv.style.alignItems = 'center';
+                    emptyAnimationDiv.style.justifyContent = 'center';
                     elements.usernameList.style.display = 'none';
                     loadMarketplaceTGSAnimation();
                 } else {
                     elements.usernameList.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-animation" id="marketplaceEmptyAnimation"></div>
-                            <div class="empty-title">No Usernames Available</div>
-                            <div class="empty-subtitle">Be the first to list your username!</div>
+                        <div class="empty-state" style="min-height: 300px; padding: 40px 20px;">
+                            <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 80px; height: 80px; margin: 0 auto 16px;"></div>
+                            <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
+                            <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
                         </div>
                     `;
                     loadMarketplaceTGSAnimation();
@@ -2569,7 +2575,16 @@
         if (!container) return;
         
         // Clear container
-        container.innerHTML = '';
+        container.innerHTML = `
+            <div class="empty-state" style="min-height: 300px; padding: 40px 20px;">
+                <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 80px; height: 80px; margin: 0 auto 16px;"></div>
+                <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
+                <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
+            </div>
+        `;
+        
+        const animationContainer = document.getElementById('marketplaceEmptyAnimationInner');
+        if (!animationContainer) return;
         
         // Load libraries yang diperlukan
         function loadLibraries() {
@@ -2614,7 +2629,7 @@
                 const animationData = JSON.parse(decompressed);
                 
                 window.lottie.loadAnimation({
-                    container: container,
+                    container: animationContainer,
                     renderer: 'svg',
                     loop: true,
                     autoplay: true,
@@ -2625,7 +2640,7 @@
                 });
             } catch (error) {
                 console.error('Error loading TGS file:', error);
-                container.innerHTML = '<i class="fas fa-store" style="font-size: 64px; color: var(--text-muted);"></i>';
+                animationContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
             }
         }
         
@@ -2633,7 +2648,7 @@
             loadTGSFile();
         }).catch(err => {
             console.error('Error loading libraries:', err);
-            container.innerHTML = '<i class="fas fa-store" style="font-size: 64px; color: var(--text-muted);"></i>';
+            animationContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
         });
     }
 
