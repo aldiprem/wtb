@@ -1310,6 +1310,8 @@
         }
     }
 
+    // ==================== INITIALIZATION ====================
+    
     function initTelegram() {
         const tg = getTelegramWebApp();
         if (tg) {
@@ -1350,39 +1352,207 @@
         }
     }
 
-    // Setup wallet panel event listeners
-    function setupWalletEventListeners() {
-        const walletDepositBtn = document.getElementById('walletDepositBtn');
-        if (walletDepositBtn) {
-            // Hapus listener lama dengan clone
-            const newBtn = walletDepositBtn.cloneNode(true);
-            walletDepositBtn.parentNode.replaceChild(newBtn, walletDepositBtn);
-            newBtn.addEventListener('click', showDepositPanel);
+    // Fungsi untuk menampilkan filter panel
+    function showFilterPanel() {
+        // Hapus panel yang sudah ada
+        const existingPanel = document.querySelector('.filter-panel');
+        if (existingPanel) existingPanel.remove();
+        
+        if (!filterOverlay) {
+            filterOverlay = document.createElement('div');
+            filterOverlay.className = 'filter-overlay';
+            document.body.appendChild(filterOverlay);
+            filterOverlay.addEventListener('click', closeFilterPanel);
         }
         
-        const walletWithdrawBtn = document.getElementById('walletWithdrawBtn');
-        if (walletWithdrawBtn) {
-            const newBtn = walletWithdrawBtn.cloneNode(true);
-            walletWithdrawBtn.parentNode.replaceChild(newBtn, walletWithdrawBtn);
-            newBtn.addEventListener('click', showWithdrawPanel);
-        }
+        const panel = document.createElement('div');
+        panel.className = 'filter-panel';
+        panel.innerHTML = `
+            <div class="filter-drag-handle"></div>
+            <div class="filter-header">
+                <h3><i class="fas fa-filter"></i> Filter & Sort</h3>
+                <button class="filter-close">&times;</button>
+            </div>
+            <div class="filter-content">
+                <div class="filter-section">
+                    <div class="filter-section-title">Sort By</div>
+                    <div class="filter-options">
+                        <button class="filter-option ${currentSort === 'default' ? 'active' : ''}" data-sort="default">
+                            <i class="fas fa-clock"></i> Default
+                        </button>
+                        <button class="filter-option ${currentSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
+                            <i class="fas fa-arrow-up"></i> Price: Low to High
+                        </button>
+                        <button class="filter-option ${currentSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
+                            <i class="fas fa-arrow-down"></i> Price: High to Low
+                        </button>
+                        <button class="filter-option ${currentSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
+                            <i class="fas fa-sort-alpha-down"></i> Name: A to Z
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <div class="filter-section-title">Price Range</div>
+                    <div class="filter-options">
+                        <button class="filter-option ${currentPriceFilter === 'all' ? 'active' : ''}" data-price="all">
+                            <i class="fas fa-globe"></i> All
+                        </button>
+                        <button class="filter-option ${currentPriceFilter === 'under10' ? 'active' : ''}" data-price="under10">
+                            <i class="fas fa-tag"></i> Under 10 TON
+                        </button>
+                        <button class="filter-option ${currentPriceFilter === '10to50' ? 'active' : ''}" data-price="10to50">
+                            <i class="fas fa-tags"></i> 10 - 50 TON
+                        </button>
+                        <button class="filter-option ${currentPriceFilter === 'above50' ? 'active' : ''}" data-price="above50">
+                            <i class="fas fa-crown"></i> Above 50 TON
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <div class="filter-section-title">Layout</div>
+                    <div class="filter-options layout-options">
+                        <button class="filter-option ${currentLayout === 'grid' ? 'active' : ''}" data-layout="grid">
+                            <i class="fas fa-th"></i> Grid View
+                        </button>
+                        <button class="filter-option ${currentLayout === 'list' ? 'active' : ''}" data-layout="list">
+                            <i class="fas fa-list"></i> List View
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="filter-reset">Reset All</button>
+                <button class="filter-apply">Apply</button>
+            </div>
+        `;
         
-        const confirmDepositBtn = document.getElementById('confirmDepositBtn');
-        if (confirmDepositBtn) {
-            const newBtn = confirmDepositBtn.cloneNode(true);
-            confirmDepositBtn.parentNode.replaceChild(newBtn, confirmDepositBtn);
-            newBtn.addEventListener('click', depositFromPanel);
-        }
+        document.body.appendChild(panel);
+        filterOverlay.classList.add('active');
+        document.body.classList.add('filter-open');
         
-        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
-        if (confirmWithdrawBtn) {
-            const newBtn = confirmWithdrawBtn.cloneNode(true);
-            confirmWithdrawBtn.parentNode.replaceChild(newBtn, confirmWithdrawBtn);
-            newBtn.addEventListener('click', withdrawFromPanel);
-        }
+        setTimeout(() => panel.classList.add('open'), 10);
+        
+        // Close button
+        const closeBtn = panel.querySelector('.filter-close');
+        closeBtn.addEventListener('click', closeFilterPanel);
+        
+        // Reset button
+        const resetBtn = panel.querySelector('.filter-reset');
+        resetBtn.addEventListener('click', () => {
+            currentSort = 'default';
+            currentPriceFilter = 'all';
+            currentLayout = localStorage.getItem('market_layout') || 'grid';
+            applyFiltersAndRender();
+            closeFilterPanel();
+        });
+        
+        // Apply button
+        const applyBtn = panel.querySelector('.filter-apply');
+        applyBtn.addEventListener('click', () => {
+            applyFiltersAndRender();
+            closeFilterPanel();
+        });
+        
+        // Sort options
+        panel.querySelectorAll('[data-sort]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSort = btn.dataset.sort;
+            });
+        });
+        
+        // Price options
+        panel.querySelectorAll('[data-price]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('[data-price]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentPriceFilter = btn.dataset.price;
+            });
+        });
+        
+        // Layout options
+        panel.querySelectorAll('[data-layout]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('[data-layout]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLayout = btn.dataset.layout;
+                localStorage.setItem('market_layout', currentLayout);
+                applyFiltersAndRender();
+            });
+        });
+        
+        // Drag to close
+        const dragHandle = panel.querySelector('.filter-drag-handle');
+        let startY = 0, currentY = 0, isDragging = false;
+        
+        dragHandle.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            panel.style.transition = 'none';
+            hapticLight();
+        });
+        
+        dragHandle.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            if (deltaY > 0) {
+                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+            }
+        });
+        
+        dragHandle.addEventListener('touchend', () => {
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            if (currentY - startY > 100) {
+                closeFilterPanel();
+            } else {
+                panel.style.transform = '';
+            }
+        });
+        
+        hapticLight();
     }
 
-    // Inisialisasi wallet panels
+    function closeFilterPanel() {
+        const panel = document.querySelector('.filter-panel');
+        if (panel) {
+            panel.classList.remove('open');
+            setTimeout(() => panel.remove(), 300);
+        }
+        if (filterOverlay) filterOverlay.classList.remove('active');
+        document.body.classList.remove('filter-open');
+        hapticLight();
+    }
+
+    function applyFiltersAndRender() {
+        let filtered = [...allUsernames];
+        
+        // Price filter
+        if (currentPriceFilter !== 'all') {
+            filtered = filtered.filter(u => {
+                const price = u.price;
+                if (currentPriceFilter === 'under10') return price < 10;
+                if (currentPriceFilter === '10to50') return price >= 10 && price <= 50;
+                if (currentPriceFilter === 'above50') return price > 50;
+                return true;
+            });
+        }
+        
+        // Sort
+        if (currentSort !== 'default') {
+            filtered.sort((a, b) => {
+                if (currentSort === 'price_asc') return a.price - b.price;
+                if (currentSort === 'price_desc') return b.price - a.price;
+                if (currentSort === 'name_asc') return a.username.localeCompare(b.username);
+                return 0;
+            });
+        }
+        
+        renderUsernames(filtered);
+    }
+
     function initWalletPanels() {
         depositPanel = document.getElementById('depositPanel');
         withdrawPanel = document.getElementById('withdrawPanel');
@@ -1398,17 +1568,13 @@
         // Deposit panel close
         const closeDepositBtn = document.getElementById('closeDepositPanelBtn');
         if (closeDepositBtn) {
-            const newBtn = closeDepositBtn.cloneNode(true);
-            closeDepositBtn.parentNode.replaceChild(newBtn, closeDepositBtn);
-            newBtn.addEventListener('click', closeDepositPanel);
+            closeDepositBtn.addEventListener('click', closeDepositPanel);
         }
         
         // Withdraw panel close
         const closeWithdrawBtn = document.getElementById('closeWithdrawPanelBtn');
         if (closeWithdrawBtn) {
-            const newBtn = closeWithdrawBtn.cloneNode(true);
-            closeWithdrawBtn.parentNode.replaceChild(newBtn, closeWithdrawBtn);
-            newBtn.addEventListener('click', closeWithdrawPanel);
+            closeWithdrawBtn.addEventListener('click', closeWithdrawPanel);
         }
         
         // Overlay click
@@ -1419,11 +1585,9 @@
         
         // Quick amount buttons
         document.querySelectorAll('.quick-amount-btn').forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.addEventListener('click', (e) => {
-                const percent = parseInt(newBtn.dataset.percent);
-                const isDeposit = newBtn.closest('#depositPanel') !== null;
+            btn.addEventListener('click', (e) => {
+                const percent = parseInt(btn.dataset.percent);
+                const isDeposit = btn.closest('#depositPanel') !== null;
                 const input = isDeposit ? document.getElementById('depositAmountInput') : document.getElementById('withdrawAmountInput');
                 
                 if (input && currentWalletBalance > 0) {
@@ -1433,10 +1597,12 @@
                     } else {
                         amount = (currentWalletBalance * percent) / 100;
                     }
+                    // Untuk withdraw, bulatkan ke 2 desimal
                     if (!isDeposit) {
                         amount = Math.floor(amount * 100) / 100;
                     }
                     input.value = amount.toFixed(2);
+                    // Trigger input event untuk validasi
                     input.dispatchEvent(new Event('input'));
                 }
             });
@@ -1493,15 +1659,19 @@
     function showDepositPanel() {
         if (!depositPanel) return;
         
+        // Reset transform
         depositPanel.style.transform = '';
         depositPanel.style.transition = '';
         
+        // Reset input
         const input = document.getElementById('depositAmountInput');
         if (input) input.value = '';
         
+        // Tampilkan overlay
         walletPanelOverlay.classList.add('active');
         document.body.classList.add('wallet-panel-open');
         
+        // Tampilkan panel
         depositPanel.style.display = 'flex';
         setTimeout(() => {
             depositPanel.classList.add('open');
@@ -1524,15 +1694,19 @@
     function showWithdrawPanel() {
         if (!withdrawPanel) return;
         
+        // Reset transform
         withdrawPanel.style.transform = '';
         withdrawPanel.style.transition = '';
         
+        // Reset input
         const input = document.getElementById('withdrawAmountInput');
         if (input) input.value = '';
         
+        // Tampilkan overlay
         walletPanelOverlay.classList.add('active');
         document.body.classList.add('wallet-panel-open');
         
+        // Tampilkan panel
         withdrawPanel.style.display = 'flex';
         setTimeout(() => {
             withdrawPanel.classList.add('open');
@@ -1558,10 +1732,8 @@
         const walletAddressDisplay = document.getElementById('walletAddressValue');
         const walletBalanceAmount = document.getElementById('walletBalanceAmount');
         
-        console.log('🔄 updateWalletMainUI called - isWalletConnected:', isWalletConnected, 'walletAddress:', walletAddress);
-        
         if (isWalletConnected && walletAddress) {
-            if (walletMainCard) walletMainCard.style.display = 'block';
+            walletMainCard.style.display = 'block';
             
             // Format address
             const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
@@ -1576,7 +1748,6 @@
                         if (data.success && data.user) {
                             currentWalletBalance = parseFloat(data.user.balance);
                             if (walletBalanceAmount) walletBalanceAmount.textContent = currentWalletBalance.toFixed(2);
-                            console.log(`💰 Wallet balance updated: ${currentWalletBalance} TON`);
                         }
                     } catch (error) {
                         console.error('Error fetching balance:', error);
@@ -1586,12 +1757,12 @@
             getBalance();
             
         } else {
-            if (walletMainCard) walletMainCard.style.display = 'none';
+            walletMainCard.style.display = 'none';
             currentWalletBalance = 0;
         }
     }
 
-    // Deposit from panel
+    // Override deposit function dengan panel
     async function depositFromPanel() {
         const amountInput = document.getElementById('depositAmountInput');
         const amount = parseFloat(amountInput?.value);
@@ -1658,7 +1829,6 @@
                 closeDepositPanel();
                 await refreshAllData();
                 updateWalletMainUI();
-                updateBalanceCardUI();
             } else {
                 showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
                 await refreshAllData();
@@ -1685,7 +1855,7 @@
         }
     }
 
-    // Withdraw from panel
+    // Override withdraw function dengan panel
     async function withdrawFromPanel() {
         const amountInput = document.getElementById('withdrawAmountInput');
         const amount = parseFloat(amountInput?.value);
@@ -1707,6 +1877,7 @@
             return;
         }
         
+        // Cek balance user
         if (currentWalletBalance < amount) {
             showToast(`Saldo tidak mencukupi. Saldo Anda: ${currentWalletBalance} TON`, 'error');
             return;
@@ -1731,9 +1902,11 @@
         try {
             const destinationAddress = tonConnectUI.account?.address;
             
+            // Generate unique reference untuk memo
             const shortId = Math.random().toString(36).substring(2, 12);
             const memo = `wd_${shortId}:${telegramUser.id}`;
             
+            // Create withdrawal request
             const createResponse = await fetch(`${API_BASE_URL}/api/winedash/withdraw/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1776,8 +1949,8 @@
             closeWithdrawPanel();
             await refreshAllData();
             updateWalletMainUI();
-            updateBalanceCardUI();
             
+            // Buka link transaction di tonviewer jika ada
             if (processData.transaction_hash) {
                 setTimeout(() => {
                     if (confirm('Lihat detail transaksi di TonViewer?')) {
@@ -1803,7 +1976,105 @@
         }
     }
 
-    // HAPUS fungsi init() yang duplikat, gunakan satu ini:
+    // Update loadTransactionHistory untuk membuat klikable ke tonscan
+    async function loadTransactionHistory() {
+        if (!elements.historyList || !telegramUser) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/transactions/${telegramUser.id}`);
+            const data = await response.json();
+            
+            if (data.success && data.transactions.length > 0) {
+                let html = '';
+                for (const tx of data.transactions) {
+                    let iconClass = '';
+                    let icon = '';
+                    let amountClass = '';
+                    let amountPrefix = '';
+                    let txHash = tx.transaction_id;
+                    let explorerUrl = null;
+                    
+                    // Cek apakah transaction_id adalah hash yang valid (bukan generated)
+                    if (txHash && txHash.startsWith('0x') || (txHash.length === 64 && /^[a-fA-F0-9]{64}$/.test(txHash))) {
+                        explorerUrl = `https://tonviewer.com/transaction/${txHash}`;
+                    } else if (txHash && !txHash.startsWith('deposit_') && !txHash.startsWith('wd_')) {
+                        explorerUrl = `https://tonviewer.com/transaction/${txHash}`;
+                    }
+                    
+                    switch (tx.type) {
+                        case 'deposit':
+                            iconClass = 'deposit';
+                            icon = 'fa-arrow-down';
+                            amountClass = 'positive';
+                            amountPrefix = '+';
+                            break;
+                        case 'withdraw':
+                            iconClass = 'withdraw';
+                            icon = 'fa-arrow-up';
+                            amountClass = 'negative';
+                            amountPrefix = '-';
+                            break;
+                        default:
+                            iconClass = 'info';
+                            icon = 'fa-circle-info';
+                            amountClass = '';
+                            amountPrefix = '';
+                    }
+                    
+                    const clickableAttr = explorerUrl ? `data-url="${explorerUrl}" style="cursor: pointer;"` : '';
+                    const onClickAttr = explorerUrl ? `onclick="window.open('${explorerUrl}', '_blank')"` : '';
+                    
+                    html += `
+                        <div class="history-item" ${clickableAttr} ${onClickAttr}>
+                            <div class="history-icon ${iconClass}">
+                                <i class="fas ${icon}"></i>
+                            </div>
+                            <div class="history-info">
+                                <div class="history-title">${tx.type === 'deposit' ? 'Deposit' : tx.type === 'withdraw' ? 'Withdraw' : 'Pembelian Username'}</div>
+                                <div class="history-date">${formatDate(tx.created_at)}</div>
+                            </div>
+                            <div class="history-amount ${amountClass}">
+                                ${amountPrefix}${formatNumber(tx.amount)} TON
+                            </div>
+                            <div class="history-status ${tx.status}">
+                                ${tx.status === 'success' ? 'Sukses' : 'Pending'}
+                            </div>
+                        </div>
+                    `;
+                }
+                elements.historyList.innerHTML = html;
+            } else {
+                elements.historyList.innerHTML = '<div class="loading-placeholder">Belum ada riwayat transaksi</div>';
+            }
+        } catch (error) {
+            console.error('Error loading transaction history:', error);
+            elements.historyList.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+        }
+    }
+
+    // Update setupEventListeners untuk wallet
+    function setupWalletEventListeners() {
+        const walletDepositBtn = document.getElementById('walletDepositBtn');
+        if (walletDepositBtn) {
+            walletDepositBtn.addEventListener('click', showDepositPanel);
+        }
+        
+        const walletWithdrawBtn = document.getElementById('walletWithdrawBtn');
+        if (walletWithdrawBtn) {
+            walletWithdrawBtn.addEventListener('click', showWithdrawPanel);
+        }
+        
+        const confirmDepositBtn = document.getElementById('confirmDepositBtn');
+        if (confirmDepositBtn) {
+            confirmDepositBtn.addEventListener('click', depositFromPanel);
+        }
+        
+        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
+        if (confirmWithdrawBtn) {
+            confirmWithdrawBtn.addEventListener('click', withdrawFromPanel);
+        }
+    }
+
     async function init() {
         initTelegram();
         initSafeArea();
@@ -1823,7 +2094,6 @@
             await loadPurchasedUsernames();
             await loadTransactionHistory();
             updateWalletMainUI();
-            updateBalanceCardUI();
         } else {
             showToast('Tidak dapat mengambil data user', 'error');
         }
