@@ -242,11 +242,28 @@
             // Gunakan container baru untuk TON Connect
             tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
                 manifestUrl: manifestUrl,
-                buttonRootId: 'ton-connect-container', // Ganti ID container
+                buttonRootId: 'ton-connect-container',
                 language: 'en'
             });
             
             console.log('✅ TON Connect UI initialized');
+            
+            // Styling untuk tombol TON Connect
+            const style = document.createElement('style');
+            style.textContent = `
+                .ton-connect-center ton-connect-button,
+                .ton-connect-center button {
+                    --tc-button-background: #40a7e3;
+                    --tc-button-background-hover: #2d8bcb;
+                    --tc-button-text-color: white;
+                    --tc-border-radius: 40px;
+                    --tc-button-font-size: 14px;
+                    --tc-button-padding: 10px 20px;
+                    width: auto;
+                    min-width: 160px;
+                }
+            `;
+            document.head.appendChild(style);
             
             tonConnectUI.onStatusChange(async (wallet) => {
                 console.log('📱 Wallet status changed:', wallet);
@@ -1651,12 +1668,12 @@
         renderUsernames(filtered);
     }
 
-    // Update quick amount buttons handler di initWalletPanels
     function initWalletPanels() {
         depositPanel = document.getElementById('depositPanel');
         withdrawPanel = document.getElementById('withdrawPanel');
         walletPanelOverlay = document.getElementById('walletPanelOverlay');
         
+        // Hapus pembuatan overlay duplicate jika sudah ada di HTML
         if (!walletPanelOverlay) {
             walletPanelOverlay = document.createElement('div');
             walletPanelOverlay.id = 'walletPanelOverlay';
@@ -2320,9 +2337,10 @@
         
         console.log('🔄 updateWalletMainUI called - isWalletConnected:', isWalletConnected, 'walletAddress:', walletAddress);
         
+        // Selalu tampilkan wallet card
+        if (walletMainCard) walletMainCard.style.display = 'block';
+        
         if (isWalletConnected && walletAddress) {
-            if (walletMainCard) walletMainCard.style.display = 'block';
-            
             // Tampilkan alamat yang dipersingkat
             const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
             if (walletAddressDisplay) walletAddressDisplay.textContent = formattedAddress;
@@ -2337,24 +2355,21 @@
             };
             fetchBalance();
             
-            // Sembunyikan section-card yang berisi wallet info lama
+            // Sembunyikan section-card lama yang berisi wallet info
             const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
             if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
                 oldWalletSection.style.display = 'none';
             }
             
         } else {
-            if (walletMainCard) {
-                walletMainCard.style.display = 'block';
-                // Tampilkan pesan untuk connect wallet
-                if (walletAddressDisplay) walletAddressDisplay.textContent = 'Not connected';
-                if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
-            }
+            // Wallet belum terhubung - tampilkan status not connected
+            if (walletAddressDisplay) walletAddressDisplay.textContent = 'Not connected';
+            if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
             
-            // Tampilkan section-card lama untuk connect button
+            // Sembunyikan section-card lama
             const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
             if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
-                oldWalletSection.style.display = 'block';
+                oldWalletSection.style.display = 'none';
             }
         }
     }

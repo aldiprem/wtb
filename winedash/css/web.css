@@ -1355,7 +1355,7 @@ body.filter-open {
 .wallet-card {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     border-radius: 28px;
-    padding: 24px 20px;
+    padding: 32px 20px 24px 20px;
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1378,86 +1378,94 @@ body.filter-open {
     flex-direction: column;
     align-items: center;
     text-align: center;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
 }
 
+/* Hilangkan wallet-icon */
 .wallet-icon {
-    width: 56px;
-    height: 56px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-}
-
-.wallet-icon i {
-    font-size: 28px;
-    color: white;
-}
-
-.wallet-address-display {
-    margin-bottom: 16px;
     display: none;
 }
 
-.wallet-address-display {
-    margin-bottom: 8px;
-}
-
-.address-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    display: block;
-    margin-bottom: 2px;
-}
-
-.address-value {
-    font-size: 11px;
-    font-weight: 500;
-    font-family: monospace;
-    background: rgba(255, 255, 255, 0.08);
-    padding: 4px 10px;
-    border-radius: 16px;
-    display: inline-block;
-    word-break: break-all;
-    max-width: 200px;
-}
-
+/* Balance Large - Diperbesar */
 .wallet-balance-large {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-top: 8px;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
 .balance-logo-large {
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
     object-fit: contain;
 }
 
 .balance-amount-large {
-    font-size: 36px;
+    font-size: 44px;
     font-weight: 800;
     color: var(--text);
-    letter-spacing: -0.5px;
+    letter-spacing: -1px;
 }
 
 .balance-symbol {
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 500;
     color: var(--text-muted);
 }
 
+/* Wallet Address Display */
+.wallet-address-display {
+    text-align: center;
+    margin-top: 4px;
+}
+
+.address-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.address-value {
+    font-size: 13px;
+    font-weight: 500;
+    font-family: monospace;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 6px 14px;
+    border-radius: 30px;
+    display: inline-block;
+    word-break: break-all;
+}
+
+/* TON Connect Container - Center dan styling */
+.ton-connect-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 16px 0 20px;
+    padding: 8px 0;
+}
+
+/* Styling untuk tombol TON Connect bawaan */
+.ton-connect-center ton-connect-button,
+.ton-connect-center button {
+    --tc-button-background: var(--primary);
+    --tc-button-background-hover: var(--primary-dark);
+    --tc-button-text-color: white;
+    --tc-border-radius: 40px;
+    --tc-button-font-size: 14px;
+    --tc-button-padding: 12px 24px;
+}
+
+/* Wallet Card Actions */
 .wallet-card-actions {
     display: flex;
     gap: 16px;
     justify-content: center;
+    margin-top: 8px;
 }
 
 .wallet-action-btn {
@@ -1499,6 +1507,32 @@ body.filter-open {
 .wallet-action-btn.withdraw-action:hover {
     background: rgba(255, 255, 255, 0.25);
     transform: scale(1.02);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .balance-amount-large {
+        font-size: 32px;
+    }
+    
+    .balance-logo-large {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .balance-symbol {
+        font-size: 16px;
+    }
+    
+    .wallet-action-btn {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+    
+    .address-value {
+        font-size: 11px;
+        padding: 4px 12px;
+    }
 }
 
 /* ==================== WALLET PANEL STYLES ==================== */

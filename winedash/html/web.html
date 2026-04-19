@@ -113,32 +113,32 @@
             <div class="wallet-main-card" id="walletMainCard" style="display: none;">
                 <div class="wallet-card">
                     <div class="wallet-card-header">
-                        <div class="wallet-icon">
-                            <i class="fab fa-telegram"></i>
-                        </div>
-                        <div class="wallet-address-display" id="walletAddressDisplay">
-                            <span class="address-label">TON Wallet</span>
-                            <span class="address-value" id="walletAddressValue">Not connected</span>
-                        </div>
+                        <!-- HAPUS wallet-icon (fa-telegram) - sudah dihapus -->
+                        <!-- Wallet Balance - Diperbesar dan dipindahkan ke atas -->
                         <div class="wallet-balance-large" id="walletBalanceLarge">
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo-large">
                             <span class="balance-amount-large" id="walletBalanceAmount">0.00</span>
                             <span class="balance-symbol">TON</span>
                         </div>
+                        <!-- Wallet Address - di bawah balance -->
+                        <div class="wallet-address-display" id="walletAddressDisplay">
+                            <span class="address-label">TON Wallet</span>
+                            <span class="address-value" id="walletAddressValue">Not connected</span>
+                        </div>
                     </div>
-                    <!-- HAPUS wallet-card-actions dari sini, pindahkan ke bawah -->
-                </div>
-                <!-- Tambahkan TON Connect container di bawah wallet card -->
-                <div id="ton-connect-container" style="margin-top: 16px;"></div>
-                <div class="wallet-card-actions" style="margin-top: 16px;">
-                    <button class="wallet-action-btn deposit-action" id="walletDepositBtn">
-                        <i class="fas fa-arrow-down"></i>
-                        <span>Deposit</span>
-                    </button>
-                    <button class="wallet-action-btn withdraw-action" id="walletWithdrawBtn">
-                        <i class="fas fa-arrow-up"></i>
-                        <span>Withdraw</span>
-                    </button>
+                    <!-- TON Connect Container - di tengah antara balance/address dan tombol -->
+                    <div id="ton-connect-container" class="ton-connect-center"></div>
+                    <!-- Tombol Deposit & Withdraw -->
+                    <div class="wallet-card-actions">
+                        <button class="wallet-action-btn deposit-action" id="walletDepositBtn">
+                            <i class="fas fa-arrow-down"></i>
+                            <span>Deposit</span>
+                        </button>
+                        <button class="wallet-action-btn withdraw-action" id="walletWithdrawBtn">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Withdraw</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
