@@ -1112,19 +1112,41 @@ def get_profile_photo(username):
         return response
     
     try:
-        # Cek dari database pending_usernames apakah ada photo_url tersimpan
+        # Log untuk debugging
+        print(f"[DEBUG] Fetching profile photo for username: {username}")
+        
+        # Cek dari database usernames (bukan pending_usernames) apakah ada photo_url tersimpan
         with sqlite3.connect(db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            # Cek di pending_usernames
-            cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username,))
-            row = cursor.fetchone()
-            if row and row[0]:
-                return jsonify({'success': True, 'photo_url': row[0]})
+            
+            # Cek apakah ada kolom photo_url di tabel usernames
+            cursor.execute("PRAGMA table_info(usernames)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'photo_url' in columns:
+                cursor.execute('SELECT photo_url FROM usernames WHERE username = ?', (username,))
+                row = cursor.fetchone()
+                if row and row['photo_url']:
+                    print(f"[DEBUG] Found photo_url in usernames: {row['photo_url'][:50]}...")
+                    return jsonify({'success': True, 'photo_url': row['photo_url']})
         
         # Jika tidak ada, return default avatar based on username
-        default_avatar = f"https://ui-avatars.com/api/?name={username[0]}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        # Gunakan inisial username (2 huruf pertama)
+        initial = username[0] if username else 'U'
+        if len(username) >= 2:
+            initial = username[:2]
+        else:
+            initial = username[0] if username else 'U'
+        
+        default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=2"
+        
+        print(f"[DEBUG] Returning default avatar for {username}: {default_avatar}")
         return jsonify({'success': True, 'photo_url': default_avatar})
         
     except Exception as e:
         print(f"Error in get_profile_photo: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        # Return default avatar instead of error
+        return jsonify({'success': True, 'photo_url': f"https://ui-avatars.com/api/?name=U&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"})

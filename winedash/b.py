@@ -294,7 +294,6 @@ Masukkan kode di atas di halaman Storage untuk menyelesaikan verifikasi.
         return False
 
 # ==================== CALLBACK HANDLERS ====================
-
 @bot.on(events.CallbackQuery(pattern=r"verify_accept:(\d+):(.+)"))
 async def handle_verify_accept(event):
     """Handle accept verification from channel/group admin"""
@@ -307,9 +306,10 @@ async def handle_verify_accept(event):
         await event.answer("Data tidak ditemukan!", alert=True)
         return
     
-    # Confirm in database
-    if confirm_pending(pending_id, username, pending['category'], pending['price'], 
-                       pending['seller_id'], pending['seller_wallet']):
+    from winedash.database.web import WinedashDatabase
+    db = WinedashDatabase()
+    
+    if db.confirm_pending_username(pending_id, code=None):
         await event.answer("✅ Username berhasil diverifikasi!", alert=True)
         await event.edit("✅ **USERNAME TERVERIFIKASI!**\n\nUsername telah ditambahkan ke marketplace.")
         
@@ -325,14 +325,16 @@ async def handle_verify_accept(event):
     else:
         await event.answer("Gagal verifikasi!", alert=True)
 
-
 @bot.on(events.CallbackQuery(pattern=r"verify_reject:(\d+):(.+)"))
 async def handle_verify_reject(event):
     """Handle reject verification from channel/group admin"""
     pending_id = int(event.pattern_match.group(1))
     username = event.pattern_match.group(2)
     
-    if reject_pending(pending_id):
+    from winedash.database.web import WinedashDatabase
+    db = WinedashDatabase()
+    
+    if db.reject_pending_username(pending_id):
         await event.answer("❌ Username ditolak!", alert=True)
         await event.edit("❌ **USERNAME DITOLAK!**\n\nUsername tidak akan ditambahkan ke marketplace.")
         
@@ -433,8 +435,22 @@ async def process_verification(session, pending):
             pass
         return
     
-    # DETEKSI ENTITY TYPE MENGGUNAKAN TELEGRAM BOT
     entity_type, chat_id, title, photo_url = await check_entity_type(username)
+
+    # Simpan photo_url ke database jika ada
+    if photo_url:
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                # Cek apakah kolom photo_url ada di tabel usernames
+                cursor.execute("PRAGMA table_info(usernames)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'photo_url' in columns:
+                    # Update photo_url untuk username ini di tabel usernames
+                    cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
+                conn.commit()
+        except Exception as e:
+            logger.error(f"Error saving photo_url: {e}")
     
     if not entity_type:
         reject_pending(pending_id)

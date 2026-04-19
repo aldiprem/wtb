@@ -98,6 +98,7 @@ class WinedashDatabase:
                     price DECIMAL(20, 8) NOT NULL,
                     seller_id INTEGER,
                     seller_wallet TEXT,
+                    photo_url TEXT,
                     status TEXT DEFAULT 'available',
                     created_at TIMESTAMP,
                     sold_at TIMESTAMP,
@@ -123,6 +124,12 @@ class WinedashDatabase:
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )
             ''')
+
+            # Di dalam init_database, setelah CREATE TABLE usernames, tambahkan:
+            cursor.execute("PRAGMA table_info(usernames)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'photo_url' not in columns:
+                cursor.execute('ALTER TABLE usernames ADD COLUMN photo_url TEXT')
 
             conn.commit()
             print("✅ Winedash Database initialized successfully")
