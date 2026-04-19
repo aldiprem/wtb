@@ -382,7 +382,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     flex-shrink: 0;
 }
 
@@ -399,12 +399,13 @@ body {
     border: 2px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     flex-shrink: 0;
-    margin-top: 0;
-    margin-bottom: 8px;
+    margin-top: 15px;
+    margin-bottom: 0;
 }
 
+/* Username text - bubble biru di dalam background, diposisikan di bawah avatar */
 .username-card .card-username {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     font-family: monospace;
     text-align: center;
@@ -412,10 +413,10 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: var(--text);
+    background: var(--primary);
     padding: 5px 14px;
-    border-radius: 5px;
-    margin-top: 10px;
+    border-radius: 20px;
+    margin-top: 25px;
     margin-bottom: 0;
     margin-left: auto;
     margin-right: auto;
@@ -423,7 +424,7 @@ body {
     z-index: 2;
     width: auto;
     max-width: calc(100% - 24px);
-    color: var(--bg);
+    color: var(--text);
     display: inline-block;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     line-height: 1.3;
