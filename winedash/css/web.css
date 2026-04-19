@@ -1398,7 +1398,7 @@ body.filter-open {
     }
 }
 
-/* Header horizontal - balance di kiri, TON Connect di kanan */
+/* Header horizontal - balance di kiri, TON Connect dan tombol di kanan */
 .wallet-card-header-horizontal {
     display: flex;
     align-items: center;
@@ -1416,7 +1416,7 @@ body.filter-open {
     gap: 4px;
 }
 
-/* Balance Large */
+/* Balance Large - Logo diperbesar */
 .wallet-balance-large {
     display: flex;
     align-items: baseline;
@@ -1424,8 +1424,8 @@ body.filter-open {
 }
 
 .balance-logo-large {
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
     object-fit: contain;
 }
 
@@ -1455,6 +1455,14 @@ body.filter-open {
     font-family: monospace;
 }
 
+/* Right Section - TON Connect dan tombol di kanan */
+.wallet-right-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
 /* TON Connect Container - di kanan, rata kanan */
 .ton-connect-right {
     display: flex;
@@ -1476,18 +1484,15 @@ body.filter-open {
     min-width: 140px;
 }
 
-/* Wallet Card Actions */
+/* Wallet Card Actions - Tombol Deposit & Withdraw */
 .wallet-card-actions {
     display: flex;
-    gap: 25%;
-    justify-content: center;
-    margin-top: 5px;
+    gap: 10px;
+    justify-content: flex-end;
 }
 
 .wallet-action-btn {
-    flex: 1;
-    max-width: 120px;
-    padding: 10px 16px;
+    padding: 8px 20px;
     border-radius: 40px;
     font-size: 13px;
     font-weight: 600;
@@ -1498,12 +1503,13 @@ body.filter-open {
     gap: 6px;
     transition: all 0.2s;
     border: none;
+    white-space: nowrap;
 }
 
+/* Warna tombol - PERTAHANKAN SEPERTI KODE ANDA */
 .wallet-action-btn.deposit-action {
     background: var(--primary-glass);
     border: 1px solid var(--text);
-    color: #ffffff;
     color: #ffffff;
 }
 
@@ -1518,8 +1524,11 @@ body.filter-open {
 
 .wallet-action-btn.withdraw-action {
     background: rgb(0 0 0 / 15%);
-    color: #000000;
     border: 1px solid var(--text);
+    color: var(--text);
+}
+
+.wallet-action-btn.withdraw-action i {
     color: var(--text);
 }
 
@@ -1536,6 +1545,11 @@ body.filter-open {
         gap: 12px;
     }
     
+    .wallet-right-section {
+        width: 100%;
+        align-items: flex-start;
+    }
+    
     .ton-connect-right {
         width: 100%;
         justify-content: flex-start;
@@ -1547,19 +1561,23 @@ body.filter-open {
         min-width: unset;
     }
     
+    .wallet-card-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .wallet-action-btn {
+        flex: 1;
+        padding: 8px 12px;
+    }
+    
     .balance-amount-large {
         font-size: 24px;
     }
     
     .balance-logo-large {
-        width: 28px;
-        height: 28px;
-    }
-    
-    .wallet-action-btn {
-        max-width: 100px;
-        padding: 8px 12px;
-        font-size: 12px;
+        width: 40px;
+        height: 40px;
     }
 }
 
