@@ -1,4 +1,4 @@
-// winedash/js/web.js - Perbaikan Lengkap
+// winedash/js/web.js - Perbaikan TON Connect
 
 (function() {
     'use strict';
@@ -12,13 +12,7 @@
     let tonConnectUI = null;
     let isWalletConnected = false;
     let walletAddress = null;
-    let allUsernames = [];
-    
-    // State untuk filter dan layout
-    let currentLayout = localStorage.getItem('market_layout') || 'grid';
-    let currentSort = 'default';
-    let currentPriceFilter = 'all';
-    let showFilterPanel = false;
+    let allUsernames = []; // Store all usernames for search
 
     // DOM Elements
     const elements = {
@@ -26,6 +20,8 @@
         toastContainer: document.getElementById('toastContainer'),
         
         userAvatar: document.getElementById('userAvatar'),
+        userName: document.getElementById('userName'),
+        userUsername: document.getElementById('userUsername'),
         balanceAmount: document.getElementById('balanceAmount'),
         balanceCard: document.getElementById('balanceCard'),
         depositTrigger: document.getElementById('depositTrigger'),
@@ -34,7 +30,6 @@
         purchasedList: document.getElementById('purchasedList'),
         historyList: document.getElementById('historyList'),
         searchInput: document.getElementById('searchUsername'),
-        searchApplyBtn: document.getElementById('searchApplyBtn'),
         
         walletStatus: document.getElementById('walletStatus'),
         walletAddress: document.getElementById('walletAddress'),
@@ -178,6 +173,7 @@
     function updateUserUI() {
         if (!telegramUser) return;
         
+        // Hanya update avatar, tidak tampilkan nama/username
         const avatarContainer = elements.userAvatar;
         if (avatarContainer) {
             if (telegramUser.photo_url) {
@@ -232,6 +228,7 @@
             
             const manifestUrl = `${API_BASE_URL}/winedash/tonconnect-manifest.json`;
             
+            // Inisialisasi TON Connect UI
             tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
                 manifestUrl: manifestUrl,
                 buttonRootId: 'ton-connect',
@@ -240,6 +237,7 @@
             
             console.log('✅ TON Connect UI initialized');
             
+            // Subscribe to status changes
             tonConnectUI.onStatusChange(async (wallet) => {
                 console.log('📱 Wallet status changed:', wallet);
                 
@@ -247,7 +245,7 @@
                     isWalletConnected = true;
                     walletAddress = wallet.account.address;
                     updateWalletUI();
-                    await saveWalletAddressToDatabase(walletAddress);
+                    await saveWalletAddress(walletAddress);
                     showToast('Wallet connected!', 'success');
                     updateBalanceCardUI();
                 } else {
@@ -258,13 +256,14 @@
                 }
             });
             
+            // Check if already connected
             if (tonConnectUI.connected) {
                 const wallet = tonConnectUI.wallet;
                 if (wallet) {
                     isWalletConnected = true;
                     walletAddress = wallet.account.address;
                     updateWalletUI();
-                    await saveWalletAddressToDatabase(walletAddress);
+                    await saveWalletAddress(walletAddress);
                     updateBalanceCardUI();
                 }
             }
@@ -274,32 +273,6 @@
         } catch (error) {
             console.error('Error initializing TON Connect:', error);
             showToast('Failed to initialize TON Connect', 'error');
-        }
-    }
-
-    // PERBAIKAN: Simpan wallet address ke database Winedash
-    async function saveWalletAddressToDatabase(address) {
-        if (!telegramUser) return;
-        
-        try {
-            console.log('💾 Saving wallet address to database:', address);
-            
-            const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ wallet_address: address })
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                console.log('✅ Wallet address saved to database');
-                showToast('Wallet address saved!', 'success');
-            } else {
-                console.error('Failed to save wallet address:', data.error);
-            }
-        } catch (error) {
-            console.error('Error saving wallet address:', error);
         }
     }
 
@@ -313,13 +286,16 @@
         
         try {
             showLoading(true);
+            // Gunakan openModal() untuk versi terbaru TON Connect UI
             if (typeof tonConnectUI.openModal === 'function') {
                 await tonConnectUI.openModal();
             } else if (typeof tonConnectUI.connectWallet === 'function') {
                 await tonConnectUI.connectWallet();
-            } else if (tonConnectUI.connection && typeof tonConnectUI.connection.connect === 'function') {
+            } else if (typeof tonConnectUI.connection === 'object') {
+                // Alternatif lain
                 tonConnectUI.connection.connect();
             } else {
+                // Fallback: trigger button click
                 const connectBtn = document.querySelector('#ton-connect button');
                 if (connectBtn) {
                     connectBtn.click();
@@ -355,9 +331,11 @@
         if (!balanceCard) return;
         
         if (isWalletConnected && walletAddress) {
+            // Tampilkan balance card dengan logo, balance, dan tombol deposit
             balanceCard.classList.remove('hidden');
             balanceCard.style.cursor = 'pointer';
             
+            // Format balance dengan 2 desimal
             const currentBalance = parseFloat(elements.balanceAmount?.textContent || '0');
             const formattedBalance = currentBalance.toFixed(2);
             
@@ -370,6 +348,7 @@
                 </div>
             `;
             
+            // Re-attach event listener
             const newDepositTrigger = document.getElementById('depositTrigger');
             if (newDepositTrigger) {
                 newDepositTrigger.addEventListener('click', (e) => {
@@ -378,9 +357,11 @@
                 });
             }
             
+            // Update balanceAmount reference
             elements.balanceAmount = document.getElementById('balanceAmount');
             
         } else {
+            // Wallet not connected - tampilkan tombol connect full
             balanceCard.classList.remove('hidden');
             balanceCard.innerHTML = `
                 <button class="connect-wallet-btn" id="connectWalletFullBtn">
@@ -421,6 +402,20 @@
         }
     }
 
+    async function saveWalletAddress(address) {
+        if (!telegramUser) return;
+        
+        try {
+            await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wallet_address: address })
+            });
+        } catch (error) {
+            console.error('Error saving wallet address:', error);
+        }
+    }
+
     // ==================== DEPOSIT ====================
     
     function showDepositModal() {
@@ -429,8 +424,10 @@
             return;
         }
         
+        // Scroll to deposit section and highlight
         const depositSection = document.querySelector('#walletTab .deposit-form');
         if (depositSection) {
+            // Switch to wallet tab
             const walletTabBtn = document.querySelector('.tab-btn[data-tab="wallet"]');
             if (walletTabBtn) {
                 walletTabBtn.click();
@@ -443,7 +440,6 @@
         }
     }
 
-    // PERBAIKAN: Fungsi deposit yang benar dengan update saldo
     async function deposit() {
         const amount = parseFloat(elements.depositAmount?.value);
         
@@ -475,37 +471,22 @@
         try {
             const senderAddress = tonConnectUI.account?.address;
             const amountNano = Math.floor(amount * 1_000_000_000).toString();
-            const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
             
-            console.log('📤 Processing deposit:', { amount, amountNano, senderAddress, memo });
-            
-            // Encode memo ke base64 untuk payload
-            const encoder = new TextEncoder();
-            const memoBytes = encoder.encode(memo);
-            const prefix = new Uint8Array([0, 0, 0, 0]);
-            const fullBytes = new Uint8Array(prefix.length + memoBytes.length);
-            fullBytes.set(prefix);
-            fullBytes.set(memoBytes, prefix.length);
-            
-            let binary = '';
-            for (let i = 0; i < fullBytes.length; i++) {
-                binary += String.fromCharCode(fullBytes[i]);
-            }
-            const payloadBase64 = btoa(binary);
+            console.log('📤 Processing deposit:', { amount, amountNano, senderAddress });
             
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
-                    amount: amountNano,
-                    payload: payloadBase64
+                    amount: amountNano
                 }]
             };
             
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
             
-            // PERBAIKAN: Kirim ke endpoint deposit/confirm untuk update saldo
+            const memo = `deposit:${telegramUser?.id}:${Date.now()}`;
+            
             const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -523,10 +504,10 @@
             if (verifyData.success) {
                 showToast(`Deposit ${amount} TON berhasil!`, 'success');
                 if (elements.depositAmount) elements.depositAmount.value = '';
-                await refreshAllData();
+                refreshAllData();
             } else {
                 showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
-                await refreshAllData();
+                refreshAllData();
             }
             
         } catch (error) {
@@ -614,415 +595,56 @@
 
     // ==================== USERNAME MARKETPLACE ====================
     
-    // PERBAIKAN: Render usernames dengan grid/list layout
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
-        if (usernames.length === 0) {
-            elements.usernameList.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-title">No Usernames Available</div>
-                    <div class="empty-subtitle">Be the first to list your username!</div>
-                </div>
-            `;
-            return;
-        }
-        
-        if (currentLayout === 'grid') {
-            elements.usernameList.className = 'marketplace-grid';
+        if (usernames.length > 0) {
             let html = '';
             for (const username of usernames) {
-                let avatarUrl = localStorage.getItem(`avatar_${username.username}`);
-                if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
-                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
-                }
-                
                 html += `
-                    <div class="marketplace-card" data-id="${username.id}">
-                        <div class="marketplace-card-image">
-                            <div class="card-avatar">
-                                <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" data-username="${username.username}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
-                            </div>
-                            <div class="card-username">@${escapeHtml(username.username)}</div>
+                    <div class="username-item" data-id="${username.id}">
+                        <div class="username-icon">
+                            <i class="fas fa-tag"></i>
                         </div>
-                        <div class="marketplace-card-info">
-                            <div class="card-price-row">
-                                <div class="price-with-logo">
-                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
-                                    <span class="card-price">${formatNumber(username.price)}</span>
-                                </div>
-                                <div class="card-basedon">${escapeHtml(username.based_on || '-')}</div>
-                            </div>
-                            <button class="marketplace-buy-btn" data-id="${username.id}" data-price="${username.price}">
-                                <i class="fas fa-shopping-cart"></i> Buy
-                            </button>
+                        <div class="username-info">
+                            <div class="username-name">${escapeHtml(username.username)}</div>
+                            <div class="username-category">${escapeHtml(username.category)}</div>
                         </div>
+                        <div class="username-price">
+                            ${formatNumber(username.price)} <small>TON</small>
+                        </div>
+                        <button class="username-buy-btn" data-id="${username.id}" data-price="${username.price}">
+                            <i class="fas fa-shopping-cart"></i> Beli
+                        </button>
                     </div>
                 `;
             }
             elements.usernameList.innerHTML = html;
+            
+            document.querySelectorAll('.username-buy-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    const price = parseFloat(btn.dataset.price);
+                    buyUsername(id, price);
+                });
+            });
         } else {
-            elements.usernameList.className = 'marketplace-list';
-            let html = '';
-            for (const username of usernames) {
-                let avatarUrl = localStorage.getItem(`avatar_${username.username}`);
-                if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
-                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
-                }
-                
-                html += `
-                    <div class="marketplace-item" data-id="${username.id}">
-                        <div class="marketplace-avatar">
-                            <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" class="marketplace-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
-                        </div>
-                        <div class="marketplace-info">
-                            <div class="marketplace-name">@${escapeHtml(username.username)}</div>
-                            <div class="marketplace-basedon">${escapeHtml(username.based_on || '-')}</div>
-                        </div>
-                        <div class="marketplace-price-wrapper">
-                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
-                            <span class="marketplace-price">${formatNumber(username.price)}</span>
-                        </div>
-                        <button class="marketplace-buy-btn-small" data-id="${username.id}" data-price="${username.price}">
-                            <i class="fas fa-shopping-cart"></i>
-                        </button>
-                    </div>
-                `;
-            }
-            elements.usernameList.innerHTML = html;
+            elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
         }
-        
-        // Attach event listeners untuk tombol beli
-        document.querySelectorAll('.marketplace-buy-btn, .marketplace-buy-btn-small').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = parseInt(btn.dataset.id);
-                const price = parseFloat(btn.dataset.price);
-                buyUsername(id, price);
-            });
-        });
-        
-        // Fetch avatar untuk setiap card
-        setTimeout(() => {
-            fetchMarketplaceAvatars();
-        }, 100);
-    }
-    
-    async function fetchMarketplaceAvatars() {
-        const avatars = document.querySelectorAll('.marketplace-card .card-avatar img, .marketplace-avatar-img');
-        
-        for (const img of avatars) {
-            const username = img.dataset.username;
-            if (!username) continue;
-            
-            const cached = localStorage.getItem(`avatar_${username}`);
-            if (cached && cached !== 'https://companel.shop/image/winedash-logo.png') {
-                if (img.src !== cached) img.src = cached;
-                continue;
-            }
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
-                const data = await response.json();
-                
-                if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
-                    localStorage.setItem(`avatar_${username}`, data.photo_url);
-                    img.src = data.photo_url;
-                }
-            } catch (error) {
-                console.error(`Error fetching avatar for @${username}:`, error);
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-    }
-    
-    // PERBAIKAN: Filter panel (slide from bottom)
-    function showFilterPanel() {
-        // Hapus panel yang sudah ada
-        const existingPanel = document.querySelector('.filter-panel');
-        if (existingPanel) existingPanel.remove();
-        
-        const existingOverlay = document.querySelector('.filter-overlay');
-        if (existingOverlay) existingOverlay.remove();
-        
-        // Buat overlay
-        const overlay = document.createElement('div');
-        overlay.className = 'filter-overlay';
-        document.body.appendChild(overlay);
-        
-        // Buat panel
-        const panel = document.createElement('div');
-        panel.className = 'filter-panel';
-        panel.innerHTML = `
-            <div class="filter-drag-handle"></div>
-            <div class="filter-header">
-                <h3><i class="fas fa-filter"></i> Filter & Sort</h3>
-                <button class="filter-close">&times;</button>
-            </div>
-            <div class="filter-content">
-                <div class="filter-section">
-                    <div class="filter-section-title">Sort By</div>
-                    <div class="filter-options">
-                        <button class="filter-option ${currentSort === 'default' ? 'active' : ''}" data-sort="default">
-                            <i class="fas fa-clock"></i> Default
-                        </button>
-                        <button class="filter-option ${currentSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
-                            <i class="fas fa-arrow-up"></i> Price: Low to High
-                        </button>
-                        <button class="filter-option ${currentSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
-                            <i class="fas fa-arrow-down"></i> Price: High to Low
-                        </button>
-                        <button class="filter-option ${currentSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
-                            <i class="fas fa-sort-alpha-down"></i> Name: A to Z
-                        </button>
-                        <button class="filter-option ${currentSort === 'name_desc' ? 'active' : ''}" data-sort="name_desc">
-                            <i class="fas fa-sort-alpha-up"></i> Name: Z to A
-                        </button>
-                    </div>
-                </div>
-                <div class="filter-section">
-                    <div class="filter-section-title">Price Range</div>
-                    <div class="filter-options">
-                        <button class="filter-option ${currentPriceFilter === 'all' ? 'active' : ''}" data-price="all">
-                            <i class="fas fa-globe"></i> All
-                        </button>
-                        <button class="filter-option ${currentPriceFilter === 'under10' ? 'active' : ''}" data-price="under10">
-                            <i class="fas fa-tag"></i> Under 10 TON
-                        </button>
-                        <button class="filter-option ${currentPriceFilter === '10to50' ? 'active' : ''}" data-price="10to50">
-                            <i class="fas fa-tags"></i> 10 - 50 TON
-                        </button>
-                        <button class="filter-option ${currentPriceFilter === '50to100' ? 'active' : ''}" data-price="50to100">
-                            <i class="fas fa-gem"></i> 50 - 100 TON
-                        </button>
-                        <button class="filter-option ${currentPriceFilter === 'above100' ? 'active' : ''}" data-price="above100">
-                            <i class="fas fa-crown"></i> Above 100 TON
-                        </button>
-                    </div>
-                </div>
-                <div class="filter-section">
-                    <div class="filter-section-title">Layout</div>
-                    <div class="filter-options layout-options">
-                        <button class="filter-option ${currentLayout === 'grid' ? 'active' : ''}" data-layout="grid">
-                            <i class="fas fa-th"></i> Grid View
-                        </button>
-                        <button class="filter-option ${currentLayout === 'list' ? 'active' : ''}" data-layout="list">
-                            <i class="fas fa-list"></i> List View
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="filter-actions">
-                <button class="filter-reset">Reset All</button>
-                <button class="filter-apply">Apply</button>
-            </div>
-        `;
-        
-        document.body.appendChild(panel);
-        
-        // Prevent scroll
-        document.body.classList.add('filter-open');
-        
-        // Trigger animation
-        setTimeout(() => {
-            overlay.classList.add('active');
-            panel.classList.add('open');
-        }, 10);
-        
-        // Close button
-        const closeBtn = panel.querySelector('.filter-close');
-        closeBtn.addEventListener('click', () => {
-            closeFilterPanel();
-        });
-        
-        // Klik overlay untuk tutup
-        overlay.addEventListener('click', () => {
-            closeFilterPanel();
-        });
-        
-        // Sort options
-        panel.querySelectorAll('[data-sort]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentSort = btn.dataset.sort;
-            });
-        });
-        
-        // Price options
-        panel.querySelectorAll('[data-price]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                panel.querySelectorAll('[data-price]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentPriceFilter = btn.dataset.price;
-            });
-        });
-        
-        // Layout options
-        panel.querySelectorAll('[data-layout]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                panel.querySelectorAll('[data-layout]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentLayout = btn.dataset.layout;
-                localStorage.setItem('market_layout', currentLayout);
-            });
-        });
-        
-        // Reset button
-        const resetBtn = panel.querySelector('.filter-reset');
-        resetBtn.addEventListener('click', () => {
-            currentSort = 'default';
-            currentPriceFilter = 'all';
-            currentLayout = localStorage.getItem('market_layout') || 'grid';
-            
-            panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
-            panel.querySelector('[data-sort="default"]').classList.add('active');
-            
-            panel.querySelectorAll('[data-price]').forEach(b => b.classList.remove('active'));
-            panel.querySelector('[data-price="all"]').classList.add('active');
-            
-            panel.querySelectorAll('[data-layout]').forEach(b => b.classList.remove('active'));
-            panel.querySelector(`[data-layout="${currentLayout}"]`).classList.add('active');
-            
-            applyFiltersAndRender();
-            closeFilterPanel();
-        });
-        
-        // Apply button
-        const applyBtn = panel.querySelector('.filter-apply');
-        applyBtn.addEventListener('click', () => {
-            applyFiltersAndRender();
-            closeFilterPanel();
-        });
-        
-        // Drag to close
-        const dragHandle = panel.querySelector('.filter-drag-handle');
-        let startY = 0, currentY = 0, isDragging = false;
-        
-        dragHandle.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-            isDragging = true;
-            panel.style.transition = 'none';
-            hapticLight();
-        });
-        
-        dragHandle.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const deltaY = currentY - startY;
-            if (deltaY > 0) {
-                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
-            }
-        });
-        
-        dragHandle.addEventListener('touchend', () => {
-            isDragging = false;
-            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-            if (currentY - startY > 100) {
-                closeFilterPanel();
-            } else {
-                panel.style.transform = '';
-            }
-        });
-        
-        hapticLight();
-    }
-    
-    function closeFilterPanel() {
-        const panel = document.querySelector('.filter-panel');
-        const overlay = document.querySelector('.filter-overlay');
-        
-        if (panel) {
-            panel.classList.remove('open');
-            setTimeout(() => {
-                if (panel.parentNode) panel.remove();
-            }, 300);
-        }
-        if (overlay) {
-            overlay.classList.remove('active');
-            setTimeout(() => {
-                if (overlay.parentNode) overlay.remove();
-            }, 300);
-        }
-        
-        document.body.classList.remove('filter-open');
-        hapticLight();
-    }
-    
-    function applyFiltersAndRender() {
-        let filtered = [...allUsernames];
-        
-        // Apply price filter
-        if (currentPriceFilter !== 'all') {
-            filtered = filtered.filter(username => {
-                const price = username.price;
-                switch (currentPriceFilter) {
-                    case 'under10': return price < 10;
-                    case '10to50': return price >= 10 && price <= 50;
-                    case '50to100': return price > 50 && price <= 100;
-                    case 'above100': return price > 100;
-                    default: return true;
-                }
-            });
-        }
-        
-        // Apply sort
-        if (currentSort !== 'default') {
-            filtered.sort((a, b) => {
-                switch (currentSort) {
-                    case 'price_asc': return a.price - b.price;
-                    case 'price_desc': return b.price - a.price;
-                    case 'name_asc': return a.username.localeCompare(b.username);
-                    case 'name_desc': return b.username.localeCompare(a.username);
-                    default: return 0;
-                }
-            });
-        }
-        
-        renderUsernames(filtered);
-        hapticLight();
     }
     
     function filterUsernames(searchTerm) {
         if (!searchTerm || searchTerm.trim() === '') {
-            applyFiltersAndRender();
+            renderUsernames(allUsernames);
             return;
         }
         
         const term = searchTerm.toLowerCase().trim();
-        let filtered = allUsernames.filter(username => 
+        const filtered = allUsernames.filter(username => 
             username.username.toLowerCase().includes(term) ||
-            (username.based_on && username.based_on.toLowerCase().includes(term))
+            username.category.toLowerCase().includes(term)
         );
-        
-        // Apply price filter after search
-        if (currentPriceFilter !== 'all') {
-            filtered = filtered.filter(username => {
-                const price = username.price;
-                switch (currentPriceFilter) {
-                    case 'under10': return price < 10;
-                    case '10to50': return price >= 10 && price <= 50;
-                    case '50to100': return price > 50 && price <= 100;
-                    case 'above100': return price > 100;
-                    default: return true;
-                }
-            });
-        }
-        
-        // Apply sort
-        if (currentSort !== 'default') {
-            filtered.sort((a, b) => {
-                switch (currentSort) {
-                    case 'price_asc': return a.price - b.price;
-                    case 'price_desc': return b.price - a.price;
-                    case 'name_asc': return a.username.localeCompare(b.username);
-                    case 'name_desc': return b.username.localeCompare(a.username);
-                    default: return 0;
-                }
-            });
-        }
-        
         renderUsernames(filtered);
     }
     
@@ -1034,8 +656,8 @@
             const data = await response.json();
             
             if (data.success && data.usernames.length > 0) {
-                allUsernames = data.usernames.filter(u => u.status === 'available');
-                applyFiltersAndRender();
+                allUsernames = data.usernames;
+                renderUsernames(allUsernames);
             } else {
                 allUsernames = [];
                 elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
@@ -1060,7 +682,7 @@
             return;
         }
         
-        const buyBtn = document.querySelector(`.marketplace-buy-btn[data-id="${usernameId}"], .marketplace-buy-btn-small[data-id="${usernameId}"]`);
+        const buyBtn = document.querySelector(`.username-buy-btn[data-id="${usernameId}"]`);
         const originalText = buyBtn?.innerHTML;
         if (buyBtn) {
             buyBtn.disabled = true;
@@ -1092,7 +714,7 @@
         } finally {
             if (buyBtn) {
                 buyBtn.disabled = false;
-                buyBtn.innerHTML = originalText || '<i class="fas fa-shopping-cart"></i>';
+                buyBtn.innerHTML = originalText || '<i class="fas fa-shopping-cart"></i> Beli';
             }
         }
     }
@@ -1109,10 +731,11 @@
             });
         }
         
+        // Enter key juga bisa search
         if (searchInput) {
             searchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    e.preventDefault();
+                    e.preventDefault(); // Prevent form submission if any
                     const searchTerm = searchInput.value || '';
                     filterUsernames(searchTerm);
                     hapticLight();
@@ -1151,7 +774,7 @@
         }
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/add`, {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/add`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1167,9 +790,10 @@
             
             if (data.success) {
                 hapticSuccess();
-                showToast('Username pending verifikasi!', 'success');
+                showToast('Username berhasil ditambahkan ke marketplace!', 'success');
                 if (elements.sellUsername) elements.sellUsername.value = '';
                 if (elements.sellPrice) elements.sellPrice.value = '';
+                refreshAllData();
             } else {
                 showToast(data.error || 'Gagal menambahkan username', 'error');
             }
@@ -1330,6 +954,7 @@
                 } else if (tabId === 'marketplace') {
                     loadUsernames();
                 } else if (tabId === 'wallet') {
+                    // Refresh wallet UI jika perlu
                     if (tonConnectUI) {
                         updateWalletUI();
                         updateBalanceCardUI();
@@ -1337,23 +962,6 @@
                 }
             });
         });
-        
-        // Tambahkan tombol filter di marketplace tab
-        const marketplaceTab = document.getElementById('marketplaceTab');
-        if (marketplaceTab) {
-            const existingFilterBtn = document.getElementById('marketplaceFilterBtn');
-            if (!existingFilterBtn) {
-                const searchContainer = document.querySelector('#marketplaceTab .search-container');
-                if (searchContainer) {
-                    const filterBtn = document.createElement('button');
-                    filterBtn.id = 'marketplaceFilterBtn';
-                    filterBtn.className = 'filter-btn';
-                    filterBtn.innerHTML = '<i class="fas fa-sliders-h"></i> Filter';
-                    filterBtn.addEventListener('click', () => showFilterPanel());
-                    searchContainer.appendChild(filterBtn);
-                }
-            }
-        }
     }
 
     // ==================== SAFE AREA INSET & FULLSCREEN ====================
@@ -1365,13 +973,16 @@
             return;
         }
         
+        // Gunakan CSS variables yang disediakan Telegram sebagai fallback
         const root = document.documentElement;
         
+        // Baca dari CSS variables Telegram jika ada
         const topInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
         const bottomInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
         const leftInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
         const rightInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
         
+        // Baca dari objek safeAreaInset (Bot API 8.0+)
         let safeTop = topInset;
         let safeBottom = bottomInset;
         let safeLeft = leftInset;
@@ -1384,11 +995,13 @@
             safeRight = tg.safeAreaInset.right || safeRight;
         }
         
+        // Terapkan ke body
         document.body.style.paddingTop = `${safeTop}px`;
         document.body.style.paddingBottom = `${safeBottom}px`;
         document.body.style.paddingLeft = `${safeLeft}px`;
         document.body.style.paddingRight = `${safeRight}px`;
         
+        // Untuk container, gunakan contentSafeAreaInset
         let contentTop = safeTop;
         let contentBottom = safeBottom;
         
@@ -1413,9 +1026,11 @@
             return;
         }
         
+        // Apply initial after a short delay to ensure DOM is ready
         setTimeout(applySafeAreaInsets, 50);
         applySafeAreaInsets();
         
+        // Listen for safe area changes
         if (tg.onEvent) {
             tg.onEvent('safeAreaChanged', () => {
                 console.log('safeAreaChanged event received');
@@ -1434,6 +1049,7 @@
         }
     }
 
+    // Request fullscreen mode
     function requestFullscreenMode() {
         const tg = window.Telegram?.WebApp;
         if (!tg) return;
@@ -1458,6 +1074,7 @@
         }
     }
 
+    // Toggle fullscreen
     function toggleFullscreen() {
         const tg = window.Telegram?.WebApp;
         if (!tg) return;
@@ -1493,6 +1110,7 @@
         }
         if (elements.balanceCard) {
             elements.balanceCard.addEventListener('click', (e) => {
+                // Don't trigger if clicking on connect button
                 if (!e.target.closest('.connect-wallet-btn')) {
                     if (isWalletConnected) {
                         showDepositModal();
