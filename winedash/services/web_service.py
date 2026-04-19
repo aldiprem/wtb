@@ -1275,3 +1275,104 @@ def save_profile_photo():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@winedash_bp.route('/profile-photo/fetch/<string:username>', methods=['POST', 'OPTIONS'])
+def fetch_profile_photo_via_bot(username):
+    """Fetch profile photo directly via bot (like /get command)"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        import requests
+        import base64
+        
+        username_clean = username.lstrip('@').strip()
+        BOT_TOKEN = os.getenv("BOT_WINEDASH", "")
+        
+        if not BOT_TOKEN:
+            return jsonify({'success': False, 'error': 'Bot not configured'}), 500
+        
+        print(f"[DEBUG] Fetching profile photo for @{username_clean} via bot...")
+        
+        # Gunakan Telegram Bot API untuk mendapatkan foto profil
+        # Method 1: getChat
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChat"
+        params = {'chat_id': f"@{username_clean}"}
+        
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+        
+        photo_url = None
+        
+        if data.get('ok') and data.get('result', {}).get('photo'):
+            # Dapatkan file_id foto profil
+            photo = data['result']['photo']
+            if isinstance(photo, dict) and 'big_file_id' in photo:
+                file_id = photo['big_file_id']
+            elif isinstance(photo, list) and len(photo) > 0:
+                # Ambil ukuran terbesar
+                file_id = photo[-1]['file_id']
+            else:
+                file_id = None
+            
+            if file_id:
+                # Get file path
+                file_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getFile"
+                file_response = requests.get(file_url, params={'file_id': file_id}, timeout=10)
+                file_data = file_response.json()
+                
+                if file_data.get('ok'):
+                    file_path = file_data['result']['file_path']
+                    photo_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+                    print(f"[DEBUG] Got photo URL: {photo_url[:100]}...")
+                    
+                    # Download dan konversi ke base64 untuk disimpan
+                    img_response = requests.get(photo_url, timeout=10)
+                    if img_response.status_code == 200:
+                        photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(img_response.content).decode('ascii')}"
+                        
+                        # Simpan ke database
+                        with sqlite3.connect(db.db_path) as conn:
+                            cursor = conn.cursor()
+                            
+                            # Pastikan kolom photo_url ada
+                            cursor.execute("PRAGMA table_info(usernames)")
+                            columns = [col[1] for col in cursor.fetchall()]
+                            if 'photo_url' not in columns:
+                                cursor.execute('ALTER TABLE usernames ADD COLUMN photo_url TEXT')
+                            
+                            # Update di usernames
+                            cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_base64, username_clean))
+                            
+                            # Juga update di pending_usernames
+                            cursor.execute("PRAGMA table_info(pending_usernames)")
+                            columns = [col[1] for col in cursor.fetchall()]
+                            if 'photo_url' in columns:
+                                cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_base64, username_clean))
+                            
+                            conn.commit()
+                        
+                        return jsonify({'success': True, 'photo_url': photo_base64})
+        
+        # Method 2: Gunakan getChatMember untuk user
+        if not photo_url:
+            try:
+                member_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
+                member_params = {'chat_id': f"@{username_clean}", 'user_id': username_clean}
+                # Ini mungkin tidak berhasil untuk channel/group
+            except:
+                pass
+        
+        # Jika tidak ada foto, kembalikan default
+        initial = username_clean[0] if username_clean else 'U'
+        default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        return jsonify({'success': False, 'photo_url': default_avatar, 'message': 'No profile photo'})
+        
+    except Exception as e:
+        print(f"Error in fetch_profile_photo_via_bot: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500

@@ -873,6 +873,67 @@ async def handle_get_profile(event):
         logger.error(f"Error in /get command: {e}")
         await msg.edit(f"❌ **Error:** {str(e)}")
 
+@bot.on(events.NewMessage(pattern=r'^/getprofile(@?\S+)?$'))
+async def handle_get_profile_via_api(event):
+    """Handle /getprofile command for API - fetch and save profile photo to database"""
+    # Parse command
+    cmd_parts = event.raw_text.strip().split()
+    
+    if len(cmd_parts) < 2:
+        await event.reply("Usage: `/getprofile @username`")
+        return
+    
+    target = cmd_parts[1].strip()
+    if target.startswith('@'):
+        target = target[1:]
+    
+    if not target:
+        await event.reply("Please provide a username!")
+        return
+    
+    msg = await event.reply(f"🔍 Fetching profile photo for @{target}...")
+    
+    try:
+        entity = await bot.get_entity(target)
+        
+        # Download photo
+        photo_bytes = None
+        try:
+            photo_bytes = await bot.download_profile_photo(entity, file=bytes)
+        except:
+            pass
+        
+        if not photo_bytes:
+            try:
+                photo_bytes = await bot.download_media(entity, file=bytes)
+            except:
+                pass
+        
+        if not photo_bytes:
+            await msg.edit(f"❌ No profile photo found for @{target}")
+            return
+        
+        # Convert to base64
+        import base64
+        photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
+        
+        # Save to database via API
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.post('http://localhost:5050/api/winedash/profile-photo/save',
+                                   json={'username': target, 'photo_url': photo_base64}) as resp:
+                if resp.status == 200:
+                    await msg.edit(f"✅ Profile photo for @{target} saved to database!")
+                    logger.info(f"Saved profile photo for @{target} via /getprofile command")
+                else:
+                    await msg.edit(f"⚠️ Failed to save photo for @{target}")
+                    
+    except errors.UsernameNotOccupiedError:
+        await msg.edit(f"❌ Username @{target} not found")
+    except Exception as e:
+        logger.error(f"Error in /getprofile: {e}")
+        await msg.edit(f"❌ Error: {str(e)}")
+
 async def main():
     logger.info("🚀 Starting Winedash Bot...")
     
