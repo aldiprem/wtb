@@ -21,6 +21,8 @@
     let currentSearchTerm = '';
     let pendingList = [];
     let currentOtpPendingId = null;
+    let cachedAvatar = localStorage.getItem(`avatar_${usernameStr}`);
+    let avatarUrl;
 
     // DOM Elements
     const elements = {
@@ -829,7 +831,22 @@
         
         renderUsernames(filtered);
     }
-        
+
+    // Fungsi untuk mengambil foto profil dari API
+    async function fetchProfilePhoto(username) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+            const data = await response.json();
+            if (data.success && data.photo_url) {
+                return data.photo_url;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching profile photo:', error);
+            return null;
+        }
+    }
+
     function renderUsernames(usernames) {
         if (!elements.usernameContainer) return;
         
@@ -870,7 +887,16 @@
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
                 const firstChar = usernameStr.charAt(0) || 'U';
-                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=1`;
+                
+                // Avatar URL - coba ambil dari localStorage cache dulu
+                let cachedAvatar = localStorage.getItem(`avatar_${usernameStr}`);
+                let avatarUrl;
+                
+                if (cachedAvatar && !cachedAvatar.includes('ui-avatars.com')) {
+                    avatarUrl = cachedAvatar;
+                } else {
+                    avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=1`;
+                }
                 
                 // Escape username untuk JSON
                 const usernameData = {
@@ -905,6 +931,34 @@
                 `;
             }
             elements.usernameContainer.innerHTML = html;
+            
+            // Fetch foto profil asli secara async untuk setiap card
+            for (const username of usernames) {
+                let usernameStr = username.username;
+                if (typeof usernameStr !== 'string') {
+                    usernameStr = String(usernameStr);
+                }
+                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
+                // Cek apakah sudah ada di cache dan bukan default
+                let cachedAvatar = localStorage.getItem(`avatar_${usernameStr}`);
+                if (!cachedAvatar || cachedAvatar.includes('ui-avatars.com')) {
+                    // Fetch asynchronously
+                    fetchProfilePhoto(usernameStr).then(photoUrl => {
+                        if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
+                            localStorage.setItem(`avatar_${usernameStr}`, photoUrl);
+                            // Refresh card image jika card masih ada
+                            const cardImg = document.querySelector(`.username-card[data-id="${username.id}"] .card-avatar img`);
+                            if (cardImg && cardImg.src !== photoUrl) {
+                                cardImg.src = photoUrl;
+                            }
+                        }
+                    }).catch(error => {
+                        console.error('Error fetching profile photo for', usernameStr, error);
+                    });
+                }
+            }
+            
         } else {
             // List layout
             elements.usernameContainer.className = 'username-list';
@@ -912,13 +966,21 @@
             for (const username of usernames) {
                 const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
                 const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+                
+                // Pastikan username adalah string
+                let usernameStr = username.username;
+                if (typeof usernameStr !== 'string') {
+                    usernameStr = String(usernameStr);
+                }
+                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
                 html += `
                     <div class="username-item" data-id="${username.id}">
                         <div class="username-icon">
                             <i class="fas fa-tag"></i>
                         </div>
                         <div class="username-info">
-                            <div class="username-name">${escapeHtml(username.username)}</div>
+                            <div class="username-name">${escapeHtml(usernameStr)}</div>
                             <div class="username-category">${escapeHtml(username.category)}</div>
                         </div>
                         <div class="username-price">${formatNumber(username.price)} TON</div>
@@ -1068,8 +1130,8 @@
         });
     }
 
-    // Fungsi untuk menampilkan detail panel dengan overlay blur
-    function showDetailPanel(username) {
+    // Perbaiki fungsi showDetailPanel
+    async function showDetailPanel(username) {
         // Hapus panel dan overlay yang sudah ada
         const existingPanel = document.querySelector('.detail-panel');
         const existingOverlay = document.querySelector('.panel-overlay');
@@ -1085,10 +1147,20 @@
         
         const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
         const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
-        const firstChar = usernameStr.charAt(0) || 'U';
-        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
         const createdAt = formatDateIndonesia(username.created_at);
         const isListed = username.status === 'available';
+        
+        // Ambil foto profil asli dari server
+        let avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(usernameStr.charAt(0) || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
+        
+        try {
+            const photoUrl = await fetchProfilePhoto(usernameStr);
+            if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
+                avatarUrl = photoUrl;
+            }
+        } catch (error) {
+            console.error('Error loading profile photo:', error);
+        }
         
         // Buat overlay untuk blur
         const overlay = document.createElement('div');
@@ -1105,7 +1177,7 @@
             </div>
             <div class="detail-avatar">
                 <div class="detail-avatar-img">
-                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
+                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(usernameStr.charAt(0) || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1'">
                 </div>
                 <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
             </div>
@@ -1148,7 +1220,7 @@
         // Prevent scroll pada body
         document.body.classList.add('panel-open');
         
-        // Trigger animation - munculkan overlay dulu, lalu panel
+        // Trigger animation
         setTimeout(() => {
             overlay.classList.add('active');
         }, 10);
@@ -1177,7 +1249,7 @@
         // Klik pada overlay untuk menutup panel
         overlay.addEventListener('click', closePanel);
         
-        // Action buttons in panel - Edit Price
+        // Action buttons
         const editBtn = panel.querySelector('.edit-price-detail');
         if (editBtn) {
             editBtn.addEventListener('click', async (e) => {
@@ -1192,7 +1264,6 @@
             });
         }
         
-        // Delete button
         const deleteBtn = panel.querySelector('.delete-detail');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', async (e) => {

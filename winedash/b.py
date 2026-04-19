@@ -219,31 +219,6 @@ def generate_otp() -> str:
     """Generate 6 digit OTP"""
     return ''.join(random.choices(string.digits, k=6))
 
-async def check_entity_type(username: str):
-    """Check if username is channel, group, or user"""
-    try:
-        if not username:
-            return None, None, None
-        
-        # Coba get entity
-        entity = await bot.get_entity(username)
-        
-        if hasattr(entity, 'broadcast') and entity.broadcast:
-            return 'channel', entity.id, getattr(entity, 'title', username)
-        elif hasattr(entity, 'megagroup') and entity.megagroup:
-            return 'supergroup', entity.id, getattr(entity, 'title', username)
-        elif hasattr(entity, 'participants_count'):
-            return 'group', entity.id, getattr(entity, 'title', username)
-        else:
-            # Ini adalah user biasa
-            user_name = getattr(entity, 'first_name', username)
-            if hasattr(entity, 'last_name') and entity.last_name:
-                user_name = f"{user_name} {entity.last_name}"
-            return 'user', entity.id, user_name
-    except Exception as e:
-        logger.error(f"Error getting entity for {username}: {e}")
-        return None, None, None
-
 async def check_bot_access(chat_id: int) -> bool:
     """Check if bot can send messages to chat"""
     try:
@@ -612,7 +587,6 @@ async def _get_photo_url(client, photo_size):
     except:
         return None
 
-# Perbaiki fungsi check_entity_type untuk juga mengembalikan foto profil
 async def check_entity_type(username: str):
     """Check if username is channel, group, or user, and get profile photo"""
     try:
@@ -622,15 +596,20 @@ async def check_entity_type(username: str):
         # Coba get entity
         entity = await bot.get_entity(username)
         
-        # Get profile photo URL (optional)
-        photo_url = None
+        # Download profile photo ke bytes
+        photo_bytes = None
         try:
-            photos = await bot.get_profile_photos(entity, limit=1)
-            if photos:
-                # We'll use a placeholder since direct URL is complex
-                photo_url = f"https://ui-avatars.com/api/?name={username[0]}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
-        except:
-            photo_url = f"https://ui-avatars.com/api/?name={username[0]}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+            # download_profile_photo mengembalikan bytes jika parameter file=bytes
+            photo_bytes = await bot.download_profile_photo(entity, file=bytes)
+        except Exception as e:
+            logger.debug(f"No profile photo for {username}: {e}")
+        
+        # Jika berhasil dapat foto, upload ke server atau simpan sebagai base64
+        photo_url = None
+        if photo_bytes:
+            # Simpan foto ke direktori temp dan return URL
+            import base64
+            photo_url = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
         
         if hasattr(entity, 'broadcast') and entity.broadcast:
             return 'channel', entity.id, getattr(entity, 'title', username), photo_url
@@ -639,7 +618,6 @@ async def check_entity_type(username: str):
         elif hasattr(entity, 'participants_count'):
             return 'group', entity.id, getattr(entity, 'title', username), photo_url
         else:
-            # Ini adalah user biasa
             user_name = getattr(entity, 'first_name', username)
             if hasattr(entity, 'last_name') and entity.last_name:
                 user_name = f"{user_name} {entity.last_name}"

@@ -1101,3 +1101,30 @@ def edit_username_price():
     except Exception as e:
         print(f"Error in edit_username_price: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@winedash_bp.route('/profile-photo/<string:username>', methods=['GET', 'OPTIONS'])
+def get_profile_photo(username):
+    """Get profile photo URL for username"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
+    try:
+        # Cek dari database pending_usernames apakah ada photo_url tersimpan
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            # Cek di pending_usernames
+            cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username,))
+            row = cursor.fetchone()
+            if row and row[0]:
+                return jsonify({'success': True, 'photo_url': row[0]})
+        
+        # Jika tidak ada, return default avatar based on username
+        default_avatar = f"https://ui-avatars.com/api/?name={username[0]}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        return jsonify({'success': True, 'photo_url': default_avatar})
+        
+    except Exception as e:
+        print(f"Error in get_profile_photo: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
