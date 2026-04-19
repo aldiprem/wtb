@@ -342,36 +342,30 @@ class WinedashDatabase:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
-                # Cek deposit dengan status 'pending' ATAU 'completed' yang belum diproses balance
+                print(f"[DB] confirm_deposit called with transaction_id: {transaction_id}")
+                
+                # Cek deposit dengan status 'pending'
                 cursor.execute('''
                     SELECT id, user_id, amount, status FROM deposits 
-                    WHERE transaction_id = ? AND status IN ('pending', 'completed')
+                    WHERE transaction_id = ? AND status = 'pending'
                 ''', (transaction_id,))
                 deposit = cursor.fetchone()
                 
                 if not deposit:
-                    print(f"[DB] Deposit not found: {transaction_id}")
+                    print(f"[DB] Deposit not found or already processed: {transaction_id}")
                     return False
                 
                 deposit_id, user_id, amount, current_status = deposit
                 
-                # Jika sudah completed, cek apakah balance sudah ditambahkan
-                if current_status == 'completed':
-                    # Cek apakah balance sudah pernah ditambahkan
-                    cursor.execute('SELECT 1 FROM transactions WHERE transaction_id = ? AND type = "deposit" AND status = "success"', (transaction_id,))
-                    if cursor.fetchone():
-                        print(f"[DB] Deposit {transaction_id} already processed")
-                        return True
-                    # Jika belum, lanjutkan proses
+                print(f"[DB] Found deposit: id={deposit_id}, user_id={user_id}, amount={amount}")
                 
-                # Update deposit status ke completed jika masih pending
-                if current_status == 'pending':
-                    cursor.execute('''
-                        UPDATE deposits SET status = 'completed', completed_at = ?
-                        WHERE id = ?
-                    ''', (now, deposit_id))
+                # Update deposit status ke completed
+                cursor.execute('''
+                    UPDATE deposits SET status = 'completed', completed_at = ?
+                    WHERE id = ?
+                ''', (now, deposit_id))
                 
-                # Update user balance - PASTIKAN INI BERJALAN
+                # Update user balance
                 cursor.execute('''
                     UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
                     WHERE user_id = ?
@@ -382,15 +376,13 @@ class WinedashDatabase:
                     print(f"[DB] Failed to update balance for user {user_id}")
                     return False
                 
-                # Buat transaction record jika belum ada
+                print(f"[DB] Balance updated for user {user_id}, amount: +{amount}")
+                
+                # Buat transaction record
                 cursor.execute('''
-                    SELECT 1 FROM transactions WHERE transaction_id = ? AND type = "deposit"
-                ''', (transaction_id,))
-                if not cursor.fetchone():
-                    cursor.execute('''
-                        INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
-                        VALUES (?, ?, 'deposit', ?, 'success', 'Deposit confirmed via TON', ?, ?)
-                    ''', (transaction_id, user_id, amount, now, now))
+                    INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
+                    VALUES (?, ?, 'deposit', ?, 'success', 'Deposit confirmed via TON', ?, ?)
+                ''', (transaction_id, user_id, amount, now, now))
                 
                 conn.commit()
                 print(f"[DB] ✅ Deposit confirmed: {amount} TON added to user {user_id}")
