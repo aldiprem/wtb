@@ -984,6 +984,8 @@ def delete_username():
             
             conn.commit()
         
+        print(f"[DEBUG] Username {username_deleted} deleted successfully")
+        
         return jsonify({
             'success': True,
             'message': 'Username berhasil dihapus!'
@@ -991,6 +993,8 @@ def delete_username():
         
     except Exception as e:
         print(f"Error in delete_username: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @winedash_bp.route('/username/toggle', methods=['POST', 'OPTIONS'])

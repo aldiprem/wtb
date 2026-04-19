@@ -783,42 +783,74 @@ class WinedashDatabase:
             import traceback
             traceback.print_exc()
             return []
-
-    def confirm_pending(pending_id: int, username: str, category: str, price: float, seller_id: int, seller_wallet: str):
-        """Confirm pending username and move to usernames table"""
+    
+    def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
+        """Confirm pending username and move to available"""
         try:
-            with sqlite3.connect(DB_PATH) as conn:
+            with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                now = datetime.now().isoformat()
+                now = self._get_now()
                 
-                print(f"[BOT] Confirming pending {pending_id}: {username}")
+                # Get pending record
+                cursor.execute('''
+                    SELECT username, price, seller_id, seller_wallet, category, verification_type, verification_code
+                    FROM pending_usernames WHERE id = ? AND status = 'pending'
+                ''', (pending_id,))
+                row = cursor.fetchone()
+                
+                if not row:
+                    print(f"Pending record {pending_id} not found")
+                    return False
+                
+                username, price, seller_id, seller_wallet, category, v_type, v_code = row
+                
+                print(f"Confirming username: {username}, price: {price}, seller_id: {seller_id}")
+                
+                # Verify code if needed
+                if v_type == 'user' and code:
+                    if v_code != code:
+                        print(f"Invalid OTP: {code} != {v_code}")
+                        return False
+                    # Check expiration
+                    cursor.execute('SELECT expires_at FROM pending_usernames WHERE id = ?', (pending_id,))
+                    exp_row = cursor.fetchone()
+                    if exp_row and exp_row[0]:
+                        expires_at = datetime.fromisoformat(exp_row[0])
+                        if datetime.now() > expires_at:
+                            print(f"OTP expired at {expires_at}")
+                            return False
                 
                 # Cek apakah username sudah ada
                 cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
                 if cursor.fetchone():
-                    print(f"[BOT] Username {username} already exists, skipping...")
+                    print(f"Username {username} already exists, skipping...")
+                    # Hapus pending record
+                    cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
+                    conn.commit()
                     return False
                 
-                # Insert into usernames table
+                # Move to usernames table
                 cursor.execute('''
                     INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
                     VALUES (?, ?, ?, ?, ?, 'available', ?)
                 ''', (username, category, price, seller_id, seller_wallet, now))
                 
                 username_id = cursor.lastrowid
-                print(f"[BOT] Username inserted with ID: {username_id}")
+                print(f"Username inserted with ID: {username_id}")
                 
-                # Update pending status
-                cursor.execute('''
-                    UPDATE pending_usernames SET status = 'confirmed', confirmed_at = ?
-                    WHERE id = ?
-                ''', (now, pending_id))
+                # HAPUS pending record setelah confirmed
+                cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
                 
                 conn.commit()
-                print(f"[BOT] Pending {pending_id} confirmed successfully")
+                print(f"Username {username} confirmed successfully")
                 return True
+                
+        except sqlite3.IntegrityError as e:
+            print(f"IntegrityError confirming pending username: {e}")
+            # Username mungkin sudah ada
+            return False
         except Exception as e:
-            print(f"[BOT] Error confirming pending: {e}")
+            print(f"Error confirming pending username: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -834,6 +866,8 @@ class WinedashDatabase:
                 return cursor.rowcount > 0
         except Exception as e:
             print(f"Error rejecting pending username: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def get_user_pending_count(self, user_id: int) -> int:

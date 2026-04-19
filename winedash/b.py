@@ -198,31 +198,6 @@ def get_pending_by_seller(seller_id: int):
         logger.error(f"Error getting pending by seller: {e}")
         return []
 
-def confirm_pending(pending_id: int, username: str, category: str, price: float, seller_id: int, seller_wallet: str):
-    """Confirm pending username and move to usernames table"""
-    try:
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.cursor()
-            now = datetime.now().isoformat()
-            
-            # Insert into usernames table
-            cursor.execute('''
-                INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
-                VALUES (?, ?, ?, ?, ?, 'available', ?)
-            ''', (username, category, price, seller_id, seller_wallet, now))
-            
-            # Update pending status
-            cursor.execute('''
-                UPDATE pending_usernames SET status = 'confirmed', confirmed_at = ?
-                WHERE id = ?
-            ''', (now, pending_id))
-            
-            conn.commit()
-            return True
-    except Exception as e:
-        logger.error(f"Error confirming pending: {e}")
-        return False
-
 def reject_pending(pending_id: int):
     """Reject pending username"""
     try:
