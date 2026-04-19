@@ -404,7 +404,7 @@ body {
 }
 
 .username-card .card-username {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     font-family: monospace;
     text-align: center;
@@ -412,10 +412,10 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    background: var(--primary);
+    background: var(--text);
     padding: 5px 14px;
-    border-radius: 20px;
-    margin-top: 15px;
+    border-radius: 10px;
+    margin-top: 10px;
     margin-bottom: 0;
     margin-left: auto;
     margin-right: auto;
@@ -423,7 +423,7 @@ body {
     z-index: 2;
     width: auto;
     max-width: calc(100% - 24px);
-    color: var(--text);
+    color: var(--bg);
     display: inline-block;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     line-height: 1.3;
