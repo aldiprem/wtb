@@ -358,11 +358,11 @@ body {
     inset: 0;
     border-radius: 16px;
     padding: 1px;
-    background: linear-gradient(176deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(255, 255, 255, 0.4) 100%);
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 25%,
+        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0.3) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
@@ -390,17 +390,17 @@ body {
 .card-avatar {
     width: 55px;
     height: 55px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bg), var(--bg));
+    border-radius: 25%;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     flex-shrink: 0;
     margin-top: 0;
-    margin-bottom: 8px;
+    margin-bottom: 25px;
 }
 
 .username-card .card-username {
@@ -416,7 +416,7 @@ body {
     padding: 5px 14px;
     border-radius: 5px;
     margin-top: 10px;
-    margin-bottom: 0;
+    margin-bottom: -15px;
     margin-left: auto;
     margin-right: auto;
     position: relative;
