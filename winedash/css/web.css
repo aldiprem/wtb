@@ -845,3 +845,529 @@ button:disabled {
         font-size: 14px;
     }
 }
+
+/* Marketplace Grid dan List Layout - Tambahkan di akhir file web.css */
+
+/* Marketplace Grid Layout */
+.marketplace-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.marketplace-card {
+    background: var(--surface-light);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.2s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: none;
+}
+
+.marketplace-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 25%,
+        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.marketplace-card-image {
+    position: relative;
+    width: 100%;
+    height: 130px;
+    background-image: url('https://companel.shop/image/bg-storage-card.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.marketplace-card .card-avatar {
+    width: 55px;
+    height: 55px;
+    background: linear-gradient(135deg, var(--bg), var(--bg));
+    border-radius: 25%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    margin-top: 0;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 2;
+}
+
+.marketplace-card .card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 25%;
+}
+
+.marketplace-card .card-username {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: monospace;
+    text-align: center;
+    background: var(--text);
+    padding: 5px 14px;
+    border-radius: 5px;
+    margin-top: 5px;
+    margin-bottom: -15px;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    z-index: 2;
+    color: var(--bg);
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.marketplace-card-info {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--surface-light);
+    flex: 1;
+    border-top: 1px solid var(--border-light);
+}
+
+.marketplace-card .card-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.marketplace-card .price-with-logo {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.marketplace-card .price-logo {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+}
+
+.marketplace-card .card-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--success);
+    margin: 0;
+}
+
+.marketplace-card .card-basedon {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.marketplace-buy-btn {
+    background: linear-gradient(135deg, var(--success), #0d9488);
+    border: none;
+    border-radius: 10px;
+    padding: 8px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+    width: 100%;
+}
+
+.marketplace-buy-btn:hover {
+    transform: scale(1.02);
+}
+
+/* Marketplace List Layout */
+.marketplace-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.marketplace-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+}
+
+.marketplace-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: linear-gradient(176deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.marketplace-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.marketplace-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.marketplace-info {
+    flex: 2;
+    min-width: 100px;
+}
+
+.marketplace-name {
+    font-size: 13px;
+    font-weight: 600;
+    font-family: monospace;
+    margin-bottom: 2px;
+    word-break: break-all;
+}
+
+.marketplace-basedon {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.marketplace-price-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.price-logo-small {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.marketplace-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--success);
+}
+
+.marketplace-buy-btn-small {
+    background: linear-gradient(135deg, var(--success), #0d9488);
+    border: none;
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.marketplace-buy-btn-small:hover {
+    transform: scale(1.02);
+}
+
+/* Filter Button */
+.filter-btn {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 0 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.filter-btn i {
+    font-size: 14px;
+}
+
+.filter-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Search container dengan filter button */
+#marketplaceTab .search-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+/* Filter Panel */
+.filter-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    z-index: 1450;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.filter-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.filter-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    z-index: 1500;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    overflow: hidden;
+}
+
+.filter-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px 24px 0 0;
+    padding: 1px;
+    background: linear-gradient(165deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 15%,
+        rgba(255, 255, 255, 0) 85%, 
+        rgba(255, 255, 255, 0.4) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.filter-panel.open {
+    transform: translateY(0);
+}
+
+.filter-drag-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    margin: 12px auto 8px auto;
+    cursor: grab;
+}
+
+.filter-drag-handle:active {
+    cursor: grabbing;
+}
+
+.filter-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.filter-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-close {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-close::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    padding: 1px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.5) 0%, 
+        rgba(255, 255, 255, 0) 50%,
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.filter-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.filter-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+.filter-section {
+    margin-bottom: 24px;
+}
+
+.filter-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+}
+
+.filter-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.filter-option {
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 8px 16px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-option i {
+    font-size: 12px;
+}
+
+.filter-option.active {
+    background: var(--primary-glass);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.filter-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.layout-options {
+    display: flex;
+    gap: 12px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 12px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.filter-reset, .filter-apply {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-reset {
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+
+.filter-reset:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.filter-apply {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    color: white;
+}
+
+.filter-apply:hover {
+    transform: scale(1.02);
+}
+
+/* Body ketika filter terbuka */
+body.filter-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
