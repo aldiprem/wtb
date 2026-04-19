@@ -725,7 +725,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                
+                    
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -902,7 +902,7 @@
         
         renderUsernames(filtered);
     }
-        
+            
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
@@ -916,7 +916,22 @@
                 applyFiltersAndRender();  // Gunakan applyFiltersAndRender
             } else {
                 allUsernames = [];
-                elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
+                // PERBAIKAN: Tampilkan empty state dengan animasi, bukan teks biasa
+                const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
+                if (emptyAnimationDiv) {
+                    emptyAnimationDiv.style.display = 'block';
+                    elements.usernameList.style.display = 'none';
+                    loadMarketplaceTGSAnimation();
+                } else {
+                    elements.usernameList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-animation" id="marketplaceEmptyAnimation"></div>
+                            <div class="empty-title">No Usernames Available</div>
+                            <div class="empty-subtitle">Be the first to list your username!</div>
+                        </div>
+                    `;
+                    loadMarketplaceTGSAnimation();
+                }
             }
         } catch (error) {
             console.error('Error loading usernames:', error);
@@ -2591,6 +2606,7 @@
         
         async function loadTGSFile() {
             try {
+                // Gunakan path file .tgs untuk market page
                 const response = await fetch('/image/empty-market-page.tgs');
                 const arrayBuffer = await response.arrayBuffer();
                 const compressed = new Uint8Array(arrayBuffer);
