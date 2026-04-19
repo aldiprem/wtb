@@ -21,8 +21,6 @@
     let currentSearchTerm = '';
     let pendingList = [];
     let currentOtpPendingId = null;
-    let cachedAvatar = localStorage.getItem(`avatar_${usernameStr}`);
-    let avatarUrl;
 
     // DOM Elements
     const elements = {
