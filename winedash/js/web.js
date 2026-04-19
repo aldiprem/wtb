@@ -725,7 +725,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                            
+                                
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -735,18 +735,9 @@
             // Sembunyikan username list
             elements.usernameList.style.display = 'none';
             
-            // Tampilkan empty state
+            // Tampilkan empty state di dalam section-card
             if (emptyAnimationDiv) {
                 emptyAnimationDiv.style.display = 'block';
-                loadMarketplaceTGSAnimation();
-            } else {
-                elements.usernameList.innerHTML = `
-                    <div class="empty-state" style="padding: 40px 20px; text-align: center;">
-                        <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
-                        <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
-                        <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
-                    </div>
-                `;
                 loadMarketplaceTGSAnimation();
             }
             return;
@@ -860,7 +851,6 @@
             }, 100);
         }
         
-        // Attach event listeners untuk tombol beli
         document.querySelectorAll('.marketplace-buy-btn, .marketplace-buy-btn-small').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -906,7 +896,7 @@
         
         renderUsernames(filtered);
     }
-                    
+                        
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
@@ -920,20 +910,11 @@
                 applyFiltersAndRender();
             } else {
                 allUsernames = [];
-                // Tampilkan empty state dengan animasi
+                // Tampilkan empty state di dalam section-card
                 const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                 if (emptyAnimationDiv) {
                     emptyAnimationDiv.style.display = 'block';
                     elements.usernameList.style.display = 'none';
-                    loadMarketplaceTGSAnimation();
-                } else {
-                    elements.usernameList.innerHTML = `
-                        <div class="empty-state" style="padding: 40px 20px; text-align: center;">
-                            <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
-                            <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
-                            <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
-                        </div>
-                    `;
                     loadMarketplaceTGSAnimation();
                 }
             }
@@ -2572,26 +2553,22 @@
         const container = document.getElementById('marketplaceEmptyAnimation');
         if (!container) return;
         
-        // Tampilkan container
-        container.style.display = 'block';
+        // Cari container animasi di dalamnya
+        let animContainer = document.getElementById('marketplaceEmptyAnimation');
         
-        // Kosongkan container animation inner
-        const animationContainer = document.getElementById('marketplaceEmptyAnimation');
-        if (!animationContainer) return;
-        
-        // Buat struktur empty state di dalam container (jika belum ada)
-        if (animationContainer.children.length === 0) {
-            animationContainer.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
-                    <div class="empty-title">No Usernames Available</div>
-                    <div class="empty-subtitle">Be the first to list your username!</div>
+        // Pastikan struktur sudah benar
+        if (animContainer && animContainer.children.length === 0) {
+            animContainer.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 100px; height: 100px; margin: 0 auto 16px;"></div>
+                    <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
+                    <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
                 </div>
             `;
         }
         
-        const animContainer = document.getElementById('marketplaceEmptyAnimationInner');
-        if (!animContainer) return;
+        const animationDiv = document.getElementById('marketplaceEmptyAnimationInner');
+        if (!animationDiv) return;
         
         // Load libraries yang diperlukan
         function loadLibraries() {
@@ -2635,7 +2612,7 @@
                 const animationData = JSON.parse(decompressed);
                 
                 window.lottie.loadAnimation({
-                    container: animContainer,
+                    container: animationDiv,
                     renderer: 'svg',
                     loop: true,
                     autoplay: true,
@@ -2646,7 +2623,7 @@
                 });
             } catch (error) {
                 console.error('Error loading TGS file:', error);
-                animContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
+                animationDiv.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
             }
         }
         
@@ -2654,7 +2631,7 @@
             loadTGSFile();
         }).catch(err => {
             console.error('Error loading libraries:', err);
-            animContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
+            animationDiv.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
         });
     }
 

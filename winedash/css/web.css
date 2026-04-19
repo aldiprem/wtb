@@ -1930,12 +1930,9 @@ body.wallet-panel-open {
     }
 }
 
-/* Empty state untuk marketplace - TAMPILAN NORMAL TIDAK BLUR */
+/* Empty state untuk marketplace - di dalam section-card */
 #emptyMarketplaceAnimation {
     display: none;
-    width: 100%;
-    padding: 40px 20px;
-    text-align: center;
 }
 
 #emptyMarketplaceAnimation .empty-state {
@@ -1943,13 +1940,12 @@ body.wallet-panel-open {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 100%;
-    background: transparent;
+    text-align: center;
 }
 
 #emptyMarketplaceAnimation .empty-animation {
-    width: 120px;
-    height: 120px;
+    width: 100px;
+    height: 100px;
     margin: 0 auto 16px;
 }
 
