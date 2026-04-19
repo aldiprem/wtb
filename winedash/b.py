@@ -692,6 +692,99 @@ async def save_profile_photo_to_server(username: str, photo_url: str):
     except Exception as e:
         logger.error(f"Error saving profile photo to server: {e}")
 
+@bot.on(events.NewMessage(pattern=r'^/get(@?\S+)?$'))
+async def handle_get_profile(event):
+    """Handle /get command to fetch profile photo"""
+    # Parse command
+    cmd_parts = event.raw_text.strip().split()
+    
+    if len(cmd_parts) < 2:
+        await event.reply("📸 **Profile Photo Bot**\n\n"
+                         "Usage: `/get @username`\n"
+                         "Example: `/get @telegram`\n\n"
+                         "Supports: Users, Channels, Groups")
+        return
+    
+    target = cmd_parts[1].strip()
+    
+    # Remove @ if present
+    if target.startswith('@'):
+        target = target[1:]
+    
+    # Send initial message
+    msg = await event.reply(f"🔍 Fetching profile photo for @{target}...")
+    
+    try:
+        # Get entity info
+        entity = await bot.get_entity(target)
+        
+        # Determine entity type
+        if hasattr(entity, 'broadcast') and entity.broadcast:
+            entity_type = "Channel"
+            entity_name = getattr(entity, 'title', target)
+        elif hasattr(entity, 'megagroup') and entity.megagroup:
+            entity_type = "Supergroup"
+            entity_name = getattr(entity, 'title', target)
+        elif hasattr(entity, 'participants_count'):
+            entity_type = "Group"
+            entity_name = getattr(entity, 'title', target)
+        else:
+            entity_type = "User"
+            entity_name = getattr(entity, 'first_name', target)
+            if hasattr(entity, 'last_name') and entity.last_name:
+                entity_name = f"{entity_name} {entity.last_name}"
+        
+        # Get profile photo
+        photo_bytes = await bot.download_profile_photo(entity, file=bytes)
+        
+        if not photo_bytes:
+            await msg.edit(f"❌ **No Profile Photo**\n\n"
+                          f"**Target:** @{target}\n"
+                          f"**Type:** {entity_type}\n"
+                          f"**Name:** {entity_name}\n\n"
+                          f"This {entity_type.lower()} doesn't have a profile photo.")
+            return
+        
+        # Save to database (optional)
+        import base64
+        photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post('http://localhost:5050/api/winedash/profile-photo/save',
+                                   json={'username': target, 'photo_url': photo_base64}) as resp:
+                pass
+        
+        # Get file size
+        file_size_kb = len(photo_bytes) / 1024
+        
+        # Preview URL
+        preview_url = f"https://companel.shop/ii/{target}"
+        
+        # Send photo
+        await bot.send_file(
+            event.chat_id,
+            photo_bytes,
+            caption=f"📸 **Profile Photo Found!**\n\n"
+                   f"**Target:** @{target}\n"
+                   f"**Type:** {entity_type}\n"
+                   f"**Name:** {entity_name}\n"
+                   f"**Size:** {file_size_kb:.1f} KB\n\n"
+                   f"🔗 **Preview URL:** {preview_url}",
+            force_document=False
+        )
+        
+        await msg.delete()
+        
+    except errors.UsernameNotOccupiedError:
+        await msg.edit(f"❌ **Username not found**\n\n"
+                      f"Username `@{target}` does not exist on Telegram.")
+    except errors.FloodWaitError as e:
+        await msg.edit(f"⚠️ **Rate limited**\n\n"
+                      f"Please wait {e.seconds} seconds before trying again.")
+    except Exception as e:
+        logger.error(f"Error in /get command: {e}")
+        await msg.edit(f"❌ **Error:** {str(e)}")
+
 async def main():
     logger.info("🚀 Starting Winedash Bot...")
     
