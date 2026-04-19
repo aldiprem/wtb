@@ -748,6 +748,11 @@ class WinedashDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
+                # Cek apakah tabel pending_usernames ada
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
+                if not cursor.fetchone():
+                    return []
+                
                 # Cek kolom yang tersedia di tabel
                 cursor.execute("PRAGMA table_info(pending_usernames)")
                 columns = [col[1] for col in cursor.fetchall()]
@@ -755,6 +760,10 @@ class WinedashDatabase:
                 # Tentukan kolom yang akan diambil
                 select_cols = ['id', 'username', 'category', 'price', 'seller_id', 'seller_wallet',
                             'verification_type', 'verification_code', 'status', 'created_at']
+                
+                # Tambahkan based_on jika ada
+                if 'based_on' in columns:
+                    select_cols.append('based_on')
                 
                 # Tambahkan expires_at jika ada
                 if 'expires_at' in columns:
@@ -792,6 +801,11 @@ class WinedashDatabase:
                         'status': str(row['status']) if row['status'] else 'pending',
                         'created_at': str(row['created_at']) if row['created_at'] else None
                     }
+                    # Tambahkan based_on jika ada
+                    if 'based_on' in columns and 'based_on' in row.keys():
+                        result['based_on'] = str(row['based_on']) if row['based_on'] else ''
+                    else:
+                        result['based_on'] = ''
                     # Tambahkan expires_at jika ada
                     if 'expires_at' in columns and 'expires_at' in row.keys():
                         result['expires_at'] = str(row['expires_at']) if row['expires_at'] else None
@@ -811,6 +825,12 @@ class WinedashDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 now = self._get_now()
+                
+                # Cek apakah tabel pending_usernames ada
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
+                if not cursor.fetchone():
+                    print("Pending_usernames table does not exist")
+                    return False
                 
                 # Get pending record including based_on
                 cursor.execute('''
@@ -837,6 +857,8 @@ class WinedashDatabase:
                 
         except Exception as e:
             print(f"Error confirming pending username: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def reject_pending_username(self, pending_id: int) -> bool:
@@ -859,6 +881,12 @@ class WinedashDatabase:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
+                
+                # Cek apakah tabel pending_usernames ada
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
+                if not cursor.fetchone():
+                    return 0
+                
                 cursor.execute('''
                     SELECT COUNT(*) FROM pending_usernames 
                     WHERE seller_id = ? AND status = 'pending'
@@ -867,6 +895,4 @@ class WinedashDatabase:
                 return row[0] if row else 0
         except Exception as e:
             print(f"Error getting pending count: {e}")
-            import traceback
-            traceback.print_exc()
             return 0
