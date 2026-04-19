@@ -509,17 +509,22 @@ class WinedashDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
+                # TAMPILKAN SEMUA USERNAME (available, unlisted, dll) untuk storage
+                # Tidak hanya yang status 'available'
                 if category:
                     cursor.execute('''
-                        SELECT id, username, category, price, seller_id, seller_wallet, created_at
-                        FROM usernames WHERE status = 'available' AND category = ?
-                        ORDER BY price ASC LIMIT ?
+                        SELECT id, username, category, price, seller_id, seller_wallet, status, created_at
+                        FROM usernames 
+                        WHERE category = ?
+                        ORDER BY created_at DESC
+                        LIMIT ?
                     ''', (category, limit))
                 else:
                     cursor.execute('''
-                        SELECT id, username, category, price, seller_id, seller_wallet, created_at
-                        FROM usernames WHERE status = 'available'
-                        ORDER BY price ASC LIMIT ?
+                        SELECT id, username, category, price, seller_id, seller_wallet, status, created_at
+                        FROM usernames 
+                        ORDER BY created_at DESC
+                        LIMIT ?
                     ''', (limit,))
                 
                 rows = cursor.fetchall()
@@ -532,11 +537,14 @@ class WinedashDatabase:
                         'price': float(row[3]),
                         'seller_id': row[4],
                         'seller_wallet': row[5],
-                        'created_at': row[6]
+                        'status': row[6],
+                        'created_at': row[7]
                     })
                 return usernames
         except Exception as e:
             print(f"Error getting available usernames: {e}")
+            import traceback
+            traceback.print_exc()
             return []
 
     def get_user_purchases(self, user_id: int) -> List[Dict[str, Any]]:
@@ -645,6 +653,8 @@ class WinedashDatabase:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
+                print(f"[DB] Adding pending username: {username}, price: {price}, seller: {seller_id}")
+                
                 # Buat tabel pending_usernames jika belum ada
                 cursor.execute('''
                     CREATE TABLE IF NOT EXISTS pending_usernames (
@@ -665,28 +675,27 @@ class WinedashDatabase:
                     )
                 ''')
                 
-                # Cek apakah username sudah ada di usernames (available) - BELUM TERJUAL
-                cursor.execute('SELECT id FROM usernames WHERE username = ? AND status = "available"', (username,))
-                if cursor.fetchone():
-                    print(f"Username {username} already exists in marketplace (available)")
+                # Cek apakah username sudah ada di usernames (available atau unlisted)
+                cursor.execute('SELECT id, status FROM usernames WHERE username = ?', (username,))
+                existing_username = cursor.fetchone()
+                if existing_username:
+                    print(f"[DB] Username {username} already exists in usernames with status: {existing_username[1]}")
                     return None
                 
-                # Cek apakah username sudah ada di pending dengan status 'pending' (masih dalam antrian)
+                # Cek apakah username sudah ada di pending dengan status 'pending'
                 cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username,))
                 existing = cursor.fetchone()
                 
                 if existing:
                     existing_id, existing_status = existing
-                    # Hanya blokir jika masih dalam status 'pending'
                     if existing_status == 'pending':
-                        print(f"Username {username} already in pending queue")
+                        print(f"[DB] Username {username} already in pending queue")
                         return None
                     else:
-                        # Untuk status 'confirmed', 'rejected', atau lainnya, kita update menjadi pending baru
-                        # Hapus record lama terlebih dahulu agar bisa insert baru dengan clean state
+                        # Hapus record lama
                         cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (existing_id,))
                         conn.commit()
-                        # Lanjutkan ke insert baru di bawah
+                        print(f"[DB] Deleted old pending record for {username}")
                 
                 # Insert new pending
                 cursor.execute('''
@@ -697,14 +706,16 @@ class WinedashDatabase:
                 ''', (username, category, price, seller_id, seller_wallet, 
                     verification_type, None, now, None))
                 
+                pending_id = cursor.lastrowid
                 conn.commit()
-                return cursor.lastrowid
+                print(f"[DB] Pending username added with ID: {pending_id}")
+                return pending_id
                 
         except sqlite3.IntegrityError as e:
-            print(f"IntegrityError adding pending username: {e}")
+            print(f"[DB] IntegrityError adding pending username: {e}")
             return None
         except Exception as e:
-            print(f"Error adding pending username: {e}")
+            print(f"[DB] Error adding pending username: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -773,51 +784,43 @@ class WinedashDatabase:
             traceback.print_exc()
             return []
 
-    def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
-        """Confirm pending username and move to available"""
+    def confirm_pending(pending_id: int, username: str, category: str, price: float, seller_id: int, seller_wallet: str):
+        """Confirm pending username and move to usernames table"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                now = self._get_now()
+                now = datetime.now().isoformat()
                 
-                # Get pending record
-                cursor.execute('''
-                    SELECT username, price, seller_id, seller_wallet, category, verification_type, verification_code
-                    FROM pending_usernames WHERE id = ? AND status = 'pending'
-                ''', (pending_id,))
-                row = cursor.fetchone()
+                print(f"[BOT] Confirming pending {pending_id}: {username}")
                 
-                if not row:
+                # Cek apakah username sudah ada
+                cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
+                if cursor.fetchone():
+                    print(f"[BOT] Username {username} already exists, skipping...")
                     return False
                 
-                username, price, seller_id, seller_wallet, category, v_type, v_code = row
-                
-                # Verify code if needed
-                if v_type == 'user' and code:
-                    if v_code != code:
-                        return False
-                    # Check expiration
-                    cursor.execute('SELECT expires_at FROM pending_usernames WHERE id = ?', (pending_id,))
-                    exp_row = cursor.fetchone()
-                    if exp_row and exp_row[0]:
-                        expires_at = datetime.fromisoformat(exp_row[0])
-                        if datetime.now() > expires_at:
-                            return False
-                
-                # Move to usernames table
+                # Insert into usernames table
                 cursor.execute('''
                     INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
                     VALUES (?, ?, ?, ?, ?, 'available', ?)
                 ''', (username, category, price, seller_id, seller_wallet, now))
                 
-                # HAPUS pending record setelah confirmed (bukan update status)
-                # Ini penting agar username bisa ditambahkan lagi nanti jika dihapus dari usernames
-                cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
+                username_id = cursor.lastrowid
+                print(f"[BOT] Username inserted with ID: {username_id}")
+                
+                # Update pending status
+                cursor.execute('''
+                    UPDATE pending_usernames SET status = 'confirmed', confirmed_at = ?
+                    WHERE id = ?
+                ''', (now, pending_id))
                 
                 conn.commit()
+                print(f"[BOT] Pending {pending_id} confirmed successfully")
                 return True
         except Exception as e:
-            print(f"Error confirming pending username: {e}")
+            print(f"[BOT] Error confirming pending: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def reject_pending_username(self, pending_id: int) -> bool:

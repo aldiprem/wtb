@@ -183,23 +183,32 @@
     }
 
     // ==================== CRUD OPERATIONS ====================
-    
     async function loadUsernames() {
         showLoading(true);
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=100`);
+            console.log('[DEBUG] Loading usernames...');
+            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
             const data = await response.json();
             
-            if (data.success && data.usernames.length > 0) {
-                allUsernames = data.usernames;
+            console.log('[DEBUG] Load usernames response:', data);
+            
+            if (data.success && data.usernames) {
+                // Filter hanya username milik user yang login
+                if (telegramUser) {
+                    allUsernames = data.usernames.filter(u => u.seller_id === telegramUser.id);
+                    console.log(`[DEBUG] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
+                } else {
+                    allUsernames = data.usernames;
+                }
                 filterAndRender();
             } else {
+                console.log('[DEBUG] No usernames found or error:', data);
                 allUsernames = [];
                 renderUsernames([]);
             }
         } catch (error) {
-            console.error('Error loading usernames:', error);
+            console.error('[DEBUG] Error loading usernames:', error);
             if (elements.usernameContainer) {
                 elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
             }

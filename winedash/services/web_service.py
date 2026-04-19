@@ -403,11 +403,12 @@ def get_withdrawal_history(user_id):
 
 @winedash_bp.route('/usernames', methods=['GET'])
 def get_usernames():
-    """Get all available usernames"""
+    """Get all usernames for storage (including unlisted)"""
     try:
         category = request.args.get('category')
-        limit = request.args.get('limit', 50, type=int)
+        limit = request.args.get('limit', 100, type=int)
         
+        # Gunakan method yang sama untuk mendapatkan semua usernames
         usernames = db.get_available_usernames(category, limit)
         
         return jsonify({
@@ -418,8 +419,9 @@ def get_usernames():
         
     except Exception as e:
         print(f"Error in get_usernames: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @winedash_bp.route('/username/add', methods=['POST', 'OPTIONS'])
 def add_username():
