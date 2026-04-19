@@ -753,7 +753,6 @@
             elements.usernameList.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-animation" id="marketplaceEmptyAnimation"></div>
-                    <div class="empty-title">No Usernames Available</div>
                     <div class="empty-subtitle">Be the first to list your username!</div>
                 </div>
             `;
