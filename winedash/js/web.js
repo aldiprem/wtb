@@ -575,8 +575,15 @@
         }
         
         if (!tonConnectUI?.connected) {
-            showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+            showToast('Hubungkan wallet TON terlebih dahulu untuk menerima dana', 'warning');
             await connectWallet();
+            return;
+        }
+        
+        // Cek balance user
+        const currentBalance = parseFloat(elements.balanceAmount?.textContent || '0');
+        if (currentBalance < amount) {
+            showToast(`Saldo tidak mencukupi. Saldo Anda: ${currentBalance} TON`, 'error');
             return;
         }
         
@@ -586,32 +593,74 @@
         const originalText = withdrawBtn?.innerHTML;
         if (withdrawBtn) {
             withdrawBtn.disabled = true;
-            withdrawBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses...</span>';
+            withdrawBtn.innerHTML = '<span class="btn-loading"></span><span>Memproses withdraw...</span>';
         }
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/withdraw/create`, {
+            const destinationAddress = tonConnectUI.account?.address;
+            
+            console.log('📤 Processing withdrawal:', { amount, destination: destinationAddress });
+            
+            // Step 1: Create withdrawal request
+            const createResponse = await fetch(`${API_BASE_URL}/api/winedash/withdraw/create`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: telegramUser.id,
                     amount: amount,
-                    wallet_address: tonConnectUI.account?.address
+                    wallet_address: destinationAddress
                 })
             });
             
-            const data = await response.json();
+            const createData = await createResponse.json();
             
-            if (data.success) {
-                showToast(`Withdrawal request created: ${amount} TON`, 'success');
-                if (elements.withdrawAmount) elements.withdrawAmount.value = '';
-                refreshAllData();
-            } else {
-                showToast(data.error || 'Failed to create withdrawal', 'error');
+            if (!createData.success) {
+                throw new Error(createData.error || 'Failed to create withdrawal request');
             }
+            
+            console.log('✅ Withdrawal request created:', createData);
+            
+            // Step 2: Process withdrawal (send TON)
+            showToast('⏳ Memproses withdraw, mohon tunggu...', 'info');
+            
+            const processResponse = await fetch(`${API_BASE_URL}/api/winedash/withdraw/process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: telegramUser.id,
+                    amount: amount,
+                    destination_address: destinationAddress,
+                    withdrawal_id: createData.withdrawal_id
+                })
+            });
+            
+            const processData = await processResponse.json();
+            
+            if (!processData.success) {
+                throw new Error(processData.error || 'Failed to process withdrawal');
+            }
+            
+            console.log('✅ Withdrawal processed:', processData);
+            
+            showToast(`✅ Withdraw ${amount} TON berhasil! Dana akan segera masuk ke wallet Anda.`, 'success');
+            
+            // Reset form
+            if (elements.withdrawAmount) elements.withdrawAmount.value = '';
+            
+            // Refresh data
+            await refreshAllData();
+            
         } catch (error) {
-            console.error('Error creating withdrawal:', error);
-            showToast('Error creating withdrawal', 'error');
+            console.error('❌ Withdraw error:', error);
+            
+            let errorMessage = error.message;
+            if (error.message.includes('Insufficient balance')) {
+                errorMessage = 'Saldo tidak mencukupi';
+            } else if (error.message.includes('network')) {
+                errorMessage = 'Gangguan jaringan, coba lagi nanti';
+            }
+            
+            showToast(`❌ ${errorMessage}`, 'error');
         } finally {
             if (withdrawBtn) {
                 withdrawBtn.disabled = false;

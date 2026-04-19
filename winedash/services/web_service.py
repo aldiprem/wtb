@@ -10,6 +10,7 @@ from flask import Blueprint, request, jsonify
 import sys
 from pathlib import Path
 import re
+import asyncio
 
 # Add root to path
 ROOT_DIR = Path(__file__).parent.parent.parent
@@ -186,6 +187,57 @@ def validate_based_on(username: str, based_on: str) -> tuple:
     
     # Jika tidak ada yang cocok
     return False, f"'{based_on}' tidak memiliki hubungan yang valid dengan username '{username}'", None
+
+# ==================== WITHDRAW HELPER FUNCTIONS ====================
+
+async def send_ton_transfer(destination_address: str, amount_ton: float, memo: str = "") -> str:
+    """
+    Kirim transfer TON ke alamat tujuan menggunakan tonutils
+    Returns: transaction hash
+    """
+    try:
+        from tonutils.client import ToncenterClient
+        from tonutils.wallet import WalletV4R2
+        
+        # Ambil mnemonic dari environment
+        MERCHANT_MNEMONIC = os.getenv('MERCHANT_MNEMONIC', '')
+        TONCENTER_API_KEY = os.getenv('TONCENTER_API_KEY', '')
+        
+        if not MERCHANT_MNEMONIC:
+            raise Exception("MERCHANT_MNEMONIC tidak ditemukan di .env")
+        
+        if not TONCENTER_API_KEY:
+            raise Exception("TONCENTER_API_KEY tidak ditemukan di .env")
+        
+        print(f"📤 Mengirim: {amount_ton} TON")
+        print(f"📡 Ke alamat: {destination_address}")
+        print(f"📝 Memo: {memo}")
+        
+        # Inisialisasi client
+        client = ToncenterClient(api_key=TONCENTER_API_KEY, is_testnet=False)
+        
+        # Buat wallet dari mnemonic
+        wallet, _, _, _ = WalletV4R2.from_mnemonic(
+            client=client, 
+            mnemonic=MERCHANT_MNEMONIC.split()
+        )
+        
+        # Kirim transaksi - amount_ton langsung, library akan konversi ke nano
+        tx_hash = await wallet.transfer(
+            destination=destination_address,
+            amount=amount_ton,  # Langsung dalam TON, library akan konversi ke nano
+            body=memo if memo else f"Withdraw {amount_ton} TON",
+        )
+        
+        print(f"✅ Berhasil! TX hash: {tx_hash}")
+        return tx_hash
+        
+    except ImportError as e:
+        print(f"❌ Import error: {e}")
+        raise Exception("Library tonutils tidak tersedia. Install dengan: pip install tonutils")
+    except Exception as e:
+        print(f"❌ Error sending TON: {e}")
+        raise
 
 @winedash_bp.route('/auth', methods=['POST', 'OPTIONS'])
 def auth_user():
@@ -404,21 +456,138 @@ def create_withdrawal():
         if amount < 1:
             return jsonify({'success': False, 'error': 'Minimal withdraw 1 TON'}), 400
         
-        # Create withdrawal record
+        # Get user balance
+        user = db.get_user(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User tidak ditemukan'}), 404
+        
+        if user['balance'] < amount:
+            return jsonify({'success': False, 'error': f'Saldo tidak mencukupi. Saldo Anda: {user["balance"]} TON'}), 400
+        
+        # Generate unique reference
+        import uuid
+        reference = f"wd_{user_id}_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:8]}"
+        
+        # Create withdrawal record with pending status
         withdrawal_id = db.create_withdrawal(user_id, amount, wallet_address)
         
         if not withdrawal_id:
-            return jsonify({'success': False, 'error': 'Saldo tidak mencukupi'}), 400
+            return jsonify({'success': False, 'error': 'Gagal membuat request withdraw'}), 500
         
         return jsonify({
             'success': True,
             'withdrawal_id': withdrawal_id,
+            'reference': reference,
             'amount': amount,
-            'message': 'Withdrawal request created. Waiting for admin approval.'
+            'message': 'Withdrawal request created. Processing...'
         })
         
     except Exception as e:
         print(f"Error in create_withdrawal: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@winedash_bp.route('/withdraw/process', methods=['POST', 'OPTIONS'])
+def process_withdraw():
+    """Process withdrawal - send TON to user wallet"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        user_id = data.get('user_id')
+        amount = data.get('amount')
+        destination_address = data.get('destination_address')
+        withdrawal_id = data.get('withdrawal_id')
+        
+        if not user_id or not amount or amount <= 0 or not destination_address:
+            return jsonify({'success': False, 'error': 'Parameter tidak valid'}), 400
+        
+        # Get user and verify balance
+        user = db.get_user(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User tidak ditemukan'}), 404
+        
+        if user['balance'] < amount:
+            return jsonify({'success': False, 'error': f'Saldo tidak mencukupi'}), 400
+        
+        # Generate memo
+        memo = f"withdraw:{user_id}:{int(datetime.now().timestamp())}"
+        
+        # Send TON transfer
+        print(f"💰 Processing withdrawal for user {user_id}")
+        print(f"   Amount: {amount} TON")
+        print(f"   To: {destination_address}")
+        print(f"   Memo: {memo}")
+        
+        # Panggil fungsi async untuk kirim TON
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            tx_hash = loop.run_until_complete(
+                send_ton_transfer(destination_address, amount, memo)
+            )
+        finally:
+            loop.close()
+        
+        print(f"✅ Transfer successful! TX Hash: {tx_hash}")
+        
+        # Update withdrawal record
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            now = get_jakarta_time().isoformat()
+            
+            # Update withdrawal status
+            if withdrawal_id:
+                cursor.execute('''
+                    UPDATE withdrawals 
+                    SET status = 'completed', transaction_id = ?, completed_at = ?
+                    WHERE id = ?
+                ''', (tx_hash, now, withdrawal_id))
+            
+            # Deduct user balance
+            cursor.execute('''
+                UPDATE users SET balance = balance - ?, total_withdraw = total_withdraw + ?
+                WHERE user_id = ?
+            ''', (amount, amount, user_id))
+            
+            # Create transaction record
+            cursor.execute('''
+                INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
+                VALUES (?, ?, 'withdraw', ?, 'success', ?, ?, ?)
+            ''', (tx_hash, user_id, amount, f"Withdraw to {destination_address[:10]}...", now, now))
+            
+            conn.commit()
+        
+        # Get new balance
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+            row = cursor.fetchone()
+            new_balance = float(row[0]) if row else 0
+        
+        return jsonify({
+            'success': True,
+            'transaction_hash': tx_hash,
+            'amount': amount,
+            'new_balance': new_balance,
+            'message': f'Withdraw {amount} TON berhasil dikirim!'
+        })
+        
+    except Exception as e:
+        print(f"Error in process_withdraw: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -460,8 +629,7 @@ def confirm_withdrawal():
         
     except Exception as e:
         print(f"Error in confirm_withdrawal: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+        return process_withdraw()
 
 @winedash_bp.route('/withdraw/history/<int:user_id>', methods=['GET'])
 def get_withdrawal_history(user_id):
