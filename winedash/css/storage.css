@@ -1976,3 +1976,17 @@ body.panel-open {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
 }
+
+/* Error message style */
+.error-message {
+    color: var(--danger);
+    font-size: 11px;
+    margin-top: -8px;
+    margin-bottom: 12px;
+    padding-left: 4px;
+}
+
+.form-input.error {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}

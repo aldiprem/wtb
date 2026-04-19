@@ -703,6 +703,19 @@ class WinedashDatabase:
                 username_clean = username.lstrip('@').strip()
                 
                 if not username_clean:
+                    print(f"[DB] Invalid username: {username}")
+                    return None
+                
+                # Cek apakah username sudah ada di usernames
+                cursor.execute('SELECT id FROM usernames WHERE username = ?', (username_clean,))
+                if cursor.fetchone():
+                    print(f"[DB] Username {username_clean} already exists in usernames")
+                    return None
+                
+                # Cek apakah username sudah ada di pending
+                cursor.execute('SELECT id FROM pending_usernames WHERE username = ? AND status = "pending"', (username_clean,))
+                if cursor.fetchone():
+                    print(f"[DB] Username {username_clean} already in pending queue")
                     return None
                 
                 # Insert new pending with based_on
@@ -716,10 +729,16 @@ class WinedashDatabase:
                 
                 pending_id = cursor.lastrowid
                 conn.commit()
+                print(f"[DB] Pending username added with ID: {pending_id}, based_on: {based_on}")
                 return pending_id
                 
+        except sqlite3.IntegrityError as e:
+            print(f"[DB] IntegrityError adding pending username: {e}")
+            return None
         except Exception as e:
-            print(f"Error adding pending username: {e}")
+            print(f"[DB] Error adding pending username: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:

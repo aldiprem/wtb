@@ -791,6 +791,13 @@
             return false;
         }
         
+        // Validasi based_on hanya boleh huruf, angka, dan spasi
+        const basedOnRegex = /^[a-zA-Z0-9\s]+$/;
+        if (!basedOnRegex.test(basedOn.trim())) {
+            showToast('Based On hanya boleh berisi huruf, angka, dan spasi', 'warning');
+            return false;
+        }
+        
         if (!price || price <= 0) {
             showToast('Harga harus lebih dari 0', 'warning');
             return false;
@@ -805,7 +812,7 @@
                 price: parseFloat(price),
                 seller_id: telegramUser.id,
                 seller_wallet: walletAddress || '',
-                based_on: basedOn.trim()  // Ganti category dengan based_on
+                based_on: basedOn.trim()
             };
             
             console.log('[DEBUG] Adding username:', requestBody);
@@ -1947,11 +1954,44 @@
                 }
             });
         }
-        
+                
         if (elements.confirmAddBtn) {
             const newConfirmBtn = elements.confirmAddBtn.cloneNode(true);
             elements.confirmAddBtn.parentNode.replaceChild(newConfirmBtn, elements.confirmAddBtn);
             elements.confirmAddBtn = newConfirmBtn;
+            
+            // Tambahkan validasi real-time untuk basedOn input
+            const basedOnInput = document.getElementById('modalBasedOn');
+            const basedOnError = document.getElementById('basedOnError');
+            
+            if (basedOnInput) {
+                basedOnInput.addEventListener('input', function() {
+                    const value = this.value.trim();
+                    const basedOnRegex = /^[a-zA-Z0-9\s]*$/;
+                    
+                    if (value === '') {
+                        basedOnError.style.display = 'block';
+                        basedOnError.textContent = 'Based On tidak boleh kosong';
+                        this.classList.add('error');
+                    } else if (!basedOnRegex.test(value)) {
+                        basedOnError.style.display = 'block';
+                        basedOnError.textContent = 'Based On hanya boleh berisi huruf, angka, dan spasi';
+                        this.classList.add('error');
+                    } else {
+                        basedOnError.style.display = 'none';
+                        this.classList.remove('error');
+                    }
+                });
+                
+                basedOnInput.addEventListener('blur', function() {
+                    const value = this.value.trim();
+                    if (value === '') {
+                        basedOnError.style.display = 'block';
+                        basedOnError.textContent = 'Based On tidak boleh kosong';
+                        this.classList.add('error');
+                    }
+                });
+            }
             
             elements.confirmAddBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -1960,10 +2000,11 @@
                 
                 const username = elements.modalUsername?.value.trim();
                 const price = parseFloat(elements.modalPrice?.value);
-                const basedOn = document.getElementById('modalBasedOn')?.value.trim();  // Ganti category
+                const basedOn = basedOnInput?.value.trim();
                 
                 console.log('[DEBUG] Form values:', { username, price, basedOn });
                 
+                // Validasi sebelum submit
                 if (!username) {
                     showToast('Masukkan username', 'warning');
                     return;
@@ -1971,6 +2012,27 @@
                 
                 if (!basedOn) {
                     showToast('Masukkan Based On (nama asli)', 'warning');
+                    if (basedOnInput) {
+                        basedOnInput.classList.add('error');
+                        if (basedOnError) {
+                            basedOnError.style.display = 'block';
+                            basedOnError.textContent = 'Based On tidak boleh kosong';
+                        }
+                    }
+                    return;
+                }
+                
+                // Validasi basedOn dengan regex
+                const basedOnRegex = /^[a-zA-Z0-9\s]+$/;
+                if (!basedOnRegex.test(basedOn)) {
+                    showToast('Based On hanya boleh berisi huruf, angka, dan spasi', 'warning');
+                    if (basedOnInput) {
+                        basedOnInput.classList.add('error');
+                        if (basedOnError) {
+                            basedOnError.style.display = 'block';
+                            basedOnError.textContent = 'Based On hanya boleh berisi huruf, angka, dan spasi';
+                        }
+                    }
                     return;
                 }
                 
@@ -1984,6 +2046,13 @@
                 if (success && elements.addModal) {
                     elements.addModal.style.display = 'none';
                     clearModal();
+                    // Reset error state
+                    if (basedOnInput) {
+                        basedOnInput.classList.remove('error');
+                    }
+                    if (basedOnError) {
+                        basedOnError.style.display = 'none';
+                    }
                     await loadUsernames();
                 }
             });
@@ -2102,7 +2171,14 @@
         if (elements.modalUsername) elements.modalUsername.value = '';
         if (elements.modalPrice) elements.modalPrice.value = '';
         const basedOnInput = document.getElementById('modalBasedOn');
-        if (basedOnInput) basedOnInput.value = '';
+        if (basedOnInput) {
+            basedOnInput.value = '';
+            basedOnInput.classList.remove('error');
+        }
+        const basedOnError = document.getElementById('basedOnError');
+        if (basedOnError) {
+            basedOnError.style.display = 'none';
+        }
     }
 
     function updateStorageUserUI() {
