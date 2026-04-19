@@ -254,14 +254,19 @@
                     isWalletConnected = true;
                     walletAddress = wallet.account.address;
                     updateWalletUI();
-                    await saveWalletAddress(walletAddress);  // PASTIKAN INI ADA
+                    await saveWalletAddress(walletAddress);
                     showToast('Wallet connected!', 'success');
                     updateBalanceCardUI();
+                    // ==================== PERBAIKAN: Update wallet main card ====================
+                    updateWalletMainUI();
                 } else {
                     isWalletConnected = false;
                     walletAddress = null;
                     updateWalletUI();
                     updateBalanceCardUI();
+                    // ==================== PERBAIKAN: Sembunyikan wallet card ====================
+                    const walletMainCard = document.getElementById('walletMainCard');
+                    if (walletMainCard) walletMainCard.style.display = 'none';
                 }
             });
             
@@ -271,8 +276,10 @@
                     isWalletConnected = true;
                     walletAddress = wallet.account.address;
                     updateWalletUI();
-                    await saveWalletAddress(walletAddress);  // PASTIKAN INI ADA
+                    await saveWalletAddress(walletAddress);
                     updateBalanceCardUI();
+                    // ==================== PERBAIKAN: Update wallet main card ====================
+                    updateWalletMainUI();
                 }
             }
             
@@ -1126,11 +1133,11 @@
     }
 
     // ==================== REFRESH ====================
-        
+            
     async function refreshAllData() {
         hapticLight();
         
-        // ==================== PERBAIKAN: Refresh user data dari server ====================
+        // Refresh user data dari server
         const user = await authenticateUser();
         
         if (user) {
@@ -1140,12 +1147,21 @@
                 elements.balanceAmount.textContent = newBalance;
                 console.log(`💰 RefreshAllData - Balance updated to: ${newBalance} TON`);
             }
+            // Update currentWalletBalance
+            currentWalletBalance = parseFloat(user.balance);
+            
+            // Update wallet main card balance
+            const walletBalanceAmount = document.getElementById('walletBalanceAmount');
+            if (walletBalanceAmount) {
+                walletBalanceAmount.textContent = currentWalletBalance.toFixed(2);
+            }
         }
         
         await loadUsernames();
         await loadPurchasedUsernames();
         await loadTransactionHistory();
         updateBalanceCardUI();
+        updateWalletMainUI();
         
         showToast('Data diperbarui!', 'success');
     }
@@ -1732,8 +1748,10 @@
         const walletAddressDisplay = document.getElementById('walletAddressValue');
         const walletBalanceAmount = document.getElementById('walletBalanceAmount');
         
+        console.log('🔄 updateWalletMainUI called - isWalletConnected:', isWalletConnected, 'walletAddress:', walletAddress);
+        
         if (isWalletConnected && walletAddress) {
-            walletMainCard.style.display = 'block';
+            if (walletMainCard) walletMainCard.style.display = 'block';
             
             // Format address
             const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
@@ -1748,16 +1766,27 @@
                         if (data.success && data.user) {
                             currentWalletBalance = parseFloat(data.user.balance);
                             if (walletBalanceAmount) walletBalanceAmount.textContent = currentWalletBalance.toFixed(2);
+                            console.log(`💰 Wallet balance updated: ${currentWalletBalance} TON`);
+                        } else {
+                            console.log('⚠️ User data not found, using default balance 0');
+                            if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
                         }
                     } catch (error) {
                         console.error('Error fetching balance:', error);
+                        if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
                     }
+                } else {
+                    console.log('⚠️ telegramUser not available yet');
+                    if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
                 }
             };
             getBalance();
             
         } else {
-            walletMainCard.style.display = 'none';
+            if (walletMainCard) {
+                walletMainCard.style.display = 'none';
+                console.log('⚠️ Wallet not connected, hiding main card');
+            }
             currentWalletBalance = 0;
         }
     }
@@ -2052,26 +2081,58 @@
         }
     }
 
-    // Update setupEventListeners untuk wallet
     function setupWalletEventListeners() {
         const walletDepositBtn = document.getElementById('walletDepositBtn');
         if (walletDepositBtn) {
-            walletDepositBtn.addEventListener('click', showDepositPanel);
+            // Hapus listener lama dengan clone untuk menghindari duplikasi
+            const newBtn = walletDepositBtn.cloneNode(true);
+            walletDepositBtn.parentNode.replaceChild(newBtn, walletDepositBtn);
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('💰 Deposit button clicked');
+                if (!isWalletConnected) {
+                    showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+                    connectWallet();
+                    return;
+                }
+                showDepositPanel();
+            });
         }
         
         const walletWithdrawBtn = document.getElementById('walletWithdrawBtn');
         if (walletWithdrawBtn) {
-            walletWithdrawBtn.addEventListener('click', showWithdrawPanel);
+            const newBtn = walletWithdrawBtn.cloneNode(true);
+            walletWithdrawBtn.parentNode.replaceChild(newBtn, walletWithdrawBtn);
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('💰 Withdraw button clicked');
+                if (!isWalletConnected) {
+                    showToast('Hubungkan wallet TON terlebih dahulu', 'warning');
+                    connectWallet();
+                    return;
+                }
+                if (currentWalletBalance <= 0) {
+                    showToast('Saldo Anda 0 TON, tidak bisa withdraw', 'warning');
+                    return;
+                }
+                showWithdrawPanel();
+            });
         }
         
         const confirmDepositBtn = document.getElementById('confirmDepositBtn');
         if (confirmDepositBtn) {
-            confirmDepositBtn.addEventListener('click', depositFromPanel);
+            const newBtn = confirmDepositBtn.cloneNode(true);
+            confirmDepositBtn.parentNode.replaceChild(newBtn, confirmDepositBtn);
+            newBtn.addEventListener('click', depositFromPanel);
         }
         
         const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
         if (confirmWithdrawBtn) {
-            confirmWithdrawBtn.addEventListener('click', withdrawFromPanel);
+            const newBtn = confirmWithdrawBtn.cloneNode(true);
+            confirmWithdrawBtn.parentNode.replaceChild(newBtn, confirmWithdrawBtn);
+            newBtn.addEventListener('click', withdrawFromPanel);
         }
     }
 
@@ -2093,12 +2154,20 @@
             await loadUsernames();
             await loadPurchasedUsernames();
             await loadTransactionHistory();
-            updateWalletMainUI();
+            // Jangan panggil updateWalletMainUI di sini karena wallet belum connect
+            // updateWalletMainUI akan dipanggil saat wallet status berubah
         } else {
             showToast('Tidak dapat mengambil data user', 'error');
         }
         
         await initTonConnect();
+        
+        // Setelah initTonConnect, cek status wallet
+        setTimeout(() => {
+            if (isWalletConnected) {
+                updateWalletMainUI();
+            }
+        }, 500);
         
         showLoading(false);
         console.log('✅ Winedash Marketplace initialized');
