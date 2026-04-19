@@ -830,14 +830,33 @@
         renderUsernames(filtered);
     }
 
-    // Fungsi untuk mengambil foto profil dari API
+    // Fungsi untuk mengambil foto profil dari API (prioritaskan direct dari Telegram)
     async function fetchProfilePhoto(username) {
+        // Cek cache dulu
+        const cached = localStorage.getItem(`avatar_${username}`);
+        if (cached && !cached.includes('ui-avatars.com')) {
+            return cached;
+        }
+        
         try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
-            const data = await response.json();
-            if (data.success && data.photo_url) {
+            // Coba ambil dari database dulu (endpoint lama)
+            let response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+            let data = await response.json();
+            
+            if (data.success && data.photo_url && !data.photo_url.includes('ui-avatars.com')) {
+                localStorage.setItem(`avatar_${username}`, data.photo_url);
                 return data.photo_url;
             }
+            
+            // Jika tidak ada, coba ambil langsung dari Telegram Bot API
+            response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/direct/${encodeURIComponent(username)}`);
+            data = await response.json();
+            
+            if (data.success && data.photo_url && !data.photo_url.includes('ui-avatars.com')) {
+                localStorage.setItem(`avatar_${username}`, data.photo_url);
+                return data.photo_url;
+            }
+            
             return null;
         } catch (error) {
             console.error('Error fetching profile photo:', error);

@@ -434,21 +434,31 @@ async def process_verification(session, pending):
         except:
             pass
         return
-    
+        
     entity_type, chat_id, title, photo_url = await check_entity_type(username)
 
-    # Simpan photo_url ke database jika ada
+    # Simpan photo_url ke database (BUKAN update usernames karena username belum ada)
     if photo_url:
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                # Cek apakah kolom photo_url ada di tabel usernames
-                cursor.execute("PRAGMA table_info(usernames)")
-                columns = [col[1] for col in cursor.fetchall()]
-                if 'photo_url' in columns:
-                    # Update photo_url untuk username ini di tabel usernames
+                # Simpan ke tabel usernames jika username sudah ada, atau ke pending_usernames
+                # Cek apakah username sudah ada di usernames
+                cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    # Update di usernames
                     cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
+                else:
+                    # Simpan ke pending_usernames (tambah kolom photo_url jika belum ada)
+                    cursor.execute("PRAGMA table_info(pending_usernames)")
+                    columns = [col[1] for col in cursor.fetchall()]
+                    if 'photo_url' not in columns:
+                        cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
+                    cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
                 conn.commit()
+                logger.info(f"✅ Saved profile photo for {username}")
         except Exception as e:
             logger.error(f"Error saving photo_url: {e}")
     

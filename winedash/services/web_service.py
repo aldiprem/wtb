@@ -1150,3 +1150,53 @@ def get_profile_photo(username):
         traceback.print_exc()
         # Return default avatar instead of error
         return jsonify({'success': True, 'photo_url': f"https://ui-avatars.com/api/?name=U&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"})
+    
+@winedash_bp.route('/profile-photo/direct/<string:username>', methods=['GET', 'OPTIONS'])
+def get_direct_profile_photo(username):
+    """Get profile photo directly from Telegram (forward to bot)"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
+    try:
+        # Forward request ke bot untuk mendapatkan foto profil
+        import requests
+        BOT_TOKEN = os.getenv("BOT_WINEDASH", "")
+        
+        if not BOT_TOKEN:
+            return jsonify({'success': False, 'error': 'Bot not configured'}), 500
+        
+        # Gunakan Telegram Bot API untuk get chat photo
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChat"
+        params = {'chat_id': f"@{username}"}
+        
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+        
+        if data.get('ok') and data.get('result', {}).get('photo'):
+            # Dapatkan file_id foto profil
+            photo = data['result']['photo']
+            # Gunakan small photo (biasanya array of photo sizes)
+            if isinstance(photo, list) and len(photo) > 0:
+                file_id = photo[-1]['file_id']  # Ambil ukuran terbesar
+                
+                # Get file path
+                file_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getFile"
+                file_response = requests.get(file_url, params={'file_id': file_id}, timeout=10)
+                file_data = file_response.json()
+                
+                if file_data.get('ok'):
+                    file_path = file_data['result']['file_path']
+                    photo_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}"
+                    return jsonify({'success': True, 'photo_url': photo_url})
+        
+        # Fallback ke default avatar
+        initial = username[0] if username else 'U'
+        default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        return jsonify({'success': True, 'photo_url': default_avatar})
+        
+    except Exception as e:
+        print(f"Error in get_direct_profile_photo: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
