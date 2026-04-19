@@ -358,48 +358,6 @@ def create_deposit():
         print(f"Error in create_deposit: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
-@winedash_bp.route('/deposit/confirm', methods=['POST'])
-def confirm_deposit():
-    """Confirm a deposit (webhook from TON payment)"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
-        
-        transaction_id = data.get('transaction_id')
-        
-        if not transaction_id:
-            return jsonify({'success': False, 'error': 'Transaction ID required'}), 400
-        
-        success = db.confirm_deposit(transaction_id)
-        
-        if success:
-            # Create transaction record
-            # Get deposit details
-            with sqlite3.connect(db.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT user_id, amount FROM deposits WHERE transaction_id = ?', (transaction_id,))
-                row = cursor.fetchone()
-                if row:
-                    db.create_transaction(
-                        transaction_id=transaction_id,
-                        user_id=row[0],
-                        tx_type='deposit',
-                        amount=float(row[1]),
-                        details=f"Deposit confirmed via TON"
-                    )
-            
-            return jsonify({'success': True, 'message': 'Deposit confirmed'})
-        
-        return jsonify({'success': False, 'error': 'Deposit not found or already processed'}), 404
-        
-    except Exception as e:
-        print(f"Error in confirm_deposit: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @winedash_bp.route('/deposit/history/<int:user_id>', methods=['GET'])
 def get_deposit_history(user_id):
     """Get user deposit history"""
