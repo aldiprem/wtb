@@ -11,6 +11,8 @@ class WinedashDatabase:
         self.db_path = db_path
         self.timezone = pytz.timezone('Asia/Jakarta')
         self.init_database()
+        # Jalankan migrasi untuk memastikan semua tabel dan kolom ada
+        self.run_full_migration()
     
     def _get_now(self) -> str:
         """Get current time in Asia/Jakarta timezone as ISO format string"""
@@ -95,7 +97,7 @@ class WinedashDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     category TEXT,
-                    based_on TEXT,  -- BARU: nama asli username
+                    based_on TEXT,
                     price DECIMAL(20, 8) NOT NULL,
                     seller_id INTEGER,
                     seller_wallet TEXT,
@@ -150,6 +152,205 @@ class WinedashDatabase:
             
             conn.commit()
             print("✅ Winedash Database initialized successfully")
+
+    def run_full_migration(self):
+        """Run full migration to ensure all tables and columns exist"""
+        print("🔄 Running full database migration...")
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # ==================== CEK DAN TAMBAH TABEL YANG HILANG ====================
+            
+            # Daftar tabel yang diperlukan
+            required_tables = ['users', 'deposits', 'withdrawals', 'usernames', 
+                              'transactions', 'pending_usernames', 'ton_manifest']
+            
+            for table in required_tables:
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'")
+                if not cursor.fetchone():
+                    print(f"⚠️ Table '{table}' is missing, creating...")
+                    if table == 'users':
+                        cursor.execute('''
+                            CREATE TABLE users (
+                                user_id INTEGER PRIMARY KEY,
+                                username TEXT,
+                                first_name TEXT,
+                                last_name TEXT,
+                                photo_url TEXT,
+                                wallet_address TEXT,
+                                balance DECIMAL(20, 8) DEFAULT 0,
+                                total_deposit DECIMAL(20, 8) DEFAULT 0,
+                                total_withdraw DECIMAL(20, 8) DEFAULT 0,
+                                is_admin BOOLEAN DEFAULT 0,
+                                first_seen TIMESTAMP,
+                                last_seen TIMESTAMP
+                            )
+                        ''')
+                    elif table == 'deposits':
+                        cursor.execute('''
+                            CREATE TABLE deposits (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                user_id INTEGER NOT NULL,
+                                amount DECIMAL(20, 8) NOT NULL,
+                                wallet_address TEXT,
+                                transaction_id TEXT UNIQUE,
+                                status TEXT DEFAULT 'pending',
+                                created_at TIMESTAMP,
+                                completed_at TIMESTAMP
+                            )
+                        ''')
+                    elif table == 'withdrawals':
+                        cursor.execute('''
+                            CREATE TABLE withdrawals (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                user_id INTEGER NOT NULL,
+                                amount DECIMAL(20, 8) NOT NULL,
+                                wallet_address TEXT NOT NULL,
+                                transaction_id TEXT UNIQUE,
+                                status TEXT DEFAULT 'pending',
+                                created_at TIMESTAMP,
+                                completed_at TIMESTAMP
+                            )
+                        ''')
+                    elif table == 'usernames':
+                        cursor.execute('''
+                            CREATE TABLE usernames (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                username TEXT UNIQUE NOT NULL,
+                                category TEXT,
+                                based_on TEXT,
+                                price DECIMAL(20, 8) NOT NULL,
+                                seller_id INTEGER,
+                                seller_wallet TEXT,
+                                photo_url TEXT,
+                                status TEXT DEFAULT 'available',
+                                created_at TIMESTAMP,
+                                sold_at TIMESTAMP,
+                                buyer_id INTEGER,
+                                transaction_id TEXT
+                            )
+                        ''')
+                    elif table == 'transactions':
+                        cursor.execute('''
+                            CREATE TABLE transactions (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                transaction_id TEXT UNIQUE NOT NULL,
+                                user_id INTEGER NOT NULL,
+                                type TEXT NOT NULL,
+                                amount DECIMAL(20, 8) NOT NULL,
+                                status TEXT DEFAULT 'pending',
+                                details TEXT,
+                                created_at TIMESTAMP,
+                                completed_at TIMESTAMP
+                            )
+                        ''')
+                    elif table == 'pending_usernames':
+                        cursor.execute('''
+                            CREATE TABLE pending_usernames (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                username TEXT UNIQUE NOT NULL,
+                                category TEXT,
+                                based_on TEXT,
+                                price DECIMAL(20, 8) NOT NULL,
+                                seller_id INTEGER NOT NULL,
+                                seller_wallet TEXT,
+                                verification_type TEXT DEFAULT 'channel',
+                                verification_code TEXT,
+                                status TEXT DEFAULT 'pending',
+                                target_chat_id TEXT,
+                                target_chat_title TEXT,
+                                photo_url TEXT,
+                                created_at TIMESTAMP,
+                                expires_at TIMESTAMP,
+                                confirmed_at TIMESTAMP
+                            )
+                        ''')
+                    elif table == 'ton_manifest':
+                        cursor.execute('''
+                            CREATE TABLE ton_manifest (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                domain TEXT UNIQUE NOT NULL,
+                                name TEXT,
+                                icon_url TEXT,
+                                terms_of_use_url TEXT,
+                                privacy_policy_url TEXT,
+                                manifest_json TEXT,
+                                updated_at TIMESTAMP
+                            )
+                        ''')
+                    print(f"✅ Table '{table}' created")
+            
+            # ==================== CEK DAN TAMBAH KOLOM YANG HILANG ====================
+            
+            # Kolom untuk tabel users
+            self._ensure_column(cursor, 'users', 'wallet_address', 'TEXT')
+            self._ensure_column(cursor, 'users', 'balance', 'DECIMAL(20, 8) DEFAULT 0')
+            self._ensure_column(cursor, 'users', 'total_deposit', 'DECIMAL(20, 8) DEFAULT 0')
+            self._ensure_column(cursor, 'users', 'total_withdraw', 'DECIMAL(20, 8) DEFAULT 0')
+            self._ensure_column(cursor, 'users', 'is_admin', 'BOOLEAN DEFAULT 0')
+            self._ensure_column(cursor, 'users', 'first_seen', 'TIMESTAMP')
+            self._ensure_column(cursor, 'users', 'last_seen', 'TIMESTAMP')
+            
+            # Kolom untuk tabel deposits
+            self._ensure_column(cursor, 'deposits', 'user_id', 'INTEGER NOT NULL')
+            self._ensure_column(cursor, 'deposits', 'amount', 'DECIMAL(20, 8) NOT NULL')
+            self._ensure_column(cursor, 'deposits', 'wallet_address', 'TEXT')
+            self._ensure_column(cursor, 'deposits', 'transaction_id', 'TEXT UNIQUE')
+            self._ensure_column(cursor, 'deposits', 'status', 'TEXT DEFAULT "pending"')
+            self._ensure_column(cursor, 'deposits', 'created_at', 'TIMESTAMP')
+            self._ensure_column(cursor, 'deposits', 'completed_at', 'TIMESTAMP')
+            
+            # Kolom untuk tabel withdrawals
+            self._ensure_column(cursor, 'withdrawals', 'user_id', 'INTEGER NOT NULL')
+            self._ensure_column(cursor, 'withdrawals', 'amount', 'DECIMAL(20, 8) NOT NULL')
+            self._ensure_column(cursor, 'withdrawals', 'wallet_address', 'TEXT NOT NULL')
+            self._ensure_column(cursor, 'withdrawals', 'transaction_id', 'TEXT UNIQUE')
+            self._ensure_column(cursor, 'withdrawals', 'status', 'TEXT DEFAULT "pending"')
+            self._ensure_column(cursor, 'withdrawals', 'created_at', 'TIMESTAMP')
+            self._ensure_column(cursor, 'withdrawals', 'completed_at', 'TIMESTAMP')
+            
+            # Kolom untuk tabel usernames
+            self._ensure_column(cursor, 'usernames', 'based_on', 'TEXT')
+            self._ensure_column(cursor, 'usernames', 'photo_url', 'TEXT')
+            self._ensure_column(cursor, 'usernames', 'status', 'TEXT DEFAULT "available"')
+            self._ensure_column(cursor, 'usernames', 'created_at', 'TIMESTAMP')
+            self._ensure_column(cursor, 'usernames', 'sold_at', 'TIMESTAMP')
+            self._ensure_column(cursor, 'usernames', 'buyer_id', 'INTEGER')
+            self._ensure_column(cursor, 'usernames', 'transaction_id', 'TEXT')
+            
+            # Kolom untuk tabel transactions
+            self._ensure_column(cursor, 'transactions', 'transaction_id', 'TEXT UNIQUE NOT NULL')
+            self._ensure_column(cursor, 'transactions', 'user_id', 'INTEGER NOT NULL')
+            self._ensure_column(cursor, 'transactions', 'type', 'TEXT NOT NULL')
+            self._ensure_column(cursor, 'transactions', 'amount', 'DECIMAL(20, 8) NOT NULL')
+            self._ensure_column(cursor, 'transactions', 'status', 'TEXT DEFAULT "pending"')
+            self._ensure_column(cursor, 'transactions', 'details', 'TEXT')
+            self._ensure_column(cursor, 'transactions', 'created_at', 'TIMESTAMP')
+            self._ensure_column(cursor, 'transactions', 'completed_at', 'TIMESTAMP')
+            
+            # Kolom untuk tabel pending_usernames
+            self._ensure_column(cursor, 'pending_usernames', 'based_on', 'TEXT')
+            self._ensure_column(cursor, 'pending_usernames', 'photo_url', 'TEXT')
+            self._ensure_column(cursor, 'pending_usernames', 'target_chat_id', 'TEXT')
+            self._ensure_column(cursor, 'pending_usernames', 'target_chat_title', 'TEXT')
+            self._ensure_column(cursor, 'pending_usernames', 'expires_at', 'TIMESTAMP')
+            self._ensure_column(cursor, 'pending_usernames', 'confirmed_at', 'TIMESTAMP')
+            
+            conn.commit()
+        
+        print("✅ Database migration completed successfully!")
+    
+    def _ensure_column(self, cursor, table_name, column_name, column_type):
+        """Helper to add column if not exists"""
+        try:
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [col[1] for col in cursor.fetchall()]
+            if column_name not in columns:
+                cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}')
+                print(f"✅ Added column '{column_name}' to table '{table_name}'")
+        except Exception as e:
+            print(f"⚠️ Error adding column '{column_name}' to '{table_name}': {e}")
 
     def migrate_add_based_on_column(self):
         """Add based_on column to existing tables if not exists"""
@@ -398,11 +599,11 @@ class WinedashDatabase:
                 
                 print(f"[DB] Balance updated for user {user_id}, amount: +{amount}")
                 
-                # ==================== PERBAIKAN: Simpan transaction hash asli ====================
+                # Buat transaction record
                 cursor.execute('''
                     INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
-                    VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
-                ''', (transaction_id, user_id, amount, f"Deposit confirmed via TON", now, now))
+                    VALUES (?, ?, 'deposit', ?, 'success', 'Deposit confirmed via TON', ?, ?)
+                ''', (transaction_id, user_id, amount, now, now))
                 
                 conn.commit()
                 print(f"[DB] ✅ Deposit confirmed: {amount} TON added to user {user_id}")
@@ -601,7 +802,6 @@ class WinedashDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
-                # Include based_on in SELECT
                 if category:
                     cursor.execute('''
                         SELECT id, username, based_on, price, seller_id, seller_wallet, status, created_at
@@ -742,26 +942,22 @@ class WinedashDatabase:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
-                # Clean username
                 username_clean = username.lstrip('@').strip()
                 
                 if not username_clean:
                     print(f"[DB] Invalid username: {username}")
                     return None
                 
-                # Cek apakah username sudah ada di usernames
                 cursor.execute('SELECT id FROM usernames WHERE username = ?', (username_clean,))
                 if cursor.fetchone():
                     print(f"[DB] Username {username_clean} already exists in usernames")
                     return None
                 
-                # Cek apakah username sudah ada di pending
                 cursor.execute('SELECT id FROM pending_usernames WHERE username = ? AND status = "pending"', (username_clean,))
                 if cursor.fetchone():
                     print(f"[DB] Username {username_clean} already in pending queue")
                     return None
                 
-                # Insert new pending with based_on
                 cursor.execute('''
                     INSERT INTO pending_usernames 
                     (username, based_on, price, seller_id, seller_wallet, verification_type, 
@@ -791,24 +987,19 @@ class WinedashDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
-                # Cek apakah tabel pending_usernames ada
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
                 if not cursor.fetchone():
                     return []
                 
-                # Cek kolom yang tersedia di tabel
                 cursor.execute("PRAGMA table_info(pending_usernames)")
                 columns = [col[1] for col in cursor.fetchall()]
                 
-                # Tentukan kolom yang akan diambil
                 select_cols = ['id', 'username', 'category', 'price', 'seller_id', 'seller_wallet',
                             'verification_type', 'verification_code', 'status', 'created_at']
                 
-                # Tambahkan based_on jika ada
                 if 'based_on' in columns:
                     select_cols.append('based_on')
                 
-                # Tambahkan expires_at jika ada
                 if 'expires_at' in columns:
                     select_cols.append('expires_at')
                 
@@ -844,12 +1035,10 @@ class WinedashDatabase:
                         'status': str(row['status']) if row['status'] else 'pending',
                         'created_at': str(row['created_at']) if row['created_at'] else None
                     }
-                    # Tambahkan based_on jika ada
                     if 'based_on' in columns and 'based_on' in row.keys():
                         result['based_on'] = str(row['based_on']) if row['based_on'] else ''
                     else:
                         result['based_on'] = ''
-                    # Tambahkan expires_at jika ada
                     if 'expires_at' in columns and 'expires_at' in row.keys():
                         result['expires_at'] = str(row['expires_at']) if row['expires_at'] else None
                     else:
@@ -869,13 +1058,11 @@ class WinedashDatabase:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
-                # Cek apakah tabel pending_usernames ada
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
                 if not cursor.fetchone():
                     print("Pending_usernames table does not exist")
                     return False
                 
-                # Get pending record including based_on
                 cursor.execute('''
                     SELECT username, based_on, price, seller_id, seller_wallet, verification_type, verification_code
                     FROM pending_usernames WHERE id = ? AND status = 'pending'
@@ -887,13 +1074,11 @@ class WinedashDatabase:
                 
                 username, based_on, price, seller_id, seller_wallet, v_type, v_code = row
                 
-                # Move to usernames table with based_on
                 cursor.execute('''
                     INSERT INTO usernames (username, based_on, price, seller_id, seller_wallet, status, created_at)
                     VALUES (?, ?, ?, ?, ?, 'available', ?)
                 ''', (username, based_on or '', price, seller_id, seller_wallet, now))
                 
-                # Delete pending record
                 cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
                 conn.commit()
                 return True
@@ -909,7 +1094,6 @@ class WinedashDatabase:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
-                # Hapus record, jangan hanya update status
                 cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
                 conn.commit()
                 return cursor.rowcount > 0
@@ -925,7 +1109,6 @@ class WinedashDatabase:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 
-                # Cek apakah tabel pending_usernames ada
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
                 if not cursor.fetchone():
                     return 0
