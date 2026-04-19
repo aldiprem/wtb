@@ -725,7 +725,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                                
+                                    
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -859,7 +859,7 @@
             });
         });
     }
-        
+
     function filterUsernames(searchTerm) {
         if (!searchTerm || searchTerm.trim() === '') {
             applyFiltersAndRender();
@@ -2620,6 +2620,13 @@
                         preserveAspectRatio: 'xMidYMid meet'
                     }
                 });
+                
+                // ============ PERBAIKAN POSISI STICKER ============
+                // Setelah animasi dimuat, sesuaikan posisi sticker di dalam border
+                setTimeout(() => {
+                    adjustStickerPositionInBorder();
+                }, 100);
+                
             } catch (error) {
                 console.error('Error loading TGS file:', error);
                 animationDiv.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
@@ -2632,6 +2639,50 @@
             console.error('Error loading libraries:', err);
             animationDiv.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
         });
+    }
+
+    function adjustStickerPositionInBorder() {
+        const sectionCard = document.querySelector('#marketplaceTab .section-card');
+        const emptyStateDiv = document.getElementById('emptyMarketplaceAnimation');
+        const stickerElement = document.querySelector('#marketplaceEmptyAnimationInner canvas, #marketplaceEmptyAnimationInner svg');
+        
+        if (!sectionCard || !emptyStateDiv || !stickerElement) {
+            return;
+        }
+        
+        // Pastikan empty state terlihat
+        if (emptyStateDiv.style.display !== 'block') {
+            return;
+        }
+        
+        // Dapatkan posisi border container
+        const borderRect = sectionCard.getBoundingClientRect();
+        
+        // Cari text element di dalam empty state
+        const titleElement = emptyStateDiv.querySelector('.empty-title');
+        const subtitleElement = emptyStateDiv.querySelector('.empty-subtitle');
+        
+        if (titleElement) {
+            const titleRect = titleElement.getBoundingClientRect();
+            const containerRect = emptyStateDiv.getBoundingClientRect();
+            
+            // Sticker diposisikan di atas title
+            // Dengan margin otomatis dan posisi relatif dalam container
+            stickerElement.style.position = 'relative';
+            stickerElement.style.display = 'block';
+            stickerElement.style.margin = '0 auto 16px auto';
+            stickerElement.style.left = 'auto';
+            stickerElement.style.top = 'auto';
+            stickerElement.style.transform = 'none';
+            
+            // Pastikan container empty state memiliki flex column yang benar
+            emptyStateDiv.style.display = 'flex';
+            emptyStateDiv.style.flexDirection = 'column';
+            emptyStateDiv.style.alignItems = 'center';
+            emptyStateDiv.style.justifyContent = 'center';
+            
+            console.log('✅ Sticker position adjusted inside border');
+        }
     }
 
     async function init() {

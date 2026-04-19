@@ -1965,3 +1965,53 @@ body.wallet-panel-open {
 .username-list {
     display: block;
 }
+
+/* Perbaikan posisi sticker di dalam border username populer */
+#marketplaceTab .section-card {
+    position: relative;
+}
+
+#emptyMarketplaceAnimation {
+    position: relative;
+    width: 100%;
+}
+
+#emptyMarketplaceAnimation .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 300px;
+}
+
+#emptyMarketplaceAnimation .empty-animation {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#emptyMarketplaceAnimation .empty-animation canvas,
+#emptyMarketplaceAnimation .empty-animation svg {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+}
+
+#emptyMarketplaceAnimation .empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+#emptyMarketplaceAnimation .empty-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 0;
+}
