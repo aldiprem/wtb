@@ -1121,7 +1121,7 @@ def get_profile_photo(username):
             # Cek di tabel usernames
             cursor.execute('SELECT photo_url FROM usernames WHERE username = ?', (username,))
             row = cursor.fetchone()
-            if row and row['photo_url']:
+            if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
                 print(f"[DEBUG] Found photo_url in usernames for {username}")
                 return jsonify({'success': True, 'photo_url': row['photo_url']})
             
@@ -1131,20 +1131,20 @@ def get_profile_photo(username):
             if 'photo_url' in columns:
                 cursor.execute('SELECT photo_url FROM pending_usernames WHERE username = ?', (username,))
                 row = cursor.fetchone()
-                if row and row['photo_url']:
+                if row and row['photo_url'] and row['photo_url'].startswith('data:image'):
                     print(f"[DEBUG] Found photo_url in pending_usernames for {username}")
                     return jsonify({'success': True, 'photo_url': row['photo_url']})
         
-        # Fallback ke default avatar
-        initial = username[0] if username else 'U'
-        default_avatar = f"https://ui-avatars.com/api/?name={initial}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"
+        # Return default logo
+        default_avatar = "https://companel.shop/image/winedash-logo.png"
+        print(f"[DEBUG] Returning default logo for {username}")
         return jsonify({'success': True, 'photo_url': default_avatar})
         
     except Exception as e:
         print(f"Error in get_profile_photo: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': True, 'photo_url': f"https://ui-avatars.com/api/?name=U&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1"})
+        return jsonify({'success': True, 'photo_url': "https://companel.shop/image/winedash-logo.png"})
     
 @winedash_bp.route('/profile-photo/direct/<string:username>', methods=['GET', 'OPTIONS'])
 def get_direct_profile_photo(username):

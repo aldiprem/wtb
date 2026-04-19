@@ -306,24 +306,58 @@ async def handle_verify_accept(event):
         await event.answer("Data tidak ditemukan!", alert=True)
         return
     
-    from winedash.database.web import WinedashDatabase
-    db = WinedashDatabase()
-    
-    if db.confirm_pending_username(pending_id, code=None):
-        await event.answer("✅ Username berhasil diverifikasi!", alert=True)
-        await event.edit("✅ **USERNAME TERVERIFIKASI!**\n\nUsername telah ditambahkan ke marketplace.")
-        
-        # Notify seller
-        try:
-            await bot.send_message(
-                pending['seller_id'],
-                f"✅ **Username {username} telah diverifikasi!**\n\n"
-                f"Username sekarang tersedia di marketplace dengan harga {pending['price']} TON."
-            )
-        except:
-            pass
-    else:
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            
+            # Dapatkan data pending
+            cursor.execute('''
+                SELECT username, price, seller_id, seller_wallet, category
+                FROM pending_usernames WHERE id = ? AND status = 'pending'
+            ''', (pending_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                await event.answer("Data tidak ditemukan!", alert=True)
+                return
+            
+            pending_username, price, seller_id, seller_wallet, category = row
+            
+            # Cek apakah username sudah ada di usernames
+            cursor.execute('SELECT id FROM usernames WHERE username = ?', (pending_username,))
+            if cursor.fetchone():
+                await event.answer("Username sudah ada!", alert=True)
+                return
+            
+            # Pindahkan ke tabel usernames
+            now = datetime.now().isoformat()
+            cursor.execute('''
+                INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'available', ?)
+            ''', (pending_username, category, price, seller_id, seller_wallet, now))
+            
+            # Hapus dari pending
+            cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
+            
+            conn.commit()
+            
+            await event.answer("✅ Username berhasil diverifikasi!", alert=True)
+            await event.edit("✅ **USERNAME TERVERIFIKASI!**\n\nUsername telah ditambahkan ke marketplace.")
+            
+            # Notify seller
+            try:
+                await bot.send_message(
+                    seller_id,
+                    f"✅ **Username {username} telah diverifikasi!**\n\n"
+                    f"Username sekarang tersedia di marketplace dengan harga {price} TON."
+                )
+            except:
+                pass
+                
+    except Exception as e:
+        logger.error(f"Error confirming pending: {e}")
         await event.answer("Gagal verifikasi!", alert=True)
+
 
 @bot.on(events.CallbackQuery(pattern=r"verify_reject:(\d+):(.+)"))
 async def handle_verify_reject(event):
@@ -331,25 +365,35 @@ async def handle_verify_reject(event):
     pending_id = int(event.pattern_match.group(1))
     username = event.pattern_match.group(2)
     
-    from winedash.database.web import WinedashDatabase
-    db = WinedashDatabase()
-    
-    if db.reject_pending_username(pending_id):
-        await event.answer("❌ Username ditolak!", alert=True)
-        await event.edit("❌ **USERNAME DITOLAK!**\n\nUsername tidak akan ditambahkan ke marketplace.")
-        
-        # Notify seller
-        pending = get_pending_username(pending_id)
-        if pending:
-            try:
-                await bot.send_message(
-                    pending['seller_id'],
-                    f"❌ **Username {username} ditolak!**\n\n"
-                    f"Admin channel/group tidak menyetujui penjualan username ini."
-                )
-            except:
-                pass
-    else:
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            
+            # Dapatkan seller_id sebelum hapus
+            cursor.execute('SELECT seller_id FROM pending_usernames WHERE id = ?', (pending_id,))
+            row = cursor.fetchone()
+            seller_id = row[0] if row else None
+            
+            # Hapus pending record
+            cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
+            conn.commit()
+            
+            await event.answer("❌ Username ditolak!", alert=True)
+            await event.edit("❌ **USERNAME DITOLAK!**\n\nUsername tidak akan ditambahkan ke marketplace.")
+            
+            # Notify seller
+            if seller_id:
+                try:
+                    await bot.send_message(
+                        seller_id,
+                        f"❌ **Username {username} ditolak!**\n\n"
+                        f"Admin channel/group tidak menyetujui penjualan username ini."
+                    )
+                except:
+                    pass
+                
+    except Exception as e:
+        logger.error(f"Error rejecting pending: {e}")
         await event.answer("Gagal menolak!", alert=True)
 
 # ==================== MAIN BOT ====================

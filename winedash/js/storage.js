@@ -833,7 +833,7 @@
     async function fetchProfilePhoto(username) {
         // Cek cache dulu
         const cached = localStorage.getItem(`avatar_${username}`);
-        if (cached && !cached.includes('ui-avatars.com') && cached.startsWith('data:image')) {
+        if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && !cached.includes('ui-avatars.com')) {
             return cached;
         }
         
@@ -842,15 +842,16 @@
             const data = await response.json();
             
             if (data.success && data.photo_url) {
-                if (!data.photo_url.includes('ui-avatars.com')) {
+                // Simpan ke cache jika bukan default logo
+                if (!data.photo_url.includes('winedash-logo.png')) {
                     localStorage.setItem(`avatar_${username}`, data.photo_url);
                 }
                 return data.photo_url;
             }
-            return null;
+            return "https://companel.shop/image/winedash-logo.png";
         } catch (error) {
             console.error('Error fetching profile photo:', error);
-            return null;
+            return "https://companel.shop/image/winedash-logo.png";
         }
     }
 
@@ -902,7 +903,7 @@
                 if (cachedAvatar && !cachedAvatar.includes('ui-avatars.com')) {
                     avatarUrl = cachedAvatar;
                 } else {
-                    avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(firstChar)}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=1`;
+                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
                 
                 // Escape username untuk JSON
@@ -1184,7 +1185,7 @@
             </div>
             <div class="detail-avatar">
                 <div class="detail-avatar-img">
-                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(usernameStr.charAt(0) || 'U')}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1'">
+                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.src='https://companel.shop/image/winedash-logo.png'">
                 </div>
                 <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
             </div>
