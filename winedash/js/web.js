@@ -2075,8 +2075,6 @@
         }
     }
 
-    // Update init function untuk inisialisasi wallet panels
-    // Tambahkan di dalam init() setelah setupEventListeners
     async function init() {
         initTelegram();
         initSafeArea();
@@ -2105,32 +2103,5 @@
         showLoading(false);
         console.log('✅ Winedash Marketplace initialized');
     }
-
-    async function init() {
-        initTelegram();
-        initSafeArea();
-        showLoading(true);
-        
-        setupTabs();
-        setupEventListeners();
-        setupSearch();
-        
-        telegramUser = getTelegramUserFromWebApp();
-        if (telegramUser) {
-            updateUserUI();
-            await authenticateUser();
-            await loadUsernames();
-            await loadPurchasedUsernames();
-            await loadTransactionHistory();
-        } else {
-            showToast('Tidak dapat mengambil data user', 'error');
-        }
-        
-        await initTonConnect();
-        
-        showLoading(false);
-        console.log('✅ Winedash Marketplace initialized');
-    }
-    
     init();
 })();
