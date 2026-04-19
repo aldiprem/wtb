@@ -487,40 +487,31 @@
             
             console.log('📤 Processing deposit:', { amount, amountNano, senderAddress, memo });
             
-            // Encode memo ke base64 untuk payload
-            const encoder = new TextEncoder();
-            const memoBytes = encoder.encode(memo);
-            const prefix = new Uint8Array([0, 0, 0, 0]);
-            const fullBytes = new Uint8Array(prefix.length + memoBytes.length);
-            fullBytes.set(prefix);
-            fullBytes.set(memoBytes, prefix.length);
-            
-            let binary = '';
-            for (let i = 0; i < fullBytes.length; i++) {
-                binary += String.fromCharCode(fullBytes[i]);
-            }
-            const payloadBase64 = btoa(binary);
-            
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
                     amount: amountNano,
-                    payload: payloadBase64
+                    payload: null
                 }]
             };
             
+            console.log('📤 Transaction payload (simplified):', JSON.stringify(transaction, null, 2));
+            
+            // Kirim transaksi tanpa payload
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
             
-            // PERBAIKAN: Kirim ke endpoint deposit/confirm untuk update saldo
+            const transactionHash = result.boc || result.hash || `tx_${Date.now()}`;
+            
+            // Kirim konfirmasi ke server
             const verifyResponse = await fetch(`${API_BASE_URL}/api/winedash/deposit/confirm`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: telegramUser.id,
                     amount: amount,
-                    transaction_hash: result.boc,
+                    transaction_hash: transactionHash,
                     from_address: senderAddress,
                     memo: memo
                 })
@@ -531,7 +522,7 @@
             if (verifyData.success) {
                 showToast(`Deposit ${amount} TON berhasil!`, 'success');
                 if (elements.depositAmount) elements.depositAmount.value = '';
-                await refreshAllData();  // Refresh semua data termasuk balance
+                await refreshAllData();
             } else {
                 showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
                 await refreshAllData();
