@@ -1261,8 +1261,118 @@ body {
     max-height: 70vh;
     display: flex;
     flex-direction: column;
-    animation: slideUp 0.3s ease;
-    border-top: 1px solid var(--border);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    border-top: none;
+    overflow: hidden;
+}
+
+/* Border 3D dengan gradient di sudut untuk inbox panel */
+.inbox-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px 24px 0 0;
+    padding: 1px;
+    background: linear-gradient(165deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 15%,
+        rgba(255, 255, 255, 0) 85%, 
+        rgba(255, 255, 255, 0.4) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Drag handle untuk inbox panel */
+.inbox-panel .drag-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    margin: 12px auto 8px auto;
+    cursor: grab;
+    transition: all 0.2s;
+}
+
+.inbox-panel .drag-handle:active {
+    cursor: grabbing;
+}
+
+.inbox-panel.open {
+    transform: translateY(0);
+}
+
+.panel-close, .inbox-close {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Border 3D untuk tombol close */
+.panel-close::after, .inbox-close::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    padding: 1px;
+    background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.5) 0%, 
+        rgba(255, 255, 255, 0) 50%,
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.panel-close:hover, .inbox-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.panel-close:active, .inbox-close:active {
+    transform: scale(0.95);
+}
+
+.inbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1450;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.inbox-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Body ketika inbox terbuka */
+body.inbox-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
 }
 
 @keyframes slideUp {
@@ -1523,7 +1633,6 @@ body.modal-open {
     overflow: hidden;
 }
 
-/* Detail Panel - tanpa fixed position yang kaku */
 .detail-panel {
     position: fixed;
     bottom: 0;
@@ -1538,19 +1647,43 @@ body.modal-open {
     flex-direction: column;
     border-top: none;
     transform: translateY(100%);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
     overflow: hidden;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Hapus border gradient yang mengganggu di detail panel */
-.detail-panel::before,
+/* Border 3D dengan gradient di sudut untuk detail panel */
 .detail-panel::after {
-    display: none;
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px 24px 0 0;
+    padding: 1px;
+    background: linear-gradient(165deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 15%,
+        rgba(255, 255, 255, 0) 85%, 
+        rgba(255, 255, 255, 0.4) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
-/* Hanya border atas tipis */
-.detail-panel {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* Drag handle di bagian atas panel */
+.detail-panel .drag-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    margin: 12px auto 8px auto;
+    cursor: grab;
+    transition: all 0.2s;
+}
+
+.detail-panel .drag-handle:active {
+    cursor: grabbing;
 }
 
 .detail-panel.open {
@@ -1795,15 +1928,15 @@ body.modal-open {
     color: var(--danger);
 }
 
-/* Overlay untuk blur di luar panel */
 .panel-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     z-index: 1550;
     opacity: 0;
     visibility: hidden;
@@ -1815,9 +1948,12 @@ body.modal-open {
     visibility: visible;
 }
 
-/* Body ketika panel terbuka */
+/* Body ketika panel terbuka - prevent scroll */
 body.panel-open {
     overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
 }
 
 .username-card .card-avatar {

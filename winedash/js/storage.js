@@ -23,6 +23,8 @@
     let currentOtpPendingId = null;
     let lastUsernameCount = 0;
     let lastPendingCount = 0;
+    let inboxOverlay = null;
+    let detailOverlay = null;
 
     // DOM Elements
     const elements = {
@@ -637,18 +639,61 @@
 
     function openInboxPanel() {
         const panel = document.getElementById('inboxPanel');
-        if (panel) {
-            panel.style.display = 'flex';
-            loadPendingList();
-            hapticLight();
+        if (!panel) return;
+        
+        // Buat overlay jika belum ada
+        if (!inboxOverlay) {
+            inboxOverlay = document.createElement('div');
+            inboxOverlay.className = 'inbox-overlay';
+            document.body.appendChild(inboxOverlay);
+            
+            // Klik overlay untuk menutup panel
+            inboxOverlay.addEventListener('click', () => {
+                closeInboxPanel();
+            });
         }
+        
+        // Tampilkan overlay
+        inboxOverlay.classList.add('active');
+        
+        // Prevent scroll pada body
+        document.body.classList.add('inbox-open');
+        
+        // Tampilkan panel dengan animasi
+        panel.style.display = 'flex';
+        
+        // Trigger animation
+        setTimeout(() => {
+            panel.classList.add('open');
+        }, 10);
+        
+        loadPendingList();
+        hapticLight();
     }
 
     function closeInboxPanel() {
         const panel = document.getElementById('inboxPanel');
-        if (panel) {
-            panel.style.display = 'none';
+        if (!panel) return;
+        
+        // Hapus class open untuk animasi turun
+        panel.classList.remove('open');
+        
+        // Sembunyikan overlay
+        if (inboxOverlay) {
+            inboxOverlay.classList.remove('active');
         }
+        
+        // Allow scroll
+        document.body.classList.remove('inbox-open');
+        
+        // Sembunyikan panel setelah animasi selesai
+        setTimeout(() => {
+            if (panel.style.display !== 'none') {
+                panel.style.display = 'none';
+            }
+        }, 300);
+        
+        hapticLight();
     }
 
     async function refreshProfilePhoto(username, imgElement) {
@@ -933,17 +978,66 @@
         
         const closeInboxBtn = document.getElementById('closeInboxBtn');
         if (closeInboxBtn) {
-            closeInboxBtn.addEventListener('click', closeInboxPanel);
+            closeInboxBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hapticLight();
+                closeInboxPanel();
+            });
         }
         
-        // Close panel on outside click
+        // Setup drag to close untuk inbox panel
         const panel = document.getElementById('inboxPanel');
         if (panel) {
-            panel.addEventListener('click', (e) => {
-                if (e.target === panel) {
-                    closeInboxPanel();
+            // Tambahkan drag handle jika belum ada
+            if (!panel.querySelector('.drag-handle')) {
+                const dragHandle = document.createElement('div');
+                dragHandle.className = 'drag-handle';
+                panel.insertBefore(dragHandle, panel.firstChild);
+            }
+            
+            let startY = 0;
+            let currentY = 0;
+            let isDragging = false;
+            
+            const dragHandleElem = panel.querySelector('.drag-handle');
+            
+            const onTouchStart = (e) => {
+                startY = e.touches[0].clientY;
+                isDragging = true;
+                panel.style.transition = 'none';
+                hapticLight();
+            };
+            
+            const onTouchMove = (e) => {
+                if (!isDragging) return;
+                currentY = e.touches[0].clientY;
+                const deltaY = currentY - startY;
+                
+                if (deltaY > 0) {
+                    const translateY = Math.min(deltaY, panel.offsetHeight * 0.7);
+                    panel.style.transform = `translateY(${translateY}px)`;
                 }
-            });
+            };
+            
+            const onTouchEnd = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+                
+                const deltaY = currentY - startY;
+                
+                if (deltaY > 100) {
+                    closeInboxPanel();
+                } else {
+                    panel.style.transform = '';
+                }
+            };
+            
+            if (dragHandleElem) {
+                dragHandleElem.addEventListener('touchstart', onTouchStart);
+                dragHandleElem.addEventListener('touchmove', onTouchMove);
+                dragHandleElem.addEventListener('touchend', onTouchEnd);
+            }
         }
         
         // OTP Modal
@@ -1486,6 +1580,18 @@
         if (existingPanel) existingPanel.remove();
         if (existingOverlay) existingOverlay.remove();
         
+        // Buat overlay jika belum ada
+        if (!detailOverlay) {
+            detailOverlay = document.createElement('div');
+            detailOverlay.className = 'panel-overlay';
+            document.body.appendChild(detailOverlay);
+            
+            // Klik overlay untuk menutup panel
+            detailOverlay.addEventListener('click', () => {
+                closeDetailPanel();
+            });
+        }
+        
         // Pastikan username adalah string yang bersih
         let usernameStr = username.username;
         if (typeof usernameStr !== 'string') {
@@ -1517,15 +1623,11 @@
             }).catch(console.error);
         }
         
-        // Buat overlay untuk blur
-        const overlay = document.createElement('div');
-        overlay.className = 'panel-overlay';
-        document.body.appendChild(overlay);
-        
         // Buat panel
         const panel = document.createElement('div');
         panel.className = 'detail-panel';
         panel.innerHTML = `
+            <div class="drag-handle"></div>
             <div class="panel-header">
                 <h3><i class="fas fa-info-circle"></i> Detail Username</h3>
                 <button class="panel-close">&times;</button>
@@ -1575,6 +1677,9 @@
         
         document.body.appendChild(panel);
         
+        // Setup drag to close
+        setupDragToClose(panel);
+        
         // Update avatar di detail panel jika perlu
         if (!cached || cached.includes('ui-avatars.com')) {
             const photoUrl = await fetchProfilePhoto(usernameStr);
@@ -1587,34 +1692,23 @@
         // Prevent scroll pada body
         document.body.classList.add('panel-open');
         
-        // Trigger animation
-        setTimeout(() => {
-            overlay.classList.add('active');
-        }, 10);
+        // Tampilkan overlay
+        detailOverlay.classList.add('active');
         
+        // Trigger animation panel
         setTimeout(() => {
             panel.classList.add('open');
         }, 50);
         
-        // Fungsi untuk menutup panel
-        function closePanel() {
-            panel.classList.remove('open');
-            overlay.classList.remove('active');
-            document.body.classList.remove('panel-open');
-            setTimeout(() => {
-                if (panel.parentNode) panel.remove();
-                if (overlay.parentNode) overlay.remove();
-            }, 300);
-        }
-        
         // Close button
         const closeBtn = panel.querySelector('.panel-close');
         if (closeBtn) {
-            closeBtn.addEventListener('click', closePanel);
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hapticLight();
+                closeDetailPanel();
+            });
         }
-        
-        // Klik pada overlay untuk menutup panel
-        overlay.addEventListener('click', closePanel);
         
         // Action buttons
         const editBtn = panel.querySelector('.edit-price-detail');
@@ -1624,7 +1718,7 @@
                 const id = parseInt(editBtn.dataset.id);
                 const price = parseFloat(editBtn.dataset.price);
                 const status = editBtn.dataset.status;
-                closePanel();
+                closeDetailPanel();
                 setTimeout(() => {
                     showEditPriceModal(id, price, status);
                 }, 300);
@@ -1637,11 +1731,80 @@
                 e.stopPropagation();
                 const id = parseInt(deleteBtn.dataset.id);
                 if (confirm('Yakin ingin menghapus username ini?')) {
+                    hapticMedium();
                     await deleteUsername(id);
-                    closePanel();
+                    closeDetailPanel();
                 }
             });
         }
+    }
+
+    function closeDetailPanel() {
+        const panel = document.querySelector('.detail-panel');
+        const overlay = document.querySelector('.panel-overlay');
+        
+        if (panel) {
+            panel.classList.remove('open');
+        }
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+        
+        document.body.classList.remove('panel-open');
+        
+        setTimeout(() => {
+            if (panel && panel.parentNode) panel.remove();
+        }, 300);
+        
+        hapticLight();
+    }
+
+    // Fungsi untuk drag to close panel
+    function setupDragToClose(panel) {
+        const dragHandle = panel.querySelector('.drag-handle');
+        if (!dragHandle) return;
+        
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+        
+        const onTouchStart = (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            panel.style.transition = 'none';
+            hapticLight();
+        };
+        
+        const onTouchMove = (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            
+            if (deltaY > 0) {
+                const translateY = Math.min(deltaY, panel.offsetHeight * 0.7);
+                panel.style.transform = `translateY(${translateY}px)`;
+            }
+        };
+        
+        const onTouchEnd = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            
+            const deltaY = currentY - startY;
+            
+            if (deltaY > 100) {
+                // Swipe cukup jauh -> tutup panel
+                closeDetailPanel();
+            } else {
+                // Kembalikan ke posisi semula
+                panel.style.transform = '';
+            }
+        };
+        
+        dragHandle.addEventListener('touchstart', onTouchStart);
+        dragHandle.addEventListener('touchmove', onTouchMove);
+        dragHandle.addEventListener('touchend', onTouchEnd);
     }
 
     // Fungsi format tanggal Indonesia (Asia/Jakarta)
