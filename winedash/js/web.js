@@ -15,7 +15,7 @@
     let allUsernames = [];
     let currentLayout = localStorage.getItem('market_layout') || 'grid';
     let currentSort = 'default';
-    let currentPriceFilter = 'all';
+    let currentPriceFilter = { min: 0, max: 9999 };
     let filterOverlay = null;
     let currentWalletBalance = 0;
     let depositPanel = null;
@@ -239,9 +239,10 @@
             
             const manifestUrl = `${API_BASE_URL}/winedash/tonconnect-manifest.json`;
             
+            // Gunakan container baru untuk TON Connect
             tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
                 manifestUrl: manifestUrl,
-                buttonRootId: 'ton-connect',
+                buttonRootId: 'ton-connect-container', // Ganti ID container
                 language: 'en'
             });
             
@@ -257,16 +258,13 @@
                     await saveWalletAddress(walletAddress);
                     showToast('Wallet connected!', 'success');
                     updateBalanceCardUI();
-                    // ==================== PERBAIKAN: Update wallet main card ====================
                     updateWalletMainUI();
                 } else {
                     isWalletConnected = false;
                     walletAddress = null;
                     updateWalletUI();
                     updateBalanceCardUI();
-                    // ==================== PERBAIKAN: Sembunyikan wallet card ====================
-                    const walletMainCard = document.getElementById('walletMainCard');
-                    if (walletMainCard) walletMainCard.style.display = 'none';
+                    updateWalletMainUI();
                 }
             });
             
@@ -278,7 +276,6 @@
                     updateWalletUI();
                     await saveWalletAddress(walletAddress);
                     updateBalanceCardUI();
-                    // ==================== PERBAIKAN: Update wallet main card ====================
                     updateWalletMainUI();
                 }
             }
@@ -711,9 +708,33 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-        
+            
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
+        
+        const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
+        
+        if (usernames.length === 0) {
+            if (emptyAnimationDiv) {
+                emptyAnimationDiv.style.display = 'block';
+                elements.usernameList.style.display = 'none';
+                loadMarketplaceTGSAnimation();
+            } else {
+                elements.usernameList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-title">No Usernames Available</div>
+                        <div class="empty-subtitle">Be the first to list your username!</div>
+                    </div>
+                `;
+            }
+            return;
+        }
+        
+        if (emptyAnimationDiv) {
+            emptyAnimationDiv.style.display = 'none';
+            elements.usernameList.style.display = 'block';
+        }
+
         
         if (usernames.length === 0) {
             elements.usernameList.innerHTML = `
@@ -1394,9 +1415,7 @@
         }
     }
 
-    // Fungsi untuk menampilkan filter panel
     function showFilterPanel() {
-        // Hapus panel yang sudah ada
         const existingPanel = document.querySelector('.filter-panel');
         if (existingPanel) existingPanel.remove();
         
@@ -1406,6 +1425,10 @@
             document.body.appendChild(filterOverlay);
             filterOverlay.addEventListener('click', closeFilterPanel);
         }
+        
+        // Ambil current price range dari state
+        let currentMinPrice = currentPriceFilter.min !== undefined ? currentPriceFilter.min : 0;
+        let currentMaxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
         
         const panel = document.createElement('div');
         panel.className = 'filter-panel';
@@ -1418,46 +1441,52 @@
             <div class="filter-content">
                 <div class="filter-section">
                     <div class="filter-section-title">Sort By</div>
-                    <div class="filter-options">
+                    <div class="filter-options filter-options-scroll">
                         <button class="filter-option ${currentSort === 'default' ? 'active' : ''}" data-sort="default">
                             <i class="fas fa-clock"></i> Default
                         </button>
                         <button class="filter-option ${currentSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
-                            <i class="fas fa-arrow-up"></i> Price: Low to High
+                            <i class="fas fa-arrow-up"></i> Price ↑
                         </button>
                         <button class="filter-option ${currentSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
-                            <i class="fas fa-arrow-down"></i> Price: High to Low
+                            <i class="fas fa-arrow-down"></i> Price ↓
                         </button>
                         <button class="filter-option ${currentSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
-                            <i class="fas fa-sort-alpha-down"></i> Name: A to Z
+                            <i class="fas fa-sort-alpha-down"></i> Name A-Z
                         </button>
                     </div>
                 </div>
                 <div class="filter-section">
-                    <div class="filter-section-title">Price Range</div>
-                    <div class="filter-options">
-                        <button class="filter-option ${currentPriceFilter === 'all' ? 'active' : ''}" data-price="all">
-                            <i class="fas fa-globe"></i> All
-                        </button>
-                        <button class="filter-option ${currentPriceFilter === 'under10' ? 'active' : ''}" data-price="under10">
-                            <i class="fas fa-tag"></i> Under 10 TON
-                        </button>
-                        <button class="filter-option ${currentPriceFilter === '10to50' ? 'active' : ''}" data-price="10to50">
-                            <i class="fas fa-tags"></i> 10 - 50 TON
-                        </button>
-                        <button class="filter-option ${currentPriceFilter === 'above50' ? 'active' : ''}" data-price="above50">
-                            <i class="fas fa-crown"></i> Above 50 TON
-                        </button>
+                    <div class="filter-section-title">Price Range (TON)</div>
+                    <div class="price-range-container">
+                        <div class="price-inputs">
+                            <div class="price-input-group">
+                                <label>From</label>
+                                <input type="number" id="priceFromInput" class="filter-price-input" value="${currentMinPrice}" min="0" step="0.1">
+                            </div>
+                            <div class="price-input-group">
+                                <label>To</label>
+                                <input type="number" id="priceToInput" class="filter-price-input" value="${currentMaxPrice}" min="0" step="0.1">
+                            </div>
+                        </div>
+                        <div class="price-slider-container">
+                            <div class="slider-track"></div>
+                            <input type="range" id="priceSliderFrom" class="price-slider" min="0" max="10000" step="0.1" value="${currentMinPrice}">
+                            <input type="range" id="priceSliderTo" class="price-slider" min="0" max="10000" step="0.1" value="${currentMaxPrice}">
+                        </div>
+                        <div class="price-range-values">
+                            <span id="minPriceDisplay">${currentMinPrice}</span> TON - <span id="maxPriceDisplay">${currentMaxPrice >= 9999 ? '9999+' : currentMaxPrice}</span> TON
+                        </div>
                     </div>
                 </div>
                 <div class="filter-section">
                     <div class="filter-section-title">Layout</div>
-                    <div class="filter-options layout-options">
+                    <div class="filter-options filter-options-scroll">
                         <button class="filter-option ${currentLayout === 'grid' ? 'active' : ''}" data-layout="grid">
-                            <i class="fas fa-th"></i> Grid View
+                            <i class="fas fa-th"></i> Grid
                         </button>
                         <button class="filter-option ${currentLayout === 'list' ? 'active' : ''}" data-layout="list">
-                            <i class="fas fa-list"></i> List View
+                            <i class="fas fa-list"></i> List
                         </button>
                     </div>
                 </div>
@@ -1474,6 +1503,38 @@
         
         setTimeout(() => panel.classList.add('open'), 10);
         
+        // Setup slider logic
+        const sliderFrom = panel.querySelector('#priceSliderFrom');
+        const sliderTo = panel.querySelector('#priceSliderTo');
+        const inputFrom = panel.querySelector('#priceFromInput');
+        const inputTo = panel.querySelector('#priceToInput');
+        const minDisplay = panel.querySelector('#minPriceDisplay');
+        const maxDisplay = panel.querySelector('#maxPriceDisplay');
+        
+        function updateFrom(value) {
+            let val = parseFloat(value);
+            let maxVal = parseFloat(sliderTo.value);
+            if (val > maxVal) val = maxVal;
+            sliderFrom.value = val;
+            inputFrom.value = val.toFixed(2);
+            minDisplay.textContent = val.toFixed(2);
+        }
+        
+        function updateTo(value) {
+            let val = parseFloat(value);
+            let minVal = parseFloat(sliderFrom.value);
+            if (val < minVal) val = minVal;
+            sliderTo.value = val;
+            inputTo.value = val.toFixed(2);
+            maxDisplay.textContent = val >= 9999 ? '9999+' : val.toFixed(2);
+        }
+        
+        sliderFrom.addEventListener('input', (e) => updateFrom(e.target.value));
+        sliderTo.addEventListener('input', (e) => updateTo(e.target.value));
+        
+        inputFrom.addEventListener('change', (e) => updateFrom(e.target.value));
+        inputTo.addEventListener('change', (e) => updateTo(e.target.value));
+        
         // Close button
         const closeBtn = panel.querySelector('.filter-close');
         closeBtn.addEventListener('click', closeFilterPanel);
@@ -1482,8 +1543,10 @@
         const resetBtn = panel.querySelector('.filter-reset');
         resetBtn.addEventListener('click', () => {
             currentSort = 'default';
-            currentPriceFilter = 'all';
+            currentPriceFilter = { min: 0, max: 9999 };
             currentLayout = localStorage.getItem('market_layout') || 'grid';
+            updateFrom(0);
+            updateTo(10000);
             applyFiltersAndRender();
             closeFilterPanel();
         });
@@ -1491,6 +1554,10 @@
         // Apply button
         const applyBtn = panel.querySelector('.filter-apply');
         applyBtn.addEventListener('click', () => {
+            currentPriceFilter = {
+                min: parseFloat(sliderFrom.value),
+                max: parseFloat(sliderTo.value)
+            };
             applyFiltersAndRender();
             closeFilterPanel();
         });
@@ -1501,15 +1568,6 @@
                 panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentSort = btn.dataset.sort;
-            });
-        });
-        
-        // Price options
-        panel.querySelectorAll('[data-price]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                panel.querySelectorAll('[data-price]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentPriceFilter = btn.dataset.price;
             });
         });
         
@@ -1571,18 +1629,16 @@
     function applyFiltersAndRender() {
         let filtered = [...allUsernames];
         
-        // Price filter
-        if (currentPriceFilter !== 'all') {
-            filtered = filtered.filter(u => {
-                const price = u.price;
-                if (currentPriceFilter === 'under10') return price < 10;
-                if (currentPriceFilter === '10to50') return price >= 10 && price <= 50;
-                if (currentPriceFilter === 'above50') return price > 50;
-                return true;
-            });
-        }
+        // Price filter dengan range
+        const minPrice = currentPriceFilter.min !== undefined ? currentPriceFilter.min : 0;
+        const maxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
         
-        // Sort
+        filtered = filtered.filter(u => {
+            const price = u.price;
+            return price >= minPrice && price <= maxPrice;
+        });
+        
+        // Sort (sama seperti sebelumnya)
         if (currentSort !== 'default') {
             filtered.sort((a, b) => {
                 if (currentSort === 'price_asc') return a.price - b.price;
@@ -2257,7 +2313,6 @@
         return 0;
     }
 
-    // Update wallet UI dengan Tonkeeper style
     function updateWalletMainUI() {
         const walletMainCard = document.getElementById('walletMainCard');
         const walletAddressDisplay = document.getElementById('walletAddressValue');
@@ -2272,7 +2327,7 @@
             const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
             if (walletAddressDisplay) walletAddressDisplay.textContent = formattedAddress;
             
-            // ==================== PERBAIKAN: Ambil balance dari wallet TON Connect (bukan dari database) ====================
+            // Ambil balance dari wallet TON Connect
             const fetchBalance = async () => {
                 const balance = await getWalletBalance(walletAddress);
                 if (walletBalanceAmount) {
@@ -2282,12 +2337,95 @@
             };
             fetchBalance();
             
+            // Sembunyikan section-card yang berisi wallet info lama
+            const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
+            if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
+                oldWalletSection.style.display = 'none';
+            }
+            
         } else {
             if (walletMainCard) {
-                walletMainCard.style.display = 'none';
-                console.log('⚠️ Wallet not connected, hiding main card');
+                walletMainCard.style.display = 'block';
+                // Tampilkan pesan untuk connect wallet
+                if (walletAddressDisplay) walletAddressDisplay.textContent = 'Not connected';
+                if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
+            }
+            
+            // Tampilkan section-card lama untuk connect button
+            const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
+            if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
+                oldWalletSection.style.display = 'block';
             }
         }
+    }
+
+    function loadMarketplaceTGSAnimation() {
+        const container = document.getElementById('marketplaceEmptyAnimation');
+        if (!container) return;
+        
+        // Load libraries yang diperlukan
+        function loadLibraries() {
+            return new Promise((resolve, reject) => {
+                let loaded = 0;
+                let total = 2;
+                
+                function checkLoaded() {
+                    loaded++;
+                    if (loaded === total) resolve();
+                }
+                
+                if (typeof window.lottie === 'undefined') {
+                    const lottieScript = document.createElement('script');
+                    lottieScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js';
+                    lottieScript.onload = checkLoaded;
+                    lottieScript.onerror = reject;
+                    document.head.appendChild(lottieScript);
+                } else {
+                    checkLoaded();
+                }
+                
+                if (typeof window.pako === 'undefined') {
+                    const pakoScript = document.createElement('script');
+                    pakoScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+                    pakoScript.onload = checkLoaded;
+                    pakoScript.onerror = reject;
+                    document.head.appendChild(pakoScript);
+                } else {
+                    checkLoaded();
+                }
+            });
+        }
+        
+        async function loadTGSFile() {
+            try {
+                const response = await fetch('/image/none-username-storage.tgs');
+                const arrayBuffer = await response.arrayBuffer();
+                const compressed = new Uint8Array(arrayBuffer);
+                const decompressed = window.pako.ungzip(compressed, { to: 'string' });
+                const animationData = JSON.parse(decompressed);
+                
+                window.lottie.loadAnimation({
+                    container: container,
+                    renderer: 'svg',
+                    loop: true,
+                    autoplay: true,
+                    animationData: animationData,
+                    rendererSettings: {
+                        preserveAspectRatio: 'xMidYMid meet'
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading TGS file:', error);
+                container.innerHTML = '<i class="fas fa-store" style="font-size: 64px; color: var(--text-muted);"></i>';
+            }
+        }
+        
+        loadLibraries().then(() => {
+            loadTGSFile();
+        }).catch(err => {
+            console.error('Error loading libraries:', err);
+            container.innerHTML = '<i class="fas fa-store" style="font-size: 64px; color: var(--text-muted);"></i>';
+        });
     }
 
     async function init() {
