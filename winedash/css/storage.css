@@ -1535,11 +1535,12 @@ body.modal-open {
     background: rgba(255, 255, 255, 0.1);
 }
 
-/* Detail Panel Avatar - dengan background seperti card, full tanpa terpotong */
+/* Detail Panel Avatar - dengan background full screen */
 .detail-panel .detail-avatar {
     position: relative;
     width: calc(100% + 40px);
-    height: 160px;
+    height: auto;
+    min-height: 160px;
     background-image: url('https://companel.shop/image/bg-storage-card.jpg');
     background-size: cover;
     background-position: center;
@@ -1547,14 +1548,14 @@ body.modal-open {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     margin-left: -20px;
     margin-right: -20px;
     margin-top: -20px;
     margin-bottom: 0;
     border-radius: 24px 24px 0 0;
     overflow: hidden;
-    padding-bottom: 15px;
+    padding: 30px 0 20px 0;
 }
 
 /* Detail Panel Avatar Img - diposisikan seperti di card grid */
@@ -1569,11 +1570,11 @@ body.modal-open {
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     z-index: 1;
 }
 
-/* Username di detail panel - background putih, text hitam, border radius seperti card grid */
+/* Username di detail panel - background putih, text hitam */
 .detail-username-badge {
     position: relative;
     background: var(--text);
@@ -1590,17 +1591,30 @@ body.modal-open {
     overflow: hidden;
     text-overflow: ellipsis;
     display: inline-block;
-    margin-top: 5px;
-    margin-bottom: -20px;
 }
 
-/* Perbaiki panel-content agar paddingnya tidak mengganggu */
+/* Perbaiki panel-content - diperkecil dan diberi pembatas */
 .detail-panel .panel-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
-    padding-top: 20px;
+    padding: 16px 20px;
     padding-bottom: 80px;
+    margin-top: 0;
+}
+
+.detail-panel .panel-content::before {
+    content: "";
+    position: absolute;
+    top: 140px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        var(--border) 20%, 
+        var(--border) 80%, 
+        transparent 100%);
+    pointer-events: none;
 }
 
 .detail-panel .detail-avatar-img img {
@@ -1614,13 +1628,12 @@ body.modal-open {
     color: white;
 }
 
-/* Detail Panel - format label kiri, value kanan */
 .detail-panel .detail-field {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 14px;
-    padding-bottom: 10px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
     border-bottom: 1px solid var(--border-light);
 }
 
@@ -1631,7 +1644,7 @@ body.modal-open {
 }
 
 .detail-panel .detail-label {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -1640,7 +1653,7 @@ body.modal-open {
 }
 
 .detail-panel .detail-value {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     word-break: break-all;
     text-align: right;
@@ -1650,15 +1663,15 @@ body.modal-open {
 
 .detail-panel .detail-value.price {
     color: var(--success);
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
 }
 
 .detail-panel .detail-status {
     display: inline-block;
-    padding: 4px 12px;
+    padding: 3px 10px;
     border-radius: 20px;
-    font-size: 11px;
+    font-size: 10px;
     text-align: right;
 }
 
@@ -1678,9 +1691,9 @@ body.modal-open {
     left: 0;
     right: 0;
     display: flex;
-    gap: 12px;
+    gap: 10px;
     margin-top: 0;
-    padding: 16px 20px;
+    padding: 12px 20px;
     border-top: 1px solid var(--border-light);
     background: var(--surface);
     border-radius: 0 0 24px 24px;
@@ -1692,16 +1705,20 @@ body.modal-open {
     flex: 1;
     background: var(--glass-bg);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px;
-    font-size: 13px;
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 12px;
     cursor: pointer;
     transition: all 0.2s;
     color: var(--text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
+}
+
+.detail-action-btn i {
+    font-size: 12px;
 }
 
 .detail-action-btn:hover {
