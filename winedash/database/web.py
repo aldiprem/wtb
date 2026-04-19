@@ -834,7 +834,7 @@ class WinedashDatabase:
             import traceback
             traceback.print_exc()
             return []
-    
+        
     def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
         """Confirm pending username and move to available"""
         try:
@@ -855,10 +855,13 @@ class WinedashDatabase:
                 
                 username, price, seller_id, seller_wallet, category, v_type, v_code = row
                 
-                print(f"Confirming username: {username}, price: {price}, seller_id: {seller_id}")
+                print(f"Confirming username: {username}, type: {v_type}, code_provided: {code}")
                 
-                # Verify code if needed
-                if v_type == 'user' and code:
+                # Verify code if needed (hanya untuk user type)
+                if v_type == 'user':
+                    if not code:
+                        print(f"OTP required for user type but not provided")
+                        return False
                     if v_code != code:
                         print(f"Invalid OTP: {code} != {v_code}")
                         return False
@@ -870,12 +873,14 @@ class WinedashDatabase:
                         if datetime.now() > expires_at:
                             print(f"OTP expired at {expires_at}")
                             return False
+                else:
+                    # Untuk channel/group, tidak perlu OTP
+                    print(f"Channel/group verification for {username}, no OTP needed")
                 
                 # Cek apakah username sudah ada
                 cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
                 if cursor.fetchone():
                     print(f"Username {username} already exists, skipping...")
-                    # Hapus pending record
                     cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
                     conn.commit()
                     return False
@@ -898,13 +903,13 @@ class WinedashDatabase:
                 
         except sqlite3.IntegrityError as e:
             print(f"IntegrityError confirming pending username: {e}")
-            # Username mungkin sudah ada
             return False
         except Exception as e:
             print(f"Error confirming pending username: {e}")
             import traceback
             traceback.print_exc()
             return False
+
 
     def reject_pending_username(self, pending_id: int) -> bool:
         """Reject pending username - hapus record agar bisa ditambahkan ulang nanti"""

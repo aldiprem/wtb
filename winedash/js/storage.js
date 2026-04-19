@@ -317,19 +317,42 @@
         let html = '';
         for (const pending of pendingList) {
             const statusText = pending.status === 'pending' ? 'Menunggu' : pending.status;
-            // Tampilkan icon berdasarkan verification_type yang dideteksi bot
-            let typeIcon = '📢'; // default channel
+            let typeIcon = '📢';
             let typeText = 'Channel/Group';
+            let showVerifyButton = false;
+            let showRejectButton = false;
             
             if (pending.verification_type === 'user') {
                 typeIcon = '👤';
-                typeText = 'User (OTP)';
+                typeText = 'User (Perlu OTP)';
+                showVerifyButton = true;  // User perlu verifikasi via OTP
+                showRejectButton = true;   // User juga bisa ditolak
             } else if (pending.verification_type === 'channel') {
                 typeIcon = '📢';
-                typeText = 'Channel/Group';
+                typeText = 'Channel/Group (Menunggu Admin)';
+                showVerifyButton = false;  // Channel/Group TIDAK bisa diverifikasi dari inbox
+                showRejectButton = false;   // Channel/Group TIDAK bisa ditolak dari inbox
             } else if (pending.verification_type === 'auto') {
                 typeIcon = '⏳';
                 typeText = 'Menunggu deteksi...';
+                showVerifyButton = false;
+                showRejectButton = false;
+            } else if (pending.verification_type === 'supergroup') {
+                typeIcon = '📢';
+                typeText = 'Supergroup (Menunggu Admin)';
+                showVerifyButton = false;
+                showRejectButton = false;
+            } else if (pending.verification_type === 'group') {
+                typeIcon = '👥';
+                typeText = 'Group (Menunggu Admin)';
+                showVerifyButton = false;
+                showRejectButton = false;
+            }
+            
+            // Tambahkan info tambahan untuk channel/group
+            let infoText = '';
+            if (pending.verification_type !== 'user' && pending.verification_type !== 'auto') {
+                infoText = '<div style="font-size: 10px; color: var(--warning); margin-top: 4px;">⏳ Menunggu konfirmasi dari admin channel/group</div>';
             }
             
             html += `
@@ -340,21 +363,22 @@
                         <div class="inbox-price">${formatNumber(pending.price)} TON</div>
                         <div class="inbox-type">${typeText}</div>
                         <div class="inbox-status ${pending.status}">${statusText}</div>
+                        ${infoText}
                     </div>
                     <div class="inbox-actions">
-                        ${pending.verification_type === 'user' ? 
-                            `<button class="inbox-verify-btn" data-id="${pending.id}" data-username="${pending.username}" data-type="user">
+                        ${showVerifyButton ? 
+                            `<button class="inbox-verify-btn" data-id="${pending.id}" data-username="${pending.username}" data-type="user" title="Verifikasi dengan OTP">
                                 <i class="fas fa-check-circle"></i>
-                            </button>
-                            <button class="inbox-reject-btn" data-id="${pending.id}" data-username="${pending.username}">
+                            </button>` : 
+                            (pending.verification_type !== 'auto' ? 
+                                `<button class="inbox-verify-btn-disabled" disabled style="opacity:0.5; cursor:not-allowed;" title="Verifikasi harus dilakukan oleh admin channel/group">
+                                    <i class="fas fa-clock"></i>
+                                </button>` : '')
+                        }
+                        ${showRejectButton ? 
+                            `<button class="inbox-reject-btn" data-id="${pending.id}" data-username="${pending.username}" title="Tolak verifikasi">
                                 <i class="fas fa-times-circle"></i>
-                            </button>` :
-                            `<button class="inbox-verify-btn" data-id="${pending.id}" data-username="${pending.username}" data-type="channel">
-                                <i class="fas fa-check-circle"></i>
-                            </button>
-                            <button class="inbox-reject-btn" data-id="${pending.id}" data-username="${pending.username}">
-                                <i class="fas fa-times-circle"></i>
-                            </button>`
+                            </button>` : ''
                         }
                     </div>
                 </div>
@@ -363,7 +387,7 @@
         
         container.innerHTML = html;
         
-        // Add event listeners to verify buttons
+        // Add event listeners to verify buttons (hanya untuk user)
         document.querySelectorAll('.inbox-verify-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -373,13 +397,12 @@
                 
                 if (type === 'user') {
                     showOtpModal(pendingId, username);
-                } else {
-                    showConfirmModal(pendingId, username);
                 }
+                // Untuk channel/group tidak ada action verify dari inbox
             });
         });
         
-        // Add event listeners to reject buttons
+        // Add event listeners to reject buttons (hanya untuk user)
         document.querySelectorAll('.inbox-reject-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -418,6 +441,8 @@
                 <h3>Konfirmasi Verifikasi</h3>
                 <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
                     Apakah Anda yakin ingin memverifikasi username <strong>@${escapeHtml(username)}</strong>?
+                    <br><br>
+                    <small>⚠️ Verifikasi ini akan menambahkan username ke marketplace.</small>
                 </p>
                 <div class="modal-buttons">
                     <button class="modal-cancel" id="cancelConfirmBtn">Batal</button>
@@ -433,7 +458,7 @@
         
         document.getElementById('confirmVerifyBtn').addEventListener('click', async () => {
             modal.remove();
-            await confirmPendingUsername(pendingId);
+            await confirmPendingUsername(pendingId, null);
         });
         
         modal.addEventListener('click', (e) => {
@@ -474,7 +499,7 @@
         });
     }
 
-    async function confirmPendingUsername(pendingId) {
+    async function confirmPendingUsername(pendingId, code = null) {
         showLoading(true);
         
         try {
@@ -483,7 +508,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     pending_id: pendingId,
-                    code: null  // Untuk channel/group, tidak perlu OTP
+                    code: code
                 })
             });
             
@@ -493,6 +518,7 @@
                 hapticSuccess();
                 showToast('Username berhasil diverifikasi!', 'success');
                 closeInboxPanel();
+                closeOtpModal();
                 await loadUsernames();
                 await loadPendingCount();
             } else {
@@ -574,7 +600,7 @@
                 await loadPendingCount();
             } else {
                 hapticError();
-                showToast(data.error || 'Verifikasi gagal', 'error');
+                showToast(data.error || 'Verifikasi gagal, periksa kode OTP', 'error');
             }
         } catch (error) {
             console.error('Error verifying OTP:', error);

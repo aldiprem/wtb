@@ -795,10 +795,9 @@ def get_pending_usernames(user_id):
         print(f"Error in get_pending_usernames: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 @winedash_bp.route('/username/pending/confirm', methods=['POST', 'OPTIONS'])
 def confirm_pending_username():
-    """Confirm pending username with OTP code"""
+    """Confirm pending username with OTP code (required for user type)"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -818,6 +817,26 @@ def confirm_pending_username():
         if not pending_id:
             return jsonify({'success': False, 'error': 'Pending ID required'}), 400
         
+        # Dapatkan tipe verifikasi dari database
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT verification_type FROM pending_usernames WHERE id = ? AND status = "pending"', (pending_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                return jsonify({'success': False, 'error': 'Pending record not found'}), 404
+            
+            verification_type = row[0]
+            
+            # Untuk tipe user, WAJIB ada kode OTP
+            if verification_type == 'user' and not code:
+                return jsonify({'success': False, 'error': 'Kode OTP diperlukan untuk verifikasi user'}), 400
+            
+            # Untuk tipe channel/group, tidak perlu OTP
+            if verification_type in ['channel', 'supergroup', 'group'] and code:
+                # Jika ada code, abaikan saja
+                code = None
+        
         success = db.confirm_pending_username(pending_id, code)
         
         if success:
@@ -833,6 +852,8 @@ def confirm_pending_username():
         
     except Exception as e:
         print(f"Error in confirm_pending_username: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @winedash_bp.route('/username/pending/list', methods=['GET', 'OPTIONS'])
