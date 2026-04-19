@@ -239,7 +239,7 @@
             
             const manifestUrl = `${API_BASE_URL}/winedash/tonconnect-manifest.json`;
             
-            // Gunakan container baru untuk TON Connect
+            // Gunakan container untuk TON Connect di kanan
             tonConnectUI = new window.TON_CONNECT_UI.TonConnectUI({
                 manifestUrl: manifestUrl,
                 buttonRootId: 'ton-connect-container',
@@ -248,19 +248,19 @@
             
             console.log('✅ TON Connect UI initialized');
             
-            // Styling untuk tombol TON Connect
+            // Styling tambahan untuk tombol TON Connect
             const style = document.createElement('style');
             style.textContent = `
-                .ton-connect-center ton-connect-button,
-                .ton-connect-center button {
+                .ton-connect-right ton-connect-button,
+                .ton-connect-right button {
                     --tc-button-background: #40a7e3;
                     --tc-button-background-hover: #2d8bcb;
                     --tc-button-text-color: white;
                     --tc-border-radius: 40px;
-                    --tc-button-font-size: 14px;
-                    --tc-button-padding: 10px 20px;
+                    --tc-button-font-size: 13px;
+                    --tc-button-padding: 8px 16px;
                     width: auto;
-                    min-width: 160px;
+                    min-width: 140px;
                 }
             `;
             document.head.appendChild(style);

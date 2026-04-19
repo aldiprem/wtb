@@ -112,22 +112,22 @@
             <!-- Wallet Main Card - Border besar dengan logo, address, balance, tombol -->
             <div class="wallet-main-card" id="walletMainCard" style="display: none;">
                 <div class="wallet-card">
-                    <div class="wallet-card-header">
-                        <!-- HAPUS wallet-icon (fa-telegram) - sudah dihapus -->
-                        <!-- Wallet Balance - Diperbesar dan dipindahkan ke atas -->
-                        <div class="wallet-balance-large" id="walletBalanceLarge">
-                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo-large">
-                            <span class="balance-amount-large" id="walletBalanceAmount">0.00</span>
-                            <span class="balance-symbol">TON</span>
+                    <!-- Header dengan balance dan TON Connect sejajar -->
+                    <div class="wallet-card-header-horizontal">
+                        <!-- Balance Section (kiri) -->
+                        <div class="wallet-balance-section">
+                            <div class="wallet-balance-large" id="walletBalanceLarge">
+                                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo-large">
+                                <span class="balance-amount-large" id="walletBalanceAmount">0.00</span>
+                                <span class="balance-symbol">TON</span>
+                            </div>
+                            <div class="wallet-address-display" id="walletAddressDisplay">
+                                <span class="address-value" id="walletAddressValue">Not connected</span>
+                            </div>
                         </div>
-                        <!-- Wallet Address - di bawah balance -->
-                        <div class="wallet-address-display" id="walletAddressDisplay">
-                            <span class="address-label">TON Wallet</span>
-                            <span class="address-value" id="walletAddressValue">Not connected</span>
-                        </div>
+                        <!-- TON Connect Container (kanan) -->
+                        <div id="ton-connect-container" class="ton-connect-right"></div>
                     </div>
-                    <!-- TON Connect Container - di tengah antara balance/address dan tombol -->
-                    <div id="ton-connect-container" class="ton-connect-center"></div>
                     <!-- Tombol Deposit & Withdraw -->
                     <div class="wallet-card-actions">
                         <button class="wallet-action-btn deposit-action" id="walletDepositBtn">
