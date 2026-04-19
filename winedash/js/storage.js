@@ -1113,10 +1113,13 @@
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
-                // Cek cache untuk foto profil
-                let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
-                if (!avatarUrl || avatarUrl.includes('winedash-logo.png') || avatarUrl.includes('ui-avatars.com')) {
-                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                // Ambil foto profil dari database via API
+                let avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                
+                // Cek apakah ada di localStorage cache
+                const cached = localStorage.getItem(`avatar_${usernameStr}`);
+                if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
+                    avatarUrl = cached;
                 }
                 
                 const usernameData = {
@@ -1152,14 +1155,48 @@
             }
             elements.usernameContainer.innerHTML = html;
             
-            // Auto-refresh avatar untuk yang masih default
+            // Fetch avatar untuk setiap card
             setTimeout(() => {
-                autoRefreshAvatars();
-            }, 500);
+                fetchAllCardAvatars();
+            }, 100);
             
         } else {
-            // List layout (sama seperti sebelumnya)
-            // ... kode list layout tetap sama
+            // List layout
+            elements.usernameContainer.className = 'username-list';
+            let html = '';
+            for (const username of usernames) {
+                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
+                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+                
+                let usernameStr = username.username;
+                if (typeof usernameStr !== 'string') {
+                    usernameStr = String(usernameStr);
+                }
+                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
+                html += `
+                    <div class="username-item" data-id="${username.id}">
+                        <div class="username-icon">
+                            <i class="fas fa-tag"></i>
+                        </div>
+                        <div class="username-info">
+                            <div class="username-name">${escapeHtml(usernameStr)}</div>
+                            <div class="username-category">${escapeHtml(username.category)}</div>
+                        </div>
+                        <div class="username-price">${formatNumber(username.price)} TON</div>
+                        <div class="username-status ${statusClass}">${statusText}</div>
+                        <div class="list-actions">
+                            <button class="list-action-btn toggle-status-btn" data-id="${username.id}" data-status="${username.status}">
+                                <i class="fas fa-${username.status === 'available' ? 'eye-slash' : 'eye'}"></i>
+                            </button>
+                            <button class="list-action-btn list-delete-btn delete-btn" data-id="${username.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            elements.usernameContainer.innerHTML = html;
         }
         
         // Attach event listeners
@@ -1193,6 +1230,41 @@
                 }
             });
         });
+    }
+
+    async function fetchAllCardAvatars() {
+        const avatars = document.querySelectorAll('.username-card .card-avatar img.avatar-img');
+        
+        for (const img of avatars) {
+            const username = img.dataset.username;
+            if (!username) continue;
+            
+            // Cek cache
+            const cached = localStorage.getItem(`avatar_${username}`);
+            if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
+                if (img.src !== cached) {
+                    img.src = cached;
+                }
+                continue;
+            }
+            
+            // Fetch dari server
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+                const data = await response.json();
+                
+                if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                    localStorage.setItem(`avatar_${username}`, data.photo_url);
+                    img.src = data.photo_url;
+                    console.log(`✅ Fetched avatar for @${username}`);
+                }
+            } catch (error) {
+                console.error(`Error fetching avatar for @${username}:`, error);
+            }
+            
+            // Delay agar tidak overload
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
     }
 
     // Fungsi untuk mendapatkan avatar berdasarkan username

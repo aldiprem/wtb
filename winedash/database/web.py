@@ -125,12 +125,27 @@ class WinedashDatabase:
                 )
             ''')
 
-            # Di dalam init_database, setelah CREATE TABLE usernames, tambahkan:
-            cursor.execute("PRAGMA table_info(usernames)")
-            columns = [col[1] for col in cursor.fetchall()]
-            if 'photo_url' not in columns:
-                cursor.execute('ALTER TABLE usernames ADD COLUMN photo_url TEXT')
-
+            # ============ PENDING USERNAMES TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS pending_usernames (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    category TEXT,
+                    price DECIMAL(20, 8) NOT NULL,
+                    seller_id INTEGER NOT NULL,
+                    seller_wallet TEXT,
+                    verification_type TEXT DEFAULT 'channel',
+                    verification_code TEXT,
+                    status TEXT DEFAULT 'pending',
+                    target_chat_id TEXT,
+                    target_chat_title TEXT,
+                    photo_url TEXT,
+                    created_at TIMESTAMP,
+                    expires_at TIMESTAMP,
+                    confirmed_at TIMESTAMP
+                )
+            ''')
+            
             conn.commit()
             print("✅ Winedash Database initialized successfully")
 
@@ -665,61 +680,74 @@ class WinedashDatabase:
                 
                 print(f"[DB] Adding pending username: {username}, price: {price}, seller: {seller_id}")
                 
-                # Buat tabel pending_usernames jika belum ada
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS pending_usernames (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT UNIQUE NOT NULL,
-                        category TEXT,
-                        price DECIMAL(20, 8) NOT NULL,
-                        seller_id INTEGER NOT NULL,
-                        seller_wallet TEXT,
-                        verification_type TEXT DEFAULT 'channel',
-                        verification_code TEXT,
-                        status TEXT DEFAULT 'pending',
-                        target_chat_id TEXT,
-                        target_chat_title TEXT,
-                        created_at TIMESTAMP,
-                        expires_at TIMESTAMP,
-                        confirmed_at TIMESTAMP
-                    )
-                ''')
-                                
-                # Di dalam init_database, setelah membuat tabel pending_usernames, tambahkan:
-                cursor.execute("PRAGMA table_info(pending_usernames)")
-                columns = [col[1] for col in cursor.fetchall()]
-                if 'photo_url' not in columns:
-                    cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
-                    print("✅ Added photo_url column to pending_usernames")
-
-                # Pastikan username adalah string biasa, bukan bytes
-                if isinstance(username, bytes):
-                    username = username.decode('utf-8')
+                # Pastikan tabel usernames ada
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usernames'")
+                if not cursor.fetchone():
+                    print("[DB] Table usernames not found, creating...")
+                    self.init_database()
+                    # Reconnect after init
+                    conn.close()
+                    return self.add_pending_username(username, price, seller_id, seller_wallet, category, verification_type)
+                
+                # Pastikan tabel pending_usernames ada
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
+                if not cursor.fetchone():
+                    cursor.execute('''
+                        CREATE TABLE IF NOT EXISTS pending_usernames (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            username TEXT UNIQUE NOT NULL,
+                            category TEXT,
+                            price DECIMAL(20, 8) NOT NULL,
+                            seller_id INTEGER NOT NULL,
+                            seller_wallet TEXT,
+                            verification_type TEXT DEFAULT 'channel',
+                            verification_code TEXT,
+                            status TEXT DEFAULT 'pending',
+                            target_chat_id TEXT,
+                            target_chat_title TEXT,
+                            photo_url TEXT,
+                            created_at TIMESTAMP,
+                            expires_at TIMESTAMP,
+                            confirmed_at TIMESTAMP
+                        )
+                    ''')
+                    print("✅ Created pending_usernames table")
                 
                 # Clean username (hapus @ jika ada)
                 username_clean = username.lstrip('@').strip()
                 
-                # Cek apakah username sudah ada di usernames
-                cursor.execute('SELECT id, status FROM usernames WHERE username = ?', (username_clean,))
-                existing_username = cursor.fetchone()
-                if existing_username:
-                    print(f"[DB] Username {username_clean} already exists in usernames")
+                if not username_clean:
+                    print(f"[DB] Invalid username: {username}")
                     return None
                 
-                # Cek apakah username sudah ada di pending
-                cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username_clean,))
-                existing = cursor.fetchone()
-                
-                if existing:
-                    existing_id, existing_status = existing
-                    if existing_status == 'pending':
-                        print(f"[DB] Username {username_clean} already in pending queue")
+                # Cek apakah username sudah ada di usernames
+                try:
+                    cursor.execute('SELECT id, status FROM usernames WHERE username = ?', (username_clean,))
+                    existing_username = cursor.fetchone()
+                    if existing_username:
+                        print(f"[DB] Username {username_clean} already exists in usernames with status: {existing_username[1]}")
                         return None
-                    else:
-                        cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (existing_id,))
-                        conn.commit()
+                except sqlite3.OperationalError as e:
+                    print(f"[DB] Error checking usernames: {e}")
+                    # Table might not exist yet, continue
                 
-                # Insert new pending dengan username yang sudah dibersihkan
+                # Cek apakah username sudah ada di pending
+                try:
+                    cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username_clean,))
+                    existing = cursor.fetchone()
+                    
+                    if existing:
+                        existing_id, existing_status = existing
+                        if existing_status == 'pending':
+                            print(f"[DB] Username {username_clean} already in pending queue")
+                            return None
+                        else:
+                            cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (existing_id,))
+                            conn.commit()
+                except sqlite3.OperationalError:
+                    pass
+                
+                # Insert new pending
                 cursor.execute('''
                     INSERT INTO pending_usernames 
                     (username, category, price, seller_id, seller_wallet, verification_type, 
