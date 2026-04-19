@@ -358,9 +358,8 @@ async def handle_verify_accept(event):
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             
-            # Dapatkan data pending
             cursor.execute('''
-                SELECT username, price, seller_id, seller_wallet, category
+                SELECT username, based_on, price, seller_id, seller_wallet, category
                 FROM pending_usernames WHERE id = ? AND status = 'pending'
             ''', (pending_id,))
             row = cursor.fetchone()
@@ -369,20 +368,20 @@ async def handle_verify_accept(event):
                 await event.answer("Data tidak ditemukan!", alert=True)
                 return
             
-            pending_username, price, seller_id, seller_wallet, category = row
+            pending_username, based_on, price, seller_id, seller_wallet, category = row
+            
+            # Insert ke usernames dengan based_on
+            now = datetime.now().isoformat()
+            cursor.execute('''
+                INSERT INTO usernames (username, based_on, price, seller_id, seller_wallet, status, created_at)
+                VALUES (?, ?, ?, ?, ?, 'available', ?)
+            ''', (pending_username, based_on or '', price, seller_id, seller_wallet, now))
             
             # Cek apakah username sudah ada di usernames
             cursor.execute('SELECT id FROM usernames WHERE username = ?', (pending_username,))
             if cursor.fetchone():
                 await event.answer("Username sudah ada!", alert=True)
                 return
-            
-            # Pindahkan ke tabel usernames
-            now = datetime.now().isoformat()
-            cursor.execute('''
-                INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
-                VALUES (?, ?, ?, ?, ?, 'available', ?)
-            ''', (pending_username, category, price, seller_id, seller_wallet, now))
             
             # Hapus dari pending
             cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
@@ -543,6 +542,7 @@ async def process_verification(session, pending):
     username = pending['username']
     price = pending['price']
     seller_id = pending['seller_id']
+    based_on = pending.get('based_on', '')
     
     logger.info(f"Processing verification for {username} (pending_id: {pending_id})")
     

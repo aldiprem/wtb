@@ -711,7 +711,6 @@ def confirm_deposit_web():
     
 @winedash_bp.route('/username/pending/add', methods=['POST', 'OPTIONS'])
 def add_pending_username():
-    """Add username to pending verification"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -722,8 +721,6 @@ def add_pending_username():
     try:
         data = request.get_json()
         
-        print(f"[DEBUG] add_pending_username received data: {data}")
-        
         if not data:
             return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
         
@@ -731,11 +728,13 @@ def add_pending_username():
         price = data.get('price')
         seller_id = data.get('seller_id')
         seller_wallet = data.get('seller_wallet', '')
-        category = data.get('category', 'default')
+        based_on = data.get('based_on', '')  # Ganti category dengan based_on
         
-        print(f"[DEBUG] Parsed: username={username}, price={price}, seller_id={seller_id}")
+        # Validasi based_on
+        if not based_on:
+            return jsonify({'success': False, 'error': 'Based On (nama asli) tidak boleh kosong'}), 400
         
-        # Validasi input
+        # Validasi username
         if not username:
             return jsonify({'success': False, 'error': 'Username tidak boleh kosong'}), 400
         
@@ -751,32 +750,29 @@ def add_pending_username():
         if not username_clean:
             return jsonify({'success': False, 'error': 'Username tidak valid'}), 400
         
-        # Tambahkan ke pending
+        # Tambahkan ke pending dengan based_on
         pending_id = db.add_pending_username(
             username=username_clean,
             price=float(price),
             seller_id=seller_id,
             seller_wallet=seller_wallet or '',
-            category=category,
+            based_on=based_on,  # Ganti category
             verification_type='auto'
         )
         
-        print(f"[DEBUG] add_pending_username result: pending_id={pending_id}")
-        
         if not pending_id:
-            return jsonify({'success': False, 'error': 'Gagal menambahkan username (mungkin sudah ada atau username tidak valid)'}), 400
+            return jsonify({'success': False, 'error': 'Gagal menambahkan username'}), 400
         
         return jsonify({
             'success': True,
             'pending_id': pending_id,
             'username': username_clean,
+            'based_on': based_on,
             'message': 'Username pending verification. Bot akan memproses dalam beberapa saat.'
         })
         
     except Exception as e:
         print(f"Error in add_pending_username: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @winedash_bp.route('/username/pending/list/<int:user_id>', methods=['GET'])

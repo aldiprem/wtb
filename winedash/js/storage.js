@@ -760,7 +760,7 @@
         }
     }
 
-    async function addUsername(username, price, category) {
+    async function addUsername(username, price, basedOn) {
         if (!telegramUser) {
             showToast('Login terlebih dahulu', 'warning');
             return false;
@@ -785,6 +785,12 @@
             return false;
         }
         
+        // Validasi based_on
+        if (!basedOn || basedOn.trim() === '') {
+            showToast('Based On (nama asli) tidak boleh kosong', 'warning');
+            return false;
+        }
+        
         if (!price || price <= 0) {
             showToast('Harga harus lebih dari 0', 'warning');
             return false;
@@ -799,7 +805,7 @@
                 price: parseFloat(price),
                 seller_id: telegramUser.id,
                 seller_wallet: walletAddress || '',
-                category: category || 'default'
+                based_on: basedOn.trim()  // Ganti category dengan based_on
             };
             
             console.log('[DEBUG] Adding username:', requestBody);
@@ -813,7 +819,6 @@
                 body: JSON.stringify(requestBody)
             });
             
-            // Handle response dengan benar
             let data;
             try {
                 data = await response.json();
@@ -830,13 +835,11 @@
                 showToast(data.message || 'Username akan diproses oleh bot dalam beberapa saat!', 'success');
                 await loadPendingCount();
                 
-                // Refresh inbox content if open
                 const panel = document.getElementById('inboxPanel');
                 if (panel && panel.style.display === 'flex') {
                     await loadPendingList();
                 }
                 
-                // Reset form modal
                 if (elements.addModal) {
                     elements.addModal.style.display = 'none';
                     clearModal();
@@ -1163,18 +1166,18 @@
                 if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
                     avatarUrl = cached;
                 }
-                
+                                
                 const usernameData = {
                     id: username.id,
                     username: usernameStr,
-                    category: username.category,
+                    based_on: username.based_on || '',
                     price: username.price,
                     seller_id: username.seller_id,
                     seller_wallet: username.seller_wallet,
                     status: username.status,
                     created_at: username.created_at
                 };
-                
+
                 html += `
                     <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
                         <div class="username-card-image">
@@ -1220,19 +1223,18 @@
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
-                
-                // Simpan data username untuk detail panel
+                                
                 const usernameData = {
                     id: username.id,
                     username: usernameStr,
-                    category: username.category,
+                    based_on: username.based_on || '',
                     price: username.price,
                     seller_id: username.seller_id,
                     seller_wallet: username.seller_wallet,
                     status: username.status,
                     created_at: username.created_at
                 };
-                
+
                 html += `
                     <div class="username-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
                         <div class="username-avatar">
@@ -1556,6 +1558,10 @@
             </div>
             <div class="panel-content">
                 <div class="detail-field">
+                    <div class="detail-label">Based On</div>
+                    <div class="detail-value">${escapeHtml(username.based_on || '-')}</div>
+                </div>
+                <div class="detail-field">
                     <div class="detail-label">Harga</div>
                     <div class="detail-value price">
                         <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 4px;">
@@ -1565,10 +1571,6 @@
                 <div class="detail-field">
                     <div class="detail-label">Status</div>
                     <div class="detail-status ${statusClass}">${statusText}</div>
-                </div>
-                <div class="detail-field">
-                    <div class="detail-label">Kategori</div>
-                    <div class="detail-value">${escapeHtml(username.category || 'Default')}</div>
                 </div>
                 <div class="detail-field">
                     <div class="detail-label">ID Username</div>
@@ -1947,7 +1949,6 @@
         }
         
         if (elements.confirmAddBtn) {
-            // Hapus listener lama
             const newConfirmBtn = elements.confirmAddBtn.cloneNode(true);
             elements.confirmAddBtn.parentNode.replaceChild(newConfirmBtn, elements.confirmAddBtn);
             elements.confirmAddBtn = newConfirmBtn;
@@ -1959,12 +1960,17 @@
                 
                 const username = elements.modalUsername?.value.trim();
                 const price = parseFloat(elements.modalPrice?.value);
-                const category = elements.modalCategory?.value;
+                const basedOn = document.getElementById('modalBasedOn')?.value.trim();  // Ganti category
                 
-                console.log('[DEBUG] Form values:', { username, price, category });
+                console.log('[DEBUG] Form values:', { username, price, basedOn });
                 
                 if (!username) {
                     showToast('Masukkan username', 'warning');
+                    return;
+                }
+                
+                if (!basedOn) {
+                    showToast('Masukkan Based On (nama asli)', 'warning');
                     return;
                 }
                 
@@ -1973,12 +1979,11 @@
                     return;
                 }
                 
-                const success = await addUsername(username, price, category);
+                const success = await addUsername(username, price, basedOn);
                 
                 if (success && elements.addModal) {
                     elements.addModal.style.display = 'none';
                     clearModal();
-                    // Refresh daftar usernames
                     await loadUsernames();
                 }
             });
@@ -2096,7 +2101,8 @@
     function clearModal() {
         if (elements.modalUsername) elements.modalUsername.value = '';
         if (elements.modalPrice) elements.modalPrice.value = '';
-        if (elements.modalCategory) elements.modalCategory.value = 'default';
+        const basedOnInput = document.getElementById('modalBasedOn');
+        if (basedOnInput) basedOnInput.value = '';
     }
 
     function updateStorageUserUI() {

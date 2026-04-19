@@ -95,6 +95,7 @@ class WinedashDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     category TEXT,
+                    based_on TEXT,  -- BARU: nama asli username
                     price DECIMAL(20, 8) NOT NULL,
                     seller_id INTEGER,
                     seller_wallet TEXT,
@@ -131,6 +132,7 @@ class WinedashDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     category TEXT,
+                    based_on TEXT,
                     price DECIMAL(20, 8) NOT NULL,
                     seller_id INTEGER NOT NULL,
                     seller_wallet TEXT,
@@ -148,6 +150,30 @@ class WinedashDatabase:
             
             conn.commit()
             print("✅ Winedash Database initialized successfully")
+
+    def migrate_add_based_on_column(self):
+        """Add based_on column to existing tables if not exists"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek dan tambah kolom based_on ke usernames
+                cursor.execute("PRAGMA table_info(usernames)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'based_on' not in columns:
+                    cursor.execute('ALTER TABLE usernames ADD COLUMN based_on TEXT')
+                    print("✅ Added based_on column to usernames")
+                
+                # Cek dan tambah kolom based_on ke pending_usernames
+                cursor.execute("PRAGMA table_info(pending_usernames)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'based_on' not in columns:
+                    cursor.execute('ALTER TABLE pending_usernames ADD COLUMN based_on TEXT')
+                    print("✅ Added based_on column to pending_usernames")
+                
+                conn.commit()
+        except Exception as e:
+            print(f"Error migrating based_on column: {e}")
 
     # ==================== USER MANAGEMENT ====================
     
@@ -527,17 +553,15 @@ class WinedashDatabase:
             return False
 
     def get_available_usernames(self, category: str = None, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get all available usernames"""
         try:
             with sqlite3.connect(self.db_path) as conn:
-                # Set row_factory untuk mendapatkan dictionary dengan tipe yang benar
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
-                # TAMPILKAN SEMUA USERNAME (available, unlisted, dll) untuk storage
+                # Include based_on in SELECT
                 if category:
                     cursor.execute('''
-                        SELECT id, username, category, price, seller_id, seller_wallet, status, created_at
+                        SELECT id, username, based_on, price, seller_id, seller_wallet, status, created_at
                         FROM usernames 
                         WHERE category = ?
                         ORDER BY created_at DESC
@@ -545,7 +569,7 @@ class WinedashDatabase:
                     ''', (category, limit))
                 else:
                     cursor.execute('''
-                        SELECT id, username, category, price, seller_id, seller_wallet, status, created_at
+                        SELECT id, username, based_on, price, seller_id, seller_wallet, status, created_at
                         FROM usernames 
                         ORDER BY created_at DESC
                         LIMIT ?
@@ -554,11 +578,10 @@ class WinedashDatabase:
                 rows = cursor.fetchall()
                 usernames = []
                 for row in rows:
-                    # Konversi semua field ke tipe yang JSON-serializable
                     usernames.append({
                         'id': int(row['id']),
                         'username': str(row['username']) if row['username'] else '',
-                        'category': str(row['category']) if row['category'] else 'default',
+                        'based_on': str(row['based_on']) if row['based_on'] else '',
                         'price': float(row['price']) if row['price'] else 0.0,
                         'seller_id': int(row['seller_id']) if row['seller_id'] else None,
                         'seller_wallet': str(row['seller_wallet']) if row['seller_wallet'] else '',
@@ -567,9 +590,7 @@ class WinedashDatabase:
                     })
                 return usernames
         except Exception as e:
-            print(f"Error getting available usernames: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Error getting usernames: {e}")
             return []
 
     def get_user_purchases(self, user_id: int) -> List[Dict[str, Any]]:
@@ -670,7 +691,7 @@ class WinedashDatabase:
             return []
 
     def add_pending_username(self, username: str, price: float, seller_id: int, 
-                            seller_wallet: str, category: str = "default", 
+                            seller_wallet: str, based_on: str = "", 
                             verification_type: str = "channel") -> Optional[int]:
         """Add a username to pending verification"""
         try:
@@ -678,96 +699,27 @@ class WinedashDatabase:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
-                print(f"[DB] Adding pending username: {username}, price: {price}, seller: {seller_id}")
-                
-                # Pastikan tabel usernames ada
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usernames'")
-                if not cursor.fetchone():
-                    print("[DB] Table usernames not found, creating...")
-                    self.init_database()
-                    # Reconnect after init
-                    conn.close()
-                    return self.add_pending_username(username, price, seller_id, seller_wallet, category, verification_type)
-                
-                # Pastikan tabel pending_usernames ada
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
-                if not cursor.fetchone():
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS pending_usernames (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            username TEXT UNIQUE NOT NULL,
-                            category TEXT,
-                            price DECIMAL(20, 8) NOT NULL,
-                            seller_id INTEGER NOT NULL,
-                            seller_wallet TEXT,
-                            verification_type TEXT DEFAULT 'channel',
-                            verification_code TEXT,
-                            status TEXT DEFAULT 'pending',
-                            target_chat_id TEXT,
-                            target_chat_title TEXT,
-                            photo_url TEXT,
-                            created_at TIMESTAMP,
-                            expires_at TIMESTAMP,
-                            confirmed_at TIMESTAMP
-                        )
-                    ''')
-                    print("✅ Created pending_usernames table")
-                
-                # Clean username (hapus @ jika ada)
+                # Clean username
                 username_clean = username.lstrip('@').strip()
                 
                 if not username_clean:
-                    print(f"[DB] Invalid username: {username}")
                     return None
                 
-                # Cek apakah username sudah ada di usernames
-                try:
-                    cursor.execute('SELECT id, status FROM usernames WHERE username = ?', (username_clean,))
-                    existing_username = cursor.fetchone()
-                    if existing_username:
-                        print(f"[DB] Username {username_clean} already exists in usernames with status: {existing_username[1]}")
-                        return None
-                except sqlite3.OperationalError as e:
-                    print(f"[DB] Error checking usernames: {e}")
-                    # Table might not exist yet, continue
-                
-                # Cek apakah username sudah ada di pending
-                try:
-                    cursor.execute('SELECT id, status FROM pending_usernames WHERE username = ?', (username_clean,))
-                    existing = cursor.fetchone()
-                    
-                    if existing:
-                        existing_id, existing_status = existing
-                        if existing_status == 'pending':
-                            print(f"[DB] Username {username_clean} already in pending queue")
-                            return None
-                        else:
-                            cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (existing_id,))
-                            conn.commit()
-                except sqlite3.OperationalError:
-                    pass
-                
-                # Insert new pending
+                # Insert new pending with based_on
                 cursor.execute('''
                     INSERT INTO pending_usernames 
-                    (username, category, price, seller_id, seller_wallet, verification_type, 
+                    (username, based_on, price, seller_id, seller_wallet, verification_type, 
                     verification_code, status, created_at, expires_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-                ''', (username_clean, category, price, seller_id, seller_wallet, 
+                ''', (username_clean, based_on, price, seller_id, seller_wallet, 
                     verification_type, None, now, None))
                 
                 pending_id = cursor.lastrowid
                 conn.commit()
-                print(f"[DB] Pending username added with ID: {pending_id}")
                 return pending_id
                 
-        except sqlite3.IntegrityError as e:
-            print(f"[DB] IntegrityError adding pending username: {e}")
-            return None
         except Exception as e:
-            print(f"[DB] Error adding pending username: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Error adding pending username: {e}")
             return None
 
     def get_pending_usernames(self, user_id: int = None) -> List[Dict[str, Any]]:
@@ -834,82 +786,39 @@ class WinedashDatabase:
             import traceback
             traceback.print_exc()
             return []
-        
+
     def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
-        """Confirm pending username and move to available"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
-                # Get pending record
+                # Get pending record including based_on
                 cursor.execute('''
-                    SELECT username, price, seller_id, seller_wallet, category, verification_type, verification_code
+                    SELECT username, based_on, price, seller_id, seller_wallet, verification_type, verification_code
                     FROM pending_usernames WHERE id = ? AND status = 'pending'
                 ''', (pending_id,))
                 row = cursor.fetchone()
                 
                 if not row:
-                    print(f"Pending record {pending_id} not found")
                     return False
                 
-                username, price, seller_id, seller_wallet, category, v_type, v_code = row
+                username, based_on, price, seller_id, seller_wallet, v_type, v_code = row
                 
-                print(f"Confirming username: {username}, type: {v_type}, code_provided: {code}")
-                
-                # Verify code if needed (hanya untuk user type)
-                if v_type == 'user':
-                    if not code:
-                        print(f"OTP required for user type but not provided")
-                        return False
-                    if v_code != code:
-                        print(f"Invalid OTP: {code} != {v_code}")
-                        return False
-                    # Check expiration
-                    cursor.execute('SELECT expires_at FROM pending_usernames WHERE id = ?', (pending_id,))
-                    exp_row = cursor.fetchone()
-                    if exp_row and exp_row[0]:
-                        expires_at = datetime.fromisoformat(exp_row[0])
-                        if datetime.now() > expires_at:
-                            print(f"OTP expired at {expires_at}")
-                            return False
-                else:
-                    # Untuk channel/group, tidak perlu OTP
-                    print(f"Channel/group verification for {username}, no OTP needed")
-                
-                # Cek apakah username sudah ada
-                cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
-                if cursor.fetchone():
-                    print(f"Username {username} already exists, skipping...")
-                    cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
-                    conn.commit()
-                    return False
-                
-                # Move to usernames table
+                # Move to usernames table with based_on
                 cursor.execute('''
-                    INSERT INTO usernames (username, category, price, seller_id, seller_wallet, status, created_at)
+                    INSERT INTO usernames (username, based_on, price, seller_id, seller_wallet, status, created_at)
                     VALUES (?, ?, ?, ?, ?, 'available', ?)
-                ''', (username, category, price, seller_id, seller_wallet, now))
+                ''', (username, based_on or '', price, seller_id, seller_wallet, now))
                 
-                username_id = cursor.lastrowid
-                print(f"Username inserted with ID: {username_id}")
-                
-                # HAPUS pending record setelah confirmed
+                # Delete pending record
                 cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
-                
                 conn.commit()
-                print(f"Username {username} confirmed successfully")
                 return True
                 
-        except sqlite3.IntegrityError as e:
-            print(f"IntegrityError confirming pending username: {e}")
-            return False
         except Exception as e:
             print(f"Error confirming pending username: {e}")
-            import traceback
-            traceback.print_exc()
             return False
-
 
     def reject_pending_username(self, pending_id: int) -> bool:
         """Reject pending username - hapus record agar bisa ditambahkan ulang nanti"""
