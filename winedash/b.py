@@ -297,7 +297,7 @@ Masukkan kode di atas di halaman Storage untuk menyelesaikan verifikasi.
 # ==================== CALLBACK HANDLERS ====================
 @bot.on(events.CallbackQuery(pattern=r"verify_accept:(\d+):(.+)"))
 async def handle_verify_accept(event):
-    """Handle accept verification from channel/group admin"""
+    """Handle accept verification from channel/group admin only"""
     pending_id = int(event.pattern_match.group(1))
     username = event.pattern_match.group(2)
     
@@ -307,6 +307,53 @@ async def handle_verify_accept(event):
         await event.answer("Data tidak ditemukan!", alert=True)
         return
     
+    # Dapatkan chat_id dari pending record
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT target_chat_id, seller_id FROM pending_usernames WHERE id = ?', (pending_id,))
+        row = cursor.fetchone()
+        if not row:
+            await event.answer("Data tidak ditemukan!", alert=True)
+            return
+        
+        target_chat_id = int(row[0])
+        seller_id = row[1]
+    
+    # CEK APAKAH USER YANG MENEKAN BUTTON ADALAH ADMIN DARI CHANNEL/GROUP
+    try:
+        # Dapatkan informasi user yang menekan button
+        user_id = event.sender_id
+        user = await event.get_sender()
+        
+        # Cek apakah user adalah admin dari chat target
+        chat_info = await bot.get_permissions(target_chat_id, user_id)
+        
+        is_admin = False
+        
+        # Cek apakah user adalah admin atau creator
+        if chat_info.is_admin or chat_info.is_creator:
+            is_admin = True
+        else:
+            # Coba cek dengan get_chat_admin untuk supergroup/channel
+            try:
+                admins = await bot.get_participants(target_chat_id, filter=types.ChannelParticipantsAdmins)
+                for admin in admins:
+                    if admin.id == user_id:
+                        is_admin = True
+                        break
+            except Exception as e:
+                logger.debug(f"Error checking admins: {e}")
+        
+        if not is_admin:
+            await event.answer("⛔ Hanya admin channel/group yang dapat memverifikasi!", alert=True)
+            return
+            
+    except Exception as e:
+        logger.error(f"Error checking admin status: {e}")
+        await event.answer("Gagal memverifikasi status admin!", alert=True)
+        return
+    
+    # Proses verifikasi
     try:
         with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
@@ -349,7 +396,7 @@ async def handle_verify_accept(event):
             try:
                 await bot.send_message(
                     seller_id,
-                    f"✅ **Username {username} telah diverifikasi!**\n\n"
+                    f"✅ **Username {username} telah diverifikasi oleh admin!**\n\n"
                     f"Username sekarang tersedia di marketplace dengan harga {price} TON."
                 )
             except:
@@ -362,9 +409,49 @@ async def handle_verify_accept(event):
 
 @bot.on(events.CallbackQuery(pattern=r"verify_reject:(\d+):(.+)"))
 async def handle_verify_reject(event):
-    """Handle reject verification from channel/group admin"""
+    """Handle reject verification from channel/group admin only"""
     pending_id = int(event.pattern_match.group(1))
     username = event.pattern_match.group(2)
+    
+    # Dapatkan chat_id dari pending record
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT target_chat_id, seller_id FROM pending_usernames WHERE id = ?', (pending_id,))
+        row = cursor.fetchone()
+        if not row:
+            await event.answer("Data tidak ditemukan!", alert=True)
+            return
+        
+        target_chat_id = int(row[0])
+        seller_id = row[1]
+    
+    # CEK APAKAH USER YANG MENEKAN BUTTON ADALAH ADMIN
+    try:
+        user_id = event.sender_id
+        
+        chat_info = await bot.get_permissions(target_chat_id, user_id)
+        
+        is_admin = False
+        if chat_info.is_admin or chat_info.is_creator:
+            is_admin = True
+        else:
+            try:
+                admins = await bot.get_participants(target_chat_id, filter=types.ChannelParticipantsAdmins)
+                for admin in admins:
+                    if admin.id == user_id:
+                        is_admin = True
+                        break
+            except:
+                pass
+        
+        if not is_admin:
+            await event.answer("⛔ Hanya admin channel/group yang dapat menolak!", alert=True)
+            return
+            
+    except Exception as e:
+        logger.error(f"Error checking admin status: {e}")
+        await event.answer("Gagal memverifikasi status admin!", alert=True)
+        return
     
     try:
         with sqlite3.connect(DB_PATH) as conn:
@@ -387,7 +474,7 @@ async def handle_verify_reject(event):
                 try:
                     await bot.send_message(
                         seller_id,
-                        f"❌ **Username {username} ditolak!**\n\n"
+                        f"❌ **Username {username} ditolak oleh admin!**\n\n"
                         f"Admin channel/group tidak menyetujui penjualan username ini."
                     )
                 except:

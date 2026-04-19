@@ -21,6 +21,8 @@
     let currentSearchTerm = '';
     let pendingList = [];
     let currentOtpPendingId = null;
+    let lastUsernameCount = 0;
+    let lastPendingCount = 0;
 
     // DOM Elements
     const elements = {
@@ -322,16 +324,17 @@
             let showVerifyButton = false;
             let showRejectButton = false;
             
+            // Tentukan tipe dan ambil foto profil
             if (pending.verification_type === 'user') {
                 typeIcon = '👤';
                 typeText = 'User (Perlu OTP)';
-                showVerifyButton = true;  // User perlu verifikasi via OTP
-                showRejectButton = true;   // User juga bisa ditolak
+                showVerifyButton = true;
+                showRejectButton = true;
             } else if (pending.verification_type === 'channel') {
                 typeIcon = '📢';
-                typeText = 'Channel/Group (Menunggu Admin)';
-                showVerifyButton = false;  // Channel/Group TIDAK bisa diverifikasi dari inbox
-                showRejectButton = false;   // Channel/Group TIDAK bisa ditolak dari inbox
+                typeText = 'Channel (Menunggu Admin)';
+                showVerifyButton = false;
+                showRejectButton = false;
             } else if (pending.verification_type === 'auto') {
                 typeIcon = '⏳';
                 typeText = 'Menunggu deteksi...';
@@ -349,7 +352,20 @@
                 showRejectButton = false;
             }
             
-            // Tambahkan info tambahan untuk channel/group
+            // Ambil foto profil untuk ditampilkan di inbox
+            let avatarUrl = localStorage.getItem(`avatar_${pending.username}`);
+            if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
+                avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                // Fetch async
+                fetchProfilePhoto(pending.username).then(url => {
+                    if (url) {
+                        const avatarImg = document.querySelector(`.inbox-item[data-id="${pending.id}"] .inbox-avatar-img`);
+                        if (avatarImg) avatarImg.src = url;
+                    }
+                });
+            }
+            
+            // Info tambahan untuk channel/group
             let infoText = '';
             if (pending.verification_type !== 'user' && pending.verification_type !== 'auto') {
                 infoText = '<div style="font-size: 10px; color: var(--warning); margin-top: 4px;">⏳ Menunggu konfirmasi dari admin channel/group</div>';
@@ -357,7 +373,9 @@
             
             html += `
                 <div class="inbox-item" data-id="${pending.id}" data-type="${pending.verification_type}">
-                    <div class="inbox-icon">${typeIcon}</div>
+                    <div class="inbox-avatar">
+                        <img src="${avatarUrl}" alt="${escapeHtml(pending.username)}" class="inbox-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                    </div>
                     <div class="inbox-info">
                         <div class="inbox-username">@${escapeHtml(pending.username)}</div>
                         <div class="inbox-price">${formatNumber(pending.price)} TON</div>
@@ -387,7 +405,7 @@
         
         container.innerHTML = html;
         
-        // Add event listeners to verify buttons (hanya untuk user)
+        // Add event listeners
         document.querySelectorAll('.inbox-verify-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -398,11 +416,9 @@
                 if (type === 'user') {
                     showOtpModal(pendingId, username);
                 }
-                // Untuk channel/group tidak ada action verify dari inbox
             });
         });
         
-        // Add event listeners to reject buttons (hanya untuk user)
         document.querySelectorAll('.inbox-reject-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -2099,14 +2115,85 @@
             console.log('✅ Telegram WebApp initialized');
         }
     }
+    
+    async function checkForUpdates() {
+        if (!telegramUser) return;
         
+        try {
+            // Cek jumlah usernames
+            const usernamesResp = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
+            const usernamesData = await usernamesResp.json();
+            
+            let currentUsernameCount = 0;
+            if (usernamesData.success && usernamesData.usernames) {
+                currentUsernameCount = usernamesData.usernames.filter(u => u.seller_id === telegramUser.id).length;
+            }
+            
+            // Cek jumlah pending
+            const pendingResp = await fetch(`${API_BASE_URL}/api/winedash/username/pending/count/${telegramUser.id}`);
+            const pendingData = await pendingResp.json();
+            let currentPendingCount = pendingData.success ? pendingData.count : 0;
+            
+            // Jika ada perubahan, refresh
+            if (currentUsernameCount !== lastUsernameCount || currentPendingCount !== lastPendingCount) {
+                console.log('Changes detected, refreshing...');
+                lastUsernameCount = currentUsernameCount;
+                lastPendingCount = currentPendingCount;
+                await loadUsernames();
+                await loadPendingCount();
+                
+                // Jika inbox terbuka, refresh juga
+                const panel = document.getElementById('inboxPanel');
+                if (panel && panel.style.display === 'flex') {
+                    await loadPendingList();
+                }
+            }
+        } catch (error) {
+            console.error('Error checking updates:', error);
+        }
+    }
+
+    // Mulai polling setiap 3 detik
+    let updateInterval = null;
+
+    function startAutoRefresh() {
+        if (updateInterval) clearInterval(updateInterval);
+        
+        // Initial load
+        if (telegramUser) {
+            (async () => {
+                const usernamesResp = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
+                const usernamesData = await usernamesResp.json();
+                if (usernamesData.success && usernamesData.usernames) {
+                    lastUsernameCount = usernamesData.usernames.filter(u => u.seller_id === telegramUser.id).length;
+                }
+                
+                const pendingResp = await fetch(`${API_BASE_URL}/api/winedash/username/pending/count/${telegramUser.id}`);
+                const pendingData = await pendingResp.json();
+                lastPendingCount = pendingData.success ? pendingData.count : 0;
+            })();
+        }
+        
+        updateInterval = setInterval(() => {
+            checkForUpdates();
+        }, 3000); // Cek setiap 3 detik
+    }
+
+    function stopAutoRefresh() {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+            updateInterval = null;
+        }
+    }
+
+    // Panggil startAutoRefresh di init()
     async function init() {
         initTelegram();
         initSafeArea();
         showLoading(true);
         
         setupEventListeners();
-        setupInboxEventListeners()
+        setupInboxEventListeners();
         
         setTimeout(() => {
             setupToggleButtons();
@@ -2120,13 +2207,18 @@
             await authenticateUser();
             await loadStorageBalance();
             await loadUsernames();
+            startAutoRefresh();
         } else {
             showToast('Tidak dapat mengambil data user', 'error');
         }
         
         showLoading(false);
-        loadPendingCount()
+        loadPendingCount();
         console.log('✅ Winedash Storage initialized');
     }
+
+    window.addEventListener('beforeunload', () => {
+        stopAutoRefresh();
+    });
     init();
 })();
