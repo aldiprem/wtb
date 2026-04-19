@@ -1738,7 +1738,6 @@
         }
     }
 
-    // ==================== EVENT HANDLERS ====================
     function setupEventListeners() {
         // Action Row Buttons
         const addActionBtn = document.getElementById('addUsernameActionBtn');
@@ -1752,7 +1751,6 @@
                 console.log('[DEBUG] Add button clicked');
                 if (elements.addModal) {
                     elements.addModal.style.display = 'flex';
-                    // Reset form
                     if (elements.modalUsername) elements.modalUsername.value = '';
                     if (elements.modalPrice) elements.modalPrice.value = '';
                     const basedOnInput = document.getElementById('modalBasedOn');
@@ -1876,14 +1874,6 @@
             });
         }
 
-        if (currentLayout === 'grid') {
-            if (elements.gridLayoutBtn) elements.gridLayoutBtn.classList.add('active');
-            if (elements.listLayoutBtn) elements.listLayoutBtn.classList.remove('active');
-        } else {
-            if (elements.listLayoutBtn) elements.listLayoutBtn.classList.add('active');
-            if (elements.gridLayoutBtn) elements.gridLayoutBtn.classList.remove('active');
-        }
-
         if (elements.listLayoutBtn) {
             elements.listLayoutBtn.addEventListener('click', () => {
                 currentLayout = 'list';
@@ -1909,9 +1899,157 @@
                 }
             });
         }
+
+        // ==================== CONFIRM ADD BUTTON HANDLER ====================
+        if (elements.confirmAddBtn) {
+            const newConfirmBtn = elements.confirmAddBtn.cloneNode(true);
+            elements.confirmAddBtn.parentNode.replaceChild(newConfirmBtn, elements.confirmAddBtn);
+            elements.confirmAddBtn = newConfirmBtn;
             
-    // ==================== BASED ON VALIDATION UTILITY ====================
-    // Fungsi ini harus ditempatkan di level GLOBAL (di luar function lain, misalnya setelah deklarasi variabel global)
+            const getBasedOnInput = () => document.getElementById('modalBasedOn');
+            const getBasedOnError = () => document.getElementById('basedOnError');
+            const getUsernameInput = () => document.getElementById('modalUsername');
+            const getPriceInput = () => document.getElementById('modalPrice');
+            
+            function updateBasedOnValidation() {
+                const basedOnInput = getBasedOnInput();
+                const basedOnError = getBasedOnError();
+                const usernameInput = getUsernameInput();
+                
+                if (!basedOnInput || !basedOnError) return;
+                
+                const username = usernameInput?.value.trim() || '';
+                const value = basedOnInput.value.trim();
+                
+                if (value === '') {
+                    basedOnError.style.display = 'block';
+                    basedOnError.textContent = 'Based On tidak boleh kosong';
+                    basedOnError.style.color = '#ef4444';
+                    basedOnInput.classList.add('error');
+                    return;
+                }
+                
+                if (username === '') {
+                    basedOnError.style.display = 'block';
+                    basedOnError.textContent = 'Masukkan username terlebih dahulu';
+                    basedOnError.style.color = '#f59e0b';
+                    basedOnInput.classList.add('error');
+                    return;
+                }
+                
+                const validation = validateBasedOnClient(username, value);
+                
+                if (validation.valid) {
+                    basedOnError.style.display = 'block';
+                    basedOnError.textContent = validation.message;
+                    basedOnError.style.color = '#10b981';
+                    basedOnInput.classList.remove('error');
+                } else {
+                    basedOnError.style.display = 'block';
+                    basedOnError.textContent = validation.message;
+                    basedOnError.style.color = '#ef4444';
+                    basedOnInput.classList.add('error');
+                }
+            }
+            
+            const basedOnInputElem = getBasedOnInput();
+            const usernameInputElem = getUsernameInput();
+            
+            if (basedOnInputElem) {
+                basedOnInputElem.addEventListener('input', updateBasedOnValidation);
+                basedOnInputElem.addEventListener('blur', updateBasedOnValidation);
+            }
+            
+            if (usernameInputElem) {
+                usernameInputElem.addEventListener('input', updateBasedOnValidation);
+            }
+            
+            elements.confirmAddBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[DEBUG] Confirm Add button clicked');
+                
+                const usernameInput = getUsernameInput();
+                const priceInput = getPriceInput();
+                const basedOnInput = getBasedOnInput();
+                const basedOnError = getBasedOnError();
+                
+                const username = usernameInput?.value.trim();
+                const price = priceInput ? parseFloat(priceInput.value) : NaN;
+                const basedOn = basedOnInput?.value.trim();
+                
+                console.log('[DEBUG] Form values:', { username, price, basedOn });
+                
+                if (!username) {
+                    showToast('Masukkan username', 'warning');
+                    return;
+                }
+                
+                if (!basedOn) {
+                    showToast('Masukkan Based On (nama asli)', 'warning');
+                    if (basedOnInput) {
+                        basedOnInput.classList.add('error');
+                        if (basedOnError) {
+                            basedOnError.style.display = 'block';
+                            basedOnError.textContent = 'Based On tidak boleh kosong';
+                        }
+                    }
+                    return;
+                }
+                
+                const validation = validateBasedOnClient(username, basedOn);
+                if (!validation.valid) {
+                    showToast(validation.message, 'warning');
+                    if (basedOnInput) {
+                        basedOnInput.classList.add('error');
+                        if (basedOnError) {
+                            basedOnError.style.display = 'block';
+                            basedOnError.textContent = validation.message;
+                        }
+                    }
+                    return;
+                }
+                
+                if (isNaN(price) || price <= 0) {
+                    showToast('Masukkan harga yang valid', 'warning');
+                    return;
+                }
+                
+                const originalText = elements.confirmAddBtn.innerHTML;
+                elements.confirmAddBtn.disabled = true;
+                elements.confirmAddBtn.innerHTML = '<span class="btn-loading"></span> Menambahkan...';
+                
+                try {
+                    const success = await addUsername(username, price, basedOn);
+                    
+                    if (success && elements.addModal) {
+                        elements.addModal.style.display = 'none';
+                        clearModal();
+                        if (basedOnInput) basedOnInput.classList.remove('error');
+                        if (basedOnError) basedOnError.style.display = 'none';
+                        await loadUsernames();
+                    }
+                } catch (error) {
+                    console.error('[DEBUG] Error in confirm handler:', error);
+                    showToast('Terjadi kesalahan, coba lagi', 'error');
+                } finally {
+                    elements.confirmAddBtn.disabled = false;
+                    elements.confirmAddBtn.innerHTML = originalText;
+                }
+            });
+        }
+
+        // Close modal on overlay click
+        if (elements.addModal) {
+            elements.addModal.addEventListener('click', (e) => {
+                if (e.target === elements.addModal) {
+                    elements.addModal.style.display = 'none';
+                    clearModal();
+                }
+            });
+        }
+    }
+
     function validateBasedOnClient(username, basedOn) {
         if (!basedOn || basedOn.trim() === '') {
             return { valid: false, message: 'Based On tidak boleh kosong' };
