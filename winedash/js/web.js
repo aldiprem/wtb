@@ -487,21 +487,25 @@
             
             console.log('📤 Processing deposit:', { amount, amountNano, senderAddress, memo });
             
+            // ==================== PERBAIKAN UTAMA ====================
+            // Untuk transfer TON biasa ke alamat wallet, payload HARUS null
+            // JANGAN mengirim payload apapun untuk transfer sederhana
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
-                    amount: amountNano,
-                    payload: null
+                    amount: amountNano
+                    // payload: null  -> CUKUP TIDAK DISERTAKAN
                 }]
             };
             
-            console.log('📤 Transaction payload (simplified):', JSON.stringify(transaction, null, 2));
+            console.log('📤 Sending transaction:', JSON.stringify(transaction, null, 2));
             
-            // Kirim transaksi tanpa payload
+            // Kirim transaksi
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
             
+            // Ambil transaction hash dari result
             const transactionHash = result.boc || result.hash || `tx_${Date.now()}`;
             
             // Kirim konfirmasi ke server
@@ -533,10 +537,12 @@
             
             let errorMessage = 'Error creating deposit';
             if (error.message) {
-                if (error.message.includes('rejected')) {
+                if (error.message.includes('rejected') || error.message.includes('cancelled')) {
                     errorMessage = 'Transaksi dibatalkan oleh user';
                 } else if (error.message.includes('insufficient funds')) {
                     errorMessage = 'Saldo wallet tidak mencukupi';
+                } else if (error.message.includes('Invalid')) {
+                    errorMessage = 'Format transaksi tidak valid. Silakan coba lagi.';
                 } else {
                     errorMessage = error.message;
                 }
