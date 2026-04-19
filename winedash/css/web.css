@@ -1399,27 +1399,32 @@ body.filter-open {
 
 .wallet-address-display {
     margin-bottom: 16px;
+    display: none;
+}
+
+.wallet-address-display {
+    margin-bottom: 8px;
 }
 
 .address-label {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 1px;
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .address-value {
-    font-size: 14px;
+    font-size: 11px;
     font-weight: 500;
     font-family: monospace;
-    background: rgba(255, 255, 255, 0.1);
-    padding: 6px 12px;
-    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 4px 10px;
+    border-radius: 16px;
     display: inline-block;
     word-break: break-all;
-    max-width: 280px;
+    max-width: 200px;
 }
 
 .wallet-balance-large {

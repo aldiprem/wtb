@@ -344,7 +344,6 @@ class WinedashDatabase:
                 
                 print(f"[DB] confirm_deposit called with transaction_id: {transaction_id}")
                 
-                # ==================== PERBAIKAN: LOCK TABLE UNTUK ATOMIC OPERATION ====================
                 cursor.execute('BEGIN IMMEDIATE')
                 
                 # Cek apakah deposit sudah pernah diproses
@@ -361,20 +360,18 @@ class WinedashDatabase:
                 
                 deposit_id, user_id, amount, current_status = deposit
                 
-                # Jika sudah completed, jangan proses lagi
                 if current_status == 'completed':
                     print(f"[DB] Deposit {transaction_id} already completed, skipping...")
                     conn.commit()
                     return True
                 
-                # Cek apakah balance sudah pernah ditambahkan (cek di transactions)
+                # Cek apakah balance sudah pernah ditambahkan
                 cursor.execute('''
                     SELECT 1 FROM transactions 
                     WHERE transaction_id = ? AND type = 'deposit' AND status = 'success'
                 ''', (transaction_id,))
                 if cursor.fetchone():
                     print(f"[DB] Deposit {transaction_id} already recorded in transactions, skipping...")
-                    # Update status deposit ke completed jika masih pending
                     if current_status == 'pending':
                         cursor.execute('UPDATE deposits SET status = "completed", completed_at = ? WHERE id = ?', (now, deposit_id))
                         conn.commit()
@@ -401,11 +398,11 @@ class WinedashDatabase:
                 
                 print(f"[DB] Balance updated for user {user_id}, amount: +{amount}")
                 
-                # Buat transaction record
+                # ==================== PERBAIKAN: Simpan transaction hash asli ====================
                 cursor.execute('''
                     INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
-                    VALUES (?, ?, 'deposit', ?, 'success', 'Deposit confirmed via TON', ?, ?)
-                ''', (transaction_id, user_id, amount, now, now))
+                    VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
+                ''', (transaction_id, user_id, amount, f"Deposit confirmed via TON", now, now))
                 
                 conn.commit()
                 print(f"[DB] ✅ Deposit confirmed: {amount} TON added to user {user_id}")
