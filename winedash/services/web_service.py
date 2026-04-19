@@ -780,51 +780,92 @@ def confirm_deposit_web():
             transaction_hash = f"deposit_{uuid.uuid4().hex[:16]}_{int(datetime.now().timestamp())}"
             print(f"⚠️ No transaction hash provided, generated: {transaction_hash}")
         
-        # Create transaction record
-        with sqlite3.connect(db.db_path) as conn:
-            cursor = conn.cursor()
-            now = get_jakarta_time().isoformat()
-            
-            # Check if transaction already exists
-            cursor.execute('SELECT id FROM deposits WHERE transaction_id = ?', (transaction_hash,))
-            existing = cursor.fetchone()
-            
-            if existing:
-                print(f"⚠️ Transaction already exists: {transaction_hash}")
-                return jsonify({'success': False, 'error': 'Transaction already processed'}), 400
-            
-            # Insert deposit record
-            cursor.execute('''
-                INSERT INTO deposits (user_id, amount, wallet_address, transaction_id, status, created_at, completed_at)
-                VALUES (?, ?, ?, ?, 'completed', ?, ?)
-            ''', (user_id, amount, from_address or '', transaction_hash, now, now))
-            
-            # Update user balance
-            cursor.execute('''
-                UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
-                WHERE user_id = ?
-            ''', (amount, amount, user_id))
-            
-            # Create transaction record
-            cursor.execute('''
-                INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
-                VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
-            ''', (transaction_hash, user_id, amount, f"Deposit via TON Connect - {memo[:50] if memo else ''}", now, now))
-            
-            conn.commit()
+        # ==================== PERBAIKAN UTAMA ====================
+        # Gunakan method confirm_deposit dari database class
+        # Method ini akan menambah balance user
+        success = db.confirm_deposit(transaction_hash)
         
-        print(f"✅ Deposit confirmed: {amount} TON for user {user_id}")
-        
-        # Get updated balance
-        cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
-        new_balance = cursor.fetchone()[0] if cursor else 0
-        
-        return jsonify({
-            'success': True,
-            'message': 'Deposit confirmed successfully',
-            'transaction_id': transaction_hash,
-            'new_balance': float(new_balance)
-        })
+        if success:
+            # Get updated balance untuk response
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+                row = cursor.fetchone()
+                new_balance = float(row[0]) if row else 0
+            
+            print(f"✅ Deposit confirmed: {amount} TON for user {user_id}, new balance: {new_balance}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Deposit confirmed successfully',
+                'transaction_id': transaction_hash,
+                'new_balance': new_balance
+            })
+        else:
+            # Jika confirm_deposit gagal, coba buat deposit record baru
+            print(f"⚠️ confirm_deposit failed, trying to create new deposit record...")
+            
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                now = get_jakarta_time().isoformat()
+                
+                # Cek apakah deposit sudah ada
+                cursor.execute('SELECT id, status FROM deposits WHERE transaction_id = ?', (transaction_hash,))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    # Jika sudah ada tapi statusnya pending, update ke completed
+                    if existing[1] == 'pending':
+                        cursor.execute('''
+                            UPDATE deposits SET status = 'completed', completed_at = ?
+                            WHERE transaction_id = ?
+                        ''', (now, transaction_hash))
+                        
+                        # Update balance
+                        cursor.execute('''
+                            UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
+                            WHERE user_id = ?
+                        ''', (amount, amount, user_id))
+                        
+                        conn.commit()
+                        success = True
+                else:
+                    # Buat deposit record baru langsung completed
+                    cursor.execute('''
+                        INSERT INTO deposits (user_id, amount, wallet_address, transaction_id, status, created_at, completed_at)
+                        VALUES (?, ?, ?, ?, 'completed', ?, ?)
+                    ''', (user_id, amount, from_address or '', transaction_hash, now, now))
+                    
+                    # Update balance
+                    cursor.execute('''
+                        UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
+                        WHERE user_id = ?
+                    ''', (amount, amount, user_id))
+                    
+                    # Create transaction record
+                    cursor.execute('''
+                        INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
+                        VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
+                    ''', (transaction_hash, user_id, amount, f"Deposit via TON Connect - {memo[:50] if memo else ''}", now, now))
+                    
+                    conn.commit()
+                    success = True
+            
+            if success:
+                with sqlite3.connect(db.db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+                    row = cursor.fetchone()
+                    new_balance = float(row[0]) if row else 0
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Deposit confirmed successfully',
+                    'transaction_id': transaction_hash,
+                    'new_balance': new_balance
+                })
+            else:
+                return jsonify({'success': False, 'error': 'Failed to process deposit'}), 500
         
     except Exception as e:
         print(f"Error in confirm_deposit_web: {e}")

@@ -204,8 +204,11 @@
             const data = await response.json();
             
             if (data.success) {
+                // PERBAIKAN: Update balance amount di sini
                 if (elements.balanceAmount) {
-                    elements.balanceAmount.textContent = formatNumber(data.user.balance);
+                    const newBalance = formatNumber(data.user.balance);
+                    elements.balanceAmount.textContent = newBalance;
+                    console.log(`💰 Balance updated to: ${newBalance} TON`);
                 }
                 return data.user;
             }
