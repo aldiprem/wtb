@@ -725,24 +725,24 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                        
+                            
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
         const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
         
-        if (usernames.length === 0) {
+        if (!usernames || usernames.length === 0) {
+            // Sembunyikan username list
+            elements.usernameList.style.display = 'none';
+            
+            // Tampilkan empty state
             if (emptyAnimationDiv) {
-                emptyAnimationDiv.style.display = 'flex';
-                emptyAnimationDiv.style.flexDirection = 'column';
-                emptyAnimationDiv.style.alignItems = 'center';
-                emptyAnimationDiv.style.justifyContent = 'center';
-                elements.usernameList.style.display = 'none';
+                emptyAnimationDiv.style.display = 'block';
                 loadMarketplaceTGSAnimation();
             } else {
                 elements.usernameList.innerHTML = `
-                    <div class="empty-state" style="min-height: 300px; padding: 40px 20px;">
-                        <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 80px; height: 80px; margin: 0 auto 16px;"></div>
+                    <div class="empty-state" style="padding: 40px 20px; text-align: center;">
+                        <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
                         <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
                         <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
                     </div>
@@ -752,10 +752,11 @@
             return;
         }
         
+        // Ada data - sembunyikan empty state dan tampilkan list
         if (emptyAnimationDiv) {
             emptyAnimationDiv.style.display = 'none';
-            elements.usernameList.style.display = 'block';
         }
+        elements.usernameList.style.display = 'block';
 
         if (usernames.length === 0) {
             elements.usernameList.innerHTML = `
@@ -905,7 +906,7 @@
         
         renderUsernames(filtered);
     }
-                
+                    
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
@@ -913,25 +914,22 @@
             const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=100`);
             const data = await response.json();
             
-            if (data.success && data.usernames.length > 0) {
+            if (data.success && data.usernames && data.usernames.length > 0) {
                 // Hanya tampilkan username yang statusnya 'available'
                 allUsernames = data.usernames.filter(u => u.status === 'available');
                 applyFiltersAndRender();
             } else {
                 allUsernames = [];
-                // PERBAIKAN: Tampilkan empty state dengan animasi di dalam section-card
+                // Tampilkan empty state dengan animasi
                 const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                 if (emptyAnimationDiv) {
-                    emptyAnimationDiv.style.display = 'flex';
-                    emptyAnimationDiv.style.flexDirection = 'column';
-                    emptyAnimationDiv.style.alignItems = 'center';
-                    emptyAnimationDiv.style.justifyContent = 'center';
+                    emptyAnimationDiv.style.display = 'block';
                     elements.usernameList.style.display = 'none';
                     loadMarketplaceTGSAnimation();
                 } else {
                     elements.usernameList.innerHTML = `
-                        <div class="empty-state" style="min-height: 300px; padding: 40px 20px;">
-                            <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 80px; height: 80px; margin: 0 auto 16px;"></div>
+                        <div class="empty-state" style="padding: 40px 20px; text-align: center;">
+                            <div class="empty-animation" id="marketplaceEmptyAnimation" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
                             <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
                             <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
                         </div>
@@ -2574,17 +2572,26 @@
         const container = document.getElementById('marketplaceEmptyAnimation');
         if (!container) return;
         
-        // Clear container
-        container.innerHTML = `
-            <div class="empty-state" style="min-height: 300px; padding: 40px 20px;">
-                <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 80px; height: 80px; margin: 0 auto 16px;"></div>
-                <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
-                <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
-            </div>
-        `;
+        // Tampilkan container
+        container.style.display = 'block';
         
-        const animationContainer = document.getElementById('marketplaceEmptyAnimationInner');
+        // Kosongkan container animation inner
+        const animationContainer = document.getElementById('marketplaceEmptyAnimation');
         if (!animationContainer) return;
+        
+        // Buat struktur empty state di dalam container (jika belum ada)
+        if (animationContainer.children.length === 0) {
+            animationContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
+                    <div class="empty-title">No Usernames Available</div>
+                    <div class="empty-subtitle">Be the first to list your username!</div>
+                </div>
+            `;
+        }
+        
+        const animContainer = document.getElementById('marketplaceEmptyAnimationInner');
+        if (!animContainer) return;
         
         // Load libraries yang diperlukan
         function loadLibraries() {
@@ -2621,7 +2628,6 @@
         
         async function loadTGSFile() {
             try {
-                // Gunakan path file .tgs untuk market page
                 const response = await fetch('/image/empty-market-page.tgs');
                 const arrayBuffer = await response.arrayBuffer();
                 const compressed = new Uint8Array(arrayBuffer);
@@ -2629,7 +2635,7 @@
                 const animationData = JSON.parse(decompressed);
                 
                 window.lottie.loadAnimation({
-                    container: animationContainer,
+                    container: animContainer,
                     renderer: 'svg',
                     loop: true,
                     autoplay: true,
@@ -2640,7 +2646,7 @@
                 });
             } catch (error) {
                 console.error('Error loading TGS file:', error);
-                animationContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
+                animContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
             }
         }
         
@@ -2648,7 +2654,7 @@
             loadTGSFile();
         }).catch(err => {
             console.error('Error loading libraries:', err);
-            animationContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
+            animContainer.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
         });
     }
 

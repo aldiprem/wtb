@@ -1929,3 +1929,43 @@ body.wallet-panel-open {
         font-size: 22px;
     }
 }
+
+/* Empty state untuk marketplace - TAMPILAN NORMAL TIDAK BLUR */
+#emptyMarketplaceAnimation {
+    display: none;
+    width: 100%;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+#emptyMarketplaceAnimation .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    background: transparent;
+}
+
+#emptyMarketplaceAnimation .empty-animation {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 16px;
+}
+
+#emptyMarketplaceAnimation .empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+#emptyMarketplaceAnimation .empty-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Pastikan username list normal saat ada data */
+.username-list {
+    display: block;
+}
