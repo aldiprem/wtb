@@ -684,7 +684,14 @@ class WinedashDatabase:
                         confirmed_at TIMESTAMP
                     )
                 ''')
-                
+                                
+                # Di dalam init_database, setelah membuat tabel pending_usernames, tambahkan:
+                cursor.execute("PRAGMA table_info(pending_usernames)")
+                columns = [col[1] for col in cursor.fetchall()]
+                if 'photo_url' not in columns:
+                    cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
+                    print("✅ Added photo_url column to pending_usernames")
+
                 # Pastikan username adalah string biasa, bukan bytes
                 if isinstance(username, bytes):
                     username = username.decode('utf-8')

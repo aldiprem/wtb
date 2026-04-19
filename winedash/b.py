@@ -622,21 +622,27 @@ async def check_entity_type(username: str):
         # Coba get entity
         entity = await bot.get_entity(username)
         
-        # Download profile photo ke bytes
-        photo_bytes = None
-        try:
-            # download_profile_photo mengembalikan bytes jika parameter file=bytes
-            photo_bytes = await bot.download_profile_photo(entity, file=bytes)
-        except Exception as e:
-            logger.debug(f"No profile photo for {username}: {e}")
-        
-        # Jika berhasil dapat foto, upload ke server atau simpan sebagai base64
+        # Download profile photo ke bytes dengan cara yang lebih baik
         photo_url = None
-        if photo_bytes:
-            # Simpan foto ke direktori temp dan return URL
+        try:
+            # Coba download foto profil
+            import io
             import base64
-            photo_url = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
+            
+            # download_profile_photo dengan file=bytes
+            photo_bytes = await bot.download_profile_photo(entity, file=bytes)
+            
+            if photo_bytes and len(photo_bytes) > 0:
+                # Konversi ke base64 untuk disimpan di database
+                photo_url = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
+                logger.info(f"✅ Successfully downloaded profile photo for {username}, size: {len(photo_bytes)} bytes")
+            else:
+                logger.debug(f"No profile photo for {username}")
+                
+        except Exception as e:
+            logger.debug(f"Could not download profile photo for {username}: {e}")
         
+        # Tentukan tipe entity
         if hasattr(entity, 'broadcast') and entity.broadcast:
             return 'channel', entity.id, getattr(entity, 'title', username), photo_url
         elif hasattr(entity, 'megagroup') and entity.megagroup:
@@ -648,6 +654,7 @@ async def check_entity_type(username: str):
             if hasattr(entity, 'last_name') and entity.last_name:
                 user_name = f"{user_name} {entity.last_name}"
             return 'user', entity.id, user_name, photo_url
+            
     except Exception as e:
         logger.error(f"Error getting entity for {username}: {e}")
         return None, None, None, None
