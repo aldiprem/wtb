@@ -534,6 +534,44 @@ body {
     gap: 8px;
 }
 
+/* Avatar di list layout */
+.username-list .username-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.username-list .username-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Price wrapper dengan logo */
+.username-list .username-price-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-right: 10px;
+}
+
+.username-list .price-logo-small {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.username-list .username-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--success);
+    margin: 0;
+}
+
 .username-list .username-item {
     display: flex;
     align-items: center;
@@ -590,7 +628,7 @@ body {
     font-size: 13px;
     font-weight: 700;
     color: var(--success);
-    margin-right: 10px;
+    margin-right: 0;
     flex-shrink: 0;
 }
 
@@ -727,6 +765,16 @@ body {
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
+}
+
+.edit-price-modal .btn-list {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--success);
+}
+
+.edit-price-modal .btn-list:hover {
+    background: rgba(16, 185, 129, 0.3);
 }
 
 .edit-price-modal .btn-unlist {

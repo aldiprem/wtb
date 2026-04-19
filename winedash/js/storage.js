@@ -1201,7 +1201,6 @@
             setTimeout(() => {
                 fetchAllCardAvatars();
             }, 100);
-            
         } else {
             // List layout
             elements.usernameContainer.className = 'username-list';
@@ -1216,31 +1215,62 @@
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
+                // Ambil foto profil dari cache atau default
+                let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
+                if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
+                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                }
+                
+                // Simpan data username untuk detail panel
+                const usernameData = {
+                    id: username.id,
+                    username: usernameStr,
+                    category: username.category,
+                    price: username.price,
+                    seller_id: username.seller_id,
+                    seller_wallet: username.seller_wallet,
+                    status: username.status,
+                    created_at: username.created_at
+                };
+                
                 html += `
-                    <div class="username-item" data-id="${username.id}">
-                        <div class="username-icon">
-                            <i class="fas fa-tag"></i>
+                    <div class="username-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
+                        <div class="username-avatar">
+                            <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="username-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
                         <div class="username-info">
                             <div class="username-name">${escapeHtml(usernameStr)}</div>
                             <div class="username-category">${escapeHtml(username.category)}</div>
                         </div>
-                        <div class="username-price">${formatNumber(username.price)} TON</div>
-                        <div class="username-status ${statusClass}">${statusText}</div>
-                        <div class="list-actions">
-                            <button class="list-action-btn toggle-status-btn" data-id="${username.id}" data-status="${username.status}">
-                                <i class="fas fa-${username.status === 'available' ? 'eye-slash' : 'eye'}"></i>
-                            </button>
-                            <button class="list-action-btn list-delete-btn delete-btn" data-id="${username.id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
+                        <div class="username-price-wrapper">
+                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
+                            <span class="username-price">${formatNumber(username.price)}</span>
                         </div>
+                        <div class="username-status ${statusClass}">${statusText}</div>
                     </div>
                 `;
             }
             elements.usernameContainer.innerHTML = html;
+            
+            // Attach click event untuk setiap username-item
+            document.querySelectorAll('.username-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    // Jangan trigger jika klik pada tombol (tidak ada tombol lagi)
+                    try {
+                        const usernameData = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
+                        showDetailPanel(usernameData);
+                    } catch (err) {
+                        console.error('Error parsing username data:', err);
+                    }
+                });
+            });
+            
+            // Fetch avatar untuk setiap item (async)
+            setTimeout(() => {
+                fetchAllListAvatars();
+            }, 100);
         }
-        
+
         // Attach event listeners
         document.querySelectorAll('.username-card').forEach(card => {
             card.addEventListener('click', (e) => {
@@ -1272,6 +1302,51 @@
                 }
             });
         });
+    }
+
+    async function fetchAllListAvatars() {
+        const avatars = document.querySelectorAll('.username-list .username-avatar-img');
+        
+        for (const img of avatars) {
+            const parentItem = img.closest('.username-item');
+            if (!parentItem) continue;
+            
+            let username = null;
+            try {
+                const usernameData = JSON.parse(parentItem.dataset.username.replace(/&#39;/g, "'"));
+                username = usernameData.username;
+            } catch (e) {
+                continue;
+            }
+            
+            if (!username) continue;
+            
+            // Cek cache
+            const cached = localStorage.getItem(`avatar_${username}`);
+            if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
+                if (img.src !== cached) {
+                    img.src = cached;
+                }
+                continue;
+            }
+            
+            // Fetch dari server
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+                const data = await response.json();
+                
+                if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                    localStorage.setItem(`avatar_${username}`, data.photo_url);
+                    img.src = data.photo_url;
+                    console.log(`✅ Fetched avatar for @${username} (list view)`);
+                }
+            } catch (error) {
+                console.error(`Error fetching avatar for @${username}:`, error);
+            }
+            
+            // Delay agar tidak overload
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
     }
 
     async function fetchAllCardAvatars() {
@@ -1356,21 +1431,32 @@
         }
     }
 
-    // Fungsi untuk menampilkan modal edit price
     function showEditPriceModal(usernameId, currentPrice, currentStatus) {
         const modal = document.createElement('div');
         modal.className = 'modal-overlay edit-price-modal';
         modal.style.display = 'flex';
+        
+        // Tentukan teks tombol berdasarkan status
+        const isListed = currentStatus === 'available';
+        const actionBtnText = isListed ? 'Unlist' : 'List';
+        const actionBtnIcon = isListed ? 'fa-eye-slash' : 'fa-eye';
+        const actionBtnClass = isListed ? 'btn-unlist' : 'btn-list';
+        const modalTitle = isListed ? 'Edit Harga' : 'Atur Harga';
+        const modalDesc = isListed ? 'Ubah harga username Anda' : 'Masukkan harga untuk username ini';
+        
         modal.innerHTML = `
             <div class="modal-content" style="max-width: 320px;">
-                <h3>${currentStatus === 'available' ? 'Edit Harga' : 'Atur Harga'}</h3>
+                <h3>${modalTitle}</h3>
                 <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
-                    ${currentStatus === 'available' ? 'Ubah harga username Anda' : 'Masukkan harga untuk username ini'}
+                    ${modalDesc}
                 </p>
-                <input type="number" id="editPriceInput" placeholder="Harga (TON)" class="form-input price-input" step="0.1" min="0.1" value="${currentPrice}">
+                <div class="price-with-logo" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px;">
+                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 24px; height: 24px;">
+                    <input type="number" id="editPriceInput" placeholder="Harga (TON)" class="form-input price-input" step="0.1" min="0.1" value="${currentPrice}" style="width: auto; flex: 1; text-align: center;">
+                </div>
                 <div class="modal-buttons">
-                    <button class="btn-unlist" id="unlistBtn">
-                        <i class="fas fa-eye-slash"></i> Unlist
+                    <button class="${actionBtnClass}" id="actionStatusBtn">
+                        <i class="fas ${actionBtnIcon}"></i> ${actionBtnText}
                     </button>
                     <button class="btn-confirm" id="confirmEditPriceBtn">
                         <i class="fas fa-check"></i> Konfirmasi
@@ -1384,11 +1470,12 @@
         const priceInput = document.getElementById('editPriceInput');
         if (priceInput) setTimeout(() => priceInput.focus(), 100);
         
-        // Tombol Unlist
-        document.getElementById('unlistBtn').addEventListener('click', async () => {
+        // Tombol untuk mengubah status (List/Unlist)
+        document.getElementById('actionStatusBtn').addEventListener('click', async () => {
             modal.remove();
-            // Unlist username (set status menjadi unlisted)
-            await toggleListStatus(usernameId, 'available');
+            // Jika status saat ini available (listed), maka unlist, jika unlisted maka list
+            const newStatus = currentStatus === 'available' ? 'unlisted' : 'available';
+            await toggleListStatus(usernameId, currentStatus);
         });
         
         // Tombol Konfirmasi Edit Harga
@@ -1470,7 +1557,10 @@
             <div class="panel-content">
                 <div class="detail-field">
                     <div class="detail-label">Harga</div>
-                    <div class="detail-value price">${formatNumber(username.price)} TON</div>
+                    <div class="detail-value price">
+                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 4px;">
+                        ${formatNumber(username.price)}
+                    </div>
                 </div>
                 <div class="detail-field">
                     <div class="detail-label">Status</div>
