@@ -1068,13 +1068,13 @@
         });
     }
 
-    // Perbaiki fungsi showDetailPanel
+    // Fungsi untuk menampilkan detail panel dengan overlay blur
     function showDetailPanel(username) {
-        // Hapus panel yang sudah ada
+        // Hapus panel dan overlay yang sudah ada
         const existingPanel = document.querySelector('.detail-panel');
-        if (existingPanel) {
-            existingPanel.remove();
-        }
+        const existingOverlay = document.querySelector('.panel-overlay');
+        if (existingPanel) existingPanel.remove();
+        if (existingOverlay) existingOverlay.remove();
         
         // Pastikan username adalah string yang bersih
         let usernameStr = username.username;
@@ -1090,6 +1090,12 @@
         const createdAt = formatDateIndonesia(username.created_at);
         const isListed = username.status === 'available';
         
+        // Buat overlay untuk blur
+        const overlay = document.createElement('div');
+        overlay.className = 'panel-overlay';
+        document.body.appendChild(overlay);
+        
+        // Buat panel
         const panel = document.createElement('div');
         panel.className = 'detail-panel';
         panel.innerHTML = `
@@ -1097,13 +1103,13 @@
                 <h3><i class="fas fa-info-circle"></i> Detail Username</h3>
                 <button class="panel-close">&times;</button>
             </div>
-            <div class="panel-content">
-                <div class="detail-avatar">
-                    <div class="detail-avatar-img">
-                        <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
-                    </div>
-                    <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
+            <div class="detail-avatar">
+                <div class="detail-avatar-img">
+                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'fas fa-user\'></i>'">
                 </div>
+                <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
+            </div>
+            <div class="panel-content">
                 <div class="detail-field">
                     <div class="detail-label">Harga</div>
                     <div class="detail-value price">${formatNumber(username.price)} TON</div>
@@ -1124,63 +1130,80 @@
                     <div class="detail-label">Ditambahkan Pada</div>
                     <div class="detail-value">${createdAt}</div>
                 </div>
-                <div class="detail-actions">
-                    <button class="detail-action-btn edit-price-detail" data-id="${username.id}" data-price="${username.price}" data-status="${username.status}">
-                        <i class="fas fa-${isListed ? 'edit' : 'tag'}"></i>
-                        <span>${isListed ? 'Edit Harga' : 'Atur Harga'}</span>
-                    </button>
-                    <button class="detail-action-btn delete-detail" data-id="${username.id}">
-                        <i class="fas fa-trash"></i>
-                        <span>Delete</span>
-                    </button>
-                </div>
+            </div>
+            <div class="detail-actions">
+                <button class="detail-action-btn edit-price-detail" data-id="${username.id}" data-price="${username.price}" data-status="${username.status}">
+                    <i class="fas fa-${isListed ? 'edit' : 'tag'}"></i>
+                    <span>${isListed ? 'Edit Harga' : 'Atur Harga'}</span>
+                </button>
+                <button class="detail-action-btn delete-detail" data-id="${username.id}">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                </button>
             </div>
         `;
         
         document.body.appendChild(panel);
         
-        // Trigger animation
+        // Prevent scroll pada body
+        document.body.classList.add('panel-open');
+        
+        // Trigger animation - munculkan overlay dulu, lalu panel
         setTimeout(() => {
-            panel.classList.add('open');
+            overlay.classList.add('active');
         }, 10);
         
-        // Close button
-        panel.querySelector('.panel-close').addEventListener('click', () => {
-            panel.classList.remove('open');
-            setTimeout(() => panel.remove(), 300);
-        });
+        setTimeout(() => {
+            panel.classList.add('open');
+        }, 50);
         
-        // Close on outside click
-        panel.addEventListener('click', (e) => {
-            if (e.target === panel) {
-                panel.classList.remove('open');
-                setTimeout(() => panel.remove(), 300);
-            }
-        });
-        
-        // Action buttons in panel - Edit Price / Atur Harga
-        panel.querySelector('.edit-price-detail').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const id = parseInt(e.currentTarget.dataset.id);
-            const price = parseFloat(e.currentTarget.dataset.price);
-            const status = e.currentTarget.dataset.status;
+        // Fungsi untuk menutup panel
+        function closePanel() {
             panel.classList.remove('open');
+            overlay.classList.remove('active');
+            document.body.classList.remove('panel-open');
             setTimeout(() => {
-                panel.remove();
-                showEditPriceModal(id, price, status);
+                if (panel.parentNode) panel.remove();
+                if (overlay.parentNode) overlay.remove();
             }, 300);
-        });
+        }
+        
+        // Close button
+        const closeBtn = panel.querySelector('.panel-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closePanel);
+        }
+        
+        // Klik pada overlay untuk menutup panel
+        overlay.addEventListener('click', closePanel);
+        
+        // Action buttons in panel - Edit Price
+        const editBtn = panel.querySelector('.edit-price-detail');
+        if (editBtn) {
+            editBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = parseInt(editBtn.dataset.id);
+                const price = parseFloat(editBtn.dataset.price);
+                const status = editBtn.dataset.status;
+                closePanel();
+                setTimeout(() => {
+                    showEditPriceModal(id, price, status);
+                }, 300);
+            });
+        }
         
         // Delete button
-        panel.querySelector('.delete-detail').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const id = parseInt(e.currentTarget.dataset.id);
-            if (confirm('Yakin ingin menghapus username ini?')) {
-                await deleteUsername(id);
-                panel.classList.remove('open');
-                setTimeout(() => panel.remove(), 300);
-            }
-        });
+        const deleteBtn = panel.querySelector('.delete-detail');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const id = parseInt(deleteBtn.dataset.id);
+                if (confirm('Yakin ingin menghapus username ini?')) {
+                    await deleteUsername(id);
+                    closePanel();
+                }
+            });
+        }
     }
 
     // Fungsi format tanggal Indonesia (Asia/Jakarta)
