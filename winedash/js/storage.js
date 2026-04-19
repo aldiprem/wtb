@@ -2513,7 +2513,6 @@
         });
     }
 
-    // Balance Card Functions
     async function loadStorageBalance() {
         if (!telegramUser) return;
         
@@ -2521,14 +2520,15 @@
             const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
             const data = await response.json();
             
-            if (data.success) {
+            if (data.success && data.user) {
                 const balanceCard = document.getElementById('storageBalanceCard');
-                if (balanceCard && data.user) {
+                if (balanceCard) {
                     const formattedBalance = parseFloat(data.user.balance).toFixed(2);
                     balanceCard.innerHTML = `
                         <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
                         <span class="balance-amount">${formattedBalance}</span>
                     `;
+                    console.log(`💰 Storage balance updated: ${formattedBalance} TON`);
                 }
             }
         } catch (error) {

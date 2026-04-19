@@ -902,11 +902,9 @@ def confirm_deposit_web():
         memo = data.get('memo', '')
         
         if not user_id:
-            print(f"❌ Missing user_id in request")
             return jsonify({'success': False, 'error': 'User ID diperlukan'}), 400
         
         if not amount or amount <= 0:
-            print(f"❌ Invalid amount: {amount}")
             return jsonify({'success': False, 'error': 'Amount tidak valid'}), 400
         
         if not transaction_hash:
@@ -916,82 +914,16 @@ def confirm_deposit_web():
         
         print(f"📥 Processing deposit: user_id={user_id}, amount={amount}, tx_hash={transaction_hash}")
         
-        # ==================== PERBAIKAN: CEK DOUBLE PROCESSING ====================
-        with sqlite3.connect(db.db_path) as conn:
-            cursor = conn.cursor()
+        # ==================== PERBAIKAN UTAMA: Gunakan method dari db ====================
+        # Panggil method confirm_deposit yang sudah ada di WinedashDatabase
+        success = db.confirm_deposit(transaction_hash)
+        
+        if success:
+            # Get updated user data
+            user = db.get_user(user_id)
+            new_balance = user['balance'] if user else 0
             
-            # CEK APAKAH DEPOSIT SUDAH PERNAH DIPROSES
-            # Cek di tabel transactions terlebih dahulu
-            cursor.execute('''
-                SELECT id, status FROM transactions 
-                WHERE transaction_id = ? AND type = 'deposit' AND status = 'success'
-            ''', (transaction_hash,))
-            tx_exists = cursor.fetchone()
-            
-            if tx_exists:
-                print(f"⚠️ Deposit {transaction_hash} already processed (found in transactions)")
-                # Get current balance
-                cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
-                row = cursor.fetchone()
-                current_balance = float(row[0]) if row else 0
-                return jsonify({
-                    'success': True,
-                    'message': 'Deposit already processed',
-                    'transaction_id': transaction_hash,
-                    'new_balance': current_balance
-                })
-            
-            # Cek di tabel deposits
-            cursor.execute('SELECT id, status FROM deposits WHERE transaction_id = ?', (transaction_hash,))
-            existing = cursor.fetchone()
-            
-            if existing:
-                existing_id, existing_status = existing
-                print(f"📋 Deposit record exists with status: {existing_status}")
-                
-                if existing_status == 'completed':
-                    cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
-                    row = cursor.fetchone()
-                    current_balance = float(row[0]) if row else 0
-                    return jsonify({
-                        'success': True,
-                        'message': 'Deposit already processed',
-                        'transaction_id': transaction_hash,
-                        'new_balance': current_balance
-                    })
-            
-            # Jika belum ada, buat deposit record dan proses
-            now = get_jakarta_time().isoformat()
-            
-            # Insert atau update deposit
-            if existing and existing_status == 'pending':
-                cursor.execute('UPDATE deposits SET status = "completed", completed_at = ? WHERE id = ?', (now, existing_id))
-            else:
-                cursor.execute('''
-                    INSERT INTO deposits (user_id, amount, wallet_address, transaction_id, status, created_at, completed_at)
-                    VALUES (?, ?, ?, ?, 'completed', ?, ?)
-                ''', (user_id, amount, from_address or '', transaction_hash, now, now))
-            
-            # Update user balance - PASTIKAN HANYA SEKALI
-            cursor.execute('''
-                UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
-                WHERE user_id = ?
-            ''', (amount, amount, user_id))
-            
-            # Create transaction record
-            cursor.execute('''
-                INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
-                VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
-            ''', (transaction_hash, user_id, amount, f"Deposit via TON Connect - {memo[:50] if memo else ''}", now, now))
-            
-            conn.commit()
-            
-            # Get new balance
-            cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
-            row = cursor.fetchone()
-            new_balance = float(row[0]) if row else 0
-            
-            print(f"✅ New deposit recorded: {amount} TON added, new balance: {new_balance}")
+            print(f"✅ Deposit confirmed via db.confirm_deposit: {amount} TON added, new balance: {new_balance}")
             
             return jsonify({
                 'success': True,
@@ -999,6 +931,67 @@ def confirm_deposit_web():
                 'transaction_id': transaction_hash,
                 'new_balance': new_balance
             })
+        else:
+            # Fallback: manual processing jika method gagal
+            print(f"⚠️ db.confirm_deposit failed, trying manual processing...")
+            
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                now = get_jakarta_time().isoformat()
+                
+                # CEK DOUBLE PROCESSING
+                cursor.execute('SELECT id, status FROM deposits WHERE transaction_id = ?', (transaction_hash,))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    existing_id, existing_status = existing
+                    if existing_status == 'completed':
+                        cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+                        row = cursor.fetchone()
+                        current_balance = float(row[0]) if row else 0
+                        return jsonify({
+                            'success': True,
+                            'message': 'Deposit already processed',
+                            'transaction_id': transaction_hash,
+                            'new_balance': current_balance
+                        })
+                    
+                    # Update existing pending deposit
+                    cursor.execute('UPDATE deposits SET status = "completed", completed_at = ? WHERE id = ?', (now, existing_id))
+                else:
+                    # Create new deposit record
+                    cursor.execute('''
+                        INSERT INTO deposits (user_id, amount, wallet_address, transaction_id, status, created_at, completed_at)
+                        VALUES (?, ?, ?, ?, 'completed', ?, ?)
+                    ''', (user_id, amount, from_address or '', transaction_hash, now, now))
+                
+                # Update user balance
+                cursor.execute('''
+                    UPDATE users SET balance = balance + ?, total_deposit = total_deposit + ?
+                    WHERE user_id = ?
+                ''', (amount, amount, user_id))
+                
+                # Create transaction record
+                cursor.execute('''
+                    INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
+                    VALUES (?, ?, 'deposit', ?, 'success', ?, ?, ?)
+                ''', (transaction_hash, user_id, amount, f"Deposit via TON Connect - {memo[:50] if memo else ''}", now, now))
+                
+                conn.commit()
+                
+                # Get new balance
+                cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
+                row = cursor.fetchone()
+                new_balance = float(row[0]) if row else 0
+                
+                print(f"✅ Manual deposit processed: {amount} TON added, new balance: {new_balance}")
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Deposit confirmed successfully',
+                    'transaction_id': transaction_hash,
+                    'new_balance': new_balance
+                })
         
     except Exception as e:
         print(f"❌ Error in confirm_deposit_web: {e}")

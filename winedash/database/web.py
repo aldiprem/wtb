@@ -336,7 +336,7 @@ class WinedashDatabase:
             return None
 
     def confirm_deposit(self, transaction_id: str) -> bool:
-        """Confirm a deposit and add balance to user"""
+        """Confirm a deposit and add balance to user - SINGLE SOURCE OF TRUTH"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
@@ -344,8 +344,10 @@ class WinedashDatabase:
                 
                 print(f"[DB] confirm_deposit called with transaction_id: {transaction_id}")
                 
-                # ==================== PERBAIKAN: CEK DOUBLE PROCESSING ====================
-                # Cek apakah deposit sudah pernah diproses sebelumnya
+                # ==================== PERBAIKAN: LOCK TABLE UNTUK ATOMIC OPERATION ====================
+                cursor.execute('BEGIN IMMEDIATE')
+                
+                # Cek apakah deposit sudah pernah diproses
                 cursor.execute('''
                     SELECT id, user_id, amount, status FROM deposits 
                     WHERE transaction_id = ?
@@ -354,6 +356,7 @@ class WinedashDatabase:
                 
                 if not deposit:
                     print(f"[DB] Deposit not found: {transaction_id}")
+                    conn.rollback()
                     return False
                 
                 deposit_id, user_id, amount, current_status = deposit
@@ -361,6 +364,7 @@ class WinedashDatabase:
                 # Jika sudah completed, jangan proses lagi
                 if current_status == 'completed':
                     print(f"[DB] Deposit {transaction_id} already completed, skipping...")
+                    conn.commit()
                     return True
                 
                 # Cek apakah balance sudah pernah ditambahkan (cek di transactions)
@@ -392,6 +396,7 @@ class WinedashDatabase:
                 
                 if cursor.rowcount == 0:
                     print(f"[DB] Failed to update balance for user {user_id}")
+                    conn.rollback()
                     return False
                 
                 print(f"[DB] Balance updated for user {user_id}, amount: +{amount}")

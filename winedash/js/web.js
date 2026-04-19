@@ -334,53 +334,67 @@
         const balanceCard = elements.balanceCard;
         if (!balanceCard) return;
         
-        if (isWalletConnected && walletAddress) {
-            // Tampilkan balance card dengan logo, balance, dan tombol deposit
-            balanceCard.classList.remove('hidden');
-            balanceCard.style.cursor = 'pointer';
-            
-            // Format balance dengan 2 desimal
-            const currentBalance = parseFloat(elements.balanceAmount?.textContent || '0');
+        // ==================== PERBAIKAN: Ambil balance terbaru dari server ====================
+        const getCurrentBalance = async () => {
+            if (!telegramUser) return 0;
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+                const data = await response.json();
+                if (data.success && data.user) {
+                    return parseFloat(data.user.balance);
+                }
+            } catch (error) {
+                console.error('Error fetching balance:', error);
+            }
+            return 0;
+        };
+        
+        const updateUI = async () => {
+            const currentBalance = await getCurrentBalance();
             const formattedBalance = currentBalance.toFixed(2);
             
-            balanceCard.innerHTML = `
-                <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
-                <span class="balance-amount" id="balanceAmount">${formattedBalance}</span>
-                <div class="deposit-icon" id="depositTrigger">
-                    <i class="fas fa-plus"></i>
-                    <span>Deposit</span>
-                </div>
-            `;
-            
-            // Re-attach event listener
-            const newDepositTrigger = document.getElementById('depositTrigger');
-            if (newDepositTrigger) {
-                newDepositTrigger.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showDepositModal();
-                });
+            if (isWalletConnected && walletAddress) {
+                balanceCard.classList.remove('hidden');
+                balanceCard.style.cursor = 'pointer';
+                
+                balanceCard.innerHTML = `
+                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo">
+                    <span class="balance-amount" id="balanceAmount">${formattedBalance}</span>
+                    <div class="deposit-icon" id="depositTrigger">
+                        <i class="fas fa-plus"></i>
+                        <span>Deposit</span>
+                    </div>
+                `;
+                
+                const newDepositTrigger = document.getElementById('depositTrigger');
+                if (newDepositTrigger) {
+                    newDepositTrigger.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showDepositModal();
+                    });
+                }
+                
+                elements.balanceAmount = document.getElementById('balanceAmount');
+                
+            } else {
+                balanceCard.classList.remove('hidden');
+                balanceCard.innerHTML = `
+                    <button class="connect-wallet-btn" id="connectWalletFullBtn">
+                        <i class="fas fa-plug"></i> Connect Wallet
+                    </button>
+                `;
+                
+                const connectBtn = document.getElementById('connectWalletFullBtn');
+                if (connectBtn) {
+                    connectBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        connectWallet();
+                    };
+                }
             }
-            
-            // Update balanceAmount reference
-            elements.balanceAmount = document.getElementById('balanceAmount');
-            
-        } else {
-            // Wallet not connected - tampilkan tombol connect full
-            balanceCard.classList.remove('hidden');
-            balanceCard.innerHTML = `
-                <button class="connect-wallet-btn" id="connectWalletFullBtn">
-                    <i class="fas fa-plug"></i> Connect Wallet
-                </button>
-            `;
-            
-            const connectBtn = document.getElementById('connectWalletFullBtn');
-            if (connectBtn) {
-                connectBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    connectWallet();
-                };
-            }
-        }
+        };
+        
+        updateUI();
     }
 
     function updateWalletUI() {
@@ -490,25 +504,19 @@
             
             console.log('📤 Processing deposit:', { amount, amountNano, senderAddress, memo });
             
-            // ==================== PERBAIKAN UTAMA ====================
-            // Untuk transfer TON biasa ke alamat wallet, payload HARUS null
-            // JANGAN mengirim payload apapun untuk transfer sederhana
             const transaction = {
                 validUntil: Math.floor(Date.now() / 1000) + 600,
                 messages: [{
                     address: 'UQBX9MJCyRK3-eQjh7CgbwB2bR9hT5vYAdzx4uv_CagAo4Ra',
                     amount: amountNano
-                    // payload: null  -> CUKUP TIDAK DISERTAKAN
                 }]
             };
             
             console.log('📤 Sending transaction:', JSON.stringify(transaction, null, 2));
             
-            // Kirim transaksi
             const result = await tonConnectUI.sendTransaction(transaction);
             console.log('✅ Transaction sent:', result);
             
-            // Ambil transaction hash dari result
             const transactionHash = result.boc || result.hash || `tx_${Date.now()}`;
             
             // Kirim konfirmasi ke server
@@ -529,6 +537,20 @@
             if (verifyData.success) {
                 showToast(`Deposit ${amount} TON berhasil!`, 'success');
                 if (elements.depositAmount) elements.depositAmount.value = '';
+                
+                // ==================== PERBAIKAN: Update balance langsung dari response ====================
+                if (verifyData.new_balance !== undefined) {
+                    // Update balance di UI
+                    if (elements.balanceAmount) {
+                        elements.balanceAmount.textContent = formatNumber(verifyData.new_balance);
+                    }
+                    // Update balance card juga
+                    updateBalanceCardUI();
+                    
+                    console.log(`💰 Balance updated to: ${verifyData.new_balance} TON`);
+                }
+                
+                // Refresh semua data untuk memastikan konsistensi
                 await refreshAllData();
             } else {
                 showToast(verifyData.error || 'Deposit perlu dikonfirmasi', 'info');
@@ -1100,11 +1122,22 @@
     }
 
     // ==================== REFRESH ====================
-    
+        
     async function refreshAllData() {
         hapticLight();
         
-        await authenticateUser();
+        // ==================== PERBAIKAN: Refresh user data dari server ====================
+        const user = await authenticateUser();
+        
+        if (user) {
+            // Update balance di UI
+            if (elements.balanceAmount) {
+                const newBalance = formatNumber(user.balance);
+                elements.balanceAmount.textContent = newBalance;
+                console.log(`💰 RefreshAllData - Balance updated to: ${newBalance} TON`);
+            }
+        }
+        
         await loadUsernames();
         await loadPurchasedUsernames();
         await loadTransactionHistory();
