@@ -609,6 +609,86 @@
         }
     }
 
+    async function refreshProfilePhoto(username, imgElement) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+            const data = await response.json();
+            
+            if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                localStorage.setItem(`avatar_${username}`, data.photo_url);
+                if (imgElement && imgElement.src !== data.photo_url) {
+                    imgElement.src = data.photo_url;
+                    console.log(`✅ Refreshed avatar for @${username}`);
+                }
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error(`Error refreshing avatar for @${username}:`, error);
+            return false;
+        }
+    }
+
+    // Fungsi untuk refresh semua avatar yang masih default
+    async function refreshAllDefaultAvatars() {
+        const defaultAvatars = document.querySelectorAll('.username-card .card-avatar img[src*="winedash-logo.png"], .username-card .card-avatar img:not([src*="data:image"])');
+        
+        for (const img of defaultAvatars) {
+            const card = img.closest('.username-card');
+            if (card && card.dataset.username) {
+                try {
+                    const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                    const usernameStr = usernameData.username;
+                    
+                    await refreshProfilePhoto(usernameStr, img);
+                    await new Promise(resolve => setTimeout(resolve, 200)); // Delay agar tidak overload
+                } catch (e) {
+                    console.error('Error refreshing avatar:', e);
+                }
+            }
+        }
+    }
+
+    // Panggil refresh setelah load usernames
+    // Tambahkan di akhir fungsi loadUsernames
+    async function loadUsernames() {
+        showLoading(true);
+        
+        try {
+            console.log('[DEBUG] Loading usernames...');
+            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
+            const data = await response.json();
+            
+            console.log('[DEBUG] Load usernames response:', data);
+            
+            if (data.success && data.usernames) {
+                if (telegramUser) {
+                    allUsernames = data.usernames.filter(u => u.seller_id === telegramUser.id);
+                    console.log(`[DEBUG] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
+                } else {
+                    allUsernames = data.usernames;
+                }
+                filterAndRender();
+                
+                // Refresh foto profil yang masih default setelah render
+                setTimeout(() => {
+                    refreshAllDefaultAvatars();
+                }, 1000);
+            } else {
+                console.log('[DEBUG] No usernames found or error:', data);
+                allUsernames = [];
+                renderUsernames([]);
+            }
+        } catch (error) {
+            console.error('[DEBUG] Error loading usernames:', error);
+            if (elements.usernameContainer) {
+                elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+            }
+        } finally {
+            showLoading(false);
+        }
+    }
+
     async function addUsername(username, price, category) {
         if (!telegramUser) {
             showToast('Login terlebih dahulu', 'warning');
@@ -660,17 +740,30 @@
             
             if (data.success) {
                 hapticSuccess();
-                showToast(data.message || 'Verifikasi akan diproses oleh bot!', 'success');
+                showToast(data.message || 'Username akan diproses oleh bot dalam beberapa saat!', 'success');
                 await loadPendingCount();
+                
                 // Refresh inbox content if open
                 const panel = document.getElementById('inboxPanel');
                 if (panel && panel.style.display === 'flex') {
                     await loadPendingList();
                 }
+                
+                // Tampilkan pesan tambahan bahwa verifikasi sedang diproses
+                setTimeout(() => {
+                    showToast('💡 Bot sedang memverifikasi username. Cek Inbox untuk status.', 'info', 5000);
+                }, 1500);
+                
                 return true;
             } else {
-                // Tampilkan error dengan warna merah solid
-                showToast(data.error || 'Gagal menambahkan username', 'error');
+                // Tampilkan error dengan jelas
+                const errorMsg = data.error || 'Gagal menambahkan username';
+                showToast(errorMsg, 'error');
+                
+                // Jika error karena username tidak ditemukan
+                if (errorMsg.includes('tidak ditemukan') || errorMsg.includes('not found')) {
+                    showToast('⚠️ Pastikan username Telegram benar dan sudah terdaftar!', 'warning', 5000);
+                }
                 return false;
             }
         } catch (error) {

@@ -480,11 +480,15 @@ async def process_verification(session, pending):
             pass
         return
         
-    entity_type, chat_id, title, photo_url = await check_entity_type(username)
-
-    # Simpan photo_url ke database (BUKAN update usernames karena username belum ada)
-    if photo_url:
-        await save_profile_photo_to_server(username, photo_url)
+    # Dapatkan entity type dan foto profil
+    entity_type, chat_id, title, photo_bytes = await check_entity_type_with_photo(username)
+    
+    # Simpan photo_bytes ke database jika ada
+    if photo_bytes and len(photo_bytes) > 0:
+        import base64
+        photo_base64 = f"data:image/jpeg;base64,{base64.b64encode(photo_bytes).decode('ascii')}"
+        await save_profile_photo_to_server(username, photo_base64)
+        logger.info(f"✅ Saved profile photo for {username} to database")
     
     if not entity_type:
         reject_pending(pending_id)
@@ -541,6 +545,60 @@ async def process_verification(session, pending):
             await bot.send_message(seller_id, f"✅ Kode OTP 6 digit telah dikirim ke DM @{username}!\n\nMasukkan kode di halaman Storage untuk verifikasi.")
         except:
             pass
+
+async def check_entity_type_with_photo(username: str):
+    """Check if username is channel, group, or user, and get profile photo bytes"""
+    try:
+        if not username:
+            return None, None, None, None
+        
+        # Bersihkan username
+        username_clean = username.lstrip('@').strip()
+        
+        # Coba get entity
+        entity = await bot.get_entity(username_clean)
+        
+        # Download profile photo ke bytes
+        photo_bytes = None
+        try:
+            # Method 1: download_profile_photo
+            photo_bytes = await bot.download_profile_photo(entity, file=bytes)
+            if photo_bytes and len(photo_bytes) > 0:
+                logger.info(f"✅ Downloaded profile photo for {username_clean}, size: {len(photo_bytes)} bytes")
+        except Exception as e:
+            logger.debug(f"Method 1 failed for {username_clean}: {e}")
+        
+        # Method 2: download_media (fallback)
+        if not photo_bytes or len(photo_bytes) == 0:
+            try:
+                photo_bytes = await bot.download_media(entity, file=bytes)
+                if photo_bytes and len(photo_bytes) > 0:
+                    logger.info(f"✅ Downloaded media for {username_clean}, size: {len(photo_bytes)} bytes")
+            except Exception as e:
+                logger.debug(f"Method 2 failed for {username_clean}: {e}")
+        
+        # Tentukan tipe entity
+        if hasattr(entity, 'broadcast') and entity.broadcast:
+            return 'channel', entity.id, getattr(entity, 'title', username_clean), photo_bytes
+        elif hasattr(entity, 'megagroup') and entity.megagroup:
+            return 'supergroup', entity.id, getattr(entity, 'title', username_clean), photo_bytes
+        elif hasattr(entity, 'participants_count'):
+            return 'group', entity.id, getattr(entity, 'title', username_clean), photo_bytes
+        else:
+            user_name = getattr(entity, 'first_name', username_clean)
+            if hasattr(entity, 'last_name') and entity.last_name:
+                user_name = f"{user_name} {entity.last_name}"
+            return 'user', entity.id, user_name, photo_bytes
+            
+    except errors.UsernameNotOccupiedError:
+        logger.error(f"Username {username} not found")
+        return None, None, None, None
+    except errors.FloodWaitError as e:
+        logger.error(f"Rate limited: wait {e.seconds} seconds")
+        return None, None, None, None
+    except Exception as e:
+        logger.error(f"Error getting entity for {username}: {e}")
+        return None, None, None, None
 
 async def process_pending_verifications():
     """Process pending verifications from Flask"""

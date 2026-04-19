@@ -747,16 +747,39 @@ def add_pending_username():
         # Clean username
         username_clean = username.lstrip('@')
         
-        # KIRIM PERMINTAAN KE BOT UNTUK DETEKSI TIPE USERNAME
-        # Bot akan menentukan verification_type berdasarkan entity type
-        # Kita set verification_type = 'auto' agar bot yang menentukan
+        # CEK APAKAH USERNAME VALID (BOT BISA MENDETEKSI)
+        # Kita coba deteksi dulu sebelum menambah ke pending
+        import requests
+        
+        BOT_TOKEN = os.getenv("BOT_WINEDASH", "")
+        
+        if BOT_TOKEN:
+            # Cek apakah username valid menggunakan Telegram Bot API
+            check_url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChat"
+            check_params = {'chat_id': f"@{username_clean}"}
+            
+            try:
+                check_response = requests.get(check_url, params=check_params, timeout=10)
+                check_data = check_response.json()
+                
+                if not check_data.get('ok'):
+                    error_msg = check_data.get('description', 'Username tidak valid')
+                    print(f"[DEBUG] Username check failed: {error_msg}")
+                    return jsonify({'success': False, 'error': f'Username @{username_clean} tidak ditemukan di Telegram!'}), 400
+                else:
+                    print(f"[DEBUG] Username @{username_clean} is valid!")
+            except Exception as e:
+                print(f"[DEBUG] Error checking username: {e}")
+                # Lanjutkan meskipun gagal check, biar bot yang menentukan
+        
+        # Tambahkan ke pending
         pending_id = db.add_pending_username(
             username=username_clean,
             price=float(price),
             seller_id=seller_id,
             seller_wallet=seller_wallet or '',
             category=category,
-            verification_type='auto'  # Biarkan bot yang menentukan
+            verification_type='auto'
         )
         
         print(f"[DEBUG] add_pending_username result: pending_id={pending_id}")
@@ -768,7 +791,7 @@ def add_pending_username():
             'success': True,
             'pending_id': pending_id,
             'username': username_clean,
-            'message': 'Username pending verification. Bot akan mendeteksi tipe dan mengirim verifikasi.'
+            'message': 'Username pending verification. Bot akan memproses dalam beberapa saat.'
         })
         
     except Exception as e:
