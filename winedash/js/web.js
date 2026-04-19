@@ -725,7 +725,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-            
+                
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -739,10 +739,12 @@
             } else {
                 elements.usernameList.innerHTML = `
                     <div class="empty-state">
+                        <div class="empty-animation" id="marketplaceEmptyAnimation"></div>
                         <div class="empty-title">No Usernames Available</div>
                         <div class="empty-subtitle">Be the first to list your username!</div>
                     </div>
                 `;
+                loadMarketplaceTGSAnimation();
             }
             return;
         }
@@ -752,17 +754,18 @@
             elements.usernameList.style.display = 'block';
         }
 
-        
         if (usernames.length === 0) {
             elements.usernameList.innerHTML = `
                 <div class="empty-state">
+                    <div class="empty-animation" id="marketplaceEmptyAnimation"></div>
                     <div class="empty-title">No Usernames Available</div>
                     <div class="empty-subtitle">Be the first to list your username!</div>
                 </div>
             `;
+            loadMarketplaceTGSAnimation();
             return;
         }
-        
+
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
@@ -1073,7 +1076,7 @@
             const response = await fetch(`${API_BASE_URL}/api/winedash/user/purchases/${telegramUser.id}`);
             const data = await response.json();
             
-            if (data.success && data.purchases.length > 0) {
+            if (data.success && data.purchases && data.purchases.length > 0) {
                 let html = '';
                 for (const purchase of data.purchases) {
                     html += `
@@ -1093,12 +1096,92 @@
                 }
                 elements.purchasedList.innerHTML = html;
             } else {
-                elements.purchasedList.innerHTML = '<div class="loading-placeholder">Belum ada username yang dibeli</div>';
+                // Empty state dengan animasi
+                elements.purchasedList.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div class="empty-animation" id="purchasedEmptyAnimation" style="width: 100px; height: 100px; margin: 0 auto 20px;"></div>
+                        <div class="empty-title" style="font-size: 16px; margin-bottom: 8px;">No Purchased Usernames</div>
+                        <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Buy usernames from marketplace to see them here</div>
+                    </div>
+                `;
+                loadPurchasedEmptyAnimation();
             }
         } catch (error) {
             console.error('Error loading purchased usernames:', error);
             elements.purchasedList.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
         }
+    }
+
+    function loadPurchasedEmptyAnimation() {
+        const container = document.getElementById('purchasedEmptyAnimation');
+        if (!container) return;
+        
+        // Clear container
+        container.innerHTML = '';
+        
+        // Load libraries yang diperlukan
+        function loadLibraries() {
+            return new Promise((resolve, reject) => {
+                let loaded = 0;
+                let total = 2;
+                
+                function checkLoaded() {
+                    loaded++;
+                    if (loaded === total) resolve();
+                }
+                
+                if (typeof window.lottie === 'undefined') {
+                    const lottieScript = document.createElement('script');
+                    lottieScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js';
+                    lottieScript.onload = checkLoaded;
+                    lottieScript.onerror = reject;
+                    document.head.appendChild(lottieScript);
+                } else {
+                    checkLoaded();
+                }
+                
+                if (typeof window.pako === 'undefined') {
+                    const pakoScript = document.createElement('script');
+                    pakoScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+                    pakoScript.onload = checkLoaded;
+                    pakoScript.onerror = reject;
+                    document.head.appendChild(pakoScript);
+                } else {
+                    checkLoaded();
+                }
+            });
+        }
+        
+        async function loadTGSFile() {
+            try {
+                const response = await fetch('/image/empty-market-page.tgs');
+                const arrayBuffer = await response.arrayBuffer();
+                const compressed = new Uint8Array(arrayBuffer);
+                const decompressed = window.pako.ungzip(compressed, { to: 'string' });
+                const animationData = JSON.parse(decompressed);
+                
+                window.lottie.loadAnimation({
+                    container: container,
+                    renderer: 'svg',
+                    loop: true,
+                    autoplay: true,
+                    animationData: animationData,
+                    rendererSettings: {
+                        preserveAspectRatio: 'xMidYMid meet'
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading TGS file for purchased:', error);
+                container.innerHTML = '<i class="fas fa-shopping-bag" style="font-size: 48px; color: var(--text-muted);"></i>';
+            }
+        }
+        
+        loadLibraries().then(() => {
+            loadTGSFile();
+        }).catch(err => {
+            console.error('Error loading libraries:', err);
+            container.innerHTML = '<i class="fas fa-shopping-bag" style="font-size: 48px; color: var(--text-muted);"></i>';
+        });
     }
 
     async function loadTransactionHistory() {
@@ -1108,13 +1191,24 @@
             const response = await fetch(`${API_BASE_URL}/api/winedash/transactions/${telegramUser.id}`);
             const data = await response.json();
             
-            if (data.success && data.transactions.length > 0) {
+            if (data.success && data.transactions && data.transactions.length > 0) {
                 let html = '';
                 for (const tx of data.transactions) {
                     let iconClass = '';
                     let icon = '';
                     let amountClass = '';
                     let amountPrefix = '';
+                    let txHash = tx.transaction_id;
+                    let explorerUrl = null;
+                    
+                    // Cek apakah transaction_id adalah hash yang valid
+                    const isValidHash = txHash && /^[a-fA-F0-9]{64}$/.test(txHash);
+                    
+                    if (isValidHash) {
+                        explorerUrl = `https://tonviewer.com/transaction/${txHash}`;
+                    } else if (txHash && !txHash.startsWith('deposit_') && !txHash.startsWith('wd_') && txHash.length > 30) {
+                        explorerUrl = `https://tonviewer.com/transaction/${txHash}`;
+                    }
                     
                     switch (tx.type) {
                         case 'deposit':
@@ -1129,12 +1223,6 @@
                             amountClass = 'negative';
                             amountPrefix = '-';
                             break;
-                        case 'purchase':
-                            iconClass = 'purchase';
-                            icon = 'fa-shopping-cart';
-                            amountClass = 'negative';
-                            amountPrefix = '-';
-                            break;
                         default:
                             iconClass = 'info';
                             icon = 'fa-circle-info';
@@ -1142,14 +1230,20 @@
                             amountPrefix = '';
                     }
                     
+                    const clickableAttr = explorerUrl ? `data-url="${explorerUrl}" style="cursor: pointer;"` : '';
+                    const onClickAttr = explorerUrl ? `onclick="window.open('${explorerUrl}', '_blank')"` : '';
+                    
+                    const hashDisplay = explorerUrl ? `<span style="font-size: 10px; color: var(--text-muted); display: block; margin-top: 2px;">${txHash.slice(0, 10)}...</span>` : '';
+                    
                     html += `
-                        <div class="history-item">
+                        <div class="history-item" ${clickableAttr} ${onClickAttr}>
                             <div class="history-icon ${iconClass}">
                                 <i class="fas ${icon}"></i>
                             </div>
                             <div class="history-info">
                                 <div class="history-title">${tx.type === 'deposit' ? 'Deposit' : tx.type === 'withdraw' ? 'Withdraw' : 'Pembelian Username'}</div>
                                 <div class="history-date">${formatDate(tx.created_at)}</div>
+                                ${hashDisplay}
                             </div>
                             <div class="history-amount ${amountClass}">
                                 ${amountPrefix}${formatNumber(tx.amount)} TON
@@ -1162,12 +1256,93 @@
                 }
                 elements.historyList.innerHTML = html;
             } else {
-                elements.historyList.innerHTML = '<div class="loading-placeholder">Belum ada riwayat transaksi</div>';
+                // Empty state dengan animasi
+                elements.historyList.innerHTML = `
+                    <div class="empty-state" style="padding: 40px 20px;">
+                        <div class="empty-animation" id="historyEmptyAnimation" style="width: 100px; height: 100px; margin: 0 auto 20px;"></div>
+                        <div class="empty-title" style="font-size: 16px; margin-bottom: 8px;">No Transactions Yet</div>
+                        <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Your transaction history will appear here</div>
+                    </div>
+                `;
+                loadHistoryEmptyAnimation();
             }
         } catch (error) {
             console.error('Error loading transaction history:', error);
             elements.historyList.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
         }
+    }
+
+    function loadHistoryEmptyAnimation() {
+        const container = document.getElementById('historyEmptyAnimation');
+        if (!container) return;
+        
+        // Clear container
+        container.innerHTML = '';
+        
+        // Load libraries yang diperlukan
+        function loadLibraries() {
+            return new Promise((resolve, reject) => {
+                let loaded = 0;
+                let total = 2;
+                
+                function checkLoaded() {
+                    loaded++;
+                    if (loaded === total) resolve();
+                }
+                
+                if (typeof window.lottie === 'undefined') {
+                    const lottieScript = document.createElement('script');
+                    lottieScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js';
+                    lottieScript.onload = checkLoaded;
+                    lottieScript.onerror = reject;
+                    document.head.appendChild(lottieScript);
+                } else {
+                    checkLoaded();
+                }
+                
+                if (typeof window.pako === 'undefined') {
+                    const pakoScript = document.createElement('script');
+                    pakoScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+                    pakoScript.onload = checkLoaded;
+                    pakoScript.onerror = reject;
+                    document.head.appendChild(pakoScript);
+                } else {
+                    checkLoaded();
+                }
+            });
+        }
+        
+        async function loadTGSFile() {
+            try {
+                // Gunakan file .tgs yang sama dengan market page atau file terpisah
+                const response = await fetch('/image/empty-market-page.tgs');
+                const arrayBuffer = await response.arrayBuffer();
+                const compressed = new Uint8Array(arrayBuffer);
+                const decompressed = window.pako.ungzip(compressed, { to: 'string' });
+                const animationData = JSON.parse(decompressed);
+                
+                window.lottie.loadAnimation({
+                    container: container,
+                    renderer: 'svg',
+                    loop: true,
+                    autoplay: true,
+                    animationData: animationData,
+                    rendererSettings: {
+                        preserveAspectRatio: 'xMidYMid meet'
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading TGS file for history:', error);
+                container.innerHTML = '<i class="fas fa-history" style="font-size: 48px; color: var(--text-muted);"></i>';
+            }
+        }
+        
+        loadLibraries().then(() => {
+            loadTGSFile();
+        }).catch(err => {
+            console.error('Error loading libraries:', err);
+            container.innerHTML = '<i class="fas fa-history" style="font-size: 48px; color: var(--text-muted);"></i>';
+        });
     }
 
     async function getMarketplaceBalance() {
@@ -2378,6 +2553,9 @@
         const container = document.getElementById('marketplaceEmptyAnimation');
         if (!container) return;
         
+        // Clear container
+        container.innerHTML = '';
+        
         // Load libraries yang diperlukan
         function loadLibraries() {
             return new Promise((resolve, reject) => {
@@ -2413,7 +2591,7 @@
         
         async function loadTGSFile() {
             try {
-                const response = await fetch('/image/none-username-storage.tgs');
+                const response = await fetch('/image/empty-market-page.tgs');
                 const arrayBuffer = await response.arrayBuffer();
                 const compressed = new Uint8Array(arrayBuffer);
                 const decompressed = window.pako.ungzip(compressed, { to: 'string' });
