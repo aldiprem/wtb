@@ -164,28 +164,29 @@ class WinedashDatabase:
         """Get user information by user_id"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT user_id, username, first_name, last_name, photo_url, 
-                           wallet_address, balance, total_deposit, total_withdraw, is_admin, first_seen, last_seen
+                        wallet_address, balance, total_deposit, total_withdraw, is_admin, first_seen, last_seen
                     FROM users WHERE user_id = ?
                 ''', (user_id,))
                 row = cursor.fetchone()
                 
                 if row:
                     return {
-                        'user_id': row[0],
-                        'username': row[1],
-                        'first_name': row[2],
-                        'last_name': row[3],
-                        'photo_url': row[4],
-                        'wallet_address': row[5],
-                        'balance': float(row[6]),
-                        'total_deposit': float(row[7]),
-                        'total_withdraw': float(row[8]),
-                        'is_admin': bool(row[9]),
-                        'first_seen': row[10],
-                        'last_seen': row[11]
+                        'user_id': int(row['user_id']),
+                        'username': str(row['username']) if row['username'] else '',
+                        'first_name': str(row['first_name']) if row['first_name'] else '',
+                        'last_name': str(row['last_name']) if row['last_name'] else '',
+                        'photo_url': str(row['photo_url']) if row['photo_url'] else '',
+                        'wallet_address': str(row['wallet_address']) if row['wallet_address'] else '',
+                        'balance': float(row['balance']) if row['balance'] else 0.0,
+                        'total_deposit': float(row['total_deposit']) if row['total_deposit'] else 0.0,
+                        'total_withdraw': float(row['total_withdraw']) if row['total_withdraw'] else 0.0,
+                        'is_admin': bool(row['is_admin']),
+                        'first_seen': str(row['first_seen']) if row['first_seen'] else None,
+                        'last_seen': str(row['last_seen']) if row['last_seen'] else None
                     }
                 return None
         except Exception as e:
@@ -507,10 +508,11 @@ class WinedashDatabase:
         """Get all available usernames"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Set row_factory untuk mendapatkan dictionary dengan tipe yang benar
+                conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
                 # TAMPILKAN SEMUA USERNAME (available, unlisted, dll) untuk storage
-                # Tidak hanya yang status 'available'
                 if category:
                     cursor.execute('''
                         SELECT id, username, category, price, seller_id, seller_wallet, status, created_at
@@ -530,15 +532,16 @@ class WinedashDatabase:
                 rows = cursor.fetchall()
                 usernames = []
                 for row in rows:
+                    # Konversi semua field ke tipe yang JSON-serializable
                     usernames.append({
-                        'id': row[0],
-                        'username': row[1],
-                        'category': row[2],
-                        'price': float(row[3]),
-                        'seller_id': row[4],
-                        'seller_wallet': row[5],
-                        'status': row[6],
-                        'created_at': row[7]
+                        'id': int(row['id']),
+                        'username': str(row['username']) if row['username'] else '',
+                        'category': str(row['category']) if row['category'] else 'default',
+                        'price': float(row['price']) if row['price'] else 0.0,
+                        'seller_id': int(row['seller_id']) if row['seller_id'] else None,
+                        'seller_wallet': str(row['seller_wallet']) if row['seller_wallet'] else '',
+                        'status': str(row['status']) if row['status'] else 'available',
+                        'created_at': str(row['created_at']) if row['created_at'] else None
                     })
                 return usernames
         except Exception as e:
@@ -724,6 +727,7 @@ class WinedashDatabase:
         """Get pending usernames for a user (or all if user_id is None)"""
         try:
             with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
                 # Cek kolom yang tersedia di tabel
@@ -759,20 +763,20 @@ class WinedashDatabase:
                 results = []
                 for row in rows:
                     result = {
-                        'id': row[0],
-                        'username': row[1],
-                        'category': row[2],
-                        'price': float(row[3]),
-                        'seller_id': row[4],
-                        'seller_wallet': row[5],
-                        'verification_type': row[6],
-                        'verification_code': row[7],
-                        'status': row[8],
-                        'created_at': row[9]
+                        'id': int(row['id']),
+                        'username': str(row['username']) if row['username'] else '',
+                        'category': str(row['category']) if row['category'] else 'default',
+                        'price': float(row['price']) if row['price'] else 0.0,
+                        'seller_id': int(row['seller_id']) if row['seller_id'] else None,
+                        'seller_wallet': str(row['seller_wallet']) if row['seller_wallet'] else '',
+                        'verification_type': str(row['verification_type']) if row['verification_type'] else 'auto',
+                        'verification_code': str(row['verification_code']) if row['verification_code'] else None,
+                        'status': str(row['status']) if row['status'] else 'pending',
+                        'created_at': str(row['created_at']) if row['created_at'] else None
                     }
                     # Tambahkan expires_at jika ada
-                    if 'expires_at' in columns and len(row) > 10:
-                        result['expires_at'] = row[10]
+                    if 'expires_at' in columns and 'expires_at' in row.keys():
+                        result['expires_at'] = str(row['expires_at']) if row['expires_at'] else None
                     else:
                         result['expires_at'] = None
                     
