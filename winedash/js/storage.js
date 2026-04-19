@@ -867,7 +867,6 @@
                 if (typeof usernameStr !== 'string') {
                     usernameStr = String(usernameStr);
                 }
-                // Hapus karakter b'...' jika ada
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
                 const firstChar = usernameStr.charAt(0) || 'U';
@@ -907,7 +906,7 @@
             }
             elements.usernameContainer.innerHTML = html;
         } else {
-            // List layout tetap sama dengan tombol
+            // List layout
             elements.usernameContainer.className = 'username-list';
             let html = '';
             for (const username of usernames) {
@@ -974,6 +973,102 @@
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=40a7e3&color=fff&size=120&rounded=true&bold=true&length=1`;
     }
 
+    // Fungsi untuk edit harga username
+    async function editPrice(usernameId, newPrice) {
+        if (!telegramUser) return false;
+        
+        hapticMedium();
+        showLoading(true);
+        
+        try {
+            console.log('[DEBUG] Editing price:', { usernameId, newPrice });
+            
+            const response = await fetch(`${API_BASE_URL}/api/winedash/username/edit-price`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username_id: usernameId,
+                    price: newPrice,
+                    user_id: telegramUser.id
+                })
+            });
+            
+            const data = await response.json();
+            console.log('[DEBUG] Edit price response:', data);
+            
+            if (data.success) {
+                hapticSuccess();
+                showToast('Harga berhasil diubah!', 'success');
+                await loadUsernames();
+                return true;
+            } else {
+                showToast(data.error || 'Gagal mengubah harga', 'error');
+                return false;
+            }
+        } catch (error) {
+            console.error('[DEBUG] Error editing price:', error);
+            showToast('Error: ' + (error.message || 'Unknown error'), 'error');
+            return false;
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // Fungsi untuk menampilkan modal edit price
+    function showEditPriceModal(usernameId, currentPrice, currentStatus) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay edit-price-modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 320px;">
+                <h3>${currentStatus === 'available' ? 'Edit Harga' : 'Atur Harga'}</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                    ${currentStatus === 'available' ? 'Ubah harga username Anda' : 'Masukkan harga untuk username ini'}
+                </p>
+                <input type="number" id="editPriceInput" placeholder="Harga (TON)" class="form-input price-input" step="0.1" min="0.1" value="${currentPrice}">
+                <div class="modal-buttons">
+                    <button class="btn-unlist" id="unlistBtn">
+                        <i class="fas fa-eye-slash"></i> Unlist
+                    </button>
+                    <button class="btn-confirm" id="confirmEditPriceBtn">
+                        <i class="fas fa-check"></i> Konfirmasi
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Focus pada input
+        const priceInput = document.getElementById('editPriceInput');
+        if (priceInput) setTimeout(() => priceInput.focus(), 100);
+        
+        // Tombol Unlist
+        document.getElementById('unlistBtn').addEventListener('click', async () => {
+            modal.remove();
+            // Unlist username (set status menjadi unlisted)
+            await toggleListStatus(usernameId, 'available');
+        });
+        
+        // Tombol Konfirmasi Edit Harga
+        document.getElementById('confirmEditPriceBtn').addEventListener('click', async () => {
+            const newPrice = parseFloat(priceInput?.value);
+            
+            if (isNaN(newPrice) || newPrice <= 0) {
+                showToast('Masukkan harga yang valid', 'warning');
+                return;
+            }
+            
+            modal.remove();
+            await editPrice(usernameId, newPrice);
+        });
+        
+        // Close modal on outside click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+    }
+
+    // Perbaiki fungsi showDetailPanel
     function showDetailPanel(username) {
         // Hapus panel yang sudah ada
         const existingPanel = document.querySelector('.detail-panel');
@@ -1030,9 +1125,9 @@
                     <div class="detail-value">${createdAt}</div>
                 </div>
                 <div class="detail-actions">
-                    <button class="detail-action-btn toggle-status-detail" data-id="${username.id}" data-status="${username.status}">
-                        <i class="fas fa-${isListed ? 'eye-slash' : 'eye'}"></i>
-                        <span>${isListed ? 'Unlist' : 'List'}</span>
+                    <button class="detail-action-btn edit-price-detail" data-id="${username.id}" data-price="${username.price}" data-status="${username.status}">
+                        <i class="fas fa-${isListed ? 'edit' : 'tag'}"></i>
+                        <span>${isListed ? 'Edit Harga' : 'Atur Harga'}</span>
                     </button>
                     <button class="detail-action-btn delete-detail" data-id="${username.id}">
                         <i class="fas fa-trash"></i>
@@ -1063,16 +1158,20 @@
             }
         });
         
-        // Action buttons in panel
-        panel.querySelector('.toggle-status-detail').addEventListener('click', async (e) => {
+        // Action buttons in panel - Edit Price / Atur Harga
+        panel.querySelector('.edit-price-detail').addEventListener('click', async (e) => {
             e.stopPropagation();
             const id = parseInt(e.currentTarget.dataset.id);
+            const price = parseFloat(e.currentTarget.dataset.price);
             const status = e.currentTarget.dataset.status;
-            await toggleListStatus(id, status);
             panel.classList.remove('open');
-            setTimeout(() => panel.remove(), 300);
+            setTimeout(() => {
+                panel.remove();
+                showEditPriceModal(id, price, status);
+            }, 300);
         });
         
+        // Delete button
         panel.querySelector('.delete-detail').addEventListener('click', async (e) => {
             e.stopPropagation();
             const id = parseInt(e.currentTarget.dataset.id);

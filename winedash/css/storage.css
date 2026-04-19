@@ -403,7 +403,6 @@ body {
     margin-bottom: 8px;
 }
 
-/* Username text - bubble biru di dalam background, diposisikan di bawah avatar */
 .username-card .card-username {
     font-size: 11px;
     font-weight: 600;
@@ -416,7 +415,10 @@ body {
     background: var(--primary);
     padding: 5px 14px;
     border-radius: 20px;
-    margin: 0 auto;
+    margin-top: 15px;
+    margin-bottom: 0;
+    margin-left: auto;
+    margin-right: auto;
     position: relative;
     z-index: 2;
     width: auto;
@@ -698,6 +700,49 @@ body {
         padding: 10px;
         font-size: 12px;
     }
+}
+
+/* Edit Price Modal */
+.edit-price-modal .modal-content {
+    max-width: 320px;
+}
+
+.edit-price-modal .price-input {
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+.edit-price-modal .modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.edit-price-modal .modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-price-modal .btn-unlist {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
+
+.edit-price-modal .btn-unlist:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+.edit-price-modal .btn-confirm {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    color: white;
 }
 
 /* Loading Placeholder */

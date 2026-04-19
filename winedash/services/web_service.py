@@ -1049,3 +1049,55 @@ def toggle_username_status():
     except Exception as e:
         print(f"Error in toggle_username_status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@winedash_bp.route('/username/edit-price', methods=['POST', 'OPTIONS'])
+def edit_username_price():
+    """Edit username price"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'error': 'Data tidak lengkap'}), 400
+        
+        username_id = data.get('username_id')
+        new_price = data.get('price')
+        user_id = data.get('user_id')
+        
+        if not username_id or not new_price or new_price <= 0:
+            return jsonify({'success': False, 'error': 'Parameter tidak valid'}), 400
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'User ID diperlukan'}), 400
+        
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Cek apakah username milik user ini
+            cursor.execute('SELECT seller_id FROM usernames WHERE id = ?', (username_id,))
+            row = cursor.fetchone()
+            
+            if not row:
+                return jsonify({'success': False, 'error': 'Username tidak ditemukan'}), 404
+            
+            if row[0] != user_id:
+                return jsonify({'success': False, 'error': 'Anda tidak memiliki akses'}), 403
+            
+            # Update price
+            cursor.execute('UPDATE usernames SET price = ? WHERE id = ?', (new_price, username_id))
+            conn.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Harga berhasil diubah!'
+        })
+        
+    except Exception as e:
+        print(f"Error in edit_username_price: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
