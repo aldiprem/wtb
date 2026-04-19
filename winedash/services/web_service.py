@@ -64,6 +64,128 @@ def validate_telegram_user(data: dict) -> tuple:
         print(f"Error validating telegram data: {e}")
         return False, None, None, None, None, None
 
+def validate_based_on(username: str, based_on: str) -> tuple:
+    """
+    Validasi apakah based_on (nama asli) memiliki hubungan dengan username
+    berdasarkan aturan penjualan username.
+    Returns: (is_valid, error_message, category)
+    """
+    if not username or not based_on:
+        return False, "Username dan Based On harus diisi", None
+    
+    # Bersihkan input
+    username_lower = username.lower().strip()
+    based_on_lower = based_on.lower().strip()
+    
+    # Cek apakah based_on adalah bagian dari username atau sebaliknya
+    # Atau apakah username adalah modifikasi dari based_on
+    
+    # ============ CEK UNCOMMON (OP, SOP, SCANON, CANON) ============
+    
+    # 1. OP (On Point) - Exact match tanpa modifikasi
+    if username_lower == based_on_lower:
+        return True, "OP (On Point) - Exact match", "OP"
+    
+    # 2. SOP (Semi On Point) - Penambahan huruf double
+    # Cek apakah based_on adalah versi tanpa double dari username
+    # Contoh: WiinWin -> WinWin, Roose -> Rose
+    # Hapus karakter double berurutan
+    def remove_consecutive_duplicates(s):
+        result = []
+        prev = ''
+        for char in s:
+            if char != prev:
+                result.append(char)
+                prev = char
+        return ''.join(result)
+    
+    username_no_double = remove_consecutive_duplicates(username_lower)
+    if username_no_double == based_on_lower and len(username_lower) > len(based_on_lower):
+        return True, "SOP (Semi On Point) - Double huruf", "SOP"
+    
+    # 3. SCANON - Penambahan huruf 's' di akhir atau hanya nama (tanpa marga)
+    if username_lower.endswith('s') and username_lower[:-1] == based_on_lower:
+        return True, "SCANON - Penambahan huruf S di akhir", "SCANON"
+    
+    # Cek jika based_on adalah nama tanpa marga (hanya 1 kata)
+    if ' ' not in based_on_lower and len(based_on_lower.split()) == 1:
+        # Jika username mengandung based_on sebagai bagian
+        if based_on_lower in username_lower:
+            return True, "SCANON - Nama tanpa marga", "SCANON"
+    
+    # 4. CANON - Penggantian huruf i ke l atau l ke i
+    # Cek substitusi i<->l
+    username_il_swap = username_lower.replace('i', 'L').replace('l', 'i').lower()
+    if username_il_swap == based_on_lower:
+        return True, "CANON - Swap i/l", "CANON"
+    
+    # ============ CEK COMMON ============
+    
+    # 5. TAMPING (Tambah Pinggir) - Penambahan 1 huruf di depan atau belakang
+    if len(username_lower) == len(based_on_lower) + 1:
+        # Cek apakah username adalah based_on + 1 huruf di depan
+        if username_lower[1:] == based_on_lower:
+            return True, "TAMPING - Tambah huruf di depan", "TAMPING"
+        # Cek apakah username adalah based_on + 1 huruf di belakang
+        if username_lower[:-1] == based_on_lower:
+            return True, "TAMPING - Tambah huruf di belakang", "TAMPING"
+        # Cek apakah based_on adalah username + 1 huruf di depan
+        if based_on_lower[1:] == username_lower:
+            return True, "TAMPING - Based On lebih panjang (tambah huruf di depan)", "TAMPING"
+        # Cek apakah based_on adalah username + 1 huruf di belakang
+        if based_on_lower[:-1] == username_lower:
+            return True, "TAMPING - Based On lebih panjang (tambah huruf di belakang)", "TAMPING"
+    
+    # 6. TAMDAL (Tambah Dalam) - Penambahan 1 huruf di dalam
+    if len(username_lower) == len(based_on_lower) + 1:
+        # Cek apakah username adalah based_on dengan 1 huruf tambahan di dalam
+        for i in range(len(username_lower)):
+            temp = username_lower[:i] + username_lower[i+1:]
+            if temp == based_on_lower:
+                return True, "TAMDAL - Tambah huruf di dalam", "TAMDAL"
+    
+    if len(based_on_lower) == len(username_lower) + 1:
+        # Cek apakah based_on adalah username dengan 1 huruf tambahan di dalam
+        for i in range(len(based_on_lower)):
+            temp = based_on_lower[:i] + based_on_lower[i+1:]
+            if temp == username_lower:
+                return True, "TAMDAL - Based On lebih panjang (tambah huruf di dalam)", "TAMDAL"
+    
+    # 7. GANHUR (Ganti Huruf) - Penggantian 1 huruf
+    if len(username_lower) == len(based_on_lower):
+        diff_count = 0
+        for i in range(len(username_lower)):
+            if username_lower[i] != based_on_lower[i]:
+                diff_count += 1
+        if diff_count == 1:
+            return True, "GANHUR - Ganti 1 huruf", "GANHUR"
+    
+    # 8. SWITCH (Perpindahan Huruf) - Perpindahan 1 langkah (swap adjacent)
+    if len(username_lower) == len(based_on_lower):
+        for i in range(len(username_lower) - 1):
+            # Swap huruf di posisi i dan i+1
+            swapped = list(username_lower)
+            swapped[i], swapped[i+1] = swapped[i+1], swapped[i]
+            if ''.join(swapped) == based_on_lower:
+                return True, "SWITCH - Perpindahan huruf", "SWITCH"
+    
+    # 9. KURHUF (Kurang Huruf) - Kurang 1 huruf
+    if len(username_lower) == len(based_on_lower) - 1:
+        # Cek apakah username adalah based_on tanpa 1 huruf
+        for i in range(len(based_on_lower)):
+            temp = based_on_lower[:i] + based_on_lower[i+1:]
+            if temp == username_lower:
+                return True, "KURHUF - Kurang 1 huruf", "KURHUF"
+    
+    # 10. CEK APAKAH BASED_ON ADALAH NAMA YANG MENGANDUNG USERNAME
+    if based_on_lower in username_lower:
+        return True, f"Based On '{based_on}' terkandung dalam username", "SUBSET"
+    
+    if username_lower in based_on_lower:
+        return True, f"Username terkandung dalam Based On '{based_on}'", "SUPERSET"
+    
+    # Jika tidak ada yang cocok
+    return False, f"'{based_on}' tidak memiliki hubungan yang valid dengan username '{username}'", None
 
 @winedash_bp.route('/auth', methods=['POST', 'OPTIONS'])
 def auth_user():
@@ -731,7 +853,7 @@ def add_pending_username():
         price = data.get('price')
         seller_id = data.get('seller_id')
         seller_wallet = data.get('seller_wallet', '')
-        based_on = data.get('based_on', '')  # Ganti category dengan based_on
+        based_on = data.get('based_on', '')
         
         print(f"[DEBUG] Parsed: username={username}, price={price}, seller_id={seller_id}, based_on={based_on}")
         
@@ -755,9 +877,25 @@ def add_pending_username():
         if not username_clean:
             return jsonify({'success': False, 'error': 'Username tidak valid'}), 400
         
-        # Validasi based_on harus sesuai dengan aturan (hanya huruf, angka, spasi)
-        if not re.match(r'^[a-zA-Z0-9\s]+$', based_on.strip()):
-            return jsonify({'success': False, 'error': 'Based On hanya boleh berisi huruf, angka, dan spasi'}), 400
+        # ============ VALIDASI BASED_ON DENGAN ATURAN ============
+        is_valid, validation_message, category = validate_based_on(username_clean, based_on.strip())
+        
+        if not is_valid:
+            return jsonify({
+                'success': False, 
+                'error': validation_message,
+                'details': 'Based On harus memiliki hubungan dengan username (OP, SOP, SCANON, CANON, TAMPING, TAMDAL, GANHUR, SWITCH, atau KURHUF)'
+            }), 400
+        
+        print(f"[DEBUG] Based On validation passed: {validation_message} (Category: {category})")
+        
+        # CEK DUPLIKAT USERNAME DI TABEL USERNAMES
+        with sqlite3.connect(db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, status FROM usernames WHERE username = ?', (username_clean,))
+            existing = cursor.fetchone()
+            if existing:
+                return jsonify({'success': False, 'error': f'Username @{username_clean} sudah terdaftar di marketplace!'}), 400
         
         # Tambahkan ke pending dengan based_on
         pending_id = db.add_pending_username(
@@ -765,21 +903,23 @@ def add_pending_username():
             price=float(price),
             seller_id=seller_id,
             seller_wallet=seller_wallet or '',
-            based_on=based_on.strip(),  # Ganti category
+            based_on=based_on.strip(),
             verification_type='auto'
         )
         
         print(f"[DEBUG] add_pending_username result: pending_id={pending_id}")
         
         if not pending_id:
-            return jsonify({'success': False, 'error': 'Gagal menambahkan username (mungkin sudah ada atau username tidak valid)'}), 400
+            return jsonify({'success': False, 'error': 'Gagal menambahkan username (mungkin username sudah ada di pending queue)'}), 400
         
         return jsonify({
             'success': True,
             'pending_id': pending_id,
             'username': username_clean,
             'based_on': based_on.strip(),
-            'message': 'Username pending verification. Bot akan memproses dalam beberapa saat.'
+            'validation_category': category,
+            'validation_message': validation_message,
+            'message': f'Username pending verification. Based On valid: {validation_message}'
         })
         
     except Exception as e:
