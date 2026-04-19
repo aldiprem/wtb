@@ -1535,65 +1535,72 @@ body.modal-open {
     background: rgba(255, 255, 255, 0.1);
 }
 
-.detail-panel .panel-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    padding-bottom: 80px;
-}
-
-/* Detail Panel Avatar - dengan background seperti card */
+/* Detail Panel Avatar - dengan background seperti card, full tanpa terpotong */
 .detail-panel .detail-avatar {
     position: relative;
-    width: 100%;
-    height: 140px;
+    width: calc(100% + 40px);
+    height: 160px;
     background-image: url('https://companel.shop/image/bg-storage-card.jpg');
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    margin-bottom: 0;
-    border-radius: 20px 20px 0 0;
-    margin-top: -20px;
+    justify-content: flex-end;
     margin-left: -20px;
     margin-right: -20px;
-    width: calc(100% + 40px);
+    margin-top: -20px;
+    margin-bottom: 0;
+    border-radius: 24px 24px 0 0;
+    overflow: hidden;
+    padding-bottom: 15px;
 }
 
+/* Detail Panel Avatar Img - diposisikan seperti di card grid */
 .detail-panel .detail-avatar-img {
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, var(--bg), var(--bg));
+    border-radius: 25%;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 3px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    margin-top: 40px;
+    margin-bottom: 5px;
+    z-index: 1;
 }
 
-/* Username di detail panel - di dalam background */
+/* Username di detail panel - background putih, text hitam, border radius seperti card grid */
 .detail-username-badge {
-    position: absolute;
-    bottom: -15px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--primary);
-    padding: 5px 16px;
-    border-radius: 20px;
+    position: relative;
+    background: var(--text);
+    padding: 5px 14px;
+    border-radius: 5px;
     font-size: 12px;
     font-weight: 600;
     font-family: monospace;
-    color: var(--text);
+    color: var(--bg);
     white-space: nowrap;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     z-index: 2;
     max-width: calc(100% - 40px);
     overflow: hidden;
     text-overflow: ellipsis;
+    display: inline-block;
+    margin-top: 5px;
+    margin-bottom: -20px;
+}
+
+/* Perbaiki panel-content agar paddingnya tidak mengganggu */
+.detail-panel .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    padding-top: 20px;
+    padding-bottom: 80px;
 }
 
 .detail-panel .detail-avatar-img img {
