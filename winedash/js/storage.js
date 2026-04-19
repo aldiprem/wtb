@@ -641,7 +641,7 @@
         const panel = document.getElementById('inboxPanel');
         if (!panel) return;
         
-        // Buat overlay jika belum ada
+        // Buat overlay jika belum ada (hanya sekali)
         if (!inboxOverlay) {
             inboxOverlay = document.createElement('div');
             inboxOverlay.className = 'inbox-overlay';
@@ -652,6 +652,10 @@
                 closeInboxPanel();
             });
         }
+        
+        // Reset transform panel jika sebelumnya pernah di-drag
+        panel.style.transform = '';
+        panel.style.transition = '';
         
         // Tampilkan overlay
         inboxOverlay.classList.add('active');
@@ -668,31 +672,6 @@
         }, 10);
         
         loadPendingList();
-        hapticLight();
-    }
-
-    function closeInboxPanel() {
-        const panel = document.getElementById('inboxPanel');
-        if (!panel) return;
-        
-        // Hapus class open untuk animasi turun
-        panel.classList.remove('open');
-        
-        // Sembunyikan overlay
-        if (inboxOverlay) {
-            inboxOverlay.classList.remove('active');
-        }
-        
-        // Allow scroll
-        document.body.classList.remove('inbox-open');
-        
-        // Sembunyikan panel setelah animasi selesai
-        setTimeout(() => {
-            if (panel.style.display !== 'none') {
-                panel.style.display = 'none';
-            }
-        }, 300);
-        
         hapticLight();
     }
 
@@ -1279,7 +1258,7 @@
                 fetchAllCardAvatars();
             }, 100);
         } else {
-            // List layout
+            // List layout - PERBAIKAN: tambahkan @ dan based on
             elements.usernameContainer.className = 'username-list';
             let html = '';
             for (const username of usernames) {
@@ -1291,6 +1270,9 @@
                     usernameStr = String(usernameStr);
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
+                // Based on text (tanpa style tambahan)
+                const basedOnText = username.based_on || '-';
                 
                 // Ambil foto profil dari cache atau default
                 let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
@@ -1315,8 +1297,8 @@
                             <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="username-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
                         <div class="username-info">
-                            <div class="username-name">${escapeHtml(usernameStr)}</div>
-                            <div class="username-category">${escapeHtml(username.category)}</div>
+                            <div class="username-name">@${escapeHtml(usernameStr)}</div>
+                            <div class="username-basedon" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(basedOnText)}</div>
                         </div>
                         <div class="username-price-wrapper">
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
@@ -1331,7 +1313,6 @@
             // Attach click event untuk setiap username-item
             document.querySelectorAll('.username-item').forEach(item => {
                 item.addEventListener('click', (e) => {
-                    // Jangan trigger jika klik pada tombol (tidak ada tombol lagi)
                     try {
                         const usernameData = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
                         showDetailPanel(usernameData);
@@ -1347,7 +1328,7 @@
             }, 100);
         }
 
-        // Attach event listeners
+        // Attach event listeners untuk card (grid layout)
         document.querySelectorAll('.username-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.card-action-btn')) return;
@@ -1574,13 +1555,11 @@
     }
 
     async function showDetailPanel(username) {
-        // Hapus panel dan overlay yang sudah ada
+        // Hapus panel yang sudah ada, tapi JANGAN hapus overlay
         const existingPanel = document.querySelector('.detail-panel');
-        const existingOverlay = document.querySelector('.panel-overlay');
         if (existingPanel) existingPanel.remove();
-        if (existingOverlay) existingOverlay.remove();
         
-        // Buat overlay jika belum ada
+        // Buat overlay jika belum ada (hanya sekali)
         if (!detailOverlay) {
             detailOverlay = document.createElement('div');
             detailOverlay.className = 'panel-overlay';
@@ -1745,15 +1724,43 @@
         
         if (panel) {
             panel.classList.remove('open');
+            // Hapus panel setelah animasi selesai
+            setTimeout(() => {
+                if (panel && panel.parentNode) panel.remove();
+            }, 300);
         }
+        
         if (overlay) {
             overlay.classList.remove('active');
+            // JANGAN hapus overlay, hanya sembunyikan
+            // overlay akan digunakan lagi nanti
         }
         
         document.body.classList.remove('panel-open');
         
+        hapticLight();
+    }
+
+    function closeInboxPanel() {
+        const panel = document.getElementById('inboxPanel');
+        if (!panel) return;
+        
+        // Hapus class open untuk animasi turun
+        panel.classList.remove('open');
+        
+        // Sembunyikan overlay - JANGAN dihapus
+        if (inboxOverlay) {
+            inboxOverlay.classList.remove('active');
+        }
+        
+        // Allow scroll
+        document.body.classList.remove('inbox-open');
+        
+        // Sembunyikan panel setelah animasi selesai
         setTimeout(() => {
-            if (panel && panel.parentNode) panel.remove();
+            if (panel.style.display !== 'none') {
+                panel.style.display = 'none';
+            }
         }, 300);
         
         hapticLight();
