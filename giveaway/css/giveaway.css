@@ -1750,6 +1750,32 @@ body.modal-open {
     z-index: 1000;
 }
 
+/* FAB Buttons Wrapper untuk 2 tombol */
+.fab-buttons-wrapper {
+    display: flex;
+    gap: 12px;
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+    margin: 0 16px;
+}
+
+/* Base Button Style untuk kedua tombol */
+.fab-btn {
+    height: 58px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
 /* Update FAB Button: Full-Width Glassmorphism dengan Double-Side 3D Border */
 .fab-button {
     position: fixed;
@@ -1779,7 +1805,7 @@ body.modal-open {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 1. EFEK BAYANGAN HITAM (Kanan-Atas & Kiri-Bawah) */
+/* 1. EFEK BAYANGAN HITAM (Kanan-Atas & Kiri-Bawah) - untuk .fab-button */
 .fab-button::before {
     content: "";
     position: absolute;
@@ -1802,7 +1828,27 @@ body.modal-open {
     pointer-events: none;
 }
 
-/* 2. EFEK CAHAYA PUTIH (Kiri-Atas & Kanan-Bawah) */
+/* 1. EFEK BAYANGAN HITAM untuk .fab-back dan .fab-participate */
+.fab-back::before, .fab-participate::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 19px;
+    padding: 2px;
+    background: linear-gradient(35deg, 
+        rgb(0 0 0 / 80%) 0%, 
+        rgba(0, 0, 0, 0) 10%,
+        rgba(0, 0, 0, 0) 90%, 
+        rgb(0 0 0 / 80%) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 2. EFEK CAHAYA PUTIH (Kiri-Atas & Kanan-Bawah) - untuk .fab-button */
 .fab-button::after {
     content: "";
     position: absolute;
@@ -1822,7 +1868,27 @@ body.modal-open {
     pointer-events: none;
 }
 
-/* Efek Interaksi */
+/* 2. EFEK CAHAYA PUTIH untuk .fab-back dan .fab-participate */
+.fab-back::after, .fab-participate::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1.4px;
+    background: linear-gradient(175deg, 
+        rgb(229 229 229 / 40%) 0%, 
+        rgb(252 252 252 / 10%) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgb(229 229 229 / 40%) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Efek Interaksi - untuk .fab-button */
 .fab-button:hover {
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.08);
@@ -1832,9 +1898,61 @@ body.modal-open {
     transform: translateY(1px) scale(0.98);
 }
 
+/* Tombol Kembali (lebih kecil, di kiri) */
+.fab-back {
+    background: var(--glass-bg);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--text-secondary);
+    flex: 0.6;
+}
+
+.fab-back:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+    color: var(--text);
+}
+
+.fab-back:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+/* Tombol Partisipasi (lebih besar, di kanan) */
+.fab-participate {
+    background: var(--primary-glass);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: #ffffff;
+    flex: 1.4;
+}
+
+.fab-participate:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 20px var(--primary-glow);
+}
+
+.fab-participate:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+.fab-participate:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.fab-participate:disabled:hover {
+    transform: none;
+    background: var(--primary-glass);
+}
+
 /* Icon style didalam tombol */
-.fab-button i {
+.fab-button i, .fab-btn i {
     font-size: 18px;
+}
+
+.fab-participate i, .fab-button i {
     filter: drop-shadow(0 0 8px var(--primary));
 }
 
@@ -1846,6 +1964,11 @@ body.modal-open {
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
     display: inline-block;
+}
+
+/* Sembunyikan FAB container setelah partisipasi */
+.fab-container.hide-after-participate {
+    display: none !important;
 }
 
 /* Responsive */
@@ -1875,6 +1998,23 @@ body.modal-open {
     .fab-button {
         padding: 12px 28px;
         font-size: 14px;
+    }
+    
+    .fab-btn {
+        height: 52px;
+        font-size: 14px;
+    }
+    
+    .fab-btn i {
+        font-size: 16px;
+    }
+    
+    .fab-back {
+        flex: 0.5;
+    }
+    
+    .fab-participate {
+        flex: 1.5;
     }
 }
 
