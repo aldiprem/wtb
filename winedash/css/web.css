@@ -830,16 +830,16 @@ button:disabled {
     }
 }
 
-/* ==================== MARKETPLACE CARD GRID SAMA SEPERTI STORAGE ==================== */
+/* ==================== MARKETPLACE - MENGGUNAKAN STYLE SAMA DENGAN STORAGE ==================== */
 
-/* Marketplace Grid Layout - 2 card per baris */
+/* Marketplace Grid Layout - SAMA PERSIS DENGAN STORAGE (2 card per baris) */
 .marketplace-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
 }
 
-.marketplace-card {
+.marketplace-grid .marketplace-card {
     background: var(--surface-light);
     border-radius: 16px;
     overflow: hidden;
@@ -853,8 +853,8 @@ button:disabled {
     border: none;
 }
 
-/* Border 3D dengan gradient */
-.marketplace-card::after {
+/* Border 3D dengan gradient SAMA SEPERTI STORAGE */
+.marketplace-grid .marketplace-card::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -872,8 +872,8 @@ button:disabled {
     pointer-events: none;
 }
 
-/* Card Image Background - Sama seperti storage */
-.marketplace-card-image {
+/* Card Image Background - SAMA PERSIS DENGAN STORAGE */
+.marketplace-grid .marketplace-card-image {
     position: relative;
     width: 100%;
     height: 120px;
@@ -888,19 +888,8 @@ button:disabled {
     flex-shrink: 0;
 }
 
-.avatar-img {
-    transition: opacity 0.3s ease;
-}
-
-.avatar-img.loading {
-    opacity: 0.5;
-}
-
-.avatar-img.loaded {
-    opacity: 1;
-}
-
-.marketplace-card .card-avatar {
+/* Avatar di card - SAMA PERSIS DENGAN STORAGE */
+.marketplace-grid .card-avatar {
     width: 55px;
     height: 55px;
     background: linear-gradient(135deg, var(--bg), var(--bg));
@@ -918,15 +907,15 @@ button:disabled {
     z-index: 2;
 }
 
-.marketplace-card .card-avatar img {
+.marketplace-grid .card-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 25%;
 }
 
-/* Username badge di card */
-.marketplace-card .card-username {
+/* Username badge - SAMA PERSIS DENGAN STORAGE */
+.marketplace-grid .card-username {
     font-size: 12px;
     font-weight: 600;
     font-family: monospace;
@@ -952,8 +941,8 @@ button:disabled {
     line-height: 1.3;
 }
 
-/* Card Info - bagian bawah */
-.marketplace-card-info {
+/* Card Info - bagian bawah SAMA PERSIS DENGAN STORAGE */
+.marketplace-grid .marketplace-card-info {
     padding: 10px 12px 12px 12px;
     display: flex;
     flex-direction: column;
@@ -963,47 +952,47 @@ button:disabled {
     border-top: 1px solid var(--border-light);
 }
 
-/* Baris harga dengan logo TON */
-.marketplace-card .card-price-row {
+/* Baris harga - dengan logo TON SAMA PERSIS DENGAN STORAGE */
+.marketplace-grid .card-price-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
 }
 
-.marketplace-card .price-with-logo {
+.marketplace-grid .price-with-logo {
     display: flex;
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
 }
 
-.marketplace-card .price-logo {
+.marketplace-grid .price-logo {
     width: 18px;
     height: 18px;
     object-fit: contain;
 }
 
-.marketplace-card .card-price {
+.marketplace-grid .card-price {
     font-size: 14px;
     font-weight: 700;
     color: var(--success);
     margin: 0;
 }
 
-.marketplace-card .card-basedon {
+.marketplace-grid .card-basedon {
     font-size: 10px;
     color: var(--text-muted);
 }
 
-/* Marketplace List Layout - tetap seperti sebelumnya */
+/* Marketplace List Layout - SAMA PERSIS DENGAN STORAGE LIST */
 .marketplace-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.marketplace-item {
+.marketplace-list .marketplace-item {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1017,7 +1006,7 @@ button:disabled {
     cursor: pointer;
 }
 
-.marketplace-item::after {
+.marketplace-list .marketplace-item::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -1035,7 +1024,7 @@ button:disabled {
     pointer-events: none;
 }
 
-.marketplace-avatar {
+.marketplace-list .marketplace-avatar {
     width: 44px;
     height: 44px;
     border-radius: 12px;
@@ -1044,18 +1033,18 @@ button:disabled {
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
 }
 
-.marketplace-avatar-img {
+.marketplace-list .marketplace-avatar-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.marketplace-info {
+.marketplace-list .marketplace-info {
     flex: 2;
     min-width: 100px;
 }
 
-.marketplace-name {
+.marketplace-list .marketplace-name {
     font-size: 13px;
     font-weight: 600;
     font-family: monospace;
@@ -1063,25 +1052,25 @@ button:disabled {
     word-break: break-all;
 }
 
-.marketplace-basedon {
+.marketplace-list .marketplace-basedon {
     font-size: 10px;
     color: var(--text-muted);
 }
 
-.marketplace-price-wrapper {
+.marketplace-list .marketplace-price-wrapper {
     display: flex;
     align-items: center;
     gap: 4px;
     flex-shrink: 0;
 }
 
-.price-logo-small {
+.marketplace-list .price-logo-small {
     width: 16px;
     height: 16px;
     object-fit: contain;
 }
 
-.marketplace-price {
+.marketplace-list .marketplace-price {
     font-size: 13px;
     font-weight: 700;
     color: var(--success);

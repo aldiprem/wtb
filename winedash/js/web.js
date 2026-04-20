@@ -730,7 +730,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                                                
+                                                    
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -752,6 +752,7 @@
 
         // GRID LAYOUT - SAMA PERSEPERTI STORAGE (2 card per baris)
         if (currentLayout === 'grid') {
+            // Gunakan class 'marketplace-grid' dan struktur HTML yang sama dengan storage
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
             for (const username of usernames) {
@@ -762,6 +763,10 @@
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
+                // Status (listed/unlisted) - tapi untuk marketplace hanya tampilkan yang available
+                const statusText = 'Listed';
+                const statusClass = 'listed';
+                
                 // Ambil foto profil dari cache atau default
                 let avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 const cached = localStorage.getItem(`avatar_${usernameStr}`);
@@ -769,8 +774,21 @@
                     avatarUrl = cached;
                 }
                 
+                // Data username untuk disimpan di dataset
+                const usernameData = {
+                    id: username.id,
+                    username: usernameStr,
+                    based_on: username.based_on || '',
+                    price: username.price,
+                    seller_id: username.seller_id,
+                    seller_wallet: username.seller_wallet,
+                    status: username.status,
+                    created_at: username.created_at
+                };
+                
+                // Struktur HTML SAMA PERSIS DENGAN STORAGE
                 html += `
-                    <div class="marketplace-card" data-id="${username.id}" data-username='${JSON.stringify(username).replace(/'/g, "&#39;")}'>
+                    <div class="marketplace-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
                         <div class="marketplace-card-image">
                             <div class="card-avatar">
                                 <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
@@ -793,10 +811,13 @@
             
             // Attach click event untuk setiap card
             document.querySelectorAll('.marketplace-card').forEach(card => {
-                card.addEventListener('click', (e) => {
+                // Hapus event listener lama dengan clone
+                const newCard = card.cloneNode(true);
+                card.parentNode.replaceChild(newCard, card);
+                newCard.addEventListener('click', (e) => {
                     if (e.target.closest('.marketplace-buy-btn')) return;
                     try {
-                        const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                        const usernameData = JSON.parse(newCard.dataset.username.replace(/&#39;/g, "'"));
                         showMarketDetailPanel(usernameData);
                     } catch (err) {
                         console.error('Error parsing username data:', err);
@@ -804,13 +825,13 @@
                 });
             });
             
-            // Fetch avatar untuk setiap card (async) - TANPA filter berdasarkan user
+            // Fetch avatar untuk setiap card (async)
             setTimeout(() => {
                 fetchAllMarketplaceAvatars();
             }, 100);
             
         } else {
-            // LIST LAYOUT - tetap sama
+            // LIST LAYOUT - SAMA PERSIS DENGAN STORAGE LIST
             elements.usernameList.className = 'marketplace-list';
             let html = '';
             for (const username of usernames) {
@@ -820,19 +841,35 @@
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
+                // Based on text
+                const basedOnText = username.based_on || '-';
+                
+                // Ambil foto profil dari cache atau default
                 let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
                 
+                const usernameData = {
+                    id: username.id,
+                    username: usernameStr,
+                    based_on: username.based_on || '',
+                    price: username.price,
+                    seller_id: username.seller_id,
+                    seller_wallet: username.seller_wallet,
+                    status: username.status,
+                    created_at: username.created_at
+                };
+                
+                // Struktur HTML SAMA PERSIS DENGAN STORAGE LIST
                 html += `
-                    <div class="marketplace-item" data-id="${username.id}" data-username='${JSON.stringify(username).replace(/'/g, "&#39;")}'>
+                    <div class="marketplace-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
                         <div class="marketplace-avatar">
                             <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="marketplace-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
                         <div class="marketplace-info">
                             <div class="marketplace-name">@${escapeHtml(usernameStr)}</div>
-                            <div class="marketplace-basedon">${escapeHtml(username.based_on || '-')}</div>
+                            <div class="marketplace-basedon">${escapeHtml(basedOnText)}</div>
                         </div>
                         <div class="marketplace-price-wrapper">
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
@@ -845,10 +882,12 @@
             
             // Attach click event untuk setiap item
             document.querySelectorAll('.marketplace-item').forEach(item => {
-                item.addEventListener('click', (e) => {
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                newItem.addEventListener('click', (e) => {
                     if (e.target.closest('.marketplace-buy-btn-small')) return;
                     try {
-                        const usernameData = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
+                        const usernameData = JSON.parse(newItem.dataset.username.replace(/&#39;/g, "'"));
                         showMarketDetailPanel(usernameData);
                     } catch (err) {
                         console.error('Error parsing username data:', err);
@@ -888,9 +927,6 @@
                     localStorage.setItem(`avatar_${username}`, data.photo_url);
                     img.src = data.photo_url;
                     console.log(`✅ Fetched avatar for @${username} (marketplace grid)`);
-                } else {
-                    // Simpan default agar tidak fetch terus
-                    localStorage.setItem(`avatar_${username}`, 'https://companel.shop/image/winedash-logo.png');
                 }
             } catch (error) {
                 console.error(`Error fetching avatar for @${username}:`, error);
@@ -932,8 +968,6 @@
                     localStorage.setItem(`avatar_${username}`, data.photo_url);
                     img.src = data.photo_url;
                     console.log(`✅ Fetched avatar for @${username} (marketplace list)`);
-                } else {
-                    localStorage.setItem(`avatar_${username}`, 'https://companel.shop/image/winedash-logo.png');
                 }
             } catch (error) {
                 console.error(`Error fetching avatar for @${username}:`, error);
