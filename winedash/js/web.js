@@ -21,6 +21,11 @@
     let depositPanel = null;
     let withdrawPanel = null;
     let walletPanelOverlay = null;
+    let marketDetailOverlay = null;
+    let filterPanelOverlay = null;
+    let activeFilterCount = 0;
+    let currentBasedOnFilter = 'all';
+    let availableBasedOnList = [];
 
     // DOM Elements
     const elements = {
@@ -725,17 +730,14 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                                    
+                                        
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
         const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
         
         if (!usernames || usernames.length === 0) {
-            // Sembunyikan username list
             elements.usernameList.style.display = 'none';
-            
-            // Tampilkan empty state di dalam section-card
             if (emptyAnimationDiv) {
                 emptyAnimationDiv.style.display = 'block';
                 loadMarketplaceTGSAnimation();
@@ -743,23 +745,12 @@
             return;
         }
         
-        // Ada data - sembunyikan empty state dan tampilkan list
         if (emptyAnimationDiv) {
             emptyAnimationDiv.style.display = 'none';
         }
         elements.usernameList.style.display = 'block';
 
-        if (usernames.length === 0) {
-            elements.usernameList.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-animation" id="marketplaceEmptyAnimation"></div>
-                    <div class="empty-subtitle">Be the first to list your username!</div>
-                </div>
-            `;
-            loadMarketplaceTGSAnimation();
-            return;
-        }
-
+        // GRID LAYOUT - 2 card per baris, tanpa tombol Beli di dalam card
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
@@ -770,7 +761,7 @@
                 }
                 
                 html += `
-                    <div class="marketplace-card" data-id="${username.id}">
+                    <div class="marketplace-card" data-id="${username.id}" data-username='${JSON.stringify(username).replace(/'/g, "&#39;")}'>
                         <div class="marketplace-card-image">
                             <div class="card-avatar">
                                 <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" data-username="${username.username}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
@@ -785,14 +776,24 @@
                                 </div>
                                 <div class="card-basedon">${escapeHtml(username.based_on || '-')}</div>
                             </div>
-                            <button class="marketplace-buy-btn" data-id="${username.id}" data-price="${username.price}">
-                                <i class="fas fa-shopping-cart"></i> Buy
-                            </button>
                         </div>
                     </div>
                 `;
             }
             elements.usernameList.innerHTML = html;
+            
+            // Attach click event untuk setiap card
+            document.querySelectorAll('.marketplace-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.marketplace-buy-btn')) return;
+                    try {
+                        const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                        showMarketDetailPanel(usernameData);
+                    } catch (err) {
+                        console.error('Error parsing username data:', err);
+                    }
+                });
+            });
             
             // Fetch avatar untuk setiap card
             setTimeout(() => {
@@ -804,6 +805,7 @@
                 });
             }, 100);
         } else {
+            // LIST LAYOUT - tanpa tombol Beli di dalam item
             elements.usernameList.className = 'marketplace-list';
             let html = '';
             for (const username of usernames) {
@@ -813,7 +815,7 @@
                 }
                 
                 html += `
-                    <div class="marketplace-item" data-id="${username.id}">
+                    <div class="marketplace-item" data-id="${username.id}" data-username='${JSON.stringify(username).replace(/'/g, "&#39;")}'>
                         <div class="marketplace-avatar">
                             <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" class="marketplace-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
@@ -825,13 +827,23 @@
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
                             <span class="marketplace-price">${formatNumber(username.price)}</span>
                         </div>
-                        <button class="marketplace-buy-btn-small" data-id="${username.id}" data-price="${username.price}">
-                            <i class="fas fa-shopping-cart"></i>
-                        </button>
                     </div>
                 `;
             }
             elements.usernameList.innerHTML = html;
+            
+            // Attach click event untuk setiap item
+            document.querySelectorAll('.marketplace-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.marketplace-buy-btn-small')) return;
+                    try {
+                        const usernameData = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
+                        showMarketDetailPanel(usernameData);
+                    } catch (err) {
+                        console.error('Error parsing username data:', err);
+                    }
+                });
+            });
             
             // Fetch avatar untuk setiap item
             setTimeout(() => {
@@ -849,15 +861,6 @@
                 });
             }, 100);
         }
-        
-        document.querySelectorAll('.marketplace-buy-btn, .marketplace-buy-btn-small').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = parseInt(btn.dataset.id);
-                const price = parseFloat(btn.dataset.price);
-                buyUsername(id, price);
-            });
-        });
     }
 
     function filterUsernames(searchTerm) {
@@ -997,10 +1000,18 @@
             });
         }
         
-        // Inisialisasi filter button
+        // Ganti filter button dengan yang baru - menggunakan action row style
         const filterBtn = document.getElementById('marketplaceFilterBtn');
         if (filterBtn) {
-            filterBtn.addEventListener('click', showFilterPanel);
+            // Ubah style tombol filter
+            filterBtn.className = 'filter-btn-modern';
+            filterBtn.innerHTML = '<i class="fas fa-sliders-h"></i><span>Filter</span>';
+            
+            // Buang event listener lama dan tambah yang baru
+            const newFilterBtn = filterBtn.cloneNode(true);
+            filterBtn.parentNode.replaceChild(newFilterBtn, filterBtn);
+            
+            newFilterBtn.addEventListener('click', showFullFilterPanel);
         }
     }
 
@@ -1829,7 +1840,12 @@
             return price >= minPrice && price <= maxPrice;
         });
         
-        // Sort (sama seperti sebelumnya)
+        // Based On filter
+        if (currentBasedOnFilter !== 'all') {
+            filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
+        }
+        
+        // Sort
         if (currentSort !== 'default') {
             filtered.sort((a, b) => {
                 if (currentSort === 'price_asc') return a.price - b.price;
@@ -2677,6 +2693,498 @@
         console.log('✅ Sticker position adjusted inside border');
     }
 
+    function showMarketDetailPanel(username) {
+        // Hapus panel yang sudah ada
+        const existingPanel = document.querySelector('.market-detail-panel');
+        if (existingPanel) existingPanel.remove();
+        
+        // Buat overlay jika belum ada
+        if (!marketDetailOverlay) {
+            marketDetailOverlay = document.createElement('div');
+            marketDetailOverlay.className = 'panel-overlay market-detail-overlay';
+            document.body.appendChild(marketDetailOverlay);
+            
+            marketDetailOverlay.addEventListener('click', () => {
+                closeMarketDetailPanel();
+            });
+        }
+        
+        // Cek apakah username milik user yang login
+        const isOwner = telegramUser && username.seller_id === telegramUser.id;
+        
+        let usernameStr = username.username;
+        if (typeof usernameStr !== 'string') {
+            usernameStr = String(usernameStr);
+        }
+        usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+        
+        const createdAt = formatDateIndonesia(username.created_at);
+        
+        // Avatar URL
+        let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
+        if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
+            avatarUrl = "https://companel.shop/image/winedash-logo.png";
+        } else {
+            fetchProfilePhoto(usernameStr).then(photoUrl => {
+                if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
+                    const detailImg = document.querySelector('.market-detail-panel .detail-avatar-img img');
+                    if (detailImg && detailImg.src !== photoUrl) {
+                        detailImg.src = photoUrl;
+                    }
+                }
+            }).catch(console.error);
+        }
+        
+        // Buat panel
+        const panel = document.createElement('div');
+        panel.className = 'market-detail-panel detail-panel';
+        panel.innerHTML = `
+            <div class="drag-handle"></div>
+            <div class="panel-header">
+                <h3><i class="fas fa-info-circle"></i> Detail Username</h3>
+                <button class="panel-close">&times;</button>
+            </div>
+            <div class="detail-avatar">
+                <div class="detail-avatar-img">
+                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                </div>
+                <div class="detail-username-badge">@${escapeHtml(usernameStr)}</div>
+            </div>
+            <div class="panel-content">
+                <div class="detail-field">
+                    <div class="detail-label">Based On</div>
+                    <div class="detail-value">${escapeHtml(username.based_on || '-')}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Harga</div>
+                    <div class="detail-value price">
+                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 20px; height: 20px; vertical-align: middle; margin-right: 4px;">
+                        ${formatNumber(username.price)}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">ID Username</div>
+                    <div class="detail-value">#${username.id}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">Ditambahkan Pada</div>
+                    <div class="detail-value">${createdAt}</div>
+                </div>
+            </div>
+            <div class="detail-actions">
+                ${isOwner ? `
+                    <button class="detail-action-btn edit-price-detail" data-id="${username.id}" data-price="${username.price}" data-status="${username.status}">
+                        <i class="fas fa-edit"></i>
+                        <span>Edit Harga</span>
+                    </button>
+                    <button class="detail-action-btn delete-detail" data-id="${username.id}">
+                        <i class="fas fa-trash"></i>
+                        <span>Hapus</span>
+                    </button>
+                ` : `
+                    <button class="detail-action-btn buy-detail" data-id="${username.id}" data-price="${username.price}">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span>Beli</span>
+                    </button>
+                    <button class="detail-action-btn offer-detail" data-id="${username.id}">
+                        <i class="fas fa-tag"></i>
+                        <span>Offer</span>
+                    </button>
+                `}
+            </div>
+        `;
+        
+        document.body.appendChild(panel);
+        
+        // Setup drag to close
+        setupMarketDragToClose(panel);
+        
+        // Prevent scroll pada body
+        document.body.classList.add('panel-open');
+        
+        // Tampilkan overlay
+        marketDetailOverlay.classList.add('active');
+        
+        // Trigger animation panel
+        setTimeout(() => {
+            panel.classList.add('open');
+        }, 50);
+        
+        // Close button
+        const closeBtn = panel.querySelector('.panel-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hapticLight();
+                closeMarketDetailPanel();
+            });
+        }
+        
+        // Action buttons untuk owner
+        if (isOwner) {
+            const editBtn = panel.querySelector('.edit-price-detail');
+            if (editBtn) {
+                editBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = parseInt(editBtn.dataset.id);
+                    const price = parseFloat(editBtn.dataset.price);
+                    const status = editBtn.dataset.status;
+                    closeMarketDetailPanel();
+                    setTimeout(() => {
+                        showEditPriceModal(id, price, status);
+                    }, 300);
+                });
+            }
+            
+            const deleteBtn = panel.querySelector('.delete-detail');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = parseInt(deleteBtn.dataset.id);
+                    if (confirm('Yakin ingin menghapus username ini?')) {
+                        hapticMedium();
+                        closeMarketDetailPanel();
+                        await deleteUsername(id);
+                        await loadUsernames();
+                    }
+                });
+            }
+        } else {
+            // Action buttons untuk pembeli
+            const buyBtn = panel.querySelector('.buy-detail');
+            if (buyBtn) {
+                buyBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    const id = parseInt(buyBtn.dataset.id);
+                    const price = parseFloat(buyBtn.dataset.price);
+                    closeMarketDetailPanel();
+                    await buyUsername(id, price);
+                });
+            }
+            
+            const offerBtn = panel.querySelector('.offer-detail');
+            if (offerBtn) {
+                offerBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    closeMarketDetailPanel();
+                    showToast('Offer feature coming soon', 'info');
+                });
+            }
+        }
+    }
+
+    function closeMarketDetailPanel() {
+        const panel = document.querySelector('.market-detail-panel');
+        const overlay = document.querySelector('.market-detail-overlay');
+        
+        if (panel) {
+            panel.classList.remove('open');
+            setTimeout(() => {
+                if (panel && panel.parentNode) panel.remove();
+            }, 300);
+        }
+        
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+        
+        document.body.classList.remove('panel-open');
+        hapticLight();
+    }
+
+    function setupMarketDragToClose(panel) {
+        const dragHandle = panel.querySelector('.drag-handle');
+        if (!dragHandle) return;
+        
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+        
+        const onTouchStart = (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            panel.style.transition = 'none';
+            hapticLight();
+        };
+        
+        const onTouchMove = (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            if (deltaY > 0) {
+                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+            }
+        };
+        
+        const onTouchEnd = (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            const deltaY = currentY - startY;
+            if (deltaY > 100) {
+                closeMarketDetailPanel();
+            } else {
+                panel.style.transform = '';
+            }
+        };
+        
+        dragHandle.addEventListener('touchstart', onTouchStart);
+        dragHandle.addEventListener('touchmove', onTouchMove);
+        dragHandle.addEventListener('touchend', onTouchEnd);
+    }
+
+    async function loadBasedOnOptions() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
+            const data = await response.json();
+            if (data.success && data.usernames) {
+                const basedOnSet = new Set();
+                data.usernames.forEach(u => {
+                    if (u.based_on && u.based_on.trim() !== '') {
+                        basedOnSet.add(u.based_on);
+                    }
+                });
+                availableBasedOnList = Array.from(basedOnSet);
+            }
+        } catch (error) {
+            console.error('Error loading based on options:', error);
+        }
+    }
+
+    function updateFilterBadge() {
+        const filterBtn = document.getElementById('marketplaceFilterBtn');
+        if (!filterBtn) return;
+        
+        // Hitung jumlah filter aktif
+        let count = 0;
+        if (currentSort !== 'default') count++;
+        if (currentPriceFilter.min !== 0 || currentPriceFilter.max !== 9999) count++;
+        if (currentLayout !== 'grid') count++;
+        if (currentBasedOnFilter !== 'all') count++;
+        
+        activeFilterCount = count;
+        
+        // Hapus badge lama
+        const existingBadge = filterBtn.querySelector('.filter-badge');
+        if (existingBadge) existingBadge.remove();
+        
+        // Tambah badge baru jika ada filter aktif
+        if (count > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge';
+            badge.textContent = count > 99 ? '99+' : count;
+            filterBtn.style.position = 'relative';
+            filterBtn.appendChild(badge);
+        }
+    }
+
+    function showFullFilterPanel() {
+        // Load based on options jika belum
+        if (availableBasedOnList.length === 0) {
+            loadBasedOnOptions();
+        }
+        
+        // Hapus panel yang sudah ada
+        const existingPanel = document.querySelector('.full-filter-panel');
+        if (existingPanel) existingPanel.remove();
+        
+        // Buat overlay
+        if (!filterPanelOverlay) {
+            filterPanelOverlay = document.createElement('div');
+            filterPanelOverlay.className = 'filter-overlay';
+            document.body.appendChild(filterPanelOverlay);
+            filterPanelOverlay.addEventListener('click', closeFullFilterPanel);
+        }
+        
+        const panel = document.createElement('div');
+        panel.className = 'full-filter-panel';
+        panel.innerHTML = `
+            <div class="filter-drag-handle"></div>
+            <div class="filter-header">
+                <h3><i class="fas fa-filter"></i> Filter & Sort</h3>
+                <button class="filter-close">&times;</button>
+            </div>
+            <div class="filter-content">
+                <div class="filter-section">
+                    <div class="filter-section-title">Sort By</div>
+                    <div class="filter-options">
+                        <button class="filter-option ${currentSort === 'default' ? 'active' : ''}" data-sort="default">
+                            <i class="fas fa-clock"></i> Default
+                        </button>
+                        <button class="filter-option ${currentSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
+                            <i class="fas fa-arrow-up"></i> Price ↑
+                        </button>
+                        <button class="filter-option ${currentSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
+                            <i class="fas fa-arrow-down"></i> Price ↓
+                        </button>
+                        <button class="filter-option ${currentSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
+                            <i class="fas fa-sort-alpha-down"></i> Name A-Z
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <div class="filter-section-title">Price Range (TON)</div>
+                    <div class="price-range-container">
+                        <div class="price-inputs">
+                            <div class="price-input-group">
+                                <label>Min</label>
+                                <input type="number" id="filterPriceMin" class="filter-price-input" value="${currentPriceFilter.min}" min="0" step="0.1" placeholder="0">
+                            </div>
+                            <div class="price-input-group">
+                                <label>Max</label>
+                                <input type="number" id="filterPriceMax" class="filter-price-input" value="${currentPriceFilter.max >= 9999 ? '' : currentPriceFilter.max}" min="0" step="0.1" placeholder="∞">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <div class="filter-section-title">Layout</div>
+                    <div class="filter-options">
+                        <button class="filter-option ${currentLayout === 'grid' ? 'active' : ''}" data-layout="grid">
+                            <i class="fas fa-th"></i> Grid
+                        </button>
+                        <button class="filter-option ${currentLayout === 'list' ? 'active' : ''}" data-layout="list">
+                            <i class="fas fa-list"></i> List
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <div class="filter-section-title">Based On</div>
+                    <div class="filter-options filter-options-scroll" id="basedOnFilterOptions">
+                        <button class="filter-option ${currentBasedOnFilter === 'all' ? 'active' : ''}" data-basedon="all">
+                            <i class="fas fa-globe"></i> All
+                        </button>
+                        ${availableBasedOnList.map(b => `
+                            <button class="filter-option ${currentBasedOnFilter === b ? 'active' : ''}" data-basedon="${escapeHtml(b)}">
+                                <i class="fas fa-user-tag"></i> ${escapeHtml(b.length > 20 ? b.slice(0, 20) + '...' : b)}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="filter-reset">Clear All</button>
+                <button class="filter-apply">Apply</button>
+            </div>
+        `;
+        
+        document.body.appendChild(panel);
+        filterPanelOverlay.classList.add('active');
+        document.body.classList.add('filter-open');
+        
+        setTimeout(() => panel.classList.add('open'), 10);
+        
+        // Close button
+        const closeBtn = panel.querySelector('.filter-close');
+        closeBtn.addEventListener('click', closeFullFilterPanel);
+        
+        // Sort options
+        panel.querySelectorAll('[data-sort]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSort = btn.dataset.sort;
+            });
+        });
+        
+        // Layout options
+        panel.querySelectorAll('[data-layout]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('[data-layout]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentLayout = btn.dataset.layout;
+                localStorage.setItem('market_layout', currentLayout);
+            });
+        });
+        
+        // Based On options
+        panel.querySelectorAll('[data-basedon]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentBasedOnFilter = btn.dataset.basedon;
+            });
+        });
+        
+        // Price inputs
+        const priceMin = panel.querySelector('#filterPriceMin');
+        const priceMax = panel.querySelector('#filterPriceMax');
+        
+        // Reset button
+        const resetBtn = panel.querySelector('.filter-reset');
+        resetBtn.addEventListener('click', () => {
+            currentSort = 'default';
+            currentPriceFilter = { min: 0, max: 9999 };
+            currentLayout = localStorage.getItem('market_layout') || 'grid';
+            currentBasedOnFilter = 'all';
+            
+            // Update UI
+            panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
+            panel.querySelector('[data-sort="default"]').classList.add('active');
+            panel.querySelectorAll('[data-layout]').forEach(b => b.classList.remove('active'));
+            panel.querySelector(`[data-layout="${currentLayout}"]`).classList.add('active');
+            panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
+            panel.querySelector('[data-basedon="all"]').classList.add('active');
+            if (priceMin) priceMin.value = '';
+            if (priceMax) priceMax.value = '';
+        });
+        
+        // Apply button
+        const applyBtn = panel.querySelector('.filter-apply');
+        applyBtn.addEventListener('click', () => {
+            const minVal = priceMin?.value ? parseFloat(priceMin.value) : 0;
+            const maxVal = priceMax?.value ? parseFloat(priceMax.value) : 9999;
+            currentPriceFilter = { min: minVal, max: maxVal };
+            
+            applyFiltersAndRender();
+            closeFullFilterPanel();
+            updateFilterBadge();
+        });
+        
+        // Drag to close
+        const dragHandle = panel.querySelector('.filter-drag-handle');
+        let startY = 0, currentY = 0, isDragging = false;
+        
+        dragHandle.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            panel.style.transition = 'none';
+            hapticLight();
+        });
+        
+        dragHandle.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            if (deltaY > 0) {
+                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+            }
+        });
+        
+        dragHandle.addEventListener('touchend', () => {
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            if (currentY - startY > 100) {
+                closeFullFilterPanel();
+            } else {
+                panel.style.transform = '';
+            }
+        });
+        
+        hapticLight();
+    }
+
+    function closeFullFilterPanel() {
+        const panel = document.querySelector('.full-filter-panel');
+        if (panel) {
+            panel.classList.remove('open');
+            setTimeout(() => panel.remove(), 300);
+        }
+        if (filterPanelOverlay) filterPanelOverlay.classList.remove('active');
+        document.body.classList.remove('filter-open');
+        hapticLight();
+    }
+
     async function init() {
         initTelegram();
         initSafeArea();
@@ -2695,13 +3203,14 @@
             await loadUsernames();
             await loadPurchasedUsernames();
             await loadTransactionHistory();
+            await loadBasedOnOptions();
+            updateFilterBadge();
         } else {
             showToast('Tidak dapat mengambil data user', 'error');
         }
         
         await initTonConnect();
         
-        // Setelah initTonConnect, cek status wallet
         setTimeout(() => {
             if (isWalletConnected) {
                 updateWalletMainUI();
