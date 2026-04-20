@@ -1783,12 +1783,9 @@ body.modal-open {
     left: 16px;
     right: 16px;
     height: 58px;
-    
-    /* Efek Glassmorphism */
     background: var(--primary-glass);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     color: #ffffff;
     font-weight: 700;
     border-radius: 20px;
@@ -1796,7 +1793,6 @@ body.modal-open {
     align-items: center;
     justify-content: center;
     gap: 10px;
-    
     border: none;
     cursor: pointer;
     z-index: 1000;
@@ -1811,7 +1807,7 @@ body.modal-open {
     position: absolute;
     inset: 0;
     border-radius: 19px;
-    padding: 2px; /* Sedikit lebih tebal untuk kontras bayangan */
+    padding: 2px;
     
     /* Gradien 340deg menargetkan Kanan-Atas dan Kiri-Bawah */
     background: linear-gradient(35deg, 
@@ -1875,7 +1871,7 @@ body.modal-open {
     inset: 0;
     border-radius: 20px;
     padding: 1.4px;
-    background: linear-gradient(175deg, 
+    background: linear-gradient(170deg, 
         rgb(229 229 229 / 40%) 0%, 
         rgb(252 252 252 / 10%) 30%,
         rgba(255, 255, 255, 0) 70%, 
