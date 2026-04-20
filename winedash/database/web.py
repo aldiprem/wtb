@@ -149,7 +149,59 @@ class WinedashDatabase:
                     confirmed_at TIMESTAMP
                 )
             ''')
+
+            # ============ AUCTIONS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS auctions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    username_id INTEGER NOT NULL,
+                    owner_id INTEGER NOT NULL,
+                    start_price DECIMAL(20, 8) NOT NULL,
+                    current_price DECIMAL(20, 8) NOT NULL,
+                    min_increment DECIMAL(20, 8) NOT NULL,
+                    duration TEXT NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    start_time TIMESTAMP NOT NULL,
+                    end_time TIMESTAMP NOT NULL,
+                    status TEXT DEFAULT 'active',
+                    winner_id INTEGER,
+                    winning_bid DECIMAL(20, 8),
+                    created_at TIMESTAMP,
+                    updated_at TIMESTAMP,
+                    FOREIGN KEY (owner_id) REFERENCES users(user_id),
+                    FOREIGN KEY (winner_id) REFERENCES users(user_id)
+                )
+            ''')
             
+            # ============ BIDS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS bids (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    auction_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    bid_amount DECIMAL(20, 8) NOT NULL,
+                    timestamp TIMESTAMP NOT NULL,
+                    FOREIGN KEY (auction_id) REFERENCES auctions(id),
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+            ''')
+            
+            # Indexes
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_owner ON auctions(owner_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_status ON auctions(status)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_end_time ON auctions(end_time)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_bids_auction ON bids(auction_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_bids_user ON bids(user_id)')
+            
+            # ============ UPDATE USERNAMES TABLE - tambah auction_id ============
+            cursor.execute("PRAGMA table_info(usernames)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'auction_id' not in columns:
+                cursor.execute('ALTER TABLE usernames ADD COLUMN auction_id INTEGER')
+                print("✅ Added auction_id column to usernames")
+
+
             conn.commit()
             print("✅ Winedash Database initialized successfully")
 

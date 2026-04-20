@@ -36,6 +36,7 @@ from games.services.games_service import games_bp
 from giveaway.services.create_service import create_bp, set_bot_client
 from winedash.services.web_service import winedash_bp
 from winedash.services.offers_service import offers_bp
+from winedash.services.auctions_service import auctions_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -242,6 +243,7 @@ app.register_blueprint(games_bp)
 app.register_blueprint(create_bp, url_prefix='/api/giveaway')
 app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
 app.register_blueprint(offers_bp, url_prefix='/api/offers')
+app.register_blueprint(auctions_bp, url_prefix='/api/auctions')
 
 # ==================== WINEDASH ROUTES ====================
 

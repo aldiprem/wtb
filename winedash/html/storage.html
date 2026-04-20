@@ -65,58 +65,121 @@
             </div>
         </div>
 
-        <!-- Mode Toggle: On-Chain / Off-Chain -->
+        <!-- Mode Toggle: Fix Price / Auctions -->
         <div class="mode-toggle">
-            <button class="mode-btn active" data-mode="onchain">Fix Price</button>
-            <button class="mode-btn" data-mode="offchain">Offers</button>
+            <button class="mode-btn active" data-mode="fixprice">Fix Price</button>
+            <button class="mode-btn" data-mode="auctions">Auctions</button>
         </div>
 
-        <!-- Offers Section (ditampilkan saat tab Offers aktif) -->
-        <div id="offersSection" style="display: none;">
-            <!-- Action Row untuk Offers -->
-            <div class="offers-action-row">
-                <button class="offers-action-btn active" data-offers-tab="offers">
-                    <i class="fas fa-inbox"></i>
-                    <span>Offer</span>
+        <!-- Fix Price Section -->
+        <div id="fixPriceSection">
+            <!-- Action Row untuk Fix Price -->
+            <div class="action-row">
+                <button class="action-btn add-action-btn" id="addUsernameActionBtn">
+                    <i class="fas fa-plus"></i>
+                    <span>Add</span>
                 </button>
-                <button class="offers-action-btn" data-offers-tab="my-offers">
+                <button class="action-btn" id="sendUsernameBtn">
                     <i class="fas fa-paper-plane"></i>
-                    <span>My Offer</span>
+                    <span>Send</span>
                 </button>
-                <button class="offers-action-btn" data-offers-tab="my-bids">
-                    <i class="fas fa-gavel"></i>
-                    <span>My Bid</span>
-                </button>
-                <button class="offers-action-btn" data-offers-tab="history">
-                    <i class="fas fa-history"></i>
-                    <span>History</span>
+                <button class="action-btn" id="withdrawUsernameBtn">
+                    <i class="fas fa-arrow-up"></i>
+                    <span>Withdraw</span>
                 </button>
             </div>
 
-            <!-- Search Bar untuk Offers -->
+            <!-- Search Bar Fix Price -->
             <div class="search-container">
-                <input type="text" class="search-input" id="offersSearchInput" placeholder="🔍 Cari username...">
-                <button class="search-apply-btn" id="offersSearchApplyBtn">Apply</button>
+                <input type="text" class="search-input" id="searchStorage" placeholder="🔍 Cari username...">
+                <button class="search-apply-btn" id="searchApplyBtn">Apply</button>
             </div>
 
-            <!-- Action Bar untuk Offers (layout toggle) -->
+            <!-- Action Bar Fix Price -->
             <div class="action-bar">
+                <button class="action-btn" id="toggleStatusBtn">
+                    <i class="fas fa-eye"></i>
+                    <span>All</span>
+                </button>
+                
+                <div class="inbox-wrapper">
+                    <button class="action-btn" id="inboxBtn">
+                        <i class="fas fa-inbox"></i>
+                        <span>Inbox</span>
+                        <span class="inbox-badge" id="inboxBadge" style="display: none;">0</span>
+                    </button>
+                </div>
+                
                 <div class="layout-toggle">
-                    <button class="layout-btn active" data-layout="grid" id="offersGridBtn">
+                    <button class="layout-btn active" data-layout="grid" id="gridLayoutBtn">
                         <i class="fas fa-th"></i>
                     </button>
-                    <button class="layout-btn" data-layout="list" id="offersListBtn">
+                    <button class="layout-btn" data-layout="list" id="listLayoutBtn">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+                
+                <button class="action-btn" id="sortBtn">
+                    <i class="fas fa-sort-amount-down-alt"></i>
+                </button>
+            </div>
+
+            <!-- Username Container Fix Price -->
+            <div id="usernameContainer" style="width: 100%; min-height: 400px;">
+                <div class="loading-placeholder">Memuat username...</div>
+            </div>
+        </div>
+
+        <!-- Auctions Section -->
+        <div id="auctionsSection" style="display: none;">
+            <!-- Action Row untuk Auctions -->
+            <div class="offers-action-row">
+                <button class="offers-action-btn auctions-action-btn active" data-auctions-tab="active">
+                    <i class="fas fa-fire"></i>
+                    <span>Active</span>
+                </button>
+                <button class="offers-action-btn auctions-action-btn" data-auctions-tab="my-auctions">
+                    <i class="fas fa-gavel"></i>
+                    <span>My Auctions</span>
+                </button>
+                <button class="offers-action-btn auctions-action-btn" data-auctions-tab="my-bids">
+                    <i class="fas fa-history"></i>
+                    <span>My Bids</span>
+                </button>
+            </div>
+
+            <!-- Action Row untuk Auctions (Create Auction) -->
+            <div class="action-row">
+                <button class="action-btn add-action-btn" id="createAuctionBtn">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Create Auction</span>
+                </button>
+            </div>
+
+            <!-- Search Bar untuk Auctions -->
+            <div class="search-container">
+                <input type="text" class="search-input" id="auctionsSearchInput" placeholder="🔍 Cari username...">
+                <button class="search-apply-btn" id="auctionsSearchApplyBtn">Apply</button>
+            </div>
+
+            <!-- Action Bar untuk Auctions (layout toggle) -->
+            <div class="action-bar">
+                <div class="layout-toggle">
+                    <button class="layout-btn active" data-layout="grid" id="auctionsGridBtn">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="layout-btn" data-layout="list" id="auctionsListBtn">
                         <i class="fas fa-list"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Offers Container -->
-            <div id="offersContainer" style="width: 100%; min-height: 400px;">
-                <div class="loading-placeholder">Memuat offers...</div>
+            <!-- Auctions Container -->
+            <div id="auctionsContainer" style="width: 100%; min-height: 400px;">
+                <div class="loading-placeholder">Memuat auctions...</div>
             </div>
         </div>
-        
+
         <!-- Action Row Baru - Tombol-tombol aksi -->
         <div class="action-row">
             <button class="action-btn add-action-btn" id="addUsernameActionBtn">

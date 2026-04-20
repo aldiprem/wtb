@@ -1957,8 +1957,8 @@
                 hapticLight();
             });
         });
-                
-        // Mode toggle (Fix Price / Offers)
+                        
+        // Mode toggle (Fix Price / Auctions)
         elements.modeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 elements.modeBtns.forEach(b => b.classList.remove('active'));
@@ -1966,28 +1966,24 @@
                 currentMode = btn.dataset.mode;
                 
                 const fixPriceSection = document.getElementById('fixPriceSection');
-                const offersSection = document.getElementById('offersSection');
+                const auctionsSection = document.getElementById('auctionsSection');
                 
-                if (currentMode === 'onchain') {
+                if (currentMode === 'fixprice') {
                     // Fix Price mode
                     if (fixPriceSection) fixPriceSection.style.display = 'block';
-                    if (offersSection) offersSection.style.display = 'none';
+                    if (auctionsSection) auctionsSection.style.display = 'none';
                     loadUsernames();
                 } else {
-                    // Offers mode
+                    // Auctions mode
                     if (fixPriceSection) fixPriceSection.style.display = 'none';
-                    if (offersSection) offersSection.style.display = 'block';
-                    // Initialize offers if not already
-                    if (typeof window.initOffers === 'function') {
-                        window.initOffers();
-                    } else if (typeof Offers !== 'undefined' && Offers.init) {
-                        Offers.init();
-                    }
+                    if (auctionsSection) auctionsSection.style.display = 'block';
+                    // Load auctions module
+                    loadAuctionsModule();
                 }
                 hapticLight();
             });
         });
-        
+
         // Sort
         if (elements.sortBtn) {
             elements.sortBtn.addEventListener('click', () => {
@@ -2194,6 +2190,27 @@
                     clearModal();
                 }
             });
+        }
+    }
+
+    function loadAuctionsModule() {
+        if (typeof window.AuctionsLoaded === 'undefined') {
+            // Load CSS
+            if (!document.querySelector('link[href="/winedash/css/auctions.css"]')) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = '/winedash/css/auctions.css';
+                document.head.appendChild(link);
+            }
+            
+            // Load JS
+            const script = document.createElement('script');
+            script.src = '/winedash/js/auctions.js';
+            script.onload = () => {
+                window.AuctionsLoaded = true;
+                console.log('✅ Auctions module loaded');
+            };
+            document.head.appendChild(script);
         }
     }
 
