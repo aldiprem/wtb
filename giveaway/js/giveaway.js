@@ -2174,8 +2174,7 @@
             backBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 hapticMedium();
-                // Kembali ke halaman lobby
-                window.location.href = '/';
+                window.location.href = '/giveaway';
             });
         }
     }

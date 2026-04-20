@@ -2789,3 +2789,31 @@ body.filter-open {
     width: 100%;
     height: 100%;
 }
+
+.layout-toggle .layout-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.layout-toggle .layout-btn.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+.layout-toggle .layout-btn i {
+    font-size: 14px;
+}
+
+.layout-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 3px;
+}

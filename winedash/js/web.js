@@ -780,41 +780,32 @@
     }
 
     function renderUsernames(usernames) {
-        if (!elements.usernameContainer) return;
+        if (!elements.usernameList) return;
         
         if (!usernames || usernames.length === 0) {
-            elements.usernameContainer.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-animation" id="emptyAnimation"></div>
-                    <div class="empty-title">No Usernames Yet</div>
-                    <div class="empty-subtitle">Add your first username to get started</div>
-                    <button class="empty-btn" id="emptyAddBtn">
-                        <i class="fas fa-plus"></i> Add Username
-                    </button>
+            elements.usernameList.innerHTML = `
+                <div class="empty-state" style="padding: 40px 20px;">
+                    <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
+                    <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
+                    <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
                 </div>
             `;
-            loadTGSAnimation();
-            const emptyAddBtn = document.getElementById('emptyAddBtn');
-            if (emptyAddBtn) {
-                emptyAddBtn.addEventListener('click', () => {
-                    if (elements.addModal) elements.addModal.style.display = 'flex';
-                    hapticLight();
-                });
-            }
+            loadMarketplaceTGSAnimation();
             return;
         }
         
+        // GRID LAYOUT
         if (currentLayout === 'grid') {
-            elements.usernameContainer.className = 'username-grid';
+            elements.usernameList.className = 'marketplace-grid';
             let html = '';
             for (const username of usernames) {
                 let usernameStr = username.username || '';
                 if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
-                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
-                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+                const basedOnText = username.based_on || '-';
                 
+                // Ambil foto profil dari cache atau default
                 let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
                 if (!avatarUrl || !avatarUrl.startsWith('data:image')) {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
@@ -832,34 +823,36 @@
                 };
 
                 html += `
-                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
-                        <div class="username-card-image">
+                    <div class="marketplace-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
+                        <div class="marketplace-card-image">
                             <div class="card-avatar">
                                 <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                             </div>
                             <div class="card-username">@${escapeHtml(usernameStr)}</div>
                         </div>
-                        <div class="username-card-info">
+                        <div class="marketplace-card-info">
                             <div class="card-price-row">
                                 <div class="price-with-logo">
                                     <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
                                     <span class="card-price">${formatNumber(username.price)}</span>
                                 </div>
-                                <div class="card-status ${statusClass}">${statusText}</div>
+                                <div class="card-basedon">${escapeHtml(basedOnText)}</div>
                             </div>
                         </div>
                     </div>
                 `;
             }
-            elements.usernameContainer.innerHTML = html;
+            elements.usernameList.innerHTML = html;
             
-            // Attach click events
-            document.querySelectorAll('.username-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    if (e.target.closest('.card-action-btn')) return;
+            // Attach click events untuk card
+            document.querySelectorAll('.marketplace-card').forEach(card => {
+                const newCard = card.cloneNode(true);
+                card.parentNode.replaceChild(newCard, card);
+                newCard.addEventListener('click', (e) => {
+                    if (e.target.closest('.marketplace-buy-btn')) return;
                     try {
-                        const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
-                        showDetailPanel(usernameData);
+                        const usernameData = JSON.parse(newCard.dataset.username.replace(/&#39;/g, "'"));
+                        showMarketDetailPanel(usernameData);
                     } catch (err) {
                         console.error('Error parsing username data:', err);
                     }
@@ -867,19 +860,19 @@
             });
             
             // Fetch avatars async
-            setTimeout(() => fetchAllCardAvatars(), 200);
+            setTimeout(() => {
+                fetchAllMarketplaceAvatars();
+            }, 200);
             
         } else {
-            // List layout
-            elements.usernameContainer.className = 'username-list';
+            // LIST LAYOUT
+            elements.usernameList.className = 'marketplace-list';
             let html = '';
             for (const username of usernames) {
                 let usernameStr = username.username || '';
                 if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
-                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
-                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
                 const basedOnText = username.based_on || '-';
                 
                 let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
@@ -899,30 +892,32 @@
                 };
 
                 html += `
-                    <div class="username-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
-                        <div class="username-avatar">
-                            <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="username-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                    <div class="marketplace-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
+                        <div class="marketplace-avatar">
+                            <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="marketplace-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
-                        <div class="username-info">
-                            <div class="username-name">@${escapeHtml(usernameStr)}</div>
-                            <div class="username-basedon" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(basedOnText)}</div>
+                        <div class="marketplace-info">
+                            <div class="marketplace-name">@${escapeHtml(usernameStr)}</div>
+                            <div class="marketplace-basedon">${escapeHtml(basedOnText)}</div>
                         </div>
-                        <div class="username-price-wrapper">
+                        <div class="marketplace-price-wrapper">
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
-                            <span class="username-price">${formatNumber(username.price)}</span>
+                            <span class="marketplace-price">${formatNumber(username.price)}</span>
                         </div>
-                        <div class="username-status ${statusClass}">${statusText}</div>
                     </div>
                 `;
             }
-            elements.usernameContainer.innerHTML = html;
+            elements.usernameList.innerHTML = html;
             
-            // Attach click events
-            document.querySelectorAll('.username-item').forEach(item => {
-                item.addEventListener('click', (e) => {
+            // Attach click events untuk item
+            document.querySelectorAll('.marketplace-item').forEach(item => {
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                newItem.addEventListener('click', (e) => {
+                    if (e.target.closest('.marketplace-buy-btn-small')) return;
                     try {
-                        const usernameData = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
-                        showDetailPanel(usernameData);
+                        const usernameData = JSON.parse(newItem.dataset.username.replace(/&#39;/g, "'"));
+                        showMarketDetailPanel(usernameData);
                     } catch (err) {
                         console.error('Error parsing username data:', err);
                     }
@@ -930,7 +925,9 @@
             });
             
             // Fetch avatars async
-            setTimeout(() => fetchAllListAvatars(), 200);
+            setTimeout(() => {
+                fetchAllMarketplaceListAvatars();
+            }, 200);
         }
     }
 
@@ -1044,12 +1041,13 @@
         
         renderUsernames(filtered);
     }
-                                    
+                                        
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
         try {
             console.log('[DEBUG] Loading marketplace usernames...');
+            showLoading(true);
             
             const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
             const data = await response.json();
@@ -1057,41 +1055,49 @@
             console.log('[DEBUG] Load usernames response:', data);
             
             if (data.success && data.usernames) {
-                // Hanya username dengan status 'available'
+                // Hanya username dengan status 'available' untuk marketplace
                 allUsernames = data.usernames.filter(u => u.status === 'available');
-                console.log(`[DEBUG] Loaded ${allUsernames.length} available usernames`);
+                console.log(`[DEBUG] Loaded ${allUsernames.length} available usernames from total ${data.usernames.length}`);
                 
+                // Cek apakah ada username yang bisa ditampilkan
                 if (allUsernames.length === 0) {
+                    console.log('[DEBUG] No available usernames found');
                     const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                     if (emptyAnimationDiv) {
                         emptyAnimationDiv.style.display = 'block';
                         elements.usernameList.style.display = 'none';
                         loadMarketplaceTGSAnimation();
+                    } else {
+                        elements.usernameList.innerHTML = '<div class="loading-placeholder">Belum ada username yang tersedia</div>';
                     }
                 } else {
+                    console.log('[DEBUG] Rendering usernames...');
                     const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                     if (emptyAnimationDiv) emptyAnimationDiv.style.display = 'none';
                     elements.usernameList.style.display = 'block';
                     applyFiltersAndRender();
                 }
             } else {
-                console.log('[DEBUG] No usernames found');
+                console.log('[DEBUG] No usernames found or error:', data);
                 allUsernames = [];
                 const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                 if (emptyAnimationDiv) {
                     emptyAnimationDiv.style.display = 'block';
                     elements.usernameList.style.display = 'none';
                     loadMarketplaceTGSAnimation();
+                } else {
+                    elements.usernameList.innerHTML = '<div class="loading-placeholder">Gagal memuat data username</div>';
                 }
             }
         } catch (error) {
             console.error('[DEBUG] Error loading usernames:', error);
             elements.usernameList.innerHTML = '<div class="loading-placeholder">Gagal memuat data: ' + (error.message || 'Network error') + '</div>';
+        } finally {
+            showLoading(false);
         }
     }
 
     async function refreshAllAvatars() {
-        // Refresh untuk grid layout
         const gridAvatars = document.querySelectorAll('.username-card .card-avatar img.avatar-img');
         for (const img of gridAvatars) {
             const username = img.dataset.username;
@@ -1847,9 +1853,18 @@
             });
         }
         
+        // PERBAIKAN LAYOUT TOGGLE - dengan style yang benar
         if (gridBtn) {
             const newGridBtn = gridBtn.cloneNode(true);
             gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
+            
+            // Set initial active state
+            if (currentLayout === 'grid') {
+                newGridBtn.classList.add('active');
+            } else {
+                newGridBtn.classList.remove('active');
+            }
+            
             newGridBtn.addEventListener('click', () => {
                 currentLayout = 'grid';
                 localStorage.setItem('market_layout', 'grid');
@@ -1867,6 +1882,14 @@
         if (listBtn) {
             const newListBtn = listBtn.cloneNode(true);
             listBtn.parentNode.replaceChild(newListBtn, listBtn);
+            
+            // Set initial active state
+            if (currentLayout === 'list') {
+                newListBtn.classList.add('active');
+            } else {
+                newListBtn.classList.remove('active');
+            }
+            
             newListBtn.addEventListener('click', () => {
                 currentLayout = 'list';
                 localStorage.setItem('market_layout', 'list');
@@ -1882,18 +1905,49 @@
         }
     }
 
+    function closeFilterPanel() {
+        console.log('[DEBUG] closeFilterPanel called');
+        
+        if (filterPanel) {
+            filterPanel.classList.remove('open');
+            // Hapus panel setelah animasi selesai
+            setTimeout(() => {
+                if (filterPanel && filterPanel.parentNode) {
+                    filterPanel.remove();
+                }
+                filterPanel = null;
+            }, 300);
+        }
+        
+        if (filterOverlay) {
+            filterOverlay.classList.remove('active');
+        }
+        
+        document.body.classList.remove('filter-open');
+        hapticLight();
+    }
+
+    // ==================== FUNGSI SHOW FILTER PANEL (DENGAN DRAG TO CLOSE YANG BENAR) ====================
     function showFilterPanel(type) {
         currentFilterType = type;
         
         // Hapus panel yang sudah ada
-        if (filterPanel) filterPanel.remove();
+        if (filterPanel) {
+            filterPanel.remove();
+            filterPanel = null;
+        }
         
         // Buat overlay jika belum ada
         if (!filterOverlay) {
             filterOverlay = document.createElement('div');
             filterOverlay.className = 'filter-overlay';
             document.body.appendChild(filterOverlay);
-            filterOverlay.addEventListener('click', closeFilterPanel);
+            
+            // Klik overlay untuk menutup panel - PERBAIKAN
+            filterOverlay.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeFilterPanel();
+            });
         }
         
         // Salin nilai current ke temporary
@@ -1986,18 +2040,29 @@
         filterOverlay.classList.add('active');
         document.body.classList.add('filter-open');
         
+        // Trigger animation
         setTimeout(() => panel.classList.add('open'), 10);
         
         // Setup event listeners
         const closeBtn = panel.querySelector('.filter-close');
-        closeBtn.addEventListener('click', closeFilterPanel);
+        if (closeBtn) {
+            // Hapus listener lama dengan clone
+            const newCloseBtn = closeBtn.cloneNode(true);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+            newCloseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                closeFilterPanel();
+            });
+        }
         
         if (type === 'sort') {
             panel.querySelectorAll('[data-sort]').forEach(btn => {
-                btn.addEventListener('click', () => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', () => {
                     panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    tempSort = btn.dataset.sort;
+                    newBtn.classList.add('active');
+                    tempSort = newBtn.dataset.sort;
                 });
             });
         } else if (type === 'price') {
@@ -2005,89 +2070,114 @@
             const priceMax = panel.querySelector('#filterPriceMax');
             
             if (priceMin) {
-                priceMin.addEventListener('change', () => {
-                    tempPriceFilter.min = parseFloat(priceMin.value) || 0;
+                const newPriceMin = priceMin.cloneNode(true);
+                priceMin.parentNode.replaceChild(newPriceMin, priceMin);
+                newPriceMin.addEventListener('change', () => {
+                    tempPriceFilter.min = parseFloat(newPriceMin.value) || 0;
                 });
             }
             if (priceMax) {
-                priceMax.addEventListener('change', () => {
-                    tempPriceFilter.max = parseFloat(priceMax.value) || 9999;
+                const newPriceMax = priceMax.cloneNode(true);
+                priceMax.parentNode.replaceChild(newPriceMax, priceMax);
+                newPriceMax.addEventListener('change', () => {
+                    tempPriceFilter.max = parseFloat(newPriceMax.value) || 9999;
                 });
             }
         } else if (type === 'basedon') {
             panel.querySelectorAll('[data-basedon]').forEach(btn => {
-                btn.addEventListener('click', () => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', () => {
                     panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    tempBasedOnFilter = btn.dataset.basedon;
+                    newBtn.classList.add('active');
+                    tempBasedOnFilter = newBtn.dataset.basedon;
                 });
             });
         }
         
         // Reset button
         const resetBtn = panel.querySelector('.filter-reset');
-        resetBtn.addEventListener('click', () => {
-            if (currentFilterType === 'sort') {
-                tempSort = 'default';
-                panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
-                panel.querySelector('[data-sort="default"]').classList.add('active');
-            } else if (currentFilterType === 'price') {
-                tempPriceFilter = { min: 0, max: 9999 };
-                const priceMin = panel.querySelector('#filterPriceMin');
-                const priceMax = panel.querySelector('#filterPriceMax');
-                if (priceMin) priceMin.value = '';
-                if (priceMax) priceMax.value = '';
-            } else if (currentFilterType === 'basedon') {
-                tempBasedOnFilter = 'all';
-                panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
-                panel.querySelector('[data-basedon="all"]').classList.add('active');
-            }
-        });
+        if (resetBtn) {
+            const newResetBtn = resetBtn.cloneNode(true);
+            resetBtn.parentNode.replaceChild(newResetBtn, resetBtn);
+            newResetBtn.addEventListener('click', () => {
+                if (currentFilterType === 'sort') {
+                    tempSort = 'default';
+                    panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
+                    panel.querySelector('[data-sort="default"]').classList.add('active');
+                } else if (currentFilterType === 'price') {
+                    tempPriceFilter = { min: 0, max: 9999 };
+                    const priceMinInput = panel.querySelector('#filterPriceMin');
+                    const priceMaxInput = panel.querySelector('#filterPriceMax');
+                    if (priceMinInput) priceMinInput.value = '';
+                    if (priceMaxInput) priceMaxInput.value = '';
+                } else if (currentFilterType === 'basedon') {
+                    tempBasedOnFilter = 'all';
+                    panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
+                    panel.querySelector('[data-basedon="all"]').classList.add('active');
+                }
+            });
+        }
         
         // Apply button
         const applyBtn = panel.querySelector('.filter-apply');
-        applyBtn.addEventListener('click', () => {
-            if (currentFilterType === 'sort') {
-                currentSort = tempSort;
-            } else if (currentFilterType === 'price') {
-                currentPriceFilter = { ...tempPriceFilter };
-            } else if (currentFilterType === 'basedon') {
-                currentBasedOnFilter = tempBasedOnFilter;
-            }
-            applyFiltersAndRender();
-            closeFilterPanel();
-            updateFilterBadge();
-        });
-        
-        // Drag to close
-        const dragHandle = panel.querySelector('.filter-drag-handle');
-        let startY = 0, currentY = 0, isDragging = false;
-        
-        dragHandle.addEventListener('touchstart', (e) => {
-            startY = e.touches[0].clientY;
-            isDragging = true;
-            panel.style.transition = 'none';
-            hapticLight();
-        });
-        
-        dragHandle.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const deltaY = currentY - startY;
-            if (deltaY > 0) {
-                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
-            }
-        });
-        
-        dragHandle.addEventListener('touchend', () => {
-            isDragging = false;
-            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-            if (currentY - startY > 100) {
+        if (applyBtn) {
+            const newApplyBtn = applyBtn.cloneNode(true);
+            applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+            newApplyBtn.addEventListener('click', () => {
+                if (currentFilterType === 'sort') {
+                    currentSort = tempSort;
+                } else if (currentFilterType === 'price') {
+                    currentPriceFilter = { ...tempPriceFilter };
+                } else if (currentFilterType === 'basedon') {
+                    currentBasedOnFilter = tempBasedOnFilter;
+                }
+                applyFiltersAndRender();
                 closeFilterPanel();
-            } else {
-                panel.style.transform = '';
-            }
-        });
+                updateFilterBadge();
+            });
+        }
+        
+        // Drag to close - PERBAIKAN DRAG HANDLER
+        const dragHandle = panel.querySelector('.filter-drag-handle');
+        if (dragHandle) {
+            let startY = 0, currentY = 0, isDragging = false;
+            
+            const onTouchStart = (e) => {
+                startY = e.touches[0].clientY;
+                isDragging = true;
+                panel.style.transition = 'none';
+                hapticLight();
+            };
+            
+            const onTouchMove = (e) => {
+                if (!isDragging) return;
+                currentY = e.touches[0].clientY;
+                const deltaY = currentY - startY;
+                if (deltaY > 0) {
+                    panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+                }
+            };
+            
+            const onTouchEnd = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+                if (currentY - startY > 100) {
+                    closeFilterPanel();
+                } else {
+                    panel.style.transform = '';
+                }
+            };
+            
+            // Hapus listener lama
+            const newDragHandle = dragHandle.cloneNode(true);
+            dragHandle.parentNode.replaceChild(newDragHandle, dragHandle);
+            
+            newDragHandle.addEventListener('touchstart', onTouchStart);
+            newDragHandle.addEventListener('touchmove', onTouchMove);
+            newDragHandle.addEventListener('touchend', onTouchEnd);
+        }
         
         hapticLight();
     }
@@ -2105,7 +2195,7 @@
         const maxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
         filtered = filtered.filter(u => u.price >= minPrice && u.price <= maxPrice);
         
-        // Based on filter - PERBAIKAN INI
+        // Based on filter
         if (currentBasedOnFilter && currentBasedOnFilter !== 'all') {
             filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
         }
@@ -2120,6 +2210,7 @@
             });
         }
         
+        console.log(`[DEBUG] Filtered ${filtered.length} usernames from ${allUsernames.length} total`);
         renderUsernames(filtered);
     }
 
@@ -2830,23 +2921,11 @@
     }
 
     function loadMarketplaceTGSAnimation() {
-        const container = document.getElementById('emptyMarketplaceAnimation');
+        const container = document.getElementById('marketplaceEmptyAnimationInner');
         if (!container) return;
         
-        // Hapus semua isi sebelumnya
+        // Clear container
         container.innerHTML = '';
-        
-        // Buat struktur empty state - SATU SUMBER
-        container.innerHTML = `
-            <div class="empty-state" style="padding: 40px 20px;">
-                <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
-                <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
-                <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
-            </div>
-        `;
-        
-        const animationDiv = document.getElementById('marketplaceEmptyAnimationInner');
-        if (!animationDiv) return;
         
         // Load libraries yang diperlukan
         function loadLibraries() {
@@ -2890,7 +2969,7 @@
                 const animationData = JSON.parse(decompressed);
                 
                 window.lottie.loadAnimation({
-                    container: animationDiv,
+                    container: container,
                     renderer: 'svg',
                     loop: true,
                     autoplay: true,
@@ -2899,15 +2978,9 @@
                         preserveAspectRatio: 'xMidYMid meet'
                     }
                 });
-                
-                // Sesuaikan posisi sticker setelah animasi dimuat
-                setTimeout(() => {
-                    adjustStickerPositionInBorder();
-                }, 100);
-                
             } catch (error) {
                 console.error('Error loading TGS file:', error);
-                animationDiv.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
+                container.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
             }
         }
         
@@ -2915,7 +2988,7 @@
             loadTGSFile();
         }).catch(err => {
             console.error('Error loading libraries:', err);
-            animationDiv.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
+            container.innerHTML = '<i class="fas fa-store" style="font-size: 48px; color: var(--text-muted);"></i>';
         });
     }
 

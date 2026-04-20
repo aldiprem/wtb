@@ -657,15 +657,57 @@ def get_withdrawal_history(user_id):
 
 # ==================== USERNAME MARKETPLACE ====================
 
-@winedash_bp.route('/usernames', methods=['GET'])
+@winedash_bp.route('/usernames', methods=['GET', 'OPTIONS'])
 def get_usernames():
-    """Get all usernames for storage (including unlisted)"""
+    """Get all usernames for marketplace and storage"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
     try:
         category = request.args.get('category')
-        limit = request.args.get('limit', 100, type=int)
+        limit = request.args.get('limit', 200, type=int)
         
-        # Gunakan method yang sama untuk mendapatkan semua usernames
-        usernames = db.get_available_usernames(category, limit)
+        print(f"[DEBUG] get_usernames called - category: {category}, limit: {limit}")
+        
+        with sqlite3.connect(db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            if category:
+                cursor.execute('''
+                    SELECT id, username, based_on, price, seller_id, seller_wallet, status, created_at
+                    FROM usernames 
+                    WHERE category = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                ''', (category, limit))
+            else:
+                cursor.execute('''
+                    SELECT id, username, based_on, price, seller_id, seller_wallet, status, created_at
+                    FROM usernames 
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                ''', (limit,))
+            
+            rows = cursor.fetchall()
+            usernames = []
+            for row in rows:
+                usernames.append({
+                    'id': int(row['id']),
+                    'username': str(row['username']) if row['username'] else '',
+                    'based_on': str(row['based_on']) if row['based_on'] else '',
+                    'price': float(row['price']) if row['price'] else 0.0,
+                    'seller_id': int(row['seller_id']) if row['seller_id'] else None,
+                    'seller_wallet': str(row['seller_wallet']) if row['seller_wallet'] else '',
+                    'status': str(row['status']) if row['status'] else 'available',
+                    'created_at': str(row['created_at']) if row['created_at'] else None
+                })
+        
+        print(f"[DEBUG] Returning {len(usernames)} usernames")
         
         return jsonify({
             'success': True,
