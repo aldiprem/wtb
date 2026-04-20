@@ -830,19 +830,19 @@ button:disabled {
     }
 }
 
-/* ==================== MARKETPLACE - MENGGUNAKAN STYLE SAMA DENGAN STORAGE ==================== */
-
 /* ==================== PERBAIKAN MARKETPLACE GRID SPACING ==================== */
 .marketplace-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 12px !important;
     margin-bottom: 20px !important;
+    border-radius: 16px;
+    overflow: hidden;
 }
 
-/* Margin bottom untuk setiap card */
 .marketplace-grid .marketplace-card {
     margin-bottom: 0 !important;
+    border-radius: 14px;
 }
 
 /* Pastikan container list memiliki margin bottom */
@@ -869,25 +869,6 @@ button:disabled {
     position: relative;
     overflow: hidden;
     font-family: monospace;
-}
-
-/* Border 3D dengan gradient */
-.card-telegram-btn::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 24px;
-    padding: 1px;
-    background: linear-gradient(160deg, 
-        rgba(255, 255, 255, 0.3) 0%, 
-        rgba(255, 255, 255, 0) 25%,
-        rgba(255, 255, 255, 0) 75%, 
-        rgba(255, 255, 255, 0.3) 100%);
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
 }
 
 .card-telegram-btn i {
@@ -1131,8 +1112,8 @@ button:disabled {
     background: var(--text);
     padding: 4px 12px; /* Dikurangi dari 5px 14px */
     border-radius: 5px;
-    margin-top: 5px; /* Dikurangi dari 10px */
-    margin-bottom: -12px; /* Disesuaikan */
+    margin-top: -15px;
+    margin-bottom: -5px; /* Disesuaikan */
     margin-left: auto;
     margin-right: auto;
     position: relative;
