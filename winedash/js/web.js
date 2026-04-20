@@ -32,6 +32,8 @@
     let tempSort = 'default';
     let tempPriceFilter = { min: 0, max: 9999 };
     let tempBasedOnFilter = 'all';
+    let filterPanelOverlay = null;
+    let filterSummaryOverlay = null;
 
     // DOM Elements
     const elements = {
@@ -1736,41 +1738,60 @@
         const gridBtn = document.getElementById('marketGridBtn');
         const listBtn = document.getElementById('marketListBtn');
         
+        // Hapus event listener lama dengan clone
         if (sortBtn) {
-            sortBtn.addEventListener('click', () => {
+            const newSortBtn = sortBtn.cloneNode(true);
+            sortBtn.parentNode.replaceChild(newSortBtn, sortBtn);
+            newSortBtn.addEventListener('click', () => {
                 showFilterPanel('sort');
             });
         }
         
         if (priceBtn) {
-            priceBtn.addEventListener('click', () => {
+            const newPriceBtn = priceBtn.cloneNode(true);
+            priceBtn.parentNode.replaceChild(newPriceBtn, priceBtn);
+            newPriceBtn.addEventListener('click', () => {
                 showFilterPanel('price');
             });
         }
         
         if (basedOnBtn) {
-            basedOnBtn.addEventListener('click', () => {
+            const newBasedOnBtn = basedOnBtn.cloneNode(true);
+            basedOnBtn.parentNode.replaceChild(newBasedOnBtn, basedOnBtn);
+            newBasedOnBtn.addEventListener('click', () => {
                 showFilterPanel('basedon');
             });
         }
         
         if (gridBtn) {
-            gridBtn.addEventListener('click', () => {
+            const newGridBtn = gridBtn.cloneNode(true);
+            gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
+            newGridBtn.addEventListener('click', () => {
                 currentLayout = 'grid';
                 localStorage.setItem('market_layout', 'grid');
-                gridBtn.classList.add('active');
-                listBtn.classList.remove('active');
+                newGridBtn.classList.add('active');
+                if (listBtn) {
+                    const newListBtn = listBtn.cloneNode(true);
+                    listBtn.parentNode.replaceChild(newListBtn, listBtn);
+                    newListBtn.classList.remove('active');
+                }
                 applyFiltersAndRender();
                 hapticLight();
             });
         }
         
         if (listBtn) {
-            listBtn.addEventListener('click', () => {
+            const newListBtn = listBtn.cloneNode(true);
+            listBtn.parentNode.replaceChild(newListBtn, listBtn);
+            newListBtn.addEventListener('click', () => {
                 currentLayout = 'list';
                 localStorage.setItem('market_layout', 'list');
-                listBtn.classList.add('active');
-                gridBtn.classList.remove('active');
+                newListBtn.classList.add('active');
+                if (gridBtn) {
+                    const newGridBtn = gridBtn.cloneNode(true);
+                    gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
+                    newGridBtn.classList.remove('active');
+                }
                 applyFiltersAndRender();
                 hapticLight();
             });
@@ -2000,244 +2021,6 @@
         hapticLight();
     }
 
-    function showFilterPanel() {
-        const existingPanel = document.querySelector('.filter-panel');
-        if (existingPanel) existingPanel.remove();
-        
-        if (!filterOverlay) {
-            filterOverlay = document.createElement('div');
-            filterOverlay.className = 'filter-overlay';
-            document.body.appendChild(filterOverlay);
-            filterOverlay.addEventListener('click', closeFilterPanel);
-        }
-        
-        // Ambil current price range dari state
-        let currentMinPrice = currentPriceFilter.min !== undefined ? currentPriceFilter.min : 0;
-        let currentMaxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
-        
-        const panel = document.createElement('div');
-        panel.className = 'filter-panel';
-        panel.innerHTML = `
-            <div class="filter-drag-handle"></div>
-            <div class="filter-header">
-                <h3><i class="fas fa-filter"></i> Filter & Sort</h3>
-                <button class="filter-close">&times;</button>
-            </div>
-            <div class="filter-content">
-                <div class="filter-section">
-                    <div class="filter-section-title">Sort By</div>
-                    <div class="filter-options filter-options-scroll">
-                        <button class="filter-option ${currentSort === 'default' ? 'active' : ''}" data-sort="default">
-                            <i class="fas fa-clock"></i> Default
-                        </button>
-                        <button class="filter-option ${currentSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
-                            <i class="fas fa-arrow-up"></i> Price ↑
-                        </button>
-                        <button class="filter-option ${currentSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
-                            <i class="fas fa-arrow-down"></i> Price ↓
-                        </button>
-                        <button class="filter-option ${currentSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
-                            <i class="fas fa-sort-alpha-down"></i> Name A-Z
-                        </button>
-                    </div>
-                </div>
-                <div class="filter-section">
-                    <div class="filter-section-title">Price Range (TON)</div>
-                    <div class="price-range-container">
-                        <div class="price-inputs">
-                            <div class="price-input-group">
-                                <label>From</label>
-                                <input type="number" id="priceFromInput" class="filter-price-input" value="${currentMinPrice}" min="0" step="0.1">
-                            </div>
-                            <div class="price-input-group">
-                                <label>To</label>
-                                <input type="number" id="priceToInput" class="filter-price-input" value="${currentMaxPrice}" min="0" step="0.1">
-                            </div>
-                        </div>
-                        <div class="price-slider-container">
-                            <div class="slider-track"></div>
-                            <input type="range" id="priceSliderFrom" class="price-slider" min="0" max="10000" step="0.1" value="${currentMinPrice}">
-                            <input type="range" id="priceSliderTo" class="price-slider" min="0" max="10000" step="0.1" value="${currentMaxPrice}">
-                        </div>
-                        <div class="price-range-values">
-                            <span id="minPriceDisplay">${currentMinPrice}</span> TON - <span id="maxPriceDisplay">${currentMaxPrice >= 9999 ? '9999+' : currentMaxPrice}</span> TON
-                        </div>
-                    </div>
-                </div>
-                <div class="filter-section">
-                    <div class="filter-section-title">Layout</div>
-                    <div class="filter-options filter-options-scroll">
-                        <button class="filter-option ${currentLayout === 'grid' ? 'active' : ''}" data-layout="grid">
-                            <i class="fas fa-th"></i> Grid
-                        </button>
-                        <button class="filter-option ${currentLayout === 'list' ? 'active' : ''}" data-layout="list">
-                            <i class="fas fa-list"></i> List
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="filter-actions">
-                <button class="filter-reset">Reset All</button>
-                <button class="filter-apply">Apply</button>
-            </div>
-        `;
-        
-        document.body.appendChild(panel);
-        filterOverlay.classList.add('active');
-        document.body.classList.add('filter-open');
-        
-        setTimeout(() => panel.classList.add('open'), 10);
-        
-        // Setup slider logic
-        const sliderFrom = panel.querySelector('#priceSliderFrom');
-        const sliderTo = panel.querySelector('#priceSliderTo');
-        const inputFrom = panel.querySelector('#priceFromInput');
-        const inputTo = panel.querySelector('#priceToInput');
-        const minDisplay = panel.querySelector('#minPriceDisplay');
-        const maxDisplay = panel.querySelector('#maxPriceDisplay');
-        
-        function updateFrom(value) {
-            let val = parseFloat(value);
-            let maxVal = parseFloat(sliderTo.value);
-            if (isNaN(val)) val = 0;
-            if (val > maxVal) val = maxVal;
-            sliderFrom.value = val;
-            inputFrom.value = val.toFixed(2);
-            minDisplay.textContent = val.toFixed(2);
-        }
-        
-        function updateTo(value) {
-            let val = parseFloat(value);
-            let minVal = parseFloat(sliderFrom.value);
-            if (isNaN(val)) val = 10000;
-            if (val < minVal) val = minVal;
-            sliderTo.value = val;
-            inputTo.value = val.toFixed(2);
-            maxDisplay.textContent = val >= 9999 ? '9999+' : val.toFixed(2);
-        }
-        
-        // Hapus event listener lama dengan clone
-        const newSliderFrom = sliderFrom.cloneNode(true);
-        sliderFrom.parentNode.replaceChild(newSliderFrom, sliderFrom);
-        const newSliderTo = sliderTo.cloneNode(true);
-        sliderTo.parentNode.replaceChild(newSliderTo, sliderTo);
-        
-        newSliderFrom.addEventListener('input', (e) => updateFrom(e.target.value));
-        newSliderTo.addEventListener('input', (e) => updateTo(e.target.value));
-        
-        const newInputFrom = inputFrom.cloneNode(true);
-        inputFrom.parentNode.replaceChild(newInputFrom, inputFrom);
-        const newInputTo = inputTo.cloneNode(true);
-        inputTo.parentNode.replaceChild(newInputTo, inputTo);
-        
-        newInputFrom.addEventListener('change', (e) => updateFrom(e.target.value));
-        newInputTo.addEventListener('change', (e) => updateTo(e.target.value));
-        
-        // Close button
-        const closeBtn = panel.querySelector('.filter-close');
-        const newCloseBtn = closeBtn.cloneNode(true);
-        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-        newCloseBtn.addEventListener('click', closeFilterPanel);
-        
-        // Reset button
-        const resetBtn = panel.querySelector('.filter-reset');
-        const newResetBtn = resetBtn.cloneNode(true);
-        resetBtn.parentNode.replaceChild(newResetBtn, resetBtn);
-        newResetBtn.addEventListener('click', () => {
-            currentSort = 'default';
-            currentPriceFilter = { min: 0, max: 9999 };
-            currentLayout = localStorage.getItem('market_layout') || 'grid';
-            updateFrom(0);
-            updateTo(10000);
-            applyFiltersAndRender();
-            closeFilterPanel();
-        });
-        
-        // Apply button
-        const applyBtn = panel.querySelector('.filter-apply');
-        const newApplyBtn = applyBtn.cloneNode(true);
-        applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
-        newApplyBtn.addEventListener('click', () => {
-            currentPriceFilter = {
-                min: parseFloat(sliderFrom.value),
-                max: parseFloat(sliderTo.value)
-            };
-            applyFiltersAndRender();
-            closeFilterPanel();
-        });
-        
-        // Sort options
-        panel.querySelectorAll('[data-sort]').forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.addEventListener('click', () => {
-                panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
-                newBtn.classList.add('active');
-                currentSort = newBtn.dataset.sort;
-            });
-        });
-        
-        // Layout options
-        panel.querySelectorAll('[data-layout]').forEach(btn => {
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            newBtn.addEventListener('click', () => {
-                panel.querySelectorAll('[data-layout]').forEach(b => b.classList.remove('active'));
-                newBtn.classList.add('active');
-                currentLayout = newBtn.dataset.layout;
-                localStorage.setItem('market_layout', currentLayout);
-                applyFiltersAndRender();
-            });
-        });
-        
-        // Drag to close
-        const dragHandle = panel.querySelector('.filter-drag-handle');
-        let startY = 0, currentY = 0, isDragging = false;
-        
-        const onTouchStart = (e) => {
-            startY = e.touches[0].clientY;
-            isDragging = true;
-            panel.style.transition = 'none';
-            hapticLight();
-        };
-        
-        const onTouchMove = (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const deltaY = currentY - startY;
-            if (deltaY > 0) {
-                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
-            }
-        };
-        
-        const onTouchEnd = () => {
-            isDragging = false;
-            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-            if (currentY - startY > 100) {
-                closeFilterPanel();
-            } else {
-                panel.style.transform = '';
-            }
-        };
-        
-        dragHandle.addEventListener('touchstart', onTouchStart);
-        dragHandle.addEventListener('touchmove', onTouchMove);
-        dragHandle.addEventListener('touchend', onTouchEnd);
-        
-        hapticLight();
-    }
-
-    function closeFilterPanel() {
-        const panel = document.querySelector('.filter-panel');
-        if (panel) {
-            panel.classList.remove('open');
-            setTimeout(() => panel.remove(), 300);
-        }
-        if (filterOverlay) filterOverlay.classList.remove('active');
-        document.body.classList.remove('filter-open');
-        hapticLight();
-    }
-
     function applyFiltersAndRender() {
         if (!allUsernames || allUsernames.length === 0) {
             renderUsernames([]);
@@ -2245,14 +2028,18 @@
         }
         
         let filtered = [...allUsernames];
+        
+        // Price filter
         const minPrice = currentPriceFilter.min !== undefined ? currentPriceFilter.min : 0;
         const maxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
         filtered = filtered.filter(u => u.price >= minPrice && u.price <= maxPrice);
         
+        // Based on filter
         if (currentBasedOnFilter && currentBasedOnFilter !== 'all') {
             filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
         }
         
+        // Sort
         if (currentSort !== 'default') {
             filtered.sort((a, b) => {
                 if (currentSort === 'price_asc') return a.price - b.price;
@@ -3700,7 +3487,7 @@
             setupSearch();
             setupWalletEventListeners();
             initWalletPanels();
-            setupMarketplaceFilterBar();
+            setupMarketplaceFilterBar();  // Panggil setelah DOM siap
             
             telegramUser = getTelegramUserFromWebApp();
             if (telegramUser) {
