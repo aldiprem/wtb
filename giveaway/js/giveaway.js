@@ -2040,6 +2040,23 @@
         document.head.appendChild(style);
     };
 
+    function backToLobby() {
+        hapticMedium();
+        
+        if (giveawayData && giveawayData.code) {
+            localStorage.removeItem(`giveaway_links_${giveawayData.code}`);
+        }
+        
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+        }
+        
+        stopUserStatePolling();
+        
+        window.location.href = '/giveaway';
+    }
+
     function showUserProfileModal(userId, username, firstName, lastName, photoUrl = null) {
         hapticMedium();
         
@@ -2213,6 +2230,24 @@
         }
     }
 
+    function setupBackButton() {
+        const backBtn = document.getElementById('backToLobbyBtn');
+        if (backBtn) {
+            // Hapus event listener lama
+            const newBackBtn = backBtn.cloneNode(true);
+            backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+            
+            newBackBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                hapticMedium();
+                
+                // Redirect ke halaman lobby
+                window.location.href = '/giveaway';
+            });
+        }
+    }
+
     function init() {
         initTelegram();
         addAvatarsStyles();
@@ -2234,19 +2269,12 @@
                 loadUserStats();
             }
             
-            // Setup modal
             setupParticipantsModal();
             setupViewAllButton();
-            
-            // 🔥 Setup refresh button (reload page)
             setupRefreshButton();
-            
-            // 🔥 Setup show all chats button (akan dipanggil lagi setelah renderChatInfo)
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
-                
-                // Fetch participants untuk menampilkan avatar stack
                 fetchParticipants();
                 
                 if (giveawayData && giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
@@ -2257,6 +2285,18 @@
             console.error('Init error:', error);
             showToast('Terjadi kesalahan', 'error');
             showLoading(false);
+        }
+        
+        const backBtn = document.getElementById('backToLobbyBtn');
+        if (backBtn) {
+            const newBackBtn = backBtn.cloneNode(true);
+            backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+            
+            newBackBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = '/giveaway';
+            });
         }
     }
     init();
