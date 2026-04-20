@@ -1957,14 +1957,33 @@
                 hapticLight();
             });
         });
-        
-        // Mode toggle
+                
+        // Mode toggle (Fix Price / Offers)
         elements.modeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 elements.modeBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 currentMode = btn.dataset.mode;
-                loadUsernames();
+                
+                const fixPriceSection = document.getElementById('fixPriceSection');
+                const offersSection = document.getElementById('offersSection');
+                
+                if (currentMode === 'onchain') {
+                    // Fix Price mode
+                    if (fixPriceSection) fixPriceSection.style.display = 'block';
+                    if (offersSection) offersSection.style.display = 'none';
+                    loadUsernames();
+                } else {
+                    // Offers mode
+                    if (fixPriceSection) fixPriceSection.style.display = 'none';
+                    if (offersSection) offersSection.style.display = 'block';
+                    // Initialize offers if not already
+                    if (typeof window.initOffers === 'function') {
+                        window.initOffers();
+                    } else if (typeof Offers !== 'undefined' && Offers.init) {
+                        Offers.init();
+                    }
+                }
                 hapticLight();
             });
         });
@@ -2822,6 +2841,31 @@
         elements.listLayoutBtn = document.getElementById('listLayoutBtn');
         elements.modeBtns = document.querySelectorAll('.mode-btn');
     }
+
+    // ==================== OFFERS INTEGRATION ====================
+
+    // Export init function for offers module
+    window.initOffers = function() {
+        // Load offers.js dynamically if not loaded
+        if (typeof window.OffersLoaded === 'undefined') {
+            const script = document.createElement('script');
+            script.src = '/winedash/js/offers.js';
+            script.onload = () => {
+                window.OffersLoaded = true;
+                console.log('✅ Offers module loaded');
+            };
+            document.head.appendChild(script);
+        }
+    };
+
+    // Add CSS for offers if not present
+    if (!document.querySelector('link[href="/winedash/css/offers.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/winedash/css/offers.css';
+        document.head.appendChild(link);
+    }
+
     window.addEventListener('beforeunload', () => {
         stopAutoRefresh();
     });

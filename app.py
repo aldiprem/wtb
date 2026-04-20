@@ -35,6 +35,7 @@ from services.crash_service import crash_bp
 from games.services.games_service import games_bp
 from giveaway.services.create_service import create_bp, set_bot_client
 from winedash.services.web_service import winedash_bp
+from winedash.services.offers_service import offers_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -240,8 +241,14 @@ app.register_blueprint(crash_bp, url_prefix='/api/crash')
 app.register_blueprint(games_bp)
 app.register_blueprint(create_bp, url_prefix='/api/giveaway')
 app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
+app.register_blueprint(offers_bp, url_prefix='/api/offers')
 
 # ==================== WINEDASH ROUTES ====================
+
+@app.route('/winedash/offers')
+def serve_winedash_offers():
+    """Halaman Offers Winedash"""
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'html'), 'offers.html')
 
 @app.route('/winedash/storage')
 def serve_winedash_storage():

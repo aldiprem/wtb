@@ -67,10 +67,56 @@
 
         <!-- Mode Toggle: On-Chain / Off-Chain -->
         <div class="mode-toggle">
-            <button class="mode-btn active" data-mode="onchain">On-Chain</button>
-            <button class="mode-btn" data-mode="offchain">Off-Chain</button>
+            <button class="mode-btn active" data-mode="onchain">Fix Price</button>
+            <button class="mode-btn" data-mode="offchain">Offers</button>
         </div>
 
+        <!-- Offers Section (ditampilkan saat tab Offers aktif) -->
+        <div id="offersSection" style="display: none;">
+            <!-- Action Row untuk Offers -->
+            <div class="offers-action-row">
+                <button class="offers-action-btn active" data-offers-tab="offers">
+                    <i class="fas fa-inbox"></i>
+                    <span>Offer</span>
+                </button>
+                <button class="offers-action-btn" data-offers-tab="my-offers">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>My Offer</span>
+                </button>
+                <button class="offers-action-btn" data-offers-tab="my-bids">
+                    <i class="fas fa-gavel"></i>
+                    <span>My Bid</span>
+                </button>
+                <button class="offers-action-btn" data-offers-tab="history">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                </button>
+            </div>
+
+            <!-- Search Bar untuk Offers -->
+            <div class="search-container">
+                <input type="text" class="search-input" id="offersSearchInput" placeholder="🔍 Cari username...">
+                <button class="search-apply-btn" id="offersSearchApplyBtn">Apply</button>
+            </div>
+
+            <!-- Action Bar untuk Offers (layout toggle) -->
+            <div class="action-bar">
+                <div class="layout-toggle">
+                    <button class="layout-btn active" data-layout="grid" id="offersGridBtn">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="layout-btn" data-layout="list" id="offersListBtn">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Offers Container -->
+            <div id="offersContainer" style="width: 100%; min-height: 400px;">
+                <div class="loading-placeholder">Memuat offers...</div>
+            </div>
+        </div>
+        
         <!-- Action Row Baru - Tombol-tombol aksi -->
         <div class="action-row">
             <button class="action-btn add-action-btn" id="addUsernameActionBtn">
