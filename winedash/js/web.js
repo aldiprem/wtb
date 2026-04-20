@@ -22,11 +22,6 @@
     let withdrawPanel = null;
     let walletPanelOverlay = null;
     let marketDetailOverlay = null;
-    let filterPanelOverlay = null;
-    let activeFilterCount = 0;
-    let currentBasedOnFilter = 'all';
-    let availableBasedOnList = [];
-    let marketDetailOverlay = null;
     let filterSummaryOverlay = null;
     let activeFilterCount = 0;
     let currentBasedOnFilter = 'all';
@@ -1713,6 +1708,7 @@
         function updateFrom(value) {
             let val = parseFloat(value);
             let maxVal = parseFloat(sliderTo.value);
+            if (isNaN(val)) val = 0;
             if (val > maxVal) val = maxVal;
             sliderFrom.value = val;
             inputFrom.value = val.toFixed(2);
@@ -1722,25 +1718,41 @@
         function updateTo(value) {
             let val = parseFloat(value);
             let minVal = parseFloat(sliderFrom.value);
+            if (isNaN(val)) val = 10000;
             if (val < minVal) val = minVal;
             sliderTo.value = val;
             inputTo.value = val.toFixed(2);
             maxDisplay.textContent = val >= 9999 ? '9999+' : val.toFixed(2);
         }
         
-        sliderFrom.addEventListener('input', (e) => updateFrom(e.target.value));
-        sliderTo.addEventListener('input', (e) => updateTo(e.target.value));
+        // Hapus event listener lama dengan clone
+        const newSliderFrom = sliderFrom.cloneNode(true);
+        sliderFrom.parentNode.replaceChild(newSliderFrom, sliderFrom);
+        const newSliderTo = sliderTo.cloneNode(true);
+        sliderTo.parentNode.replaceChild(newSliderTo, sliderTo);
         
-        inputFrom.addEventListener('change', (e) => updateFrom(e.target.value));
-        inputTo.addEventListener('change', (e) => updateTo(e.target.value));
+        newSliderFrom.addEventListener('input', (e) => updateFrom(e.target.value));
+        newSliderTo.addEventListener('input', (e) => updateTo(e.target.value));
+        
+        const newInputFrom = inputFrom.cloneNode(true);
+        inputFrom.parentNode.replaceChild(newInputFrom, inputFrom);
+        const newInputTo = inputTo.cloneNode(true);
+        inputTo.parentNode.replaceChild(newInputTo, inputTo);
+        
+        newInputFrom.addEventListener('change', (e) => updateFrom(e.target.value));
+        newInputTo.addEventListener('change', (e) => updateTo(e.target.value));
         
         // Close button
         const closeBtn = panel.querySelector('.filter-close');
-        closeBtn.addEventListener('click', closeFilterPanel);
+        const newCloseBtn = closeBtn.cloneNode(true);
+        closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+        newCloseBtn.addEventListener('click', closeFilterPanel);
         
         // Reset button
         const resetBtn = panel.querySelector('.filter-reset');
-        resetBtn.addEventListener('click', () => {
+        const newResetBtn = resetBtn.cloneNode(true);
+        resetBtn.parentNode.replaceChild(newResetBtn, resetBtn);
+        newResetBtn.addEventListener('click', () => {
             currentSort = 'default';
             currentPriceFilter = { min: 0, max: 9999 };
             currentLayout = localStorage.getItem('market_layout') || 'grid';
@@ -1752,7 +1764,9 @@
         
         // Apply button
         const applyBtn = panel.querySelector('.filter-apply');
-        applyBtn.addEventListener('click', () => {
+        const newApplyBtn = applyBtn.cloneNode(true);
+        applyBtn.parentNode.replaceChild(newApplyBtn, applyBtn);
+        newApplyBtn.addEventListener('click', () => {
             currentPriceFilter = {
                 min: parseFloat(sliderFrom.value),
                 max: parseFloat(sliderTo.value)
@@ -1763,19 +1777,23 @@
         
         // Sort options
         panel.querySelectorAll('[data-sort]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', () => {
                 panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentSort = btn.dataset.sort;
+                newBtn.classList.add('active');
+                currentSort = newBtn.dataset.sort;
             });
         });
         
         // Layout options
         panel.querySelectorAll('[data-layout]').forEach(btn => {
-            btn.addEventListener('click', () => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            newBtn.addEventListener('click', () => {
                 panel.querySelectorAll('[data-layout]').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentLayout = btn.dataset.layout;
+                newBtn.classList.add('active');
+                currentLayout = newBtn.dataset.layout;
                 localStorage.setItem('market_layout', currentLayout);
                 applyFiltersAndRender();
             });
@@ -1785,23 +1803,23 @@
         const dragHandle = panel.querySelector('.filter-drag-handle');
         let startY = 0, currentY = 0, isDragging = false;
         
-        dragHandle.addEventListener('touchstart', (e) => {
+        const onTouchStart = (e) => {
             startY = e.touches[0].clientY;
             isDragging = true;
             panel.style.transition = 'none';
             hapticLight();
-        });
+        };
         
-        dragHandle.addEventListener('touchmove', (e) => {
+        const onTouchMove = (e) => {
             if (!isDragging) return;
             currentY = e.touches[0].clientY;
             const deltaY = currentY - startY;
             if (deltaY > 0) {
                 panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
             }
-        });
+        };
         
-        dragHandle.addEventListener('touchend', () => {
+        const onTouchEnd = () => {
             isDragging = false;
             panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
             if (currentY - startY > 100) {
@@ -1809,7 +1827,11 @@
             } else {
                 panel.style.transform = '';
             }
-        });
+        };
+        
+        dragHandle.addEventListener('touchstart', onTouchStart);
+        dragHandle.addEventListener('touchmove', onTouchMove);
+        dragHandle.addEventListener('touchend', onTouchEnd);
         
         hapticLight();
     }
@@ -1826,11 +1848,20 @@
     }
 
     function applyFiltersAndRender() {
+        if (!allUsernames || allUsernames.length === 0) {
+            renderUsernames([]);
+            return;
+        }
+        
         let filtered = [...allUsernames];
         const minPrice = currentPriceFilter.min !== undefined ? currentPriceFilter.min : 0;
         const maxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
         filtered = filtered.filter(u => u.price >= minPrice && u.price <= maxPrice);
-        if (currentBasedOnFilter !== 'all') filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
+        
+        if (currentBasedOnFilter && currentBasedOnFilter !== 'all') {
+            filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
+        }
+        
         if (currentSort !== 'default') {
             filtered.sort((a, b) => {
                 if (currentSort === 'price_asc') return a.price - b.price;
@@ -1839,6 +1870,7 @@
                 return 0;
             });
         }
+        
         renderUsernames(filtered);
     }
 
@@ -3226,38 +3258,83 @@
         hapticLight();
     }
 
+    async function fetchProfilePhoto(username) {
+        // Cek cache dulu
+        const cached = localStorage.getItem(`avatar_${username}`);
+        if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && !cached.includes('ui-avatars.com')) {
+            return cached;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+            const data = await response.json();
+            
+            if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                localStorage.setItem(`avatar_${username}`, data.photo_url);
+                return data.photo_url;
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching profile photo:', error);
+            return null;
+        }
+    }
+
+    function formatDateIndonesia(dateStr) {
+        if (!dateStr) return '-';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleString('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch {
+            return dateStr;
+        }
+    }
+
     async function init() {
         initTelegram();
         initSafeArea();
         showLoading(true);
         
-        setupTabs();
-        setupEventListeners();
-        setupSearch();
-        setupWalletEventListeners();
-        initWalletPanels();
-        
-        telegramUser = getTelegramUserFromWebApp();
-        if (telegramUser) {
-            updateUserUI();
-            await authenticateUser();
-            await loadUsernames();
-            await loadPurchasedUsernames();
-            await loadTransactionHistory();
-            await loadBasedOnOptions();
-            updateFilterBadge();
-        } else {
-            showToast('Tidak dapat mengambil data user', 'error');
+        try {
+            setupTabs();
+            setupEventListeners();
+            setupSearch();
+            setupWalletEventListeners();
+            initWalletPanels();
+            
+            telegramUser = getTelegramUserFromWebApp();
+            if (telegramUser) {
+                updateUserUI();
+                await authenticateUser();
+                await loadUsernames();
+                await loadPurchasedUsernames();
+                await loadTransactionHistory();
+                await loadBasedOnOptions();
+                updateFilterBadge();
+            } else {
+                showToast('Tidak dapat mengambil data user', 'error');
+            }
+            
+            await initTonConnect();
+            
+            setTimeout(() => {
+                if (isWalletConnected) updateWalletMainUI();
+            }, 500);
+            
+        } catch (error) {
+            console.error('❌ Error in init:', error);
+            showToast('Error loading page: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+            console.log('✅ Winedash Marketplace initialized');
         }
-        
-        await initTonConnect();
-        
-        setTimeout(() => {
-            if (isWalletConnected) updateWalletMainUI();
-        }, 500);
-        
-        showLoading(false);
-        console.log('✅ Winedash Marketplace initialized');
     }
     init();
 })();

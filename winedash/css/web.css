@@ -2502,3 +2502,40 @@ body.wallet-panel-open {
     margin-bottom: 16px;
 }
 #marketplaceTab .search-input { flex: 1; }
+
+/* Fix untuk memastikan tombol bisa diklik */
+.filter-summary-btn,
+.search-apply-btn,
+.tab-btn,
+.btn-primary,
+.btn-secondary,
+.wallet-action-btn,
+.panel-action-btn,
+.detail-action-btn {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}
+
+/* Pastikan modal tidak blocking */
+.modal-overlay {
+    z-index: 2000 !important;
+}
+
+.modal-content {
+    z-index: 2001 !important;
+    pointer-events: auto !important;
+}
+
+/* Fix untuk panel */
+.filter-panel,
+.wallet-panel,
+.market-detail-panel {
+    pointer-events: auto !important;
+}
+
+/* Pastikan tombol TON Connect bisa diklik */
+#ton-connect-container button,
+.ton-connect-right button {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+}

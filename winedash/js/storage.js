@@ -186,68 +186,6 @@
         }
     }
 
-    // ==================== CRUD OPERATIONS ====================
-    async function refreshDefaultProfilePhotos() {
-        // Cari semua avatar yang masih menggunakan logo default
-        const defaultAvatars = document.querySelectorAll('.username-card .card-avatar img[src*="winedash-logo.png"]');
-        
-        for (const img of defaultAvatars) {
-            const card = img.closest('.username-card');
-            if (card && card.dataset.username) {
-                try {
-                    const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
-                    const usernameStr = usernameData.username;
-                    
-                    const photoUrl = await fetchProfilePhoto(usernameStr);
-                    if (photoUrl && !photoUrl.includes('winedash-logo.png')) {
-                        img.src = photoUrl;
-                        console.log(`✅ Refreshed avatar for @${usernameStr}`);
-                    }
-                } catch (e) {
-                    console.error('Error refreshing avatar:', e);
-                }
-            }
-        }
-    }
-
-    async function loadUsernames() {
-        showLoading(true);
-        
-        try {
-            console.log('[DEBUG] Loading usernames...');
-            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
-            const data = await response.json();
-            
-            console.log('[DEBUG] Load usernames response:', data);
-            
-            if (data.success && data.usernames) {
-                if (telegramUser) {
-                    allUsernames = data.usernames.filter(u => u.seller_id === telegramUser.id);
-                    console.log(`[DEBUG] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
-                } else {
-                    allUsernames = data.usernames;
-                }
-                filterAndRender();
-                
-                // Refresh foto profil yang masih default setelah render
-                setTimeout(() => {
-                    refreshDefaultProfilePhotos();
-                }, 500);
-            } else {
-                console.log('[DEBUG] No usernames found or error:', data);
-                allUsernames = [];
-                renderUsernames([]);
-            }
-        } catch (error) {
-            console.error('[DEBUG] Error loading usernames:', error);
-            if (elements.usernameContainer) {
-                elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
-            }
-        } finally {
-            showLoading(false);
-        }
-    }
-
     async function loadPendingCount() {
         if (!telegramUser) return;
         
@@ -279,7 +217,7 @@
         try {
             console.log('[DEBUG] Loading pending list for user:', telegramUser.id);
             
-            // Gunakan endpoint dengan user_id
+            // Gunakan endpoint dengan user_id - PASTIKAN URL BENAR
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/list/${telegramUser.id}`);
             const data = await response.json();
             
@@ -952,12 +890,25 @@
     function setupInboxEventListeners() {
         const inboxBtn = document.getElementById('inboxBtn');
         if (inboxBtn) {
-            inboxBtn.addEventListener('click', openInboxPanel);
+            // Hapus event listener lama dengan clone
+            const newInboxBtn = inboxBtn.cloneNode(true);
+            inboxBtn.parentNode.replaceChild(newInboxBtn, inboxBtn);
+            
+            newInboxBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('📥 Inbox button clicked');
+                openInboxPanel();
+            });
         }
         
         const closeInboxBtn = document.getElementById('closeInboxBtn');
         if (closeInboxBtn) {
-            closeInboxBtn.addEventListener('click', (e) => {
+            const newCloseBtn = closeInboxBtn.cloneNode(true);
+            closeInboxBtn.parentNode.replaceChild(newCloseBtn, closeInboxBtn);
+            
+            newCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 hapticLight();
                 closeInboxPanel();
@@ -1013,21 +964,29 @@
             };
             
             if (dragHandleElem) {
-                dragHandleElem.addEventListener('touchstart', onTouchStart);
-                dragHandleElem.addEventListener('touchmove', onTouchMove);
-                dragHandleElem.addEventListener('touchend', onTouchEnd);
+                // Hapus listener lama
+                const newDragHandle = dragHandleElem.cloneNode(true);
+                dragHandleElem.parentNode.replaceChild(newDragHandle, dragHandleElem);
+                
+                newDragHandle.addEventListener('touchstart', onTouchStart);
+                newDragHandle.addEventListener('touchmove', onTouchMove);
+                newDragHandle.addEventListener('touchend', onTouchEnd);
             }
         }
         
         // OTP Modal
         const cancelOtpBtn = document.getElementById('cancelOtpBtn');
         if (cancelOtpBtn) {
-            cancelOtpBtn.addEventListener('click', closeOtpModal);
+            const newCancelBtn = cancelOtpBtn.cloneNode(true);
+            cancelOtpBtn.parentNode.replaceChild(newCancelBtn, cancelOtpBtn);
+            newCancelBtn.addEventListener('click', closeOtpModal);
         }
         
         const confirmOtpBtn = document.getElementById('confirmOtpBtn');
         if (confirmOtpBtn) {
-            confirmOtpBtn.addEventListener('click', verifyOtp);
+            const newConfirmBtn = confirmOtpBtn.cloneNode(true);
+            confirmOtpBtn.parentNode.replaceChild(newConfirmBtn, confirmOtpBtn);
+            newConfirmBtn.addEventListener('click', verifyOtp);
         }
         
         const otpModal = document.getElementById('otpModal');
@@ -1039,7 +998,9 @@
         
         const otpInput = document.getElementById('otpInput');
         if (otpInput) {
-            otpInput.addEventListener('keypress', (e) => {
+            const newOtpInput = otpInput.cloneNode(true);
+            otpInput.parentNode.replaceChild(newOtpInput, otpInput);
+            newOtpInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') verifyOtp();
             });
         }
@@ -1745,10 +1706,8 @@
         const panel = document.getElementById('inboxPanel');
         if (!panel) return;
         
-        // Hapus class open untuk animasi turun
         panel.classList.remove('open');
         
-        // Sembunyikan overlay - JANGAN dihapus
         if (inboxOverlay) {
             inboxOverlay.classList.remove('active');
         }
@@ -1756,7 +1715,6 @@
         // Allow scroll
         document.body.classList.remove('inbox-open');
         
-        // Sembunyikan panel setelah animasi selesai
         setTimeout(() => {
             if (panel.style.display !== 'none') {
                 panel.style.display = 'none';
@@ -2802,14 +2760,18 @@
         }
     }
 
-    // Panggil startAutoRefresh di init()
     async function init() {
         initTelegram();
         initSafeArea();
         showLoading(true);
         
+        // Setup event listeners - PASTIKAN DIPANGGIL SETELAH DOM READY
         setupEventListeners();
-        setupInboxEventListeners();
+        
+        // Setup inbox listeners dengan delay untuk memastikan DOM siap
+        setTimeout(() => {
+            setupInboxEventListeners();
+        }, 100);
         
         setTimeout(() => {
             setupToggleButtons();

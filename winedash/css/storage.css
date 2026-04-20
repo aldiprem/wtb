@@ -2135,3 +2135,20 @@ body.panel-open {
     word-break: break-all;
     line-height: 1.3;
 }
+
+/* Pastikan tombol inbox visible */
+#inboxBtn {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Pastikan modal overlay bisa diklik */
+.modal-overlay {
+    pointer-events: auto !important;
+}
+
+.modal-content {
+    pointer-events: auto !important;
+}
