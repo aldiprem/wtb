@@ -1739,22 +1739,27 @@ body.modal-open {
     color: var(--text-muted);
 }
 
-/* Floating Action Button Container */
+/* Floating Action Button */
 .fab-container {
     position: fixed;
     bottom: 20px;
-    left: 16px;
-    right: 16px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
     z-index: 1000;
 }
 
+/* FAB Buttons Wrapper untuk 2 tombol */
 .fab-buttons-wrapper {
     display: flex;
     gap: 12px;
-    width: 100%;
+    width: calc(100% - 32px);
+    max-width: calc(100% - 32px);
+    margin: 0 16px;
 }
 
-/* Base Button Style */
+/* Base Button Style untuk kedua tombol */
 .fab-btn {
     height: 58px;
     border-radius: 20px;
@@ -1769,7 +1774,128 @@ body.modal-open {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
-    flex: 1;
+}
+
+/* Update FAB Button: Full-Width Glassmorphism dengan Double-Side 3D Border */
+.fab-button {
+    position: fixed;
+    bottom: 20px;
+    left: 16px;
+    right: 16px;
+    height: 58px;
+    
+    /* Efek Glassmorphism */
+    background: var(--primary-glass);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    
+    color: #ffffff;
+    font-weight: 700;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 1. EFEK BAYANGAN HITAM (Kanan-Atas & Kiri-Bawah) - untuk .fab-button */
+.fab-button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 19px;
+    padding: 2px; /* Sedikit lebih tebal untuk kontras bayangan */
+    
+    /* Gradien 340deg menargetkan Kanan-Atas dan Kiri-Bawah */
+    background: linear-gradient(35deg, 
+        rgb(0 0 0 / 80%) 0%, 
+        rgba(0, 0, 0, 0) 10%,
+        rgba(0, 0, 0, 0) 90%, 
+        rgb(0 0 0 / 80%) 100%
+    );
+    
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 1. EFEK BAYANGAN HITAM untuk .fab-back dan .fab-participate */
+.fab-back::before, .fab-participate::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 19px;
+    padding: 2px;
+    background: linear-gradient(35deg, 
+        rgb(0 0 0 / 80%) 0%, 
+        rgba(0, 0, 0, 0) 10%,
+        rgba(0, 0, 0, 0) 90%, 
+        rgb(0 0 0 / 80%) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 2. EFEK CAHAYA PUTIH (Kiri-Atas & Kanan-Bawah) - untuk .fab-button */
+.fab-button::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1.4px;
+    background: linear-gradient(175deg, 
+        rgb(229 229 229 / 40%) 0%, 
+        rgb(252 252 252 / 10%) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgb(229 229 229 / 40%) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 2. EFEK CAHAYA PUTIH untuk .fab-back dan .fab-participate */
+.fab-back::after, .fab-participate::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1.4px;
+    background: linear-gradient(175deg, 
+        rgb(229 229 229 / 40%) 0%, 
+        rgb(252 252 252 / 10%) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgb(229 229 229 / 40%) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Efek Interaksi - untuk .fab-button */
+.fab-button:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.fab-button:active {
+    transform: translateY(1px) scale(0.98);
 }
 
 /* Tombol Kembali (lebih kecil, di kiri) */
@@ -1779,44 +1905,6 @@ body.modal-open {
     -webkit-backdrop-filter: blur(6px);
     color: var(--text-secondary);
     flex: 0.6;
-}
-
-.fab-back::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 19px;
-    padding: 2px;
-    background: linear-gradient(35deg, 
-        rgba(0, 0, 0, 0.8) 0%, 
-        rgba(0, 0, 0, 0) 10%,
-        rgba(0, 0, 0, 0) 90%, 
-        rgba(0, 0, 0, 0.8) 100%
-    );
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-}
-
-.fab-back::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 20px;
-    padding: 1.4px;
-    background: linear-gradient(175deg, 
-        rgba(229, 229, 229, 0.4) 0%, 
-        rgba(252, 252, 252, 0.1) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(229, 229, 229, 0.4) 100%
-    );
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
 }
 
 .fab-back:hover {
@@ -1836,44 +1924,6 @@ body.modal-open {
     -webkit-backdrop-filter: blur(6px);
     color: #ffffff;
     flex: 1.4;
-}
-
-.fab-participate::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 19px;
-    padding: 2px;
-    background: linear-gradient(35deg, 
-        rgba(0, 0, 0, 0.8) 0%, 
-        rgba(0, 0, 0, 0) 10%,
-        rgba(0, 0, 0, 0) 90%, 
-        rgba(0, 0, 0, 0.8) 100%
-    );
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-}
-
-.fab-participate::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 20px;
-    padding: 1.4px;
-    background: linear-gradient(175deg, 
-        rgba(229, 229, 229, 0.4) 0%, 
-        rgba(252, 252, 252, 0.1) 30%,
-        rgba(255, 255, 255, 0) 70%, 
-        rgba(229, 229, 229, 0.4) 100%
-    );
-    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
 }
 
 .fab-participate:hover {
@@ -1897,11 +1947,12 @@ body.modal-open {
     background: var(--primary-glass);
 }
 
-.fab-btn i {
+/* Icon style didalam tombol */
+.fab-button i, .fab-btn i {
     font-size: 18px;
 }
 
-.fab-participate i {
+.fab-participate i, .fab-button i {
     filter: drop-shadow(0 0 8px var(--primary));
 }
 
@@ -1922,6 +1973,33 @@ body.modal-open {
 
 /* Responsive */
 @media (max-width: 480px) {
+    .giveaway-container {
+        padding: 12px;
+        padding-bottom: 90px;
+    }
+    
+    .countdown-number {
+        font-size: 22px;
+        padding: 4px 6px;
+    }
+    
+    .countdown-block {
+        min-width: 45px;
+    }
+    
+    .stats-right {
+        gap: 12px;
+    }
+    
+    .stat-value {
+        font-size: 14px;
+    }
+    
+    .fab-button {
+        padding: 12px 28px;
+        font-size: 14px;
+    }
+    
     .fab-btn {
         height: 52px;
         font-size: 14px;
@@ -2581,4 +2659,62 @@ body.modal-open {
     padding-right: 12px !important;
     margin-left: -4px;
     margin-right: -4px;
+}
+
+/* Back Button Style (seperti tombol close) */
+.back-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    width: 40px;
+    height: 40px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    transition: all 0.2s;
+    z-index: 100;
+}
+
+/* Efek Sudut Putih 3D untuk tombol kembali */
+.back-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    padding: 1px;
+    background: linear-gradient(140deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%, 
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%
+    );
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+    transform: scale(1.05);
+}
+
+.back-btn:active {
+    transform: scale(0.95);
+}
+
+.chat-refresh-btn {
+    margin-left: auto;
 }
