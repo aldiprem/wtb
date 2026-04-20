@@ -16,6 +16,7 @@
     
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -26,6 +27,54 @@
 
     <!-- Toast Container -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Sidebar Drawer -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="sidebar-drawer" id="sidebarDrawer">
+        <div class="sidebar-header">
+            <div class="sidebar-user-avatar" id="sidebarUserAvatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name" id="sidebarUserName">Memuat...</div>
+                <div class="sidebar-user-username" id="sidebarUserUsername">@username</div>
+            </div>
+            <button class="sidebar-close" id="sidebarCloseBtn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="sidebar-menu">
+            <div class="sidebar-menu-item active" data-page="dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="sidebar-menu-item" data-page="bot-stats">
+                <i class="fas fa-chart-line"></i>
+                <span>Statistik Bot</span>
+            </div>
+            <div class="sidebar-menu-item" data-page="user-stats">
+                <i class="fas fa-user-chart"></i>
+                <span>Statistik User</span>
+            </div>
+            <div class="sidebar-menu-item" data-page="social">
+                <i class="fas fa-share-alt"></i>
+                <span>Sosial Resmi</span>
+            </div>
+            <div class="sidebar-menu-item" data-page="help">
+                <i class="fas fa-question-circle"></i>
+                <span>Bantuan</span>
+            </div>
+            <div class="sidebar-menu-item" data-page="about">
+                <i class="fas fa-info-circle"></i>
+                <span>Tentang</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Button (garis tiga) -->
+    <button class="menu-btn" id="menuBtn">
+        <i class="fas fa-bars"></i>
+    </button>
 
     <!-- Main Container -->
     <div class="lobby-container">

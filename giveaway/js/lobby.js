@@ -478,18 +478,637 @@
         }
     }
 
-    async function init() {
-        initTelegram();
+    // ==================== PAGE MANAGEMENT ====================
+
+    let currentPage = 'dashboard';
+
+    function showPage(pageId) {
+        // Sembunyikan semua page container
+        document.querySelectorAll('.page-container').forEach(container => {
+            container.classList.remove('active');
+        });
+        
+        // Tampilkan page yang dipilih
+        const targetPage = document.getElementById(`page-${pageId}`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
+        
+        // Update active menu item
+        document.querySelectorAll('.sidebar-menu-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === pageId) {
+                item.classList.add('active');
+            }
+        });
+        
+        currentPage = pageId;
+        
+        // Load data sesuai page
+        if (pageId === 'bot-stats') {
+            renderBotStatsCharts();
+        } else if (pageId === 'user-stats') {
+            renderUserStatsCharts();
+        } else if (pageId === 'dashboard') {
+            loadBotStatistics();
+            loadRecentGiveaways();
+            loadUserStats(telegramUser?.id);
+        }
+    }
+
+    // ==================== SIDEBAR FUNCTIONS ====================
+
+    function initSidebar() {
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const sidebarDrawer = document.getElementById('sidebarDrawer');
+        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+        
+        if (!menuBtn || !sidebarOverlay || !sidebarDrawer) return;
+        
+        function openSidebar() {
+            hapticMedium();
+            sidebarDrawer.classList.add('open');
+            sidebarOverlay.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeSidebar() {
+            hapticLight();
+            sidebarDrawer.classList.remove('open');
+            sidebarOverlay.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+        
+        menuBtn.addEventListener('click', openSidebar);
+        sidebarCloseBtn.addEventListener('click', closeSidebar);
+        sidebarOverlay.addEventListener('click', closeSidebar);
+        
+        // Setup menu items
+        document.querySelectorAll('.sidebar-menu-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const page = item.dataset.page;
+                if (page) {
+                    showPage(page);
+                    closeSidebar();
+                }
+            });
+        });
+    }
+
+    function updateSidebarUser(telegramUser) {
+        const sidebarAvatar = document.getElementById('sidebarUserAvatar');
+        const sidebarName = document.getElementById('sidebarUserName');
+        const sidebarUsername = document.getElementById('sidebarUserUsername');
+        
+        if (!telegramUser) return;
+        
+        const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim() || 'Pengguna Telegram';
+        
+        if (sidebarName) sidebarName.textContent = fullName;
+        if (sidebarUsername) sidebarUsername.textContent = telegramUser.username ? `@${telegramUser.username}` : 'Tidak ada username';
+        
+        if (sidebarAvatar) {
+            if (telegramUser.photo_url) {
+                sidebarAvatar.innerHTML = `<img src="${telegramUser.photo_url}" alt="Avatar">`;
+            } else {
+                const nameForAvatar = encodeURIComponent(fullName.substring(0, 2));
+                const avatarUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=96&rounded=true&bold=true&length=2`;
+                sidebarAvatar.innerHTML = `<img src="${avatarUrl}" alt="Avatar">`;
+            }
+        }
+    }
+
+    // ==================== BOTTOM SHEET FUNCTIONS ====================
+
+    let bottomSheet = null;
+    let bottomSheetOverlay = null;
+
+    function initBottomSheet() {
+        // Buat bottom sheet element jika belum ada
+        if (document.getElementById('bottomSheet')) return;
+        
+        const bottomSheetHtml = `
+            <div class="bottom-sheet-overlay" id="bottomSheetOverlay"></div>
+            <div class="bottom-sheet" id="bottomSheet">
+                <div class="bottom-sheet-header">
+                    <h3 id="bottomSheetTitle">Semua Giveaway</h3>
+                    <button class="bottom-sheet-close" id="bottomSheetCloseBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="bottom-sheet-body" id="bottomSheetBody">
+                    <div class="loading-placeholder">Memuat...</div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', bottomSheetHtml);
+        
+        bottomSheet = document.getElementById('bottomSheet');
+        bottomSheetOverlay = document.getElementById('bottomSheetOverlay');
+        const closeBtn = document.getElementById('bottomSheetCloseBtn');
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closeBottomSheet);
+        }
+        if (bottomSheetOverlay) {
+            bottomSheetOverlay.addEventListener('click', closeBottomSheet);
+        }
+    }
+
+    function openBottomSheet(title, contentHtml) {
+        initBottomSheet();
+        
+        const titleEl = document.getElementById('bottomSheetTitle');
+        const bodyEl = document.getElementById('bottomSheetBody');
+        
+        if (titleEl) titleEl.textContent = title;
+        if (bodyEl) bodyEl.innerHTML = contentHtml;
+        
+        if (bottomSheetOverlay) bottomSheetOverlay.style.display = 'block';
+        if (bottomSheet) {
+            bottomSheet.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeBottomSheet() {
+        if (bottomSheetOverlay) bottomSheetOverlay.style.display = 'none';
+        if (bottomSheet) {
+            bottomSheet.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // ==================== SHOW ALL GIVEAWAYS ====================
+
+    async function showAllGiveaways() {
+        hapticMedium();
         showLoading(true);
         
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/all-giveaways`, { method: 'GET' });
+            
+            if (response.success && response.giveaways && response.giveaways.length > 0) {
+                let html = '<div class="all-giveaways-list">';
+                
+                for (const gw of response.giveaways) {
+                    const prizePreview = gw.prize_lines && gw.prize_lines.length > 0 
+                        ? gw.prize_lines[0].substring(0, 40) + (gw.prize_lines[0].length > 40 ? '...' : '')
+                        : 'Hadiah giveaway';
+                    const statusBadge = gw.status === 'active' ? '🟢 Aktif' : '🔴 Berakhir';
+                    
+                    html += `
+                        <div class="all-giveaway-item" data-giveaway-code="${gw.giveaway_code}" data-status="${gw.status}">
+                            <div class="all-giveaway-icon">
+                                <i class="fas fa-gift"></i>
+                            </div>
+                            <div class="all-giveaway-info">
+                                <div class="all-giveaway-title">${escapeHtml(prizePreview)}</div>
+                                <div class="all-giveaway-meta">
+                                    <span><i class="fas fa-users"></i> ${gw.participants_count || 0} peserta</span>
+                                    <span><i class="fas fa-clock"></i> ${formatDate(gw.created_at)}</span>
+                                    <span>${statusBadge}</span>
+                                </div>
+                            </div>
+                            <div class="all-giveaway-arrow">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+                
+                if (response.giveaways.length === 0) {
+                    html = '<div class="loading-placeholder">Belum ada giveaway</div>';
+                }
+                
+                openBottomSheet('Semua Giveaway', html);
+                
+                // Event listener untuk item giveaway
+                document.querySelectorAll('.all-giveaway-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const giveawayCode = item.dataset.giveawayCode;
+                        const status = item.dataset.status;
+                        if (giveawayCode) {
+                            hapticMedium();
+                            closeBottomSheet();
+                            if (status === 'active') {
+                                window.location.href = `/giveaways?id=${giveawayCode}`;
+                            } else {
+                                showToast('Giveaway ini sudah berakhir', 'warning');
+                            }
+                        }
+                    });
+                });
+            } else {
+                openBottomSheet('Semua Giveaway', '<div class="loading-placeholder">Belum ada giveaway</div>');
+            }
+        } catch (error) {
+            console.error('Error loading all giveaways:', error);
+            openBottomSheet('Semua Giveaway', '<div class="loading-placeholder">Gagal memuat data</div>');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ==================== CHART FUNCTIONS ====================
+
+    let botStatsChart = null;
+    let userStatsChart = null;
+
+    async function renderBotStatsCharts() {
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/chart-data`, { method: 'GET' });
+            
+            if (!response.success) return;
+            
+            const ctx = document.getElementById('botStatsCanvas');
+            if (!ctx) return;
+            
+            if (botStatsChart) {
+                botStatsChart.destroy();
+            }
+            
+            // Load Chart.js if not available
+            if (typeof Chart === 'undefined') {
+                await loadChartJs();
+            }
+            
+            botStatsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: response.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                    datasets: [
+                        {
+                            label: 'Giveaway Dibuat',
+                            data: response.giveaways_created || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            borderColor: '#40a7e3',
+                            backgroundColor: 'rgba(64, 167, 227, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointHoverRadius: 6
+                        },
+                        {
+                            label: 'Total Peserta',
+                            data: response.total_participants || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3,
+                            pointHoverRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: '#ffffff', font: { size: 11 } }
+                        },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#a0a0a0' } },
+                        x: { grid: { display: false }, ticks: { color: '#a0a0a0' } }
+                    }
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error rendering bot stats chart:', error);
+        }
+    }
+
+    async function renderUserStatsCharts() {
+        if (!telegramUser) return;
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/user-chart-data/${telegramUser.id}`, { method: 'GET' });
+            
+            if (!response.success) return;
+            
+            const ctx = document.getElementById('userStatsCanvas');
+            if (!ctx) return;
+            
+            if (userStatsChart) {
+                userStatsChart.destroy();
+            }
+            
+            if (typeof Chart === 'undefined') {
+                await loadChartJs();
+            }
+            
+            userStatsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: response.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                    datasets: [
+                        {
+                            label: 'Giveaway Diikuti',
+                            data: response.participated || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            backgroundColor: '#40a7e3',
+                            borderRadius: 8,
+                            borderSkipped: false
+                        },
+                        {
+                            label: 'Giveaway Dimenangkan',
+                            data: response.won || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            backgroundColor: '#f59e0b',
+                            borderRadius: 8,
+                            borderSkipped: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: '#ffffff', font: { size: 11 } }
+                        }
+                    },
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#a0a0a0', stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: '#a0a0a0' } }
+                    }
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error rendering user stats chart:', error);
+        }
+    }
+
+    function loadChartJs() {
+        return new Promise((resolve, reject) => {
+            if (typeof Chart !== 'undefined') {
+                resolve();
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load Chart.js'));
+            document.head.appendChild(script);
+        });
+    }
+
+    // ==================== PAGE CONTAINERS ====================
+
+    function createPageContainers() {
+        const lobbyContainer = document.querySelector('.lobby-container');
+        if (!lobbyContainer) return;
+        
+        // Sembunyikan konten asli dan pindahkan ke page-dashboard
+        const originalContent = lobbyContainer.innerHTML;
+        
+        const pagesHtml = `
+            <div class="page-container active" id="page-dashboard">
+                ${originalContent}
+            </div>
+            <div class="page-container" id="page-bot-stats">
+                <div class="stats-section" style="margin-top: 60px;">
+                    <div class="section-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h2>Statistik Bot</h2>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">📊 Trend Giveaway & Peserta</div>
+                        <canvas id="botStatsCanvas" class="chart-canvas"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="page-container" id="page-user-stats">
+                <div class="stats-section" style="margin-top: 60px;">
+                    <div class="section-header">
+                        <i class="fas fa-user-chart"></i>
+                        <h2>Statistik Personal</h2>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">📊 Aktivitas Giveaway Anda</div>
+                        <canvas id="userStatsCanvas" class="chart-canvas"></canvas>
+                    </div>
+                    <div class="info-card full-width" style="margin-top: 16px;">
+                        <div class="card-header-flex">
+                            <div class="card-icon-small"><i class="fas fa-chart-simple"></i></div>
+                            <h3>Ringkasan</h3>
+                        </div>
+                        <div class="detail-stats" id="userDetailStats"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-container" id="page-social">
+                <div class="stats-section" style="margin-top: 60px;">
+                    <div class="section-header">
+                        <i class="fas fa-share-alt"></i>
+                        <h2>Sosial Resmi</h2>
+                    </div>
+                    <div class="social-links" id="socialLinksContainer"></div>
+                </div>
+            </div>
+            <div class="page-container" id="page-help">
+                <div class="stats-section" style="margin-top: 60px;">
+                    <div class="section-header">
+                        <i class="fas fa-question-circle"></i>
+                        <h2>Bantuan & Panduan</h2>
+                    </div>
+                    <div class="info-card full-width">
+                        <ul class="help-list" style="margin-bottom: 0;">
+                            <li><i class="fas fa-check-circle"></i> <strong>Cara Membuat Giveaway:</strong> Buka bot @freebiestbot, klik "Buat Giveaway", isi hadiah, chat target, durasi, dan syarat</li>
+                            <li><i class="fas fa-check-circle"></i> <strong>Cara Berpartisipasi:</strong> Klik tombol "Ikuti Giveaway" pada pesan giveaway, penuhi syarat, lalu klik "Partisipasi"</li>
+                            <li><i class="fas fa-check-circle"></i> <strong>Syarat & Ketentuan:</strong> Peserta harus mengikuti semua syarat yang ditentukan, pemenang dipilih secara acak</li>
+                            <li><i class="fas fa-check-circle"></i> <strong>FAQ:</strong> Jika ada masalah, hubungi admin di @giftfreebies</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="page-container" id="page-about">
+                <div class="stats-section" style="margin-top: 60px;">
+                    <div class="section-header">
+                        <i class="fas fa-info-circle"></i>
+                        <h2>Tentang Giveaway Bot</h2>
+                    </div>
+                    <div class="info-card full-width">
+                        <p style="margin-bottom: 12px;">Giveaway Bot adalah platform giveaway terpercaya di Telegram yang memudahkan Anda membuat dan mengikuti giveaway dengan mudah.</p>
+                        <p style="margin-bottom: 12px;"><strong>Fitur Unggulan:</strong></p>
+                        <ul style="margin-left: 20px; margin-bottom: 12px; color: var(--text-secondary);">
+                            <li>✅ Multiple hadiah dalam satu giveaway</li>
+                            <li>✅ Multiple chat target (channel/group)</li>
+                            <li>✅ Sistem captcha anti-bot</li>
+                            <li>✅ Force subscribe otomatis</li>
+                            <li>✅ Tracking partisipasi real-time</li>
+                        </ul>
+                        <p>Version 2.0.0 | © 2024 Giveaway Bot</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        lobbyContainer.innerHTML = pagesHtml;
+    }
+
+    // ==================== UPDATE VIEW ALL BUTTON ====================
+
+    function updateViewAllButton() {
+        const viewAllBtn = document.getElementById('viewAllGiveawaysBtn');
+        if (viewAllBtn) {
+            // Hapus event listener lama
+            const newBtn = viewAllBtn.cloneNode(true);
+            viewAllBtn.parentNode.replaceChild(newBtn, viewAllBtn);
+            
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                showAllGiveaways();
+            });
+        }
+    }
+
+    // ==================== LOAD SOCIAL LINKS ====================
+
+    async function loadSocialLinks() {
+        const container = document.getElementById('socialLinksContainer');
+        if (!container) return;
+        
+        const socialLinks = [
+            { name: 'Owner', username: 'giftfreebies', desc: 'Hubungi owner untuk bantuan', icon: 'fas fa-crown' },
+            { name: 'Channel Resmi', username: 'giftfreebies', desc: 'Info giveaway terbaru', icon: 'fab fa-telegram' },
+            { name: 'Bot Giveaway', username: 'freebiestbot', desc: 'Buat giveaway sendiri', icon: 'fas fa-robot' },
+            { name: 'Support Group', username: 'giftfreebies', desc: 'Tempat diskusi dan bantuan', icon: 'fas fa-users' }
+        ];
+        
+        let html = '';
+        for (const link of socialLinks) {
+            html += `
+                <div class="social-link-item" data-link="https://t.me/${link.username}">
+                    <div class="social-link-icon">
+                        <i class="${link.icon}"></i>
+                    </div>
+                    <div class="social-link-info">
+                        <div class="social-link-name">${link.name}</div>
+                        <div class="social-link-desc">${link.desc}</div>
+                    </div>
+                    <div class="social-link-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+            `;
+        }
+        
+        container.innerHTML = html;
+        
+        document.querySelectorAll('.social-link-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const link = item.dataset.link;
+                if (link) {
+                    hapticMedium();
+                    window.open(link, '_blank');
+                }
+            });
+        });
+    }
+
+    // ==================== LOAD USER DETAIL STATS ====================
+
+    async function loadUserDetailStats() {
+        if (!telegramUser) return;
+        
+        const container = document.getElementById('userDetailStats');
+        if (!container) return;
+        
+        try {
+            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/user-stats/${telegramUser.id}`, { method: 'GET' });
+            
+            if (response.success) {
+                container.innerHTML = `
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Giveaway Dibuat:</span>
+                        <span class="detail-value">${response.created_count || 0}</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Giveaway Diikuti:</span>
+                        <span class="detail-value">${response.participated_count || 0}</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Giveaway Dimenangkan:</span>
+                        <span class="detail-value">${response.won_count || 0}</span>
+                    </div>
+                    <div class="detail-stat-item">
+                        <span class="detail-label">Win Rate:</span>
+                        <span class="detail-value">${response.participated_count > 0 ? Math.round((response.won_count / response.participated_count) * 100) : 0}%</span>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading user detail stats:', error);
+        }
+    }
+
+    // ==================== MODIFIED INIT FUNCTION ====================
+
+    async function init() {
+        initTelegram();
+        
+        showLoading(true);
+        
+        // Buat page containers terlebih dahulu
+        createPageContainers();
+        
+        // Re-get elements setelah DOM berubah
+        elements.profileAvatar = document.getElementById('profileAvatar');
+        elements.profileName = document.getElementById('profileName');
+        elements.profileUsername = document.getElementById('profileUsername');
+        elements.profileId = document.getElementById('profileId');
+        elements.userStatCreated = document.getElementById('userStatCreated');
+        elements.userStatParticipated = document.getElementById('userStatParticipated');
+        elements.userStatWon = document.getElementById('userStatWon');
+        elements.statTotalUsers = document.getElementById('statTotalUsers');
+        elements.statTotalGiveaways = document.getElementById('statTotalGiveaways');
+        elements.statTotalParticipants = document.getElementById('statTotalParticipants');
+        elements.statTotalWinners = document.getElementById('statTotalWinners');
+        elements.statActiveGiveaways = document.getElementById('statActiveGiveaways');
+        elements.statTodayParticipants = document.getElementById('statTodayParticipants');
+        elements.detailGiveawaysToday = document.getElementById('detailGiveawaysToday');
+        elements.detailGiveawaysWeek = document.getElementById('detailGiveawaysWeek');
+        elements.detailGiveawaysMonth = document.getElementById('detailGiveawaysMonth');
+        elements.detailUniqueParticipants = document.getElementById('detailUniqueParticipants');
+        elements.detailAvgParticipants = document.getElementById('detailAvgParticipants');
+        elements.detailTotalAdmins = document.getElementById('detailTotalAdmins');
+        elements.ownerName = document.getElementById('ownerName');
+        elements.ownerUsername = document.getElementById('ownerUsername');
+        elements.ownerAvatarSmall = document.getElementById('ownerAvatarSmall');
+        elements.forceSubsList = document.getElementById('forceSubsList');
+        elements.recentGiveaways = document.getElementById('recentGiveaways');
+        elements.refreshStatsBtn = document.getElementById('refreshStatsBtn');
+        elements.openBotBtn = document.getElementById('openBotBtn');
+        elements.openGiveawayBtn = document.getElementById('openGiveawayBtn');
+        elements.contactOwnerBtn = document.getElementById('contactOwnerBtn');
+        elements.officialChannelBtn = document.getElementById('officialChannelBtn');
+        elements.helpBtn = document.getElementById('helpBtn');
+        elements.ctaOpenBotBtn = document.getElementById('ctaOpenBotBtn');
+        elements.viewAllGiveawaysBtn = document.getElementById('viewAllGiveawaysBtn');
+        
         setupEventListeners();
+        initSidebar();
         
         const telegramUser = getTelegramUser();
         if (telegramUser) {
             updateProfileUI(telegramUser);
+            updateSidebarUser(telegramUser);
             await loadUserStats(telegramUser.id);
+            await loadUserDetailStats();
         }
         
+        await loadSocialLinks();
         await Promise.all([
             loadBotStatistics(),
             loadOwnerInfo(),
@@ -497,10 +1116,11 @@
             loadRecentGiveaways()
         ]);
         
+        updateViewAllButton();
+        
         showLoading(false);
         console.log('✅ Lobby page initialized');
     }
-
     // Start initialization
     init();
 })();
