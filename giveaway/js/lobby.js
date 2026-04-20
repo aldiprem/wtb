@@ -721,30 +721,45 @@
 
     async function renderBotStatsCharts() {
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/chart-data`, { method: 'GET' });
+            const canvas = document.getElementById('botStatsCanvas');
+            if (!canvas) {
+                console.log('Bot stats canvas not found, skipping chart render');
+                return;
+            }
             
-            if (!response.success) return;
+            // Coba load data dari API, jika gagal gunakan data dummy
+            let chartData = null;
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/chart-data`, { method: 'GET' });
+                if (response.success) {
+                    chartData = response;
+                }
+            } catch (error) {
+                console.warn('Failed to fetch chart data, using dummy data:', error);
+            }
             
-            const ctx = document.getElementById('botStatsCanvas');
-            if (!ctx) return;
+            // Gunakan data dummy jika API gagal
+            const labels = chartData?.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const giveawaysCreated = chartData?.giveaways_created || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            const totalParticipants = chartData?.total_participants || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
             
             if (botStatsChart) {
                 botStatsChart.destroy();
             }
             
-            // Load Chart.js if not available
+            // Tunggu Chart.js tersedia
             if (typeof Chart === 'undefined') {
                 await loadChartJs();
             }
             
-            botStatsChart = new Chart(ctx, {
+            botStatsChart = new Chart(canvas, {
                 type: 'line',
                 data: {
-                    labels: response.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                    labels: labels,
                     datasets: [
                         {
                             label: 'Giveaway Dibuat',
-                            data: response.giveaways_created || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            data: giveawaysCreated,
                             borderColor: '#40a7e3',
                             backgroundColor: 'rgba(64, 167, 227, 0.1)',
                             borderWidth: 2,
@@ -755,7 +770,7 @@
                         },
                         {
                             label: 'Total Peserta',
-                            data: response.total_participants || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            data: totalParticipants,
                             borderColor: '#10b981',
                             backgroundColor: 'rgba(16, 185, 129, 0.1)',
                             borderWidth: 2,
@@ -785,6 +800,11 @@
             
         } catch (error) {
             console.error('Error rendering bot stats chart:', error);
+            // Tampilkan pesan error di canvas
+            const canvas = document.getElementById('botStatsCanvas');
+            if (canvas && canvas.parentElement) {
+                canvas.parentElement.innerHTML = '<div class="loading-placeholder">Gagal memuat grafik</div>';
+            }
         }
     }
 
@@ -792,12 +812,26 @@
         if (!telegramUser) return;
         
         try {
-            const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/user-chart-data/${telegramUser.id}`, { method: 'GET' });
+            const canvas = document.getElementById('userStatsCanvas');
+            if (!canvas) {
+                console.log('User stats canvas not found, skipping chart render');
+                return;
+            }
             
-            if (!response.success) return;
+            // Coba load data dari API, jika gagal gunakan data dummy
+            let chartData = null;
+            try {
+                const response = await fetchWithRetry(`${API_BASE_URL}/api/giveaway/user-chart-data/${telegramUser.id}`, { method: 'GET' });
+                if (response.success) {
+                    chartData = response;
+                }
+            } catch (error) {
+                console.warn('Failed to fetch user chart data, using dummy data:', error);
+            }
             
-            const ctx = document.getElementById('userStatsCanvas');
-            if (!ctx) return;
+            const labels = chartData?.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            const participated = chartData?.participated || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            const won = chartData?.won || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
             
             if (userStatsChart) {
                 userStatsChart.destroy();
@@ -807,21 +841,21 @@
                 await loadChartJs();
             }
             
-            userStatsChart = new Chart(ctx, {
+            userStatsChart = new Chart(canvas, {
                 type: 'bar',
                 data: {
-                    labels: response.labels || ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                    labels: labels,
                     datasets: [
                         {
                             label: 'Giveaway Diikuti',
-                            data: response.participated || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            data: participated,
                             backgroundColor: '#40a7e3',
                             borderRadius: 8,
                             borderSkipped: false
                         },
                         {
                             label: 'Giveaway Dimenangkan',
-                            data: response.won || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            data: won,
                             backgroundColor: '#f59e0b',
                             borderRadius: 8,
                             borderSkipped: false
@@ -846,6 +880,10 @@
             
         } catch (error) {
             console.error('Error rendering user stats chart:', error);
+            const canvas = document.getElementById('userStatsCanvas');
+            if (canvas && canvas.parentElement) {
+                canvas.parentElement.innerHTML = '<div class="loading-placeholder">Gagal memuat grafik</div>';
+            }
         }
     }
 
@@ -869,92 +907,129 @@
         const lobbyContainer = document.querySelector('.lobby-container');
         if (!lobbyContainer) return;
         
-        // Sembunyikan konten asli dan pindahkan ke page-dashboard
+        // Simpan konten asli
         const originalContent = lobbyContainer.innerHTML;
         
-        const pagesHtml = `
-            <div class="page-container active" id="page-dashboard">
-                ${originalContent}
-            </div>
-            <div class="page-container" id="page-bot-stats">
-                <div class="stats-section" style="margin-top: 60px;">
-                    <div class="section-header">
-                        <i class="fas fa-chart-line"></i>
-                        <h2>Statistik Bot</h2>
-                    </div>
-                    <div class="chart-container">
-                        <div class="chart-title">📊 Trend Giveaway & Peserta</div>
-                        <canvas id="botStatsCanvas" class="chart-canvas"></canvas>
-                    </div>
+        // Cek apakah page containers sudah ada
+        if (document.getElementById('page-dashboard')) {
+            return; // Sudah ada, jangan buat ulang
+        }
+        
+        // Buat wrapper untuk pages
+        const pagesWrapper = document.createElement('div');
+        pagesWrapper.className = 'pages-wrapper';
+        
+        // Pindahkan semua child ke page-dashboard
+        const dashboardPage = document.createElement('div');
+        dashboardPage.id = 'page-dashboard';
+        dashboardPage.className = 'page-container active';
+        dashboardPage.innerHTML = originalContent;
+        
+        // Buat page lainnya
+        const botStatsPage = document.createElement('div');
+        botStatsPage.id = 'page-bot-stats';
+        botStatsPage.className = 'page-container';
+        botStatsPage.innerHTML = `
+            <div class="stats-section" style="margin-top: 60px;">
+                <div class="section-header">
+                    <i class="fas fa-chart-line"></i>
+                    <h2>Statistik Bot</h2>
                 </div>
-            </div>
-            <div class="page-container" id="page-user-stats">
-                <div class="stats-section" style="margin-top: 60px;">
-                    <div class="section-header">
-                        <i class="fas fa-user-chart"></i>
-                        <h2>Statistik Personal</h2>
-                    </div>
-                    <div class="chart-container">
-                        <div class="chart-title">📊 Aktivitas Giveaway Anda</div>
-                        <canvas id="userStatsCanvas" class="chart-canvas"></canvas>
-                    </div>
-                    <div class="info-card full-width" style="margin-top: 16px;">
-                        <div class="card-header-flex">
-                            <div class="card-icon-small"><i class="fas fa-chart-simple"></i></div>
-                            <h3>Ringkasan</h3>
-                        </div>
-                        <div class="detail-stats" id="userDetailStats"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="page-container" id="page-social">
-                <div class="stats-section" style="margin-top: 60px;">
-                    <div class="section-header">
-                        <i class="fas fa-share-alt"></i>
-                        <h2>Sosial Resmi</h2>
-                    </div>
-                    <div class="social-links" id="socialLinksContainer"></div>
-                </div>
-            </div>
-            <div class="page-container" id="page-help">
-                <div class="stats-section" style="margin-top: 60px;">
-                    <div class="section-header">
-                        <i class="fas fa-question-circle"></i>
-                        <h2>Bantuan & Panduan</h2>
-                    </div>
-                    <div class="info-card full-width">
-                        <ul class="help-list" style="margin-bottom: 0;">
-                            <li><i class="fas fa-check-circle"></i> <strong>Cara Membuat Giveaway:</strong> Buka bot @freebiestbot, klik "Buat Giveaway", isi hadiah, chat target, durasi, dan syarat</li>
-                            <li><i class="fas fa-check-circle"></i> <strong>Cara Berpartisipasi:</strong> Klik tombol "Ikuti Giveaway" pada pesan giveaway, penuhi syarat, lalu klik "Partisipasi"</li>
-                            <li><i class="fas fa-check-circle"></i> <strong>Syarat & Ketentuan:</strong> Peserta harus mengikuti semua syarat yang ditentukan, pemenang dipilih secara acak</li>
-                            <li><i class="fas fa-check-circle"></i> <strong>FAQ:</strong> Jika ada masalah, hubungi admin di @giftfreebies</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            <div class="page-container" id="page-about">
-                <div class="stats-section" style="margin-top: 60px;">
-                    <div class="section-header">
-                        <i class="fas fa-info-circle"></i>
-                        <h2>Tentang Giveaway Bot</h2>
-                    </div>
-                    <div class="info-card full-width">
-                        <p style="margin-bottom: 12px;">Giveaway Bot adalah platform giveaway terpercaya di Telegram yang memudahkan Anda membuat dan mengikuti giveaway dengan mudah.</p>
-                        <p style="margin-bottom: 12px;"><strong>Fitur Unggulan:</strong></p>
-                        <ul style="margin-left: 20px; margin-bottom: 12px; color: var(--text-secondary);">
-                            <li>✅ Multiple hadiah dalam satu giveaway</li>
-                            <li>✅ Multiple chat target (channel/group)</li>
-                            <li>✅ Sistem captcha anti-bot</li>
-                            <li>✅ Force subscribe otomatis</li>
-                            <li>✅ Tracking partisipasi real-time</li>
-                        </ul>
-                        <p>Version 2.0.0 | © 2024 Giveaway Bot</p>
-                    </div>
+                <div class="chart-container">
+                    <div class="chart-title">📊 Trend Giveaway & Peserta</div>
+                    <canvas id="botStatsCanvas" class="chart-canvas" style="width:100%; height:200px;"></canvas>
                 </div>
             </div>
         `;
         
-        lobbyContainer.innerHTML = pagesHtml;
+        const userStatsPage = document.createElement('div');
+        userStatsPage.id = 'page-user-stats';
+        userStatsPage.className = 'page-container';
+        userStatsPage.innerHTML = `
+            <div class="stats-section" style="margin-top: 60px;">
+                <div class="section-header">
+                    <i class="fas fa-user-chart"></i>
+                    <h2>Statistik Personal</h2>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">📊 Aktivitas Giveaway Anda</div>
+                    <canvas id="userStatsCanvas" class="chart-canvas" style="width:100%; height:200px;"></canvas>
+                </div>
+                <div class="info-card full-width" style="margin-top: 16px;">
+                    <div class="card-header-flex">
+                        <div class="card-icon-small"><i class="fas fa-chart-simple"></i></div>
+                        <h3>Ringkasan</h3>
+                    </div>
+                    <div class="detail-stats" id="userDetailStats"></div>
+                </div>
+            </div>
+        `;
+        
+        const socialPage = document.createElement('div');
+        socialPage.id = 'page-social';
+        socialPage.className = 'page-container';
+        socialPage.innerHTML = `
+            <div class="stats-section" style="margin-top: 60px;">
+                <div class="section-header">
+                    <i class="fas fa-share-alt"></i>
+                    <h2>Sosial Resmi</h2>
+                </div>
+                <div class="social-links" id="socialLinksContainer"></div>
+            </div>
+        `;
+        
+        const helpPage = document.createElement('div');
+        helpPage.id = 'page-help';
+        helpPage.className = 'page-container';
+        helpPage.innerHTML = `
+            <div class="stats-section" style="margin-top: 60px;">
+                <div class="section-header">
+                    <i class="fas fa-question-circle"></i>
+                    <h2>Bantuan & Panduan</h2>
+                </div>
+                <div class="info-card full-width">
+                    <ul class="help-list" style="margin-bottom: 0;">
+                        <li><i class="fas fa-check-circle"></i> <strong>Cara Membuat Giveaway:</strong> Buka bot @freebiestbot, klik "Buat Giveaway", isi hadiah, chat target, durasi, dan syarat</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Cara Berpartisipasi:</strong> Klik tombol "Ikuti Giveaway" pada pesan giveaway, penuhi syarat, lalu klik "Partisipasi"</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Syarat & Ketentuan:</strong> Peserta harus mengikuti semua syarat yang ditentukan, pemenang dipilih secara acak</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>FAQ:</strong> Jika ada masalah, hubungi admin di @giftfreebies</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        const aboutPage = document.createElement('div');
+        aboutPage.id = 'page-about';
+        aboutPage.className = 'page-container';
+        aboutPage.innerHTML = `
+            <div class="stats-section" style="margin-top: 60px;">
+                <div class="section-header">
+                    <i class="fas fa-info-circle"></i>
+                    <h2>Tentang Giveaway Bot</h2>
+                </div>
+                <div class="info-card full-width">
+                    <p style="margin-bottom: 12px;">Giveaway Bot adalah platform giveaway terpercaya di Telegram yang memudahkan Anda membuat dan mengikuti giveaway dengan mudah.</p>
+                    <p style="margin-bottom: 12px;"><strong>Fitur Unggulan:</strong></p>
+                    <ul style="margin-left: 20px; margin-bottom: 12px; color: var(--text-secondary);">
+                        <li>✅ Multiple hadiah dalam satu giveaway</li>
+                        <li>✅ Multiple chat target (channel/group)</li>
+                        <li>✅ Sistem captcha anti-bot</li>
+                        <li>✅ Force subscribe otomatis</li>
+                        <li>✅ Tracking partisipasi real-time</li>
+                    </ul>
+                    <p>Version 2.0.0 | © 2024 Giveaway Bot</p>
+                </div>
+            </div>
+        `;
+        
+        // Kosongkan container dan tambahkan semua page
+        lobbyContainer.innerHTML = '';
+        lobbyContainer.appendChild(dashboardPage);
+        lobbyContainer.appendChild(botStatsPage);
+        lobbyContainer.appendChild(userStatsPage);
+        lobbyContainer.appendChild(socialPage);
+        lobbyContainer.appendChild(helpPage);
+        lobbyContainer.appendChild(aboutPage);
     }
 
     // ==================== UPDATE VIEW ALL BUTTON ====================
@@ -1060,10 +1135,63 @@
         
         showLoading(true);
         
-        // Buat page containers terlebih dahulu
-        createPageContainers();
+        try {
+            // Dapatkan user Telegram terlebih dahulu
+            const telegramUserData = getTelegramUser();
+            if (telegramUserData) {
+                window.telegramUser = telegramUserData;
+                updateProfileUI(telegramUserData);
+                updateSidebarUser(telegramUserData);
+                await loadUserStats(telegramUserData.id);
+            }
+            
+            // Load data dasar terlebih dahulu (tanpa chart)
+            await Promise.all([
+                loadBotStatistics(),
+                loadOwnerInfo(),
+                loadForceSubs(),
+                loadRecentGiveaways()
+            ]);
+            
+            // Buat page containers setelah data dasar loaded
+            createPageContainers();
+            
+            // Re-get elements setelah DOM berubah
+            refreshElements();
+            
+            // Setup event listeners
+            setupEventListeners();
+            initSidebar();
+            
+            // Load konten tambahan
+            await loadSocialLinks();
+            if (window.telegramUser) {
+                await loadUserDetailStats();
+            }
+            
+            // Update tombol view all
+            updateViewAllButton();
+            
+            // Load charts (dengan timeout agar DOM stabil)
+            setTimeout(() => {
+                if (currentPage === 'bot-stats') {
+                    renderBotStatsCharts();
+                } else if (currentPage === 'user-stats' && window.telegramUser) {
+                    renderUserStatsCharts();
+                }
+            }, 500);
+            
+        } catch (error) {
+            console.error('Init error:', error);
+            showToast('Terjadi kesalahan saat memuat halaman', 'error');
+        } finally {
+            showLoading(false);
+        }
         
-        // Re-get elements setelah DOM berubah
+        console.log('✅ Lobby page initialized');
+    }
+
+    function refreshElements() {
         elements.profileAvatar = document.getElementById('profileAvatar');
         elements.profileName = document.getElementById('profileName');
         elements.profileUsername = document.getElementById('profileUsername');
@@ -1096,31 +1224,7 @@
         elements.helpBtn = document.getElementById('helpBtn');
         elements.ctaOpenBotBtn = document.getElementById('ctaOpenBotBtn');
         elements.viewAllGiveawaysBtn = document.getElementById('viewAllGiveawaysBtn');
-        
-        setupEventListeners();
-        initSidebar();
-        
-        const telegramUser = getTelegramUser();
-        if (telegramUser) {
-            updateProfileUI(telegramUser);
-            updateSidebarUser(telegramUser);
-            await loadUserStats(telegramUser.id);
-            await loadUserDetailStats();
-        }
-        
-        await loadSocialLinks();
-        await Promise.all([
-            loadBotStatistics(),
-            loadOwnerInfo(),
-            loadForceSubs(),
-            loadRecentGiveaways()
-        ]);
-        
-        updateViewAllButton();
-        
-        showLoading(false);
-        console.log('✅ Lobby page initialized');
     }
-    // Start initialization
+
     init();
 })();
