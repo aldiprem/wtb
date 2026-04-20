@@ -1892,28 +1892,35 @@
     }
 
     async function fetchParticipants() {
-        if (!giveawayData?.code) return;
+        if (!giveawayData?.code) {
+            console.log('[DEBUG] No giveaway code, skipping fetchParticipants');
+            return;
+        }
         
         try {
             console.log('[DEBUG] Fetching participants for:', giveawayData.code);
             const response = await fetch(`${API_BASE_URL}/api/giveaway/participants/${giveawayData.code}`);
-            const data = await response.json();
             
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
             console.log('[DEBUG] Participants response:', data);
             
-            // SELALU tampilkan card avatars, meskipun peserta kosong
+            // SELALU tampilkan card avatars
             const avatarsCard = document.getElementById('participationAvatarsCard');
             
-            if (data.success && data.participants && data.participants.length > 0) {
+            if (data.success && data.participants && Array.isArray(data.participants) && data.participants.length > 0) {
                 participantsList = data.participants;
                 renderAvatars(participantsList);
                 
-                // Tampilkan card avatars
                 if (avatarsCard) {
                     avatarsCard.style.display = 'flex';
                 }
             } else {
                 // Jika tidak ada peserta, tampilkan pesan kosong
+                participantsList = [];
                 if (avatarsCard) {
                     avatarsCard.style.display = 'flex';
                     const avatarsStack = document.getElementById('avatarsStack');
@@ -1931,7 +1938,8 @@
             }
         } catch (error) {
             console.error('Error fetching participants:', error);
-            // Tetap tampilkan card dengan pesan error
+            // Tetap tampilkan card dengan pesan error yang lebih informatif
+            participantsList = [];
             const avatarsCard = document.getElementById('participationAvatarsCard');
             if (avatarsCard) {
                 avatarsCard.style.display = 'flex';
@@ -1941,7 +1949,7 @@
                         <div class="avatars-stack-wrapper">
                             <div class="avatars-empty">
                                 <i class="fas fa-exclamation-circle" style="font-size: 20px; color: var(--warning);"></i>
-                                <span style="margin-left: 8px; font-size: 13px; color: var(--text-muted);">Gagal memuat peserta</span>
+                                <span style="margin-left: 8px; font-size: 13px; color: var(--text-muted);">${error.message === 'Failed to fetch' ? 'Koneksi bermasalah' : 'Gagal memuat peserta'}</span>
                             </div>
                         </div>
                     `;
@@ -2160,10 +2168,27 @@
         userProfileModal.style.display = 'flex';
     }
 
+    function setupBackButton() {
+        const backBtn = document.getElementById('backToLobbyBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                hapticMedium();
+                // Kembali ke halaman lobby
+                window.location.href = '/';
+            });
+        }
+    }
+
     function showAllParticipantsModal() {
         hapticMedium();
         
-        console.log('[DEBUG] showAllParticipantsModal called, participants count:', participantsList.length);
+        console.log('[DEBUG] showAllParticipantsModal called, participants count:', participantsList ? participantsList.length : 0);
+        
+        // Pastikan participantsList ada
+        if (!participantsList) {
+            participantsList = [];
+        }
         
         // Cari atau buat modal
         let modal = document.getElementById('participantsModal');
@@ -2189,11 +2214,17 @@
         
         if (!container) {
             console.error('Participants container not found');
+            showToast('Gagal memuat daftar peserta', 'error');
             return;
         }
         
         if (!participantsList || participantsList.length === 0) {
-            container.innerHTML = '<div class="loading-placeholder">Tidak ada peserta</div>';
+            container.innerHTML = `
+                <div class="loading-placeholder" style="text-align: center; padding: 20px; color: var(--text-muted);">
+                    <i class="fas fa-users" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
+                    Belum ada peserta
+                </div>
+            `;
         } else {
             let html = '';
             
@@ -2219,10 +2250,12 @@
                             display: flex;
                             align-items: center;
                             gap: 12px;
-                            padding: 10px 0;
+                            padding: 10px 12px;
                             border-bottom: 1px solid var(--border-light);
                             cursor: pointer;
                             transition: all 0.2s;
+                            border-radius: 12px;
+                            margin-bottom: 4px;
                         ">
                         <div class="participant-avatar" style="
                             width: 40px;
@@ -2244,7 +2277,7 @@
                                 ${p.username ? `@${p.username}` : 'ID: ' + p.user_id}
                             </div>
                         </div>
-                        <div class="participant-arrow" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;">
+                        <div class="participant-arrow" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px;">
                             <i class="fas fa-chevron-right" style="font-size: 12px; color: var(--text-muted);"></i>
                         </div>
                     </div>
@@ -2259,7 +2292,8 @@
                 const newItem = item.cloneNode(true);
                 item.parentNode.replaceChild(newItem, item);
                 
-                newItem.addEventListener('click', () => {
+                newItem.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const userId = newItem.dataset.userId;
                     const username = newItem.dataset.username;
                     const firstName = newItem.dataset.firstName;
@@ -2394,15 +2428,12 @@
             setupParticipantsModal();
             setupViewAllButton();
             
-            // 🔥 Setup refresh button (reload page)
             setupRefreshButton();
-            
-            // 🔥 Setup show all chats button (akan dipanggil lagi setelah renderChatInfo)
+            setupBackButton();
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
                 
-                // Fetch participants untuk menampilkan avatar stack
                 fetchParticipants();
                 
                 if (giveawayData && giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
