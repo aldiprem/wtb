@@ -738,123 +738,87 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                                                    
-    function renderUsernames(usernames) {
-        if (!elements.usernameList) return;
+                
+    function filterAndRender() {
+        if (!allUsernames) {
+            renderUsernames([]);
+            return;
+        }
         
-        const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
+        let filtered = [...allUsernames];
+        
+        // Filter by search term
+        if (currentSearchTerm && currentSearchTerm.trim() !== '') {
+            const term = currentSearchTerm.toLowerCase().trim();
+            filtered = filtered.filter(username => 
+                username.username.toLowerCase().includes(term) ||
+                (username.based_on && username.based_on.toLowerCase().includes(term))
+            );
+        }
+        
+        // Filter by status
+        if (currentStatus !== 'all') {
+            filtered = filtered.filter(username => {
+                const isListed = username.status === 'available';
+                return currentStatus === 'listed' ? isListed : !isListed;
+            });
+        }
+        
+        // Sort
+        if (filtered.length > 0) {
+            filtered.sort((a, b) => {
+                switch (currentSort) {
+                    case 'price_asc': return (a.price || 0) - (b.price || 0);
+                    case 'price_desc': return (b.price || 0) - (a.price || 0);
+                    case 'name_asc': return (a.username || '').localeCompare(b.username || '');
+                    case 'name_desc': return (b.username || '').localeCompare(a.username || '');
+                    case 'date_desc': return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                    default: return (a.price || 0) - (b.price || 0);
+                }
+            });
+        }
+        
+        renderUsernames(filtered);
+    }
+
+    function renderUsernames(usernames) {
+        if (!elements.usernameContainer) return;
         
         if (!usernames || usernames.length === 0) {
-            elements.usernameList.style.display = 'none';
-            if (emptyAnimationDiv) {
-                emptyAnimationDiv.style.display = 'block';
-                loadMarketplaceTGSAnimation();
+            elements.usernameContainer.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-animation" id="emptyAnimation"></div>
+                    <div class="empty-title">No Usernames Yet</div>
+                    <div class="empty-subtitle">Add your first username to get started</div>
+                    <button class="empty-btn" id="emptyAddBtn">
+                        <i class="fas fa-plus"></i> Add Username
+                    </button>
+                </div>
+            `;
+            loadTGSAnimation();
+            const emptyAddBtn = document.getElementById('emptyAddBtn');
+            if (emptyAddBtn) {
+                emptyAddBtn.addEventListener('click', () => {
+                    if (elements.addModal) elements.addModal.style.display = 'flex';
+                    hapticLight();
+                });
             }
             return;
         }
         
-        if (emptyAnimationDiv) {
-            emptyAnimationDiv.style.display = 'none';
-        }
-        elements.usernameList.style.display = 'block';
-
-        // GRID LAYOUT - SAMA PERSEPERTI STORAGE (2 card per baris)
         if (currentLayout === 'grid') {
-            // Gunakan class 'marketplace-grid' dan struktur HTML yang sama dengan storage
-            elements.usernameList.className = 'marketplace-grid';
+            elements.usernameContainer.className = 'username-grid';
             let html = '';
             for (const username of usernames) {
-                // Ambil username string yang bersih
-                let usernameStr = username.username;
-                if (typeof usernameStr !== 'string') {
-                    usernameStr = String(usernameStr);
-                }
+                let usernameStr = username.username || '';
+                if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
-                // Status (listed/unlisted) - tapi untuk marketplace hanya tampilkan yang available
-                const statusText = 'Listed';
-                const statusClass = 'listed';
+                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
+                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
                 
-                // Ambil foto profil dari cache atau default
-                let avatarUrl = "https://companel.shop/image/winedash-logo.png";
-                const cached = localStorage.getItem(`avatar_${usernameStr}`);
-                if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
-                    avatarUrl = cached;
-                }
-                
-                // Data username untuk disimpan di dataset
-                const usernameData = {
-                    id: username.id,
-                    username: usernameStr,
-                    based_on: username.based_on || '',
-                    price: username.price,
-                    seller_id: username.seller_id,
-                    seller_wallet: username.seller_wallet,
-                    status: username.status,
-                    created_at: username.created_at
-                };
-                
-                // Struktur HTML SAMA PERSIS DENGAN STORAGE
-                html += `
-                    <div class="marketplace-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
-                        <div class="marketplace-card-image">
-                            <div class="card-avatar">
-                                <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
-                            </div>
-                            <div class="card-username">@${escapeHtml(usernameStr)}</div>
-                        </div>
-                        <div class="marketplace-card-info">
-                            <div class="card-price-row">
-                                <div class="price-with-logo">
-                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
-                                    <span class="card-price">${formatNumber(username.price)}</span>
-                                </div>
-                                <div class="card-basedon">${escapeHtml(username.based_on || '-')}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            elements.usernameList.innerHTML = html;
-            
-            // Attach click event untuk setiap card
-            document.querySelectorAll('.marketplace-card').forEach(card => {
-                // Hapus event listener lama dengan clone
-                const newCard = card.cloneNode(true);
-                card.parentNode.replaceChild(newCard, card);
-                newCard.addEventListener('click', (e) => {
-                    if (e.target.closest('.marketplace-buy-btn')) return;
-                    try {
-                        const usernameData = JSON.parse(newCard.dataset.username.replace(/&#39;/g, "'"));
-                        showMarketDetailPanel(usernameData);
-                    } catch (err) {
-                        console.error('Error parsing username data:', err);
-                    }
-                });
-            });
-            
-            // Fetch avatar untuk setiap card (async)
-            setTimeout(() => {
-                fetchAllMarketplaceAvatars();
-            }, 100);
-            
-        } else {
-            // LIST LAYOUT - SAMA PERSIS DENGAN STORAGE LIST
-            elements.usernameList.className = 'marketplace-list';
-            let html = '';
-            for (const username of usernames) {
-                let usernameStr = username.username;
-                if (typeof usernameStr !== 'string') {
-                    usernameStr = String(usernameStr);
-                }
-                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
-                
-                // Based on text
-                const basedOnText = username.based_on || '-';
-                
-                // Ambil foto profil dari cache atau default
                 let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
-                if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
+                if (!avatarUrl || !avatarUrl.startsWith('data:image')) {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
                 
@@ -868,45 +832,107 @@
                     status: username.status,
                     created_at: username.created_at
                 };
-                
-                // Struktur HTML SAMA PERSIS DENGAN STORAGE LIST
+
                 html += `
-                    <div class="marketplace-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
-                        <div class="marketplace-avatar">
-                            <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="marketplace-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
+                        <div class="username-card-image">
+                            <div class="card-avatar">
+                                <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                            </div>
+                            <div class="card-username">@${escapeHtml(usernameStr)}</div>
                         </div>
-                        <div class="marketplace-info">
-                            <div class="marketplace-name">@${escapeHtml(usernameStr)}</div>
-                            <div class="marketplace-basedon">${escapeHtml(basedOnText)}</div>
-                        </div>
-                        <div class="marketplace-price-wrapper">
-                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
-                            <span class="marketplace-price">${formatNumber(username.price)}</span>
+                        <div class="username-card-info">
+                            <div class="card-price-row">
+                                <div class="price-with-logo">
+                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
+                                    <span class="card-price">${formatNumber(username.price)}</span>
+                                </div>
+                                <div class="card-status ${statusClass}">${statusText}</div>
+                            </div>
                         </div>
                     </div>
                 `;
             }
-            elements.usernameList.innerHTML = html;
+            elements.usernameContainer.innerHTML = html;
             
-            // Attach click event untuk setiap item
-            document.querySelectorAll('.marketplace-item').forEach(item => {
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-                newItem.addEventListener('click', (e) => {
-                    if (e.target.closest('.marketplace-buy-btn-small')) return;
+            // Attach click events
+            document.querySelectorAll('.username-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.card-action-btn')) return;
                     try {
-                        const usernameData = JSON.parse(newItem.dataset.username.replace(/&#39;/g, "'"));
-                        showMarketDetailPanel(usernameData);
+                        const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                        showDetailPanel(usernameData);
                     } catch (err) {
                         console.error('Error parsing username data:', err);
                     }
                 });
             });
             
-            // Fetch avatar untuk setiap item
-            setTimeout(() => {
-                fetchAllMarketplaceListAvatars();
-            }, 100);
+            // Fetch avatars async
+            setTimeout(() => fetchAllCardAvatars(), 200);
+            
+        } else {
+            // List layout
+            elements.usernameContainer.className = 'username-list';
+            let html = '';
+            for (const username of usernames) {
+                let usernameStr = username.username || '';
+                if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
+                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
+                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
+                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+                const basedOnText = username.based_on || '-';
+                
+                let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
+                if (!avatarUrl || !avatarUrl.startsWith('data:image')) {
+                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                }
+                
+                const usernameData = {
+                    id: username.id,
+                    username: usernameStr,
+                    based_on: username.based_on || '',
+                    price: username.price,
+                    seller_id: username.seller_id,
+                    seller_wallet: username.seller_wallet,
+                    status: username.status,
+                    created_at: username.created_at
+                };
+
+                html += `
+                    <div class="username-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
+                        <div class="username-avatar">
+                            <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="username-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                        </div>
+                        <div class="username-info">
+                            <div class="username-name">@${escapeHtml(usernameStr)}</div>
+                            <div class="username-basedon" style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">${escapeHtml(basedOnText)}</div>
+                        </div>
+                        <div class="username-price-wrapper">
+                            <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
+                            <span class="username-price">${formatNumber(username.price)}</span>
+                        </div>
+                        <div class="username-status ${statusClass}">${statusText}</div>
+                    </div>
+                `;
+            }
+            elements.usernameContainer.innerHTML = html;
+            
+            // Attach click events
+            document.querySelectorAll('.username-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    try {
+                        const usernameData = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
+                        showDetailPanel(usernameData);
+                    } catch (err) {
+                        console.error('Error parsing username data:', err);
+                    }
+                });
+            });
+            
+            // Fetch avatars async
+            setTimeout(() => fetchAllListAvatars(), 200);
         }
     }
 
@@ -1020,19 +1046,38 @@
         
         renderUsernames(filtered);
     }
-                            
+                                    
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=100`);
+            console.log('[DEBUG] Loading marketplace usernames...');
+            
+            const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
             const data = await response.json();
             
-            if (data.success && data.usernames && data.usernames.length > 0) {
-                // HANYA username dengan status 'available'
+            console.log('[DEBUG] Load usernames response:', data);
+            
+            if (data.success && data.usernames) {
+                // Hanya username dengan status 'available'
                 allUsernames = data.usernames.filter(u => u.status === 'available');
-                applyFiltersAndRender();
+                console.log(`[DEBUG] Loaded ${allUsernames.length} available usernames`);
+                
+                if (allUsernames.length === 0) {
+                    const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
+                    if (emptyAnimationDiv) {
+                        emptyAnimationDiv.style.display = 'block';
+                        elements.usernameList.style.display = 'none';
+                        loadMarketplaceTGSAnimation();
+                    }
+                } else {
+                    const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
+                    if (emptyAnimationDiv) emptyAnimationDiv.style.display = 'none';
+                    elements.usernameList.style.display = 'block';
+                    applyFiltersAndRender();
+                }
             } else {
+                console.log('[DEBUG] No usernames found');
                 allUsernames = [];
                 const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                 if (emptyAnimationDiv) {
@@ -1042,8 +1087,50 @@
                 }
             }
         } catch (error) {
-            console.error('Error loading usernames:', error);
-            elements.usernameList.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
+            console.error('[DEBUG] Error loading usernames:', error);
+            elements.usernameList.innerHTML = '<div class="loading-placeholder">Gagal memuat data: ' + (error.message || 'Network error') + '</div>';
+        }
+    }
+
+    async function refreshAllAvatars() {
+        // Refresh untuk grid layout
+        const gridAvatars = document.querySelectorAll('.username-card .card-avatar img.avatar-img');
+        for (const img of gridAvatars) {
+            const username = img.dataset.username;
+            if (username) {
+                const cached = localStorage.getItem(`avatar_${username}`);
+                if (cached && cached.startsWith('data:image')) {
+                    if (img.src !== cached) img.src = cached;
+                } else {
+                    const photoUrl = await fetchProfilePhoto(username);
+                    if (photoUrl && photoUrl.startsWith('data:image')) {
+                        img.src = photoUrl;
+                    }
+                }
+                await new Promise(r => setTimeout(r, 50));
+            }
+        }
+        
+        // Refresh untuk list layout
+        const listAvatars = document.querySelectorAll('.username-list .username-avatar-img');
+        for (const img of listAvatars) {
+            const parentItem = img.closest('.username-item');
+            if (parentItem && parentItem.dataset.username) {
+                try {
+                    const usernameData = JSON.parse(parentItem.dataset.username.replace(/&#39;/g, "'"));
+                    const username = usernameData.username;
+                    const cached = localStorage.getItem(`avatar_${username}`);
+                    if (cached && cached.startsWith('data:image')) {
+                        if (img.src !== cached) img.src = cached;
+                    } else {
+                        const photoUrl = await fetchProfilePhoto(username);
+                        if (photoUrl && photoUrl.startsWith('data:image')) {
+                            img.src = photoUrl;
+                        }
+                    }
+                } catch(e) {}
+                await new Promise(r => setTimeout(r, 50));
+            }
         }
     }
 
@@ -3256,44 +3343,68 @@
     }
 
     async function init() {
+        console.log('📦 Winedash Storage - Initializing...');
+        
         initTelegram();
         initSafeArea();
         showLoading(true);
         
         try {
-            setupTabs();
+            // Setup DOM elements references
+            setupDomElements();
+            
+            // Setup event listeners
             setupEventListeners();
+            setupInboxEventListeners();
+            setupToggleButtons();
             setupSearch();
-            setupWalletEventListeners();
-            initWalletPanels();
-            setupMarketplaceFilterBar();
             
+            // Get Telegram user
             telegramUser = getTelegramUserFromWebApp();
+            
             if (telegramUser) {
-                updateUserUI();
+                updateStorageUserUI();
                 await authenticateUser();
+                await loadStorageBalance();
                 await loadUsernames();
-                await loadPurchasedUsernames();
-                await loadTransactionHistory();
-                await loadBasedOnOptions();
-                updateFilterBadge();
+                await loadPendingCount();
+                startAutoRefresh();
             } else {
-                showToast('Tidak dapat mengambil data user', 'error');
+                console.warn('No Telegram user found');
+                if (elements.usernameContainer) {
+                    elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
+                }
             }
-            
-            await initTonConnect();
-            
-            setTimeout(() => {
-                if (isWalletConnected) updateWalletMainUI();
-            }, 500);
-            
         } catch (error) {
-            console.error('❌ Error in init:', error);
-            showToast('Error loading page: ' + error.message, 'error');
+            console.error('Error in init:', error);
+            if (elements.usernameContainer) {
+                elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Error loading page: ' + (error.message || 'Unknown error') + '</div>';
+            }
         } finally {
             showLoading(false);
-            console.log('✅ Winedash Marketplace initialized');
         }
     }
+
+    function setupDomElements() {
+        // Pastikan semua elemen DOM sudah direferensikan
+        elements.loadingOverlay = document.getElementById('loadingOverlay');
+        elements.toastContainer = document.getElementById('toastContainer');
+        elements.usernameContainer = document.getElementById('usernameContainer');
+        elements.searchInput = document.getElementById('searchStorage');
+        elements.searchApplyBtn = document.getElementById('searchApplyBtn');
+        elements.addUsernameActionBtn = document.getElementById('addUsernameActionBtn');
+        elements.addModal = document.getElementById('addModal');
+        elements.cancelModalBtn = document.getElementById('cancelModalBtn');
+        elements.confirmAddBtn = document.getElementById('confirmAddBtn');
+        elements.modalUsername = document.getElementById('modalUsername');
+        elements.modalPrice = document.getElementById('modalPrice');
+        elements.sortBtn = document.getElementById('sortBtn');
+        elements.sortDropdown = document.getElementById('sortDropdown');
+        elements.sortSelect = document.getElementById('sortSelect');
+        elements.gridLayoutBtn = document.getElementById('gridLayoutBtn');
+        elements.listLayoutBtn = document.getElementById('listLayoutBtn');
+        elements.modeBtns = document.querySelectorAll('.mode-btn');
+    }
+
     init();
 })();
