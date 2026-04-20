@@ -1892,69 +1892,30 @@
     }
 
     async function fetchParticipants() {
-        if (!giveawayData?.code) {
-            console.log('[DEBUG] No giveaway code, skipping fetchParticipants');
-            return;
-        }
+        if (!giveawayData?.code) return;
         
         try {
-            console.log('[DEBUG] Fetching participants for:', giveawayData.code);
             const response = await fetch(`${API_BASE_URL}/api/giveaway/participants/${giveawayData.code}`);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
             const data = await response.json();
-            console.log('[DEBUG] Participants response:', data);
             
-            // SELALU tampilkan card avatars
-            const avatarsCard = document.getElementById('participationAvatarsCard');
-            
-            if (data.success && data.participants && Array.isArray(data.participants) && data.participants.length > 0) {
+            if (data.success && data.participants && data.participants.length > 0) {
                 participantsList = data.participants;
                 renderAvatars(participantsList);
                 
+                // Tampilkan card avatars
+                const avatarsCard = document.getElementById('participationAvatarsCard');
                 if (avatarsCard) {
                     avatarsCard.style.display = 'flex';
                 }
             } else {
-                // Jika tidak ada peserta, tampilkan pesan kosong
-                participantsList = [];
+                // Sembunyikan card jika tidak ada peserta
+                const avatarsCard = document.getElementById('participationAvatarsCard');
                 if (avatarsCard) {
-                    avatarsCard.style.display = 'flex';
-                    const avatarsStack = document.getElementById('avatarsStack');
-                    if (avatarsStack) {
-                        avatarsStack.innerHTML = `
-                            <div class="avatars-stack-wrapper">
-                                <div class="avatars-empty">
-                                    <i class="fas fa-users" style="font-size: 20px; color: var(--text-muted);"></i>
-                                    <span style="margin-left: 8px; font-size: 13px; color: var(--text-muted);">Belum ada peserta</span>
-                                </div>
-                            </div>
-                        `;
-                    }
+                    avatarsCard.style.display = 'none';
                 }
             }
         } catch (error) {
             console.error('Error fetching participants:', error);
-            // Tetap tampilkan card dengan pesan error yang lebih informatif
-            participantsList = [];
-            const avatarsCard = document.getElementById('participationAvatarsCard');
-            if (avatarsCard) {
-                avatarsCard.style.display = 'flex';
-                const avatarsStack = document.getElementById('avatarsStack');
-                if (avatarsStack) {
-                    avatarsStack.innerHTML = `
-                        <div class="avatars-stack-wrapper">
-                            <div class="avatars-empty">
-                                <i class="fas fa-exclamation-circle" style="font-size: 20px; color: var(--warning);"></i>
-                                <span style="margin-left: 8px; font-size: 13px; color: var(--text-muted);">${error.message === 'Failed to fetch' ? 'Koneksi bermasalah' : 'Gagal memuat peserta'}</span>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
         }
     }
 
@@ -1963,25 +1924,21 @@
         if (!avatarsStack) return;
         
         const totalParticipants = participants.length;
-        
-        // Urutkan berdasarkan waktu join (terbaru di akhir/tampil di depan)
         const sortedParticipants = [...participants];
         
-        // Tampilkan maksimal 5 avatar terbaru
         const displayParticipants = sortedParticipants.slice(-5);
         const remainingCount = totalParticipants - 5;
         
         let html = '';
         
-        // Render avatar stack
         for (let i = 0; i < displayParticipants.length; i++) {
             const p = displayParticipants[i];
             const userName = p.first_name || p.username || 'User';
             const initial = userName.charAt(0).toUpperCase();
             
             let photoUrl = p.photo_url;
-            if (!photoUrl || photoUrl === '' || photoUrl === 'null') {
-                const nameForAvatar = encodeURIComponent(userName.substring(0, 2) || 'U');
+            if (!photoUrl || photoUrl === '') {
+                const nameForAvatar = encodeURIComponent(userName.substring(0, 2));
                 photoUrl = `https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=2`;
             }
             
@@ -1999,82 +1956,53 @@
             `;
         }
         
-        // Siapkan wrapper HTML
-        let containerHtml = '';
-        
-        if (totalParticipants === 0) {
-            containerHtml = `
-                <div class="avatars-stack-wrapper">
-                    <div class="avatars-empty">
-                        <i class="fas fa-users" style="font-size: 20px; color: var(--text-muted);"></i>
-                        <span style="margin-left: 8px; font-size: 13px; color: var(--text-muted);">Belum ada peserta</span>
-                    </div>
-                </div>
-            `;
-        } else if (totalParticipants <= 5) {
-            containerHtml = `
-                <div class="avatars-stack-wrapper">
-                    <div class="avatars-stack">
-                        ${html}
-                    </div>
-                    <button class="avatars-view-btn" id="viewAllParticipantsBtn">
-                        <span>Lihat semua (${totalParticipants})</span>
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            `;
-        } else {
-            containerHtml = `
-                <div class="avatars-stack-wrapper">
-                    <div class="avatars-stack">
-                        ${html}
-                        <div class="avatar-stack-more" id="avatarStackMoreBtn">
-                            +${remainingCount}
-                        </div>
-                    </div>
-                    <button class="avatars-view-btn" id="viewAllParticipantsBtn">
-                        <span>Lihat semua (${totalParticipants})</span>
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
-            `;
+        let sideText = '';
+        if (totalParticipants > 0) {
+            if (totalParticipants < 5) {
+                sideText = `<span class="avatars-side-text">${totalParticipants} Peserta</span>`;
+            } else if (remainingCount > 0) {
+                sideText = `<span class="avatars-side-text">+${remainingCount} Peserta Lainnya...</span>`;
+            }
         }
+        
+        // RENDER LENGKAP DENGAN TOMBOL
+        const containerHtml = `
+            <div class="avatars-stack-wrapper">
+                <div class="avatars-stack">
+                    ${html}
+                    ${sideText}
+                </div>
+                <button class="avatars-view-btn" id="viewAllParticipantsBtn">
+                    <span>Lihat semua</span>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        `;
         
         avatarsStack.innerHTML = containerHtml;
         
         // Event listener untuk avatar item
         document.querySelectorAll('.avatar-stack-item').forEach(item => {
-            // Hapus event listener lama dengan clone
-            const newItem = item.cloneNode(true);
-            item.parentNode.replaceChild(newItem, item);
-            
-            newItem.addEventListener('click', (e) => {
+            item.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const userId = newItem.dataset.userId;
-                const username = newItem.dataset.username;
-                const firstName = newItem.dataset.firstName;
-                const lastName = newItem.dataset.lastName;
-                const photoUrl = newItem.dataset.photoUrl;
+                const userId = item.dataset.userId;
+                const username = item.dataset.username;
+                const firstName = item.dataset.firstName;
+                const lastName = item.dataset.lastName;
+                const photoUrl = item.dataset.photoUrl;
                 showUserProfileModal(userId, username, firstName, lastName, photoUrl);
             });
         });
         
-        // Event listener untuk tombol "+X" (avatar stack more)
-        const moreBtn = document.getElementById('avatarStackMoreBtn');
-        if (moreBtn) {
-            const newMoreBtn = moreBtn.cloneNode(true);
-            moreBtn.parentNode.replaceChild(newMoreBtn, moreBtn);
-            
-            newMoreBtn.addEventListener('click', (e) => {
+        // Event listener untuk tombol show all participants
+        const viewBtn = document.getElementById('viewAllParticipantsBtn');
+        if (viewBtn) {
+            viewBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 showAllParticipantsModal();
             });
         }
-        
-        // Event listener untuk tombol "Lihat semua"
-        setupViewAllButton();
     }
-
 
     // Tambahkan CSS untuk side text di style
     const addAvatarsStyles = () => {
@@ -2168,174 +2096,63 @@
         userProfileModal.style.display = 'flex';
     }
 
-    function setupBackButton() {
-        const backBtn = document.getElementById('backToLobbyBtn');
-        if (backBtn) {
-            backBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                hapticMedium();
-                window.location.href = '/giveaway';
-            });
-        }
-    }
-
     function showAllParticipantsModal() {
         hapticMedium();
         
-        console.log('[DEBUG] showAllParticipantsModal called, participants count:', participantsList ? participantsList.length : 0);
+        const modal = document.getElementById('participantsModal');
+        const container = document.getElementById('participantsListContainer');
         
-        // Pastikan participantsList ada
-        if (!participantsList) {
-            participantsList = [];
-        }
+        if (!modal || !container) return;
         
-        // Cari atau buat modal
-        let modal = document.getElementById('participantsModal');
-        let container = document.getElementById('participantsListContainer');
+        let html = '';
         
-        if (!modal) {
-            // Buat modal jika belum ada
-            modal = document.createElement('div');
-            modal.id = 'participantsModal';
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `
-                <div class="modal-container" style="max-width: 340px;">
-                    <div class="modal-header" style="padding: 12px 16px;">
-                        <h3 style="font-size: 14px;"><i class="fas fa-users"></i> Daftar Peserta</h3>
-                        <button class="modal-close" id="closeParticipantsModalBtn">&times;</button>
-                    </div>
-                    <div class="modal-body" id="participantsListContainer" style="padding: 12px 16px; max-height: 60vh; overflow-y: auto;"></div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            container = document.getElementById('participantsListContainer');
-        }
-        
-        if (!container) {
-            console.error('Participants container not found');
-            showToast('Gagal memuat daftar peserta', 'error');
-            return;
-        }
-        
-        if (!participantsList || participantsList.length === 0) {
-            container.innerHTML = `
-                <div class="loading-placeholder" style="text-align: center; padding: 20px; color: var(--text-muted);">
-                    <i class="fas fa-users" style="font-size: 24px; margin-bottom: 8px; display: block;"></i>
-                    Belum ada peserta
-                </div>
-            `;
-        } else {
-            let html = '';
+        for (const p of participantsList) {
+            const userName = p.first_name || p.username || 'User';
+            const initial = userName.charAt(0).toUpperCase();
+            const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username || 'Pengguna';
             
-            for (const p of participantsList) {
-                const userName = p.first_name || p.username || 'User';
-                const initial = userName.charAt(0).toUpperCase();
-                const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.username || 'Pengguna';
-                
-                // PRIORITAS: Gunakan photo_url dari database
-                let photoUrl = p.photo_url;
-                if (!photoUrl || photoUrl === '' || photoUrl === 'null') {
-                    photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=1`;
-                }
-                
-                html += `
-                    <div class="modal-participant-item" 
-                        data-user-id="${p.user_id}" 
-                        data-username="${escapeHtml(p.username || '')}" 
-                        data-first-name="${escapeHtml(p.first_name || '')}" 
-                        data-last-name="${escapeHtml(p.last_name || '')}"
-                        data-photo-url="${escapeHtml(photoUrl)}"
-                        style="
-                            display: flex;
-                            align-items: center;
-                            gap: 12px;
-                            padding: 10px 12px;
-                            border-bottom: 1px solid var(--border-light);
-                            cursor: pointer;
-                            transition: all 0.2s;
-                            border-radius: 12px;
-                            margin-bottom: 4px;
-                        ">
-                        <div class="participant-avatar" style="
-                            width: 40px;
-                            height: 40px;
-                            border-radius: 50%;
-                            border: 2px solid rgba(64, 167, 227, 0.2);
-                            overflow: hidden;
-                            flex-shrink: 0;
-                            background: var(--surface);
-                        ">
-                            <img src="${photoUrl}" alt="${escapeHtml(userName)}" style="width: 100%; height: 100%; object-fit: cover;"
-                                onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true'">
-                        </div>
-                        <div class="participant-info" style="flex: 1; min-width: 0;">
-                            <div class="participant-name" style="font-size: 14px; font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                ${escapeHtml(fullName)}
-                            </div>
-                            <div class="participant-username" style="font-size: 11px; color: var(--text-muted);">
-                                ${p.username ? `@${p.username}` : 'ID: ' + p.user_id}
-                            </div>
-                        </div>
-                        <div class="participant-arrow" style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 8px;">
-                            <i class="fas fa-chevron-right" style="font-size: 12px; color: var(--text-muted);"></i>
-                        </div>
-                    </div>
-                `;
+            // PRIORITAS: Gunakan photo_url dari database
+            let photoUrl = p.photo_url;
+            if (!photoUrl || photoUrl === '') {
+                photoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true&bold=true&length=1`;
             }
             
-            container.innerHTML = html;
-            
-            // Event listener untuk setiap item participant
-            document.querySelectorAll('#participantsListContainer .modal-participant-item').forEach(item => {
-                // Hapus event listener lama dengan clone
-                const newItem = item.cloneNode(true);
-                item.parentNode.replaceChild(newItem, item);
-                
-                newItem.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const userId = newItem.dataset.userId;
-                    const username = newItem.dataset.username;
-                    const firstName = newItem.dataset.firstName;
-                    const lastName = newItem.dataset.lastName;
-                    const photoUrl = newItem.dataset.photoUrl;
-                    // Tutup modal participant dulu
-                    if (modal) modal.style.display = 'none';
-                    document.body.classList.remove('modal-open');
-                    // Tampilkan profile user
-                    showUserProfileModal(userId, username, firstName, lastName, photoUrl);
-                });
-            });
+            html += `
+                <div class="modal-participant-item" 
+                    data-user-id="${p.user_id}" 
+                    data-username="${escapeHtml(p.username || '')}" 
+                    data-first-name="${escapeHtml(p.first_name || '')}" 
+                    data-last-name="${escapeHtml(p.last_name || '')}"
+                    data-photo-url="${escapeHtml(photoUrl)}">
+                    <div class="participant-avatar">
+                        <img src="${photoUrl}" alt="${escapeHtml(userName)}" 
+                            onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(initial)}&background=40a7e3&color=fff&size=80&rounded=true'">
+                    </div>
+                    <div class="participant-info">
+                        <div class="participant-name">${escapeHtml(fullName)}</div>
+                        <div class="participant-username">${p.username ? `@${p.username}` : 'ID: ' + p.user_id}</div>
+                    </div>
+                </div>
+            `;
         }
         
-        // Setup tombol close
-        const closeBtn = document.getElementById('closeParticipantsModalBtn');
-        if (closeBtn) {
-            const newCloseBtn = closeBtn.cloneNode(true);
-            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-            
-            newCloseBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (modal) modal.style.display = 'none';
-                document.body.classList.remove('modal-open');
-            });
-        }
+        container.innerHTML = html;
         
-        // Klik overlay untuk close
-        if (modal) {
-            const newModal = modal.cloneNode(true);
-            modal.parentNode.replaceChild(newModal, modal);
-            modal = newModal;
-            
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.style.display = 'none';
-                    document.body.classList.remove('modal-open');
-                }
+        // Event listener untuk item participant
+        document.querySelectorAll('.modal-participant-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const userId = item.dataset.userId;
+                const username = item.dataset.username;
+                const firstName = item.dataset.firstName;
+                const lastName = item.dataset.lastName;
+                const photoUrl = item.dataset.photoUrl;
+                modal.style.display = 'none';
+                showUserProfileModal(userId, username, firstName, lastName, photoUrl);
             });
-        }
+        });
         
         document.body.classList.add('modal-open');
-        if (modal) modal.style.display = 'flex';
+        modal.style.display = 'flex';
     }
 
     function setupParticipantsModal() {
@@ -2357,17 +2174,11 @@
         }
     }
 
+    // Tambahkan view all participants button event
     function setupViewAllButton() {
         const viewBtn = document.getElementById('viewAllParticipantsBtn');
         if (viewBtn) {
-            // Hapus event listener lama dengan clone
-            const newBtn = viewBtn.cloneNode(true);
-            viewBtn.parentNode.replaceChild(newBtn, viewBtn);
-            
-            newBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log('[DEBUG] View all participants button clicked');
+            viewBtn.addEventListener('click', () => {
                 showAllParticipantsModal();
             });
         }
@@ -2427,12 +2238,15 @@
             setupParticipantsModal();
             setupViewAllButton();
             
+            // 🔥 Setup refresh button (reload page)
             setupRefreshButton();
-            setupBackButton();
+            
+            // 🔥 Setup show all chats button (akan dipanggil lagi setelah renderChatInfo)
             
             loadGiveaway(giveawayCode).then(async () => {
                 await saveUserCheckState();
                 
+                // Fetch participants untuk menampilkan avatar stack
                 fetchParticipants();
                 
                 if (giveawayData && giveawayData.syarat && giveawayData.syarat.includes('Subscribe') && !hasParticipated) {
