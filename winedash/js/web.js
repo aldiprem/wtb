@@ -1020,7 +1020,7 @@
         
         renderUsernames(filtered);
     }
-                        
+                            
     async function loadUsernames() {
         if (!elements.usernameList) return;
         
@@ -1029,12 +1029,11 @@
             const data = await response.json();
             
             if (data.success && data.usernames && data.usernames.length > 0) {
-                // Hanya tampilkan username yang statusnya 'available'
+                // HANYA username dengan status 'available'
                 allUsernames = data.usernames.filter(u => u.status === 'available');
                 applyFiltersAndRender();
             } else {
                 allUsernames = [];
-                // Tampilkan empty state di dalam section-card
                 const emptyAnimationDiv = document.getElementById('emptyMarketplaceAnimation');
                 if (emptyAnimationDiv) {
                     emptyAnimationDiv.style.display = 'block';
@@ -2008,19 +2007,6 @@
         hapticLight();
     }
 
-    function closeFilterPanel() {
-        if (filterPanel) {
-            filterPanel.classList.remove('open');
-            setTimeout(() => {
-                if (filterPanel && filterPanel.parentNode) filterPanel.remove();
-                filterPanel = null;
-            }, 300);
-        }
-        if (filterOverlay) filterOverlay.classList.remove('active');
-        document.body.classList.remove('filter-open');
-        hapticLight();
-    }
-
     function applyFiltersAndRender() {
         if (!allUsernames || allUsernames.length === 0) {
             renderUsernames([]);
@@ -2034,7 +2020,7 @@
         const maxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
         filtered = filtered.filter(u => u.price >= minPrice && u.price <= maxPrice);
         
-        // Based on filter
+        // Based on filter - PERBAIKAN INI
         if (currentBasedOnFilter && currentBasedOnFilter !== 'all') {
             filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
         }
