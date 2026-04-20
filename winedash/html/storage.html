@@ -1,3 +1,5 @@
+<!-- winedash/html/storage.html - VERSI PERBAIKAN -->
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -34,7 +36,7 @@
     <!-- Main Container -->
     <div class="storage-container">
 
-        <!-- Profile Header - Sama seperti web.html -->
+        <!-- Profile Header -->
         <div class="storage-profile-header">
             <div class="storage-profile-avatar" id="storageUserAvatar">
                 <i class="fas fa-user"></i>
@@ -44,7 +46,7 @@
             </div>
         </div>
 
-        <!-- Bottom Navigation - Floating dengan lingkaran kiri (Market icon) -->
+        <!-- Bottom Navigation -->
         <div class="storage-bottom-nav">
             <div class="nav-circle market-icon" id="backToHomeBtn">
                 <i class="fas fa-store"></i>
@@ -71,7 +73,7 @@
             <button class="mode-btn" data-mode="auctions">Auctions</button>
         </div>
 
-        <!-- Fix Price Section -->
+        <!-- ==================== FIX PRICE SECTION ==================== -->
         <div id="fixPriceSection">
             <!-- Action Row untuk Fix Price -->
             <div class="action-row">
@@ -124,13 +126,24 @@
                 </button>
             </div>
 
+            <!-- Sort Dropdown -->
+            <div id="sortDropdown" style="display: none; margin-bottom: 12px;">
+                <select id="sortSelect" class="form-input" style="margin-bottom: 0;">
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                    <option value="date_desc">Latest</option>
+                    <option value="name_asc">Name: A to Z</option>
+                    <option value="name_desc">Name: Z to A</option>
+                </select>
+            </div>
+
             <!-- Username Container Fix Price -->
             <div id="usernameContainer" style="width: 100%; min-height: 400px;">
                 <div class="loading-placeholder">Memuat username...</div>
             </div>
         </div>
 
-        <!-- Auctions Section -->
+        <!-- ==================== AUCTIONS SECTION ==================== -->
         <div id="auctionsSection" style="display: none;">
             <!-- Action Row untuk Auctions -->
             <div class="offers-action-row">
@@ -148,7 +161,7 @@
                 </button>
             </div>
 
-            <!-- Action Row untuk Auctions (Create Auction) -->
+            <!-- Create Auction Button -->
             <div class="action-row">
                 <button class="action-btn add-action-btn" id="createAuctionBtn">
                     <i class="fas fa-plus-circle"></i>
@@ -180,62 +193,8 @@
             </div>
         </div>
 
-        <!-- Action Row Baru - Tombol-tombol aksi -->
-        <div class="action-row">
-            <button class="action-btn add-action-btn" id="addUsernameActionBtn">
-                <i class="fas fa-plus"></i>
-                <span>Add</span>
-            </button>
-            <button class="action-btn" id="sendUsernameBtn">
-                <i class="fas fa-paper-plane"></i>
-                <span>Send</span>
-            </button>
-            <button class="action-btn" id="withdrawUsernameBtn">
-                <i class="fas fa-arrow-up"></i>
-                <span>Withdraw</span>
-            </button>
-            <button class="action-btn" id="offerUsernameBtn">
-                <i class="fas fa-tag"></i>
-                <span>Offer</span>
-            </button>
-        </div>
-
-        <!-- Search Bar -->
-        <div class="search-container">
-            <input type="text" class="search-input" id="searchStorage" placeholder="🔍 Cari username...">
-            <button class="search-apply-btn" id="searchApplyBtn">Apply</button>
-        </div>
-
-        <!-- Action Bar - Tombol toggle single dan filter -->
-        <div class="action-bar">
-            <button class="action-btn" id="toggleStatusBtn">
-                <i class="fas fa-eye"></i>
-                <span>All</span>
-            </button>
-            
-            <!-- INBOX BUTTON - DILETAKKAN DI ACTION BAR, SEJAJAR DENGAN TOMBOL LAIN -->
-            <div class="inbox-wrapper">
-                <button class="action-btn" id="inboxBtn">
-                    <i class="fas fa-inbox"></i>
-                    <span>Inbox</span>
-                    <span class="inbox-badge" id="inboxBadge" style="display: none;">0</span>
-                </button>
-            </div>
-            
-            <div class="layout-toggle">
-                <button class="layout-btn active" data-layout="grid" id="gridLayoutBtn">
-                    <i class="fas fa-th"></i>
-                </button>
-                <button class="layout-btn" data-layout="list" id="listLayoutBtn">
-                    <i class="fas fa-list"></i>
-                </button>
-            </div>
-            
-            <button class="action-btn" id="sortBtn">
-                <i class="fas fa-sort-amount-down-alt"></i>
-            </button>
-        </div>
-
+        <!-- ==================== MODALS (Tetap di bawah) ==================== -->
+        
         <!-- Panel Inbox (slide from bottom) -->
         <div class="inbox-panel" id="inboxPanel" style="display: none;">
             <div class="inbox-header">
@@ -262,37 +221,21 @@
             </div>
         </div>
 
-        <!-- Sort Dropdown (hidden by default) -->
-        <div id="sortDropdown" style="display: none; margin-bottom: 12px;">
-            <select id="sortSelect" class="form-input" style="margin-bottom: 0;">
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="date_desc">Latest</option>
-                <option value="name_asc">Name: A to Z</option>
-                <option value="name_desc">Name: Z to A</option>
-            </select>
-        </div>
-
-        <!-- Username Container -->
-        <div id="usernameContainer" style="width: 100%; min-height: 400px;">
-            <div class="loading-placeholder">Memuat username...</div>
-        </div>
-
-    </div>
-
-    <!-- Modal Add Username -->
-    <div id="addModal" class="modal-overlay">
-        <div class="modal-content">
-            <h3>Tambah Username</h3>
-            <input type="text" id="modalUsername" placeholder="Username (tanpa @)" class="form-input">
-            <input type="text" id="modalBasedOn" placeholder="Based On (nama asli)" class="form-input">
-            <div id="basedOnError" class="error-message" style="display: none; color: #ef4444; font-size: 11px; margin-top: -8px; margin-bottom: 12px;"></div>
-            <input type="number" id="modalPrice" placeholder="Harga (TON)" class="form-input" step="0.1" min="0.1">
-            <div class="modal-buttons">
-                <button class="modal-cancel" id="cancelModalBtn">Batal</button>
-                <button class="modal-confirm" id="confirmAddBtn">Tambah</button>
+        <!-- Modal Add Username -->
+        <div id="addModal" class="modal-overlay">
+            <div class="modal-content">
+                <h3>Tambah Username</h3>
+                <input type="text" id="modalUsername" placeholder="Username (tanpa @)" class="form-input">
+                <input type="text" id="modalBasedOn" placeholder="Based On (nama asli)" class="form-input">
+                <div id="basedOnError" class="error-message" style="display: none; color: #ef4444; font-size: 11px; margin-top: -8px; margin-bottom: 12px;"></div>
+                <input type="number" id="modalPrice" placeholder="Harga (TON)" class="form-input" step="0.1" min="0.1">
+                <div class="modal-buttons">
+                    <button class="modal-cancel" id="cancelModalBtn">Batal</button>
+                    <button class="modal-confirm" id="confirmAddBtn">Tambah</button>
+                </div>
             </div>
         </div>
+
     </div>
 
     <!-- JavaScript -->
