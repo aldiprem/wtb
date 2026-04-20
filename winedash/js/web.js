@@ -2549,22 +2549,20 @@
     }
 
     function loadMarketplaceTGSAnimation() {
-        const container = document.getElementById('marketplaceEmptyAnimation');
+        const container = document.getElementById('emptyMarketplaceAnimation');
         if (!container) return;
         
-        // Cari container animasi di dalamnya
-        let animContainer = document.getElementById('marketplaceEmptyAnimation');
+        // Hapus semua isi sebelumnya
+        container.innerHTML = '';
         
-        // Pastikan struktur sudah benar
-        if (animContainer && animContainer.children.length === 0) {
-            animContainer.innerHTML = `
-                <div class="empty-state" style="padding: 40px 20px;">
-                    <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 100px; height: 100px; margin: 0 auto 16px;"></div>
-                    <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
-                    <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
-                </div>
-            `;
-        }
+        // Buat struktur empty state - SATU SUMBER
+        container.innerHTML = `
+            <div class="empty-state" style="padding: 40px 20px;">
+                <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
+                <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
+                <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
+            </div>
+        `;
         
         const animationDiv = document.getElementById('marketplaceEmptyAnimationInner');
         if (!animationDiv) return;
@@ -2621,8 +2619,7 @@
                     }
                 });
                 
-                // ============ PERBAIKAN POSISI STICKER ============
-                // Setelah animasi dimuat, sesuaikan posisi sticker di dalam border
+                // Sesuaikan posisi sticker setelah animasi dimuat
                 setTimeout(() => {
                     adjustStickerPositionInBorder();
                 }, 100);
@@ -2655,34 +2652,29 @@
             return;
         }
         
-        // Dapatkan posisi border container
-        const borderRect = sectionCard.getBoundingClientRect();
+        // Sticker diposisikan di tengah atas title
+        stickerElement.style.position = 'relative';
+        stickerElement.style.display = 'block';
+        stickerElement.style.margin = '0 auto 16px auto';
+        stickerElement.style.left = 'auto';
+        stickerElement.style.top = 'auto';
+        stickerElement.style.transform = 'none';
         
-        // Cari text element di dalam empty state
-        const titleElement = emptyStateDiv.querySelector('.empty-title');
-        const subtitleElement = emptyStateDiv.querySelector('.empty-subtitle');
+        // Pastikan container empty state memiliki flex column yang benar
+        emptyStateDiv.style.display = 'flex';
+        emptyStateDiv.style.flexDirection = 'column';
+        emptyStateDiv.style.alignItems = 'center';
+        emptyStateDiv.style.justifyContent = 'center';
         
-        if (titleElement) {
-            const titleRect = titleElement.getBoundingClientRect();
-            const containerRect = emptyStateDiv.getBoundingClientRect();
-            
-            // Sticker diposisikan di atas title
-            // Dengan margin otomatis dan posisi relatif dalam container
-            stickerElement.style.position = 'relative';
-            stickerElement.style.display = 'block';
-            stickerElement.style.margin = '0 auto 16px auto';
-            stickerElement.style.left = 'auto';
-            stickerElement.style.top = 'auto';
-            stickerElement.style.transform = 'none';
-            
-            // Pastikan container empty state memiliki flex column yang benar
-            emptyStateDiv.style.display = 'flex';
-            emptyStateDiv.style.flexDirection = 'column';
-            emptyStateDiv.style.alignItems = 'center';
-            emptyStateDiv.style.justifyContent = 'center';
-            
-            console.log('✅ Sticker position adjusted inside border');
+        // Pastikan wrapper animasi memiliki ukuran yang benar
+        const animWrapper = emptyStateDiv.querySelector('.empty-animation');
+        if (animWrapper) {
+            animWrapper.style.width = '120px';
+            animWrapper.style.height = '120px';
+            animWrapper.style.margin = '0 auto 16px auto';
         }
+        
+        console.log('✅ Sticker position adjusted inside border');
     }
 
     async function init() {
