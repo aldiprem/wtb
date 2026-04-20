@@ -22,7 +22,6 @@
     let withdrawPanel = null;
     let walletPanelOverlay = null;
     let marketDetailOverlay = null;
-    let filterSummaryOverlay = null;
     let activeFilterCount = 0;
     let currentBasedOnFilter = 'all';
     let availableBasedOnList = [];
@@ -3342,68 +3341,83 @@
     }
 
     async function init() {
-        console.log('📦 Winedash Storage - Initializing...');
+        console.log('🍷 Winedash Marketplace - Initializing...');
         
         initTelegram();
         initSafeArea();
         showLoading(true);
         
         try {
-            // Setup DOM elements references
-            setupDomElements();
+            // Setup DOM elements
+            setupDomReferences();
             
             // Setup event listeners
+            setupTabs();
             setupEventListeners();
-            setupInboxEventListeners();
-            setupToggleButtons();
             setupSearch();
+            setupWalletEventListeners();
+            initWalletPanels();
+            setupMarketplaceFilterBar();
             
             // Get Telegram user
             telegramUser = getTelegramUserFromWebApp();
             
             if (telegramUser) {
-                updateStorageUserUI();
+                updateUserUI();
                 await authenticateUser();
-                await loadStorageBalance();
                 await loadUsernames();
-                await loadPendingCount();
-                startAutoRefresh();
+                await loadPurchasedUsernames();
+                await loadTransactionHistory();
+                await loadBasedOnOptions();
+                updateFilterBadge();
             } else {
                 console.warn('No Telegram user found');
-                if (elements.usernameContainer) {
-                    elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
+                if (elements.usernameList) {
+                    elements.usernameList.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
                 }
             }
+            
+            // Initialize TON Connect
+            await initTonConnect();
+            
+            // Update wallet UI after TON Connect is ready
+            setTimeout(() => {
+                if (isWalletConnected) updateWalletMainUI();
+                updateBalanceCardUI();
+            }, 500);
+            
         } catch (error) {
-            console.error('Error in init:', error);
-            if (elements.usernameContainer) {
-                elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Error loading page: ' + (error.message || 'Unknown error') + '</div>';
+            console.error('❌ Error in init:', error);
+            if (elements.usernameList) {
+                elements.usernameList.innerHTML = '<div class="loading-placeholder">Error loading page: ' + (error.message || 'Unknown error') + '</div>';
             }
+            showToast('Error loading page: ' + (error.message || 'Unknown error'), 'error');
         } finally {
             showLoading(false);
+            console.log('✅ Winedash Marketplace initialized');
         }
     }
 
-    function setupDomElements() {
-        // Pastikan semua elemen DOM sudah direferensikan
+    function setupDomReferences() {
         elements.loadingOverlay = document.getElementById('loadingOverlay');
         elements.toastContainer = document.getElementById('toastContainer');
-        elements.usernameContainer = document.getElementById('usernameContainer');
-        elements.searchInput = document.getElementById('searchStorage');
-        elements.searchApplyBtn = document.getElementById('searchApplyBtn');
-        elements.addUsernameActionBtn = document.getElementById('addUsernameActionBtn');
-        elements.addModal = document.getElementById('addModal');
-        elements.cancelModalBtn = document.getElementById('cancelModalBtn');
-        elements.confirmAddBtn = document.getElementById('confirmAddBtn');
-        elements.modalUsername = document.getElementById('modalUsername');
-        elements.modalPrice = document.getElementById('modalPrice');
-        elements.sortBtn = document.getElementById('sortBtn');
-        elements.sortDropdown = document.getElementById('sortDropdown');
-        elements.sortSelect = document.getElementById('sortSelect');
-        elements.gridLayoutBtn = document.getElementById('gridLayoutBtn');
-        elements.listLayoutBtn = document.getElementById('listLayoutBtn');
-        elements.modeBtns = document.querySelectorAll('.mode-btn');
+        elements.userAvatar = document.getElementById('userAvatar');
+        elements.balanceAmount = document.getElementById('balanceAmount');
+        elements.balanceCard = document.getElementById('balanceCard');
+        elements.usernameList = document.getElementById('usernameList');
+        elements.purchasedList = document.getElementById('purchasedList');
+        elements.historyList = document.getElementById('historyList');
+        elements.searchInput = document.getElementById('searchUsername');
+        elements.depositAmount = document.getElementById('depositAmount');
+        elements.depositBtn = document.getElementById('depositBtn');
+        elements.withdrawAmount = document.getElementById('withdrawAmount');
+        elements.withdrawBtn = document.getElementById('withdrawBtn');
+        elements.sellUsername = document.getElementById('sellUsername');
+        elements.sellPrice = document.getElementById('sellPrice');
+        elements.sellCategory = document.getElementById('sellCategory');
+        elements.sellUsernameBtn = document.getElementById('sellUsernameBtn');
+        elements.tabBtns = document.querySelectorAll('.tab-btn');
+        elements.tabContents = document.querySelectorAll('.tab-content');
     }
-
     init();
 })();

@@ -2761,40 +2761,67 @@
     }
 
     async function init() {
+        console.log('📦 Winedash Storage - Initializing...');
+        
         initTelegram();
         initSafeArea();
         showLoading(true);
         
-        // Setup event listeners - PASTIKAN DIPANGGIL SETELAH DOM READY
-        setupEventListeners();
-        
-        // Setup inbox listeners dengan delay untuk memastikan DOM siap
-        setTimeout(() => {
+        try {
+            // Setup DOM elements references
+            setupDomElements();
+            
+            // Setup event listeners
+            setupEventListeners();
             setupInboxEventListeners();
-        }, 100);
-        
-        setTimeout(() => {
             setupToggleButtons();
-        }, 100);
-        
-        setupSearch();
-        
-        telegramUser = getTelegramUserFromWebApp();
-        if (telegramUser) {
-            updateStorageUserUI();
-            await authenticateUser();
-            await loadStorageBalance();
-            await loadUsernames();
-            startAutoRefresh();
-        } else {
-            showToast('Tidak dapat mengambil data user', 'error');
+            setupSearch();
+            
+            // Get Telegram user
+            telegramUser = getTelegramUserFromWebApp();
+            
+            if (telegramUser) {
+                updateStorageUserUI();
+                await authenticateUser();
+                await loadStorageBalance();
+                await loadUsernames();
+                await loadPendingCount();
+                startAutoRefresh();
+            } else {
+                console.warn('No Telegram user found');
+                if (elements.usernameContainer) {
+                    elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
+                }
+            }
+        } catch (error) {
+            console.error('Error in init:', error);
+            if (elements.usernameContainer) {
+                elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Error loading page: ' + (error.message || 'Unknown error') + '</div>';
+            }
+        } finally {
+            showLoading(false);
         }
-        
-        showLoading(false);
-        loadPendingCount();
-        console.log('✅ Winedash Storage initialized');
     }
 
+    function setupDomElements() {
+        elements.loadingOverlay = document.getElementById('loadingOverlay');
+        elements.toastContainer = document.getElementById('toastContainer');
+        elements.usernameContainer = document.getElementById('usernameContainer');
+        elements.searchInput = document.getElementById('searchStorage');
+        elements.searchApplyBtn = document.getElementById('searchApplyBtn');
+        elements.addUsernameActionBtn = document.getElementById('addUsernameActionBtn');
+        elements.addModal = document.getElementById('addModal');
+        elements.cancelModalBtn = document.getElementById('cancelModalBtn');
+        elements.confirmAddBtn = document.getElementById('confirmAddBtn');
+        elements.modalUsername = document.getElementById('modalUsername');
+        elements.modalPrice = document.getElementById('modalPrice');
+        elements.sortBtn = document.getElementById('sortBtn');
+        elements.sortDropdown = document.getElementById('sortDropdown');
+        elements.sortSelect = document.getElementById('sortSelect');
+        elements.gridLayoutBtn = document.getElementById('gridLayoutBtn');
+        elements.listLayoutBtn = document.getElementById('listLayoutBtn');
+        elements.modeBtns = document.querySelectorAll('.mode-btn');
+    }
     window.addEventListener('beforeunload', () => {
         stopAutoRefresh();
     });
