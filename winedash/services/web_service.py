@@ -1555,7 +1555,6 @@ def save_profile_photo():
             return jsonify({'success': False, 'error': 'Missing data'}), 400
         
         print(f"[DEBUG] Saving profile photo for username: {username}")
-        print(f"[DEBUG] Photo URL length: {len(photo_url)} characters")
         
         with sqlite3.connect(db.db_path) as conn:
             cursor = conn.cursor()
@@ -1567,23 +1566,20 @@ def save_profile_photo():
                 cursor.execute('ALTER TABLE usernames ADD COLUMN photo_url TEXT')
                 print("✅ Added photo_url column to usernames")
             
-            # Cek di usernames
-            cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
-            if cursor.fetchone():
-                cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
-                print(f"✅ Updated photo_url in usernames for {username}")
-            else:
-                # Cek di pending_usernames
-                cursor.execute("PRAGMA table_info(pending_usernames)")
-                columns = [col[1] for col in cursor.fetchall()]
-                if 'photo_url' not in columns:
-                    cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
-                    print("✅ Added photo_url column to pending_usernames")
-                cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
-                print(f"✅ Updated photo_url in pending_usernames for {username}")
+            # UPDATE di tabel usernames (jika ada)
+            cursor.execute('UPDATE usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
+            
+            # UPDATE di tabel pending_usernames (jika ada)
+            cursor.execute("PRAGMA table_info(pending_usernames)")
+            columns = [col[1] for col in cursor.fetchall()]
+            if 'photo_url' not in columns:
+                cursor.execute('ALTER TABLE pending_usernames ADD COLUMN photo_url TEXT')
+                print("✅ Added photo_url column to pending_usernames")
+            cursor.execute('UPDATE pending_usernames SET photo_url = ? WHERE username = ?', (photo_url, username))
             
             conn.commit()
         
+        print(f"✅ Profile photo saved for {username}")
         return jsonify({'success': True, 'message': 'Photo saved'})
         
     except Exception as e:

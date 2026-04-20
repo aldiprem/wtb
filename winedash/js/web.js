@@ -730,7 +730,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                                            
+                                                
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -750,23 +750,32 @@
         }
         elements.usernameList.style.display = 'block';
 
-        // GRID LAYOUT - 2 card per baris, TANPA tombol Beli
+        // GRID LAYOUT - SAMA PERSEPERTI STORAGE (2 card per baris)
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
             for (const username of usernames) {
-                let avatarUrl = localStorage.getItem(`avatar_${username.username}`);
-                if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
-                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                // Ambil username string yang bersih
+                let usernameStr = username.username;
+                if (typeof usernameStr !== 'string') {
+                    usernameStr = String(usernameStr);
+                }
+                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
+                // Ambil foto profil dari cache atau default
+                let avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                const cached = localStorage.getItem(`avatar_${usernameStr}`);
+                if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
+                    avatarUrl = cached;
                 }
                 
                 html += `
                     <div class="marketplace-card" data-id="${username.id}" data-username='${JSON.stringify(username).replace(/'/g, "&#39;")}'>
                         <div class="marketplace-card-image">
                             <div class="card-avatar">
-                                <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" data-username="${username.username}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                                <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                             </div>
-                            <div class="card-username">@${escapeHtml(username.username)}</div>
+                            <div class="card-username">@${escapeHtml(usernameStr)}</div>
                         </div>
                         <div class="marketplace-card-info">
                             <div class="card-price-row">
@@ -795,21 +804,23 @@
                 });
             });
             
-            // Fetch avatar
+            // Fetch avatar untuk setiap card (async) - TANPA filter berdasarkan user
             setTimeout(() => {
-                document.querySelectorAll('.marketplace-card .card-avatar img').forEach(img => {
-                    const username = img.dataset.username;
-                    if (username) fetchProfilePhoto(username).then(url => {
-                        if (url && img.src !== url) img.src = url;
-                    });
-                });
+                fetchAllMarketplaceAvatars();
             }, 100);
+            
         } else {
-            // LIST LAYOUT - tanpa tombol Beli
+            // LIST LAYOUT - tetap sama
             elements.usernameList.className = 'marketplace-list';
             let html = '';
             for (const username of usernames) {
-                let avatarUrl = localStorage.getItem(`avatar_${username.username}`);
+                let usernameStr = username.username;
+                if (typeof usernameStr !== 'string') {
+                    usernameStr = String(usernameStr);
+                }
+                usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
+                
+                let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
@@ -817,10 +828,10 @@
                 html += `
                     <div class="marketplace-item" data-id="${username.id}" data-username='${JSON.stringify(username).replace(/'/g, "&#39;")}'>
                         <div class="marketplace-avatar">
-                            <img src="${avatarUrl}" alt="${escapeHtml(username.username)}" class="marketplace-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                            <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" class="marketplace-avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
                         <div class="marketplace-info">
-                            <div class="marketplace-name">@${escapeHtml(username.username)}</div>
+                            <div class="marketplace-name">@${escapeHtml(usernameStr)}</div>
                             <div class="marketplace-basedon">${escapeHtml(username.based_on || '-')}</div>
                         </div>
                         <div class="marketplace-price-wrapper">
@@ -845,21 +856,90 @@
                 });
             });
             
-            // Fetch avatar
+            // Fetch avatar untuk setiap item
             setTimeout(() => {
-                document.querySelectorAll('.marketplace-avatar-img').forEach(img => {
-                    const parentItem = img.closest('.marketplace-item');
-                    if (parentItem) {
-                        const nameEl = parentItem.querySelector('.marketplace-name');
-                        if (nameEl) {
-                            const username = nameEl.textContent.replace('@', '');
-                            fetchProfilePhoto(username).then(url => {
-                                if (url && img.src !== url) img.src = url;
-                            });
-                        }
-                    }
-                });
+                fetchAllMarketplaceListAvatars();
             }, 100);
+        }
+    }
+
+    async function fetchAllMarketplaceAvatars() {
+        const avatars = document.querySelectorAll('.marketplace-card .card-avatar img.avatar-img');
+        
+        for (const img of avatars) {
+            const username = img.dataset.username;
+            if (!username) continue;
+            
+            // Cek cache
+            const cached = localStorage.getItem(`avatar_${username}`);
+            if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
+                if (img.src !== cached) {
+                    img.src = cached;
+                }
+                continue;
+            }
+            
+            // Fetch dari server
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+                const data = await response.json();
+                
+                if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                    localStorage.setItem(`avatar_${username}`, data.photo_url);
+                    img.src = data.photo_url;
+                    console.log(`✅ Fetched avatar for @${username} (marketplace grid)`);
+                } else {
+                    // Simpan default agar tidak fetch terus
+                    localStorage.setItem(`avatar_${username}`, 'https://companel.shop/image/winedash-logo.png');
+                }
+            } catch (error) {
+                console.error(`Error fetching avatar for @${username}:`, error);
+            }
+            
+            // Delay agar tidak overload
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+    }
+
+    async function fetchAllMarketplaceListAvatars() {
+        const avatars = document.querySelectorAll('.marketplace-avatar-img');
+        
+        for (const img of avatars) {
+            const parentItem = img.closest('.marketplace-item');
+            if (!parentItem) continue;
+            
+            const nameEl = parentItem.querySelector('.marketplace-name');
+            if (!nameEl) continue;
+            
+            const username = nameEl.textContent.replace('@', '').trim();
+            if (!username) continue;
+            
+            // Cek cache
+            const cached = localStorage.getItem(`avatar_${username}`);
+            if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
+                if (img.src !== cached) {
+                    img.src = cached;
+                }
+                continue;
+            }
+            
+            // Fetch dari server
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
+                const data = await response.json();
+                
+                if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                    localStorage.setItem(`avatar_${username}`, data.photo_url);
+                    img.src = data.photo_url;
+                    console.log(`✅ Fetched avatar for @${username} (marketplace list)`);
+                } else {
+                    localStorage.setItem(`avatar_${username}`, 'https://companel.shop/image/winedash-logo.png');
+                }
+            } catch (error) {
+                console.error(`Error fetching avatar for @${username}:`, error);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
     }
 
@@ -3270,6 +3350,7 @@
             const data = await response.json();
             
             if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
+                // Simpan ke cache
                 localStorage.setItem(`avatar_${username}`, data.photo_url);
                 return data.photo_url;
             }
