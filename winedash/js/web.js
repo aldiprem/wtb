@@ -804,7 +804,7 @@
             return;
         }
         
-        // GRID LAYOUT - dengan margin bottom
+        // GRID LAYOUT
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
@@ -849,11 +849,11 @@
                                     <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
                                     <span class="card-price">${formatNumber(username.price)}</span>
                                 </div>
-                                <div class="card-basedon">${escapeHtml(basedOnText)}</div>
                             </div>
-                            <div class="card-telegram-btn-wrapper" style="margin-top: 8px;">
+                            <div class="card-telegram-btn-wrapper">
                                 <button class="card-telegram-btn" data-username="${usernameStr}" onclick="window.open('${telegramLink}', '_blank')">
-                                    <i class="fab fa-telegram-plane"></i> @${escapeHtml(usernameStr)}
+                                    <i class="fab fa-telegram-plane"></i>
+                                    <span class="telegram-basedon">${escapeHtml(basedOnText)}</span>
                                 </button>
                             </div>
                         </div>
@@ -898,7 +898,7 @@
             }, 200);
             
         } else {
-            // LIST LAYOUT - dengan telegram button
+            // LIST LAYOUT - dengan jarak yang benar
             elements.usernameList.className = 'marketplace-list';
             let html = '';
             for (const username of usernames) {
@@ -1904,7 +1904,7 @@
             });
         }
         
-        // PERBAIKAN LAYOUT TOGGLE - dengan state yang benar
+        // PERBAIKAN LAYOUT TOGGLE - LANGSUNG BERFUNGSI TANPA REFRESH
         if (gridBtn) {
             const newGridBtn = gridBtn.cloneNode(true);
             gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
@@ -1916,17 +1916,36 @@
                 newGridBtn.classList.remove('active');
             }
             
-            newGridBtn.addEventListener('click', () => {
+            newGridBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (currentLayout !== 'grid') {
+                    console.log('[DEBUG] Switching to grid layout');
                     currentLayout = 'grid';
                     localStorage.setItem('market_layout', 'grid');
                     
                     // Update UI tombol
                     newGridBtn.classList.add('active');
+                    
+                    // Update list button state
                     if (listBtn) {
                         const newListBtn = listBtn.cloneNode(true);
                         listBtn.parentNode.replaceChild(newListBtn, listBtn);
                         newListBtn.classList.remove('active');
+                        // Re-attach event listener untuk list button
+                        newListBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (currentLayout !== 'list') {
+                                currentLayout = 'list';
+                                localStorage.setItem('market_layout', 'list');
+                                newListBtn.classList.add('active');
+                                newGridBtn.classList.remove('active');
+                                applyFiltersAndRender();
+                                hapticLight();
+                            }
+                        });
                     }
                     
                     // Render ulang dengan layout baru
@@ -1947,17 +1966,36 @@
                 newListBtn.classList.remove('active');
             }
             
-            newListBtn.addEventListener('click', () => {
+            newListBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (currentLayout !== 'list') {
+                    console.log('[DEBUG] Switching to list layout');
                     currentLayout = 'list';
                     localStorage.setItem('market_layout', 'list');
                     
                     // Update UI tombol
                     newListBtn.classList.add('active');
+                    
+                    // Update grid button state
                     if (gridBtn) {
                         const newGridBtn = gridBtn.cloneNode(true);
                         gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
                         newGridBtn.classList.remove('active');
+                        // Re-attach event listener untuk grid button
+                        newGridBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (currentLayout !== 'grid') {
+                                currentLayout = 'grid';
+                                localStorage.setItem('market_layout', 'grid');
+                                newGridBtn.classList.add('active');
+                                newListBtn.classList.remove('active');
+                                applyFiltersAndRender();
+                                hapticLight();
+                            }
+                        });
                     }
                     
                     // Render ulang dengan layout baru
