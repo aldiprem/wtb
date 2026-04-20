@@ -242,8 +242,8 @@ app.register_blueprint(crash_bp, url_prefix='/api/crash')
 app.register_blueprint(games_bp)
 app.register_blueprint(create_bp, url_prefix='/api/giveaway')
 app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
-app.register_blueprint(offers_bp, url_prefix='/api/offers')
-app.register_blueprint(auctions_bp, url_prefix='/api/auctions')
+app.register_blueprint(offers_bp)
+app.register_blueprint(auctions_bp)
 
 # ==================== WINEDASH ROUTES ====================
 
