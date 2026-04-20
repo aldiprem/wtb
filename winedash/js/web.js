@@ -783,18 +783,28 @@
         if (!elements.usernameList) return;
         
         if (!usernames || usernames.length === 0) {
+            // Empty state dengan animasi di tengah
             elements.usernameList.innerHTML = `
-                <div class="empty-state" style="padding: 40px 20px;">
-                    <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 120px; height: 120px; margin: 0 auto 16px;"></div>
-                    <div class="empty-title" style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">No Usernames Available</div>
-                    <div class="empty-subtitle" style="font-size: 12px; color: var(--text-muted);">Be the first to list your username!</div>
+                <div class="empty-state">
+                    <div class="empty-animation" id="marketplaceEmptyAnimationInner"></div>
+                    <div class="empty-title">No Usernames Available</div>
+                    <div class="empty-subtitle">Be the first to list your username!</div>
                 </div>
             `;
-            loadMarketplaceTGSAnimation();
+            
+            // Load animasi di tengah
+            const container = document.getElementById('marketplaceEmptyAnimationInner');
+            if (container) {
+                container.style.margin = '0 auto';
+                container.style.display = 'flex';
+                container.style.justifyContent = 'center';
+                container.style.alignItems = 'center';
+                loadMarketplaceTGSAnimation();
+            }
             return;
         }
         
-        // GRID LAYOUT
+        // GRID LAYOUT - dengan margin bottom
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
@@ -810,6 +820,9 @@
                 if (!avatarUrl || !avatarUrl.startsWith('data:image')) {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
+                
+                // Telegram link
+                const telegramLink = `https://t.me/${usernameStr}`;
                 
                 const usernameData = {
                     id: username.id,
@@ -838,23 +851,43 @@
                                 </div>
                                 <div class="card-basedon">${escapeHtml(basedOnText)}</div>
                             </div>
+                            <div class="card-telegram-btn-wrapper" style="margin-top: 8px;">
+                                <button class="card-telegram-btn" data-username="${usernameStr}" onclick="window.open('${telegramLink}', '_blank')">
+                                    <i class="fab fa-telegram-plane"></i> @${escapeHtml(usernameStr)}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
             }
             elements.usernameList.innerHTML = html;
             
-            // Attach click events untuk card
+            // Attach click events untuk card (kecuali tombol telegram)
             document.querySelectorAll('.marketplace-card').forEach(card => {
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
+                
+                // Handle click card (kecuali tombol telegram)
                 newCard.addEventListener('click', (e) => {
-                    if (e.target.closest('.marketplace-buy-btn')) return;
+                    if (e.target.closest('.card-telegram-btn')) return;
                     try {
                         const usernameData = JSON.parse(newCard.dataset.username.replace(/&#39;/g, "'"));
                         showMarketDetailPanel(usernameData);
                     } catch (err) {
                         console.error('Error parsing username data:', err);
+                    }
+                });
+            });
+            
+            // Tambah event untuk tombol telegram
+            document.querySelectorAll('.card-telegram-btn').forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const username = newBtn.dataset.username;
+                    if (username) {
+                        window.open(`https://t.me/${username}`, '_blank');
                     }
                 });
             });
@@ -865,7 +898,7 @@
             }, 200);
             
         } else {
-            // LIST LAYOUT
+            // LIST LAYOUT - dengan telegram button
             elements.usernameList.className = 'marketplace-list';
             let html = '';
             for (const username of usernames) {
@@ -879,6 +912,8 @@
                 if (!avatarUrl || !avatarUrl.startsWith('data:image')) {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
+                
+                const telegramLink = `https://t.me/${usernameStr}`;
                 
                 const usernameData = {
                     id: username.id,
@@ -904,22 +939,38 @@
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
                             <span class="marketplace-price">${formatNumber(username.price)}</span>
                         </div>
+                        <button class="marketplace-telegram-btn" data-username="${usernameStr}" onclick="window.open('${telegramLink}', '_blank')">
+                            <i class="fab fa-telegram-plane"></i>
+                        </button>
                     </div>
                 `;
             }
             elements.usernameList.innerHTML = html;
             
-            // Attach click events untuk item
+            // Attach click events untuk item (kecuali tombol telegram)
             document.querySelectorAll('.marketplace-item').forEach(item => {
                 const newItem = item.cloneNode(true);
                 item.parentNode.replaceChild(newItem, item);
                 newItem.addEventListener('click', (e) => {
-                    if (e.target.closest('.marketplace-buy-btn-small')) return;
+                    if (e.target.closest('.marketplace-telegram-btn')) return;
                     try {
                         const usernameData = JSON.parse(newItem.dataset.username.replace(/&#39;/g, "'"));
                         showMarketDetailPanel(usernameData);
                     } catch (err) {
                         console.error('Error parsing username data:', err);
+                    }
+                });
+            });
+            
+            // Tambah event untuk tombol telegram di list view
+            document.querySelectorAll('.marketplace-telegram-btn').forEach(btn => {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const username = newBtn.dataset.username;
+                    if (username) {
+                        window.open(`https://t.me/${username}`, '_blank');
                     }
                 });
             });
@@ -1853,12 +1904,12 @@
             });
         }
         
-        // PERBAIKAN LAYOUT TOGGLE - dengan style yang benar
+        // PERBAIKAN LAYOUT TOGGLE - dengan state yang benar
         if (gridBtn) {
             const newGridBtn = gridBtn.cloneNode(true);
             gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
             
-            // Set initial active state
+            // Set initial active state berdasarkan currentLayout
             if (currentLayout === 'grid') {
                 newGridBtn.classList.add('active');
             } else {
@@ -1866,16 +1917,22 @@
             }
             
             newGridBtn.addEventListener('click', () => {
-                currentLayout = 'grid';
-                localStorage.setItem('market_layout', 'grid');
-                newGridBtn.classList.add('active');
-                if (listBtn) {
-                    const newListBtn = listBtn.cloneNode(true);
-                    listBtn.parentNode.replaceChild(newListBtn, listBtn);
-                    newListBtn.classList.remove('active');
+                if (currentLayout !== 'grid') {
+                    currentLayout = 'grid';
+                    localStorage.setItem('market_layout', 'grid');
+                    
+                    // Update UI tombol
+                    newGridBtn.classList.add('active');
+                    if (listBtn) {
+                        const newListBtn = listBtn.cloneNode(true);
+                        listBtn.parentNode.replaceChild(newListBtn, listBtn);
+                        newListBtn.classList.remove('active');
+                    }
+                    
+                    // Render ulang dengan layout baru
+                    applyFiltersAndRender();
+                    hapticLight();
                 }
-                applyFiltersAndRender();
-                hapticLight();
             });
         }
         
@@ -1883,7 +1940,7 @@
             const newListBtn = listBtn.cloneNode(true);
             listBtn.parentNode.replaceChild(newListBtn, listBtn);
             
-            // Set initial active state
+            // Set initial active state berdasarkan currentLayout
             if (currentLayout === 'list') {
                 newListBtn.classList.add('active');
             } else {
@@ -1891,16 +1948,22 @@
             }
             
             newListBtn.addEventListener('click', () => {
-                currentLayout = 'list';
-                localStorage.setItem('market_layout', 'list');
-                newListBtn.classList.add('active');
-                if (gridBtn) {
-                    const newGridBtn = gridBtn.cloneNode(true);
-                    gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
-                    newGridBtn.classList.remove('active');
+                if (currentLayout !== 'list') {
+                    currentLayout = 'list';
+                    localStorage.setItem('market_layout', 'list');
+                    
+                    // Update UI tombol
+                    newListBtn.classList.add('active');
+                    if (gridBtn) {
+                        const newGridBtn = gridBtn.cloneNode(true);
+                        gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
+                        newGridBtn.classList.remove('active');
+                    }
+                    
+                    // Render ulang dengan layout baru
+                    applyFiltersAndRender();
+                    hapticLight();
                 }
-                applyFiltersAndRender();
-                hapticLight();
             });
         }
     }
@@ -2924,8 +2987,15 @@
         const container = document.getElementById('marketplaceEmptyAnimationInner');
         if (!container) return;
         
-        // Clear container
         container.innerHTML = '';
+        
+        // Pastikan container berada di tengah
+        container.style.width = '120px';
+        container.style.height = '120px';
+        container.style.margin = '0 auto';
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
         
         // Load libraries yang diperlukan
         function loadLibraries() {

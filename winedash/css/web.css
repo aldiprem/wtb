@@ -832,24 +832,230 @@ button:disabled {
 
 /* ==================== MARKETPLACE - MENGGUNAKAN STYLE SAMA DENGAN STORAGE ==================== */
 
+/* ==================== PERBAIKAN MARKETPLACE GRID SPACING ==================== */
 .marketplace-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 10px !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
 }
 
+/* Margin bottom untuk setiap card */
 .marketplace-grid .marketplace-card {
-    background: var(--surface-light);
-    border-radius: 16px;
-    overflow: hidden;
-    transition: all 0.2s;
+    margin-bottom: 0 !important;
+}
+
+/* Pastikan container list memiliki margin bottom */
+#marketplaceTab .username-list {
+    margin-bottom: 20px;
+}
+
+/* ==================== TELEGRAM BUTTON STYLE (3D dengan border gradient) ==================== */
+.card-telegram-btn {
+    background: var(--bg);
+    border: none;
+    border-radius: 24px;
+    padding: 6px 12px;
+    font-size: 10px;
+    font-weight: 500;
     cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    color: var(--text-secondary);
     position: relative;
+    overflow: hidden;
+    font-family: monospace;
+}
+
+/* Border 3D dengan gradient */
+.card-telegram-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    padding: 1px;
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 25%,
+        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.card-telegram-btn i {
+    font-size: 12px;
+    color: #26A5E4;
+}
+
+.card-telegram-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+}
+
+/* Telegram button untuk list layout */
+.marketplace-telegram-btn {
+    background: var(--bg);
+    border: none;
+    border-radius: 40px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+    color: var(--text-secondary);
+}
+
+/* Border 3D untuk tombol list */
+.marketplace-telegram-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 40px;
+    padding: 1px;
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 25%,
+        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.marketplace-telegram-btn i {
+    font-size: 18px;
+    color: #26A5E4;
+}
+
+.marketplace-telegram-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.05);
+}
+
+/* Empty state styling - rata tengah */
+#emptyMarketplaceAnimation .empty-state {
     display: flex;
     flex-direction: column;
-    height: 180px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    min-height: 300px;
     width: 100%;
+}
+
+#emptyMarketplaceAnimation .empty-animation {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#emptyMarketplaceAnimation .empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+#emptyMarketplaceAnimation .empty-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 0;
+}
+
+/* Perbaikan layout toggle button */
+.layout-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 3px;
+}
+
+.layout-toggle .layout-btn {
+    background: transparent;
     border: none;
+    padding: 6px 10px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.layout-toggle .layout-btn.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+.layout-toggle .layout-btn i {
+    font-size: 14px;
+}
+
+/* Marketplace card info - tambahan margin untuk tombol */
+.marketplace-card-info {
+    padding: 8px 10px 12px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--surface-light);
+    flex: 1;
+    border-top: 1px solid var(--border-light);
+}
+
+.card-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.card-telegram-btn-wrapper {
+    margin-top: 4px;
+}
+
+/* Responsive untuk mobile */
+@media (max-width: 480px) {
+    .marketplace-grid {
+        gap: 8px !important;
+    }
+    
+    .card-telegram-btn {
+        padding: 4px 8px;
+        font-size: 9px;
+    }
+    
+    .card-telegram-btn i {
+        font-size: 10px;
+    }
+    
+    .marketplace-telegram-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .marketplace-telegram-btn i {
+        font-size: 16px;
+    }
 }
 
 /* Border 3D dengan gradient */
