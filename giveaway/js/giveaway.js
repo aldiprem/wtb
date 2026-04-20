@@ -2168,17 +2168,6 @@
         userProfileModal.style.display = 'flex';
     }
 
-    function setupBackButton() {
-        const backBtn = document.getElementById('backToLobbyBtn');
-        if (backBtn) {
-            backBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                hapticMedium();
-                window.location.href = '/giveaway';
-            });
-        }
-    }
-
     function showAllParticipantsModal() {
         hapticMedium();
         
