@@ -26,6 +26,12 @@
     let activeFilterCount = 0;
     let currentBasedOnFilter = 'all';
     let availableBasedOnList = [];
+    let currentFilterType = null;
+    let filterPanel = null;
+    let filterOverlay = null;
+    let tempSort = 'default';
+    let tempPriceFilter = { min: 0, max: 9999 };
+    let tempBasedOnFilter = 'all';
 
     // DOM Elements
     const elements = {
@@ -1721,6 +1727,277 @@
                 showDepositModal();
             });
         }
+    }
+
+    function setupMarketplaceFilterBar() {
+        const sortBtn = document.getElementById('filterSortBtn');
+        const priceBtn = document.getElementById('filterPriceBtn');
+        const basedOnBtn = document.getElementById('filterBasedOnBtn');
+        const gridBtn = document.getElementById('marketGridBtn');
+        const listBtn = document.getElementById('marketListBtn');
+        
+        if (sortBtn) {
+            sortBtn.addEventListener('click', () => {
+                showFilterPanel('sort');
+            });
+        }
+        
+        if (priceBtn) {
+            priceBtn.addEventListener('click', () => {
+                showFilterPanel('price');
+            });
+        }
+        
+        if (basedOnBtn) {
+            basedOnBtn.addEventListener('click', () => {
+                showFilterPanel('basedon');
+            });
+        }
+        
+        if (gridBtn) {
+            gridBtn.addEventListener('click', () => {
+                currentLayout = 'grid';
+                localStorage.setItem('market_layout', 'grid');
+                gridBtn.classList.add('active');
+                listBtn.classList.remove('active');
+                applyFiltersAndRender();
+                hapticLight();
+            });
+        }
+        
+        if (listBtn) {
+            listBtn.addEventListener('click', () => {
+                currentLayout = 'list';
+                localStorage.setItem('market_layout', 'list');
+                listBtn.classList.add('active');
+                gridBtn.classList.remove('active');
+                applyFiltersAndRender();
+                hapticLight();
+            });
+        }
+    }
+
+    function showFilterPanel(type) {
+        currentFilterType = type;
+        
+        // Hapus panel yang sudah ada
+        if (filterPanel) filterPanel.remove();
+        
+        // Buat overlay jika belum ada
+        if (!filterOverlay) {
+            filterOverlay = document.createElement('div');
+            filterOverlay.className = 'filter-overlay';
+            document.body.appendChild(filterOverlay);
+            filterOverlay.addEventListener('click', closeFilterPanel);
+        }
+        
+        // Salin nilai current ke temporary
+        tempSort = currentSort;
+        tempPriceFilter = { ...currentPriceFilter };
+        tempBasedOnFilter = currentBasedOnFilter;
+        
+        // Buat konten berdasarkan tipe filter
+        let contentHtml = '';
+        
+        if (type === 'sort') {
+            contentHtml = `
+                <div class="filter-section">
+                    <div class="filter-section-title">Sort By</div>
+                    <div class="filter-options">
+                        <button class="filter-option ${tempSort === 'default' ? 'active' : ''}" data-sort="default">
+                            <i class="fas fa-clock"></i> Default
+                        </button>
+                        <button class="filter-option ${tempSort === 'price_asc' ? 'active' : ''}" data-sort="price_asc">
+                            <i class="fas fa-arrow-up"></i> Price ↑
+                        </button>
+                        <button class="filter-option ${tempSort === 'price_desc' ? 'active' : ''}" data-sort="price_desc">
+                            <i class="fas fa-arrow-down"></i> Price ↓
+                        </button>
+                        <button class="filter-option ${tempSort === 'name_asc' ? 'active' : ''}" data-sort="name_asc">
+                            <i class="fas fa-sort-alpha-down"></i> Name A-Z
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'price') {
+            contentHtml = `
+                <div class="filter-section">
+                    <div class="filter-section-title">Price Range (TON)</div>
+                    <div class="price-range-container">
+                        <div class="price-inputs">
+                            <div class="price-input-group">
+                                <label>Min</label>
+                                <input type="number" id="filterPriceMin" class="filter-price-input" value="${tempPriceFilter.min}" min="0" step="0.1" placeholder="0">
+                            </div>
+                            <div class="price-input-group">
+                                <label>Max</label>
+                                <input type="number" id="filterPriceMax" class="filter-price-input" value="${tempPriceFilter.max >= 9999 ? '' : tempPriceFilter.max}" min="0" step="0.1" placeholder="∞">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (type === 'basedon') {
+            let basedOnOptions = '<button class="filter-option active" data-basedon="all"><i class="fas fa-globe"></i> All</button>';
+            if (availableBasedOnList.length > 0) {
+                basedOnOptions += availableBasedOnList.map(b => `
+                    <button class="filter-option ${tempBasedOnFilter === b ? 'active' : ''}" data-basedon="${escapeHtml(b)}">
+                        <i class="fas fa-user-tag"></i> ${escapeHtml(b.length > 20 ? b.slice(0, 20) + '...' : b)}
+                    </button>
+                `).join('');
+            } else {
+                basedOnOptions = '<div class="loading-placeholder">Loading options...</div>';
+            }
+            
+            contentHtml = `
+                <div class="filter-section">
+                    <div class="filter-section-title">Based On</div>
+                    <div class="filter-options filter-options-scroll" id="basedOnFilterOptions">
+                        ${basedOnOptions}
+                    </div>
+                </div>
+            `;
+        }
+        
+        const panel = document.createElement('div');
+        panel.className = 'filter-panel-modern';
+        panel.innerHTML = `
+            <div class="filter-drag-handle"></div>
+            <div class="filter-header">
+                <h3><i class="fas fa-filter"></i> ${type === 'sort' ? 'Sort By' : type === 'price' ? 'Price Range' : 'Based On'}</h3>
+                <button class="filter-close">&times;</button>
+            </div>
+            <div class="filter-content">
+                ${contentHtml}
+            </div>
+            <div class="filter-actions">
+                <button class="filter-reset">Reset</button>
+                <button class="filter-apply">Apply</button>
+            </div>
+        `;
+        
+        document.body.appendChild(panel);
+        filterPanel = panel;
+        filterOverlay.classList.add('active');
+        document.body.classList.add('filter-open');
+        
+        setTimeout(() => panel.classList.add('open'), 10);
+        
+        // Setup event listeners
+        const closeBtn = panel.querySelector('.filter-close');
+        closeBtn.addEventListener('click', closeFilterPanel);
+        
+        if (type === 'sort') {
+            panel.querySelectorAll('[data-sort]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    tempSort = btn.dataset.sort;
+                });
+            });
+        } else if (type === 'price') {
+            const priceMin = panel.querySelector('#filterPriceMin');
+            const priceMax = panel.querySelector('#filterPriceMax');
+            
+            if (priceMin) {
+                priceMin.addEventListener('change', () => {
+                    tempPriceFilter.min = parseFloat(priceMin.value) || 0;
+                });
+            }
+            if (priceMax) {
+                priceMax.addEventListener('change', () => {
+                    tempPriceFilter.max = parseFloat(priceMax.value) || 9999;
+                });
+            }
+        } else if (type === 'basedon') {
+            panel.querySelectorAll('[data-basedon]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    tempBasedOnFilter = btn.dataset.basedon;
+                });
+            });
+        }
+        
+        // Reset button
+        const resetBtn = panel.querySelector('.filter-reset');
+        resetBtn.addEventListener('click', () => {
+            if (currentFilterType === 'sort') {
+                tempSort = 'default';
+                panel.querySelectorAll('[data-sort]').forEach(b => b.classList.remove('active'));
+                panel.querySelector('[data-sort="default"]').classList.add('active');
+            } else if (currentFilterType === 'price') {
+                tempPriceFilter = { min: 0, max: 9999 };
+                const priceMin = panel.querySelector('#filterPriceMin');
+                const priceMax = panel.querySelector('#filterPriceMax');
+                if (priceMin) priceMin.value = '';
+                if (priceMax) priceMax.value = '';
+            } else if (currentFilterType === 'basedon') {
+                tempBasedOnFilter = 'all';
+                panel.querySelectorAll('[data-basedon]').forEach(b => b.classList.remove('active'));
+                panel.querySelector('[data-basedon="all"]').classList.add('active');
+            }
+        });
+        
+        // Apply button
+        const applyBtn = panel.querySelector('.filter-apply');
+        applyBtn.addEventListener('click', () => {
+            if (currentFilterType === 'sort') {
+                currentSort = tempSort;
+            } else if (currentFilterType === 'price') {
+                currentPriceFilter = { ...tempPriceFilter };
+            } else if (currentFilterType === 'basedon') {
+                currentBasedOnFilter = tempBasedOnFilter;
+            }
+            applyFiltersAndRender();
+            closeFilterPanel();
+            updateFilterBadge();
+        });
+        
+        // Drag to close
+        const dragHandle = panel.querySelector('.filter-drag-handle');
+        let startY = 0, currentY = 0, isDragging = false;
+        
+        dragHandle.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            panel.style.transition = 'none';
+            hapticLight();
+        });
+        
+        dragHandle.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            if (deltaY > 0) {
+                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+            }
+        });
+        
+        dragHandle.addEventListener('touchend', () => {
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            if (currentY - startY > 100) {
+                closeFilterPanel();
+            } else {
+                panel.style.transform = '';
+            }
+        });
+        
+        hapticLight();
+    }
+
+    function closeFilterPanel() {
+        if (filterPanel) {
+            filterPanel.classList.remove('open');
+            setTimeout(() => {
+                if (filterPanel && filterPanel.parentNode) filterPanel.remove();
+                filterPanel = null;
+            }, 300);
+        }
+        if (filterOverlay) filterOverlay.classList.remove('active');
+        document.body.classList.remove('filter-open');
+        hapticLight();
     }
 
     function showFilterPanel() {
@@ -3423,6 +3700,7 @@
             setupSearch();
             setupWalletEventListeners();
             initWalletPanels();
+            setupMarketplaceFilterBar();
             
             telegramUser = getTelegramUserFromWebApp();
             if (telegramUser) {

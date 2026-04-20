@@ -55,7 +55,31 @@
                     <span class="filter-summary-badge" id="filterSummaryBadge" style="display: none;">0</span>
                 </button>
             </div>
-            
+
+            <!-- Filter Action Bar -->
+            <div class="marketplace-filter-bar" style="display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px;">
+                <button class="filter-action-btn" id="filterSortBtn" data-filter="sort">
+                    <i class="fas fa-arrow-down-wide-short"></i>
+                    <span>Sort</span>
+                </button>
+                <button class="filter-action-btn" id="filterPriceBtn" data-filter="price">
+                    <i class="fas fa-tag"></i>
+                    <span>Price</span>
+                </button>
+                <button class="filter-action-btn" id="filterBasedOnBtn" data-filter="basedon">
+                    <i class="fas fa-user-tag"></i>
+                    <span>Based On</span>
+                </button>
+                <div class="layout-toggle" style="margin-left: auto;">
+                    <button class="layout-btn active" data-layout="grid" id="marketGridBtn">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="layout-btn" data-layout="list" id="marketListBtn">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
             <div class="section-card">
                 <div class="card-header">
                     <i class="fas fa-fire"></i>
@@ -67,39 +91,6 @@
                 
                 <div class="username-list" id="usernameList">
                     <div class="loading-placeholder">Memuat username...</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab Content: My Usernames -->
-        <div class="tab-content" id="myUsernamesTab">
-            <div class="section-card">
-                <div class="card-header">
-                    <i class="fas fa-tag"></i>
-                    <h3>Username Saya</h3>
-                </div>
-                <div class="purchased-list" id="purchasedList">
-                    <div class="loading-placeholder">Memuat...</div>
-                </div>
-            </div>
-            
-            <div class="section-card">
-                <div class="card-header">
-                    <i class="fas fa-plus-circle"></i>
-                    <h3>Jual Username</h3>
-                </div>
-                <div class="sell-form">
-                    <input type="text" id="sellUsername" placeholder="Username (contoh: @username)" class="form-input">
-                    <input type="number" id="sellPrice" placeholder="Harga (TON)" class="form-input" step="0.1" min="0.1">
-                    <select id="sellCategory" class="form-input">
-                        <option value="default">Default</option>
-                        <option value="premium">Premium</option>
-                        <option value="vip">VIP</option>
-                        <option value="rare">Langka</option>
-                    </select>
-                    <button class="btn-primary" id="sellUsernameBtn">
-                        <i class="fas fa-rocket"></i> Jual Username
-                    </button>
                 </div>
             </div>
         </div>
