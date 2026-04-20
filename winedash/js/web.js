@@ -28,7 +28,6 @@
     let availableBasedOnList = [];
     let currentFilterType = null;
     let filterPanel = null;
-    let filterOverlay = null;
     let tempSort = 'default';
     let tempPriceFilter = { min: 0, max: 9999 };
     let tempBasedOnFilter = 'all';
