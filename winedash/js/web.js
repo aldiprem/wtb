@@ -26,6 +26,11 @@
     let activeFilterCount = 0;
     let currentBasedOnFilter = 'all';
     let availableBasedOnList = [];
+    let marketDetailOverlay = null;
+    let filterSummaryOverlay = null;
+    let activeFilterCount = 0;
+    let currentBasedOnFilter = 'all';
+    let availableBasedOnList = [];
 
     // DOM Elements
     const elements = {
@@ -730,7 +735,7 @@
     }
 
     // ==================== USERNAME MARKETPLACE ====================
-                                        
+                                            
     function renderUsernames(usernames) {
         if (!elements.usernameList) return;
         
@@ -750,7 +755,7 @@
         }
         elements.usernameList.style.display = 'block';
 
-        // GRID LAYOUT - 2 card per baris, tanpa tombol Beli di dalam card
+        // GRID LAYOUT - 2 card per baris, TANPA tombol Beli
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
@@ -795,7 +800,7 @@
                 });
             });
             
-            // Fetch avatar untuk setiap card
+            // Fetch avatar
             setTimeout(() => {
                 document.querySelectorAll('.marketplace-card .card-avatar img').forEach(img => {
                     const username = img.dataset.username;
@@ -805,7 +810,7 @@
                 });
             }, 100);
         } else {
-            // LIST LAYOUT - tanpa tombol Beli di dalam item
+            // LIST LAYOUT - tanpa tombol Beli
             elements.usernameList.className = 'marketplace-list';
             let html = '';
             for (const username of usernames) {
@@ -845,7 +850,7 @@
                 });
             });
             
-            // Fetch avatar untuk setiap item
+            // Fetch avatar
             setTimeout(() => {
                 document.querySelectorAll('.marketplace-avatar-img').forEach(img => {
                     const parentItem = img.closest('.marketplace-item');
@@ -1000,18 +1005,10 @@
             });
         }
         
-        // Ganti filter button dengan yang baru - menggunakan action row style
-        const filterBtn = document.getElementById('marketplaceFilterBtn');
-        if (filterBtn) {
-            // Ubah style tombol filter
-            filterBtn.className = 'filter-btn-modern';
-            filterBtn.innerHTML = '<i class="fas fa-sliders-h"></i><span>Filter</span>';
-            
-            // Buang event listener lama dan tambah yang baru
-            const newFilterBtn = filterBtn.cloneNode(true);
-            filterBtn.parentNode.replaceChild(newFilterBtn, filterBtn);
-            
-            newFilterBtn.addEventListener('click', showFullFilterPanel);
+        // Filter Summary Button (di samping Apply)
+        const filterSummaryBtn = document.getElementById('filterSummaryBtn');
+        if (filterSummaryBtn) {
+            filterSummaryBtn.addEventListener('click', showFilterSummaryPanel);
         }
     }
 
@@ -1830,22 +1827,10 @@
 
     function applyFiltersAndRender() {
         let filtered = [...allUsernames];
-        
-        // Price filter dengan range
         const minPrice = currentPriceFilter.min !== undefined ? currentPriceFilter.min : 0;
         const maxPrice = currentPriceFilter.max !== undefined ? currentPriceFilter.max : 9999;
-        
-        filtered = filtered.filter(u => {
-            const price = u.price;
-            return price >= minPrice && price <= maxPrice;
-        });
-        
-        // Based On filter
-        if (currentBasedOnFilter !== 'all') {
-            filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
-        }
-        
-        // Sort
+        filtered = filtered.filter(u => u.price >= minPrice && u.price <= maxPrice);
+        if (currentBasedOnFilter !== 'all') filtered = filtered.filter(u => u.based_on === currentBasedOnFilter);
         if (currentSort !== 'default') {
             filtered.sort((a, b) => {
                 if (currentSort === 'price_asc') return a.price - b.price;
@@ -1854,7 +1839,6 @@
                 return 0;
             });
         }
-        
         renderUsernames(filtered);
     }
 
@@ -2694,33 +2678,24 @@
     }
 
     function showMarketDetailPanel(username) {
-        // Hapus panel yang sudah ada
         const existingPanel = document.querySelector('.market-detail-panel');
         if (existingPanel) existingPanel.remove();
         
-        // Buat overlay jika belum ada
         if (!marketDetailOverlay) {
             marketDetailOverlay = document.createElement('div');
             marketDetailOverlay.className = 'panel-overlay market-detail-overlay';
             document.body.appendChild(marketDetailOverlay);
-            
-            marketDetailOverlay.addEventListener('click', () => {
-                closeMarketDetailPanel();
-            });
+            marketDetailOverlay.addEventListener('click', () => closeMarketDetailPanel());
         }
         
-        // Cek apakah username milik user yang login
         const isOwner = telegramUser && username.seller_id === telegramUser.id;
         
         let usernameStr = username.username;
-        if (typeof usernameStr !== 'string') {
-            usernameStr = String(usernameStr);
-        }
+        if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
         usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
         
         const createdAt = formatDateIndonesia(username.created_at);
         
-        // Avatar URL
         let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
         if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
             avatarUrl = "https://companel.shop/image/winedash-logo.png";
@@ -2728,14 +2703,11 @@
             fetchProfilePhoto(usernameStr).then(photoUrl => {
                 if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
                     const detailImg = document.querySelector('.market-detail-panel .detail-avatar-img img');
-                    if (detailImg && detailImg.src !== photoUrl) {
-                        detailImg.src = photoUrl;
-                    }
+                    if (detailImg && detailImg.src !== photoUrl) detailImg.src = photoUrl;
                 }
             }).catch(console.error);
         }
         
-        // Buat panel
         const panel = document.createElement('div');
         panel.className = 'market-detail-panel detail-panel';
         panel.innerHTML = `
@@ -2795,54 +2767,30 @@
         `;
         
         document.body.appendChild(panel);
-        
-        // Setup drag to close
         setupMarketDragToClose(panel);
-        
-        // Prevent scroll pada body
         document.body.classList.add('panel-open');
-        
-        // Tampilkan overlay
         marketDetailOverlay.classList.add('active');
+        setTimeout(() => panel.classList.add('open'), 50);
         
-        // Trigger animation panel
-        setTimeout(() => {
-            panel.classList.add('open');
-        }, 50);
-        
-        // Close button
         const closeBtn = panel.querySelector('.panel-close');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                hapticLight();
-                closeMarketDetailPanel();
-            });
-        }
+        if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeMarketDetailPanel(); });
         
-        // Action buttons untuk owner
         if (isOwner) {
             const editBtn = panel.querySelector('.edit-price-detail');
             if (editBtn) {
                 editBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    const id = parseInt(editBtn.dataset.id);
-                    const price = parseFloat(editBtn.dataset.price);
-                    const status = editBtn.dataset.status;
+                    const id = parseInt(editBtn.dataset.id), price = parseFloat(editBtn.dataset.price), status = editBtn.dataset.status;
                     closeMarketDetailPanel();
-                    setTimeout(() => {
-                        showEditPriceModal(id, price, status);
-                    }, 300);
+                    setTimeout(() => showEditPriceModal(id, price, status), 300);
                 });
             }
-            
             const deleteBtn = panel.querySelector('.delete-detail');
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
                     const id = parseInt(deleteBtn.dataset.id);
                     if (confirm('Yakin ingin menghapus username ini?')) {
-                        hapticMedium();
                         closeMarketDetailPanel();
                         await deleteUsername(id);
                         await loadUsernames();
@@ -2850,18 +2798,15 @@
                 });
             }
         } else {
-            // Action buttons untuk pembeli
             const buyBtn = panel.querySelector('.buy-detail');
             if (buyBtn) {
                 buyBtn.addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    const id = parseInt(buyBtn.dataset.id);
-                    const price = parseFloat(buyBtn.dataset.price);
+                    const id = parseInt(buyBtn.dataset.id), price = parseFloat(buyBtn.dataset.price);
                     closeMarketDetailPanel();
                     await buyUsername(id, price);
                 });
             }
-            
             const offerBtn = panel.querySelector('.offer-detail');
             if (offerBtn) {
                 offerBtn.addEventListener('click', (e) => {
@@ -2876,18 +2821,8 @@
     function closeMarketDetailPanel() {
         const panel = document.querySelector('.market-detail-panel');
         const overlay = document.querySelector('.market-detail-overlay');
-        
-        if (panel) {
-            panel.classList.remove('open');
-            setTimeout(() => {
-                if (panel && panel.parentNode) panel.remove();
-            }, 300);
-        }
-        
-        if (overlay) {
-            overlay.classList.remove('active');
-        }
-        
+        if (panel) { panel.classList.remove('open'); setTimeout(() => panel.remove(), 300); }
+        if (overlay) overlay.classList.remove('active');
         document.body.classList.remove('panel-open');
         hapticLight();
     }
@@ -2895,42 +2830,20 @@
     function setupMarketDragToClose(panel) {
         const dragHandle = panel.querySelector('.drag-handle');
         if (!dragHandle) return;
-        
-        let startY = 0;
-        let currentY = 0;
-        let isDragging = false;
-        
-        const onTouchStart = (e) => {
-            startY = e.touches[0].clientY;
-            isDragging = true;
-            panel.style.transition = 'none';
-            hapticLight();
-        };
-        
-        const onTouchMove = (e) => {
+        let startY = 0, currentY = 0, isDragging = false;
+        dragHandle.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; isDragging = true; panel.style.transition = 'none'; hapticLight(); });
+        dragHandle.addEventListener('touchmove', (e) => {
             if (!isDragging) return;
             currentY = e.touches[0].clientY;
             const deltaY = currentY - startY;
-            if (deltaY > 0) {
-                panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
-            }
-        };
-        
-        const onTouchEnd = (e) => {
-            if (!isDragging) return;
+            if (deltaY > 0) panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+        });
+        dragHandle.addEventListener('touchend', () => {
             isDragging = false;
             panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-            const deltaY = currentY - startY;
-            if (deltaY > 100) {
-                closeMarketDetailPanel();
-            } else {
-                panel.style.transform = '';
-            }
-        };
-        
-        dragHandle.addEventListener('touchstart', onTouchStart);
-        dragHandle.addEventListener('touchmove', onTouchMove);
-        dragHandle.addEventListener('touchend', onTouchEnd);
+            if (currentY - startY > 100) closeMarketDetailPanel();
+            else panel.style.transform = '';
+        });
     }
 
     async function loadBasedOnOptions() {
@@ -2940,42 +2853,170 @@
             if (data.success && data.usernames) {
                 const basedOnSet = new Set();
                 data.usernames.forEach(u => {
-                    if (u.based_on && u.based_on.trim() !== '') {
-                        basedOnSet.add(u.based_on);
-                    }
+                    if (u.based_on && u.based_on.trim() !== '') basedOnSet.add(u.based_on);
                 });
                 availableBasedOnList = Array.from(basedOnSet);
             }
-        } catch (error) {
-            console.error('Error loading based on options:', error);
-        }
+        } catch (error) { console.error('Error loading based on options:', error); }
     }
 
     function updateFilterBadge() {
-        const filterBtn = document.getElementById('marketplaceFilterBtn');
-        if (!filterBtn) return;
-        
-        // Hitung jumlah filter aktif
+        const filterSummaryBtn = document.getElementById('filterSummaryBtn');
+        if (!filterSummaryBtn) return;
         let count = 0;
         if (currentSort !== 'default') count++;
         if (currentPriceFilter.min !== 0 || currentPriceFilter.max !== 9999) count++;
         if (currentLayout !== 'grid') count++;
         if (currentBasedOnFilter !== 'all') count++;
-        
         activeFilterCount = count;
-        
-        // Hapus badge lama
-        const existingBadge = filterBtn.querySelector('.filter-badge');
+        const existingBadge = filterSummaryBtn.querySelector('.filter-summary-badge');
         if (existingBadge) existingBadge.remove();
-        
-        // Tambah badge baru jika ada filter aktif
         if (count > 0) {
             const badge = document.createElement('span');
-            badge.className = 'filter-badge';
+            badge.className = 'filter-summary-badge';
             badge.textContent = count > 99 ? '99+' : count;
-            filterBtn.style.position = 'relative';
-            filterBtn.appendChild(badge);
+            filterSummaryBtn.appendChild(badge);
+            badge.style.display = 'flex';
         }
+    }
+
+    function showFilterSummaryPanel() {
+        if (availableBasedOnList.length === 0) loadBasedOnOptions();
+        
+        const existingPanel = document.querySelector('.filter-summary-panel');
+        if (existingPanel) existingPanel.remove();
+        
+        if (!filterSummaryOverlay) {
+            filterSummaryOverlay = document.createElement('div');
+            filterSummaryOverlay.className = 'filter-overlay';
+            document.body.appendChild(filterSummaryOverlay);
+            filterSummaryOverlay.addEventListener('click', closeFilterSummaryPanel);
+        }
+        
+        const getPriceDisplay = () => {
+            if (currentPriceFilter.min === 0 && currentPriceFilter.max >= 9999) return 'All';
+            if (currentPriceFilter.min === 0) return `≤ ${currentPriceFilter.max} TON`;
+            if (currentPriceFilter.max >= 9999) return `≥ ${currentPriceFilter.min} TON`;
+            return `${currentPriceFilter.min} - ${currentPriceFilter.max} TON`;
+        };
+        
+        const getSortDisplay = () => {
+            const sorts = { default: 'Default', price_asc: 'Price ↑', price_desc: 'Price ↓', name_asc: 'Name A-Z' };
+            return sorts[currentSort] || 'Default';
+        };
+        
+        const getLayoutDisplay = () => currentLayout === 'grid' ? 'Grid' : 'List';
+        const getBasedOnDisplay = () => currentBasedOnFilter === 'all' ? 'All' : currentBasedOnFilter;
+        
+        const panel = document.createElement('div');
+        panel.className = 'filter-summary-panel';
+        panel.innerHTML = `
+            <div class="filter-drag-handle"></div>
+            <div class="filter-header">
+                <h3><i class="fas fa-filter"></i> Active Filters</h3>
+                <button class="filter-close">&times;</button>
+            </div>
+            <div class="filter-content">
+                <div class="filter-summary-section">
+                    <div class="filter-summary-label">Sort By</div>
+                    <div class="filter-summary-value" data-filter-type="sort">
+                        <span>${getSortDisplay()}</span>
+                        <button class="filter-clear-btn" data-clear="sort"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="filter-summary-section">
+                    <div class="filter-summary-label">Price Range</div>
+                    <div class="filter-summary-value" data-filter-type="price">
+                        <span>${getPriceDisplay()}</span>
+                        <button class="filter-clear-btn" data-clear="price"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="filter-summary-section">
+                    <div class="filter-summary-label">Layout</div>
+                    <div class="filter-summary-value" data-filter-type="layout">
+                        <span>${getLayoutDisplay()}</span>
+                        <button class="filter-clear-btn" data-clear="layout"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div class="filter-summary-section">
+                    <div class="filter-summary-label">Based On</div>
+                    <div class="filter-summary-value" data-filter-type="basedon">
+                        <span>${getBasedOnDisplay()}</span>
+                        <button class="filter-clear-btn" data-clear="basedon"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="filter-reset">Clear All Filters</button>
+                <button class="filter-apply">Apply & Close</button>
+            </div>
+        `;
+        
+        document.body.appendChild(panel);
+        filterSummaryOverlay.classList.add('active');
+        document.body.classList.add('filter-open');
+        setTimeout(() => panel.classList.add('open'), 10);
+        
+        const closeBtn = panel.querySelector('.filter-close');
+        closeBtn.addEventListener('click', closeFilterSummaryPanel);
+        
+        panel.querySelectorAll('.filter-clear-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const clearType = btn.dataset.clear;
+                if (clearType === 'sort') currentSort = 'default';
+                if (clearType === 'price') currentPriceFilter = { min: 0, max: 9999 };
+                if (clearType === 'layout') { currentLayout = 'grid'; localStorage.setItem('market_layout', 'grid'); }
+                if (clearType === 'basedon') currentBasedOnFilter = 'all';
+                applyFiltersAndRender();
+                updateFilterBadge();
+                closeFilterSummaryPanel();
+                setTimeout(() => showFilterSummaryPanel(), 200);
+            });
+        });
+        
+        const resetBtn = panel.querySelector('.filter-reset');
+        resetBtn.addEventListener('click', () => {
+            currentSort = 'default';
+            currentPriceFilter = { min: 0, max: 9999 };
+            currentLayout = 'grid';
+            currentBasedOnFilter = 'all';
+            localStorage.setItem('market_layout', 'grid');
+            applyFiltersAndRender();
+            updateFilterBadge();
+            closeFilterSummaryPanel();
+        });
+        
+        const applyBtn = panel.querySelector('.filter-apply');
+        applyBtn.addEventListener('click', () => {
+            closeFilterSummaryPanel();
+        });
+        
+        const dragHandle = panel.querySelector('.filter-drag-handle');
+        let startY = 0, currentY = 0, isDragging = false;
+        dragHandle.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; isDragging = true; panel.style.transition = 'none'; hapticLight(); });
+        dragHandle.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            if (deltaY > 0) panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
+        });
+        dragHandle.addEventListener('touchend', () => {
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            if (currentY - startY > 100) closeFilterSummaryPanel();
+            else panel.style.transform = '';
+        });
+        
+        hapticLight();
+    }
+
+    function closeFilterSummaryPanel() {
+        const panel = document.querySelector('.filter-summary-panel');
+        if (panel) { panel.classList.remove('open'); setTimeout(() => panel.remove(), 300); }
+        if (filterSummaryOverlay) filterSummaryOverlay.classList.remove('active');
+        document.body.classList.remove('filter-open');
+        hapticLight();
     }
 
     function showFullFilterPanel() {
@@ -3212,9 +3253,7 @@
         await initTonConnect();
         
         setTimeout(() => {
-            if (isWalletConnected) {
-                updateWalletMainUI();
-            }
+            if (isWalletConnected) updateWalletMainUI();
         }, 500);
         
         showLoading(false);
