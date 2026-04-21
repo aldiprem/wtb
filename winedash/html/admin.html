@@ -1,0 +1,269 @@
+<!-- winedash/html/admin.html - Admin Panel -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Winedash Admin Panel</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/winedash/css/admin.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js?62"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading...</div>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+    
+    <!-- Login Container -->
+    <div id="loginContainer" class="login-container" style="display: flex;">
+        <div class="login-card">
+            <div class="login-logo">
+                <i class="fas fa-shield-alt"></i>
+                <h2>Admin Panel</h2>
+                <p style="color: var(--text-muted); margin-top: 8px;">Winedash Marketplace</p>
+            </div>
+            
+            <div id="loginError" class="login-error" style="display: none;"></div>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="loginUsername" placeholder="Enter username" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter password">
+                </div>
+                <button type="submit" class="login-btn">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </button>
+            </form>
+            
+            <p style="text-align: center; margin-top: 20px; font-size: 11px; color: var(--text-muted);">
+                <i class="fab fa-telegram"></i> Open via Telegram MiniApp for auto-login
+            </p>
+        </div>
+    </div>
+    
+    <!-- Admin Container -->
+    <div id="adminContainer" class="admin-container" style="display: none;">
+        <!-- Header -->
+        <div class="admin-header">
+            <h1>
+                <i class="fas fa-shield-alt"></i>
+                Winedash Admin Panel
+            </h1>
+            <div class="admin-info">
+                <div class="admin-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <span class="admin-name">Admin</span>
+                <button id="logoutBtn" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div id="statsContainer" class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-spinner fa-pulse"></i></div>
+                <div class="stat-value">Loading...</div>
+                <div class="stat-label">Loading stats</div>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="admin-tabs">
+            <button class="admin-tab active" data-tab="dashboard">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </button>
+            <button class="admin-tab" data-tab="users">
+                <i class="fas fa-users"></i>
+                <span>Users</span>
+            </button>
+            <button class="admin-tab" data-tab="usernames">
+                <i class="fas fa-tag"></i>
+                <span>Usernames</span>
+            </button>
+            <button class="admin-tab" data-tab="pending">
+                <i class="fas fa-clock"></i>
+                <span>Pending</span>
+            </button>
+            <button class="admin-tab" data-tab="auctions">
+                <i class="fas fa-gavel"></i>
+                <span>Auctions</span>
+            </button>
+            <button class="admin-tab" data-tab="logs">
+                <i class="fas fa-history"></i>
+                <span>Logs</span>
+            </button>
+        </div>
+        
+        <!-- Dashboard Tab -->
+        <div id="dashboardTab" class="tab-content active">
+            <!-- Stats already shown above -->
+        </div>
+        
+        <!-- Users Tab -->
+        <div id="usersTab" class="tab-content">
+            <div class="section-header">
+                <h2><i class="fas fa-users"></i> All Users</h2>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" placeholder="Search by name, username or ID...">
+                    <button id="searchBtn"><i class="fas fa-search"></i> Search</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Avatar</th>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>User ID</th>
+                            <th>Balance</th>
+                            <th>Usernames</th>
+                            <th>Pending</th>
+                            <th>Auctions</th>
+                            <th>Last Seen</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="10" class="loading-placeholder">Loading users...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Usernames Tab -->
+        <div id="usernamesTab" class="tab-content">
+            <div class="section-header">
+                <h2><i class="fas fa-tag"></i> All Usernames</h2>
+                <div class="search-bar">
+                    <input type="text" id="usernamesSearchInput" placeholder="Search by username...">
+                    <button id="usernamesSearchBtn"><i class="fas fa-search"></i> Search</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Based On</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Seller</th>
+                            <th>Buyer</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usernamesTableBody">
+                        <tr><td colspan="8" class="loading-placeholder">Loading usernames...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Pending Tab -->
+        <div id="pendingTab" class="tab-content">
+            <div class="section-header">
+                <h2><i class="fas fa-clock"></i> Pending Verifications</h2>
+                <div class="search-bar">
+                    <input type="text" id="pendingSearchInput" placeholder="Search by username...">
+                    <button id="pendingSearchBtn"><i class="fas fa-search"></i> Search</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Based On</th>
+                            <th>Price</th>
+                            <th>Type</th>
+                            <th>Seller</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingTableBody">
+                        <tr><td colspan="7" class="loading-placeholder">Loading pending...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Auctions Tab -->
+        <div id="auctionsTab" class="tab-content">
+            <div class="section-header">
+                <h2><i class="fas fa-gavel"></i> All Auctions</h2>
+                <div class="search-bar">
+                    <input type="text" id="auctionsSearchInput" placeholder="Search by username...">
+                    <button id="auctionsSearchBtn"><i class="fas fa-search"></i> Search</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Start Price</th>
+                            <th>Current Price</th>
+                            <th>Bids</th>
+                            <th>Status</th>
+                            <th>Owner</th>
+                            <th>Winner</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auctionsTableBody">
+                        <tr><td colspan="8" class="loading-placeholder">Loading auctions...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Logs Tab -->
+        <div id="logsTab" class="tab-content">
+            <div class="section-header">
+                <h2><i class="fas fa-history"></i> Admin Action Logs</h2>
+            </div>
+            <div class="table-container">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Admin</th>
+                            <th>Action</th>
+                            <th>Target Type</th>
+                            <th>Target ID</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logsTableBody">
+                        <tr><td colspan="5" class="loading-placeholder">Loading logs...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="/winedash/js/admin.js"></script>
+</body>
+</html>
