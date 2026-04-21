@@ -1199,15 +1199,21 @@ class WinedashDatabase:
             return []
 
     def confirm_pending_username(self, pending_id: int, code: str = None) -> bool:
+        """Confirm pending username and move to usernames table"""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
+                # Cek apakah tabel pending_usernames ada
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_usernames'")
                 if not cursor.fetchone():
-                    print("Pending_usernames table does not exist")
+                    print("[DB] pending_usernames table does not exist")
                     return False
+                
+                # PERBAIKAN: Gunakan row_factory agar mudah mengakses kolom
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
                 
                 cursor.execute('''
                     SELECT username, based_on, price, seller_id, seller_wallet, verification_type, verification_code
@@ -1216,17 +1222,47 @@ class WinedashDatabase:
                 row = cursor.fetchone()
                 
                 if not row:
+                    print(f"[DB] Pending record {pending_id} not found or not pending")
                     return False
                 
-                username, based_on, price, seller_id, seller_wallet, v_type, v_code = row
+                username = row['username']
+                based_on = row['based_on'] or ''
+                price = row['price']
+                seller_id = row['seller_id']
+                seller_wallet = row['seller_wallet'] or ''
+                v_type = row['verification_type']
+                v_code = row['verification_code']
                 
+                # Untuk tipe user, verifikasi kode OTP
+                if v_type == 'user':
+                    if not code or code != v_code:
+                        print(f"[DB] Invalid OTP code for {username}")
+                        return False
+                
+                # Reset row_factory untuk operasi INSERT
+                conn.row_factory = None
+                cursor = conn.cursor()
+                
+                # PERBAIKAN: Cek apakah username sudah ada sebelum insert
+                cursor.execute('SELECT id FROM usernames WHERE username = ?', (username,))
+                if cursor.fetchone():
+                    print(f"[DB] Username {username} already exists in usernames")
+                    # Hapus dari pending
+                    cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
+                    conn.commit()
+                    return True
+                
+                # Insert ke usernames
                 cursor.execute('''
                     INSERT INTO usernames (username, based_on, price, seller_id, seller_wallet, status, created_at)
                     VALUES (?, ?, ?, ?, ?, 'available', ?)
-                ''', (username, based_on or '', price, seller_id, seller_wallet, now))
+                ''', (username, based_on, price, seller_id, seller_wallet, now))
                 
+                # Hapus dari pending
                 cursor.execute('DELETE FROM pending_usernames WHERE id = ?', (pending_id,))
+                
                 conn.commit()
+                print(f"[DB] ✅ Username {username} confirmed and added to marketplace")
                 return True
                 
         except Exception as e:

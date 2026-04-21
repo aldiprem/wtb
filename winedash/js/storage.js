@@ -552,9 +552,12 @@
             
             if (data.success) {
                 hapticSuccess();
-                showToast('Username berhasil diverifikasi!', 'success');
+                showToast(data.message || 'Username berhasil diverifikasi!', 'success');
                 closeInboxPanel();
                 closeOtpModal();
+                
+                // PERBAIKAN: Tunggu sebentar lalu reload usernames
+                await new Promise(resolve => setTimeout(resolve, 500));
                 await loadUsernames();
                 await loadPendingCount();
             } else {
@@ -567,7 +570,7 @@
             showLoading(false);
         }
     }
-
+    
     async function rejectPendingUsername(pendingId) {
         showLoading(true);
         
@@ -629,11 +632,19 @@
             
             if (data.success) {
                 hapticSuccess();
-                showToast('Username berhasil diverifikasi!', 'success');
+                showToast(data.message || 'Username berhasil diverifikasi!', 'success');
                 closeOtpModal();
                 closeInboxPanel();
+                
+                // PERBAIKAN: Tunggu sebentar lalu reload usernames
+                await new Promise(resolve => setTimeout(resolve, 500));
                 await loadUsernames();
                 await loadPendingCount();
+                
+                // Refresh tampilan
+                if (currentMode === 'fixprice') {
+                    await loadUsernames();
+                }
             } else {
                 hapticError();
                 showToast(data.error || 'Verifikasi gagal, periksa kode OTP', 'error');

@@ -675,6 +675,8 @@ def get_usernames():
         
         # CEK APAKAH TABEL USERNAMES ADA
         with sqlite3.connect(db.db_path) as conn:
+            # PERBAIKAN: Set row_factory SEBELUM cursor.execute
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
             # Cek apakah tabel usernames ada
@@ -683,8 +685,9 @@ def get_usernames():
                 print("[ERROR] Table 'usernames' does not exist! Creating...")
                 # Panggil init_database untuk membuat tabel
                 db.init_database()
-            
-            conn.row_factory = sqlite3.Row
+                # Set row_factory lagi setelah init_database
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
             
             if category:
                 cursor.execute('''
@@ -705,8 +708,9 @@ def get_usernames():
             rows = cursor.fetchall()
             usernames = []
             for row in rows:
+                # PERBAIKAN: Akses menggunakan indeks atau pastikan row adalah dict-like
                 usernames.append({
-                    'id': int(row['id']),
+                    'id': int(row['id']) if row['id'] else 0,
                     'username': str(row['username']) if row['username'] else '',
                     'based_on': str(row['based_on']) if row['based_on'] else '',
                     'price': float(row['price']) if row['price'] else 0.0,
@@ -1177,16 +1181,18 @@ def confirm_pending_username():
         if not pending_id:
             return jsonify({'success': False, 'error': 'Pending ID required'}), 400
         
-        # Dapatkan tipe verifikasi dari database
+        # Dapatkan tipe verifikasi dan username dari database
         with sqlite3.connect(db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            cursor.execute('SELECT verification_type FROM pending_usernames WHERE id = ? AND status = "pending"', (pending_id,))
+            cursor.execute('SELECT verification_type, username FROM pending_usernames WHERE id = ? AND status = "pending"', (pending_id,))
             row = cursor.fetchone()
             
             if not row:
                 return jsonify({'success': False, 'error': 'Pending record not found'}), 404
             
-            verification_type = row[0]
+            verification_type = row['verification_type']
+            username = row['username']
             
             # Untuk tipe user, WAJIB ada kode OTP
             if verification_type == 'user' and not code:
@@ -1194,15 +1200,19 @@ def confirm_pending_username():
             
             # Untuk tipe channel/group, tidak perlu OTP
             if verification_type in ['channel', 'supergroup', 'group'] and code:
-                # Jika ada code, abaikan saja
                 code = None
         
         success = db.confirm_pending_username(pending_id, code)
         
         if success:
+            # PERBAIKAN: Pastikan data sudah masuk ke tabel usernames
+            # Tunggu sebentar agar database commit selesai
+            import time
+            time.sleep(0.5)
+            
             return jsonify({
                 'success': True,
-                'message': 'Username confirmed and added to marketplace!'
+                'message': f'Username @{username} confirmed and added to marketplace!'
             })
         else:
             return jsonify({
