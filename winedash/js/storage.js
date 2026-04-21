@@ -27,6 +27,8 @@
     let inboxOverlay = null;
     let detailOverlay = null;
     let currentAuctionsLayout = localStorage.getItem('auctions_layout') || 'grid';
+    let savedActivityState = sessionStorage.getItem('winedash_activity_open');
+    let savedActivityTab = sessionStorage.getItem('winedash_activity_tab') || 'my-auctions';
 
     // DOM Elements
     const elements = {
@@ -2373,11 +2375,11 @@
         let activitySearchTerm = '';
         
         // ==================== CREATE FULLSCREEN ACTIVITY PAGE ====================
-        
+                
         function createFullscreenActivityPage() {
-            // Hapus jika sudah ada
-            if (activityFullscreen) {
-                activityFullscreen.remove();
+            const existingFullscreen = document.getElementById('auctionsActivityFullscreen');
+            if (existingFullscreen) {
+                existingFullscreen.remove();
             }
             
             const fullscreenDiv = document.createElement('div');
@@ -2386,9 +2388,6 @@
             fullscreenDiv.innerHTML = `
                 <div class="fullscreen-header">
                     <div class="fullscreen-header-left">
-                        <button class="back-btn-fullscreen" id="backFromActivityBtn">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
                         <h2><i class="fas fa-history"></i> Auction Activity</h2>
                     </div>
                     <button class="close-fullscreen-btn" id="closeActivityFullscreenBtn">
@@ -2425,25 +2424,34 @@
             document.body.appendChild(fullscreenDiv);
             activityFullscreen = fullscreenDiv;
             
-            // Setup event listeners untuk fullscreen
-            const backBtn = document.getElementById('backFromActivityBtn');
-            if (backBtn) {
-                backBtn.addEventListener('click', closeFullscreenActivity);
-            }
-            
+            // Setup tombol close (silang)
             const closeBtn = document.getElementById('closeActivityFullscreenBtn');
             if (closeBtn) {
-                closeBtn.addEventListener('click', closeFullscreenActivity);
+                // Hapus event listener lama dengan clone
+                const newCloseBtn = closeBtn.cloneNode(true);
+                closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+                
+                newCloseBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[ACTIVITY] Close button clicked - returning to auctions mode');
+                    closeFullscreenActivity();
+                    // Pastikan kembali ke auctions mode (bukan fix price)
+                    switchToAuctionsMode();
+                });
             }
             
             // Setup tabs
             document.querySelectorAll('.activity-tab-fullscreen').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const tab = btn.dataset.activityTab;
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                newBtn.addEventListener('click', async () => {
+                    const tab = newBtn.dataset.activityTab;
                     if (tab) {
                         currentActivityTab = tab;
                         document.querySelectorAll('.activity-tab-fullscreen').forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
+                        newBtn.classList.add('active');
                         await loadActivityData();
                     }
                 });
@@ -2452,7 +2460,10 @@
             // Setup search
             const searchBtn = document.getElementById('activityFullscreenSearchBtn');
             if (searchBtn) {
-                searchBtn.addEventListener('click', () => {
+                const newSearchBtn = searchBtn.cloneNode(true);
+                searchBtn.parentNode.replaceChild(newSearchBtn, searchBtn);
+                
+                newSearchBtn.addEventListener('click', () => {
                     const searchInput = document.getElementById('activityFullscreenSearchInput');
                     activitySearchTerm = searchInput?.value || '';
                     renderActivityItems();
@@ -2461,9 +2472,12 @@
             
             const searchInput = document.getElementById('activityFullscreenSearchInput');
             if (searchInput) {
-                searchInput.addEventListener('keypress', (e) => {
+                const newSearchInput = searchInput.cloneNode(true);
+                searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+                
+                newSearchInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
-                        activitySearchTerm = searchInput.value;
+                        activitySearchTerm = newSearchInput.value;
                         renderActivityItems();
                     }
                 });
@@ -2471,22 +2485,55 @@
             
             return fullscreenDiv;
         }
-        
+
         function openFullscreenActivity() {
             if (!telegramUser) {
                 showToast('Login terlebih dahulu', 'warning');
                 return;
             }
             
+            // Simpan state bahwa activity sedang terbuka
+            sessionStorage.setItem('winedash_activity_open', 'true');
+            sessionStorage.setItem('winedash_activity_tab', currentActivityTab);
+            
+            // Hapus fullscreen yang sudah ada
+            const existingFullscreen = document.getElementById('auctionsActivityFullscreen');
+            if (existingFullscreen) {
+                existingFullscreen.remove();
+            }
+            
             createFullscreenActivityPage();
             document.body.classList.add('panel-open');
             hapticLight();
             
-            // Load data
-            loadActivityData();
+            // Set tab yang tersimpan
+            if (savedActivityTab && savedActivityTab !== currentActivityTab) {
+                currentActivityTab = savedActivityTab;
+                setTimeout(() => {
+                    const tabBtn = document.querySelector(`.activity-tab-fullscreen[data-activity-tab="${currentActivityTab}"]`);
+                    if (tabBtn) {
+                        document.querySelectorAll('.activity-tab-fullscreen').forEach(b => b.classList.remove('active'));
+                        tabBtn.classList.add('active');
+                    }
+                }, 50);
+            }
+            
+            // TUNGGU SEBENTAR AGAR DOM SIAP SEBELUM LOAD DATA
+            setTimeout(() => {
+                loadActivityData();
+            }, 100);
         }
-        
+                        
         function closeFullscreenActivity() {
+            sessionStorage.removeItem('winedash_activity_open');
+            sessionStorage.removeItem('winedash_activity_tab');
+            
+            // Bersihkan timers
+            if (window.activityTimers) {
+                Object.values(window.activityTimers).forEach(interval => clearInterval(interval));
+                window.activityTimers = {};
+            }
+            
             if (activityFullscreen) {
                 activityFullscreen.style.animation = 'fadeOut 0.2s ease';
                 setTimeout(() => {
@@ -2497,12 +2544,20 @@
             document.body.classList.remove('panel-open');
             hapticLight();
         }
-        
+                
         async function loadActivityData() {
-            if (!telegramUser) return;
+            if (!telegramUser) {
+                console.error('[ACTIVITY] No telegram user');
+                return;
+            }
             
             const container = document.getElementById('auctionsActivityFullscreenContainer');
-            if (!container) return;
+            if (!container) {
+                console.error('[ACTIVITY] Container not found');
+                return;
+            }
+            
+            console.log(`[ACTIVITY] Loading data for tab: ${currentActivityTab}, user: ${telegramUser.id}`);
             
             container.innerHTML = '<div class="loading-placeholder">Memuat aktivitas...</div>';
             
@@ -2522,22 +2577,34 @@
                         url = `${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
                 }
                 
+                console.log(`[ACTIVITY] Fetching: ${url}`);
+                
                 const response = await fetch(url);
                 const data = await response.json();
                 
+                console.log(`[ACTIVITY] Response:`, data);
+                
                 if (data.success) {
                     activityActivities = data.auctions || [];
-                    renderActivityItems();
+                    console.log(`[ACTIVITY] Loaded ${activityActivities.length} activities`);
+                    
+                    if (activityActivities.length > 0) {
+                        renderActivityItems();
+                    } else {
+                        renderActivityEmpty();
+                    }
                 } else {
+                    console.error('[ACTIVITY] API returned error:', data.error);
                     activityActivities = [];
                     renderActivityEmpty();
                 }
             } catch (error) {
-                console.error('Error loading activity data:', error);
+                console.error('[ACTIVITY] Error loading activity data:', error);
+                activityActivities = [];
                 renderActivityEmpty();
             }
         }
-        
+
         function renderActivityItems() {
             const container = document.getElementById('auctionsActivityFullscreenContainer');
             if (!container) return;
@@ -3719,6 +3786,14 @@
         }
     }
 
+    function switchToAuctionsMode() {
+        const auctionsModeBtn = document.querySelector('.mode-btn[data-mode="auctions"]');
+        if (auctionsModeBtn) {
+            auctionsModeBtn.click();
+        }
+        hapticLight();
+    }
+
     async function init() {
         console.log('📦 Winedash Storage - Initializing...');
         
@@ -3738,7 +3813,6 @@
             setupAuctionsFilterAndActivity();
             setupAuctionsLayoutToggle();
             
-            // Get Telegram user
             telegramUser = getTelegramUserFromWebApp();
             
             if (telegramUser) {
@@ -3748,6 +3822,28 @@
                 await loadUsernames();
                 await loadPendingCount();
                 startAutoRefresh();
+                
+                // RESTORE ACTIVITY STATE JIKA ADA
+                const activityWasOpen = sessionStorage.getItem('winedash_activity_open');
+                const savedTab = sessionStorage.getItem('winedash_activity_tab');
+                
+                if (activityWasOpen === 'true') {
+                    console.log('[STORAGE] Restoring activity state, tab:', savedTab);
+                    
+                    // Switch ke auctions mode dulu
+                    const auctionsModeBtn = document.querySelector('.mode-btn[data-mode="auctions"]');
+                    if (auctionsModeBtn) {
+                        auctionsModeBtn.click();
+                    }
+                    
+                    // Tunggu sebentar lalu buka activity
+                    setTimeout(() => {
+                        if (savedTab) {
+                            currentActivityTab = savedTab;
+                        }
+                        openFullscreenActivity();
+                    }, 300);
+                }
             } else {
                 console.warn('No Telegram user found');
                 if (elements.usernameContainer) {
@@ -3819,5 +3915,7 @@
         }
     };
 
+    window.switchToAuctionsMode = switchToAuctionsMode;
+    
     init();
 })();
