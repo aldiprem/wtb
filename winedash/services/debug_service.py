@@ -1,4 +1,4 @@
-# services/debug_service.py - Update endpoint untuk menggunakan database
+# services/debug_service.py - Perbaikan untuk mengambil user dari tabel users
 
 import sqlite3
 import sys
@@ -30,78 +30,162 @@ def get_active_users():
     try:
         users = {}
         
-        # Get users from debug_logs table
+        # ==================== AMBIL DARI TABEL USERS ====================
         with sqlite3.connect(db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            
+            # Ambil semua user dari tabel users
             cursor.execute('''
-                SELECT user_id, COUNT(*) as count, MAX(created_at) as last_log
-                FROM debug_logs
-                GROUP BY user_id
-                ORDER BY last_log DESC
-                LIMIT 50
+                SELECT user_id, username, first_name, last_name, photo_url, 
+                       balance, is_admin, first_seen, last_seen
+                FROM users 
+                ORDER BY last_seen DESC
+                LIMIT 100
             ''')
-            rows = cursor.fetchall()
-            for row in rows:
-                users[row[0]] = {
-                    'user_id': row[0],
-                    'console_count': row[1],
-                    'network_count': 0,
-                    'last_log': row[2]
-                }
-        
-        # Get users from network_requests table
-        cursor.execute('''
-            SELECT user_id, COUNT(*) as count, MAX(timestamp) as last_log
-            FROM debug_network
-            GROUP BY user_id
-            ORDER BY last_log DESC
-            LIMIT 50
-        ''')
-        rows = cursor.fetchall()
-        for row in rows:
-            if row[0] in users:
-                users[row[0]]['network_count'] = row[1]
-            else:
-                users[row[0]] = {
-                    'user_id': row[0],
-                    'console_count': 0,
-                    'network_count': row[1],
-                    'last_log': row[2]
-                }
-        
-        users_list = list(users.values())
-        return jsonify({
-            'success': True,
-            'users': users_list
-        })
-        
-    except Exception as e:
-        print(f"Error getting active users: {e}")
-        # Fallback to in-memory
-        users = {}
-        for user_id in console_logs.keys():
-            users[user_id] = {
-                'user_id': user_id,
-                'console_count': len(console_logs.get(user_id, [])),
-                'network_count': len(network_requests.get(user_id, [])),
-                'last_log': console_logs.get(user_id, [])[-1]['timestamp'] if console_logs.get(user_id) else None
-            }
-        for user_id in network_requests.keys():
-            if user_id not in users:
+            user_rows = cursor.fetchall()
+            
+            for row in user_rows:
+                user_id = row['user_id']
                 users[user_id] = {
                     'user_id': user_id,
+                    'username': row['username'] or '',
+                    'first_name': row['first_name'] or '',
+                    'last_name': row['last_name'] or '',
+                    'photo_url': row['photo_url'] or '',
+                    'balance': float(row['balance']) if row['balance'] else 0,
+                    'is_admin': bool(row['is_admin']),
+                    'first_seen': row['first_seen'],
+                    'last_seen': row['last_seen'],
                     'console_count': 0,
-                    'network_count': len(network_requests.get(user_id, [])),
-                    'last_log': network_requests.get(user_id, [])[-1]['timestamp'] if network_requests.get(user_id) else None
+                    'network_count': 0,
+                    'last_log': row['last_seen']
                 }
         
+        # ==================== TAMBAHKAN JUMLAH LOGS DARI DEBUG_LOGS ====================
+        try:
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT user_id, COUNT(*) as count, MAX(created_at) as last_log
+                    FROM debug_logs
+                    GROUP BY user_id
+                ''')
+                rows = cursor.fetchall()
+                for row in rows:
+                    user_id = row[0]
+                    if user_id in users:
+                        users[user_id]['console_count'] = row[1]
+                        if row[2] and (not users[user_id]['last_log'] or row[2] > users[user_id]['last_log']):
+                            users[user_id]['last_log'] = row[2]
+                    else:
+                        users[user_id] = {
+                            'user_id': user_id,
+                            'username': f'User_{user_id}',
+                            'first_name': '',
+                            'last_name': '',
+                            'photo_url': '',
+                            'balance': 0,
+                            'is_admin': False,
+                            'first_seen': None,
+                            'last_seen': None,
+                            'console_count': row[1],
+                            'network_count': 0,
+                            'last_log': row[2]
+                        }
+        except Exception as e:
+            print(f"Error getting debug_logs counts: {e}")
+        
+        # ==================== TAMBAHKAN JUMLAH NETWORK LOGS ====================
+        try:
+            with sqlite3.connect(db.db_path) as conn:
+                cursor = conn.cursor()
+                # Cek apakah tabel debug_network ada
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='debug_network'")
+                if cursor.fetchone():
+                    cursor.execute('''
+                        SELECT user_id, COUNT(*) as count, MAX(timestamp) as last_log
+                        FROM debug_network
+                        GROUP BY user_id
+                    ''')
+                    rows = cursor.fetchall()
+                    for row in rows:
+                        user_id = row[0]
+                        if user_id in users:
+                            users[user_id]['network_count'] = row[1]
+                            if row[2] and (not users[user_id]['last_log'] or row[2] > users[user_id]['last_log']):
+                                users[user_id]['last_log'] = row[2]
+                        else:
+                            users[user_id] = {
+                                'user_id': user_id,
+                                'username': f'User_{user_id}',
+                                'first_name': '',
+                                'last_name': '',
+                                'photo_url': '',
+                                'balance': 0,
+                                'is_admin': False,
+                                'first_seen': None,
+                                'last_seen': None,
+                                'console_count': 0,
+                                'network_count': row[1],
+                                'last_log': row[2]
+                            }
+        except Exception as e:
+            print(f"Error getting debug_network counts: {e}")
+        
+        # ==================== TAMBAHKAN JUMLAH DARI IN-MEMORY (FALLBACK) ====================
+        for user_id, logs in console_logs.items():
+            if user_id in users:
+                users[user_id]['console_count'] = max(users[user_id]['console_count'], len(logs))
+            else:
+                users[user_id] = {
+                    'user_id': user_id,
+                    'username': f'User_{user_id}',
+                    'first_name': '',
+                    'last_name': '',
+                    'photo_url': '',
+                    'balance': 0,
+                    'is_admin': False,
+                    'first_seen': None,
+                    'last_seen': None,
+                    'console_count': len(logs),
+                    'network_count': 0,
+                    'last_log': logs[-1]['timestamp'] if logs else None
+                }
+        
+        for user_id, requests in network_requests.items():
+            if user_id in users:
+                users[user_id]['network_count'] = max(users[user_id]['network_count'], len(requests))
+            else:
+                users[user_id] = {
+                    'user_id': user_id,
+                    'username': f'User_{user_id}',
+                    'first_name': '',
+                    'last_name': '',
+                    'photo_url': '',
+                    'balance': 0,
+                    'is_admin': False,
+                    'first_seen': None,
+                    'last_seen': None,
+                    'console_count': 0,
+                    'network_count': len(requests),
+                    'last_log': requests[-1]['timestamp'] if requests else None
+                }
+        
+        # Konversi ke list dan urutkan berdasarkan last_log terbaru
         users_list = list(users.values())
         users_list.sort(key=lambda x: x.get('last_log') or '', reverse=True)
         
         return jsonify({
             'success': True,
-            'users': users_list[:50]
+            'users': users_list[:100]  # Maksimal 100 user
         })
+        
+    except Exception as e:
+        print(f"Error getting active users: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e), 'users': []}), 500
 
 
 @debug_bp.route('/console/<int:user_id>', methods=['GET', 'OPTIONS'])

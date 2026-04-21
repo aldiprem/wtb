@@ -200,12 +200,13 @@
         if (confirm(`Clear all logs for user ${state.selectedUserId}?`)) {
             await clearConsole();
             await clearNetwork();
+            await clearStorage();
             updateStatus('All logs cleared');
         }
     }
     
     // ==================== RENDER FUNCTIONS ====================
-    
+        
     function updateUserSelect() {
         if (!elements.userSelect) return;
         
@@ -216,25 +217,79 @@
         for (const user of state.availableUsers) {
             const option = document.createElement('option');
             option.value = user.user_id;
+            
+            // Format display name
+            let displayName = '';
+            if (user.first_name) {
+                displayName = user.first_name;
+                if (user.last_name) displayName += ' ' + user.last_name;
+            } else if (user.username) {
+                displayName = '@' + user.username;
+            } else {
+                displayName = `User ${user.user_id}`;
+            }
+            
             const lastLog = user.last_log ? new Date(user.last_log).toLocaleTimeString() : 'never';
-            option.textContent = `User ${user.user_id} (C:${user.console_count} | N:${user.network_count} | Last: ${lastLog})`;
+            const hasLogs = (user.console_count > 0 || user.network_count > 0);
+            const logIndicator = hasLogs ? '📊' : '💤';
+            
+            option.textContent = `${logIndicator} ${displayName} (ID:${user.user_id}) | C:${user.console_count} N:${user.network_count} | Last: ${lastLog}`;
+            
             if (user.user_id == previousUserId) {
                 option.selected = true;
             }
             elements.userSelect.appendChild(option);
         }
         
+        // Update selected user
         if (previousUserId && state.availableUsers.some(u => u.user_id == previousUserId)) {
             state.selectedUserId = previousUserId;
         } else if (state.availableUsers.length > 0 && !state.selectedUserId) {
-            state.selectedUserId = state.availableUsers[0].user_id;
-            elements.userSelect.value = state.selectedUserId;
-            if (elements.userIdDisplay) {
-                elements.userIdDisplay.textContent = `User ID: ${state.selectedUserId}`;
+            // Auto-select first user with logs, or first user
+            let selectedUser = state.availableUsers.find(u => u.console_count > 0 || u.network_count > 0);
+            if (!selectedUser && state.availableUsers.length > 0) {
+                selectedUser = state.availableUsers[0];
+            }
+            if (selectedUser) {
+                state.selectedUserId = selectedUser.user_id;
+                elements.userSelect.value = state.selectedUserId;
+                if (elements.userIdDisplay) {
+                    const user = selectedUser;
+                    let displayName = user.first_name ? `${user.first_name} ${user.last_name || ''}` : (user.username ? `@${user.username}` : `User ${user.user_id}`);
+                    elements.userIdDisplay.innerHTML = `<i class="fas fa-user"></i> ${displayName} (${user.user_id})`;
+                }
             }
         }
+        
+        // Jika ada user yang dipilih, refresh logs
+        if (state.selectedUserId) {
+            refreshCurrentUserData();
+        }
     }
-    
+
+    async function refreshCurrentUserData() {
+        if (!state.selectedUserId) return;
+        
+        updateStatus(`Loading logs for user ${state.selectedUserId}...`);
+        
+        if (state.currentTab === 'console') {
+            await fetchConsoleLogs();
+        } else if (state.currentTab === 'network') {
+            await fetchNetworkRequests();
+        } else if (state.currentTab === 'storage') {
+            await fetchStorageData();
+        }
+        
+        // Update user info display
+        const selectedUser = state.availableUsers.find(u => u.user_id == state.selectedUserId);
+        if (selectedUser && elements.userIdDisplay) {
+            let displayName = selectedUser.first_name ? `${selectedUser.first_name} ${selectedUser.last_name || ''}` : (selectedUser.username ? `@${selectedUser.username}` : `User ${selectedUser.user_id}`);
+            elements.userIdDisplay.innerHTML = `<i class="fas fa-user"></i> ${displayName} (${selectedUser.user_id})`;
+        }
+        
+        updateStatus(`Viewing logs for user ${state.selectedUserId}`);
+    }
+
     function renderConsoleLogs() {
         if (!elements.consoleList) return;
         
