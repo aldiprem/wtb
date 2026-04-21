@@ -230,7 +230,7 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-        
+            
     async function loadAuctions() {
         if (!telegramUser) return;
         
@@ -768,9 +768,7 @@
             showLoading(false);
         }
     }
-    
-    // ==================== AUCTION DETAIL ====================
-        
+
     async function showAuctionDetail(auctionId) {
         if (!auctionId) {
             showToast('Invalid auction ID', 'error');
@@ -858,7 +856,7 @@
             auctionDetailPanel.innerHTML = `
                 <div class="detail-header">
                     <h3><i class="fas fa-gavel"></i> Auction Detail</h3>
-                    <button class="detail-close">&times;</button>
+                    <button class="detail-close" id="detailCloseBtn">&times;</button>
                 </div>
                 <div class="detail-content">
                     <div class="detail-avatar-section">
@@ -947,17 +945,24 @@
             function setupCloseButton() {
                 const closeBtn = auctionDetailPanel.querySelector('#closeDetailBtn');
                 if (closeBtn) {
-                    closeBtn.addEventListener('click', () => {
+                    // Hapus listener lama
+                    const newCloseBtn = closeBtn.cloneNode(true);
+                    closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+                    newCloseBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         if (detailTimerInterval) clearInterval(detailTimerInterval);
                         closeAuctionDetail();
                     });
                 }
             }
             
-            // Close button
-            const closeBtn = auctionDetailPanel.querySelector('.detail-close');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
+            // Close button di header
+            const detailCloseBtn = auctionDetailPanel.querySelector('#detailCloseBtn');
+            if (detailCloseBtn) {
+                const newDetailCloseBtn = detailCloseBtn.cloneNode(true);
+                detailCloseBtn.parentNode.replaceChild(newDetailCloseBtn, detailCloseBtn);
+                newDetailCloseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     if (detailTimerInterval) clearInterval(detailTimerInterval);
                     closeAuctionDetail();
                 });
@@ -976,7 +981,9 @@
             // Place Bid button
             const placeBidBtn = document.getElementById('placeBidBtn');
             if (placeBidBtn && isActive && !isOwner) {
-                placeBidBtn.addEventListener('click', async () => {
+                const newPlaceBidBtn = placeBidBtn.cloneNode(true);
+                placeBidBtn.parentNode.replaceChild(newPlaceBidBtn, placeBidBtn);
+                newPlaceBidBtn.addEventListener('click', async () => {
                     const minBid = auction.current_price + auction.min_increment;
                     const bidAmount = prompt(`Enter your bid (min: ${minBid.toFixed(2)} TON):`);
                     if (bidAmount) {
@@ -1149,10 +1156,14 @@
 
     function showSilentLoading() {
         activeLoadingCount++;
-        // Hanya tambahkan class loading ke container, tidak munculkan overlay
-        const auctionsContainer = document.getElementById('auctionsContainer');
-        if (auctionsContainer && activeLoadingCount === 1) {
-            auctionsContainer.classList.add('loading-silent');
+        if (activeLoadingCount === 1) {
+            isLoading = true;
+            const auctionsContainer = document.getElementById('auctionsContainer');
+            if (auctionsContainer) {
+                auctionsContainer.classList.add('loading-silent');
+            }
+            // Tampilkan skeleton
+            renderSkeleton();
         }
     }
 
@@ -1160,6 +1171,7 @@
         activeLoadingCount--;
         if (activeLoadingCount <= 0) {
             activeLoadingCount = 0;
+            isLoading = false;
             const auctionsContainer = document.getElementById('auctionsContainer');
             if (auctionsContainer) {
                 auctionsContainer.classList.remove('loading-silent');
@@ -1167,7 +1179,6 @@
         }
     }
 
-    // Override showLoading untuk auctions agar tidak menggunakan overlay
     function showLoading(show) {
         if (show) {
             showSilentLoading();

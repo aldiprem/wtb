@@ -493,6 +493,37 @@ body {
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+/* Tambahkan di storage.css - Style untuk status ON AUCTION */
+
+.card-status.on-auction {
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    color: white;
+    border: none;
+}
+
+.username-status.on-auction {
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    color: white;
+    border: none;
+}
+
+.detail-status.on-auction {
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    color: white;
+    border: none;
+}
+
+.detail-action-btn.view-auction-detail {
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    border: none;
+    color: white;
+}
+
+.detail-action-btn.view-auction-detail:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
 .username-card .card-actions {
     display: none;
 }

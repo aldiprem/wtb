@@ -1146,6 +1146,17 @@
         }
     }
 
+    function getStatusTextAndClass(username) {
+        if (username.status === 'on_auction') {
+            return { text: 'ON AUCTION', class: 'on-auction' };
+        } else if (username.status === 'available') {
+            return { text: 'Listed', class: 'listed' };
+        } else if (username.status === 'unlisted') {
+            return { text: 'Unlisted', class: 'unlisted' };
+        }
+        return { text: 'Unknown', class: '' };
+    }
+
     function renderUsernames(usernames) {
         if (!elements.usernameContainer) return;
         
@@ -1175,8 +1186,10 @@
             elements.usernameContainer.className = 'username-grid';
             let html = '';
             for (const username of usernames) {
-                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
-                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+                const statusInfo = getStatusTextAndClass(username);
+                const statusText = statusInfo.text;
+                const statusClass = statusInfo.class;
+                const isOnAuction = username.status === 'on_auction';
                 
                 let usernameStr = username.username;
                 if (typeof usernameStr !== 'string') {
@@ -1184,10 +1197,7 @@
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
-                // Ambil foto profil dari database via API
                 let avatarUrl = "https://companel.shop/image/winedash-logo.png";
-                
-                // Cek apakah ada di localStorage cache
                 const cached = localStorage.getItem(`avatar_${usernameStr}`);
                 if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
                     avatarUrl = cached;
@@ -1201,7 +1211,8 @@
                     seller_id: username.seller_id,
                     seller_wallet: username.seller_wallet,
                     status: username.status,
-                    created_at: username.created_at
+                    created_at: username.created_at,
+                    auction_id: username.auction_id
                 };
 
                 html += `
@@ -1226,17 +1237,17 @@
             }
             elements.usernameContainer.innerHTML = html;
             
-            // Fetch avatar untuk setiap card
             setTimeout(() => {
                 fetchAllCardAvatars();
             }, 100);
         } else {
-            // List layout - PERBAIKAN: tambahkan @ dan based on
+            // List layout
             elements.usernameContainer.className = 'username-list';
             let html = '';
             for (const username of usernames) {
-                const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
-                const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+                const statusInfo = getStatusTextAndClass(username);
+                const statusText = statusInfo.text;
+                const statusClass = statusInfo.class;
                 
                 let usernameStr = username.username;
                 if (typeof usernameStr !== 'string') {
@@ -1244,10 +1255,8 @@
                 }
                 usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
                 
-                // Based on text (tanpa style tambahan)
                 const basedOnText = username.based_on || '-';
                 
-                // Ambil foto profil dari cache atau default
                 let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
@@ -1261,7 +1270,8 @@
                     seller_id: username.seller_id,
                     seller_wallet: username.seller_wallet,
                     status: username.status,
-                    created_at: username.created_at
+                    created_at: username.created_at,
+                    auction_id: username.auction_id
                 };
 
                 html += `
@@ -1283,7 +1293,6 @@
             }
             elements.usernameContainer.innerHTML = html;
             
-            // Attach click event untuk setiap username-item
             document.querySelectorAll('.username-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     try {
@@ -1295,13 +1304,11 @@
                 });
             });
             
-            // Fetch avatar untuk setiap item (async)
             setTimeout(() => {
                 fetchAllListAvatars();
             }, 100);
         }
 
-        // Attach event listeners untuk card (grid layout)
         document.querySelectorAll('.username-card').forEach(card => {
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.card-action-btn')) return;
@@ -1310,25 +1317,6 @@
                     showDetailPanel(usernameData);
                 } catch (err) {
                     console.error('Error parsing username data:', err);
-                }
-            });
-        });
-        
-        document.querySelectorAll('.toggle-status-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = parseInt(btn.dataset.id);
-                const status = btn.dataset.status;
-                toggleListStatus(id, status);
-            });
-        });
-        
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const id = parseInt(btn.dataset.id);
-                if (confirm('Yakin ingin menghapus username ini?')) {
-                    deleteUsername(id);
                 }
             });
         });
@@ -1528,43 +1516,38 @@
     }
 
     async function showDetailPanel(username) {
-        // Hapus panel yang sudah ada, tapi JANGAN hapus overlay
         const existingPanel = document.querySelector('.detail-panel');
         if (existingPanel) existingPanel.remove();
         
-        // Buat overlay jika belum ada (hanya sekali)
         if (!detailOverlay) {
             detailOverlay = document.createElement('div');
             detailOverlay.className = 'panel-overlay';
             document.body.appendChild(detailOverlay);
             
-            // Klik overlay untuk menutup panel
             detailOverlay.addEventListener('click', () => {
                 closeDetailPanel();
             });
         }
         
-        // Pastikan username adalah string yang bersih
         let usernameStr = username.username;
         if (typeof usernameStr !== 'string') {
             usernameStr = String(usernameStr);
         }
         usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
         
-        const statusText = username.status === 'available' ? 'Listed' : 'Unlisted';
-        const statusClass = username.status === 'available' ? 'listed' : 'unlisted';
+        const statusInfo = getStatusTextAndClass(username);
+        const statusText = statusInfo.text;
+        const statusClass = statusInfo.class;
         const createdAt = formatDateIndonesia(username.created_at);
         const isListed = username.status === 'available';
+        const isOnAuction = username.status === 'on_auction';
         
-        // Loading state untuk avatar
         let avatarUrl = "https://companel.shop/image/winedash-logo.png";
         
-        // Cek cache
         const cached = localStorage.getItem(`avatar_${usernameStr}`);
         if (cached && !cached.includes('winedash-logo.png') && !cached.includes('ui-avatars.com')) {
             avatarUrl = cached;
         } else {
-            // Fetch async
             fetchProfilePhoto(usernameStr).then(photoUrl => {
                 if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
                     const detailImg = document.querySelector('.detail-panel .detail-avatar-img img');
@@ -1575,7 +1558,32 @@
             }).catch(console.error);
         }
         
-        // Buat panel
+        // Tentukan action button berdasarkan status
+        let actionButtons = '';
+        if (isOnAuction) {
+            actionButtons = `
+                <button class="detail-action-btn view-auction-detail" data-id="${username.id}" data-auction-id="${username.auction_id || ''}">
+                    <i class="fas fa-gavel"></i>
+                    <span>View Auction</span>
+                </button>
+                <button class="detail-action-btn delete-detail" data-id="${username.id}">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                </button>
+            `;
+        } else {
+            actionButtons = `
+                <button class="detail-action-btn edit-price-detail" data-id="${username.id}" data-price="${username.price}" data-status="${username.status}">
+                    <i class="fas fa-${isListed ? 'edit' : 'tag'}"></i>
+                    <span>${isListed ? 'Edit Harga' : 'Atur Harga'}</span>
+                </button>
+                <button class="detail-action-btn delete-detail" data-id="${username.id}">
+                    <i class="fas fa-trash"></i>
+                    <span>Delete</span>
+                </button>
+            `;
+        }
+        
         const panel = document.createElement('div');
         panel.className = 'detail-panel';
         panel.innerHTML = `
@@ -1616,60 +1624,39 @@
                 </div>
             </div>
             <div class="detail-actions">
-                <button class="detail-action-btn edit-price-detail" data-id="${username.id}" data-price="${username.price}" data-status="${username.status}">
-                    <i class="fas fa-${isListed ? 'edit' : 'tag'}"></i>
-                    <span>${isListed ? 'Edit Harga' : 'Atur Harga'}</span>
-                </button>
-                <button class="detail-action-btn delete-detail" data-id="${username.id}">
-                    <i class="fas fa-trash"></i>
-                    <span>Delete</span>
-                </button>
+                ${actionButtons}
             </div>
         `;
         
         document.body.appendChild(panel);
-        
-        // Setup drag to close
         setupDragToClose(panel);
-        
-        // Update avatar di detail panel jika perlu
-        if (!cached || cached.includes('ui-avatars.com')) {
-            const photoUrl = await fetchProfilePhoto(usernameStr);
-            if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
-                const detailImg = panel.querySelector('.detail-avatar-img img');
-                if (detailImg) detailImg.src = photoUrl;
-            }
-        }
-        
-        // Prevent scroll pada body
         document.body.classList.add('panel-open');
-        
-        // Tampilkan overlay
         detailOverlay.classList.add('active');
-        
-        // Trigger animation panel
         setTimeout(() => {
             panel.classList.add('open');
         }, 50);
         
-        // Close button
         const closeBtn = panel.querySelector('.panel-close');
         if (closeBtn) {
-            closeBtn.addEventListener('click', (e) => {
+            const newCloseBtn = closeBtn.cloneNode(true);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+            newCloseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 hapticLight();
                 closeDetailPanel();
             });
         }
         
-        // Action buttons
+        // Edit price button
         const editBtn = panel.querySelector('.edit-price-detail');
         if (editBtn) {
-            editBtn.addEventListener('click', async (e) => {
+            const newEditBtn = editBtn.cloneNode(true);
+            editBtn.parentNode.replaceChild(newEditBtn, editBtn);
+            newEditBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = parseInt(editBtn.dataset.id);
-                const price = parseFloat(editBtn.dataset.price);
-                const status = editBtn.dataset.status;
+                const id = parseInt(newEditBtn.dataset.id);
+                const price = parseFloat(newEditBtn.dataset.price);
+                const status = newEditBtn.dataset.status;
                 closeDetailPanel();
                 setTimeout(() => {
                     showEditPriceModal(id, price, status);
@@ -1677,11 +1664,28 @@
             });
         }
         
+        // View Auction button (untuk username yang sedang on auction)
+        const viewAuctionBtn = panel.querySelector('.view-auction-detail');
+        if (viewAuctionBtn) {
+            const newViewAuctionBtn = viewAuctionBtn.cloneNode(true);
+            viewAuctionBtn.parentNode.replaceChild(newViewAuctionBtn, viewAuctionBtn);
+            newViewAuctionBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const auctionId = newViewAuctionBtn.dataset.auctionId;
+                closeDetailPanel();
+                // Redirect ke halaman storage dengan mode auctions dan tab active
+                window.location.href = `/winedash/storage?mode=auctions&tab=active&auction=${auctionId}`;
+            });
+        }
+        
+        // Delete button
         const deleteBtn = panel.querySelector('.delete-detail');
         if (deleteBtn) {
-            deleteBtn.addEventListener('click', async (e) => {
+            const newDeleteBtn = deleteBtn.cloneNode(true);
+            deleteBtn.parentNode.replaceChild(newDeleteBtn, deleteBtn);
+            newDeleteBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const id = parseInt(deleteBtn.dataset.id);
+                const id = parseInt(newDeleteBtn.dataset.id);
                 if (confirm('Yakin ingin menghapus username ini?')) {
                     hapticMedium();
                     await deleteUsername(id);

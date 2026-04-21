@@ -243,5 +243,40 @@
 
     <!-- JavaScript -->
     <script src="/winedash/js/storage.js"></script>
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const tab = urlParams.get('tab');
+            const auctionId = urlParams.get('auction');
+            
+            if (mode === 'auctions') {
+                // Switch ke mode auctions
+                const auctionsBtn = document.querySelector('.mode-btn[data-mode="auctions"]');
+                if (auctionsBtn) {
+                    setTimeout(() => {
+                        auctionsBtn.click();
+                        
+                        if (tab === 'active') {
+                            const activeTabBtn = document.querySelector('.auctions-action-btn[data-auctions-tab="active"]');
+                            if (activeTabBtn) {
+                                setTimeout(() => activeTabBtn.click(), 500);
+                            }
+                        }
+                        
+                        if (auctionId) {
+                            setTimeout(() => {
+                                const auctionCard = document.querySelector(`.auction-card[data-auction*='"id":${auctionId}']`);
+                                if (auctionCard) {
+                                    auctionCard.click();
+                                }
+                            }, 1000);
+                        }
+                    }, 500);
+                }
+            }
+        })();
+    </script>
+
 </body>
 </html>
