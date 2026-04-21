@@ -492,47 +492,52 @@ async def process_pending_verifications():
     
     while True:
         try:
-            # Bersihkan processed IDs yang sudah lebih dari 5 menit
             current_time = time.time()
             to_remove = []
             for pid, timestamp in processed_pending_ids.items():
-                if current_time - timestamp > 300:  # 5 menit
+                if current_time - timestamp > 300:
                     to_remove.append(pid)
             for pid in to_remove:
                 del processed_pending_ids[pid]
             
             async with aiohttp.ClientSession() as session:
+                # PERBAIKAN: Gunakan endpoint global (tanpa user_id)
                 async with session.get('http://localhost:5050/api/winedash/username/pending/list') as resp:
                     if resp.status == 200:
                         data = await resp.json()
+                        logger.info(f"[BOT] Fetched pending list: {data.get('total', 0)} pendings")
+                        
                         for pending in data.get('pendings', []):
                             pending_id = pending.get('id')
+                            username = pending.get('username')
                             
-                            # Skip jika sudah diproses dalam 5 menit terakhir
+                            logger.info(f"[BOT] Processing pending {pending_id}: {username}")
+                            
                             if pending_id in processed_pending_ids:
+                                logger.info(f"[BOT] Skipping {pending_id} - already processed")
                                 continue
                             
-                            # Proses hanya yang statusnya 'pending' dan belum diproses (target_chat_id kosong)
                             if (pending.get('status') == 'pending' and 
                                 not pending.get('target_chat_id')):
                                 
-                                # Tandai sebagai sedang diproses
                                 processed_pending_ids[pending_id] = current_time
                                 
                                 try:
                                     await process_verification(session, pending)
                                 except Exception as e:
-                                    logger.error(f"Error processing pending {pending_id}: {e}")
-                                    # Jika gagal, hapus dari dict agar bisa dicoba lagi nanti
+                                    logger.error(f"[BOT] Error processing pending {pending_id}: {e}")
+                                    import traceback
+                                    traceback.print_exc()
                                     processed_pending_ids.pop(pending_id, None)
                                 
-                                # Beri jeda antar proses agar tidak terlalu cepat
                                 await asyncio.sleep(2)
                         
         except aiohttp.ClientConnectorError:
             logger.debug("Flask server not ready yet...")
         except Exception as e:
             logger.error(f"Error processing: {e}")
+            import traceback
+            traceback.print_exc()
         
         await asyncio.sleep(5)
 

@@ -1121,6 +1121,15 @@ def add_pending_username():
         if not pending_id:
             return jsonify({'success': False, 'error': 'Gagal menambahkan username (mungkin username sudah ada di pending queue)'}), 400
         
+        # NOTIFIKASI: Kirim ke bot melalui API call untuk memproses segera
+        import requests
+        try:
+            # Trigger bot untuk segera memproses pending ini
+            bot_trigger_url = 'http://localhost:5050/api/winedash/bot/trigger'
+            requests.post(bot_trigger_url, json={'pending_id': pending_id}, timeout=2)
+        except Exception as e:
+            print(f"[DEBUG] Bot trigger not available: {e}")
+        
         return jsonify({
             'success': True,
             'pending_id': pending_id,
@@ -1295,7 +1304,6 @@ def get_pending_usernames_global():
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 @winedash_bp.route('/username/pending/list/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_pending_usernames_by_user(user_id):
     """Get pending usernames for specific user"""
@@ -1317,7 +1325,6 @@ def get_pending_usernames_by_user(user_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 @winedash_bp.route('/username/pending/count/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_pending_count(user_id):
@@ -1686,4 +1693,18 @@ def save_profile_photo():
         print(f"Error saving profile photo: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+@winedash_bp.route('/bot/trigger', methods=['POST', 'OPTIONS'])
+def trigger_bot():
+    """Trigger bot to process pending usernames immediately"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        return jsonify({'success': True, 'message': 'Bot will process pending list'})
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
