@@ -673,9 +673,18 @@ def get_usernames():
         
         print(f"[DEBUG] get_usernames called - category: {category}, limit: {limit}")
         
+        # CEK APAKAH TABEL USERNAMES ADA
         with sqlite3.connect(db.db_path) as conn:
-            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            
+            # Cek apakah tabel usernames ada
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='usernames'")
+            if not cursor.fetchone():
+                print("[ERROR] Table 'usernames' does not exist! Creating...")
+                # Panggil init_database untuk membuat tabel
+                db.init_database()
+            
+            conn.row_factory = sqlite3.Row
             
             if category:
                 cursor.execute('''
@@ -719,7 +728,7 @@ def get_usernames():
         print(f"Error in get_usernames: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': str(e), 'usernames': []}), 500
 
 @winedash_bp.route('/username/add', methods=['POST', 'OPTIONS'])
 def add_username():

@@ -107,6 +107,7 @@ class WinedashDatabase:
                     sold_at TIMESTAMP,
                     buyer_id INTEGER,
                     transaction_id TEXT,
+                    auction_id INTEGER,
                     FOREIGN KEY (seller_id) REFERENCES users(user_id),
                     FOREIGN KEY (buyer_id) REFERENCES users(user_id)
                 )
@@ -154,7 +155,7 @@ class WinedashDatabase:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS auctions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
+                    username TEXT NOT NULL,
                     username_id INTEGER NOT NULL,
                     owner_id INTEGER NOT NULL,
                     start_price DECIMAL(20, 8) NOT NULL,
@@ -187,20 +188,113 @@ class WinedashDatabase:
                 )
             ''')
             
-            # Indexes
+            # ============ OFFERS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS offers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT NOT NULL,
+                    username_id INTEGER,
+                    owner_id INTEGER NOT NULL,
+                    bidder_id INTEGER NOT NULL,
+                    price DECIMAL(20, 8) NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    message TEXT,
+                    created_at TIMESTAMP,
+                    updated_at TIMESTAMP,
+                    expires_at TIMESTAMP,
+                    accepted_at TIMESTAMP,
+                    rejected_at TIMESTAMP,
+                    cancelled_at TIMESTAMP,
+                    FOREIGN KEY (owner_id) REFERENCES users(user_id),
+                    FOREIGN KEY (bidder_id) REFERENCES users(user_id)
+                )
+            ''')
+            
+            # ============ OFFERS HISTORY TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS offers_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    offer_id INTEGER,
+                    username TEXT NOT NULL,
+                    owner_id INTEGER NOT NULL,
+                    bidder_id INTEGER NOT NULL,
+                    price DECIMAL(20, 8) NOT NULL,
+                    status TEXT NOT NULL,
+                    action_by INTEGER,
+                    created_at TIMESTAMP,
+                    completed_at TIMESTAMP,
+                    FOREIGN KEY (owner_id) REFERENCES users(user_id),
+                    FOREIGN KEY (bidder_id) REFERENCES users(user_id)
+                )
+            ''')
+            
+            # ============ CHECKOUT CART TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS checkout_cart (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    username_id INTEGER NOT NULL,
+                    username TEXT NOT NULL,
+                    based_on TEXT,
+                    price DECIMAL(20, 8) NOT NULL,
+                    seller_id INTEGER,
+                    seller_wallet TEXT,
+                    added_at TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id),
+                    FOREIGN KEY (username_id) REFERENCES usernames(id),
+                    UNIQUE(user_id, username_id)
+                )
+            ''')
+            
+            # ============ DEBUG LOGS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS debug_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    log_type TEXT NOT NULL,
+                    message TEXT,
+                    url TEXT,
+                    user_agent TEXT,
+                    created_at TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(user_id)
+                )
+            ''')
+            
+            # ============ ADMIN LOGS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS admin_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id INTEGER NOT NULL,
+                    action TEXT NOT NULL,
+                    target_type TEXT,
+                    target_id TEXT,
+                    details TEXT,
+                    ip_address TEXT,
+                    user_agent TEXT,
+                    created_at TIMESTAMP
+                )
+            ''')
+            
+            # ============ ADMIN SETTINGS TABLE ============
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS admin_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    setting_key TEXT UNIQUE NOT NULL,
+                    setting_value TEXT,
+                    updated_at TIMESTAMP
+                )
+            ''')
+            
+            # Create indexes
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_owner ON auctions(owner_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_status ON auctions(status)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_end_time ON auctions(end_time)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_bids_auction ON bids(auction_id)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_bids_user ON bids(user_id)')
-            
-            # ============ UPDATE USERNAMES TABLE - tambah auction_id ============
-            cursor.execute("PRAGMA table_info(usernames)")
-            columns = [col[1] for col in cursor.fetchall()]
-            if 'auction_id' not in columns:
-                cursor.execute('ALTER TABLE usernames ADD COLUMN auction_id INTEGER')
-                print("✅ Added auction_id column to usernames")
-
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_offers_owner ON offers(owner_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_offers_bidder ON offers(bidder_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_offers_status ON offers(status)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_checkout_user ON checkout_cart(user_id)')
 
             conn.commit()
             print("✅ Winedash Database initialized successfully")
