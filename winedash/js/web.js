@@ -226,6 +226,13 @@
                     elements.balanceAmount.textContent = newBalance;
                     console.log(`💰 Balance updated to: ${newBalance} TON`);
                 }
+                
+                // Update wallet main card balance
+                const walletBalanceAmount = document.getElementById('walletBalanceAmount');
+                if (walletBalanceAmount) {
+                    walletBalanceAmount.textContent = formatNumber(data.user.balance);
+                }
+                
                 return data.user;
             }
             return null;
@@ -936,7 +943,7 @@
             }
             return;
         }
-        
+
         // GRID LAYOUT
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
@@ -1798,7 +1805,7 @@
     }
 
     // ==================== TABS ====================
-    
+        
     function setupTabs() {
         elements.tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1829,6 +1836,7 @@
                     if (tonConnectUI) {
                         updateWalletUI();
                         updateBalanceCardUI();
+                        updateWalletMainUI();  // TAMBAHKAN INI
                     }
                 }
             });
@@ -2094,22 +2102,11 @@
                     
                     // Update list button state
                     if (listBtn) {
-                        const newListBtn = listBtn.cloneNode(true);
-                        listBtn.parentNode.replaceChild(newListBtn, listBtn);
-                        newListBtn.classList.remove('active');
-                        // Re-attach event listener untuk list button
-                        newListBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (currentLayout !== 'list') {
-                                currentLayout = 'list';
-                                localStorage.setItem('market_layout', 'list');
-                                newListBtn.classList.add('active');
-                                newGridBtn.classList.remove('active');
-                                applyFiltersAndRender();
-                                hapticLight();
-                            }
-                        });
+                        // Re-fetch list button karena mungkin sudah di-clone sebelumnya
+                        const currentListBtn = document.getElementById('marketListBtn');
+                        if (currentListBtn) {
+                            currentListBtn.classList.remove('active');
+                        }
                     }
                     
                     // Render ulang dengan layout baru
@@ -2144,22 +2141,10 @@
                     
                     // Update grid button state
                     if (gridBtn) {
-                        const newGridBtn = gridBtn.cloneNode(true);
-                        gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
-                        newGridBtn.classList.remove('active');
-                        // Re-attach event listener untuk grid button
-                        newGridBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (currentLayout !== 'grid') {
-                                currentLayout = 'grid';
-                                localStorage.setItem('market_layout', 'grid');
-                                newGridBtn.classList.add('active');
-                                newListBtn.classList.remove('active');
-                                applyFiltersAndRender();
-                                hapticLight();
-                            }
-                        });
+                        const currentGridBtn = document.getElementById('marketGridBtn');
+                        if (currentGridBtn) {
+                            currentGridBtn.classList.remove('active');
+                        }
                     }
                     
                     // Render ulang dengan layout baru

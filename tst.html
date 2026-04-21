@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Telegram Style - Tombol Lingkaran Slime (Tarik & Melar sesuai Arah)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 30% 40%, #1a2f3a, #0a0f18);
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .glass-container {
+            max-width: 600px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            border-radius: 2.5rem;
+            padding: 2rem;
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            background: linear-gradient(135deg, #FFF, #7bc8ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .sub {
+            color: rgba(200, 225, 255, 0.8);
+            margin-bottom: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .demo-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 2rem;
+            padding: 3rem 1rem;
+            margin: 1.5rem 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 380px;
+            position: relative;
+        }
+
+        /* ================================================== */
+        /* TOMBOL LINGKARAN - SLIME KACA (STRETCH ARAH TARIK) */
+        /* ================================================== */
+        .slime-circle {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            cursor: grab;
+            /* Efek kaca transparan */
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.7);
+            /* Flex untuk pusatkan ikon */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: box-shadow 0.2s ease;
+            /* Transform akan diatur JS */
+            transform-origin: center center;
+            will-change: transform;
+        }
+
+        .slime-circle:active {
+            cursor: grabbing;
+        }
+
+        /* Ikon di dalam (ikon Telegram) */
+        .circle-icon {
+            width: 48px;
+            height: 48px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+            pointer-events: none;
+            transition: transform 0.05s linear;
+        }
+
+        /* Indikator arah tarikan (visual feedback) */
+        .direction-hint {
+            position: absolute;
+            bottom: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.7rem;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            padding: 4px 12px;
+            border-radius: 20px;
+            color: #aad4ff;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .info {
+            background: rgba(0,0,0,0.4);
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            color: #bbd9ff;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        .info strong {
+            color: #5bc0ff;
+        }
+
+        .info code {
+            background: rgba(0,0,0,0.4);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+
+        footer {
+            margin-top: 1.5rem;
+            font-size: 0.7rem;
+            color: #7f9fbf;
+        }
+
+        @keyframes pulseHint {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+<div class="glass-container">
+    <h1>✨ Telegram Update</h1>
+    <div class="sub">Editor AI · Live Photo · <strong>Tombol Slime Arah</strong> (tarik & melar sesuai arah)</div>
+
+    <div class="demo-area">
+        <!-- TOMBOL LINGKARAN: bisa ditarik ke segala arah, melar di arah tarikan -->
+        <div id="slimeCircle" class="slime-circle">
+            <svg class="circle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21.5 2.5L2.5 10.5L9.5 13.5L13.5 20.5L21.5 2.5Z" stroke="white" stroke-width="1.2" fill="white" fill-opacity="0.95"/>
+                <path d="M9.5 13.5L21.5 2.5L13.5 20.5L9.5 13.5Z" fill="white" fill-opacity="0.6"/>
+                <path d="M9.5 13.5L2.5 10.5L9.5 13.5Z" fill="white" fill-opacity="0.8"/>
+            </svg>
+        </div>
+        <div class="direction-hint" id="dragHint">⬅️ Tarik ke segala arah ➡️</div>
+    </div>
+
+    <div class="info">
+        💧 <strong>Tombol Lingkaran Kaca:</strong><br>
+        ➤ <strong>Hanya melar saat ditarik (digeser)</strong> — sentuhan biasa tanpa gerakan tidak akan mengubah bentuk.<br>
+        ➤ Arah tarikan menentukan arah melarnya: tarik ke bawah → tombol <strong>melar ke bawah</strong>, tarik ke kanan → melar ke kanan, dst.<br>
+        ➤ Efek <strong>blur transparan seperti kaca</strong> + pantulan (bounce) saat dilepas.<br>
+        ➤ Ikon di dalam juga ikut berubah bentuk sesuai regangan.<br>
+        🎯 <strong>Mirip efek fisika tombol Telegram!</strong> (bisa dicoba di HP dengan sentuhan atau mouse)
+    </div>
+    <footer>
+        ⚡ Pembaruan Telegram Maret 2026: Editor AI, Pol Multimedia, Live Photo, Bot Builder.<br>
+        Tombol eksperimen: <strong>scale directional + glassmorphism + stretch on drag</strong>
+    </footer>
+</div>
+
+<script>
+    (function() {
+        const btn = document.getElementById('slimeCircle');
+        if (!btn) return;
+
+        // Variabel state
+        let isDragging = false;
+        let hasMoved = false;        // Apakah sudah ada pergerakan (untuk membedakan klik vs drag)
+        let startX = 0, startY = 0;
+        let currentScaleX = 1, currentScaleY = 1;
+        
+        // Untuk menyimpan arah regangan terakhir
+        let lastStretchX = 1, lastStretchY = 1;
+        
+        // Elemen hint
+        const hint = document.getElementById('dragHint');
+        
+        // Threshold minimal gerakan agar dianggap drag (10px)
+        const MOVE_THRESHOLD = 10;
+        
+        // Fungsi untuk mengaplikasikan stretch (melar) sesuai arah tarikan
+        // stretchX = skala horizontal, stretchY = skala vertikal
+        function applyStretch(stretchX, stretchY) {
+            // Batasi rentang stretch: 0.3 ~ 1.8 (bisa melar hingga 1.8x dan mengecil hingga 0.3x)
+            stretchX = Math.min(Math.max(stretchX, 0.35), 1.9);
+            stretchY = Math.min(Math.max(stretchY, 0.35), 1.9);
+            
+            currentScaleX = stretchX;
+            currentScaleY = stretchY;
+            
+            // Transformasi pada tombol (scale non-uniform = stretch sesuai arah)
+            btn.style.transform = `scale(${stretchX}, ${stretchY})`;
+            
+            // Efek tambahan: intensitas stretch mempengaruhi blur (semakin melar, blur sedikit berkurang untuk efek "menipis")
+            const intensity = Math.abs(stretchX - 1) + Math.abs(stretchY - 1);
+            const blurAmount = Math.max(8, 16 - intensity * 6);
+            btn.style.backdropFilter = `blur(${blurAmount}px)`;
+            
+            // Ikon di dalam ikut merasakan stretch karena berada di dalam elemen yang di-scale
+            // (tidak perlu kode tambahan)
+            
+            // Update hint visual
+            if (hint) {
+                if (Math.abs(stretchX - 1) > 0.1 || Math.abs(stretchY - 1) > 0.1) {
+                    let directionText = '';
+                    if (Math.abs(stretchX - 1) > Math.abs(stretchY - 1)) {
+                        directionText = stretchX > 1 ? '→ Melar ke Kanan' : '← Melar ke Kiri';
+                    } else {
+                        directionText = stretchY > 1 ? '↓ Melar ke Bawah' : '↑ Melar ke Atas';
+                    }
+                    hint.textContent = `✨ ${directionText} ✨`;
+                    hint.style.animation = 'pulseHint 0.3s ease';
+                    setTimeout(() => { if(hint) hint.style.animation = ''; }, 300);
+                } else {
+                    hint.textContent = '⬅️ Tarik ke segala arah ➡️';
+                }
+            }
+        }
+        
+        // Fungsi reset dengan bounce (pantulan karet)
+        function resetWithBounce() {
+            // Hanya reset jika memang ada perubahan bentuk
+            if (currentScaleX === 1 && currentScaleY === 1) return;
+            
+            btn.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.4, 0.55, 1), backdrop-filter 0.3s ease';
+            applyStretch(1, 1);
+            
+            setTimeout(() => {
+                if (!isDragging) {
+                    btn.style.backdropFilter = 'blur(16px)';
+                    btn.style.transition = '';
+                }
+            }, 450);
+            
+            // Reset hint setelah bounce
+            setTimeout(() => {
+                if (hint && !isDragging) hint.textContent = '⬅️ Tarik ke segala arah ➡️';
+            }, 500);
+        }
+        
+        // Fungsi reset instan (tanpa bounce) saat mulai drag baru
+        function clearTransition() {
+            btn.style.transition = '';
+        }
+        
+        // ---------- HANDLER DRAG (MOUSE & TOUCH) ----------
+        function onPointerStart(e) {
+            // Cegah default agar tidak scroll saat drag
+            e.preventDefault();
+            
+            // Ambil posisi awal pointer
+            let clientX, clientY;
+            if (e.clientX !== undefined) {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                return;
+            }
+            
+            startX = clientX;
+            startY = clientY;
+            isDragging = true;
+            hasMoved = false;  // Belum ada pergerakan berarti
+            clearTransition();
+            btn.style.cursor = 'grabbing';
+        }
+        
+        function onPointerMove(e) {
+            if (!isDragging) return;
+            
+            // Ambil posisi terkini
+            let clientX, clientY;
+            if (e.clientX !== undefined) {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                return;
+            }
+            
+            const deltaX = clientX - startX;
+            const deltaY = clientY - startY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            
+            // Jika jarak gerakan masih di bawah threshold, jangan ubah bentuk (agar sentuhan biasa tanpa geser tidak mempengaruhi)
+            if (distance < MOVE_THRESHOLD && !hasMoved) {
+                return;
+            }
+            
+            // Setelah melewati threshold, tandai sudah ada pergerakan
+            if (!hasMoved && distance >= MOVE_THRESHOLD) {
+                hasMoved = true;
+            }
+            
+            if (!hasMoved) return;
+            
+            e.preventDefault();
+            
+            // Hitung faktor stretch berdasarkan arah dan jarak
+            // Sensitivitas: setiap 50px gerakan mengubah skala sebesar 0.4
+            let stretchX = 1 + (deltaX / 70);
+            let stretchY = 1 + (deltaY / 70);
+            
+            // Batasi agar tidak terlalu ekstrim
+            stretchX = Math.min(Math.max(stretchX, 0.4), 1.8);
+            stretchY = Math.min(Math.max(stretchY, 0.4), 1.8);
+            
+            // Terapkan stretch sesuai arah tarikan
+            applyStretch(stretchX, stretchY);
+        }
+        
+        function onPointerEnd(e) {
+            if (!isDragging) {
+                btn.style.cursor = 'grab';
+                return;
+            }
+            
+            const wasMoved = hasMoved;
+            isDragging = false;
+            btn.style.cursor = 'grab';
+            
+            if (wasMoved) {
+                // Jika ada pergerakan (drag), lakukan bounce kembali ke bentuk normal
+                resetWithBounce();
+            } else {
+                // Jika tidak ada pergerakan (hanya klik/tap tanpa geser), jangan ubah bentuk sama sekali
+                // Tapi beri efek klik ringan (scale sedikit) sebagai feedback
+                btn.style.transition = 'transform 0.1s ease';
+                btn.style.transform = 'scale(0.96, 0.96)';
+                setTimeout(() => {
+                    if (!isDragging) {
+                        btn.style.transform = 'scale(1, 1)';
+                        setTimeout(() => {
+                            if (!isDragging) btn.style.transition = '';
+                        }, 150);
+                    }
+                }, 100);
+                
+                // Trigger aksi klik (contoh: alert)
+                console.log('Tombol ditekan (klik biasa) — tidak melar karena tanpa drag');
+                alert('📱 Tombol ditekan! (tanpa drag)\n\nCoba tekan dan geser untuk melihat efek melar sesuai arah.');
+            }
+            
+            // Reset hasMoved setelah selesai
+            setTimeout(() => { hasMoved = false; }, 100);
+        }
+        
+        // Pasang event listener (support mouse dan touch)
+        btn.addEventListener('mousedown', onPointerStart);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerEnd);
+        
+        btn.addEventListener('touchstart', onPointerStart, { passive: false });
+        window.addEventListener('touchmove', onPointerMove, { passive: false });
+        window.addEventListener('touchend', onPointerEnd);
+        
+        // Inisialisasi gaya awal
+        btn.style.transform = 'scale(1, 1)';
+        btn.style.backdropFilter = 'blur(16px)';
+        btn.style.cursor = 'grab';
+        
+        // Efek hover (desktop)
+        btn.addEventListener('mouseenter', () => {
+            if (!isDragging) {
+                btn.style.boxShadow = '0 15px 30px rgba(0, 160, 255, 0.35), inset 0 1px 3px rgba(255,255,255,0.8)';
+            }
+        });
+        btn.addEventListener('mouseleave', () => {
+            if (!isDragging) {
+                btn.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(255, 255, 255, 0.7)';
+            }
+        });
+        
+        // Optional: reset jika ada sentuhan yang tidak sengaja keluar dari window
+        window.addEventListener('blur', () => {
+            if (isDragging) {
+                isDragging = false;
+                hasMoved = false;
+                resetWithBounce();
+            }
+        });
+    })();
+</script>
+</body>
+</html>
