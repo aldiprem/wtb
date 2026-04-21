@@ -170,11 +170,105 @@ body {
     color: var(--primary);
 }
 
-/* Search Container */
 .search-container {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
+    position: relative;
+}
+
+.search-container .search-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.search-container .search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+}
+
+.search-container .search-apply-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    border-radius: 16px;
+    padding: 0 16px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+/* Layout toggle di dalam search container */
+.search-container .layout-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 3px;
+    margin-left: 0;
+}
+
+.search-container .layout-toggle .layout-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.search-container .layout-toggle .layout-btn.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+.search-container .layout-toggle .layout-btn i {
+    font-size: 12px;
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(239, 68, 68, 0.8);
+    border: none;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    z-index: 10;
+}
+
+.search-clear-btn:hover {
+    background: #ef4444;
+    transform: translateY(-50%) scale(1.05);
+}
+
+/* Responsive untuk clear button */
+@media (max-width: 480px) {
+    .search-clear-btn {
+        right: 70px;
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
+    }
 }
 
 .search-input {

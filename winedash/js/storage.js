@@ -145,6 +145,61 @@
         return parseFloat(num).toFixed(2);
     }
 
+    async function refreshAuctionStatuses() {
+        if (!telegramUser) return;
+        
+        try {
+            console.log('[STORAGE] Refreshing auction statuses for fix price...');
+            
+            // Ambil semua usernames yang statusnya on_auction
+            const onAuctionUsernames = allUsernames.filter(u => u.status === 'on_auction');
+            
+            if (onAuctionUsernames.length === 0) return;
+            
+            // Untuk setiap username yang on_auction, cek apakah auction sudah ended
+            for (const username of onAuctionUsernames) {
+                const auctionId = username.auction_id;
+                if (!auctionId) continue;
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/winedash/auctions/detail/${auctionId}`);
+                    const data = await response.json();
+                    
+                    if (data.success && data.auction) {
+                        const auction = data.auction;
+                        const isEnded = auction.status === 'ended' || (auction.end_time && new Date(auction.end_time) <= new Date());
+                        
+                        if (isEnded && auction.status === 'ended') {
+                            console.log(`[STORAGE] Auction ${auctionId} for @${username.username} has ended, updating status...`);
+                            
+                            // Update status username kembali ke available (listed) jika sebelumnya available
+                            // atau unlisted jika sebelumnya unlisted
+                            // Kita perlu tahu status sebelum auction
+                            // Untuk sementara, set ke available dulu
+                            await fetch(`${API_BASE_URL}/api/winedash/username/toggle`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    username_id: username.id,
+                                    status: 'available',
+                                    user_id: telegramUser.id
+                                })
+                            });
+                        }
+                    }
+                } catch (err) {
+                    console.error(`Error checking auction status for @${username.username}:`, err);
+                }
+            }
+            
+            // Reload usernames setelah update
+            await loadUsernames();
+            
+        } catch (error) {
+            console.error('Error refreshing auction statuses:', error);
+        }
+    }
+    
     // ==================== TELEGRAM USER ====================
     
     function getTelegramUserFromWebApp() {
@@ -725,7 +780,83 @@
         renderUsernames(filtered);
     }
 
-    // Perbaiki fungsi loadUsernames - juga load pending list
+    function setupClearSearchButton() {
+        const searchInput = document.getElementById('searchStorage');
+        if (!searchInput) return;
+        
+        // Cek apakah wrapper sudah ada, jika belum buat
+        let wrapper = searchInput.parentElement;
+        let clearBtn = wrapper.querySelector('.search-clear-btn');
+        
+        // Jika clear button belum ada, buat
+        if (!clearBtn) {
+            // Buat wrapper relatif untuk positioning
+            if (wrapper.style.position !== 'relative') {
+                wrapper.style.position = 'relative';
+            }
+            
+            clearBtn = document.createElement('button');
+            clearBtn.className = 'search-clear-btn';
+            clearBtn.innerHTML = '<i class="fas fa-times"></i>';
+            clearBtn.style.cssText = `
+                position: absolute;
+                right: 80px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: rgba(239, 68, 68, 0.8);
+                border: none;
+                color: white;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.2s;
+                z-index: 10;
+            `;
+            
+            clearBtn.addEventListener('mouseenter', () => {
+                clearBtn.style.background = '#ef4444';
+                clearBtn.style.transform = 'translateY(-50%) scale(1.05)';
+            });
+            
+            clearBtn.addEventListener('mouseleave', () => {
+                clearBtn.style.background = 'rgba(239, 68, 68, 0.8)';
+                clearBtn.style.transform = 'translateY(-50%) scale(1)';
+            });
+            
+            clearBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                searchInput.value = '';
+                currentSearchTerm = '';
+                filterAndRender();
+                clearBtn.style.display = 'none';
+                hapticLight();
+            });
+            
+            wrapper.appendChild(clearBtn);
+        }
+        
+        // Event listener untuk show/hide clear button
+        const handleInput = () => {
+            if (searchInput.value.length > 0) {
+                clearBtn.style.display = 'flex';
+            } else {
+                clearBtn.style.display = 'none';
+            }
+        };
+        
+        searchInput.addEventListener('input', handleInput);
+        searchInput.addEventListener('keyup', handleInput);
+        
+        // Initial check
+        handleInput();
+    }
+
     async function loadUsernames() {
         showLoading(true);
         
@@ -740,6 +871,16 @@
                 if (telegramUser) {
                     allUsernames = data.usernames.filter(u => u.seller_id === telegramUser.id);
                     console.log(`[DEBUG] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
+                    
+                    // ============ TAMBAHKAN: Refresh auction statuses ============
+                    await refreshAuctionStatuses();
+                    
+                    // Reload lagi setelah refresh jika ada perubahan
+                    const refreshResponse = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
+                    const refreshData = await refreshResponse.json();
+                    if (refreshData.success && refreshData.usernames) {
+                        allUsernames = refreshData.usernames.filter(u => u.seller_id === telegramUser.id);
+                    }
                 } else {
                     allUsernames = data.usernames;
                 }
@@ -3900,13 +4041,11 @@
         showLoading(true);
         
         try {
-            // Setup DOM elements references
             setupDomElements();
-            
-            // Setup event listeners
             setupEventListeners();
             setupInboxEventListeners();
             setupSearch();
+            setupClearSearchButton();
             setupStatusFilter();
             setupAuctionsFilterAndActivity();
             setupAuctionsLayoutToggle();
