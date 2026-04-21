@@ -493,8 +493,6 @@ body {
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-/* Tambahkan di storage.css - Style untuk status ON AUCTION */
-
 .card-status.on-auction {
     background: linear-gradient(135deg, var(--warning), #d97706);
     color: white;
@@ -517,6 +515,49 @@ body {
     background: linear-gradient(135deg, var(--warning), #d97706);
     border: none;
     color: white;
+}
+
+.username-card .card-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Status Pending di list layout */
+.username-list .username-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Status Pending di detail panel */
+.detail-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Tombol verifikasi di detail panel */
+.detail-action-btn.verify-detail {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--success);
+}
+
+.detail-action-btn.verify-detail:hover {
+    background: rgba(16, 185, 129, 0.3);
+    transform: scale(1.02);
+}
+
+.detail-action-btn.reject-detail {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
+
+.detail-action-btn.reject-detail:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: scale(1.02);
 }
 
 .detail-action-btn.view-auction-detail:hover {

@@ -219,7 +219,6 @@
         try {
             console.log('[DEBUG] Loading pending list for user:', telegramUser.id);
             
-            // Gunakan endpoint dengan user_id - PASTIKAN URL BENAR
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/list/${telegramUser.id}`);
             const data = await response.json();
             
@@ -228,19 +227,18 @@
             if (data.success) {
                 pendingList = data.pendings || [];
                 renderInboxContent();
+                
+                // Refresh tampilan username untuk menampilkan status pending
+                if (allUsernames.length > 0) {
+                    filterAndRender();
+                }
             } else {
                 console.error('Failed to load pending list:', data.error);
-                const inboxContent = document.getElementById('inboxContent');
-                if (inboxContent) {
-                    inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data: ' + (data.error || 'Unknown error') + '</div>';
-                }
+                pendingList = [];
             }
         } catch (error) {
             console.error('Error loading pending list:', error);
-            const inboxContent = document.getElementById('inboxContent');
-            if (inboxContent) {
-                inboxContent.innerHTML = '<div class="loading-placeholder">Gagal memuat data: ' + (error.message || 'Network error') + '</div>';
-            }
+            pendingList = [];
         }
     }
 
@@ -655,8 +653,77 @@
         }
     }
 
-    // Panggil refresh setelah load usernames
-    // Tambahkan di akhir fungsi loadUsernames
+    async function filterAndRender() {
+        let filtered = [...allUsernames];
+        
+        for (const pending of pendingList) {
+            const existing = filtered.find(u => u.username === pending.username);
+            if (!existing) {
+                filtered.push({
+                    id: pending.id,
+                    username: pending.username,
+                    based_on: pending.based_on || '',
+                    price: pending.price,
+                    seller_id: pending.seller_id,
+                    seller_wallet: pending.seller_wallet || '',
+                    status: 'pending', // status khusus untuk pending
+                    created_at: pending.created_at,
+                    is_pending: true,
+                    pending_id: pending.id,
+                    verification_type: pending.verification_type
+                });
+            }
+        }
+        
+        // Filter by search term
+        if (currentSearchTerm && currentSearchTerm.trim() !== '') {
+            const term = currentSearchTerm.toLowerCase().trim();
+            filtered = filtered.filter(username => 
+                username.username.toLowerCase().includes(term) ||
+                (username.based_on && username.based_on.toLowerCase().includes(term))
+            );
+        }
+        
+        // Filter by status
+        if (currentStatus !== 'all') {
+            filtered = filtered.filter(username => {
+                switch(currentStatus) {
+                    case 'listed':
+                        return username.status === 'available';
+                    case 'unlisted':
+                        return username.status === 'unlisted';
+                    case 'pending':
+                        return username.status === 'pending' || username.is_pending === true;
+                    case 'auction':
+                        return username.status === 'on_auction';
+                    default:
+                        return true;
+                }
+            });
+        }
+        
+        // Sort
+        filtered.sort((a, b) => {
+            switch (currentSort) {
+                case 'price_asc':
+                    return (a.price || 0) - (b.price || 0);
+                case 'price_desc':
+                    return (b.price || 0) - (a.price || 0);
+                case 'name_asc':
+                    return (a.username || '').localeCompare(b.username || '');
+                case 'name_desc':
+                    return (b.username || '').localeCompare(a.username || '');
+                case 'date_desc':
+                    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                default:
+                    return (a.price || 0) - (b.price || 0);
+            }
+        });
+        
+        renderUsernames(filtered);
+    }
+
+    // Perbaiki fungsi loadUsernames - juga load pending list
     async function loadUsernames() {
         showLoading(true);
         
@@ -674,6 +741,10 @@
                 } else {
                     allUsernames = data.usernames;
                 }
+                
+                // Load pending list juga
+                await loadPendingList();
+                
                 filterAndRender();
                 
                 // Refresh foto profil yang masih default setelah render
@@ -1148,7 +1219,11 @@
     }
 
     function getStatusTextAndClass(username) {
-        if (username.status === 'on_auction') {
+        const isPending = pendingList.some(p => p.username === username.username);
+        
+        if (isPending) {
+            return { text: 'PENDING', class: 'pending' };
+        } else if (username.status === 'on_auction') {
             return { text: 'ON AUCTION', class: 'on-auction' };
         } else if (username.status === 'available') {
             return { text: 'Listed', class: 'listed' };
@@ -1187,10 +1262,13 @@
             elements.usernameContainer.className = 'username-grid';
             let html = '';
             for (const username of usernames) {
-                const statusInfo = getStatusTextAndClass(username);
+                // Cek apakah username pending
+                const pendingRecord = pendingList.find(p => p.username === username.username);
+                const isPending = !!pendingRecord;
+                
+                const statusInfo = getStatusTextAndClass({...username, username: username.username});
                 const statusText = statusInfo.text;
                 const statusClass = statusInfo.class;
-                const isOnAuction = username.status === 'on_auction';
                 
                 let usernameStr = username.username;
                 if (typeof usernameStr !== 'string') {
@@ -1213,7 +1291,10 @@
                     seller_wallet: username.seller_wallet,
                     status: username.status,
                     created_at: username.created_at,
-                    auction_id: username.auction_id
+                    auction_id: username.auction_id,
+                    is_pending: isPending,
+                    pending_id: pendingRecord ? pendingRecord.id : null,
+                    verification_type: pendingRecord ? pendingRecord.verification_type : null
                 };
 
                 html += `
@@ -1246,7 +1327,11 @@
             elements.usernameContainer.className = 'username-list';
             let html = '';
             for (const username of usernames) {
-                const statusInfo = getStatusTextAndClass(username);
+                // Cek apakah username pending
+                const pendingRecord = pendingList.find(p => p.username === username.username);
+                const isPending = !!pendingRecord;
+                
+                const statusInfo = getStatusTextAndClass({...username, username: username.username});
                 const statusText = statusInfo.text;
                 const statusClass = statusInfo.class;
                 
@@ -1272,7 +1357,10 @@
                     seller_wallet: username.seller_wallet,
                     status: username.status,
                     created_at: username.created_at,
-                    auction_id: username.auction_id
+                    auction_id: username.auction_id,
+                    is_pending: isPending,
+                    pending_id: pendingRecord ? pendingRecord.id : null,
+                    verification_type: pendingRecord ? pendingRecord.verification_type : null
                 };
 
                 html += `
@@ -1536,7 +1624,12 @@
         }
         usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
         
-        const statusInfo = getStatusTextAndClass(username);
+        // Cek apakah username pending
+        const isPending = username.is_pending === true;
+        const pendingId = username.pending_id;
+        const verificationType = username.verification_type;
+        
+        const statusInfo = getStatusTextAndClass({...username, username: usernameStr});
         const statusText = statusInfo.text;
         const statusClass = statusInfo.class;
         const createdAt = formatDateIndonesia(username.created_at);
@@ -1561,7 +1654,20 @@
         
         // Tentukan action button berdasarkan status
         let actionButtons = '';
-        if (isOnAuction) {
+        
+        if (isPending) {
+            // Untuk username pending, tampilkan tombol Verifikasi dan Tolak
+            actionButtons = `
+                <button class="detail-action-btn verify-detail" data-pending-id="${pendingId}" data-username="${usernameStr}" data-type="${verificationType}">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Verifikasi</span>
+                </button>
+                <button class="detail-action-btn reject-detail" data-pending-id="${pendingId}" data-username="${usernameStr}">
+                    <i class="fas fa-times-circle"></i>
+                    <span>Tolak</span>
+                </button>
+            `;
+        } else if (isOnAuction) {
             actionButtons = `
                 <button class="detail-action-btn view-auction-detail" data-id="${username.id}" data-auction-id="${username.auction_id || ''}">
                     <i class="fas fa-gavel"></i>
@@ -1648,7 +1754,43 @@
             });
         }
         
-        // Edit price button
+        // Tombol Verifikasi untuk pending username
+        const verifyBtn = panel.querySelector('.verify-detail');
+        if (verifyBtn) {
+            const newVerifyBtn = verifyBtn.cloneNode(true);
+            verifyBtn.parentNode.replaceChild(newVerifyBtn, verifyBtn);
+            newVerifyBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pendingId = newVerifyBtn.dataset.pendingId;
+                const username = newVerifyBtn.dataset.username;
+                const type = newVerifyBtn.dataset.type;
+                
+                closeDetailPanel();
+                
+                if (type === 'user') {
+                    showOtpModal(pendingId, username);
+                } else {
+                    showConfirmModal(pendingId, username);
+                }
+            });
+        }
+        
+        // Tombol Tolak untuk pending username
+        const rejectBtn = panel.querySelector('.reject-detail');
+        if (rejectBtn) {
+            const newRejectBtn = rejectBtn.cloneNode(true);
+            rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
+            newRejectBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pendingId = newRejectBtn.dataset.pendingId;
+                const username = newRejectBtn.dataset.username;
+                
+                closeDetailPanel();
+                showRejectConfirmModal(pendingId, username);
+            });
+        }
+        
+        // Edit price button (untuk non-pending)
         const editBtn = panel.querySelector('.edit-price-detail');
         if (editBtn) {
             const newEditBtn = editBtn.cloneNode(true);
@@ -1674,7 +1816,6 @@
                 e.stopPropagation();
                 const auctionId = newViewAuctionBtn.dataset.auctionId;
                 closeDetailPanel();
-                // Redirect ke halaman storage dengan mode auctions dan tab active
                 window.location.href = `/winedash/storage?mode=auctions&tab=active&auction=${auctionId}`;
             });
         }
