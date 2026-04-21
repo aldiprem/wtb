@@ -2184,6 +2184,36 @@ body.panel-open {
     opacity: 1;
 }
 
+.loading-overlay {
+    pointer-events: none;
+}
+
+.loading-overlay.active {
+    display: flex !important;
+}
+
+/* Pastikan container tidak infinite render */
+#usernameContainer {
+    transition: opacity 0.2s ease;
+}
+
+#usernameContainer.loading-silent {
+    opacity: 0.7;
+}
+
+/* Fix untuk avatar loading */
+.avatar-img {
+    transition: opacity 0.2s ease;
+}
+
+.avatar-img.loading {
+    opacity: 0.5;
+}
+
+.avatar-img.loaded {
+    opacity: 1;
+}
+
 /* storage.css - Tambahkan style untuk avatar di inbox */
 
 .inbox-avatar {

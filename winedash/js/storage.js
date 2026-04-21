@@ -29,6 +29,13 @@
     let currentAuctionsLayout = localStorage.getItem('auctions_layout') || 'grid';
     let savedActivityState = sessionStorage.getItem('winedash_activity_open');
     let savedActivityTab = sessionStorage.getItem('winedash_activity_tab') || 'my-auctions';
+    
+    // ============ TAMBAHKAN FLAGS UNTUK MENCEGAH INFINITE LOOP ============
+    let isLoadingUsernames = false;
+    let isLoadingPending = false;
+    let isLoadingPendingCount = false;
+    let isUpdating = false;
+    let updateInterval = null;
 
     // DOM Elements
     const elements = {
@@ -247,14 +254,20 @@
 
     async function loadPendingCount() {
         if (!telegramUser) return;
+        if (isLoadingPendingCount) {
+            console.log('[STORAGE] loadPendingCount already in progress, skipping...');
+            return;
+        }
+        
+        isLoadingPendingCount = true;
         
         try {
-            console.log('[DEBUG] Loading pending count for user:', telegramUser.id);
+            console.log('[STORAGE] Loading pending count for user:', telegramUser.id);
             
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/count/${telegramUser.id}`);
             const data = await response.json();
             
-            console.log('[DEBUG] Pending count response:', data);
+            console.log('[STORAGE] Pending count response:', data);
             
             const badge = document.getElementById('inboxBadge');
             if (badge) {
@@ -266,20 +279,28 @@
                 }
             }
         } catch (error) {
-            console.error('Error loading pending count:', error);
+            console.error('[STORAGE] Error loading pending count:', error);
+        } finally {
+            isLoadingPendingCount = false;
         }
     }
 
     async function loadPendingList() {
         if (!telegramUser) return;
+        if (isLoadingPending) {
+            console.log('[STORAGE] loadPendingList already in progress, skipping...');
+            return;
+        }
+        
+        isLoadingPending = true;
         
         try {
-            console.log('[DEBUG] Loading pending list for user:', telegramUser.id);
+            console.log('[STORAGE] Loading pending list for user:', telegramUser.id);
             
             const response = await fetch(`${API_BASE_URL}/api/winedash/username/pending/list/${telegramUser.id}`);
             const data = await response.json();
             
-            console.log('[DEBUG] Pending list response:', data);
+            console.log('[STORAGE] Pending list response:', data);
             
             if (data.success) {
                 pendingList = data.pendings || [];
@@ -290,12 +311,14 @@
                     filterAndRender();
                 }
             } else {
-                console.error('Failed to load pending list:', data.error);
+                console.error('[STORAGE] Failed to load pending list:', data.error);
                 pendingList = [];
             }
         } catch (error) {
-            console.error('Error loading pending list:', error);
+            console.error('[STORAGE] Error loading pending list:', error);
             pendingList = [];
+        } finally {
+            isLoadingPending = false;
         }
     }
 
@@ -858,19 +881,26 @@
     }
 
     async function loadUsernames() {
+        // Cegah multiple simultaneous calls
+        if (isLoadingUsernames) {
+            console.log('[STORAGE] loadUsernames already in progress, skipping...');
+            return;
+        }
+        
+        isLoadingUsernames = true;
         showLoading(true);
         
         try {
-            console.log('[DEBUG] Loading usernames...');
+            console.log('[STORAGE] Loading usernames...');
             const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
             const data = await response.json();
             
-            console.log('[DEBUG] Load usernames response:', data);
+            console.log('[STORAGE] Load usernames response:', data);
             
             if (data.success && data.usernames) {
                 if (telegramUser) {
                     allUsernames = data.usernames.filter(u => u.seller_id === telegramUser.id);
-                    console.log(`[DEBUG] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
+                    console.log(`[STORAGE] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
                     
                     // ============ TAMBAHKAN: Refresh auction statuses ============
                     await refreshAuctionStatuses();
@@ -894,18 +924,23 @@
                 setTimeout(() => {
                     refreshAllDefaultAvatars();
                 }, 1000);
+                
+                // Hentikan loading overlay setelah data dirender
+                showLoading(false);
             } else {
-                console.log('[DEBUG] No usernames found or error:', data);
+                console.log('[STORAGE] No usernames found or error:', data);
                 allUsernames = [];
                 renderUsernames([]);
+                showLoading(false);
             }
         } catch (error) {
-            console.error('[DEBUG] Error loading usernames:', error);
+            console.error('[STORAGE] Error loading usernames:', error);
             if (elements.usernameContainer) {
                 elements.usernameContainer.innerHTML = '<div class="loading-placeholder">Gagal memuat data</div>';
             }
-        } finally {
             showLoading(false);
+        } finally {
+            isLoadingUsernames = false;
         }
     }
 
@@ -3867,6 +3902,12 @@
     
     async function checkForUpdates() {
         if (!telegramUser) return;
+        if (isUpdating) {
+            console.log('[STORAGE] Update already in progress, skipping...');
+            return;
+        }
+        
+        isUpdating = true;
         
         try {
             // Cek jumlah usernames
@@ -3885,7 +3926,7 @@
             
             // Jika ada perubahan, refresh
             if (currentUsernameCount !== lastUsernameCount || currentPendingCount !== lastPendingCount) {
-                console.log('Changes detected, refreshing...');
+                console.log('[STORAGE] Changes detected, refreshing...');
                 lastUsernameCount = currentUsernameCount;
                 lastPendingCount = currentPendingCount;
                 await loadUsernames();
@@ -3896,19 +3937,20 @@
                 if (panel && panel.style.display === 'flex') {
                     await loadPendingList();
                 }
+            } else {
+                console.log('[STORAGE] No changes detected, skipping refresh');
             }
         } catch (error) {
-            console.error('Error checking updates:', error);
+            console.error('[STORAGE] Error checking updates:', error);
+        } finally {
+            isUpdating = false;
         }
     }
-
-    // Mulai polling setiap 3 detik
-    let updateInterval = null;
 
     function startAutoRefresh() {
         if (updateInterval) clearInterval(updateInterval);
         
-        // Initial load
+        // Initial load - hanya sekali
         if (telegramUser) {
             (async () => {
                 const usernamesResp = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
@@ -3923,9 +3965,10 @@
             })();
         }
         
+        // Polling setiap 10 detik (bukan 3 detik)
         updateInterval = setInterval(() => {
             checkForUpdates();
-        }, 3000); // Cek setiap 3 detik
+        }, 10000);
     }
 
     function stopAutoRefresh() {
