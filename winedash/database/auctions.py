@@ -127,7 +127,7 @@ class AuctionsDatabase:
         except Exception as e:
             print(f"Error getting active auctions: {e}")
             return []
-    
+        
     def get_auctions_by_owner(self, owner_id: int) -> List[Dict]:
         """Get auctions created by user"""
         try:
@@ -137,8 +137,9 @@ class AuctionsDatabase:
                 
                 cursor.execute('''
                     SELECT a.*, 
-                           (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count,
-                           (SELECT MAX(bid_amount) FROM bids WHERE auction_id = a.id) as highest_bid
+                        (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count,
+                        (SELECT MAX(bid_amount) FROM bids WHERE auction_id = a.id) as highest_bid,
+                        (SELECT bid_amount FROM bids WHERE auction_id = a.id ORDER BY timestamp DESC LIMIT 1) as last_bid
                     FROM auctions a
                     WHERE a.owner_id = ?
                     ORDER BY a.created_at DESC
@@ -149,8 +150,10 @@ class AuctionsDatabase:
                 
         except Exception as e:
             print(f"Error getting auctions by owner: {e}")
+            import traceback
+            traceback.print_exc()
             return []
-    
+
     def get_auctions_with_bids(self, user_id: int) -> List[Dict]:
         """Get auctions where user has placed bids"""
         try:
@@ -400,7 +403,7 @@ class AuctionsDatabase:
         except Exception as e:
             print(f"Error checking expired auctions: {e}")
             return 0
-            
+                
     def get_ended_auctions(self, user_id: int = None, limit: int = 100) -> List[Dict]:
         """Get ended auctions (completed auctions)"""
         try:
@@ -442,4 +445,6 @@ class AuctionsDatabase:
                 
         except Exception as e:
             print(f"Error getting ended auctions: {e}")
+            import traceback
+            traceback.print_exc()
             return []

@@ -231,7 +231,7 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-                    
+                        
     async function loadAuctions() {
         if (!telegramUser) return;
         
@@ -249,7 +249,7 @@
                     break;
                 case 'my-auctions':
                     // PERBAIKAN: Gunakan endpoint yang benar
-                    url = `${API_BASE_URL}/api/winedash/auctions/my/${telegramUser.id}`;
+                    url = `${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
                     break;
                 case 'my-bids':
                     url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
@@ -261,21 +261,26 @@
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
             }
             
+            console.log(`[AUCTIONS] Fetching from URL: ${url}`);
+            
             const response = await fetch(url);
             const data = await response.json();
             
-            console.log(`[AUCTIONS] Loaded auctions:`, data);
+            console.log(`[AUCTIONS] Response:`, data);
             
             if (data.success) {
                 currentAuctions = data.auctions || [];
+                console.log(`[AUCTIONS] Loaded ${currentAuctions.length} auctions for tab ${currentAuctionTab}`);
                 filterAndRenderAuctions();
                 startTimers();
             } else {
+                console.error(`[AUCTIONS] Failed to load:`, data.error);
                 currentAuctions = [];
                 renderAuctionsEmpty();
             }
         } catch (error) {
             console.error('[AUCTIONS] Error loading auctions:', error);
+            currentAuctions = [];
             renderAuctionsEmpty();
         } finally {
             hideSilentLoading();
@@ -922,25 +927,25 @@
             document.body.classList.add('panel-open');
             setTimeout(() => auctionDetailPanel.classList.add('open'), 10);
             
-            // Setup timer untuk detail view jika active
             let detailTimerInterval = null;
             if (!isEnded && isActive) {
                 const timerElement = document.getElementById('detailTimer');
                 const updateDetailTimer = () => {
+                    if (!timerElement) return;
                     const remaining = formatTimeRemaining(auction.end_time);
-                    if (timerElement) {
-                        timerElement.textContent = remaining;
-                    }
+                    timerElement.textContent = remaining;
                     if (remaining === 'Ended') {
                         if (detailTimerInterval) clearInterval(detailTimerInterval);
                         const bidBtn = document.getElementById('placeBidBtn');
                         if (bidBtn) bidBtn.remove();
+                        // Reload detail
+                        setTimeout(() => showAuctionDetail(auctionId), 1000);
                     }
                 };
                 updateDetailTimer();
                 detailTimerInterval = setInterval(updateDetailTimer, 1000);
             }
-            
+
             // PERBAIKAN: Setup close button dengan fungsi yang benar
             function setupCloseButtonHandlers() {
                 // Close button di header
@@ -1009,6 +1014,7 @@
     }
 
     function switchAuctionTab(tab) {
+        console.log(`[AUCTIONS] Switching to tab: ${tab}`);
         currentAuctionTab = tab;
         
         // Update active state on buttons
@@ -1021,6 +1027,8 @@
             }
         });
         
+        // Reset current auctions dan load ulang
+        currentAuctions = [];
         loadAuctions();
         hapticLight();
     }
@@ -1092,25 +1100,6 @@
         }
         
         document.body.classList.remove('panel-open');
-        hapticLight();
-    }
-
-    // ==================== TAB SWITCHING ====================
-        
-    function switchAuctionTab(tab) {
-        currentAuctionTab = tab;
-        
-        // Update active state on buttons
-        document.querySelectorAll('.auctions-action-btn').forEach(btn => {
-            const btnTab = btn.dataset.auctionsTab;
-            if (btnTab === tab) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
-        });
-        
-        loadAuctions();
         hapticLight();
     }
 

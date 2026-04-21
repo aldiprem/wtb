@@ -137,9 +137,9 @@ def get_my_auctions(user_id):
         print(f"Error in get_my_auctions: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-
 @auctions_bp.route('/my-bids/<int:user_id>', methods=['GET', 'OPTIONS'])
-def get_my_bids(user_id):
+def get_my_bids_endpoint(user_id):
+    """Get auctions where user has placed bids"""
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
@@ -149,6 +149,22 @@ def get_my_bids(user_id):
     try:
         auctions = auctions_db.get_auctions_with_bids(user_id)
         
+        # Tambahkan informasi my_last_bid untuk setiap auction
+        with sqlite3.connect(auctions_db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            for auction in auctions:
+                cursor.execute('''
+                    SELECT bid_amount, timestamp FROM bids 
+                    WHERE auction_id = ? AND user_id = ? 
+                    ORDER BY timestamp DESC LIMIT 1
+                ''', (auction['id'], user_id))
+                row = cursor.fetchone()
+                if row:
+                    auction['my_last_bid'] = row['bid_amount']
+                    auction['my_last_bid_time'] = row['timestamp']
+        
         return jsonify({
             'success': True,
             'auctions': auctions,
@@ -156,9 +172,10 @@ def get_my_bids(user_id):
         })
         
     except Exception as e:
-        print(f"Error in get_my_bids: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+        print(f"Error in get_my_bids_endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e), 'auctions': []}), 500
 
 @auctions_bp.route('/detail/<int:auction_id>', methods=['GET', 'OPTIONS'])
 def get_auction_detail(auction_id):
@@ -281,36 +298,17 @@ def get_ended_auctions(user_id):
         return response
     
     try:
-        # Pastikan method get_ended_auctions ada di AuctionsDatabase
+        print(f"[DEBUG] get_ended_auctions called for user_id: {user_id}")
+        
+        # Panggil method get_ended_auctions dari AuctionsDatabase
         auctions = auctions_db.get_ended_auctions(user_id)
         
-        # Jika method belum ada, fallback ke query manual
-        if auctions is None:
-            import sqlite3
-            with sqlite3.connect(auctions_db.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.cursor()
-                
-                cursor.execute('''
-                    SELECT DISTINCT a.*, 
-                        u.username as owner_username, u.first_name as owner_name, u.photo_url as owner_photo,
-                        w.username as winner_username, w.first_name as winner_name, w.photo_url as winner_photo,
-                        (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count
-                    FROM auctions a
-                    LEFT JOIN users u ON a.owner_id = u.user_id
-                    LEFT JOIN users w ON a.winner_id = w.user_id
-                    WHERE a.status = 'ended' AND (a.owner_id = ? OR a.winner_id = ?)
-                    ORDER BY a.end_time DESC
-                    LIMIT 100
-                ''', (user_id, user_id))
-                
-                rows = cursor.fetchall()
-                auctions = [dict(row) for row in rows]
+        print(f"[DEBUG] Found {len(auctions)} ended auctions for user {user_id}")
         
         return jsonify({
             'success': True,
-            'auctions': auctions if auctions else [],
-            'total': len(auctions) if auctions else 0
+            'auctions': auctions,
+            'total': len(auctions)
         })
         
     except Exception as e:
@@ -318,6 +316,7 @@ def get_ended_auctions(user_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e), 'auctions': []}), 500
+
 
 @auctions_bp.route('/ended-all', methods=['GET', 'OPTIONS'])
 def get_all_ended_auctions():
@@ -340,3 +339,35 @@ def get_all_ended_auctions():
     except Exception as e:
         print(f"Error in get_all_ended_auctions: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@auctions_bp.route('/my-auctions/<int:user_id>', methods=['GET', 'OPTIONS'])
+def get_my_auctions_endpoint(user_id):
+    """Get auctions created by user (my auctions)"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
+    try:
+        auctions = auctions_db.get_auctions_by_owner(user_id)
+        
+        # Filter hanya yang statusnya active atau ended, exclude yang sudah expired tapi belum di-update
+        now = datetime.now()
+        for auction in auctions:
+            if auction.get('end_time'):
+                end_time = datetime.fromisoformat(auction['end_time'].replace('Z', '+00:00'))
+                if auction.get('status') == 'active' and now > end_time:
+                    auction['status'] = 'ended'
+        
+        return jsonify({
+            'success': True,
+            'auctions': auctions,
+            'total': len(auctions)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_my_auctions_endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e), 'auctions': []}), 500
