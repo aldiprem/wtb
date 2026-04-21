@@ -1167,47 +1167,55 @@
     }
     
     // ==================== LAYOUT TOGGLE ====================
-    
+        
     function setupLayoutToggle() {
-        if (auctionsGridBtn) {
-            const newBtn = auctionsGridBtn.cloneNode(true);
-            auctionsGridBtn.parentNode.replaceChild(newBtn, auctionsGridBtn);
-            auctionsGridBtn = newBtn;
-            
-            auctionsGridBtn.addEventListener('click', () => {
+        const auctionsGridBtn = document.getElementById('auctionsGridBtn');
+        const auctionsListBtn = document.getElementById('auctionsListBtn');
+        
+        if (!auctionsGridBtn || !auctionsListBtn) return;
+        
+        // Hapus event listener lama
+        const newGridBtn = auctionsGridBtn.cloneNode(true);
+        const newListBtn = auctionsListBtn.cloneNode(true);
+        auctionsGridBtn.parentNode.replaceChild(newGridBtn, auctionsGridBtn);
+        auctionsListBtn.parentNode.replaceChild(newListBtn, auctionsListBtn);
+        
+        // Set initial active state
+        if (currentLayout === 'grid') {
+            newGridBtn.classList.add('active');
+            newListBtn.classList.remove('active');
+        } else {
+            newGridBtn.classList.remove('active');
+            newListBtn.classList.add('active');
+        }
+        
+        newGridBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentLayout !== 'grid') {
                 currentLayout = 'grid';
                 localStorage.setItem('auctions_layout', 'grid');
-                auctionsGridBtn.classList.add('active');
-                if (auctionsListBtn) auctionsListBtn.classList.remove('active');
+                newGridBtn.classList.add('active');
+                newListBtn.classList.remove('active');
                 loadAuctions();
                 hapticLight();
-            });
-        }
+            }
+        });
         
-        if (auctionsListBtn) {
-            const newBtn = auctionsListBtn.cloneNode(true);
-            auctionsListBtn.parentNode.replaceChild(newBtn, auctionsListBtn);
-            auctionsListBtn = newBtn;
-            
-            auctionsListBtn.addEventListener('click', () => {
+        newListBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentLayout !== 'list') {
                 currentLayout = 'list';
                 localStorage.setItem('auctions_layout', 'list');
-                auctionsListBtn.classList.add('active');
-                if (auctionsGridBtn) auctionsGridBtn.classList.remove('active');
+                newListBtn.classList.add('active');
+                newGridBtn.classList.remove('active');
                 loadAuctions();
                 hapticLight();
-            });
-        }
-        
-        if (currentLayout === 'grid' && auctionsGridBtn) {
-            auctionsGridBtn.classList.add('active');
-            if (auctionsListBtn) auctionsListBtn.classList.remove('active');
-        } else if (currentLayout === 'list' && auctionsListBtn) {
-            auctionsListBtn.classList.add('active');
-            if (auctionsGridBtn) auctionsGridBtn.classList.remove('active');
-        }
+            }
+        });
     }
-    
+
     // ==================== INITIALIZATION ====================
     
     async function init() {
@@ -1342,4 +1350,27 @@
     window.showAuctionDetail = showAuctionDetail;
     window.refreshAuctionsModule = loadAuctions;
 
+    window.showCreateAuctionPanel = function() {
+        console.log('[AUCTIONS] showCreateAuctionPanel called');
+        
+        if (!telegramUser) {
+            showToast('Login terlebih dahulu', 'warning');
+            return;
+        }
+        
+        showCreateAuctionPanel();
+    };
+
+    // Tambahkan event listener untuk custom event dari storage.js
+    window.addEventListener('showCreateAuctionPanel', () => {
+        console.log('[AUCTIONS] Received showCreateAuctionPanel event');
+        showCreateAuctionPanel();
+    });
+
+    window.setAuctionsLayout = function(layout) {
+        console.log(`[AUCTIONS] Setting layout to: ${layout}`);
+        currentLayout = layout;
+        localStorage.setItem('auctions_layout', layout);
+        loadAuctions();
+    };
 })();

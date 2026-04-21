@@ -26,6 +26,7 @@
     let lastPendingCount = 0;
     let inboxOverlay = null;
     let detailOverlay = null;
+    let currentAuctionsLayout = localStorage.getItem('auctions_layout') || 'grid';
 
     // DOM Elements
     const elements = {
@@ -2227,6 +2228,7 @@
         let activityPanel = document.getElementById('auctionsActivityPanel');
         let activityOverlay = null;
         let currentAuctionsFilter = 'all';
+        let activityModuleLoaded = false;
         
         // Buat overlay untuk activity panel
         function createActivityOverlay() {
@@ -2252,8 +2254,36 @@
             hapticLight();
         }
         
+        // Load activity module
+        function loadActivityModule() {
+            if (activityModuleLoaded) {
+                if (typeof window.refreshAuctionsActivity === 'function') {
+                    window.refreshAuctionsActivity();
+                }
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = '/winedash/js/auctions-activity.js?v=' + Date.now();
+            script.onload = () => {
+                activityModuleLoaded = true;
+                console.log('✅ Auctions activity module loaded');
+                if (typeof window.initAuctionsActivity === 'function') {
+                    window.initAuctionsActivity();
+                }
+            };
+            script.onerror = () => {
+                console.error('❌ Failed to load auctions activity module');
+                const content = document.getElementById('auctionsActivityContainer');
+                if (content) {
+                    content.innerHTML = '<div class="loading-placeholder">Gagal memuat aktivitas. Refresh halaman.</div>';
+                }
+            };
+            document.head.appendChild(script);
+        }
+        
         // Open activity panel
-        async function openActivityPanel() {
+        function openActivityPanel() {
             if (!activityPanel) return;
             
             createActivityOverlay();
@@ -2263,144 +2293,12 @@
             
             setTimeout(() => activityPanel.classList.add('open'), 10);
             
-            // Load activity data
-            await loadAuctionActivity();
+            // Load activity module
+            loadActivityModule();
             hapticLight();
         }
         
-        // Load auction activity (my auctions + my bids)
-        async function loadAuctionActivity() {
-            const content = document.getElementById('auctionsActivityContent');
-            if (!content || !telegramUser) return;
-            
-            content.innerHTML = '<div class="loading-placeholder">Memuat aktivitas...</div>';
-            
-            try {
-                // Load my auctions
-                const myAuctionsResp = await fetch(`${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`);
-                const myAuctionsData = await myAuctionsResp.json();
-                
-                // Load my bids
-                const myBidsResp = await fetch(`${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`);
-                const myBidsData = await myBidsResp.json();
-                
-                let html = '';
-                
-                // My Auctions section
-                const myAuctions = myAuctionsData.success ? myAuctionsData.auctions : [];
-                if (myAuctions.length > 0) {
-                    html += `<div style="margin-bottom: 20px;">
-                        <div style="font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-gavel"></i> My Auctions (${myAuctions.length})
-                        </div>
-                    `;
-                    for (const auction of myAuctions) {
-                        const status = auction.status === 'active' ? 'Active' : 'Ended';
-                        const statusColor = auction.status === 'active' ? 'var(--success)' : 'var(--text-muted)';
-                        const endTime = auction.end_time ? new Date(auction.end_time).toLocaleString('id-ID') : '-';
-                        
-                        html += `
-                            <div class="inbox-item" style="cursor: pointer;" data-auction-id="${auction.id}" data-auction-type="my-auction">
-                                <div class="inbox-avatar" style="background: linear-gradient(135deg, var(--warning), #d97706);">
-                                    <i class="fas fa-gavel" style="color: white; font-size: 20px;"></i>
-                                </div>
-                                <div class="inbox-info">
-                                    <div class="inbox-username">@${escapeHtml(auction.username)}</div>
-                                    <div class="inbox-price">Current: ${formatNumber(auction.current_price)} TON</div>
-                                    <div class="inbox-type" style="font-size: 10px; color: ${statusColor};">Status: ${status}</div>
-                                    <div class="inbox-type" style="font-size: 10px;">Ends: ${endTime}</div>
-                                </div>
-                                <button class="inbox-verify-btn view-auction-detail" data-auction-id="${auction.id}" style="background: rgba(64, 167, 227, 0.15); color: var(--primary);">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        `;
-                    }
-                    html += `</div>`;
-                }
-                
-                // My Bids section
-                const myBids = myBidsData.success ? myBidsData.auctions : [];
-                if (myBids.length > 0) {
-                    html += `<div>
-                        <div style="font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                            <i class="fas fa-history"></i> My Bids (${myBids.length})
-                        </div>
-                    `;
-                    for (const auction of myBids) {
-                        const status = auction.status === 'active' ? 'Active' : 'Ended';
-                        const statusColor = auction.status === 'active' ? 'var(--success)' : 'var(--text-muted)';
-                        const myLastBid = auction.my_last_bid || 0;
-                        
-                        html += `
-                            <div class="inbox-item" style="cursor: pointer;" data-auction-id="${auction.id}" data-auction-type="my-bid">
-                                <div class="inbox-avatar" style="background: linear-gradient(135deg, var(--primary), var(--primary-dark));">
-                                    <i class="fas fa-history" style="color: white; font-size: 20px;"></i>
-                                </div>
-                                <div class="inbox-info">
-                                    <div class="inbox-username">@${escapeHtml(auction.username)}</div>
-                                    <div class="inbox-price">My Bid: ${formatNumber(myLastBid)} TON</div>
-                                    <div class="inbox-type" style="font-size: 10px; color: ${statusColor};">Status: ${status}</div>
-                                    <div class="inbox-type" style="font-size: 10px;">Current: ${formatNumber(auction.current_price)} TON</div>
-                                </div>
-                                <button class="inbox-verify-btn view-auction-detail" data-auction-id="${auction.id}" style="background: rgba(64, 167, 227, 0.15); color: var(--primary);">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
-                        `;
-                    }
-                    html += `</div>`;
-                }
-                
-                if (myAuctions.length === 0 && myBids.length === 0) {
-                    html = `
-                        <div class="inbox-empty">
-                            <i class="fas fa-history"></i>
-                            <p>Belum ada aktivitas auction</p>
-                        </div>
-                    `;
-                }
-                
-                content.innerHTML = html;
-                
-                // Attach click events untuk view detail
-                document.querySelectorAll('#auctionsActivityContent .view-auction-detail').forEach(btn => {
-                    btn.addEventListener('click', async (e) => {
-                        e.stopPropagation();
-                        const auctionId = btn.dataset.auctionId;
-                        if (auctionId) {
-                            closeActivityPanel();
-                            setTimeout(() => {
-                                if (typeof window.showAuctionDetail === 'function') {
-                                    window.showAuctionDetail(parseInt(auctionId));
-                                }
-                            }, 300);
-                        }
-                    });
-                });
-                
-                // Attach click untuk item
-                document.querySelectorAll('#auctionsActivityContent .inbox-item').forEach(item => {
-                    item.addEventListener('click', () => {
-                        const auctionId = item.dataset.auctionId;
-                        if (auctionId) {
-                            closeActivityPanel();
-                            setTimeout(() => {
-                                if (typeof window.showAuctionDetail === 'function') {
-                                    window.showAuctionDetail(parseInt(auctionId));
-                                }
-                            }, 300);
-                        }
-                    });
-                });
-                
-            } catch (error) {
-                console.error('Error loading auction activity:', error);
-                content.innerHTML = '<div class="inbox-empty"><i class="fas fa-exclamation-triangle"></i><p>Gagal memuat aktivitas</p></div>';
-            }
-        }
-        
-        // Setup filter dropdown
+        // Setup filter dropdown (sama seperti sebelumnya)
         function setupFilterDropdown() {
             if (!filterBtn || !filterDropdown) return;
             
@@ -2459,19 +2357,16 @@
                     const filterValue = newItem.dataset.auctionsFilter;
                     currentAuctionsFilter = filterValue;
                     
-                    // Update active class
                     filterDropdown.querySelectorAll('.status-dropdown-item').forEach(btn => {
                         btn.classList.remove('active');
                     });
                     newItem.classList.add('active');
                     
-                    // Update button text
                     const filterText = newItem.querySelector('span')?.textContent || 'Filter';
                     newFilterBtn.innerHTML = `<i class="fas fa-filter"></i><span>${filterText}</span>`;
                     
                     closeDropdown();
                     
-                    // Apply filter to auctions
                     if (typeof window.switchAuctionTab === 'function') {
                         let tab = 'active';
                         if (filterValue === 'all') tab = 'active';
@@ -2514,20 +2409,23 @@
             newCloseBtn.addEventListener('click', closeActivityPanel);
         }
         
-        // Setup drag to close
+        // Setup drag to close untuk activity panel
         if (activityPanel) {
             const dragHandle = activityPanel.querySelector('.drag-handle');
             if (dragHandle) {
                 let startY = 0, currentY = 0, isDragging = false;
                 
-                dragHandle.addEventListener('touchstart', (e) => {
+                const newDragHandle = dragHandle.cloneNode(true);
+                dragHandle.parentNode.replaceChild(newDragHandle, dragHandle);
+                
+                newDragHandle.addEventListener('touchstart', (e) => {
                     startY = e.touches[0].clientY;
                     isDragging = true;
                     activityPanel.style.transition = 'none';
                     hapticLight();
                 });
                 
-                dragHandle.addEventListener('touchmove', (e) => {
+                newDragHandle.addEventListener('touchmove', (e) => {
                     if (!isDragging) return;
                     currentY = e.touches[0].clientY;
                     const deltaY = currentY - startY;
@@ -2536,7 +2434,7 @@
                     }
                 });
                 
-                dragHandle.addEventListener('touchend', () => {
+                newDragHandle.addEventListener('touchend', () => {
                     isDragging = false;
                     activityPanel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
                     if (currentY - startY > 100) {
@@ -2551,10 +2449,76 @@
         setupFilterDropdown();
     }
 
+    // Tambahkan fungsi global untuk switch ke mode auctions
+    window.switchToAuctionsMode = function() {
+        const auctionsModeBtn = document.querySelector('.mode-btn[data-mode="auctions"]');
+        if (auctionsModeBtn) {
+            auctionsModeBtn.click();
+        }
+    };
+
+    // Perbaiki fungsi layout toggle di auctions section
+    function setupAuctionsLayoutToggle() {
+        const auctionsGridBtn = document.getElementById('auctionsGridBtn');
+        const auctionsListBtn = document.getElementById('auctionsListBtn');
+        
+        if (!auctionsGridBtn || !auctionsListBtn) return;
+        
+        // Hapus event listener lama
+        const newGridBtn = auctionsGridBtn.cloneNode(true);
+        const newListBtn = auctionsListBtn.cloneNode(true);
+        auctionsGridBtn.parentNode.replaceChild(newGridBtn, auctionsGridBtn);
+        auctionsListBtn.parentNode.replaceChild(newListBtn, auctionsListBtn);
+        
+        // Set initial active state
+        if (currentAuctionsLayout === 'grid') {
+            newGridBtn.classList.add('active');
+            newListBtn.classList.remove('active');
+        } else {
+            newGridBtn.classList.remove('active');
+            newListBtn.classList.add('active');
+        }
+        
+        newGridBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentAuctionsLayout !== 'grid') {
+                currentAuctionsLayout = 'grid';
+                localStorage.setItem('auctions_layout', 'grid');
+                newGridBtn.classList.add('active');
+                newListBtn.classList.remove('active');
+                
+                if (typeof window.setAuctionsLayout === 'function') {
+                    window.setAuctionsLayout('grid');
+                } else if (typeof window.refreshAuctions === 'function') {
+                    window.refreshAuctions();
+                }
+                hapticLight();
+            }
+        });
+        
+        newListBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (currentAuctionsLayout !== 'list') {
+                currentAuctionsLayout = 'list';
+                localStorage.setItem('auctions_layout', 'list');
+                newListBtn.classList.add('active');
+                newGridBtn.classList.remove('active');
+                
+                if (typeof window.setAuctionsLayout === 'function') {
+                    window.setAuctionsLayout('list');
+                } else if (typeof window.refreshAuctions === 'function') {
+                    window.refreshAuctions();
+                }
+                hapticLight();
+            }
+        });
+    }
+
     function loadAuctionsModule() {
         console.log('📦 loadAuctionsModule called');
         
-        // Cek apakah user sudah ada
         if (!telegramUser || !telegramUser.id) {
             console.log('⏳ Waiting for telegramUser before loading auctions module...');
             setTimeout(() => {
@@ -2571,13 +2535,14 @@
             return;
         }
         
-        // Cegah loading berulang
         if (window.auctionsModuleLoaded) {
             console.log('✅ Auctions module already loaded');
             if (typeof window.refreshAuctions === 'function') {
                 console.log('🔄 Refreshing auctions data');
                 window.refreshAuctions();
             }
+            // Pastikan create auction button terpasang
+            setupCreateAuctionButton();
             return;
         }
         
@@ -2588,13 +2553,11 @@
         
         window.auctionsModuleLoading = true;
         
-        // Hapus script lama jika ada
         const oldScript = document.getElementById('auctions-module-script');
         if (oldScript) {
             oldScript.remove();
         }
         
-        // Load CSS jika belum ada
         if (!document.querySelector('link[href="/winedash/css/auctions.css"]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
@@ -2615,6 +2578,8 @@
                 if (typeof window.initAuctions === 'function') {
                     console.log('🚀 Calling window.initAuctions with telegramUser:', telegramUser);
                     window.initAuctions(telegramUser);
+                    // Setup create auction button setelah module loaded
+                    setupCreateAuctionButton();
                 } else {
                     console.error('❌ window.initAuctions not found after loading auctions.js');
                     const auctionsContainer = document.getElementById('auctionsContainer');
@@ -2634,6 +2599,31 @@
             showToast('Gagal memuat module auctions', 'error');
         };
         document.head.appendChild(newScript);
+    }
+
+    function setupCreateAuctionButton() {
+        const createAuctionBtn = document.getElementById('createAuctionBtn');
+        if (!createAuctionBtn) return;
+        
+        // Hapus event listener lama dengan clone
+        const newBtn = createAuctionBtn.cloneNode(true);
+        createAuctionBtn.parentNode.replaceChild(newBtn, createAuctionBtn);
+        
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[STORAGE] Create auction button clicked');
+            
+            // Panggil fungsi dari auctions.js jika tersedia
+            if (typeof window.showCreateAuctionPanel === 'function') {
+                window.showCreateAuctionPanel();
+            } else {
+                // Fallback: trigger event yang bisa didengar oleh auctions.js
+                const event = new CustomEvent('showCreateAuctionPanel');
+                window.dispatchEvent(event);
+            }
+            hapticLight();
+        });
     }
 
     function validateBasedOnClient(username, basedOn) {
@@ -3327,6 +3317,7 @@
             setupSearch();
             setupStatusFilter();
             setupAuctionsFilterAndActivity();
+            setupAuctionsLayoutToggle();
             
             // Get Telegram user
             telegramUser = getTelegramUserFromWebApp();

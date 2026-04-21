@@ -12,6 +12,7 @@
     <!-- CSS -->
     <link rel="stylesheet" href="/winedash/css/web.css">
     <link rel="stylesheet" href="/winedash/css/storage.css">
+    <link rel="stylesheet" href="/winedash/css/auctions-activity.css">
     
     <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -197,18 +198,21 @@
             </div>
         </div>
 
-        <!-- Auctions Activity Panel (slide from bottom) -->
+        <!-- Auctions Activity Panel - SLIDE PANEL (diganti dengan halaman baru) -->
         <div class="inbox-panel" id="auctionsActivityPanel" style="display: none;">
             <div class="drag-handle"></div>
             <div class="panel-header">
                 <h3><i class="fas fa-history"></i> Auction Activity</h3>
                 <button class="panel-close" id="closeActivityPanelBtn">&times;</button>
             </div>
-            <div class="panel-content" id="auctionsActivityContent" style="padding: 16px;">
-                <div class="loading-placeholder">Memuat aktivitas...</div>
+            <div class="panel-content" style="padding: 16px;">
+                <!-- Container untuk activity content -->
+                <div id="auctionsActivityContainer" style="width: 100%; min-height: 300px;">
+                    <div class="loading-placeholder">Memuat aktivitas...</div>
+                </div>
             </div>
         </div>
-        
+
         <!-- ==================== MODALS (Tetap di bawah) ==================== -->
         
         <!-- Panel Inbox (slide from bottom) -->

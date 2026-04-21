@@ -1,0 +1,378 @@
+/* winedash/css/auctions-activity.css - Auction Activity Styles */
+
+/* ==================== ACTIVITY CONTAINER ==================== */
+
+.activity-container {
+    width: 100%;
+    min-height: 400px;
+    padding: 0 4px;
+}
+
+/* ==================== ACTIVITY HEADER ==================== */
+
+.activity-header {
+    margin-bottom: 16px;
+    padding: 0 4px;
+}
+
+.activity-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--primary);
+}
+
+/* ==================== ACTIVITY TABS ==================== */
+
+.activity-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 4px;
+}
+
+.activity-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.activity-tab-btn i {
+    font-size: 12px;
+}
+
+.activity-tab-btn.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+/* ==================== SEARCH BAR ==================== */
+
+.activity-search-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.activity-search-input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    color: var(--text);
+    font-size: 12px;
+    outline: none;
+}
+
+.activity-search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+}
+
+.activity-search-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    border-radius: 16px;
+    padding: 0 16px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ==================== ACTIVITY ITEMS ==================== */
+
+.activity-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.activity-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    padding: 1px;
+    background: linear-gradient(176deg, 
+        rgba(255, 255, 255, 0.4) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.4) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+.activity-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.activity-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.activity-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.activity-info {
+    flex: 2;
+    min-width: 0;
+}
+
+.activity-username {
+    font-size: 14px;
+    font-weight: 600;
+    font-family: monospace;
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.activity-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.activity-bid-count {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.activity-bid-info {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.activity-timer {
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--warning);
+}
+
+.activity-winner {
+    font-size: 10px;
+    color: var(--success);
+    font-weight: 500;
+}
+
+.activity-winner.winner-me {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.activity-winner-badge {
+    font-size: 10px;
+    color: var(--warning);
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.activity-basedon {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.activity-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.activity-status {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.activity-status.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.activity-status.ended {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.activity-view-btn {
+    background: rgba(64, 167, 227, 0.15);
+    border: 1px solid rgba(64, 167, 227, 0.3);
+    border-radius: 20px;
+    padding: 4px 12px;
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.activity-view-btn:hover {
+    background: rgba(64, 167, 227, 0.3);
+    transform: scale(1.02);
+}
+
+/* ==================== EMPTY STATE ==================== */
+
+.activity-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 20px;
+    min-height: 300px;
+}
+
+.activity-empty-state i {
+    font-size: 48px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.activity-empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.activity-empty-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+}
+
+.activity-back-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    border-radius: 28px;
+    padding: 10px 20px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ==================== BACK BUTTON ==================== */
+
+.activity-back-header {
+    margin-bottom: 16px;
+}
+
+.activity-back-btn-header {
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 8px 16px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.activity-back-btn-header:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+@media (max-width: 480px) {
+    .activity-item {
+        flex-wrap: wrap;
+        padding: 10px;
+    }
+    
+    .activity-info {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .activity-right {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 8px;
+    }
+    
+    .activity-username {
+        font-size: 13px;
+    }
+    
+    .activity-avatar {
+        width: 42px;
+        height: 42px;
+    }
+    
+    .activity-tab-btn span {
+        display: none;
+    }
+    
+    .activity-tab-btn i {
+        font-size: 16px;
+    }
+    
+    .activity-tabs {
+        padding: 6px;
+    }
+}
