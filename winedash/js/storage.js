@@ -1973,8 +1973,7 @@
                 hapticLight();
             });
         });
-                        
-        // Mode toggle (Fix Price / Auctions)
+                                
         elements.modeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 elements.modeBtns.forEach(b => b.classList.remove('active'));
@@ -1993,8 +1992,19 @@
                     // Auctions mode
                     if (fixPriceSection) fixPriceSection.style.display = 'none';
                     if (auctionsSection) auctionsSection.style.display = 'block';
-                    // Load auctions module
-                    loadAuctionsModule();
+                    
+                    // Pastikan auctions container kosong sebelum load ulang
+                    const auctionsContainer = document.getElementById('auctionsContainer');
+                    if (auctionsContainer) {
+                        auctionsContainer.innerHTML = '<div class="loading-placeholder">Memuat auctions...</div>';
+                    }
+                    
+                    // Load auctions module dengan user yang sudah ada
+                    if (typeof window.loadAuctionsModule === 'function') {
+                        window.loadAuctionsModule();
+                    } else {
+                        loadAuctionsModule();
+                    }
                 }
                 hapticLight();
             });
@@ -2210,24 +2220,56 @@
     }
 
     function loadAuctionsModule() {
-        if (typeof window.AuctionsLoaded === 'undefined') {
-            // Load CSS
-            if (!document.querySelector('link[href="/winedash/css/auctions.css"]')) {
-                const link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = '/winedash/css/auctions.css';
-                document.head.appendChild(link);
+        // Cegah loading berulang
+        if (window.auctionsModuleLoaded) {
+            console.log('✅ Auctions module already loaded');
+            // Jika sudah loaded, refresh data
+            if (typeof window.refreshAuctions === 'function') {
+                window.refreshAuctions();
             }
-            
-            // Load JS
-            const script = document.createElement('script');
-            script.src = '/winedash/js/auctions.js';
-            script.onload = () => {
-                window.AuctionsLoaded = true;
-                console.log('✅ Auctions module loaded');
-            };
-            document.head.appendChild(script);
+            return;
         }
+        
+        if (window.auctionsModuleLoading) {
+            console.log('⏳ Auctions module is already loading...');
+            return;
+        }
+        
+        window.auctionsModuleLoading = true;
+        
+        // Load CSS
+        if (!document.querySelector('link[href="/winedash/css/auctions.css"]')) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '/winedash/css/auctions.css';
+            document.head.appendChild(link);
+        }
+        
+        // Load JS - PASTIKAN TIDAK DUPLIKAT
+        const script = document.getElementById('auctions-module-script');
+        if (script) {
+            script.remove();
+        }
+        
+        const newScript = document.createElement('script');
+        newScript.id = 'auctions-module-script';
+        newScript.src = '/winedash/js/auctions.js';
+        newScript.onload = () => {
+            window.auctionsModuleLoaded = true;
+            window.auctionsModuleLoading = false;
+            console.log('✅ Auctions module loaded');
+            
+            // Inisialisasi auctions setelah script loaded
+            if (typeof window.initAuctions === 'function') {
+                window.initAuctions(telegramUser);
+            }
+        };
+        newScript.onerror = () => {
+            window.auctionsModuleLoading = false;
+            console.error('❌ Failed to load auctions module');
+            showToast('Gagal memuat module auctions', 'error');
+        };
+        document.head.appendChild(newScript);
     }
 
     function validateBasedOnClient(username, basedOn) {
@@ -2994,5 +3036,13 @@
     window.addEventListener('beforeunload', () => {
         stopAutoRefresh();
     });
+
+    window.loadAuctionsModule = loadAuctionsModule;
+    window.refreshAuctions = function() {
+        if (typeof window.refreshAuctionsModule === 'function') {
+            window.refreshAuctionsModule();
+        }
+    };
+
     init();
 })();

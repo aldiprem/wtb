@@ -219,6 +219,7 @@ class AuctionsDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
+                # PERBAIKAN: Ambil semua auction tanpa filter status
                 cursor.execute('''
                     SELECT a.*, 
                         un.based_on,
@@ -237,8 +238,12 @@ class AuctionsDatabase:
                     auction = dict(row)
                     if 'based_on' not in auction or not auction['based_on']:
                         auction['based_on'] = ''
+                    # Pastikan status tidak None
+                    if not auction.get('status'):
+                        auction['status'] = 'active'
                     auctions.append(auction)
                 
+                print(f"[DB] get_auctions_by_owner: Found {len(auctions)} auctions for owner_id={owner_id}")
                 return auctions
                 
         except Exception as e:

@@ -1291,5 +1291,44 @@
     } else {
         init();
     }
-    
+
+    window.initAuctions = async function(user) {
+        console.log('🔨 Auctions - initAuctions called with user:', user);
+        
+        if (user) {
+            telegramUser = user;
+        } else if (!telegramUser) {
+            telegramUser = getTelegramUserFromWebApp();
+        }
+        
+        if (telegramUser) {
+            await authenticateUser();
+            await loadAuctions();
+        } else {
+            console.warn('No Telegram user for auctions');
+            if (auctionsContainer) {
+                auctionsContainer.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
+            }
+        }
+    };
+
+    window.refreshAuctions = async function() {
+        console.log('🔄 Auctions - refreshAuctions called');
+        if (telegramUser) {
+            await loadAuctions();
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!window.location.pathname.includes('/storage')) {
+                init();
+            }
+        });
+    } else {
+        if (!window.location.pathname.includes('/storage')) {
+            init();
+        }
+    }
+
 })();

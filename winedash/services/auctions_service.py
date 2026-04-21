@@ -416,7 +416,11 @@ def get_my_auctions_endpoint(user_id):
         return response
     
     try:
+        print(f"[AUCTIONS] get_my_auctions_endpoint called for user_id: {user_id}")
+        
         auctions = auctions_db.get_auctions_by_owner(user_id)
+        
+        print(f"[AUCTIONS] Found {len(auctions)} auctions for user {user_id}")
         
         # PERBAIKAN: Gunakan waktu dengan timezone yang sama
         from datetime import datetime
@@ -428,18 +432,22 @@ def get_my_auctions_endpoint(user_id):
         for auction in auctions:
             if auction.get('end_time'):
                 try:
-                    # Parse end_time dengan timezone
                     end_time_str = auction['end_time']
                     if 'Z' in end_time_str:
                         end_time_str = end_time_str.replace('Z', '+00:00')
                     end_time = datetime.fromisoformat(end_time_str)
                     
-                    # Jika end_time naive, tambahkan timezone
                     if end_time.tzinfo is None:
                         end_time = tz.localize(end_time)
                     
+                    # Update status jika sudah lewat waktu
                     if auction.get('status') == 'active' and now > end_time:
                         auction['status'] = 'ended'
+                        # Update di database
+                        with sqlite3.connect(auctions_db.db_path) as conn:
+                            cursor = conn.cursor()
+                            cursor.execute('UPDATE auctions SET status = "ended" WHERE id = ?', (auction['id'],))
+                            conn.commit()
                 except Exception as e:
                     print(f"Error parsing end_time for auction {auction.get('id')}: {e}")
         
