@@ -172,7 +172,7 @@ class AuctionsDatabase:
             traceback.print_exc()
 
     # ==================== GET AUCTIONS ====================
-        
+            
     def get_active_auctions(self, limit: int = 100) -> List[Dict]:
         """Get all active auctions"""
         try:
@@ -181,6 +181,9 @@ class AuctionsDatabase:
                 cursor = conn.cursor()
                 now = self._get_now_str()
                 
+                print(f"[DB] get_active_auctions called, current time: {now}")
+                
+                # PERBAIKAN: Jangan filter end_time di SQL, ambil semua lalu filter di Python
                 cursor.execute('''
                     SELECT a.*, 
                         u.username as owner_username, 
@@ -190,20 +193,20 @@ class AuctionsDatabase:
                     FROM auctions a
                     LEFT JOIN users u ON a.owner_id = u.user_id
                     LEFT JOIN usernames un ON a.username_id = un.id
-                    WHERE a.status = 'active' AND a.end_time > ?
+                    WHERE a.status = 'active'
                     ORDER BY a.end_time ASC
                     LIMIT ?
-                ''', (now, limit))
+                ''', (limit,))
                 
                 rows = cursor.fetchall()
                 auctions = []
                 for row in rows:
                     auction = dict(row)
-                    # Pastikan based_on ada
                     if 'based_on' not in auction or not auction['based_on']:
                         auction['based_on'] = ''
                     auctions.append(auction)
                 
+                print(f"[DB] get_active_auctions: Found {len(auctions)} auctions with status='active'")
                 return auctions
                 
         except Exception as e:

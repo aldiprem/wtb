@@ -231,17 +231,19 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-                            
+                                
     async function loadAuctions() {
-        if (!telegramUser) return;
-        
-        if (currentAuctions.length === 0) {
-            showSilentLoading();
+        if (!telegramUser) {
+            console.log('[AUCTIONS] No telegram user, skipping load');
+            return;
         }
         
+        console.log(`[AUCTIONS] ========== LOADING AUCTIONS ==========`);
+        console.log(`[AUCTIONS] Tab: ${currentAuctionTab}, User ID: ${telegramUser.id}`);
+        
+        showSilentLoading();
+        
         try {
-            console.log(`[AUCTIONS] Loading auctions for tab: ${currentAuctionTab}, user_id: ${telegramUser.id}`);
-            
             let url = '';
             switch (currentAuctionTab) {
                 case 'active':
@@ -260,7 +262,7 @@
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
             }
             
-            console.log(`[AUCTIONS] Fetching from URL: ${url}`);
+            console.log(`[AUCTIONS] Fetching URL: ${url}`);
             
             const response = await fetch(url);
             console.log(`[AUCTIONS] Response status: ${response.status}`);
@@ -270,21 +272,26 @@
             
             if (data.success) {
                 currentAuctions = data.auctions || [];
-                console.log(`[AUCTIONS] Loaded ${currentAuctions.length} auctions for tab ${currentAuctionTab}`);
+                console.log(`[AUCTIONS] ✅ Loaded ${currentAuctions.length} auctions for tab ${currentAuctionTab}`);
                 
                 if (currentAuctions.length > 0) {
-                    console.log(`[AUCTIONS] First auction:`, currentAuctions[0]);
+                    console.log(`[AUCTIONS] First auction sample:`, {
+                        id: currentAuctions[0].id,
+                        username: currentAuctions[0].username,
+                        status: currentAuctions[0].status,
+                        end_time: currentAuctions[0].end_time
+                    });
                 }
                 
                 filterAndRenderAuctions();
                 startTimers();
             } else {
-                console.error(`[AUCTIONS] Failed to load:`, data.error);
+                console.error(`[AUCTIONS] ❌ Failed to load:`, data.error);
                 currentAuctions = [];
                 renderAuctionsEmpty();
             }
         } catch (error) {
-            console.error('[AUCTIONS] Error loading auctions:', error);
+            console.error('[AUCTIONS] ❌ Error loading auctions:', error);
             currentAuctions = [];
             renderAuctionsEmpty();
         } finally {
@@ -1295,21 +1302,53 @@
     window.initAuctions = async function(user) {
         console.log('🔨 Auctions - initAuctions called with user:', user);
         
+        // Set user
         if (user) {
             telegramUser = user;
         } else if (!telegramUser) {
             telegramUser = getTelegramUserFromWebApp();
         }
         
-        if (telegramUser) {
-            await authenticateUser();
-            await loadAuctions();
-        } else {
-            console.warn('No Telegram user for auctions');
+        if (!telegramUser) {
+            console.warn('❌ No Telegram user for auctions');
             if (auctionsContainer) {
                 auctionsContainer.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
             }
+            return;
         }
+        
+        console.log('✅ Auctions - User authenticated:', telegramUser.id);
+        
+        // Authenticate user
+        await authenticateUser();
+        
+        // Pastikan container sudah terinisialisasi
+        if (!auctionsContainer) {
+            auctionsContainer = document.getElementById('auctionsContainer');
+        }
+        
+        if (!auctionsContainer) {
+            console.error('❌ auctionsContainer not found!');
+            return;
+        }
+        
+        // Reset current auctions
+        currentAuctions = [];
+        currentAuctionTab = 'active';
+        
+        // Update active tab button
+        document.querySelectorAll('.auctions-action-btn').forEach(btn => {
+            if (btn.dataset.auctionsTab === 'active') {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+        
+        // Load auctions
+        await loadAuctions();
+        
+        console.log('✅ Auctions initialized successfully');
     };
 
     window.refreshAuctions = async function() {

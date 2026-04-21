@@ -1973,7 +1973,7 @@
                 hapticLight();
             });
         });
-                                
+                                        
         elements.modeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 elements.modeBtns.forEach(b => b.classList.remove('active'));
@@ -1990,21 +1990,22 @@
                     loadUsernames();
                 } else {
                     // Auctions mode
+                    console.log('🔄 Switching to Auctions mode');
                     if (fixPriceSection) fixPriceSection.style.display = 'none';
                     if (auctionsSection) auctionsSection.style.display = 'block';
                     
-                    // Pastikan auctions container kosong sebelum load ulang
+                    // Reset auctions container
                     const auctionsContainer = document.getElementById('auctionsContainer');
                     if (auctionsContainer) {
                         auctionsContainer.innerHTML = '<div class="loading-placeholder">Memuat auctions...</div>';
                     }
                     
-                    // Load auctions module dengan user yang sudah ada
-                    if (typeof window.loadAuctionsModule === 'function') {
-                        window.loadAuctionsModule();
-                    } else {
-                        loadAuctionsModule();
-                    }
+                    // Reset module loaded flag untuk reload ulang
+                    window.auctionsModuleLoaded = false;
+                    window.auctionsModuleLoading = false;
+                    
+                    // Load auctions module
+                    loadAuctionsModule();
                 }
                 hapticLight();
             });
@@ -2220,11 +2221,14 @@
     }
 
     function loadAuctionsModule() {
+        console.log('📦 loadAuctionsModule called');
+        
         // Cegah loading berulang
         if (window.auctionsModuleLoaded) {
             console.log('✅ Auctions module already loaded');
             // Jika sudah loaded, refresh data
             if (typeof window.refreshAuctions === 'function') {
+                console.log('🔄 Refreshing auctions data');
                 window.refreshAuctions();
             }
             return;
@@ -2243,9 +2247,10 @@
             link.rel = 'stylesheet';
             link.href = '/winedash/css/auctions.css';
             document.head.appendChild(link);
+            console.log('✅ Auctions CSS loaded');
         }
         
-        // Load JS - PASTIKAN TIDAK DUPLIKAT
+        // Load JS
         const script = document.getElementById('auctions-module-script');
         if (script) {
             script.remove();
@@ -2253,20 +2258,29 @@
         
         const newScript = document.createElement('script');
         newScript.id = 'auctions-module-script';
-        newScript.src = '/winedash/js/auctions.js';
+        newScript.src = '/winedash/js/auctions.js?v=' + Date.now(); // Tambah cache buster
         newScript.onload = () => {
             window.auctionsModuleLoaded = true;
             window.auctionsModuleLoading = false;
             console.log('✅ Auctions module loaded');
             
             // Inisialisasi auctions setelah script loaded
-            if (typeof window.initAuctions === 'function') {
-                window.initAuctions(telegramUser);
-            }
+            setTimeout(() => {
+                if (typeof window.initAuctions === 'function') {
+                    console.log('🚀 Calling window.initAuctions with telegramUser:', telegramUser);
+                    window.initAuctions(telegramUser);
+                } else {
+                    console.error('❌ window.initAuctions not found after loading auctions.js');
+                }
+            }, 100);
         };
         newScript.onerror = () => {
             window.auctionsModuleLoading = false;
             console.error('❌ Failed to load auctions module');
+            const auctionsContainer = document.getElementById('auctionsContainer');
+            if (auctionsContainer) {
+                auctionsContainer.innerHTML = '<div class="loading-placeholder">Gagal memuat module auctions. Refresh halaman.</div>';
+            }
             showToast('Gagal memuat module auctions', 'error');
         };
         document.head.appendChild(newScript);

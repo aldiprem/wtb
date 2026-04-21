@@ -112,9 +112,13 @@ def get_active_auctions():
         return response
     
     try:
+        print(f"[API] get_active_auctions called")
+        
         auctions = auctions_db.get_active_auctions()
         
-        # PERBAIKAN: Filter hanya yang end_time > now
+        print(f"[API] Found {len(auctions)} active auctions from DB")
+        
+        # PERBAIKAN: Filter hanya yang end_time > now dan status active
         from datetime import datetime
         import pytz
         
@@ -123,6 +127,11 @@ def get_active_auctions():
         
         active_auctions = []
         for auction in auctions:
+            # Skip jika status bukan active
+            if auction.get('status') != 'active':
+                print(f"[API] Skipping auction {auction.get('id')} - status: {auction.get('status')}")
+                continue
+                
             if auction.get('end_time'):
                 try:
                     end_time_str = auction['end_time']
@@ -135,11 +144,16 @@ def get_active_auctions():
                     
                     if end_time > now:
                         active_auctions.append(auction)
+                        print(f"[API] Added auction {auction.get('id')} - {auction.get('username')} ends at {end_time}")
+                    else:
+                        print(f"[API] Auction {auction.get('id')} expired at {end_time}")
                 except Exception as e:
                     print(f"Error parsing end_time: {e}")
                     active_auctions.append(auction)
             else:
                 active_auctions.append(auction)
+        
+        print(f"[API] Returning {len(active_auctions)} active auctions")
         
         return jsonify({
             'success': True,
