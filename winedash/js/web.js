@@ -1805,7 +1805,7 @@
     }
 
     // ==================== TABS ====================
-        
+            
     function setupTabs() {
         elements.tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1836,8 +1836,10 @@
                     if (tonConnectUI) {
                         updateWalletUI();
                         updateBalanceCardUI();
-                        updateWalletMainUI();  // TAMBAHKAN INI
+                        updateWalletMainUI();  // PASTIKAN INI ADA
                     }
+                    // Refresh wallet balance
+                    refreshTonWalletBalance();
                 }
             });
         });
@@ -2468,12 +2470,18 @@
         withdrawPanel = document.getElementById('withdrawPanel');
         walletPanelOverlay = document.getElementById('walletPanelOverlay');
         
+        console.log('💰 Initializing wallet panels...');
+        console.log('depositPanel exists:', !!depositPanel);
+        console.log('withdrawPanel exists:', !!withdrawPanel);
+        console.log('walletPanelOverlay exists:', !!walletPanelOverlay);
+        
         // Hapus pembuatan overlay duplicate jika sudah ada di HTML
         if (!walletPanelOverlay) {
             walletPanelOverlay = document.createElement('div');
             walletPanelOverlay.id = 'walletPanelOverlay';
             walletPanelOverlay.className = 'panel-overlay';
             document.body.appendChild(walletPanelOverlay);
+            console.log('✅ walletPanelOverlay created');
         }
         
         // Deposit panel close
@@ -2493,10 +2501,12 @@
         }
         
         // Overlay click
-        walletPanelOverlay.addEventListener('click', () => {
-            closeDepositPanel();
-            closeWithdrawPanel();
-        });
+        if (walletPanelOverlay) {
+            walletPanelOverlay.addEventListener('click', () => {
+                closeDepositPanel();
+                closeWithdrawPanel();
+            });
+        }
         
         // ==================== PERBAIKAN: Quick amount buttons ====================
         document.querySelectorAll('.quick-amount-btn').forEach(btn => {
@@ -2516,7 +2526,7 @@
                             balance = await getWalletBalance(walletAddress);
                         }
                     } else {
-                        // ==================== PERBAIKAN: Untuk withdraw, ambil balance dari DATABASE ====================
+                        // Untuk withdraw, ambil balance dari DATABASE
                         if (telegramUser) {
                             try {
                                 const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
@@ -2550,8 +2560,8 @@
         });
         
         // Setup drag to close
-        setupPanelDragToClose(depositPanel, closeDepositPanel);
-        setupPanelDragToClose(withdrawPanel, closeWithdrawPanel);
+        if (depositPanel) setupPanelDragToClose(depositPanel, closeDepositPanel);
+        if (withdrawPanel) setupPanelDragToClose(withdrawPanel, closeWithdrawPanel);
     }
 
     function setupPanelDragToClose(panel, closeFunction) {
@@ -3111,16 +3121,20 @@
         }
     }
 
-    // Fungsi untuk refresh balance wallet TON Connect
     async function refreshTonWalletBalance() {
         if (isWalletConnected && walletAddress) {
-            const balance = await getWalletBalance(walletAddress);
-            const walletBalanceElement = document.getElementById('walletBalanceAmount');
-            if (walletBalanceElement) {
-                walletBalanceElement.textContent = balance.toFixed(2);
+            try {
+                const balance = await getWalletBalance(walletAddress);
+                const walletBalanceElement = document.getElementById('walletBalanceAmount');
+                if (walletBalanceElement) {
+                    walletBalanceElement.textContent = balance.toFixed(2);
+                }
+                console.log(`🔄 TonWallet balance refreshed: ${balance} TON`);
+                return balance;
+            } catch (error) {
+                console.error('Error refreshing wallet balance:', error);
+                return 0;
             }
-            console.log(`🔄 TonWallet balance refreshed: ${balance} TON`);
-            return balance;
         }
         return 0;
     }
@@ -3133,24 +3147,39 @@
         console.log('🔄 updateWalletMainUI called - isWalletConnected:', isWalletConnected, 'walletAddress:', walletAddress);
         
         // Selalu tampilkan wallet card
-        if (walletMainCard) walletMainCard.style.display = 'block';
+        if (walletMainCard) {
+            walletMainCard.style.display = 'block';
+            console.log('✅ walletMainCard displayed');
+        } else {
+            console.warn('⚠️ walletMainCard not found in DOM');
+        }
         
         if (isWalletConnected && walletAddress) {
             // Tampilkan alamat yang dipersingkat
             const formattedAddress = `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`;
-            if (walletAddressDisplay) walletAddressDisplay.textContent = formattedAddress;
+            if (walletAddressDisplay) {
+                walletAddressDisplay.textContent = formattedAddress;
+                console.log('✅ Wallet address displayed:', formattedAddress);
+            }
             
             // Ambil balance dari wallet TON Connect
             const fetchBalance = async () => {
-                const balance = await getWalletBalance(walletAddress);
-                if (walletBalanceAmount) {
-                    walletBalanceAmount.textContent = balance.toFixed(2);
-                    console.log(`💰 Wallet TON Connect balance: ${balance} TON`);
+                try {
+                    const balance = await getWalletBalance(walletAddress);
+                    if (walletBalanceAmount) {
+                        walletBalanceAmount.textContent = balance.toFixed(2);
+                        console.log(`💰 Wallet TON Connect balance: ${balance} TON`);
+                    }
+                } catch (error) {
+                    console.error('Error fetching wallet balance:', error);
+                    if (walletBalanceAmount) {
+                        walletBalanceAmount.textContent = '0.00';
+                    }
                 }
             };
             fetchBalance();
             
-            // Sembunyikan section-card lama yang berisi wallet info
+            // Sembunyikan section-card lama yang berisi wallet info (jika ada)
             const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
             if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
                 oldWalletSection.style.display = 'none';
@@ -3158,10 +3187,14 @@
             
         } else {
             // Wallet belum terhubung - tampilkan status not connected
-            if (walletAddressDisplay) walletAddressDisplay.textContent = 'Not connected';
-            if (walletBalanceAmount) walletBalanceAmount.textContent = '0.00';
+            if (walletAddressDisplay) {
+                walletAddressDisplay.textContent = 'Not connected';
+            }
+            if (walletBalanceAmount) {
+                walletBalanceAmount.textContent = '0.00';
+            }
             
-            // Sembunyikan section-card lama
+            // Sembunyikan section-card lama (jika ada)
             const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
             if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
                 oldWalletSection.style.display = 'none';
@@ -3675,13 +3708,20 @@
             
             // Initialize TON Connect
             await initTonConnect();
-            
-            // Update wallet UI after TON Connect is ready
+                        
             setTimeout(() => {
-                if (isWalletConnected) updateWalletMainUI();
+                if (isWalletConnected) {
+                    updateWalletMainUI();
+                }
                 updateBalanceCardUI();
+                
+                // Pastikan wallet tab memiliki konten
+                const walletTabBtn = document.querySelector('.tab-btn[data-tab="wallet"]');
+                if (walletTabBtn && walletTabBtn.classList.contains('active')) {
+                    // Jika wallet tab aktif, refresh UI
+                    updateWalletMainUI();
+                }
             }, 500);
-            
         } catch (error) {
             console.error('❌ Error in init:', error);
             if (elements.usernameList) {
