@@ -2375,7 +2375,7 @@
         let activitySearchTerm = '';
         
         // ==================== CREATE FULLSCREEN ACTIVITY PAGE ====================
-                
+                        
         function createFullscreenActivityPage() {
             const existingFullscreen = document.getElementById('auctionsActivityFullscreen');
             if (existingFullscreen) {
@@ -2385,6 +2385,8 @@
             const fullscreenDiv = document.createElement('div');
             fullscreenDiv.id = 'auctionsActivityFullscreen';
             fullscreenDiv.className = 'fullscreen-page';
+            
+            // ============ PERBAIKAN: Header dengan tombol close yang benar ============
             fullscreenDiv.innerHTML = `
                 <div class="fullscreen-header">
                     <div class="fullscreen-header-left">
@@ -2424,10 +2426,12 @@
             document.body.appendChild(fullscreenDiv);
             activityFullscreen = fullscreenDiv;
             
+            // ============ PERBAIKAN: Terapkan safe area segera ============
+            applySafeAreaInsets();
+            
             // Setup tombol close (silang)
             const closeBtn = document.getElementById('closeActivityFullscreenBtn');
             if (closeBtn) {
-                // Hapus event listener lama dengan clone
                 const newCloseBtn = closeBtn.cloneNode(true);
                 closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
                 
@@ -2436,7 +2440,6 @@
                     e.stopPropagation();
                     console.log('[ACTIVITY] Close button clicked - returning to auctions mode');
                     closeFullscreenActivity();
-                    // Pastikan kembali ke auctions mode (bukan fix price)
                     switchToAuctionsMode();
                 });
             }
@@ -2483,7 +2486,37 @@
                 });
             }
             
+            // Setup closing behavior
+            setupFullscreenClosingBehavior();
+            
             return fullscreenDiv;
+        }
+
+        function setupFullscreenClosingBehavior() {
+            const tg = window.Telegram?.WebApp;
+            if (!tg) return;
+            
+            const fullscreenPage = document.getElementById('auctionsActivityFullscreen');
+            if (!fullscreenPage) return;
+            
+            // Disable vertical swipes agar tidak konflik dengan drag header
+            if (typeof tg.disableVerticalSwipes === 'function') {
+                tg.disableVerticalSwipes();
+            }
+            
+            // Enable closing confirmation (opsional)
+            if (typeof tg.enableClosingConfirmation === 'function') {
+                tg.enableClosingConfirmation();
+            }
+            
+            // Mencegah scroll propagation ke MiniApp
+            fullscreenPage.addEventListener('touchmove', (e) => {
+                // Biarkan scroll normal di dalam fullscreen content
+                // Tapi cegah propagation ke luar
+                e.stopPropagation();
+            }, { passive: false });
+            
+            console.log('[ACTIVITY] Fullscreen closing behavior configured');
         }
 
         function openFullscreenActivity() {
@@ -2523,7 +2556,7 @@
                 loadActivityData();
             }, 100);
         }
-                        
+                                
         function closeFullscreenActivity() {
             sessionStorage.removeItem('winedash_activity_open');
             sessionStorage.removeItem('winedash_activity_tab');
@@ -2541,10 +2574,18 @@
                     activityFullscreen = null;
                 }, 200);
             }
+            
             document.body.classList.remove('panel-open');
+            
+            // ============ PERBAIKAN: Kembalikan vertical swipes ============
+            const tg = window.Telegram?.WebApp;
+            if (tg && typeof tg.enableVerticalSwipes === 'function') {
+                tg.enableVerticalSwipes();
+            }
+            
             hapticLight();
         }
-                
+
         async function loadActivityData() {
             if (!telegramUser) {
                 console.error('[ACTIVITY] No telegram user');
@@ -3634,19 +3675,15 @@
             return;
         }
         
-        // Gunakan CSS variables yang disediakan Telegram sebagai fallback
         const root = document.documentElement;
         
-        const topInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
-        const bottomInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
-        const leftInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
-        const rightInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
+        // Baca dari CSS variables sebagai fallback
+        let safeTop = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
+        let safeBottom = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
+        let safeLeft = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
+        let safeRight = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
         
-        let safeTop = topInset;
-        let safeBottom = bottomInset;
-        let safeLeft = leftInset;
-        let safeRight = rightInset;
-        
+        // Gunakan safeAreaInset dari Telegram (Bot API 8.0+)
         if (tg.safeAreaInset) {
             safeTop = tg.safeAreaInset.top || safeTop;
             safeBottom = tg.safeAreaInset.bottom || safeBottom;
@@ -3654,39 +3691,100 @@
             safeRight = tg.safeAreaInset.right || safeRight;
         }
         
+        // ============ PERBAIKAN UTAMA: Gunakan contentSafeAreaInset ============
+        let contentTop = safeTop;
+        let contentBottom = safeBottom;
+        let contentLeft = safeLeft;
+        let contentRight = safeRight;
+        
+        // contentSafeAreaInset adalah safe area untuk konten, bebas dari UI Telegram
+        if (tg.contentSafeAreaInset) {
+            contentTop = tg.contentSafeAreaInset.top || safeTop;
+            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
+            contentLeft = tg.contentSafeAreaInset.left || safeLeft;
+            contentRight = tg.contentSafeAreaInset.right || safeRight;
+        }
+        
+        // Terapkan ke body
         document.body.style.paddingTop = `${safeTop}px`;
         document.body.style.paddingBottom = `${safeBottom}px`;
         document.body.style.paddingLeft = `${safeLeft}px`;
         document.body.style.paddingRight = `${safeRight}px`;
         
-        let contentTop = safeTop;
-        let contentBottom = safeBottom;
-        
-        if (tg.contentSafeAreaInset) {
-            contentTop = tg.contentSafeAreaInset.top || safeTop;
-            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
-        }
-        
+        // Terapkan ke container utama
         const container = document.querySelector('.storage-container');
         if (container) {
             container.style.paddingTop = `${contentTop + 12}px`;
             container.style.paddingBottom = `${contentBottom + 90}px`;
         }
         
-        console.log('✅ Storage safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
+        // ============ PERBAIKAN UNTUK FULLSCREEN ACTIVITY PAGE ============
+        const fullscreenPage = document.getElementById('auctionsActivityFullscreen');
+        if (fullscreenPage) {
+            // Gunakan safeAreaInset untuk padding luar
+            fullscreenPage.style.paddingTop = `${safeTop}px`;
+            fullscreenPage.style.paddingBottom = `${safeBottom}px`;
+            fullscreenPage.style.paddingLeft = `${safeLeft}px`;
+            fullscreenPage.style.paddingRight = `${safeRight}px`;
+        }
+        
+        // Perbaiki header fullscreen
+        const fullscreenHeader = document.querySelector('#auctionsActivityFullscreen .fullscreen-header');
+        if (fullscreenHeader) {
+            // Gunakan contentSafeAreaInset untuk header
+            fullscreenHeader.style.paddingTop = `${contentTop + 16}px`;
+            fullscreenHeader.style.paddingLeft = `${contentLeft + 16}px`;
+            fullscreenHeader.style.paddingRight = `${contentRight + 16}px`;
+        }
+        
+        // Perbaiki content fullscreen
+        const fullscreenContent = document.querySelector('#auctionsActivityFullscreen .fullscreen-content');
+        if (fullscreenContent) {
+            fullscreenContent.style.paddingBottom = `${contentBottom + 20}px`;
+        }
+        
+        console.log('[STORAGE] Safe area applied:', { 
+            safeTop, safeBottom, 
+            contentTop, contentBottom,
+            hasFullscreen: !!fullscreenPage
+        });
     }
 
     function initSafeArea() {
         const tg = window.Telegram?.WebApp;
         if (!tg) return;
         
+        // Apply initial after a short delay to ensure DOM is ready
         setTimeout(applySafeAreaInsets, 50);
         applySafeAreaInsets();
         
+        // ============ PERBAIKAN: Listen untuk contentSafeAreaChanged ============
         if (tg.onEvent) {
-            tg.onEvent('safeAreaChanged', () => applySafeAreaInsets());
-            tg.onEvent('contentSafeAreaChanged', () => applySafeAreaInsets());
-            tg.onEvent('viewportChanged', () => applySafeAreaInsets());
+            tg.onEvent('safeAreaChanged', () => {
+                console.log('[STORAGE] safeAreaChanged event received');
+                applySafeAreaInsets();
+            });
+            
+            tg.onEvent('contentSafeAreaChanged', () => {
+                console.log('[STORAGE] contentSafeAreaChanged event received');
+                applySafeAreaInsets();
+            });
+            
+            tg.onEvent('viewportChanged', () => {
+                console.log('[STORAGE] viewportChanged event received');
+                applySafeAreaInsets();
+            });
+            
+            // ============ TAMBAHAN: Listen untuk fullscreen change ============
+            tg.onEvent('fullscreenChanged', () => {
+                console.log('[STORAGE] fullscreenChanged event received');
+                setTimeout(applySafeAreaInsets, 100);
+            });
+        }
+        
+        // Disable vertical swipes saat di halaman utama (optional)
+        if (typeof tg.disableVerticalSwipes === 'function') {
+            tg.disableVerticalSwipes();
         }
     }
 
