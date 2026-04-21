@@ -16,6 +16,7 @@
     let allUsernames = [];
     let currentMode = 'onchain';
     let currentStatus = 'all';
+    let statusDropdownVisible = false;
     let currentSort = 'price_asc';
     let currentLayout = localStorage.getItem('storage_layout') || 'grid';
     let currentSearchTerm = '';
@@ -1007,24 +1008,35 @@
     }
 
     // ==================== FILTERING & SORTING ====================
-        
+            
     function filterAndRender() {
         let filtered = [...allUsernames];
         
-        // Filter by search term - gunakan currentSearchTerm dari state
+        // Filter by search term
         if (currentSearchTerm && currentSearchTerm.trim() !== '') {
             const term = currentSearchTerm.toLowerCase().trim();
             filtered = filtered.filter(username => 
                 username.username.toLowerCase().includes(term) ||
-                username.category.toLowerCase().includes(term)
+                (username.based_on && username.based_on.toLowerCase().includes(term))
             );
         }
         
-        // Filter by status
+        // Filter by status - PERBAIKAN untuk support pending dan auction
         if (currentStatus !== 'all') {
             filtered = filtered.filter(username => {
-                const isListed = username.status === 'available';
-                return currentStatus === 'listed' ? isListed : !isListed;
+                switch(currentStatus) {
+                    case 'listed':
+                        return username.status === 'available';
+                    case 'unlisted':
+                        return username.status === 'unlisted';
+                    case 'pending':
+                        // Pending usernames are those in pending_usernames table
+                        return username.status === 'pending';
+                    case 'auction':
+                        return username.status === 'on_auction';
+                    default:
+                        return true;
+                }
             });
         }
         
@@ -1032,17 +1044,17 @@
         filtered.sort((a, b) => {
             switch (currentSort) {
                 case 'price_asc':
-                    return a.price - b.price;
+                    return (a.price || 0) - (b.price || 0);
                 case 'price_desc':
-                    return b.price - a.price;
+                    return (b.price || 0) - (a.price || 0);
                 case 'name_asc':
-                    return a.username.localeCompare(b.username);
+                    return (a.username || '').localeCompare(b.username || '');
                 case 'name_desc':
-                    return b.username.localeCompare(a.username);
+                    return (b.username || '').localeCompare(a.username || '');
                 case 'date_desc':
-                    return new Date(b.created_at) - new Date(a.created_at);
+                    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
                 default:
-                    return a.price - b.price;
+                    return (a.price || 0) - (b.price || 0);
             }
         });
         
@@ -2530,53 +2542,145 @@
         }
     }
 
-    function setupToggleButtons() {
-        const toggleBtn = document.getElementById('toggleStatusBtn');
+    function setupStatusFilter() {
+        const statusBtn = document.getElementById('toggleStatusBtn');
         
-        if (toggleBtn) {
-            // Pastikan button visible
-            toggleBtn.style.display = 'flex';
+        if (!statusBtn) {
+            console.warn('Status button not found');
+            return;
+        }
+        
+        // Hapus event listener lama
+        const newStatusBtn = statusBtn.cloneNode(true);
+        statusBtn.parentNode.replaceChild(newStatusBtn, statusBtn);
+        
+        // Set initial text
+        newStatusBtn.innerHTML = '<i class="fas fa-filter"></i><span>Status: All</span>';
+        newStatusBtn.classList.remove('toggle-active', 'toggle-active-unlisted');
+        
+        // Buat dropdown element
+        let statusDropdown = null;
+        
+        function createDropdown() {
+            // Hapus dropdown yang sudah ada
+            if (statusDropdown) {
+                statusDropdown.remove();
+                statusDropdown = null;
+            }
             
-            // Set initial state
-            toggleBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
-            toggleBtn.classList.remove('toggle-active', 'toggle-active-unlisted');
+            statusDropdown = document.createElement('div');
+            statusDropdown.className = 'status-dropdown';
+            statusDropdown.innerHTML = `
+                <div class="status-dropdown-item ${currentStatus === 'all' ? 'active' : ''}" data-status="all">
+                    <i class="fas fa-list"></i> All
+                </div>
+                <div class="status-dropdown-item ${currentStatus === 'listed' ? 'active' : ''}" data-status="listed">
+                    <i class="fas fa-check-circle"></i> Listed
+                </div>
+                <div class="status-dropdown-item ${currentStatus === 'unlisted' ? 'active' : ''}" data-status="unlisted">
+                    <i class="fas fa-times-circle"></i> Unlisted
+                </div>
+                <div class="status-dropdown-item ${currentStatus === 'pending' ? 'active' : ''}" data-status="pending">
+                    <i class="fas fa-clock"></i> Pending
+                </div>
+                <div class="status-dropdown-item ${currentStatus === 'auction' ? 'active' : ''}" data-status="auction">
+                    <i class="fas fa-gavel"></i> Auction
+                </div>
+            `;
             
-            // Remove existing listeners to avoid duplicates
-            const newToggleBtn = toggleBtn.cloneNode(true);
-            toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+            // Position dropdown below button
+            const rect = newStatusBtn.getBoundingClientRect();
+            statusDropdown.style.position = 'fixed';
+            statusDropdown.style.top = `${rect.bottom + 5}px`;
+            statusDropdown.style.left = `${rect.left}px`;
+            statusDropdown.style.minWidth = `${rect.width}px`;
             
-            newToggleBtn.addEventListener('click', () => {
-                if (currentStatus === 'all') {
-                    currentStatus = 'listed';
-                    newToggleBtn.innerHTML = '<i class="fas fa-check-circle"></i><span>Listed</span>';
-                    newToggleBtn.classList.add('toggle-active');
-                    newToggleBtn.classList.remove('toggle-active-unlisted');
-                } else if (currentStatus === 'listed') {
-                    currentStatus = 'unlisted';
-                    newToggleBtn.innerHTML = '<i class="fas fa-times-circle"></i><span>Unlisted</span>';
-                    newToggleBtn.classList.remove('toggle-active');
-                    newToggleBtn.classList.add('toggle-active-unlisted');
-                } else {
-                    currentStatus = 'all';
-                    newToggleBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
-                    newToggleBtn.classList.remove('toggle-active', 'toggle-active-unlisted');
-                }
-                filterAndRender();
-                hapticLight();
+            document.body.appendChild(statusDropdown);
+            
+            // Add click handlers
+            statusDropdown.querySelectorAll('.status-dropdown-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const status = item.dataset.status;
+                    updateStatusFilter(status);
+                    closeDropdown();
+                });
             });
-        } else {
-            console.warn('Toggle button not found, creating fallback');
-            // Fallback: create toggle button if not exists
-            const actionBar = document.querySelector('.action-bar');
-            if (actionBar) {
-                const fallbackBtn = document.createElement('button');
-                fallbackBtn.className = 'action-btn';
-                fallbackBtn.id = 'toggleStatusBtn';
-                fallbackBtn.innerHTML = '<i class="fas fa-eye"></i><span>All</span>';
-                actionBar.insertBefore(fallbackBtn, actionBar.firstChild);
-                setupToggleButtons(); // Recursive call
+            
+            // Close dropdown when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', closeDropdownHandler);
+            }, 10);
+        }
+        
+        function closeDropdownHandler(e) {
+            if (statusDropdown && !statusDropdown.contains(e.target) && e.target !== newStatusBtn) {
+                closeDropdown();
             }
         }
+        
+        function closeDropdown() {
+            if (statusDropdown) {
+                statusDropdown.remove();
+                statusDropdown = null;
+            }
+            document.removeEventListener('click', closeDropdownHandler);
+            statusDropdownVisible = false;
+        }
+        
+        function updateStatusFilter(status) {
+            currentStatus = status;
+            
+            // Update button text
+            let statusText = 'All';
+            let statusIcon = '<i class="fas fa-filter"></i>';
+            switch(status) {
+                case 'all':
+                    statusText = 'All';
+                    statusIcon = '<i class="fas fa-list"></i>';
+                    break;
+                case 'listed':
+                    statusText = 'Listed';
+                    statusIcon = '<i class="fas fa-check-circle"></i>';
+                    break;
+                case 'unlisted':
+                    statusText = 'Unlisted';
+                    statusIcon = '<i class="fas fa-times-circle"></i>';
+                    break;
+                case 'pending':
+                    statusText = 'Pending';
+                    statusIcon = '<i class="fas fa-clock"></i>';
+                    break;
+                case 'auction':
+                    statusText = 'Auction';
+                    statusIcon = '<i class="fas fa-gavel"></i>';
+                    break;
+            }
+            newStatusBtn.innerHTML = `${statusIcon}<span>Status: ${statusText}</span>`;
+            
+            // Update active class on button
+            if (status !== 'all') {
+                newStatusBtn.classList.add('toggle-active');
+            } else {
+                newStatusBtn.classList.remove('toggle-active');
+            }
+            
+            // Apply filter
+            filterAndRender();
+            hapticLight();
+        }
+        
+        newStatusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (statusDropdownVisible) {
+                closeDropdown();
+            } else {
+                createDropdown();
+                statusDropdownVisible = true;
+            }
+        });
     }
 
     function setupSearch() {
@@ -2810,8 +2914,8 @@
             // Setup event listeners
             setupEventListeners();
             setupInboxEventListeners();
-            setupToggleButtons();
             setupSearch();
+            setupStatusFilter();
             
             // Get Telegram user
             telegramUser = getTelegramUserFromWebApp();

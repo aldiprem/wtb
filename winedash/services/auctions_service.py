@@ -270,3 +270,48 @@ def check_expired_auctions():
     except Exception as e:
         print(f"Error in check_expired_auctions: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+@auctions_bp.route('/ended/<int:user_id>', methods=['GET', 'OPTIONS'])
+def get_ended_auctions(user_id):
+    """Get ended auctions for user"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
+    try:
+        auctions = auctions_db.get_ended_auctions(user_id)
+        
+        return jsonify({
+            'success': True,
+            'auctions': auctions,
+            'total': len(auctions)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_ended_auctions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@auctions_bp.route('/ended-all', methods=['GET', 'OPTIONS'])
+def get_all_ended_auctions():
+    """Get all ended auctions"""
+    if request.method == 'OPTIONS':
+        response = jsonify({'success': True})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        return response
+    
+    try:
+        auctions = auctions_db.get_ended_auctions()
+        
+        return jsonify({
+            'success': True,
+            'auctions': auctions,
+            'total': len(auctions)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_all_ended_auctions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

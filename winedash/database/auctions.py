@@ -400,3 +400,46 @@ class AuctionsDatabase:
         except Exception as e:
             print(f"Error checking expired auctions: {e}")
             return 0
+            
+    def get_ended_auctions(self, user_id: int = None, limit: int = 100) -> List[Dict]:
+        """Get ended auctions (completed auctions)"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                if user_id:
+                    # Get ended auctions where user is owner or bidder
+                    cursor.execute('''
+                        SELECT DISTINCT a.*, 
+                            u.username as owner_username, u.first_name as owner_name, u.photo_url as owner_photo,
+                            w.username as winner_username, w.first_name as winner_name, w.photo_url as winner_photo,
+                            (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count
+                        FROM auctions a
+                        LEFT JOIN users u ON a.owner_id = u.user_id
+                        LEFT JOIN users w ON a.winner_id = w.user_id
+                        WHERE a.status = 'ended' AND (a.owner_id = ? OR a.winner_id = ?)
+                        ORDER BY a.end_time DESC
+                        LIMIT ?
+                    ''', (user_id, user_id, limit))
+                else:
+                    # Get all ended auctions
+                    cursor.execute('''
+                        SELECT a.*, 
+                            u.username as owner_username, u.first_name as owner_name, u.photo_url as owner_photo,
+                            w.username as winner_username, w.first_name as winner_name, w.photo_url as winner_photo,
+                            (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count
+                        FROM auctions a
+                        LEFT JOIN users u ON a.owner_id = u.user_id
+                        LEFT JOIN users w ON a.winner_id = w.user_id
+                        WHERE a.status = 'ended'
+                        ORDER BY a.end_time DESC
+                        LIMIT ?
+                    ''', (limit,))
+                
+                rows = cursor.fetchall()
+                return [dict(row) for row in rows]
+                
+        except Exception as e:
+            print(f"Error getting ended auctions: {e}")
+            return []
