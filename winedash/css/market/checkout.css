@@ -1,17 +1,15 @@
-/* winedash/css/market/checkout.css - Checkout Cart Styles */
-
 /* ==================== CHECKOUT BUTTON (Cart Icon) ==================== */
 
 /* Cart button di samping search */
 .checkout-cart-btn {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border);
+    background: var(--bg);
+    backdrop-filter: blur(10px);
+    border: none;
     border-radius: 20px;
-    padding: 0 16px;
+    padding: 0 20px;
     color: var(--text-secondary);
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -19,6 +17,27 @@
     gap: 8px;
     white-space: nowrap;
     position: relative;
+    overflow: hidden;
+    height: 42px;
+}
+
+/* Border 3D untuk tombol cart */
+.checkout-cart-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(170deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .checkout-cart-btn i {
@@ -27,7 +46,7 @@
 }
 
 .checkout-cart-btn:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .checkout-cart-btn:hover i {

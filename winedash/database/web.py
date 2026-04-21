@@ -11,8 +11,8 @@ class WinedashDatabase:
         self.db_path = db_path
         self.timezone = pytz.timezone('Asia/Jakarta')
         self.init_database()
-        # Jalankan migrasi untuk memastikan semua tabel dan kolom ada
         self.run_full_migration()
+        self.init_checkout_table()
     
     def _get_now(self) -> str:
         """Get current time in Asia/Jakarta timezone as ISO format string"""
@@ -1279,28 +1279,49 @@ class WinedashDatabase:
                 print("✅ checkout_cart table initialized")
         except Exception as e:
             print(f"Error initializing checkout table: {e}")
-    
+        
     def add_to_checkout(self, user_id: int, username_id: int, username: str, 
                         based_on: str, price: float, seller_id: int, 
                         seller_wallet: str) -> bool:
         """Add username to checkout cart"""
         try:
+            # Pastikan tabel checkout_cart ada
+            self.init_checkout_table()
+            
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.cursor()
                 now = self._get_now()
                 
+                # Cek apakah sudah ada
                 cursor.execute('''
-                    INSERT OR REPLACE INTO checkout_cart 
-                    (user_id, username_id, username, based_on, price, seller_id, seller_wallet, added_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (user_id, username_id, username, based_on, price, seller_id, seller_wallet, now))
+                    SELECT id FROM checkout_cart 
+                    WHERE user_id = ? AND username_id = ?
+                ''', (user_id, username_id))
+                existing = cursor.fetchone()
+                
+                if existing:
+                    # Update existing
+                    cursor.execute('''
+                        UPDATE checkout_cart 
+                        SET added_at = ?
+                        WHERE user_id = ? AND username_id = ?
+                    ''', (now, user_id, username_id))
+                else:
+                    # Insert new
+                    cursor.execute('''
+                        INSERT INTO checkout_cart 
+                        (user_id, username_id, username, based_on, price, seller_id, seller_wallet, added_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (user_id, username_id, username, based_on or '', price, seller_id, seller_wallet or '', now))
                 
                 conn.commit()
                 return True
         except Exception as e:
             print(f"Error adding to checkout: {e}")
+            import traceback
+            traceback.print_exc()
             return False
-    
+
     def remove_from_checkout(self, user_id: int, username_id: int) -> bool:
         """Remove username from checkout cart"""
         try:

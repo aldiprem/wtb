@@ -343,24 +343,46 @@ body {
 }
 
 .search-apply-btn {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background: rgba(64, 167, 227, 0.15);
+    backdrop-filter: blur(10px);
     border: none;
     border-radius: 20px;
     padding: 0 20px;
-    color: white;
+    color: var(--primary);
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+    height: 42px;
+}
+
+/* Border 3D untuk tombol Apply */
+.search-apply-btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.3) 0%, 
+        rgba(255, 255, 255, 0) 25%,
+        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0.3) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
 }
 
 .search-apply-btn:hover {
+    background: rgba(64, 167, 227, 0.3);
     transform: scale(1.02);
-    box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-/* Tabs Navigation - Bottom Floating */
 .tabs-container {
     position: fixed;
     bottom: 20px;

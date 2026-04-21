@@ -783,9 +783,8 @@
             return null;
         }
     }
-        
+            
     function setupCartButton() {
-        // Cari container untuk cart button (di samping tombol Apply)
         let cartContainer = document.getElementById('cartButtonContainer');
         
         if (!cartContainer) {
