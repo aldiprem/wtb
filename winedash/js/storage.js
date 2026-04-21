@@ -2220,6 +2220,337 @@
         }
     }
 
+    function setupAuctionsFilterAndActivity() {
+        const filterBtn = document.getElementById('auctionsFilterBtn');
+        const activityBtn = document.getElementById('auctionsActivityBtn');
+        let filterDropdown = document.getElementById('auctionsFilterDropdown');
+        let activityPanel = document.getElementById('auctionsActivityPanel');
+        let activityOverlay = null;
+        let currentAuctionsFilter = 'all';
+        
+        // Buat overlay untuk activity panel
+        function createActivityOverlay() {
+            if (!activityOverlay) {
+                activityOverlay = document.createElement('div');
+                activityOverlay.className = 'inbox-overlay';
+                document.body.appendChild(activityOverlay);
+                activityOverlay.addEventListener('click', closeActivityPanel);
+            }
+            return activityOverlay;
+        }
+        
+        // Close activity panel
+        function closeActivityPanel() {
+            if (activityPanel) {
+                activityPanel.classList.remove('open');
+                if (activityOverlay) activityOverlay.classList.remove('active');
+                document.body.classList.remove('inbox-open');
+                setTimeout(() => {
+                    if (activityPanel) activityPanel.style.display = 'none';
+                }, 300);
+            }
+            hapticLight();
+        }
+        
+        // Open activity panel
+        async function openActivityPanel() {
+            if (!activityPanel) return;
+            
+            createActivityOverlay();
+            activityPanel.style.display = 'flex';
+            activityOverlay.classList.add('active');
+            document.body.classList.add('inbox-open');
+            
+            setTimeout(() => activityPanel.classList.add('open'), 10);
+            
+            // Load activity data
+            await loadAuctionActivity();
+            hapticLight();
+        }
+        
+        // Load auction activity (my auctions + my bids)
+        async function loadAuctionActivity() {
+            const content = document.getElementById('auctionsActivityContent');
+            if (!content || !telegramUser) return;
+            
+            content.innerHTML = '<div class="loading-placeholder">Memuat aktivitas...</div>';
+            
+            try {
+                // Load my auctions
+                const myAuctionsResp = await fetch(`${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`);
+                const myAuctionsData = await myAuctionsResp.json();
+                
+                // Load my bids
+                const myBidsResp = await fetch(`${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`);
+                const myBidsData = await myBidsResp.json();
+                
+                let html = '';
+                
+                // My Auctions section
+                const myAuctions = myAuctionsData.success ? myAuctionsData.auctions : [];
+                if (myAuctions.length > 0) {
+                    html += `<div style="margin-bottom: 20px;">
+                        <div style="font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-gavel"></i> My Auctions (${myAuctions.length})
+                        </div>
+                    `;
+                    for (const auction of myAuctions) {
+                        const status = auction.status === 'active' ? 'Active' : 'Ended';
+                        const statusColor = auction.status === 'active' ? 'var(--success)' : 'var(--text-muted)';
+                        const endTime = auction.end_time ? new Date(auction.end_time).toLocaleString('id-ID') : '-';
+                        
+                        html += `
+                            <div class="inbox-item" style="cursor: pointer;" data-auction-id="${auction.id}" data-auction-type="my-auction">
+                                <div class="inbox-avatar" style="background: linear-gradient(135deg, var(--warning), #d97706);">
+                                    <i class="fas fa-gavel" style="color: white; font-size: 20px;"></i>
+                                </div>
+                                <div class="inbox-info">
+                                    <div class="inbox-username">@${escapeHtml(auction.username)}</div>
+                                    <div class="inbox-price">Current: ${formatNumber(auction.current_price)} TON</div>
+                                    <div class="inbox-type" style="font-size: 10px; color: ${statusColor};">Status: ${status}</div>
+                                    <div class="inbox-type" style="font-size: 10px;">Ends: ${endTime}</div>
+                                </div>
+                                <button class="inbox-verify-btn view-auction-detail" data-auction-id="${auction.id}" style="background: rgba(64, 167, 227, 0.15); color: var(--primary);">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+                    html += `</div>`;
+                }
+                
+                // My Bids section
+                const myBids = myBidsData.success ? myBidsData.auctions : [];
+                if (myBids.length > 0) {
+                    html += `<div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-history"></i> My Bids (${myBids.length})
+                        </div>
+                    `;
+                    for (const auction of myBids) {
+                        const status = auction.status === 'active' ? 'Active' : 'Ended';
+                        const statusColor = auction.status === 'active' ? 'var(--success)' : 'var(--text-muted)';
+                        const myLastBid = auction.my_last_bid || 0;
+                        
+                        html += `
+                            <div class="inbox-item" style="cursor: pointer;" data-auction-id="${auction.id}" data-auction-type="my-bid">
+                                <div class="inbox-avatar" style="background: linear-gradient(135deg, var(--primary), var(--primary-dark));">
+                                    <i class="fas fa-history" style="color: white; font-size: 20px;"></i>
+                                </div>
+                                <div class="inbox-info">
+                                    <div class="inbox-username">@${escapeHtml(auction.username)}</div>
+                                    <div class="inbox-price">My Bid: ${formatNumber(myLastBid)} TON</div>
+                                    <div class="inbox-type" style="font-size: 10px; color: ${statusColor};">Status: ${status}</div>
+                                    <div class="inbox-type" style="font-size: 10px;">Current: ${formatNumber(auction.current_price)} TON</div>
+                                </div>
+                                <button class="inbox-verify-btn view-auction-detail" data-auction-id="${auction.id}" style="background: rgba(64, 167, 227, 0.15); color: var(--primary);">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        `;
+                    }
+                    html += `</div>`;
+                }
+                
+                if (myAuctions.length === 0 && myBids.length === 0) {
+                    html = `
+                        <div class="inbox-empty">
+                            <i class="fas fa-history"></i>
+                            <p>Belum ada aktivitas auction</p>
+                        </div>
+                    `;
+                }
+                
+                content.innerHTML = html;
+                
+                // Attach click events untuk view detail
+                document.querySelectorAll('#auctionsActivityContent .view-auction-detail').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const auctionId = btn.dataset.auctionId;
+                        if (auctionId) {
+                            closeActivityPanel();
+                            setTimeout(() => {
+                                if (typeof window.showAuctionDetail === 'function') {
+                                    window.showAuctionDetail(parseInt(auctionId));
+                                }
+                            }, 300);
+                        }
+                    });
+                });
+                
+                // Attach click untuk item
+                document.querySelectorAll('#auctionsActivityContent .inbox-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const auctionId = item.dataset.auctionId;
+                        if (auctionId) {
+                            closeActivityPanel();
+                            setTimeout(() => {
+                                if (typeof window.showAuctionDetail === 'function') {
+                                    window.showAuctionDetail(parseInt(auctionId));
+                                }
+                            }, 300);
+                        }
+                    });
+                });
+                
+            } catch (error) {
+                console.error('Error loading auction activity:', error);
+                content.innerHTML = '<div class="inbox-empty"><i class="fas fa-exclamation-triangle"></i><p>Gagal memuat aktivitas</p></div>';
+            }
+        }
+        
+        // Setup filter dropdown
+        function setupFilterDropdown() {
+            if (!filterBtn || !filterDropdown) return;
+            
+            const newFilterBtn = filterBtn.cloneNode(true);
+            filterBtn.parentNode.replaceChild(newFilterBtn, filterBtn);
+            
+            let isOpen = false;
+            
+            function positionDropdown() {
+                const rect = newFilterBtn.getBoundingClientRect();
+                filterDropdown.style.top = `${rect.bottom + 5}px`;
+                filterDropdown.style.left = `${rect.left}px`;
+                filterDropdown.style.minWidth = `${rect.width}px`;
+            }
+            
+            function closeDropdown() {
+                if (filterDropdown) {
+                    filterDropdown.style.display = 'none';
+                    isOpen = false;
+                }
+                document.removeEventListener('click', handleClickOutside);
+            }
+            
+            function handleClickOutside(e) {
+                if (filterDropdown && !filterDropdown.contains(e.target) && e.target !== newFilterBtn) {
+                    closeDropdown();
+                }
+            }
+            
+            function openDropdown() {
+                positionDropdown();
+                filterDropdown.style.display = 'block';
+                isOpen = true;
+                setTimeout(() => {
+                    document.addEventListener('click', handleClickOutside);
+                }, 10);
+            }
+            
+            newFilterBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (isOpen) {
+                    closeDropdown();
+                } else {
+                    openDropdown();
+                }
+                hapticLight();
+            });
+            
+            // Filter options
+            filterDropdown.querySelectorAll('.status-dropdown-item').forEach(item => {
+                const newItem = item.cloneNode(true);
+                item.parentNode.replaceChild(newItem, item);
+                
+                newItem.addEventListener('click', () => {
+                    const filterValue = newItem.dataset.auctionsFilter;
+                    currentAuctionsFilter = filterValue;
+                    
+                    // Update active class
+                    filterDropdown.querySelectorAll('.status-dropdown-item').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    newItem.classList.add('active');
+                    
+                    // Update button text
+                    const filterText = newItem.querySelector('span')?.textContent || 'Filter';
+                    newFilterBtn.innerHTML = `<i class="fas fa-filter"></i><span>${filterText}</span>`;
+                    
+                    closeDropdown();
+                    
+                    // Apply filter to auctions
+                    if (typeof window.switchAuctionTab === 'function') {
+                        let tab = 'active';
+                        if (filterValue === 'all') tab = 'active';
+                        else if (filterValue === 'active') tab = 'active';
+                        else if (filterValue === 'ended') tab = 'ended';
+                        else if (filterValue === 'my-bids') tab = 'my-bids';
+                        window.switchAuctionTab(tab);
+                    }
+                    
+                    hapticLight();
+                });
+            });
+            
+            window.addEventListener('scroll', () => {
+                if (isOpen) positionDropdown();
+            });
+            
+            window.addEventListener('resize', () => {
+                if (isOpen) positionDropdown();
+            });
+        }
+        
+        // Setup activity button
+        if (activityBtn) {
+            const newActivityBtn = activityBtn.cloneNode(true);
+            activityBtn.parentNode.replaceChild(newActivityBtn, activityBtn);
+            
+            newActivityBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openActivityPanel();
+            });
+        }
+        
+        // Setup activity panel close
+        const closeActivityBtn = document.getElementById('closeActivityPanelBtn');
+        if (closeActivityBtn) {
+            const newCloseBtn = closeActivityBtn.cloneNode(true);
+            closeActivityBtn.parentNode.replaceChild(newCloseBtn, closeActivityBtn);
+            newCloseBtn.addEventListener('click', closeActivityPanel);
+        }
+        
+        // Setup drag to close
+        if (activityPanel) {
+            const dragHandle = activityPanel.querySelector('.drag-handle');
+            if (dragHandle) {
+                let startY = 0, currentY = 0, isDragging = false;
+                
+                dragHandle.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                    isDragging = true;
+                    activityPanel.style.transition = 'none';
+                    hapticLight();
+                });
+                
+                dragHandle.addEventListener('touchmove', (e) => {
+                    if (!isDragging) return;
+                    currentY = e.touches[0].clientY;
+                    const deltaY = currentY - startY;
+                    if (deltaY > 0) {
+                        activityPanel.style.transform = `translateY(${Math.min(deltaY, activityPanel.offsetHeight * 0.7)}px)`;
+                    }
+                });
+                
+                dragHandle.addEventListener('touchend', () => {
+                    isDragging = false;
+                    activityPanel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+                    if (currentY - startY > 100) {
+                        closeActivityPanel();
+                    } else {
+                        activityPanel.style.transform = '';
+                    }
+                });
+            }
+        }
+        
+        setupFilterDropdown();
+    }
+
     function loadAuctionsModule() {
         console.log('📦 loadAuctionsModule called');
         
@@ -2257,19 +2588,19 @@
         
         window.auctionsModuleLoading = true;
         
-        // Load CSS
+        // Hapus script lama jika ada
+        const oldScript = document.getElementById('auctions-module-script');
+        if (oldScript) {
+            oldScript.remove();
+        }
+        
+        // Load CSS jika belum ada
         if (!document.querySelector('link[href="/winedash/css/auctions.css"]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = '/winedash/css/auctions.css';
+            link.href = '/winedash/css/auctions.css?v=' + Date.now();
             document.head.appendChild(link);
             console.log('✅ Auctions CSS loaded');
-        }
-        
-        // Hapus script lama jika ada
-        const script = document.getElementById('auctions-module-script');
-        if (script) {
-            script.remove();
         }
         
         const newScript = document.createElement('script');
@@ -2995,6 +3326,7 @@
             setupInboxEventListeners();
             setupSearch();
             setupStatusFilter();
+            setupAuctionsFilterAndActivity();
             
             // Get Telegram user
             telegramUser = getTelegramUserFromWebApp();

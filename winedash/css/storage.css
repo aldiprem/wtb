@@ -2233,3 +2233,52 @@ body.panel-open {
     background: var(--primary-glass);
     color: var(--primary);
 }
+
+/* Auctions Filter Dropdown */
+#auctionsFilterDropdown {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 8px 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    z-index: 1700;
+    animation: dropdownFadeIn 0.2s ease;
+}
+
+#auctionsFilterDropdown .status-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#auctionsFilterDropdown .status-dropdown-item i {
+    width: 18px;
+    font-size: 13px;
+}
+
+#auctionsFilterDropdown .status-dropdown-item:hover {
+    background: var(--glass-bg);
+    color: var(--text);
+}
+
+#auctionsFilterDropdown .status-dropdown-item.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+@keyframes dropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

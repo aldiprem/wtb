@@ -1337,5 +1337,9 @@
     }
     
     console.log('📦 Auctions module loaded, waiting for initAuctions() call');
-    
+        
+    window.switchAuctionTab = switchAuctionTab;
+    window.showAuctionDetail = showAuctionDetail;
+    window.refreshAuctionsModule = loadAuctions;
+
 })();

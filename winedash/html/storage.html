@@ -145,41 +145,20 @@
 
         <!-- ==================== AUCTIONS SECTION ==================== -->
         <div id="auctionsSection" style="display: none;">
-            <div class="offers-action-row">
-                <button class="offers-action-btn auctions-action-btn active" data-auctions-tab="active">
-                    <i class="fas fa-fire"></i>
-                    <span>Active</span>
-                </button>
-                <button class="offers-action-btn auctions-action-btn" data-auctions-tab="ended">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Ended</span>
-                </button>
-                <button class="offers-action-btn auctions-action-btn" data-auctions-tab="my-auctions">
-                    <i class="fas fa-gavel"></i>
-                    <span>My Auctions</span>
-                </button>
-                <button class="offers-action-btn auctions-action-btn" data-auctions-tab="my-bids">
-                    <i class="fas fa-history"></i>
-                    <span>My Bids</span>
-                </button>
-            </div>
-
-            <!-- Create Auction Button -->
+            <!-- Action Row untuk Auctions -->
             <div class="action-row">
                 <button class="action-btn add-action-btn" id="createAuctionBtn">
                     <i class="fas fa-plus-circle"></i>
                     <span>Create Auction</span>
                 </button>
-            </div>
-
-            <!-- Search Bar untuk Auctions -->
-            <div class="search-container">
-                <input type="text" class="search-input" id="auctionsSearchInput" placeholder="🔍 Cari username...">
-                <button class="search-apply-btn" id="auctionsSearchApplyBtn">Apply</button>
-            </div>
-
-            <!-- Action Bar untuk Auctions (layout toggle) -->
-            <div class="action-bar">
+                <button class="action-btn" id="auctionsFilterBtn">
+                    <i class="fas fa-filter"></i>
+                    <span>Filter</span>
+                </button>
+                <button class="action-btn" id="auctionsActivityBtn">
+                    <i class="fas fa-history"></i>
+                    <span>Activity</span>
+                </button>
                 <div class="layout-toggle">
                     <button class="layout-btn active" data-layout="grid" id="auctionsGridBtn">
                         <i class="fas fa-th"></i>
@@ -190,12 +169,46 @@
                 </div>
             </div>
 
+            <!-- Search Bar untuk Auctions -->
+            <div class="search-container">
+                <input type="text" class="search-input" id="auctionsSearchInput" placeholder="🔍 Cari username...">
+                <button class="search-apply-btn" id="auctionsSearchApplyBtn">Apply</button>
+            </div>
+
             <!-- Auctions Container -->
             <div id="auctionsContainer" style="width: 100%; min-height: 400px;">
                 <div class="loading-placeholder">Memuat auctions...</div>
             </div>
         </div>
 
+        <!-- Auctions Filter Dropdown Panel -->
+        <div id="auctionsFilterDropdown" class="status-dropdown" style="display: none; position: fixed; z-index: 1700;">
+            <div class="status-dropdown-item active" data-auctions-filter="all">
+                <i class="fas fa-list"></i> All
+            </div>
+            <div class="status-dropdown-item" data-auctions-filter="active">
+                <i class="fas fa-fire"></i> Active
+            </div>
+            <div class="status-dropdown-item" data-auctions-filter="ended">
+                <i class="fas fa-check-circle"></i> Ended
+            </div>
+            <div class="status-dropdown-item" data-auctions-filter="my-bids">
+                <i class="fas fa-gavel"></i> My Bids
+            </div>
+        </div>
+
+        <!-- Auctions Activity Panel (slide from bottom) -->
+        <div class="inbox-panel" id="auctionsActivityPanel" style="display: none;">
+            <div class="drag-handle"></div>
+            <div class="panel-header">
+                <h3><i class="fas fa-history"></i> Auction Activity</h3>
+                <button class="panel-close" id="closeActivityPanelBtn">&times;</button>
+            </div>
+            <div class="panel-content" id="auctionsActivityContent" style="padding: 16px;">
+                <div class="loading-placeholder">Memuat aktivitas...</div>
+            </div>
+        </div>
+        
         <!-- ==================== MODALS (Tetap di bawah) ==================== -->
         
         <!-- Panel Inbox (slide from bottom) -->
