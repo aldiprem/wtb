@@ -37,6 +37,7 @@ from giveaway.services.create_service import create_bp, set_bot_client
 from winedash.services.web_service import winedash_bp
 from winedash.services.offers_service import offers_bp
 from winedash.services.auctions_service import auctions_bp
+from winedash.services.debug_service import debug_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -244,8 +245,13 @@ app.register_blueprint(create_bp, url_prefix='/api/giveaway')
 app.register_blueprint(winedash_bp, url_prefix='/api/winedash')
 app.register_blueprint(offers_bp)
 app.register_blueprint(auctions_bp)
+app.register_blueprint(debug_bp)
 
 # ==================== WINEDASH ROUTES ====================
+@app.route('/winedash/debug')
+def serve_debug_page():
+    """Halaman debug console untuk melihat logs user"""
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'html'), 'debug.html')
 
 @app.route('/winedash/offers')
 def serve_winedash_offers():
