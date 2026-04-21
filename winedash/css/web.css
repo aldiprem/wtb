@@ -3013,8 +3013,8 @@ body {
     -webkit-overscroll-behavior-y: none !important;
 }
 
-.storage-container,
 .winedash-container,
+.storage-container,
 .fullscreen-page,
 .fullscreen-content {
     overscroll-behavior: contain !important;

@@ -3782,7 +3782,7 @@
             });
         }
         
-        // Disable vertical swipes saat di halaman utama (optional)
+        // Disable vertical swipes saat di halaman utama
         if (typeof tg.disableVerticalSwipes === 'function') {
             tg.disableVerticalSwipes();
         }

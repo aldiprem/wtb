@@ -1717,26 +1717,34 @@
             return;
         }
         
-        // Gunakan CSS variables yang disediakan Telegram sebagai fallback
         const root = document.documentElement;
         
-        // Baca dari CSS variables Telegram jika ada
-        const topInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
-        const bottomInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
-        const leftInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
-        const rightInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
+        // Baca dari CSS variables sebagai fallback
+        let safeTop = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
+        let safeBottom = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
+        let safeLeft = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
+        let safeRight = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
         
-        // Baca dari objek safeAreaInset (Bot API 8.0+)
-        let safeTop = topInset;
-        let safeBottom = bottomInset;
-        let safeLeft = leftInset;
-        let safeRight = rightInset;
-        
+        // Gunakan safeAreaInset dari Telegram (Bot API 8.0+)
         if (tg.safeAreaInset) {
             safeTop = tg.safeAreaInset.top || safeTop;
             safeBottom = tg.safeAreaInset.bottom || safeBottom;
             safeLeft = tg.safeAreaInset.left || safeLeft;
             safeRight = tg.safeAreaInset.right || safeRight;
+        }
+        
+        // ============ PERBAIKAN UTAMA: Gunakan contentSafeAreaInset ============
+        let contentTop = safeTop;
+        let contentBottom = safeBottom;
+        let contentLeft = safeLeft;
+        let contentRight = safeRight;
+        
+        // contentSafeAreaInset adalah safe area untuk konten, bebas dari UI Telegram
+        if (tg.contentSafeAreaInset) {
+            contentTop = tg.contentSafeAreaInset.top || safeTop;
+            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
+            contentLeft = tg.contentSafeAreaInset.left || safeLeft;
+            contentRight = tg.contentSafeAreaInset.right || safeRight;
         }
         
         // Terapkan ke body
@@ -1745,22 +1753,40 @@
         document.body.style.paddingLeft = `${safeLeft}px`;
         document.body.style.paddingRight = `${safeRight}px`;
         
-        // Untuk container, gunakan contentSafeAreaInset
-        let contentTop = safeTop;
-        let contentBottom = safeBottom;
-        
-        if (tg.contentSafeAreaInset) {
-            contentTop = tg.contentSafeAreaInset.top || safeTop;
-            contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
-        }
-        
+        // Terapkan ke container utama
         const container = document.querySelector('.winedash-container');
         if (container) {
             container.style.paddingTop = `${contentTop + 16}px`;
             container.style.paddingBottom = `${contentBottom + 90}px`;
         }
         
-        console.log('✅ Safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
+        // ============ PERBAIKAN UNTUK FULLSCREEN ============
+        const fullscreenPage = document.querySelector('.fullscreen-page');
+        if (fullscreenPage) {
+            fullscreenPage.style.paddingTop = `${safeTop}px`;
+            fullscreenPage.style.paddingBottom = `${safeBottom}px`;
+            fullscreenPage.style.paddingLeft = `${safeLeft}px`;
+            fullscreenPage.style.paddingRight = `${safeRight}px`;
+        }
+        
+        // Perbaiki header fullscreen jika ada
+        const fullscreenHeader = document.querySelector('.fullscreen-page .fullscreen-header');
+        if (fullscreenHeader) {
+            fullscreenHeader.style.paddingTop = `${contentTop + 16}px`;
+            fullscreenHeader.style.paddingLeft = `${contentLeft + 16}px`;
+            fullscreenHeader.style.paddingRight = `${contentRight + 16}px`;
+        }
+        
+        // Perbaiki content fullscreen jika ada
+        const fullscreenContent = document.querySelector('.fullscreen-page .fullscreen-content');
+        if (fullscreenContent) {
+            fullscreenContent.style.paddingBottom = `${contentBottom + 20}px`;
+        }
+        
+        console.log('[WEB] Safe area applied:', { 
+            safeTop, safeBottom, 
+            contentTop, contentBottom
+        });
     }
 
     function initSafeArea() {
@@ -1774,22 +1800,33 @@
         setTimeout(applySafeAreaInsets, 50);
         applySafeAreaInsets();
         
-        // Listen for safe area changes
+        // ============ PERBAIKAN: Listen untuk contentSafeAreaChanged ============
         if (tg.onEvent) {
             tg.onEvent('safeAreaChanged', () => {
-                console.log('safeAreaChanged event received');
+                console.log('[WEB] safeAreaChanged event received');
                 applySafeAreaInsets();
             });
             
             tg.onEvent('contentSafeAreaChanged', () => {
-                console.log('contentSafeAreaChanged event received');
+                console.log('[WEB] contentSafeAreaChanged event received');
                 applySafeAreaInsets();
             });
             
             tg.onEvent('viewportChanged', () => {
-                console.log('viewportChanged event received');
+                console.log('[WEB] viewportChanged event received');
                 applySafeAreaInsets();
             });
+            
+            // ============ TAMBAHAN: Listen untuk fullscreen change ============
+            tg.onEvent('fullscreenChanged', () => {
+                console.log('[WEB] fullscreenChanged event received');
+                setTimeout(applySafeAreaInsets, 100);
+            });
+        }
+        
+        // ============ PERBAIKAN: Disable vertical swipes ============
+        if (typeof tg.disableVerticalSwipes === 'function') {
+            tg.disableVerticalSwipes();
         }
     }
 
@@ -3521,18 +3558,38 @@
         }
     }
 
+    function setupClosingBehavior() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        // Enable closing confirmation
+        if (typeof tg.enableClosingConfirmation === 'function') {
+            tg.enableClosingConfirmation();
+        }
+        
+        // Disable vertical swipe agar tidak konflik
+        if (typeof tg.disableVerticalSwipes === 'function') {
+            tg.disableVerticalSwipes();
+        }
+        
+        // Expand to full height
+        if (typeof tg.expand === 'function') {
+            tg.expand();
+        }
+        
+        console.log('[WEB] Closing behavior configured');
+    }
+
     async function init() {
         console.log('🍷 Winedash Marketplace - Initializing...');
         
         initTelegram();
+        setupClosingBehavior();
         initSafeArea();
         showLoading(true);
         
         try {
-            // Setup DOM elements
             setupDomReferences();
-            
-            // Setup event listeners
             setupTabs();
             setupEventListeners();
             setupSearch();
@@ -3577,36 +3634,6 @@
             showLoading(false);
             console.log('✅ Winedash Marketplace initialized');
         }
-    }
-
-    function setupClosingBehavior() {
-        const tg = window.Telegram?.WebApp;
-        if (!tg) return;
-        
-        if (typeof tg.setupClosingBehavior === 'function') {
-            tg.setupClosingBehavior({
-                need_confirmation: true
-            }).catch(err => {
-                console.warn('setupClosingBehavior not supported:', err);
-            });
-        }
-        
-        // Enable closing confirmation
-        if (typeof tg.enableClosingConfirmation === 'function') {
-            tg.enableClosingConfirmation();
-        }
-        
-        // Disable vertical swipe
-        if (typeof tg.disableVerticalSwipes === 'function') {
-            tg.disableVerticalSwipes();
-        }
-        
-        // Expand to full height
-        if (typeof tg.expand === 'function') {
-            tg.expand();
-        }
-        
-        console.log('✅ Closing behavior configured');
     }
 
     function setupDomReferences() {

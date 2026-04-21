@@ -532,11 +532,12 @@
             await new Promise(resolve => setTimeout(resolve, 100));
         }
     }
-    
+        
     function renderAuctionsEmpty() {
         if (!auctionsContainer) return;
         
         let emptyMessage = '';
+        let emptyIcon = 'fa-gavel';
         switch (currentAuctionTab) {
             case 'active':
                 emptyMessage = 'Tidak ada auction aktif';
@@ -554,20 +555,22 @@
                 emptyMessage = 'Tidak ada data';
         }
         
+        // ============ PERBAIKAN: Gunakan animasi TGS ============
         auctionsContainer.innerHTML = `
             <div class="offers-empty-state">
-                <div class="offers-empty-animation" id="auctionsEmptyAnimation"></div>
+                <div class="offers-empty-animation" id="auctionsEmptyAnimation" style="width: 120px; height: 120px; margin: 0 auto 20px auto;"></div>
                 <div class="offers-empty-title">No Auctions</div>
                 <div class="offers-empty-subtitle">${emptyMessage}</div>
             </div>
         `;
         
+        // Load animasi TGS
         const animContainer = document.getElementById('auctionsEmptyAnimation');
         if (animContainer) {
-            animContainer.innerHTML = '<i class="fas fa-gavel" style="font-size: 48px; color: var(--text-muted);"></i>';
+            loadTGSAnimation(animContainer);
         }
     }
-    
+
     // ==================== TIMER MANAGEMENT ====================
     
     function startTimers() {
@@ -1214,6 +1217,94 @@
                 hapticLight();
             }
         });
+    }
+
+    function loadTGSAnimation(container) {
+        if (!container) return;
+        
+        // Clear container
+        container.innerHTML = '';
+        container.style.width = '120px';
+        container.style.height = '120px';
+        container.style.margin = '0 auto';
+        container.style.display = 'flex';
+        container.style.justifyContent = 'center';
+        container.style.alignItems = 'center';
+        
+        // Load libraries yang diperlukan
+        loadLibrariesForTGS().then(() => {
+            loadTGSAuctionFile(container);
+        }).catch(err => {
+            console.error('Error loading libraries:', err);
+            container.innerHTML = '<i class="fas fa-gavel" style="font-size: 48px; color: var(--text-muted);"></i>';
+        });
+    }
+
+    function loadLibrariesForTGS() {
+        return new Promise((resolve, reject) => {
+            let loaded = 0;
+            let total = 2;
+            
+            function checkLoaded() {
+                loaded++;
+                if (loaded === total) resolve();
+            }
+            
+            // Load lottie-web
+            if (typeof window.lottie === 'undefined') {
+                const lottieScript = document.createElement('script');
+                lottieScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js';
+                lottieScript.onload = checkLoaded;
+                lottieScript.onerror = reject;
+                document.head.appendChild(lottieScript);
+            } else {
+                checkLoaded();
+            }
+            
+            // Load pako
+            if (typeof window.pako === 'undefined') {
+                const pakoScript = document.createElement('script');
+                pakoScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js';
+                pakoScript.onload = checkLoaded;
+                pakoScript.onerror = reject;
+                document.head.appendChild(pakoScript);
+            } else {
+                checkLoaded();
+            }
+        });
+    }
+
+    async function loadTGSAuctionFile(container) {
+        try {
+            // Fetch file .tgs dari path yang benar: /image/empty-auctions.tgs
+            const response = await fetch('/image/empty-auctions.tgs');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const arrayBuffer = await response.arrayBuffer();
+            const compressed = new Uint8Array(arrayBuffer);
+            
+            // Decompress dengan pako
+            const decompressed = window.pako.ungzip(compressed, { to: 'string' });
+            const animationData = JSON.parse(decompressed);
+            
+            // Render dengan lottie
+            window.lottie.loadAnimation({
+                container: container,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                animationData: animationData,
+                rendererSettings: {
+                    preserveAspectRatio: 'xMidYMid meet'
+                }
+            });
+        } catch (error) {
+            console.error('Error loading TGS file for auctions:', error);
+            container.innerHTML = '<i class="fas fa-gavel" style="font-size: 48px; color: var(--text-muted);"></i>';
+        }
     }
 
     // ==================== INITIALIZATION ====================
