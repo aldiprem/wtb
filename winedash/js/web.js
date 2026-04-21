@@ -1805,7 +1805,7 @@
     }
 
     // ==================== TABS ====================
-            
+                
     function setupTabs() {
         elements.tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1832,14 +1832,29 @@
                 } else if (tabId === 'marketplace') {
                     loadUsernames();
                 } else if (tabId === 'wallet') {
-                    // Refresh wallet UI jika perlu
-                    if (tonConnectUI) {
-                        updateWalletUI();
-                        updateBalanceCardUI();
-                        updateWalletMainUI();  // PASTIKAN INI ADA
+                    // PERBAIKAN: Refresh wallet UI saat tab wallet diakses
+                    console.log('[WEB] Wallet tab activated, refreshing UI...');
+                    
+                    // Update wallet main UI
+                    updateWalletMainUI();
+                    
+                    // Update balance card UI
+                    updateBalanceCardUI();
+                    
+                    // Refresh TON wallet balance if connected
+                    if (isWalletConnected && walletAddress) {
+                        refreshTonWalletBalance();
                     }
-                    // Refresh wallet balance
-                    refreshTonWalletBalance();
+                    
+                    // Refresh marketplace balance
+                    if (telegramUser) {
+                        getMarketplaceBalance().then(balance => {
+                            const walletBalanceAmount = document.getElementById('walletBalanceAmount');
+                            if (walletBalanceAmount) {
+                                walletBalanceAmount.textContent = balance.toFixed(2);
+                            }
+                        });
+                    }
                 }
             });
         });
@@ -3179,12 +3194,6 @@
             };
             fetchBalance();
             
-            // Sembunyikan section-card lama yang berisi wallet info (jika ada)
-            const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
-            if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
-                oldWalletSection.style.display = 'none';
-            }
-            
         } else {
             // Wallet belum terhubung - tampilkan status not connected
             if (walletAddressDisplay) {
@@ -3192,12 +3201,6 @@
             }
             if (walletBalanceAmount) {
                 walletBalanceAmount.textContent = '0.00';
-            }
-            
-            // Sembunyikan section-card lama (jika ada)
-            const oldWalletSection = document.querySelector('#walletTab .section-card:first-child');
-            if (oldWalletSection && oldWalletSection.querySelector('#ton-connect')) {
-                oldWalletSection.style.display = 'none';
             }
         }
     }
@@ -3681,7 +3684,7 @@
             setupEventListeners();
             setupSearch();
             setupWalletEventListeners();
-            initWalletPanels();
+            initWalletPanels();  // PERBAIKAN: Pastikan ini dipanggil
             setupMarketplaceFilterBar();
             setupMarketFilterHeaderButton();
             
@@ -3708,7 +3711,8 @@
             
             // Initialize TON Connect
             await initTonConnect();
-                        
+            
+            // PERBAIKAN: Update wallet UI setelah TON Connect siap
             setTimeout(() => {
                 if (isWalletConnected) {
                     updateWalletMainUI();
@@ -3718,10 +3722,10 @@
                 // Pastikan wallet tab memiliki konten
                 const walletTabBtn = document.querySelector('.tab-btn[data-tab="wallet"]');
                 if (walletTabBtn && walletTabBtn.classList.contains('active')) {
-                    // Jika wallet tab aktif, refresh UI
                     updateWalletMainUI();
                 }
             }, 500);
+            
         } catch (error) {
             console.error('❌ Error in init:', error);
             if (elements.usernameList) {
