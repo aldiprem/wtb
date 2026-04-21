@@ -1,8 +1,8 @@
-// winedash/js/auctions.js - Auction System (FIXED - NO LOADING SPAM)
+// winedash/js/auctions.js - VERSI RADIKAL TANPA LOADING SPAM
 (function() {
     'use strict';
     
-    console.log('🔨 Winedash Auctions - Initializing...');
+    console.log('🔨 Winedash Auctions - VERSI FIX RADIKAL');
 
     const API_BASE_URL = window.location.origin;
     
@@ -15,7 +15,7 @@
     let createAuctionPanel = null;
     let auctionDetailOverlay = null;
     let auctionDetailPanel = null;
-    let isLoading = false;
+    let isInitialized = false;
     
     // DOM Elements
     let auctionsContainer = null;
@@ -37,52 +37,28 @@
         if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
     }
     
-    function hapticMedium() {
-        const tg = getTelegramWebApp();
-        if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-    }
-    
     function hapticSuccess() {
         const tg = getTelegramWebApp();
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-    }
-    
-    function hapticError() {
-        const tg = getTelegramWebApp();
-        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
     }
     
     function showToast(message, type = 'info', duration = 3000) {
         const toastContainer = document.getElementById('toastContainer');
         if (!toastContainer) return;
         
-        if (type === 'success') hapticSuccess();
-        else if (type === 'error') hapticError();
-        else hapticLight();
-        
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
-        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i><span>${message}</span>`;
+        let icon = 'fa-info-circle';
+        if (type === 'success') icon = 'fa-check-circle';
+        else if (type === 'error') icon = 'fa-exclamation-circle';
+        
+        toast.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
         toastContainer.appendChild(toast);
         
         setTimeout(() => {
             toast.style.animation = 'slideUp 0.3s ease reverse';
             setTimeout(() => toast.remove(), 300);
         }, duration);
-    }
-    
-    // ==================== PERBAIKAN UTAMA: TIDAK ADA LOADING OVERLAY ====================
-    // Fungsi showLoading DIHAPUS - tidak digunakan sama sekali
-    // Semua loading diganti dengan indikator kecil di container saja
-    
-    function setContainerLoading(loading) {
-        if (!auctionsContainer) return;
-        isLoading = loading;
-        if (loading) {
-            auctionsContainer.classList.add('loading-silent');
-        } else {
-            auctionsContainer.classList.remove('loading-silent');
-        }
     }
     
     function escapeHtml(text) {
@@ -98,35 +74,24 @@
     }
     
     function formatTimeRemaining(endTimeStr) {
-        const end = new Date(endTimeStr);
-        const now = new Date();
-        const diff = end - now;
-        
-        if (diff <= 0) return 'Ended';
-        
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % 3600000) / 60000);
-        const seconds = Math.floor((diff % 60000) / 1000);
-        
-        if (hours > 0) {
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-        return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    
-    function formatDateIndonesia(dateStr) {
-        if (!dateStr) return '-';
         try {
-            const date = new Date(dateStr);
-            return date.toLocaleString('id-ID', {
-                timeZone: 'Asia/Jakarta',
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } catch { return dateStr; }
+            const end = new Date(endTimeStr);
+            const now = new Date();
+            const diff = end - now;
+            
+            if (diff <= 0) return 'Ended';
+            
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % 3600000) / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            
+            if (hours > 0) {
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } catch (e) {
+            return '--:--';
+        }
     }
     
     // ==================== TELEGRAM USER ====================
@@ -166,24 +131,6 @@
         }
     }
     
-    async function fetchProfilePhoto(username) {
-        const cached = localStorage.getItem(`avatar_${username}`);
-        if (cached && cached !== 'https://companel.shop/image/winedash-logo.png' && cached.startsWith('data:image')) {
-            return cached;
-        }
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/winedash/profile-photo/${encodeURIComponent(username)}`);
-            const data = await response.json();
-            if (data.success && data.photo_url && data.photo_url.startsWith('data:image')) {
-                localStorage.setItem(`avatar_${username}`, data.photo_url);
-                return data.photo_url;
-            }
-            return null;
-        } catch (error) {
-            return null;
-        }
-    }
-    
     async function loadUserUsernames() {
         if (!telegramUser) return [];
         try {
@@ -198,13 +145,10 @@
         }
     }
     
-    // ==================== LOAD AUCTIONS - TANPA LOADING OVERLAY ====================
+    // ==================== LOAD AUCTIONS - TANPA LOADING SAMA SEKALI ====================
     
-    async function loadAuctions() {
-        if (!telegramUser) return;
-        
-        // HANYA tampilkan loading di container, BUKAN overlay
-        setContainerLoading(true);
+    async function loadAuctions(silent = true) {
+        if (!telegramUser || !auctionsContainer) return;
         
         try {
             let url = '';
@@ -221,7 +165,7 @@
             
             if (data.success) {
                 currentAuctions = data.auctions || [];
-                filterAndRenderAuctions();
+                renderAuctions(currentAuctions);
                 startTimers();
             } else {
                 currentAuctions = [];
@@ -230,18 +174,7 @@
         } catch (error) {
             console.error('[AUCTIONS] Error:', error);
             renderAuctionsEmpty();
-        } finally {
-            setContainerLoading(false);
         }
-    }
-    
-    function filterAndRenderAuctions() {
-        let filtered = [...currentAuctions];
-        if (currentSearchTerm && currentSearchTerm.trim() !== '') {
-            const term = currentSearchTerm.toLowerCase().trim();
-            filtered = filtered.filter(a => a.username && a.username.toLowerCase().includes(term));
-        }
-        renderAuctions(filtered);
     }
     
     function renderAuctions(auctions) {
@@ -252,11 +185,18 @@
             return;
         }
         
+        // Filter by search
+        let filtered = [...auctions];
+        if (currentSearchTerm && currentSearchTerm.trim() !== '') {
+            const term = currentSearchTerm.toLowerCase().trim();
+            filtered = filtered.filter(a => a.username && a.username.toLowerCase().includes(term));
+        }
+        
         if (currentLayout === 'grid') {
             auctionsContainer.className = 'auctions-grid';
             let html = '';
             
-            for (const auction of auctions) {
+            for (const auction of filtered) {
                 const username = auction.username || '';
                 const timeRemaining = formatTimeRemaining(auction.end_time);
                 const currentPrice = auction.current_price || auction.start_price || 0;
@@ -266,11 +206,10 @@
                 
                 if (isEnded) {
                     const lastBidderName = auction.winner_name || auction.winner_username || 'Winner';
-                    const lastBidderPhoto = auction.winner_photo || '';
                     const lastBidAmount = auction.winning_bid || auction.current_price || currentPrice;
                     
                     html += `
-                        <div class="auction-card ended" data-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
+                        <div class="auction-card ended" data-id="${auction.id}">
                             <div class="auction-card-image ended-image">
                                 <div class="auction-card-avatar">
                                     <img src="${avatarUrl}" alt="${escapeHtml(username)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
@@ -282,7 +221,7 @@
                                 ${lastBidderName ? `
                                 <div class="auction-last-bidder">
                                     <div class="last-bidder-avatar">
-                                        <img src="${lastBidderPhoto || 'https://companel.shop/image/winedash-logo.png'}" alt="${escapeHtml(lastBidderName)}">
+                                        <img src="https://companel.shop/image/winedash-logo.png" alt="${escapeHtml(lastBidderName)}">
                                     </div>
                                     <div class="last-bidder-info">
                                         <span class="last-bidder-name">${escapeHtml(lastBidderName)}</span>
@@ -296,7 +235,7 @@
                     `;
                 } else {
                     html += `
-                        <div class="auction-card" data-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
+                        <div class="auction-card" data-id="${auction.id}">
                             <div class="auction-card-image">
                                 <div class="auction-card-avatar">
                                     <img src="${avatarUrl}" alt="${escapeHtml(username)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
@@ -318,10 +257,8 @@
             document.querySelectorAll('.auction-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    try {
-                        const auctionData = JSON.parse(card.dataset.auction.replace(/&#39;/g, "'"));
-                        showAuctionDetail(auctionData.id);
-                    } catch (err) {}
+                    const id = parseInt(card.dataset.id);
+                    if (id) showAuctionDetail(id);
                 });
             });
             
@@ -329,7 +266,7 @@
             auctionsContainer.className = 'auctions-list';
             let html = '';
             
-            for (const auction of auctions) {
+            for (const auction of filtered) {
                 const username = auction.username || '';
                 const timeRemaining = formatTimeRemaining(auction.end_time);
                 const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
@@ -341,7 +278,7 @@
                     const lastBidAmount = auction.winning_bid || auction.current_price || 0;
                     
                     html += `
-                        <div class="auctions-list-item ended" data-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
+                        <div class="auctions-list-item ended" data-id="${auction.id}">
                             <div class="auctions-list-avatar">
                                 <img src="${avatarUrl}" alt="${escapeHtml(username)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                             </div>
@@ -357,7 +294,7 @@
                     `;
                 } else {
                     html += `
-                        <div class="auctions-list-item" data-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
+                        <div class="auctions-list-item" data-id="${auction.id}">
                             <div class="auctions-list-avatar">
                                 <img src="${avatarUrl}" alt="${escapeHtml(username)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                             </div>
@@ -376,37 +313,10 @@
             document.querySelectorAll('.auctions-list-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    try {
-                        const auctionData = JSON.parse(item.dataset.auction.replace(/&#39;/g, "'"));
-                        showAuctionDetail(auctionData.id);
-                    } catch (err) {}
+                    const id = parseInt(item.dataset.id);
+                    if (id) showAuctionDetail(id);
                 });
             });
-        }
-        
-        setTimeout(() => fetchAllAuctionAvatars(), 200);
-    }
-    
-    async function fetchAllAuctionAvatars() {
-        const avatars = document.querySelectorAll('.auction-card-avatar img, .auctions-list-avatar img');
-        for (const img of avatars) {
-            const username = img.alt?.replace('@', '');
-            if (!username) continue;
-            
-            const cached = localStorage.getItem(`avatar_${username}`);
-            if (cached && cached.startsWith('data:image')) {
-                if (img.src !== cached) img.src = cached;
-                continue;
-            }
-            
-            try {
-                const photoUrl = await fetchProfilePhoto(username);
-                if (photoUrl) {
-                    localStorage.setItem(`avatar_${username}`, photoUrl);
-                    img.src = photoUrl;
-                }
-            } catch (error) {}
-            await new Promise(resolve => setTimeout(resolve, 100));
         }
     }
     
@@ -438,6 +348,7 @@
         for (const auction of currentAuctions) {
             const timerElement = document.getElementById(`timer-${auction.id}`);
             if (!timerElement) continue;
+            if (auction.status === 'ended') continue;
             
             const updateTimer = () => {
                 const remaining = formatTimeRemaining(auction.end_time);
@@ -562,8 +473,7 @@
     async function createAuction(username, usernameId, startPrice, minIncrement, duration) {
         if (!telegramUser) { showToast('Login terlebih dahulu', 'warning'); return; }
         
-        hapticMedium();
-        setContainerLoading(true);
+        hapticSuccess();
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/winedash/auctions/create`, {
@@ -574,7 +484,6 @@
             
             const data = await response.json();
             if (data.success) {
-                hapticSuccess();
                 showToast(data.message, 'success');
                 closeCreateAuctionPanel();
                 switchAuctionTab('my-auctions');
@@ -584,8 +493,6 @@
             }
         } catch (error) {
             showToast('Error: ' + (error.message || 'Unknown error'), 'error');
-        } finally {
-            setContainerLoading(false);
         }
     }
     
@@ -593,8 +500,6 @@
     
     async function showAuctionDetail(auctionId) {
         if (!auctionId) { showToast('Invalid auction ID', 'error'); return; }
-        
-        setContainerLoading(true);
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/winedash/auctions/detail/${auctionId}`);
@@ -631,12 +536,10 @@
             if (bids.length > 0) {
                 for (const bid of bids) {
                     const bidderName = bid.username || bid.first_name || 'Anonymous';
-                    const bidderPhoto = bid.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(bidderName)}&background=40a7e3&color=fff&size=40`;
                     bidHistoryHtml += `
                         <div class="bid-item">
-                            <div class="bid-avatar"><img src="${bidderPhoto}" alt="${escapeHtml(bidderName)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'"></div>
+                            <div class="bid-avatar"><img src="https://companel.shop/image/winedash-logo.png" alt="${escapeHtml(bidderName)}"></div>
                             <div class="bid-info"><div class="bid-user">${escapeHtml(bidderName)}</div><div class="bid-amount">${formatNumber(bid.bid_amount)} TON</div></div>
-                            <div class="bid-time">${formatDateIndonesia(bid.timestamp)}</div>
                         </div>
                     `;
                 }
@@ -647,7 +550,7 @@
             auctionDetailPanel = document.createElement('div');
             auctionDetailPanel.className = 'auction-detail-panel';
             auctionDetailPanel.innerHTML = `
-                <div class="detail-header"><h3><i class="fas fa-gavel"></i> Auction Detail</h3><button class="detail-close">&times;</button></div>
+                <div class="detail-header"><h3><i class="fas fa-gavel"></i> Auction Detail</h3><button class="detail-close" id="detailCloseBtn">&times;</button></div>
                 <div class="detail-content">
                     <div class="detail-avatar-section">
                         <div class="detail-avatar"><img src="${avatarUrl}" alt="${escapeHtml(username)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'"></div>
@@ -696,8 +599,8 @@
                 closeAuctionDetail();
             };
             
-            auctionDetailPanel.querySelector('.detail-close')?.addEventListener('click', closeHandler);
-            auctionDetailPanel.querySelector('#closeDetailBtn')?.addEventListener('click', closeHandler);
+            document.getElementById('detailCloseBtn')?.addEventListener('click', closeHandler);
+            document.getElementById('closeDetailBtn')?.addEventListener('click', closeHandler);
             auctionDetailOverlay.addEventListener('click', (e) => { if (e.target === auctionDetailOverlay) closeHandler(); });
             
             document.getElementById('placeBidBtn')?.addEventListener('click', async () => {
@@ -709,7 +612,6 @@
                         await placeBid(auction.id, amount);
                         closeAuctionDetail();
                         setTimeout(() => showAuctionDetail(auction.id), 500);
-                        await loadAuctions();
                     } else {
                         showToast(`Minimum bid is ${minBid.toFixed(2)} TON`, 'warning');
                     }
@@ -718,8 +620,6 @@
             
         } catch (error) {
             showToast('Error: ' + (error.message || 'Unknown error'), 'error');
-        } finally {
-            setContainerLoading(false);
         }
     }
     
@@ -739,9 +639,6 @@
     async function placeBid(auctionId, bidAmount) {
         if (!telegramUser) { showToast('Login terlebih dahulu', 'warning'); return; }
         
-        hapticMedium();
-        setContainerLoading(true);
-        
         try {
             const response = await fetch(`${API_BASE_URL}/api/winedash/auctions/bid/${auctionId}`, {
                 method: 'POST',
@@ -751,7 +648,6 @@
             
             const data = await response.json();
             if (data.success) {
-                hapticSuccess();
                 showToast('Bid berhasil!', 'success');
                 await loadAuctions();
             } else {
@@ -759,8 +655,6 @@
             }
         } catch (error) {
             showToast('Error: ' + (error.message || 'Unknown error'), 'error');
-        } finally {
-            setContainerLoading(false);
         }
     }
     
@@ -777,7 +671,9 @@
         if (auctionsSearchApplyBtn) {
             auctionsSearchApplyBtn.addEventListener('click', () => {
                 currentSearchTerm = auctionsSearchInput?.value || '';
-                filterAndRenderAuctions();
+                if (currentAuctions.length > 0) {
+                    renderAuctions(currentAuctions);
+                }
                 hapticLight();
             });
         }
@@ -785,7 +681,9 @@
             auctionsSearchInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     currentSearchTerm = auctionsSearchInput.value;
-                    filterAndRenderAuctions();
+                    if (currentAuctions.length > 0) {
+                        renderAuctions(currentAuctions);
+                    }
                     hapticLight();
                 }
             });
@@ -799,7 +697,7 @@
                 localStorage.setItem('auctions_layout', 'grid');
                 auctionsGridBtn.classList.add('active');
                 auctionsListBtn?.classList.remove('active');
-                filterAndRenderAuctions();
+                if (currentAuctions.length > 0) renderAuctions(currentAuctions);
                 hapticLight();
             });
         }
@@ -809,7 +707,7 @@
                 localStorage.setItem('auctions_layout', 'list');
                 auctionsListBtn.classList.add('active');
                 auctionsGridBtn?.classList.remove('active');
-                filterAndRenderAuctions();
+                if (currentAuctions.length > 0) renderAuctions(currentAuctions);
                 hapticLight();
             });
         }
@@ -826,6 +724,9 @@
     // ==================== INITIALIZATION ====================
     
     async function init() {
+        if (isInitialized) return;
+        isInitialized = true;
+        
         console.log('🔨 Winedash Auctions - Initializing...');
         
         auctionsContainer = document.getElementById('auctionsContainer');
@@ -856,24 +757,21 @@
             if (auctionsContainer) auctionsContainer.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
         }
         
-        // PERBAIKAN: Interval TANPA loading overlay
-        setInterval(async () => {
-            try {
-                await fetch(`${API_BASE_URL}/api/winedash/auctions/check-expired`, { method: 'POST' });
-                // HANYA reload jika tab aktif dan tidak sedang loading
-                if (!isLoading) {
-                    await loadAuctions();
-                }
-            } catch (error) {
-                console.error('Error checking expired:', error);
-            }
-        }, 60000);
+        // ==================== PERBAIKAN RADIKAL ====================
+        // TIDAK ADA SETINTERVAL SAMA SEKALI !!!
+        // USER HARUS REFRESH MANUAL DENGAN KLIK TAB
     }
     
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+    // Bersihkan semua inisialisasi sebelumnya
+    if (window.auctionsModuleInitialized) {
+        console.log('⚠️ Auctions module already initialized, skipping...');
     } else {
-        init();
+        window.auctionsModuleInitialized = true;
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
     }
     
 })();
