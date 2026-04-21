@@ -436,7 +436,6 @@ def get_my_auctions_endpoint(user_id):
         
         print(f"[AUCTIONS] Found {len(auctions)} auctions for user {user_id}")
         
-        # PERBAIKAN: Gunakan waktu dengan timezone yang sama
         from datetime import datetime
         import pytz
         
@@ -454,16 +453,28 @@ def get_my_auctions_endpoint(user_id):
                     if end_time.tzinfo is None:
                         end_time = tz.localize(end_time)
                     
-                    # Update status jika sudah lewat waktu
                     if auction.get('status') == 'active' and now > end_time:
                         auction['status'] = 'ended'
-                        # Update di database
                         with sqlite3.connect(auctions_db.db_path) as conn:
                             cursor = conn.cursor()
                             cursor.execute('UPDATE auctions SET status = "ended" WHERE id = ?', (auction['id'],))
                             conn.commit()
                 except Exception as e:
                     print(f"Error parsing end_time for auction {auction.get('id')}: {e}")
+        
+        # Tambahkan winner info jika ada
+        with sqlite3.connect(auctions_db.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            for auction in auctions:
+                if auction.get('winner_id'):
+                    cursor.execute('SELECT username, first_name, photo_url FROM users WHERE user_id = ?', (auction['winner_id'],))
+                    winner = cursor.fetchone()
+                    if winner:
+                        auction['winner_username'] = winner['username']
+                        auction['winner_name'] = winner['first_name']
+                        auction['winner_photo'] = winner['photo_url']
         
         return jsonify({
             'success': True,

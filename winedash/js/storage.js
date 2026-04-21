@@ -2223,10 +2223,26 @@
     function loadAuctionsModule() {
         console.log('📦 loadAuctionsModule called');
         
+        // Cek apakah user sudah ada
+        if (!telegramUser || !telegramUser.id) {
+            console.log('⏳ Waiting for telegramUser before loading auctions module...');
+            setTimeout(() => {
+                if (telegramUser && telegramUser.id) {
+                    loadAuctionsModule();
+                } else {
+                    console.error('❌ No telegramUser available for auctions module');
+                    const auctionsContainer = document.getElementById('auctionsContainer');
+                    if (auctionsContainer) {
+                        auctionsContainer.innerHTML = '<div class="loading-placeholder">Tidak dapat memuat auctions. Silakan refresh halaman.</div>';
+                    }
+                }
+            }, 500);
+            return;
+        }
+        
         // Cegah loading berulang
         if (window.auctionsModuleLoaded) {
             console.log('✅ Auctions module already loaded');
-            // Jika sudah loaded, refresh data
             if (typeof window.refreshAuctions === 'function') {
                 console.log('🔄 Refreshing auctions data');
                 window.refreshAuctions();
@@ -2250,7 +2266,7 @@
             console.log('✅ Auctions CSS loaded');
         }
         
-        // Load JS
+        // Hapus script lama jika ada
         const script = document.getElementById('auctions-module-script');
         if (script) {
             script.remove();
@@ -2258,21 +2274,24 @@
         
         const newScript = document.createElement('script');
         newScript.id = 'auctions-module-script';
-        newScript.src = '/winedash/js/auctions.js?v=' + Date.now(); // Tambah cache buster
+        newScript.src = '/winedash/js/auctions.js?v=' + Date.now();
         newScript.onload = () => {
             window.auctionsModuleLoaded = true;
             window.auctionsModuleLoading = false;
             console.log('✅ Auctions module loaded');
             
-            // Inisialisasi auctions setelah script loaded
             setTimeout(() => {
                 if (typeof window.initAuctions === 'function') {
                     console.log('🚀 Calling window.initAuctions with telegramUser:', telegramUser);
                     window.initAuctions(telegramUser);
                 } else {
                     console.error('❌ window.initAuctions not found after loading auctions.js');
+                    const auctionsContainer = document.getElementById('auctionsContainer');
+                    if (auctionsContainer) {
+                        auctionsContainer.innerHTML = '<div class="loading-placeholder">Error: Module tidak terload dengan benar. Refresh halaman.</div>';
+                    }
                 }
-            }, 100);
+            }, 200);
         };
         newScript.onerror = () => {
             window.auctionsModuleLoading = false;
