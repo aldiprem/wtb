@@ -198,14 +198,45 @@
             </div>
         </div>
 
-        <div class="inbox-panel" id="auctionsActivityPanel" style="display: none;">
-            <div class="drag-handle"></div>
-            <div class="panel-header">
-                <h3><i class="fas fa-history"></i> Auction Activity</h3>
-                <button class="panel-close" id="closeActivityPanelBtn">&times;</button>
+        <div id="auctionsActivityFullscreen" class="fullscreen-page" style="display: none;">
+            <div class="fullscreen-header">
+                <div class="fullscreen-header-left">
+                    <button class="back-btn-fullscreen" id="backFromActivityBtn">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-history"></i> Auction Activity</h2>
+                </div>
+                <button class="close-fullscreen-btn" id="closeActivityFullscreenBtn">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
-            <div class="panel-content" style="padding: 16px;">
-                <div id="auctionsActivityContainer" style="width: 100%; min-height: 300px;">
+            <div class="fullscreen-content">
+                <!-- Tabs Navigation -->
+                <div class="activity-tabs-fullscreen">
+                    <button class="activity-tab-fullscreen active" data-activity-tab="my-auctions">
+                        <i class="fas fa-gavel"></i>
+                        <span>My Auctions</span>
+                    </button>
+                    <button class="activity-tab-fullscreen" data-activity-tab="my-bids">
+                        <i class="fas fa-history"></i>
+                        <span>My Bids</span>
+                    </button>
+                    <button class="activity-tab-fullscreen" data-activity-tab="ended">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Ended</span>
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="activity-search-fullscreen">
+                    <div class="search-container-fullscreen">
+                        <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
+                        <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
+                    </div>
+                </div>
+
+                <!-- Activity Container -->
+                <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
                     <div class="loading-placeholder">Memuat aktivitas...</div>
                 </div>
             </div>

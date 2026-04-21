@@ -2366,80 +2366,395 @@
         const filterBtn = document.getElementById('auctionsFilterBtn');
         const activityBtn = document.getElementById('auctionsActivityBtn');
         let filterDropdown = document.getElementById('auctionsFilterDropdown');
-        let activityPanel = document.getElementById('auctionsActivityPanel');
-        let activityOverlay = null;
         let currentAuctionsFilter = 'all';
-        let activityModuleLoaded = false;
+        let activityFullscreen = null;
+        let currentActivityTab = 'my-auctions';
+        let activityActivities = [];
+        let activitySearchTerm = '';
         
-        // Buat overlay untuk activity panel
-        function createActivityOverlay() {
-            if (!activityOverlay) {
-                activityOverlay = document.createElement('div');
-                activityOverlay.className = 'inbox-overlay';
-                document.body.appendChild(activityOverlay);
-                activityOverlay.addEventListener('click', closeActivityPanel);
+        // ==================== CREATE FULLSCREEN ACTIVITY PAGE ====================
+        
+        function createFullscreenActivityPage() {
+            // Hapus jika sudah ada
+            if (activityFullscreen) {
+                activityFullscreen.remove();
             }
-            return activityOverlay;
+            
+            const fullscreenDiv = document.createElement('div');
+            fullscreenDiv.id = 'auctionsActivityFullscreen';
+            fullscreenDiv.className = 'fullscreen-page';
+            fullscreenDiv.innerHTML = `
+                <div class="fullscreen-header">
+                    <div class="fullscreen-header-left">
+                        <button class="back-btn-fullscreen" id="backFromActivityBtn">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <h2><i class="fas fa-history"></i> Auction Activity</h2>
+                    </div>
+                    <button class="close-fullscreen-btn" id="closeActivityFullscreenBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="fullscreen-content">
+                    <div class="activity-tabs-fullscreen">
+                        <button class="activity-tab-fullscreen active" data-activity-tab="my-auctions">
+                            <i class="fas fa-gavel"></i>
+                            <span>My Auctions</span>
+                        </button>
+                        <button class="activity-tab-fullscreen" data-activity-tab="my-bids">
+                            <i class="fas fa-history"></i>
+                            <span>My Bids</span>
+                        </button>
+                        <button class="activity-tab-fullscreen" data-activity-tab="ended">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Ended</span>
+                        </button>
+                    </div>
+                    <div class="activity-search-fullscreen">
+                        <div class="search-container-fullscreen">
+                            <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
+                            <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
+                        </div>
+                    </div>
+                    <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
+                        <div class="loading-placeholder">Memuat aktivitas...</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(fullscreenDiv);
+            activityFullscreen = fullscreenDiv;
+            
+            // Setup event listeners untuk fullscreen
+            const backBtn = document.getElementById('backFromActivityBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', closeFullscreenActivity);
+            }
+            
+            const closeBtn = document.getElementById('closeActivityFullscreenBtn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeFullscreenActivity);
+            }
+            
+            // Setup tabs
+            document.querySelectorAll('.activity-tab-fullscreen').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const tab = btn.dataset.activityTab;
+                    if (tab) {
+                        currentActivityTab = tab;
+                        document.querySelectorAll('.activity-tab-fullscreen').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        await loadActivityData();
+                    }
+                });
+            });
+            
+            // Setup search
+            const searchBtn = document.getElementById('activityFullscreenSearchBtn');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', () => {
+                    const searchInput = document.getElementById('activityFullscreenSearchInput');
+                    activitySearchTerm = searchInput?.value || '';
+                    renderActivityItems();
+                });
+            }
+            
+            const searchInput = document.getElementById('activityFullscreenSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        activitySearchTerm = searchInput.value;
+                        renderActivityItems();
+                    }
+                });
+            }
+            
+            return fullscreenDiv;
         }
         
-        // Close activity panel
-        function closeActivityPanel() {
-            if (activityPanel) {
-                activityPanel.classList.remove('open');
-                if (activityOverlay) activityOverlay.classList.remove('active');
-                document.body.classList.remove('inbox-open');
-                setTimeout(() => {
-                    if (activityPanel) activityPanel.style.display = 'none';
-                }, 300);
-            }
-            hapticLight();
-        }
-        
-        // Load activity module
-        function loadActivityModule() {
-            if (activityModuleLoaded) {
-                if (typeof window.refreshAuctionsActivity === 'function') {
-                    window.refreshAuctionsActivity();
-                }
+        function openFullscreenActivity() {
+            if (!telegramUser) {
+                showToast('Login terlebih dahulu', 'warning');
                 return;
             }
             
-            const script = document.createElement('script');
-            script.src = '/winedash/js/auctions-activity.js?v=' + Date.now();
-            script.onload = () => {
-                activityModuleLoaded = true;
-                console.log('✅ Auctions activity module loaded');
-                if (typeof window.initAuctionsActivity === 'function') {
-                    window.initAuctionsActivity();
-                }
-            };
-            script.onerror = () => {
-                console.error('❌ Failed to load auctions activity module');
-                const content = document.getElementById('auctionsActivityContainer');
-                if (content) {
-                    content.innerHTML = '<div class="loading-placeholder">Gagal memuat aktivitas. Refresh halaman.</div>';
-                }
-            };
-            document.head.appendChild(script);
+            createFullscreenActivityPage();
+            document.body.classList.add('panel-open');
+            hapticLight();
+            
+            // Load data
+            loadActivityData();
         }
         
-        // Open activity panel
-        function openActivityPanel() {
-            if (!activityPanel) return;
-            
-            createActivityOverlay();
-            activityPanel.style.display = 'flex';
-            activityOverlay.classList.add('active');
-            document.body.classList.add('inbox-open');
-            
-            setTimeout(() => activityPanel.classList.add('open'), 10);
-            
-            // Load activity module
-            loadActivityModule();
+        function closeFullscreenActivity() {
+            if (activityFullscreen) {
+                activityFullscreen.style.animation = 'fadeOut 0.2s ease';
+                setTimeout(() => {
+                    if (activityFullscreen) activityFullscreen.remove();
+                    activityFullscreen = null;
+                }, 200);
+            }
+            document.body.classList.remove('panel-open');
             hapticLight();
         }
         
-        // Setup filter dropdown (sama seperti sebelumnya)
+        async function loadActivityData() {
+            if (!telegramUser) return;
+            
+            const container = document.getElementById('auctionsActivityFullscreenContainer');
+            if (!container) return;
+            
+            container.innerHTML = '<div class="loading-placeholder">Memuat aktivitas...</div>';
+            
+            try {
+                let url = '';
+                switch (currentActivityTab) {
+                    case 'my-auctions':
+                        url = `${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
+                        break;
+                    case 'my-bids':
+                        url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
+                        break;
+                    case 'ended':
+                        url = `${API_BASE_URL}/api/winedash/auctions/ended/${telegramUser.id}`;
+                        break;
+                    default:
+                        url = `${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.success) {
+                    activityActivities = data.auctions || [];
+                    renderActivityItems();
+                } else {
+                    activityActivities = [];
+                    renderActivityEmpty();
+                }
+            } catch (error) {
+                console.error('Error loading activity data:', error);
+                renderActivityEmpty();
+            }
+        }
+        
+        function renderActivityItems() {
+            const container = document.getElementById('auctionsActivityFullscreenContainer');
+            if (!container) return;
+            
+            let filtered = [...activityActivities];
+            
+            // Filter by search term
+            if (activitySearchTerm && activitySearchTerm.trim() !== '') {
+                const term = activitySearchTerm.toLowerCase().trim();
+                filtered = filtered.filter(activity => 
+                    activity.username && activity.username.toLowerCase().includes(term)
+                );
+            }
+            
+            if (filtered.length === 0) {
+                renderActivityEmpty();
+                return;
+            }
+            
+            let html = '';
+            
+            for (const activity of filtered) {
+                const username = activity.username || '';
+                const currentPrice = activity.current_price || activity.start_price || 0;
+                const isEnded = activity.status === 'ended' || (activity.end_time && new Date(activity.end_time) <= new Date());
+                const timeRemaining = formatTimeRemaining(activity.end_time);
+                
+                let avatarUrl = localStorage.getItem(`avatar_${username}`);
+                if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
+                    avatarUrl = "https://companel.shop/image/winedash-logo.png";
+                }
+                
+                let statusHtml = '';
+                let bidInfoHtml = '';
+                let rightButtons = '';
+                
+                if (currentActivityTab === 'my-auctions') {
+                    statusHtml = `<div class="activity-fullscreen-status ${isEnded ? 'ended' : 'active'}">${isEnded ? 'ENDED' : 'ACTIVE'}</div>`;
+                    if (isEnded && activity.winner_id) {
+                        const winnerName = activity.winner_username || activity.winner_name || 'Winner';
+                        const winningBid = activity.winning_bid || currentPrice;
+                        bidInfoHtml = `<div class="activity-fullscreen-winner">🏆 Winner: ${escapeHtml(winnerName)} (${formatNumber(winningBid)} TON)</div>`;
+                    } else if (!isEnded) {
+                        bidInfoHtml = `<div class="activity-fullscreen-bid-info">Bids: ${activity.bid_count || 0} | Current: ${formatNumber(currentPrice)} TON</div>`;
+                    }
+                    rightButtons = `
+                        <button class="activity-fullscreen-view-btn" data-auction-id="${activity.id}">
+                            <i class="fas fa-eye"></i> View Detail
+                        </button>
+                    `;
+                } else if (currentActivityTab === 'my-bids') {
+                    const myLastBid = activity.my_last_bid || 0;
+                    statusHtml = `<div class="activity-fullscreen-status ${isEnded ? 'ended' : 'active'}">${isEnded ? 'ENDED' : 'ACTIVE'}</div>`;
+                    bidInfoHtml = `
+                        <div class="activity-fullscreen-bid-info">💰 My Bid: ${formatNumber(myLastBid)} TON</div>
+                        <div class="activity-fullscreen-bid-info">📊 Current: ${formatNumber(currentPrice)} TON</div>
+                    `;
+                    if (isEnded && activity.winner_id === telegramUser.id) {
+                        bidInfoHtml += `<div class="activity-fullscreen-winner winner-me">🏆 YOU WON!</div>`;
+                    }
+                    rightButtons = `
+                        <button class="activity-fullscreen-view-btn" data-auction-id="${activity.id}">
+                            <i class="fas fa-eye"></i> View Detail
+                        </button>
+                    `;
+                } else if (currentActivityTab === 'ended') {
+                    statusHtml = `<div class="activity-fullscreen-status ended">ENDED</div>`;
+                    if (activity.winner_id) {
+                        const winnerName = activity.winner_username || activity.winner_name || 'Winner';
+                        const winningBid = activity.winning_bid || currentPrice;
+                        const isWinner = activity.winner_id === telegramUser.id;
+                        bidInfoHtml = `
+                            <div class="activity-fullscreen-winner ${isWinner ? 'winner-me' : ''}">
+                                🏆 Winner: ${escapeHtml(winnerName)} (${formatNumber(winningBid)} TON)${isWinner ? ' - YOU WON!' : ''}
+                            </div>
+                        `;
+                    } else {
+                        bidInfoHtml = `<div class="activity-fullscreen-bid-info">No bids placed - Auction ended</div>`;
+                    }
+                    rightButtons = `
+                        <button class="activity-fullscreen-view-btn" data-auction-id="${activity.id}">
+                            <i class="fas fa-eye"></i> View Detail
+                        </button>
+                    `;
+                }
+                
+                html += `
+                    <div class="activity-fullscreen-item" data-auction-id="${activity.id}">
+                        <div class="activity-fullscreen-avatar">
+                            <img src="${avatarUrl}" alt="${escapeHtml(username)}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                        </div>
+                        <div class="activity-fullscreen-info">
+                            <div class="activity-fullscreen-username">@${escapeHtml(username)}</div>
+                            <div class="activity-fullscreen-details">
+                                <div class="activity-fullscreen-price">
+                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON">
+                                    <span>${formatNumber(currentPrice)} TON</span>
+                                </div>
+                                ${bidInfoHtml}
+                                ${!isEnded ? `<div class="activity-fullscreen-timer" id="activity-timer-${activity.id}">⏰ Time: ${timeRemaining}</div>` : ''}
+                                <div class="activity-fullscreen-basedon">📌 Based On: ${escapeHtml(activity.based_on || '-')}</div>
+                            </div>
+                        </div>
+                        <div class="activity-fullscreen-right">
+                            ${statusHtml}
+                            ${rightButtons}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+            
+            // Attach click events untuk view detail
+            document.querySelectorAll('.activity-fullscreen-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.closest('.activity-fullscreen-view-btn')) {
+                        const auctionId = e.target.closest('.activity-fullscreen-view-btn').dataset.auctionId;
+                        if (auctionId && typeof window.showAuctionDetail === 'function') {
+                            closeFullscreenActivity();
+                            setTimeout(() => {
+                                window.showAuctionDetail(parseInt(auctionId));
+                            }, 300);
+                        }
+                    } else {
+                        const auctionId = item.dataset.auctionId;
+                        if (auctionId && typeof window.showAuctionDetail === 'function') {
+                            closeFullscreenActivity();
+                            setTimeout(() => {
+                                window.showAuctionDetail(parseInt(auctionId));
+                            }, 300);
+                        }
+                    }
+                });
+            });
+            
+            // Start timers
+            startActivityTimers(filtered);
+        }
+        
+        function startActivityTimers(activities) {
+            for (const activity of activities) {
+                if (activity.status !== 'active') continue;
+                
+                const timerElement = document.getElementById(`activity-timer-${activity.id}`);
+                if (!timerElement) continue;
+                
+                const updateTimer = () => {
+                    const remaining = formatTimeRemaining(activity.end_time);
+                    timerElement.textContent = `⏰ Time: ${remaining}`;
+                    if (remaining === 'Ended') {
+                        setTimeout(() => loadActivityData(), 1000);
+                    }
+                };
+                
+                updateTimer();
+                const interval = setInterval(updateTimer, 1000);
+                
+                if (!window.activityTimers) window.activityTimers = {};
+                window.activityTimers[activity.id] = interval;
+            }
+        }
+        
+        function renderActivityEmpty() {
+            const container = document.getElementById('auctionsActivityFullscreenContainer');
+            if (!container) return;
+            
+            let emptyMessage = '';
+            switch (currentActivityTab) {
+                case 'my-auctions':
+                    emptyMessage = 'Anda belum membuat auction apapun';
+                    break;
+                case 'my-bids':
+                    emptyMessage = 'Anda belum melakukan bid pada auction manapun';
+                    break;
+                case 'ended':
+                    emptyMessage = 'Tidak ada auction yang selesai';
+                    break;
+                default:
+                    emptyMessage = 'Tidak ada aktivitas';
+            }
+            
+            container.innerHTML = `
+                <div class="activity-fullscreen-empty">
+                    <i class="fas fa-inbox"></i>
+                    <div class="activity-fullscreen-empty-title">No Activity</div>
+                    <div class="activity-fullscreen-empty-subtitle">${emptyMessage}</div>
+                </div>
+            `;
+        }
+        
+        function formatTimeRemaining(endTimeStr) {
+            if (!endTimeStr) return 'Ended';
+            
+            try {
+                const end = new Date(endTimeStr);
+                const now = new Date();
+                const diff = end - now;
+                
+                if (diff <= 0) return 'Ended';
+                
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (3600000)) / (1000 * 60));
+                const seconds = Math.floor((diff % (60000)) / 1000);
+                
+                if (hours > 0) {
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else {
+                    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+            } catch (e) {
+                return 'Ended';
+            }
+        }
+        
+        // ==================== SETUP FILTER DROPDOWN (SAMA SEPERTI SEBELUMNYA) ====================
+        
         function setupFilterDropdown() {
             if (!filterBtn || !filterDropdown) return;
             
@@ -2530,7 +2845,7 @@
             });
         }
         
-        // Setup activity button
+        // Setup activity button untuk membuka fullscreen
         if (activityBtn) {
             const newActivityBtn = activityBtn.cloneNode(true);
             activityBtn.parentNode.replaceChild(newActivityBtn, activityBtn);
@@ -2538,59 +2853,22 @@
             newActivityBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                openActivityPanel();
+                openFullscreenActivity();
             });
-        }
-        
-        // Setup activity panel close
-        const closeActivityBtn = document.getElementById('closeActivityPanelBtn');
-        if (closeActivityBtn) {
-            const newCloseBtn = closeActivityBtn.cloneNode(true);
-            closeActivityBtn.parentNode.replaceChild(newCloseBtn, closeActivityBtn);
-            newCloseBtn.addEventListener('click', closeActivityPanel);
-        }
-        
-        // Setup drag to close untuk activity panel
-        if (activityPanel) {
-            const dragHandle = activityPanel.querySelector('.drag-handle');
-            if (dragHandle) {
-                let startY = 0, currentY = 0, isDragging = false;
-                
-                const newDragHandle = dragHandle.cloneNode(true);
-                dragHandle.parentNode.replaceChild(newDragHandle, dragHandle);
-                
-                newDragHandle.addEventListener('touchstart', (e) => {
-                    startY = e.touches[0].clientY;
-                    isDragging = true;
-                    activityPanel.style.transition = 'none';
-                    hapticLight();
-                });
-                
-                newDragHandle.addEventListener('touchmove', (e) => {
-                    if (!isDragging) return;
-                    currentY = e.touches[0].clientY;
-                    const deltaY = currentY - startY;
-                    if (deltaY > 0) {
-                        activityPanel.style.transform = `translateY(${Math.min(deltaY, activityPanel.offsetHeight * 0.7)}px)`;
-                    }
-                });
-                
-                newDragHandle.addEventListener('touchend', () => {
-                    isDragging = false;
-                    activityPanel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-                    if (currentY - startY > 100) {
-                        closeActivityPanel();
-                    } else {
-                        activityPanel.style.transform = '';
-                    }
-                });
-            }
         }
         
         setupFilterDropdown();
     }
 
-    // Tambahkan fungsi global untuk switch ke mode auctions
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+
     window.switchToAuctionsMode = function() {
         const auctionsModeBtn = document.querySelector('.mode-btn[data-mode="auctions"]');
         if (auctionsModeBtn) {
