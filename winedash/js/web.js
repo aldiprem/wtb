@@ -3559,7 +3559,6 @@
         let filterDropdown = null;
         
         function createDropdown() {
-            // Hapus dropdown yang sudah ada
             if (filterDropdown) {
                 filterDropdown.remove();
                 filterDropdown = null;
@@ -3570,12 +3569,6 @@
             filterDropdown.innerHTML = `
                 <div class="market-filter-item ${currentMarketFilter === 'fixprice' ? 'active' : ''}" data-filter="fixprice">
                     <i class="fas fa-tag"></i> Fix Price
-                </div>
-                <div class="market-filter-item ${currentMarketFilter === 'premarket' ? 'active' : ''}" data-filter="premarket">
-                    <i class="fas fa-chart-line"></i> Pre-Markets
-                </div>
-                <div class="market-filter-item ${currentMarketFilter === 'instant' ? 'active' : ''}" data-filter="instant">
-                    <i class="fas fa-bolt"></i> Instant Offers
                 </div>
                 <div class="market-filter-item ${currentMarketFilter === 'auctions' ? 'active' : ''}" data-filter="auctions">
                     <i class="fas fa-gavel"></i> Auctions
@@ -3603,20 +3596,14 @@
                     filterDropdown.querySelectorAll('.market-filter-item').forEach(i => i.classList.remove('active'));
                     newItem.classList.add('active');
                     
-                    // Update button text
                     const filterText = newItem.textContent.trim();
                     newBtn.innerHTML = `<i class="fas fa-filter"></i><span>${filterText}</span>`;
                     
                     closeDropdown();
                     
-                    // Apply filter
                     if (filter === 'auctions') {
-                        // Redirect ke halaman storage mode auctions
-                        window.location.href = '/winedash/storage?mode=auctions';
-                    } else if (filter === 'premarket') {
-                        showToast('Pre-Markets feature coming soon', 'info');
-                    } else if (filter === 'instant') {
-                        showToast('Instant Offers feature coming soon', 'info');
+                        // Redirect ke halaman market auctions
+                        window.location.href = '/winedash/market-auctions';
                     } else {
                         // Fix price - refresh marketplace
                         loadUsernames();

@@ -253,6 +253,11 @@ app.register_blueprint(market_bp)
 
 # ==================== WINEDASH ROUTES ====================
 
+@app.route('/winedash/market-auctions')
+def serve_winedash_market_auctions():
+    """Halaman Market Auctions Winedash"""
+    return send_from_directory(os.path.join(base_dir, 'winedash', 'html'), 'market-auctions.html')
+
 @app.route('/winedash/admin')
 def serve_winedash_admin():
     """Halaman Admin Panel Winedash"""

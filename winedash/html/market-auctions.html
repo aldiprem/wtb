@@ -1,0 +1,171 @@
+<!-- winedash/html/market-auctions.html - Market Auctions Page -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="HandheldFriendly" content="true">
+    <meta name="MobileOptimized" content="width">
+    <title>Winedash - Market Auctions</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/winedash/css/web.css">
+    <link rel="stylesheet" href="/winedash/css/storage.css">
+    <link rel="stylesheet" href="/winedash/css/auctions.css">
+    <link rel="stylesheet" href="/winedash/css/auctions-activity.css">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- TON Connect UI SDK -->
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js?62"></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Memuat...</div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Main Container -->
+    <div class="storage-container">
+
+        <!-- Header dengan tombol back -->
+        <div class="storage-header">
+            <div class="back-circle" id="backToHomeBtn">
+                <i class="fas fa-arrow-left"></i>
+            </div>
+            <div class="storage-profile-avatar" id="marketAuctionsUserAvatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="storage-balance" id="marketAuctionsBalanceCard">
+                <!-- Konten akan diisi JS -->
+            </div>
+        </div>
+
+        <!-- Title -->
+        <div style="text-align: center; margin-bottom: 16px;">
+            <h2 style="font-size: 20px; font-weight: 700;">
+                <i class="fas fa-gavel" style="color: var(--primary); margin-right: 8px;"></i>
+                Market Auctions
+            </h2>
+            <p style="font-size: 12px; color: var(--text-muted);">Bid on premium usernames</p>
+        </div>
+
+        <!-- Action Row untuk Auctions Market -->
+        <div class="action-row">
+            <button class="action-btn add-action-btn" id="refreshAuctionsBtn">
+                <i class="fas fa-sync-alt"></i>
+                <span>Refresh</span>
+            </button>
+            <button class="action-btn" id="marketAuctionsFilterBtn">
+                <i class="fas fa-filter"></i>
+                <span>Filter</span>
+            </button>
+            <button class="action-btn" id="marketAuctionsActivityBtn">
+                <i class="fas fa-history"></i>
+                <span>Activity</span>
+            </button>
+            <div class="layout-toggle">
+                <button class="layout-btn active" data-layout="grid" id="marketAuctionsGridBtn">
+                    <i class="fas fa-th"></i>
+                </button>
+                <button class="layout-btn" data-layout="list" id="marketAuctionsListBtn">
+                    <i class="fas fa-list"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" class="search-input" id="marketAuctionsSearchInput" placeholder="🔍 Cari username...">
+            <button class="search-apply-btn" id="marketAuctionsSearchApplyBtn">Apply</button>
+        </div>
+
+        <!-- Filter Dropdown -->
+        <div id="marketAuctionsFilterDropdown" class="status-dropdown" style="display: none; position: fixed; z-index: 1700;">
+            <div class="status-dropdown-item active" data-market-auctions-filter="active">
+                <i class="fas fa-fire"></i> Active Auctions
+            </div>
+            <div class="status-dropdown-item" data-market-auctions-filter="my-bids">
+                <i class="fas fa-gavel"></i> My Bids
+            </div>
+            <div class="status-dropdown-item" data-market-auctions-filter="ended">
+                <i class="fas fa-check-circle"></i> Ended Auctions
+            </div>
+        </div>
+
+        <!-- Auctions Container -->
+        <div id="marketAuctionsContainer" style="width: 100%; min-height: 400px;">
+            <div class="loading-placeholder">Memuat auctions...</div>
+        </div>
+
+        <!-- Activity Fullscreen Page -->
+        <div id="marketAuctionsActivityFullscreen" class="fullscreen-page" style="display: none;">
+            <div class="fullscreen-header">
+                <div class="fullscreen-header-left">
+                    <button class="back-btn-fullscreen" id="backFromMarketActivityBtn">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <h2><i class="fas fa-history"></i> Auction Activity</h2>
+                </div>
+                <button class="close-fullscreen-btn" id="closeMarketActivityFullscreenBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="fullscreen-content">
+                <!-- Tabs Navigation -->
+                <div class="activity-tabs-fullscreen">
+                    <button class="activity-tab-fullscreen active" data-market-activity-tab="my-bids">
+                        <i class="fas fa-history"></i>
+                        <span>My Bids</span>
+                    </button>
+                    <button class="activity-tab-fullscreen" data-market-activity-tab="ended">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Ended</span>
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="activity-search-fullscreen">
+                    <div class="search-container-fullscreen">
+                        <input type="text" class="search-input-fullscreen" id="marketActivityFullscreenSearchInput" placeholder="🔍 Cari username...">
+                        <button class="search-btn-fullscreen" id="marketActivityFullscreenSearchBtn">Apply</button>
+                    </div>
+                </div>
+
+                <!-- Activity Container -->
+                <div id="marketAuctionsActivityFullscreenContainer" class="activity-fullscreen-container">
+                    <div class="loading-placeholder">Memuat aktivitas...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/winedash/js/market-auctions.js"></script>
+    
+    <!-- Debug Client -->
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isDebugMode = urlParams.get('debug') === '1' || localStorage.getItem('debug_mode') === 'true';
+            if (isDebugMode) {
+                const script = document.createElement('script');
+                script.src = '/winedash/js/debug-client.js';
+                document.head.appendChild(script);
+                console.log('[DEBUG] Debug mode enabled - logs will be sent to server');
+            }
+        })();
+    </script>
+
+</body>
+</html>
