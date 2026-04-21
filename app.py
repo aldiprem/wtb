@@ -39,6 +39,7 @@ from winedash.services.offers_service import offers_bp
 from winedash.services.auctions_service import auctions_bp
 from winedash.services.debug_service import debug_bp
 from winedash.services.admin_service import admin_bp
+from winedash.services.market_service import market_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -248,6 +249,7 @@ app.register_blueprint(offers_bp)
 app.register_blueprint(auctions_bp)
 app.register_blueprint(debug_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(market_bp)
 
 # ==================== WINEDASH ROUTES ====================
 

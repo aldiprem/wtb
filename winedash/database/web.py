@@ -1250,3 +1250,199 @@ class WinedashDatabase:
         except Exception as e:
             print(f"Error clearing debug logs: {e}")
             return False
+        
+    # ==================== CHECKOUT CART FUNCTIONS ====================
+    
+    def init_checkout_table(self):
+        """Initialize checkout_cart table if not exists"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS checkout_cart (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        username_id INTEGER NOT NULL,
+                        username TEXT NOT NULL,
+                        based_on TEXT,
+                        price DECIMAL(20, 8) NOT NULL,
+                        seller_id INTEGER,
+                        seller_wallet TEXT,
+                        added_at TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(user_id),
+                        FOREIGN KEY (username_id) REFERENCES usernames(id),
+                        UNIQUE(user_id, username_id)
+                    )
+                ''')
+                cursor.execute('CREATE INDEX IF NOT EXISTS idx_checkout_user ON checkout_cart(user_id)')
+                conn.commit()
+                print("✅ checkout_cart table initialized")
+        except Exception as e:
+            print(f"Error initializing checkout table: {e}")
+    
+    def add_to_checkout(self, user_id: int, username_id: int, username: str, 
+                        based_on: str, price: float, seller_id: int, 
+                        seller_wallet: str) -> bool:
+        """Add username to checkout cart"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                
+                cursor.execute('''
+                    INSERT OR REPLACE INTO checkout_cart 
+                    (user_id, username_id, username, based_on, price, seller_id, seller_wallet, added_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (user_id, username_id, username, based_on, price, seller_id, seller_wallet, now))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error adding to checkout: {e}")
+            return False
+    
+    def remove_from_checkout(self, user_id: int, username_id: int) -> bool:
+        """Remove username from checkout cart"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    DELETE FROM checkout_cart 
+                    WHERE user_id = ? AND username_id = ?
+                ''', (user_id, username_id))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            print(f"Error removing from checkout: {e}")
+            return False
+    
+    def get_checkout_cart(self, user_id: int) -> List[Dict[str, Any]]:
+        """Get user's checkout cart"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT c.*, u.photo_url as seller_photo
+                    FROM checkout_cart c
+                    LEFT JOIN users u ON c.seller_id = u.user_id
+                    WHERE c.user_id = ?
+                    ORDER BY c.added_at DESC
+                ''', (user_id,))
+                
+                rows = cursor.fetchall()
+                cart = []
+                for row in rows:
+                    item = dict(row)
+                    if item.get('price'):
+                        item['price'] = float(item['price'])
+                    cart.append(item)
+                return cart
+        except Exception as e:
+            print(f"Error getting checkout cart: {e}")
+            return []
+    
+    def clear_checkout_cart(self, user_id: int) -> bool:
+        """Clear user's checkout cart"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM checkout_cart WHERE user_id = ?', (user_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error clearing checkout cart: {e}")
+            return False
+    
+    def get_checkout_count(self, user_id: int) -> int:
+        """Get number of items in checkout cart"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT COUNT(*) FROM checkout_cart WHERE user_id = ?', (user_id,))
+                row = cursor.fetchone()
+                return row[0] if row else 0
+        except Exception as e:
+            print(f"Error getting checkout count: {e}")
+            return 0
+    
+    def checkout_bulk_purchase(self, user_id: int) -> Dict:
+        """Process bulk purchase of all items in cart"""
+        try:
+            cart = self.get_checkout_cart(user_id)
+            if not cart:
+                return {'success': False, 'error': 'Cart is empty'}
+            
+            # Calculate total
+            total_amount = sum(item['price'] for item in cart)
+            
+            # Get user balance
+            user = self.get_user(user_id)
+            if not user or user['balance'] < total_amount:
+                return {'success': False, 'error': f'Insufficient balance. Need {total_amount} TON'}
+            
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                now = self._get_now()
+                transaction_id = f"bulk_{uuid.uuid4().hex[:16]}_{int(datetime.now().timestamp())}"
+                
+                purchased_items = []
+                
+                for item in cart:
+                    username_id = item['username_id']
+                    price = item['price']
+                    seller_id = item['seller_id']
+                    
+                    # Update username status to sold
+                    cursor.execute('''
+                        UPDATE usernames 
+                        SET status = 'sold', buyer_id = ?, transaction_id = ?, sold_at = ?
+                        WHERE id = ? AND status = 'available'
+                    ''', (user_id, transaction_id, now, username_id))
+                    
+                    if cursor.rowcount > 0:
+                        # Deduct from buyer
+                        cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ?', (price, user_id))
+                        # Add to seller
+                        if seller_id:
+                            cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (price, seller_id))
+                        
+                        purchased_items.append(item['username'])
+                
+                # Clear cart after successful purchase
+                cursor.execute('DELETE FROM checkout_cart WHERE user_id = ?', (user_id,))
+                
+                # Create transaction record
+                cursor.execute('''
+                    INSERT INTO transactions (transaction_id, user_id, type, amount, status, details, created_at, completed_at)
+                    VALUES (?, ?, 'bulk_purchase', ?, 'success', ?, ?, ?)
+                ''', (transaction_id, user_id, total_amount, f"Bulk purchase of {len(purchased_items)} usernames", now, now))
+                
+                conn.commit()
+                
+                return {
+                    'success': True,
+                    'purchased': purchased_items,
+                    'count': len(purchased_items),
+                    'total_amount': total_amount,
+                    'transaction_id': transaction_id
+                }
+                
+        except Exception as e:
+            print(f"Error in bulk purchase: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    def get_checkout_summary(self, user_id: int) -> Dict:
+        """Get checkout summary with total amount"""
+        try:
+            cart = self.get_checkout_cart(user_id)
+            total = sum(item['price'] for item in cart)
+            return {
+                'count': len(cart),
+                'total_amount': total,
+                'items': cart
+            }
+        except Exception as e:
+            print(f"Error getting checkout summary: {e}")
+            return {'count': 0, 'total_amount': 0, 'items': []}

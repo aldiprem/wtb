@@ -1262,12 +1262,6 @@
                 }
             });
         }
-        
-        // Filter Summary Button (di samping Apply)
-        const filterSummaryBtn = document.getElementById('filterSummaryBtn');
-        if (filterSummaryBtn) {
-            filterSummaryBtn.addEventListener('click', showFilterSummaryPanel);
-        }
     }
 
     async function sellUsername() {
@@ -2272,7 +2266,6 @@
                 }
                 applyFiltersAndRender();
                 closeFilterPanel();
-                updateFilterBadge();
             });
         }
         
@@ -3359,165 +3352,6 @@
         } catch (error) { console.error('Error loading based on options:', error); }
     }
 
-    function updateFilterBadge() {
-        const filterSummaryBtn = document.getElementById('filterSummaryBtn');
-        if (!filterSummaryBtn) return;
-        let count = 0;
-        if (currentSort !== 'default') count++;
-        if (currentPriceFilter.min !== 0 || currentPriceFilter.max !== 9999) count++;
-        if (currentLayout !== 'grid') count++;
-        if (currentBasedOnFilter !== 'all') count++;
-        activeFilterCount = count;
-        const existingBadge = filterSummaryBtn.querySelector('.filter-summary-badge');
-        if (existingBadge) existingBadge.remove();
-        if (count > 0) {
-            const badge = document.createElement('span');
-            badge.className = 'filter-summary-badge';
-            badge.textContent = count > 99 ? '99+' : count;
-            filterSummaryBtn.appendChild(badge);
-            badge.style.display = 'flex';
-        }
-    }
-
-    function showFilterSummaryPanel() {
-        if (availableBasedOnList.length === 0) loadBasedOnOptions();
-        
-        const existingPanel = document.querySelector('.filter-summary-panel');
-        if (existingPanel) existingPanel.remove();
-        
-        if (!filterSummaryOverlay) {
-            filterSummaryOverlay = document.createElement('div');
-            filterSummaryOverlay.className = 'filter-overlay';
-            document.body.appendChild(filterSummaryOverlay);
-            filterSummaryOverlay.addEventListener('click', closeFilterSummaryPanel);
-        }
-        
-        const getPriceDisplay = () => {
-            if (currentPriceFilter.min === 0 && currentPriceFilter.max >= 9999) return 'All';
-            if (currentPriceFilter.min === 0) return `≤ ${currentPriceFilter.max} TON`;
-            if (currentPriceFilter.max >= 9999) return `≥ ${currentPriceFilter.min} TON`;
-            return `${currentPriceFilter.min} - ${currentPriceFilter.max} TON`;
-        };
-        
-        const getSortDisplay = () => {
-            const sorts = { default: 'Default', price_asc: 'Price ↑', price_desc: 'Price ↓', name_asc: 'Name A-Z' };
-            return sorts[currentSort] || 'Default';
-        };
-        
-        const getLayoutDisplay = () => currentLayout === 'grid' ? 'Grid' : 'List';
-        const getBasedOnDisplay = () => currentBasedOnFilter === 'all' ? 'All' : currentBasedOnFilter;
-        
-        const panel = document.createElement('div');
-        panel.className = 'filter-summary-panel';
-        panel.innerHTML = `
-            <div class="filter-drag-handle"></div>
-            <div class="filter-header">
-                <h3><i class="fas fa-filter"></i> Active Filters</h3>
-                <button class="filter-close">&times;</button>
-            </div>
-            <div class="filter-content">
-                <div class="filter-summary-section">
-                    <div class="filter-summary-label">Sort By</div>
-                    <div class="filter-summary-value" data-filter-type="sort">
-                        <span>${getSortDisplay()}</span>
-                        <button class="filter-clear-btn" data-clear="sort"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>
-                <div class="filter-summary-section">
-                    <div class="filter-summary-label">Price Range</div>
-                    <div class="filter-summary-value" data-filter-type="price">
-                        <span>${getPriceDisplay()}</span>
-                        <button class="filter-clear-btn" data-clear="price"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>
-                <div class="filter-summary-section">
-                    <div class="filter-summary-label">Layout</div>
-                    <div class="filter-summary-value" data-filter-type="layout">
-                        <span>${getLayoutDisplay()}</span>
-                        <button class="filter-clear-btn" data-clear="layout"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>
-                <div class="filter-summary-section">
-                    <div class="filter-summary-label">Based On</div>
-                    <div class="filter-summary-value" data-filter-type="basedon">
-                        <span>${getBasedOnDisplay()}</span>
-                        <button class="filter-clear-btn" data-clear="basedon"><i class="fas fa-times"></i></button>
-                    </div>
-                </div>
-            </div>
-            <div class="filter-actions">
-                <button class="filter-reset">Clear All Filters</button>
-                <button class="filter-apply">Apply & Close</button>
-            </div>
-        `;
-        
-        document.body.appendChild(panel);
-        filterSummaryOverlay.classList.add('active');
-        document.body.classList.add('filter-open');
-        setTimeout(() => panel.classList.add('open'), 10);
-        
-        const closeBtn = panel.querySelector('.filter-close');
-        closeBtn.addEventListener('click', closeFilterSummaryPanel);
-        
-        panel.querySelectorAll('.filter-clear-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const clearType = btn.dataset.clear;
-                if (clearType === 'sort') currentSort = 'default';
-                if (clearType === 'price') currentPriceFilter = { min: 0, max: 9999 };
-                if (clearType === 'layout') { currentLayout = 'grid'; localStorage.setItem('market_layout', 'grid'); }
-                if (clearType === 'basedon') currentBasedOnFilter = 'all';
-                applyFiltersAndRender();
-                updateFilterBadge();
-                closeFilterSummaryPanel();
-                setTimeout(() => showFilterSummaryPanel(), 200);
-            });
-        });
-        
-        const resetBtn = panel.querySelector('.filter-reset');
-        resetBtn.addEventListener('click', () => {
-            currentSort = 'default';
-            currentPriceFilter = { min: 0, max: 9999 };
-            currentLayout = 'grid';
-            currentBasedOnFilter = 'all';
-            localStorage.setItem('market_layout', 'grid');
-            applyFiltersAndRender();
-            updateFilterBadge();
-            closeFilterSummaryPanel();
-        });
-        
-        const applyBtn = panel.querySelector('.filter-apply');
-        applyBtn.addEventListener('click', () => {
-            closeFilterSummaryPanel();
-        });
-        
-        const dragHandle = panel.querySelector('.filter-drag-handle');
-        let startY = 0, currentY = 0, isDragging = false;
-        dragHandle.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; isDragging = true; panel.style.transition = 'none'; hapticLight(); });
-        dragHandle.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const deltaY = currentY - startY;
-            if (deltaY > 0) panel.style.transform = `translateY(${Math.min(deltaY, panel.offsetHeight * 0.7)}px)`;
-        });
-        dragHandle.addEventListener('touchend', () => {
-            isDragging = false;
-            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-            if (currentY - startY > 100) closeFilterSummaryPanel();
-            else panel.style.transform = '';
-        });
-        
-        hapticLight();
-    }
-
-    function closeFilterSummaryPanel() {
-        const panel = document.querySelector('.filter-summary-panel');
-        if (panel) { panel.classList.remove('open'); setTimeout(() => panel.remove(), 300); }
-        if (filterSummaryOverlay) filterSummaryOverlay.classList.remove('active');
-        document.body.classList.remove('filter-open');
-        hapticLight();
-    }
-
     async function fetchProfilePhoto(username) {
         // Cek cache dulu
         const cached = localStorage.getItem(`avatar_${username}`);
@@ -3607,12 +3441,15 @@
                 await loadPurchasedUsernames();
                 await loadTransactionHistory();
                 await loadBasedOnOptions();
-                updateFilterBadge();
             } else {
                 console.warn('No Telegram user found');
                 if (elements.usernameList) {
                     elements.usernameList.innerHTML = '<div class="loading-placeholder">Silakan buka melalui Telegram</div>';
                 }
+            }
+            
+            if (typeof window.marketCheckout !== 'undefined') {
+                window.marketCheckout.init();
             }
             
             // Initialize TON Connect
