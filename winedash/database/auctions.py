@@ -511,7 +511,7 @@ class AuctionsDatabase:
         except Exception as e:
             print(f"Error checking expired auctions: {e}")
             return 0
-                    
+                        
     def get_ended_auctions(self, user_id: int = None, limit: int = 100) -> List[Dict]:
         """Get ended auctions (completed auctions)"""
         try:
@@ -568,6 +568,7 @@ class AuctionsDatabase:
                         auction['based_on'] = ''
                     auctions.append(auction)
                 
+                print(f"[DB] get_ended_auctions: Found {len(auctions)} auctions for user_id={user_id}")
                 return auctions
                 
         except Exception as e:
@@ -575,7 +576,7 @@ class AuctionsDatabase:
             import traceback
             traceback.print_exc()
             return []
-            
+
     def run_full_migration(self):
         """Run full migration to ensure all tables and columns exist"""
         print("🔄 Running full database migration...")

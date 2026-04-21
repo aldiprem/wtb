@@ -114,16 +114,44 @@ def get_active_auctions():
     try:
         auctions = auctions_db.get_active_auctions()
         
+        # PERBAIKAN: Filter hanya yang end_time > now
+        from datetime import datetime
+        import pytz
+        
+        tz = pytz.timezone('Asia/Jakarta')
+        now = datetime.now(tz)
+        
+        active_auctions = []
+        for auction in auctions:
+            if auction.get('end_time'):
+                try:
+                    end_time_str = auction['end_time']
+                    if 'Z' in end_time_str:
+                        end_time_str = end_time_str.replace('Z', '+00:00')
+                    end_time = datetime.fromisoformat(end_time_str)
+                    
+                    if end_time.tzinfo is None:
+                        end_time = tz.localize(end_time)
+                    
+                    if end_time > now:
+                        active_auctions.append(auction)
+                except Exception as e:
+                    print(f"Error parsing end_time: {e}")
+                    active_auctions.append(auction)
+            else:
+                active_auctions.append(auction)
+        
         return jsonify({
             'success': True,
-            'auctions': auctions,
-            'total': len(auctions)
+            'auctions': active_auctions,
+            'total': len(active_auctions)
         })
         
     except Exception as e:
         print(f"Error in get_active_auctions: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e), 'auctions': []}), 500
 
 @auctions_bp.route('/my/<int:user_id>', methods=['GET', 'OPTIONS'])
 def get_my_auctions(user_id):
@@ -158,7 +186,8 @@ def get_my_bids_endpoint(user_id):
     try:
         auctions = auctions_db.get_auctions_with_bids(user_id)
         
-        # Tambahkan informasi my_last_bid untuk setiap auction
+        # PERBAIKAN: Tambahkan informasi my_last_bid untuk setiap auction
+        import sqlite3
         with sqlite3.connect(auctions_db.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
@@ -174,10 +203,36 @@ def get_my_bids_endpoint(user_id):
                     auction['my_last_bid'] = row['bid_amount']
                     auction['my_last_bid_time'] = row['timestamp']
         
+        # Filter hanya yang masih active
+        from datetime import datetime
+        import pytz
+        
+        tz = pytz.timezone('Asia/Jakarta')
+        now = datetime.now(tz)
+        
+        active_auctions = []
+        for auction in auctions:
+            if auction.get('end_time'):
+                try:
+                    end_time_str = auction['end_time']
+                    if 'Z' in end_time_str:
+                        end_time_str = end_time_str.replace('Z', '+00:00')
+                    end_time = datetime.fromisoformat(end_time_str)
+                    
+                    if end_time.tzinfo is None:
+                        end_time = tz.localize(end_time)
+                    
+                    if end_time > now:
+                        active_auctions.append(auction)
+                except Exception:
+                    active_auctions.append(auction)
+            else:
+                active_auctions.append(auction)
+        
         return jsonify({
             'success': True,
-            'auctions': auctions,
-            'total': len(auctions)
+            'auctions': active_auctions,
+            'total': len(active_auctions)
         })
         
     except Exception as e:
@@ -312,7 +367,10 @@ def get_ended_auctions(user_id):
         # Panggil method get_ended_auctions dari AuctionsDatabase
         auctions = auctions_db.get_ended_auctions(user_id)
         
+        # PERBAIKAN: Tambahkan logging untuk debug
         print(f"[DEBUG] Found {len(auctions)} ended auctions for user {user_id}")
+        if len(auctions) > 0:
+            print(f"[DEBUG] First ended auction: {auctions[0].get('username')}")
         
         return jsonify({
             'success': True,
@@ -325,7 +383,6 @@ def get_ended_auctions(user_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e), 'auctions': []}), 500
-
 
 @auctions_bp.route('/ended-all', methods=['GET', 'OPTIONS'])
 def get_all_ended_auctions():
@@ -361,13 +418,30 @@ def get_my_auctions_endpoint(user_id):
     try:
         auctions = auctions_db.get_auctions_by_owner(user_id)
         
-        # Filter hanya yang statusnya active atau ended, exclude yang sudah expired tapi belum di-update
-        now = datetime.now()
+        # PERBAIKAN: Gunakan waktu dengan timezone yang sama
+        from datetime import datetime
+        import pytz
+        
+        tz = pytz.timezone('Asia/Jakarta')
+        now = datetime.now(tz)
+        
         for auction in auctions:
             if auction.get('end_time'):
-                end_time = datetime.fromisoformat(auction['end_time'].replace('Z', '+00:00'))
-                if auction.get('status') == 'active' and now > end_time:
-                    auction['status'] = 'ended'
+                try:
+                    # Parse end_time dengan timezone
+                    end_time_str = auction['end_time']
+                    if 'Z' in end_time_str:
+                        end_time_str = end_time_str.replace('Z', '+00:00')
+                    end_time = datetime.fromisoformat(end_time_str)
+                    
+                    # Jika end_time naive, tambahkan timezone
+                    if end_time.tzinfo is None:
+                        end_time = tz.localize(end_time)
+                    
+                    if auction.get('status') == 'active' and now > end_time:
+                        auction['status'] = 'ended'
+                except Exception as e:
+                    print(f"Error parsing end_time for auction {auction.get('id')}: {e}")
         
         return jsonify({
             'success': True,

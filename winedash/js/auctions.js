@@ -231,7 +231,7 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-                        
+                            
     async function loadAuctions() {
         if (!telegramUser) return;
         
@@ -240,7 +240,7 @@
         }
         
         try {
-            console.log(`[AUCTIONS] Loading auctions for tab: ${currentAuctionTab}`);
+            console.log(`[AUCTIONS] Loading auctions for tab: ${currentAuctionTab}, user_id: ${telegramUser.id}`);
             
             let url = '';
             switch (currentAuctionTab) {
@@ -248,7 +248,6 @@
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
                     break;
                 case 'my-auctions':
-                    // PERBAIKAN: Gunakan endpoint yang benar
                     url = `${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
                     break;
                 case 'my-bids':
@@ -264,13 +263,19 @@
             console.log(`[AUCTIONS] Fetching from URL: ${url}`);
             
             const response = await fetch(url);
-            const data = await response.json();
+            console.log(`[AUCTIONS] Response status: ${response.status}`);
             
-            console.log(`[AUCTIONS] Response:`, data);
+            const data = await response.json();
+            console.log(`[AUCTIONS] Response data:`, JSON.stringify(data, null, 2));
             
             if (data.success) {
                 currentAuctions = data.auctions || [];
                 console.log(`[AUCTIONS] Loaded ${currentAuctions.length} auctions for tab ${currentAuctionTab}`);
+                
+                if (currentAuctions.length > 0) {
+                    console.log(`[AUCTIONS] First auction:`, currentAuctions[0]);
+                }
+                
                 filterAndRenderAuctions();
                 startTimers();
             } else {
@@ -287,7 +292,6 @@
         }
     }
 
-    
     function filterAndRenderAuctions() {
         let filtered = [...currentAuctions];
         
