@@ -325,5 +325,19 @@
         })();
     </script>
 
+    <!-- Debug Client - Load only when ?debug=1 parameter is present -->
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isDebugMode = urlParams.get('debug') === '1' || localStorage.getItem('debug_mode') === 'true';
+            if (isDebugMode) {
+                const script = document.createElement('script');
+                script.src = '/winedash/js/debug-client.js';
+                document.head.appendChild(script);
+                console.log('[DEBUG] Debug mode enabled - logs will be sent to server');
+            }
+        })();
+    </script>
+
 </body>
 </html>

@@ -1174,3 +1174,79 @@ class WinedashDatabase:
         except Exception as e:
             print(f"Error getting pending count: {e}")
             return 0
+        
+    # ==================== DEBUG LOGS ====================
+    
+    def add_debug_log(self, user_id: int, log_type: str, message: str, url: str = None) -> bool:
+        """Add debug log to database"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Create debug_logs table if not exists
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS debug_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        log_type TEXT NOT NULL,
+                        message TEXT,
+                        url TEXT,
+                        user_agent TEXT,
+                        created_at TIMESTAMP,
+                        FOREIGN KEY (user_id) REFERENCES users(user_id)
+                    )
+                ''')
+                
+                now = self._get_now()
+                cursor.execute('''
+                    INSERT INTO debug_logs (user_id, log_type, message, url, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (user_id, log_type, message[:500], url, now))
+                
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error adding debug log: {e}")
+            return False
+    
+    def get_debug_logs(self, user_id: int, limit: int = 200) -> List[Dict]:
+        """Get debug logs for user"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT id, log_type, message, url, created_at
+                    FROM debug_logs
+                    WHERE user_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                ''', (user_id, limit))
+                
+                rows = cursor.fetchall()
+                logs = []
+                for row in rows:
+                    logs.append({
+                        'id': row['id'],
+                        'type': row['log_type'],
+                        'message': row['message'],
+                        'url': row['url'],
+                        'timestamp': row['created_at']
+                    })
+                return logs
+        except Exception as e:
+            print(f"Error getting debug logs: {e}")
+            return []
+    
+    def clear_debug_logs(self, user_id: int) -> bool:
+        """Clear debug logs for user"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute('DELETE FROM debug_logs WHERE user_id = ?', (user_id,))
+                conn.commit()
+                return True
+        except Exception as e:
+            print(f"Error clearing debug logs: {e}")
+            return False
