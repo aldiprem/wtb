@@ -2324,6 +2324,7 @@ body.panel-open {
     }
 }
 
+/* Fullscreen Page - Mencegah overscroll */
 .fullscreen-page {
     position: fixed;
     top: 0;
@@ -2335,11 +2336,9 @@ body.panel-open {
     display: flex;
     flex-direction: column;
     animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    overscroll-behavior: none !important;
+    -webkit-overscroll-behavior: none !important;
+    touch-action: pan-y !important;
 }
 
 .fullscreen-header {
@@ -2352,6 +2351,24 @@ body.panel-open {
     position: sticky;
     top: 0;
     z-index: 10;
+    flex-shrink: 0;
+}
+
+.fullscreen-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    overscroll-behavior: contain !important;
+    -webkit-overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y !important;
+}
+
+html, body {
+    overscroll-behavior: none !important;
+    overscroll-behavior-y: none !important;
+    -webkit-overscroll-behavior: none !important;
+    -webkit-overscroll-behavior-y: none !important;
 }
 
 .fullscreen-header-left {
@@ -2409,12 +2426,6 @@ body.panel-open {
     border-color: var(--danger);
     color: var(--danger);
     transform: scale(1.02);
-}
-
-.fullscreen-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
 }
 
 /* Activity Tabs Fullscreen */
@@ -2720,4 +2731,33 @@ body.panel-open {
     .activity-tabs-fullscreen {
         padding: 6px;
     }
+}
+
+body {
+    overscroll-behavior: none !important;
+    overscroll-behavior-y: none !important;
+    -webkit-overscroll-behavior: none !important;
+    -webkit-overscroll-behavior-y: none !important;
+}
+
+.storage-container,
+.winedash-container,
+.fullscreen-page,
+.fullscreen-content {
+    overscroll-behavior: contain !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overscroll-behavior: contain !important;
+    -webkit-overscroll-behavior-y: contain !important;
+}
+
+/* Untuk fullscreen page */
+.fullscreen-page {
+    overscroll-behavior: none !important;
+    touch-action: pan-y !important;
+}
+
+.fullscreen-content {
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y !important;
 }

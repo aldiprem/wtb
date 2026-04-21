@@ -3860,6 +3860,36 @@
         }
     }
 
+    function setupClosingBehavior() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        if (typeof tg.setupClosingBehavior === 'function') {
+            tg.setupClosingBehavior({
+                need_confirmation: true
+            }).catch(err => {
+                console.warn('setupClosingBehavior not supported:', err);
+            });
+        }
+        
+        // Enable closing confirmation
+        if (typeof tg.enableClosingConfirmation === 'function') {
+            tg.enableClosingConfirmation();
+        }
+        
+        // Disable vertical swipe
+        if (typeof tg.disableVerticalSwipes === 'function') {
+            tg.disableVerticalSwipes();
+        }
+        
+        // Expand to full height
+        if (typeof tg.expand === 'function') {
+            tg.expand();
+        }
+        
+        console.log('✅ Closing behavior configured');
+    }
+
     function setupDomElements() {
         elements.loadingOverlay = document.getElementById('loadingOverlay');
         elements.toastContainer = document.getElementById('toastContainer');
@@ -3916,6 +3946,6 @@
     };
 
     window.switchToAuctionsMode = switchToAuctionsMode;
-    
+
     init();
 })();

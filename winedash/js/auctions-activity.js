@@ -443,11 +443,209 @@
             });
         }
     }
-    
+
+    // ==================== SAFE AREA INSET ====================
+
+    function applySafeAreaInsets() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.warn('[ACTIVITY] Telegram WebApp not available');
+            return;
+        }
+        
+        const root = document.documentElement;
+        
+        const topInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-top')) || 0;
+        const bottomInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-bottom')) || 0;
+        const leftInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-left')) || 0;
+        const rightInset = parseInt(getComputedStyle(root).getPropertyValue('--tg-safe-area-inset-right')) || 0;
+        
+        let safeTop = topInset;
+        let safeBottom = bottomInset;
+        let safeLeft = leftInset;
+        let safeRight = rightInset;
+        
+        if (tg.safeAreaInset) {
+            safeTop = tg.safeAreaInset.top || safeTop;
+            safeBottom = tg.safeAreaInset.bottom || safeBottom;
+            safeLeft = tg.safeAreaInset.left || safeLeft;
+            safeRight = tg.safeAreaInset.right || safeRight;
+        }
+        
+        // Apply ke fullscreen page
+        const fullscreenPage = document.getElementById('auctionsActivityFullscreen');
+        if (fullscreenPage) {
+            fullscreenPage.style.paddingTop = `${safeTop}px`;
+            fullscreenPage.style.paddingBottom = `${safeBottom}px`;
+            fullscreenPage.style.paddingLeft = `${safeLeft}px`;
+            fullscreenPage.style.paddingRight = `${safeRight}px`;
+        }
+        
+        // Apply ke fullscreen header
+        const fullscreenHeader = document.querySelector('#auctionsActivityFullscreen .fullscreen-header');
+        if (fullscreenHeader) {
+            fullscreenHeader.style.paddingTop = `${safeTop + 16}px`;
+        }
+        
+        // Apply ke fullscreen content
+        const fullscreenContent = document.querySelector('#auctionsActivityFullscreen .fullscreen-content');
+        if (fullscreenContent) {
+            fullscreenContent.style.paddingBottom = `${safeBottom + 20}px`;
+        }
+        
+        console.log('[ACTIVITY] Safe area applied:', { safeTop, safeBottom });
+    }
+
+    function initSafeArea() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        setTimeout(applySafeAreaInsets, 50);
+        applySafeAreaInsets();
+        
+        if (tg.onEvent) {
+            tg.onEvent('safeAreaChanged', () => applySafeAreaInsets());
+            tg.onEvent('contentSafeAreaChanged', () => applySafeAreaInsets());
+            tg.onEvent('viewportChanged', () => applySafeAreaInsets());
+        }
+    }
+
+    function createFullscreenActivityPage() {
+        const existingFullscreen = document.getElementById('auctionsActivityFullscreen');
+        if (existingFullscreen) {
+            existingFullscreen.remove();
+        }
+        
+        const fullscreenDiv = document.createElement('div');
+        fullscreenDiv.id = 'auctionsActivityFullscreen';
+        fullscreenDiv.className = 'fullscreen-page';
+        
+        // Apply initial safe area insets
+        const tg = window.Telegram?.WebApp;
+        let safeTop = 0, safeBottom = 0;
+        if (tg && tg.safeAreaInset) {
+            safeTop = tg.safeAreaInset.top || 0;
+            safeBottom = tg.safeAreaInset.bottom || 0;
+        }
+        
+        fullscreenDiv.style.paddingTop = `${safeTop}px`;
+        fullscreenDiv.style.paddingBottom = `${safeBottom}px`;
+        
+        fullscreenDiv.innerHTML = `
+            <div class="fullscreen-header" style="padding-top: ${safeTop + 16}px;">
+                <div class="fullscreen-header-left">
+                    <h2><i class="fas fa-history"></i> Auction Activity</h2>
+                </div>
+                <button class="close-fullscreen-btn" id="closeActivityFullscreenBtn">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="fullscreen-content" style="padding-bottom: ${safeBottom + 20}px;">
+                <!-- Tabs Navigation -->
+                <div class="activity-tabs-fullscreen">
+                    <button class="activity-tab-fullscreen active" data-activity-tab="my-auctions">
+                        <i class="fas fa-gavel"></i>
+                        <span>My Auctions</span>
+                    </button>
+                    <button class="activity-tab-fullscreen" data-activity-tab="my-bids">
+                        <i class="fas fa-history"></i>
+                        <span>My Bids</span>
+                    </button>
+                    <button class="activity-tab-fullscreen" data-activity-tab="ended">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Ended</span>
+                    </button>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="activity-search-fullscreen">
+                    <div class="search-container-fullscreen">
+                        <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
+                        <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
+                    </div>
+                </div>
+
+                <!-- Activity Container -->
+                <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
+                    <div class="loading-placeholder">Memuat aktivitas...</div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(fullscreenDiv);
+        activityFullscreen = fullscreenDiv;
+        
+        // Setup tombol close
+        const closeBtn = document.getElementById('closeActivityFullscreenBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeFullscreenActivity();
+                if (typeof window.switchToAuctionsMode === 'function') {
+                    window.switchToAuctionsMode();
+                }
+            });
+        }
+        
+        // Setup tabs
+        document.querySelectorAll('.activity-tab-fullscreen').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const tab = btn.dataset.activityTab;
+                if (tab) {
+                    currentActivityTab = tab;
+                    document.querySelectorAll('.activity-tab-fullscreen').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    await loadActivityData();
+                }
+            });
+        });
+        
+        // Setup search
+        const searchBtn = document.getElementById('activityFullscreenSearchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                const searchInput = document.getElementById('activityFullscreenSearchInput');
+                activitySearchTerm = searchInput?.value || '';
+                renderActivityItems();
+            });
+        }
+        
+        const searchInput = document.getElementById('activityFullscreenSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    activitySearchTerm = searchInput.value;
+                    renderActivityItems();
+                }
+            });
+        }
+        
+        // Setup closing behavior untuk fullscreen
+        setupFullscreenClosingBehavior();
+        
+        return fullscreenDiv;
+    }
+
+    function setupFullscreenClosingBehavior() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        // Disable vertical swipe untuk fullscreen page
+        const fullscreenPage = document.getElementById('auctionsActivityFullscreen');
+        if (fullscreenPage) {
+            fullscreenPage.addEventListener('touchstart', (e) => {
+                // Prevent default hanya jika diperlukan
+            }, { passive: true });
+        }
+    }
+
     // ==================== INITIALIZATION ====================
     
     async function init() {
         console.log('📊 Winedash Auctions Activity - Initializing...');
+
+        initSafeArea();
         
         activityContainer = document.getElementById('auctionsActivityContainer');
         activitySearchInput = document.getElementById('activitySearchInput');
