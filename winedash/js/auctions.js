@@ -208,20 +208,29 @@
     }
     
     // ==================== LOAD USER USERNAMES ====================
-    
+        
     async function loadUserUsernames() {
-        if (!telegramUser) return [];
+        if (!telegramUser) {
+            console.log('[AUCTIONS] No telegram user, cannot load usernames');
+            return [];
+        }
         
         try {
+            console.log(`[AUCTIONS] Loading usernames for user ${telegramUser.id}`);
+            
             const response = await fetch(`${API_BASE_URL}/api/winedash/usernames?limit=200`);
             const data = await response.json();
             
+            console.log(`[AUCTIONS] Usernames response:`, data);
+            
             if (data.success && data.usernames) {
                 // Filter usernames owned by user and available (not on auction)
-                return data.usernames.filter(u => 
+                const availableUsernames = data.usernames.filter(u => 
                     u.seller_id === telegramUser.id && 
                     u.status === 'available'
                 );
+                console.log(`[AUCTIONS] Found ${availableUsernames.length} available usernames for auction`);
+                return availableUsernames;
             }
             return [];
         } catch (error) {
@@ -229,7 +238,7 @@
             return [];
         }
     }
-    
+
     // ==================== LOAD AUCTIONS ====================
                                 
     async function loadAuctions() {
@@ -592,12 +601,20 @@
     }
     
     // ==================== CREATE AUCTION PANEL ====================
-    
+        
     function showCreateAuctionPanel() {
+        // Hapus panel yang sudah ada jika ada
         if (createAuctionPanel) {
-            createAuctionPanel.remove();
-            createAuctionPanel = null;
+            console.log('[AUCTIONS] Closing existing create auction panel');
+            closeCreateAuctionPanel();
+            // Tunggu sebentar sebelum membuka yang baru
+            setTimeout(() => {
+                showCreateAuctionPanel();
+            }, 300);
+            return;
         }
+        
+        console.log('[AUCTIONS] Showing create auction panel');
         
         const overlay = document.createElement('div');
         overlay.className = 'panel-overlay';
@@ -650,84 +667,118 @@
         
         setTimeout(() => panel.classList.add('open'), 10);
         
-        // Load usernames
-        loadUserUsernames().then(usernames => {
+        // Load usernames dengan async/await yang benar
+        (async () => {
             const select = document.getElementById('auctionUsernameSelect');
-            if (select && usernames.length > 0) {
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Loading usernames...</option>';
+            
+            const usernames = await loadUserUsernames();
+            console.log('[AUCTIONS] Usernames loaded for select:', usernames.length);
+            
+            if (usernames && usernames.length > 0) {
                 select.innerHTML = usernames.map(u => 
                     `<option value="${u.id}" data-username="${u.username}">@${u.username}</option>`
                 ).join('');
-            } else if (select) {
+            } else {
                 select.innerHTML = '<option value="">No available usernames</option>';
             }
-        });
+        })();
         
         // Setup duration options
         let selectedDuration = '1h';
         document.querySelectorAll('.duration-option').forEach(btn => {
-            btn.addEventListener('click', () => {
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 document.querySelectorAll('.duration-option').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                selectedDuration = btn.dataset.duration;
+                newBtn.classList.add('active');
+                selectedDuration = newBtn.dataset.duration;
                 
                 const customInput = document.querySelector('.custom-duration-input');
                 if (selectedDuration === 'custom') {
-                    customInput.style.display = 'block';
+                    if (customInput) customInput.style.display = 'block';
                 } else {
-                    customInput.style.display = 'none';
+                    if (customInput) customInput.style.display = 'none';
                 }
             });
         });
-        document.querySelector('.duration-option').classList.add('active');
+        // Set default active
+        const defaultBtn = document.querySelector('.duration-option[data-duration="1h"]');
+        if (defaultBtn) defaultBtn.classList.add('active');
         
         // Close button
         const closeBtn = panel.querySelector('.panel-close');
-        closeBtn.addEventListener('click', closeCreateAuctionPanel);
+        if (closeBtn) {
+            const newCloseBtn = closeBtn.cloneNode(true);
+            closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
+            newCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeCreateAuctionPanel();
+            });
+        }
         
         // Overlay click
-        overlay.addEventListener('click', closeCreateAuctionPanel);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                closeCreateAuctionPanel();
+            }
+        });
         
         // Confirm button
         const confirmBtn = document.getElementById('confirmCreateAuctionBtn');
-        confirmBtn.addEventListener('click', async () => {
-            const select = document.getElementById('auctionUsernameSelect');
-            const selectedOption = select.options[select.selectedIndex];
-            const usernameId = select.value;
-            const username = selectedOption?.dataset?.username;
-            const startPrice = parseFloat(document.getElementById('auctionStartPrice').value);
-            const minIncrement = parseFloat(document.getElementById('auctionMinIncrement').value);
+        if (confirmBtn) {
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
             
-            if (!usernameId || !username) {
-                showToast('Pilih username terlebih dahulu', 'warning');
-                return;
-            }
-            
-            if (isNaN(startPrice) || startPrice < 0.1) {
-                showToast('Start price minimal 0.1 TON', 'warning');
-                return;
-            }
-            
-            if (isNaN(minIncrement) || minIncrement < 0.01) {
-                showToast('Minimum increment minimal 0.01 TON', 'warning');
-                return;
-            }
-            
-            let duration = selectedDuration;
-            if (duration === 'custom') {
-                const customHours = parseInt(document.getElementById('auctionCustomDuration').value);
-                if (isNaN(customHours) || customHours < 1) {
-                    showToast('Masukkan durasi yang valid (minimal 1 jam)', 'warning');
+            newConfirmBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const select = document.getElementById('auctionUsernameSelect');
+                const selectedOption = select?.options[select.selectedIndex];
+                const usernameId = select?.value;
+                const username = selectedOption?.dataset?.username;
+                const startPrice = parseFloat(document.getElementById('auctionStartPrice')?.value);
+                const minIncrement = parseFloat(document.getElementById('auctionMinIncrement')?.value);
+                
+                if (!usernameId || !username) {
+                    showToast('Pilih username terlebih dahulu', 'warning');
                     return;
                 }
-                duration = `${customHours}h`;
-            }
-            
-            await createAuction(username, parseInt(usernameId), startPrice, minIncrement, duration);
-        });
+                
+                if (isNaN(startPrice) || startPrice < 0.1) {
+                    showToast('Start price minimal 0.1 TON', 'warning');
+                    return;
+                }
+                
+                if (isNaN(minIncrement) || minIncrement < 0.01) {
+                    showToast('Minimum increment minimal 0.01 TON', 'warning');
+                    return;
+                }
+                
+                let duration = selectedDuration;
+                if (duration === 'custom') {
+                    const customHours = parseInt(document.getElementById('auctionCustomDuration')?.value);
+                    if (isNaN(customHours) || customHours < 1) {
+                        showToast('Masukkan durasi yang valid (minimal 1 jam)', 'warning');
+                        return;
+                    }
+                    duration = `${customHours}h`;
+                }
+                
+                await createAuction(username, parseInt(usernameId), startPrice, minIncrement, duration);
+            });
+        }
         
         hapticLight();
     }
-    
+
     function closeCreateAuctionPanel() {
         if (createAuctionPanel) {
             createAuctionPanel.classList.remove('open');
@@ -1206,18 +1257,42 @@
     }
 
     function loadAuctionsModule() {
-        // Cegah loading berulang
-        if (auctionsModuleLoaded) {
-            console.log('✅ Auctions module already loaded');
+        console.log('📦 loadAuctionsModule called');
+        
+        // Cek apakah user sudah ada
+        if (!telegramUser || !telegramUser.id) {
+            console.log('⏳ Waiting for telegramUser before loading auctions module...');
+            // Tunggu sebentar lalu coba lagi
+            setTimeout(() => {
+                if (telegramUser && telegramUser.id) {
+                    loadAuctionsModule();
+                } else {
+                    console.error('❌ No telegramUser available for auctions module');
+                    const auctionsContainer = document.getElementById('auctionsContainer');
+                    if (auctionsContainer) {
+                        auctionsContainer.innerHTML = '<div class="loading-placeholder">Tidak dapat memuat auctions. Silakan refresh halaman.</div>';
+                    }
+                }
+            }, 500);
             return;
         }
         
-        if (auctionsModuleLoading) {
+        // Cegah loading berulang
+        if (window.auctionsModuleLoaded) {
+            console.log('✅ Auctions module already loaded');
+            if (typeof window.refreshAuctions === 'function') {
+                console.log('🔄 Refreshing auctions data');
+                window.refreshAuctions();
+            }
+            return;
+        }
+        
+        if (window.auctionsModuleLoading) {
             console.log('⏳ Auctions module is already loading...');
             return;
         }
         
-        auctionsModuleLoading = true;
+        window.auctionsModuleLoading = true;
         
         // Load CSS
         if (!document.querySelector('link[href="/winedash/css/auctions.css"]')) {
@@ -1225,26 +1300,51 @@
             link.rel = 'stylesheet';
             link.href = '/winedash/css/auctions.css';
             document.head.appendChild(link);
+            console.log('✅ Auctions CSS loaded');
         }
         
-        // Load JS
-        const script = document.createElement('script');
-        script.src = '/winedash/js/auctions.js';
-        script.onload = () => {
-            auctionsModuleLoaded = true;
-            auctionsModuleLoading = false;
+        // Load JS - Hapus script lama jika ada
+        const script = document.getElementById('auctions-module-script');
+        if (script) {
+            script.remove();
+        }
+        
+        const newScript = document.createElement('script');
+        newScript.id = 'auctions-module-script';
+        newScript.src = '/winedash/js/auctions.js?v=' + Date.now();
+        newScript.onload = () => {
+            window.auctionsModuleLoaded = true;
+            window.auctionsModuleLoading = false;
             console.log('✅ Auctions module loaded');
+            
+            // Tunggu sebentar agar script benar-benar siap
+            setTimeout(() => {
+                if (typeof window.initAuctions === 'function') {
+                    console.log('🚀 Calling window.initAuctions with telegramUser:', telegramUser);
+                    window.initAuctions(telegramUser);
+                } else {
+                    console.error('❌ window.initAuctions not found after loading auctions.js');
+                    const auctionsContainer = document.getElementById('auctionsContainer');
+                    if (auctionsContainer) {
+                        auctionsContainer.innerHTML = '<div class="loading-placeholder">Error: Module tidak terload dengan benar. Refresh halaman.</div>';
+                    }
+                }
+            }, 200);
         };
-        script.onerror = () => {
-            auctionsModuleLoading = false;
+        newScript.onerror = () => {
+            window.auctionsModuleLoading = false;
             console.error('❌ Failed to load auctions module');
+            const auctionsContainer = document.getElementById('auctionsContainer');
+            if (auctionsContainer) {
+                auctionsContainer.innerHTML = '<div class="loading-placeholder">Gagal memuat module auctions. Refresh halaman.</div>';
+            }
+            showToast('Gagal memuat module auctions', 'error');
         };
-        document.head.appendChild(script);
+        document.head.appendChild(newScript);
     }
 
-
     // ==================== INITIALIZATION ====================
-    
+        
     async function init() {
         console.log('🔨 Winedash Auctions - Initializing...');
         
@@ -1255,15 +1355,29 @@
         auctionsListBtn = document.getElementById('auctionsListBtn');
         createAuctionBtn = document.getElementById('createAuctionBtn');
         
+        // PERBAIKAN: Hapus event listener lama dengan clone
         if (createAuctionBtn) {
-            createAuctionBtn.addEventListener('click', () => {
+            const newCreateBtn = createAuctionBtn.cloneNode(true);
+            createAuctionBtn.parentNode.replaceChild(newCreateBtn, createAuctionBtn);
+            createAuctionBtn = newCreateBtn;
+            
+            createAuctionBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('[AUCTIONS] Create auction button clicked');
                 showCreateAuctionPanel();
             });
         }
         
+        // PERBAIKAN: Hapus event listener lama untuk action buttons
         document.querySelectorAll('.auctions-action-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.auctionsTab;
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const tab = newBtn.dataset.auctionsTab;
                 if (tab) switchAuctionTab(tab);
             });
         });
@@ -1290,15 +1404,11 @@
             } catch (error) {
                 console.error('Error checking expired auctions:', error);
             }
-        }, 60000); // Check every minute
-    }
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+        }, 60000);
     }
 
+    console.log('📦 Auctions module loaded, waiting for initAuctions() call');
+    
     window.initAuctions = async function(user) {
         console.log('🔨 Auctions - initAuctions called with user:', user);
         
