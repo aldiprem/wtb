@@ -281,18 +281,43 @@ def get_ended_auctions(user_id):
         return response
     
     try:
+        # Pastikan method get_ended_auctions ada di AuctionsDatabase
         auctions = auctions_db.get_ended_auctions(user_id)
+        
+        # Jika method belum ada, fallback ke query manual
+        if auctions is None:
+            import sqlite3
+            with sqlite3.connect(auctions_db.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT DISTINCT a.*, 
+                        u.username as owner_username, u.first_name as owner_name, u.photo_url as owner_photo,
+                        w.username as winner_username, w.first_name as winner_name, w.photo_url as winner_photo,
+                        (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count
+                    FROM auctions a
+                    LEFT JOIN users u ON a.owner_id = u.user_id
+                    LEFT JOIN users w ON a.winner_id = w.user_id
+                    WHERE a.status = 'ended' AND (a.owner_id = ? OR a.winner_id = ?)
+                    ORDER BY a.end_time DESC
+                    LIMIT 100
+                ''', (user_id, user_id))
+                
+                rows = cursor.fetchall()
+                auctions = [dict(row) for row in rows]
         
         return jsonify({
             'success': True,
-            'auctions': auctions,
-            'total': len(auctions)
+            'auctions': auctions if auctions else [],
+            'total': len(auctions) if auctions else 0
         })
         
     except Exception as e:
         print(f"Error in get_ended_auctions: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e), 'auctions': []}), 500
 
 @auctions_bp.route('/ended-all', methods=['GET', 'OPTIONS'])
 def get_all_ended_auctions():

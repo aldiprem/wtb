@@ -23,7 +23,6 @@
     let auctionsGridBtn = null;
     let auctionsListBtn = null;
     let createAuctionBtn = null;
-    let isLoading = false;
     let loadingQueue = [];
     let activeTab = 'active';
     let activeLoadingCount = 0;
@@ -230,11 +229,11 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-            
+                
     async function loadAuctions() {
         if (!telegramUser) return;
         
-        showLoading(true);
+        showSilentLoading();
         
         try {
             console.log(`[AUCTIONS] Loading auctions for tab: ${currentAuctionTab}`);
@@ -274,7 +273,8 @@
             console.error('[AUCTIONS] Error loading auctions:', error);
             renderAuctionsEmpty();
         } finally {
-            showLoading(false);
+            // GANTI: showLoading(false); menjadi hideSilentLoading()
+            hideSilentLoading();
         }
     }
     
@@ -775,7 +775,7 @@
             return;
         }
         
-        showLoading(true);
+        showSilentLoading();
         
         try {
             const response = await fetch(`${API_BASE_URL}/api/winedash/auctions/detail/${auctionId}`);
@@ -807,7 +807,7 @@
             const timeRemaining = formatTimeRemaining(auction.end_time);
             const isOwner = telegramUser && auction.owner_id === telegramUser.id;
             const isActive = auction.status === 'active' && new Date(auction.end_time) > new Date();
-            const isEnded = !isActive && auction.status === 'ended';
+            const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
             
             let avatarUrl = localStorage.getItem(`avatar_${username}`);
             if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
@@ -930,22 +930,27 @@
                         if (detailTimerInterval) clearInterval(detailTimerInterval);
                         const bidBtn = document.getElementById('placeBidBtn');
                         if (bidBtn) bidBtn.remove();
-                        auctionDetailPanel.querySelector('.detail-actions').innerHTML = `
-                            <button class="detail-action-btn close-detail-btn" id="closeDetailBtn">
-                                <i class="fas fa-times"></i> Close
-                            </button>
-                        `;
-                        setupCloseButton();
+                        // Update panel untuk menunjukkan ended
+                        const detailActions = auctionDetailPanel.querySelector('.detail-actions');
+                        if (detailActions) {
+                            detailActions.innerHTML = `
+                                <button class="detail-action-btn close-detail-btn" id="closeDetailBtn">
+                                    <i class="fas fa-times"></i> Close
+                                </button>
+                            `;
+                            setupCloseButtonHandler();
+                        }
                     }
                 };
                 updateDetailTimer();
                 detailTimerInterval = setInterval(updateDetailTimer, 1000);
             }
             
-            function setupCloseButton() {
+            // Fungsi untuk setup close button
+            function setupCloseButtonHandler() {
                 const closeBtn = auctionDetailPanel.querySelector('#closeDetailBtn');
                 if (closeBtn) {
-                    // Hapus listener lama
+                    // Hapus listener lama dengan clone
                     const newCloseBtn = closeBtn.cloneNode(true);
                     closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
                     newCloseBtn.addEventListener('click', (e) => {
@@ -955,6 +960,9 @@
                     });
                 }
             }
+            
+            // Panggil setup close button
+            setupCloseButtonHandler();
             
             // Close button di header
             const detailCloseBtn = auctionDetailPanel.querySelector('#detailCloseBtn');
@@ -975,8 +983,6 @@
                     closeAuctionDetail();
                 }
             });
-            
-            setupCloseButton();
             
             // Place Bid button
             const placeBidBtn = document.getElementById('placeBidBtn');
@@ -1004,7 +1010,7 @@
             console.error('Error loading auction detail:', error);
             showToast('Error loading auction detail: ' + (error.message || 'Unknown error'), 'error');
         } finally {
-            showLoading(false);
+            hideSilentLoading();
         }
     }
 
@@ -1060,26 +1066,40 @@
             showLoading(false);
         }
     }
-    
+        
     function closeAuctionDetail() {
+        // Clear any running timers
+        if (auctionDetailPanel) {
+            const timerElement = auctionDetailPanel.querySelector('#detailTimer');
+            if (timerElement && timerElement._interval) {
+                clearInterval(timerElement._interval);
+            }
+        }
+        
         if (auctionDetailPanel) {
             auctionDetailPanel.classList.remove('open');
             setTimeout(() => {
-                auctionDetailPanel.remove();
+                if (auctionDetailPanel && auctionDetailPanel.parentNode) {
+                    auctionDetailPanel.remove();
+                }
                 auctionDetailPanel = null;
             }, 300);
         }
+        
         if (auctionDetailOverlay) {
             auctionDetailOverlay.classList.remove('active');
             setTimeout(() => {
-                auctionDetailOverlay.remove();
+                if (auctionDetailOverlay && auctionDetailOverlay.parentNode) {
+                    auctionDetailOverlay.remove();
+                }
                 auctionDetailOverlay = null;
             }, 300);
         }
+        
         document.body.classList.remove('panel-open');
         hapticLight();
     }
-    
+
     // ==================== TAB SWITCHING ====================
     
     function switchAuctionTab(tab) {
@@ -1162,8 +1182,10 @@
             if (auctionsContainer) {
                 auctionsContainer.classList.add('loading-silent');
             }
-            // Tampilkan skeleton
-            renderSkeleton();
+            // Tampilkan skeleton hanya jika tidak ada data
+            if (!currentAuctions || currentAuctions.length === 0) {
+                renderSkeleton();
+            }
         }
     }
 
