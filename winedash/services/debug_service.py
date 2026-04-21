@@ -377,6 +377,80 @@ def clear_storage(user_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@debug_bp.route('/console/add', methods=['POST', 'OPTIONS'])
+def add_console_log():
+    """Add console log (called by client)"""
+    if request.method == 'OPTIONS':
+        return _options_response()
+    
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        
+        print(f"[DEBUG] add_console_log called for user_id: {user_id}")
+        
+        if not user_id:
+            print("[DEBUG] No user_id provided")
+            return jsonify({'success': False, 'error': 'user_id required'}), 400
+        
+        # Validasi user_id adalah integer
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            print(f"[DEBUG] Invalid user_id format: {user_id}")
+            return jsonify({'success': False, 'error': 'Invalid user_id format'}), 400
+        
+        logs = data.get('logs')
+        if logs and isinstance(logs, list):
+            for log in logs:
+                log_type = log.get('type', 'log')
+                message = log.get('message', '')
+                url = log.get('url', '')
+                
+                print(f"[DEBUG] Saving log: type={log_type}, message={message[:50]}...")
+                
+                db.add_debug_log(
+                    user_id=user_id,
+                    log_type=log_type,
+                    message=message,
+                    url=url
+                )
+                
+                # Also store in memory
+                console_logs[user_id].append({
+                    'id': len(console_logs[user_id]),
+                    'type': log_type,
+                    'message': message,
+                    'url': url,
+                    'timestamp': log.get('timestamp', datetime.now().isoformat())
+                })
+                if len(console_logs[user_id]) > MAX_LOGS_PER_USER:
+                    console_logs[user_id] = console_logs[user_id][-MAX_LOGS_PER_USER:]
+        else:
+            log_type = data.get('type', 'log')
+            message = data.get('message', '')
+            url = data.get('url', '')
+            
+            print(f"[DEBUG] Saving single log: type={log_type}, message={message[:50]}...")
+            
+            db.add_debug_log(user_id, log_type, message, url)
+            console_logs[user_id].append({
+                'id': len(console_logs[user_id]),
+                'type': log_type,
+                'message': message,
+                'url': url,
+                'timestamp': datetime.now().isoformat()
+            })
+            if len(console_logs[user_id]) > MAX_LOGS_PER_USER:
+                console_logs[user_id] = console_logs[user_id][-MAX_LOGS_PER_USER:]
+        
+        return jsonify({'success': True, 'logs_received': len(logs) if logs else 1})
+        
+    except Exception as e:
+        print(f"Error adding console log: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 def _options_response():
     """Helper untuk CORS preflight"""

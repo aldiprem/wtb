@@ -1634,3 +1634,25 @@ def trigger_bot():
         return jsonify({'success': True, 'message': 'Bot will process pending list'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+    
+# ==================== DEBUG HELPER ====================
+
+@winedash_bp.route('/debug/ping', methods=['GET'])
+def debug_ping():
+    """Ping endpoint untuk test debug"""
+    return jsonify({'success': True, 'message': 'Debug endpoint is working', 'timestamp': datetime.now().isoformat()})
+
+@winedash_bp.route('/debug/test-log', methods=['POST'])
+def debug_test_log():
+    """Test log endpoint"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        message = data.get('message', 'Test log')
+        
+        if user_id:
+            db.add_debug_log(user_id, 'info', message, request.headers.get('Referer', ''))
+            return jsonify({'success': True, 'message': 'Log saved'})
+        return jsonify({'success': False, 'error': 'No user_id'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

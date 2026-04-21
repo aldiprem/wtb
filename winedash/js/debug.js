@@ -81,23 +81,76 @@
     }
     
     // ==================== API CALLS ====================
-    
+        
     async function fetchUsers() {
         try {
+            console.log('[DEBUG] Fetching users...');
             const response = await fetch(`${API_BASE_URL}/api/winedash/debug/users`);
             const data = await response.json();
+            
+            console.log('[DEBUG] Users response:', data);
             
             if (data.success && data.users) {
                 state.availableUsers = data.users;
                 updateUserSelect();
+                
+                // Auto-select user dengan logs terbanyak
+                if (!state.selectedUserId && state.availableUsers.length > 0) {
+                    // Cari user dengan console_count > 0 atau network_count > 0
+                    let userWithLogs = state.availableUsers.find(u => u.console_count > 0 || u.network_count > 0);
+                    if (userWithLogs) {
+                        state.selectedUserId = userWithLogs.user_id;
+                        if (elements.userSelect) elements.userSelect.value = state.selectedUserId;
+                        await refreshCurrentUserData();
+                    }
+                }
+                
                 return true;
             }
+            return false;
         } catch (error) {
-            console.error('Error fetching users:', error);
+            console.error('[DEBUG] Error fetching users:', error);
+            return false;
         }
-        return false;
     }
-    
+
+    // Ganti fungsi refreshCurrentUserData dengan ini:
+    async function refreshCurrentUserData() {
+        if (!state.selectedUserId) {
+            console.log('[DEBUG] No user selected');
+            return;
+        }
+        
+        updateStatus(`Loading logs for user ${state.selectedUserId}...`);
+        
+        console.log(`[DEBUG] Refreshing data for user: ${state.selectedUserId}, tab: ${state.currentTab}`);
+        
+        try {
+            if (state.currentTab === 'console') {
+                await fetchConsoleLogs();
+            } else if (state.currentTab === 'network') {
+                await fetchNetworkRequests();
+            } else if (state.currentTab === 'storage') {
+                await fetchStorageData();
+            }
+            
+            // Update user info display
+            const selectedUser = state.availableUsers.find(u => u.user_id == state.selectedUserId);
+            if (selectedUser && elements.userIdDisplay) {
+                let displayName = selectedUser.first_name ? 
+                    `${selectedUser.first_name} ${selectedUser.last_name || ''}` : 
+                    (selectedUser.username ? `@${selectedUser.username}` : `User ${selectedUser.user_id}`);
+                elements.userIdDisplay.innerHTML = `<i class="fas fa-user"></i> ${escapeHtml(displayName)} (${selectedUser.user_id})`;
+            }
+            
+            updateStatus(`Viewing logs for user ${state.selectedUserId}`);
+        } catch (error) {
+            console.error('[DEBUG] Error refreshing data:', error);
+            updateStatus(`Error loading logs: ${error.message}`);
+        }
+    }
+
+    // Ganti fungsi fetchConsoleLogs dengan ini:
     async function fetchConsoleLogs() {
         if (!state.selectedUserId) {
             renderConsoleEmpty('Select a user to view console logs');
@@ -105,22 +158,30 @@
         }
         
         try {
+            console.log(`[DEBUG] Fetching console logs for user ${state.selectedUserId}`);
             const response = await fetch(`${API_BASE_URL}/api/winedash/debug/console/${state.selectedUserId}`);
             const data = await response.json();
+            
+            console.log(`[DEBUG] Console logs response:`, data);
             
             if (data.success && data.logs) {
                 state.consoleLogs = data.logs;
                 renderConsoleLogs();
                 updateStats();
                 return true;
+            } else {
+                console.warn('[DEBUG] No console logs or error:', data.error);
+                state.consoleLogs = [];
+                renderConsoleEmpty(data.error || 'No console logs');
             }
         } catch (error) {
-            console.error('Error fetching console logs:', error);
-            renderConsoleEmpty('Error loading console logs');
+            console.error('[DEBUG] Error fetching console logs:', error);
+            renderConsoleEmpty('Error loading console logs: ' + error.message);
         }
         return false;
     }
-    
+
+    // Ganti fungsi fetchNetworkRequests dengan ini:
     async function fetchNetworkRequests() {
         if (!state.selectedUserId) {
             renderNetworkEmpty('Select a user to view network requests');
@@ -128,20 +189,91 @@
         }
         
         try {
+            console.log(`[DEBUG] Fetching network requests for user ${state.selectedUserId}`);
             const response = await fetch(`${API_BASE_URL}/api/winedash/debug/network/${state.selectedUserId}`);
             const data = await response.json();
+            
+            console.log(`[DEBUG] Network requests response:`, data);
             
             if (data.success && data.requests) {
                 state.networkRequests = data.requests;
                 renderNetworkRequests();
                 updateStats();
                 return true;
+            } else {
+                console.warn('[DEBUG] No network requests or error:', data.error);
+                state.networkRequests = [];
+                renderNetworkEmpty(data.error || 'No network requests');
             }
         } catch (error) {
-            console.error('Error fetching network requests:', error);
-            renderNetworkEmpty('Error loading network requests');
+            console.error('[DEBUG] Error fetching network requests:', error);
+            renderNetworkEmpty('Error loading network requests: ' + error.message);
         }
         return false;
+    }
+
+    // Perbaiki renderConsoleLogs untuk menampilkan data dengan lebih baik
+    function renderConsoleLogs() {
+        if (!elements.consoleList) return;
+        
+        if (!state.consoleLogs || state.consoleLogs.length === 0) {
+            renderConsoleEmpty('No console logs available');
+            return;
+        }
+        
+        let filtered = [...state.consoleLogs];
+        
+        if (state.consoleFilter) {
+            filtered = filtered.filter(log => 
+                log.message && log.message.toLowerCase().includes(state.consoleFilter.toLowerCase())
+            );
+        }
+        
+        if (state.consoleTypeFilter !== 'all') {
+            filtered = filtered.filter(log => log.type === state.consoleTypeFilter);
+        }
+        
+        if (filtered.length === 0) {
+            elements.consoleList.innerHTML = `<div class="loading-placeholder">No matching console logs</div>`;
+            return;
+        }
+        
+        let html = '';
+        for (const log of filtered) {
+            const time = formatTime(log.timestamp);
+            const typeClass = log.type;
+            
+            html += `
+                <div class="log-entry ${typeClass}">
+                    <div class="log-header">
+                        <span class="log-time">${time}</span>
+                        <span class="log-badge ${typeClass}">${(log.type || 'log').toUpperCase()}</span>
+                    </div>
+                    <div class="log-message">${escapeHtml(log.message || '-')}</div>
+                    ${log.url ? `<div class="log-url">📍 ${escapeHtml(log.url)}</div>` : ''}
+                </div>
+            `;
+        }
+        
+        elements.consoleList.innerHTML = html;
+        elements.consoleList.scrollTop = elements.consoleList.scrollHeight;
+    }
+
+    // Tambahkan fungsi untuk refresh manual di init
+    function setupRefreshButton() {
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+            const newBtn = refreshBtn.cloneNode(true);
+            refreshBtn.parentNode.replaceChild(newBtn, refreshBtn);
+            newBtn.addEventListener('click', async () => {
+                updateStatus('Refreshing...');
+                await fetchUsers();
+                if (state.selectedUserId) {
+                    await refreshCurrentUserData();
+                }
+                updateStatus('Refresh completed');
+            });
+        }
     }
     
     async function fetchStorageData() {
@@ -267,70 +399,6 @@
         }
     }
 
-    async function refreshCurrentUserData() {
-        if (!state.selectedUserId) return;
-        
-        updateStatus(`Loading logs for user ${state.selectedUserId}...`);
-        
-        if (state.currentTab === 'console') {
-            await fetchConsoleLogs();
-        } else if (state.currentTab === 'network') {
-            await fetchNetworkRequests();
-        } else if (state.currentTab === 'storage') {
-            await fetchStorageData();
-        }
-        
-        // Update user info display
-        const selectedUser = state.availableUsers.find(u => u.user_id == state.selectedUserId);
-        if (selectedUser && elements.userIdDisplay) {
-            let displayName = selectedUser.first_name ? `${selectedUser.first_name} ${selectedUser.last_name || ''}` : (selectedUser.username ? `@${selectedUser.username}` : `User ${selectedUser.user_id}`);
-            elements.userIdDisplay.innerHTML = `<i class="fas fa-user"></i> ${displayName} (${selectedUser.user_id})`;
-        }
-        
-        updateStatus(`Viewing logs for user ${state.selectedUserId}`);
-    }
-
-    function renderConsoleLogs() {
-        if (!elements.consoleList) return;
-        
-        let filtered = [...state.consoleLogs];
-        
-        if (state.consoleFilter) {
-            filtered = filtered.filter(log => 
-                log.message.toLowerCase().includes(state.consoleFilter.toLowerCase())
-            );
-        }
-        
-        if (state.consoleTypeFilter !== 'all') {
-            filtered = filtered.filter(log => log.type === state.consoleTypeFilter);
-        }
-        
-        if (filtered.length === 0) {
-            renderConsoleEmpty('No console logs');
-            return;
-        }
-        
-        let html = '';
-        for (const log of filtered) {
-            const time = formatTime(log.timestamp);
-            const typeClass = log.type;
-            
-            html += `
-                <div class="log-entry ${typeClass}">
-                    <div class="log-header">
-                        <span class="log-time">${time}</span>
-                        <span class="log-badge ${typeClass}">${log.type.toUpperCase()}</span>
-                    </div>
-                    <div class="log-message">${escapeHtml(log.message)}</div>
-                    ${log.url ? `<div class="log-url">📍 ${escapeHtml(log.url)}</div>` : ''}
-                </div>
-            `;
-        }
-        
-        elements.consoleList.innerHTML = html;
-        elements.consoleList.scrollTop = elements.consoleList.scrollHeight;
-    }
-    
     function renderConsoleEmpty(message) {
         if (elements.consoleList) {
             elements.consoleList.innerHTML = `<div class="loading-placeholder">${message}</div>`;
@@ -645,6 +713,7 @@
         }
         
         startAutoRefresh();
+        setupRefreshButton();
         
         updateStatus('Debug console ready');
         console.log('✅ Debug Console initialized');
