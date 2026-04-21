@@ -51,6 +51,8 @@
             <div class="search-container">
                 <input type="text" class="search-input" id="searchUsername" placeholder="🔍 Cari username...">
                 <button class="search-apply-btn" id="searchApplyBtn">Apply</button>
+                <!-- Tombol Cart akan dibuat oleh market-checkout.js di sini -->
+                <div id="cartButtonContainer"></div>
             </div>
 
             <!-- Filter Action Bar -->
@@ -81,16 +83,20 @@
                 <div class="card-header">
                     <i class="fas fa-fire"></i>
                     <h3>Username Populer</h3>
+                    <!-- Tombol filter di sini (sebaris dengan text) -->
+                    <button class="filter-action-btn market-filter-header-btn" id="marketFilterHeaderBtn" style="margin-left: auto;">
+                        <i class="fas fa-filter"></i>
+                        <span>Fix Price</span>
+                    </button>
                 </div>
                 
-                <!-- Empty state di DALAM section-card - Container kosong, konten diisi JS -->
+                <!-- Empty state -->
                 <div id="emptyMarketplaceAnimation" style="display: none;"></div>
                 
                 <div class="username-list" id="usernameList">
                     <div class="loading-placeholder">Memuat username...</div>
                 </div>
             </div>
-        </div>
 
         <!-- Tab Content: Wallet -->
         <div class="tab-content" id="walletTab">
@@ -223,7 +229,8 @@
 
     <!-- JavaScript -->
     <script src="/winedash/js/web.js"></script>
-
+    <script src="/winedash/js/market-checkout.js"></script>
+    
     <!-- Debug Client - Load only when ?debug=1 parameter is present -->
     <script>
         (function() {

@@ -783,49 +783,49 @@
             return null;
         }
     }
-    
+        
     function setupCartButton() {
-        // Replace filter-summary-btn with cart button
-        const filterSummaryBtn = document.getElementById('filterSummaryBtn');
-        if (filterSummaryBtn) {
-            const searchContainer = filterSummaryBtn.parentElement;
+        // Cari container untuk cart button (di samping tombol Apply)
+        let cartContainer = document.getElementById('cartButtonContainer');
+        
+        if (!cartContainer) {
+            // Fallback: cari search-container
+            const searchContainer = document.querySelector('#marketplaceTab .search-container');
             if (searchContainer) {
-                // Remove filter summary button
-                filterSummaryBtn.remove();
-                
-                // Add cart button
-                const cartBtn = document.createElement('button');
-                cartBtn.id = 'checkoutCartBtn';
-                cartBtn.className = 'checkout-cart-btn';
-                cartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i><span>Cart</span>';
-                cartBtn.title = 'View Cart';
-                searchContainer.appendChild(cartBtn);
-                
-                cartBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openCheckoutPanel();
-                });
+                // Buat container jika belum ada
+                cartContainer = document.createElement('div');
+                cartContainer.id = 'cartButtonContainer';
+                cartContainer.style.display = 'inline-flex';
+                cartContainer.style.marginLeft = '8px';
+                searchContainer.appendChild(cartContainer);
             }
         }
         
-        // Also add filter button in section-card header
-        const cardHeader = document.querySelector('#marketplaceTab .section-card .card-header');
-        if (cardHeader) {
-            const existingFilterBtn = cardHeader.querySelector('.market-filter-header-btn');
-            if (!existingFilterBtn) {
-                const filterBtn = document.createElement('button');
-                filterBtn.id = 'marketFilterBtn';
-                filterBtn.className = 'filter-action-btn';
-                filterBtn.style.marginLeft = 'auto';
-                filterBtn.innerHTML = '<i class="fas fa-filter"></i><span>Fix Price</span>';
-                cardHeader.appendChild(filterBtn);
-                
-                setupMarketFilterDropdown();
-            }
+        if (cartContainer) {
+            // Hapus tombol lama jika ada
+            const oldCartBtn = cartContainer.querySelector('#checkoutCartBtn');
+            if (oldCartBtn) oldCartBtn.remove();
+            
+            // Buat tombol cart baru
+            const cartBtn = document.createElement('button');
+            cartBtn.id = 'checkoutCartBtn';
+            cartBtn.className = 'checkout-cart-btn';
+            cartBtn.innerHTML = '<i class="fas fa-shopping-cart"></i><span>Cart</span>';
+            cartBtn.title = 'View Cart';
+            
+            cartBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openCheckoutPanel();
+            });
+            
+            cartContainer.appendChild(cartBtn);
+            
+            // Load cart count
+            loadCartCount();
         }
     }
-    
+
     async function init() {
         console.log('🛒 Market Checkout - Initializing...');
         
