@@ -35,10 +35,10 @@ class AuctionsDatabase:
             return (3600, '1 Jam')
     
     # ==================== CREATE AUCTION ====================
-    
+        
     def create_auction(self, username: str, username_id: int, owner_id: int,
-                       start_price: float, min_increment: float, 
-                       duration_str: str) -> Optional[int]:
+                    start_price: float, min_increment: float, 
+                    duration_str: str) -> Optional[int]:
         """Create a new auction for a username"""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -51,13 +51,16 @@ class AuctionsDatabase:
                 end_time = now + timedelta(seconds=duration_seconds)
                 end_time_str = end_time.isoformat()
                 
-                # Check if username already has active auction
+                # PERBAIKAN: Cek apakah username sudah memiliki auction (active atau ended)
                 cursor.execute('''
-                    SELECT id FROM auctions 
-                    WHERE username = ? AND status = 'active'
+                    SELECT id, status FROM auctions 
+                    WHERE username = ?
                 ''', (username,))
-                if cursor.fetchone():
-                    print(f"❌ Username {username} already has active auction")
+                existing = cursor.fetchone()
+                
+                if existing:
+                    existing_id, existing_status = existing
+                    print(f"⚠️ Username {username} already has auction (status: {existing_status})")
                     return None
                 
                 # Check if username exists and is available
@@ -71,16 +74,16 @@ class AuctionsDatabase:
                     print(f"❌ Username {username} not available or not owned by user")
                     return None
                 
-                # Create auction
+                # Create auction (tanpa UNIQUE constraint di username karena sudah dicek)
                 cursor.execute('''
                     INSERT INTO auctions 
                     (username, username_id, owner_id, start_price, current_price, 
-                     min_increment, duration, duration_seconds, start_time, end_time, 
-                     status, created_at, updated_at)
+                    min_increment, duration, duration_seconds, start_time, end_time, 
+                    status, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
                 ''', (username, username_id, owner_id, start_price, start_price,
-                      min_increment, duration_text, duration_seconds, now_str, end_time_str,
-                      now_str, now_str))
+                    min_increment, duration_text, duration_seconds, now_str, end_time_str,
+                    now_str, now_str))
                 
                 auction_id = cursor.lastrowid
                 
@@ -100,9 +103,76 @@ class AuctionsDatabase:
             import traceback
             traceback.print_exc()
             return None
-    
+
+    def migrate_remove_auctions_unique_constraint(self):
+        """Hapus UNIQUE constraint dari tabel auctions"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Cek apakah constraint UNIQUE masih ada
+                cursor.execute("PRAGMA index_list(auctions)")
+                indexes = cursor.fetchall()
+                
+                has_unique = False
+                for idx in indexes:
+                    if 'sqlite_autoindex_auctions_1' in idx[1] or 'username' in idx[2]:
+                        has_unique = True
+                        break
+                
+                if has_unique:
+                    print("🔄 Menghapus UNIQUE constraint dari tabel auctions...")
+                    
+                    # Buat tabel baru tanpa UNIQUE constraint
+                    cursor.execute('''
+                        CREATE TABLE auctions_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            username TEXT NOT NULL,
+                            username_id INTEGER NOT NULL,
+                            owner_id INTEGER NOT NULL,
+                            start_price DECIMAL(20, 8) NOT NULL,
+                            current_price DECIMAL(20, 8) NOT NULL,
+                            min_increment DECIMAL(20, 8) NOT NULL,
+                            duration TEXT NOT NULL,
+                            duration_seconds INTEGER NOT NULL,
+                            start_time TIMESTAMP NOT NULL,
+                            end_time TIMESTAMP NOT NULL,
+                            status TEXT DEFAULT 'active',
+                            winner_id INTEGER,
+                            winning_bid DECIMAL(20, 8),
+                            created_at TIMESTAMP,
+                            updated_at TIMESTAMP,
+                            FOREIGN KEY (owner_id) REFERENCES users(user_id),
+                            FOREIGN KEY (winner_id) REFERENCES users(user_id)
+                        )
+                    ''')
+                    
+                    # Copy data
+                    cursor.execute('INSERT INTO auctions_new SELECT * FROM auctions')
+                    
+                    # Hapus tabel lama
+                    cursor.execute('DROP TABLE auctions')
+                    
+                    # Rename tabel baru
+                    cursor.execute('ALTER TABLE auctions_new RENAME TO auctions')
+                    
+                    # Recreate indexes
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_owner ON auctions(owner_id)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_status ON auctions(status)')
+                    cursor.execute('CREATE INDEX IF NOT EXISTS idx_auctions_end_time ON auctions(end_time)')
+                    
+                    conn.commit()
+                    print("✅ UNIQUE constraint berhasil dihapus dari tabel auctions")
+                else:
+                    print("✅ Tabel auctions sudah tidak memiliki UNIQUE constraint")
+                    
+        except Exception as e:
+            print(f"Error migrating auctions table: {e}")
+            import traceback
+            traceback.print_exc()
+
     # ==================== GET AUCTIONS ====================
-    
+        
     def get_active_auctions(self, limit: int = 100) -> List[Dict]:
         """Get all active auctions"""
         try:
@@ -112,22 +182,36 @@ class AuctionsDatabase:
                 now = self._get_now_str()
                 
                 cursor.execute('''
-                    SELECT a.*, u.username as owner_username, u.first_name as owner_name,
-                           u.photo_url as owner_photo
+                    SELECT a.*, 
+                        u.username as owner_username, 
+                        u.first_name as owner_name,
+                        u.photo_url as owner_photo,
+                        un.based_on
                     FROM auctions a
                     LEFT JOIN users u ON a.owner_id = u.user_id
+                    LEFT JOIN usernames un ON a.username_id = un.id
                     WHERE a.status = 'active' AND a.end_time > ?
                     ORDER BY a.end_time ASC
                     LIMIT ?
                 ''', (now, limit))
                 
                 rows = cursor.fetchall()
-                return [dict(row) for row in rows]
+                auctions = []
+                for row in rows:
+                    auction = dict(row)
+                    # Pastikan based_on ada
+                    if 'based_on' not in auction or not auction['based_on']:
+                        auction['based_on'] = ''
+                    auctions.append(auction)
+                
+                return auctions
                 
         except Exception as e:
             print(f"Error getting active auctions: {e}")
+            import traceback
+            traceback.print_exc()
             return []
-        
+
     def get_auctions_by_owner(self, owner_id: int) -> List[Dict]:
         """Get auctions created by user"""
         try:
@@ -137,16 +221,25 @@ class AuctionsDatabase:
                 
                 cursor.execute('''
                     SELECT a.*, 
+                        un.based_on,
                         (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count,
                         (SELECT MAX(bid_amount) FROM bids WHERE auction_id = a.id) as highest_bid,
                         (SELECT bid_amount FROM bids WHERE auction_id = a.id ORDER BY timestamp DESC LIMIT 1) as last_bid
                     FROM auctions a
+                    LEFT JOIN usernames un ON a.username_id = un.id
                     WHERE a.owner_id = ?
                     ORDER BY a.created_at DESC
                 ''', (owner_id,))
                 
                 rows = cursor.fetchall()
-                return [dict(row) for row in rows]
+                auctions = []
+                for row in rows:
+                    auction = dict(row)
+                    if 'based_on' not in auction or not auction['based_on']:
+                        auction['based_on'] = ''
+                    auctions.append(auction)
+                
+                return auctions
                 
         except Exception as e:
             print(f"Error getting auctions by owner: {e}")
@@ -177,7 +270,7 @@ class AuctionsDatabase:
         except Exception as e:
             print(f"Error getting auctions with bids: {e}")
             return []
-    
+        
     def get_auction_detail(self, auction_id: int) -> Optional[Dict]:
         """Get auction detail with additional info"""
         try:
@@ -186,20 +279,35 @@ class AuctionsDatabase:
                 cursor = conn.cursor()
                 
                 cursor.execute('''
-                    SELECT a.*, u.username as owner_username, u.first_name as owner_name,
-                           u.photo_url as owner_photo
+                    SELECT a.*, 
+                        u.username as owner_username, 
+                        u.first_name as owner_name,
+                        u.photo_url as owner_photo,
+                        un.based_on,
+                        w.username as winner_username,
+                        w.first_name as winner_name,
+                        w.photo_url as winner_photo
                     FROM auctions a
                     LEFT JOIN users u ON a.owner_id = u.user_id
+                    LEFT JOIN usernames un ON a.username_id = un.id
+                    LEFT JOIN users w ON a.winner_id = w.user_id
                     WHERE a.id = ?
                 ''', (auction_id,))
                 
                 row = cursor.fetchone()
-                return dict(row) if row else None
+                if row:
+                    auction = dict(row)
+                    if 'based_on' not in auction or not auction['based_on']:
+                        auction['based_on'] = ''
+                    return auction
+                return None
                 
         except Exception as e:
             print(f"Error getting auction detail: {e}")
+            import traceback
+            traceback.print_exc()
             return None
-    
+
     def get_bid_history(self, auction_id: int, limit: int = 50) -> List[Dict]:
         """Get bid history for an auction"""
         try:
@@ -403,7 +511,7 @@ class AuctionsDatabase:
         except Exception as e:
             print(f"Error checking expired auctions: {e}")
             return 0
-                
+                    
     def get_ended_auctions(self, user_id: int = None, limit: int = 100) -> List[Dict]:
         """Get ended auctions (completed auctions)"""
         try:
@@ -415,12 +523,18 @@ class AuctionsDatabase:
                     # Get ended auctions where user is owner or bidder
                     cursor.execute('''
                         SELECT DISTINCT a.*, 
-                            u.username as owner_username, u.first_name as owner_name, u.photo_url as owner_photo,
-                            w.username as winner_username, w.first_name as winner_name, w.photo_url as winner_photo,
+                            u.username as owner_username, 
+                            u.first_name as owner_name, 
+                            u.photo_url as owner_photo,
+                            w.username as winner_username, 
+                            w.first_name as winner_name, 
+                            w.photo_url as winner_photo,
+                            un.based_on,
                             (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count
                         FROM auctions a
                         LEFT JOIN users u ON a.owner_id = u.user_id
                         LEFT JOIN users w ON a.winner_id = w.user_id
+                        LEFT JOIN usernames un ON a.username_id = un.id
                         WHERE a.status = 'ended' AND (a.owner_id = ? OR a.winner_id = ?)
                         ORDER BY a.end_time DESC
                         LIMIT ?
@@ -429,22 +543,51 @@ class AuctionsDatabase:
                     # Get all ended auctions
                     cursor.execute('''
                         SELECT a.*, 
-                            u.username as owner_username, u.first_name as owner_name, u.photo_url as owner_photo,
-                            w.username as winner_username, w.first_name as winner_name, w.photo_url as winner_photo,
+                            u.username as owner_username, 
+                            u.first_name as owner_name, 
+                            u.photo_url as owner_photo,
+                            w.username as winner_username, 
+                            w.first_name as winner_name, 
+                            w.photo_url as winner_photo,
+                            un.based_on,
                             (SELECT COUNT(*) FROM bids WHERE auction_id = a.id) as bid_count
                         FROM auctions a
                         LEFT JOIN users u ON a.owner_id = u.user_id
                         LEFT JOIN users w ON a.winner_id = w.user_id
+                        LEFT JOIN usernames un ON a.username_id = un.id
                         WHERE a.status = 'ended'
                         ORDER BY a.end_time DESC
                         LIMIT ?
                     ''', (limit,))
                 
                 rows = cursor.fetchall()
-                return [dict(row) for row in rows]
+                auctions = []
+                for row in rows:
+                    auction = dict(row)
+                    if 'based_on' not in auction or not auction['based_on']:
+                        auction['based_on'] = ''
+                    auctions.append(auction)
+                
+                return auctions
                 
         except Exception as e:
             print(f"Error getting ended auctions: {e}")
             import traceback
             traceback.print_exc()
             return []
+            
+    def run_full_migration(self):
+        """Run full migration to ensure all tables and columns exist"""
+        print("🔄 Running full database migration...")
+        
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # ... kode existing untuk create table dan add column ...
+            
+            conn.commit()
+        
+        # Panggil migrasi khusus untuk auctions
+        self.migrate_remove_auctions_unique_constraint()
+        
+        print("✅ Database migration completed successfully!")

@@ -54,6 +54,16 @@ def create_auction():
         if not duration:
             return jsonify({'success': False, 'error': 'Durasi auction diperlukan'}), 400
         
+        # PERBAIKAN: Cek apakah username sudah memiliki auction
+        with sqlite3.connect(auctions_db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT id, status FROM auctions WHERE username = ?', (username,))
+            existing = cursor.fetchone()
+            
+            if existing:
+                existing_id, existing_status = existing
+                return jsonify({'success': False, 'error': f'Username @{username} sudah pernah di-auction sebelumnya (status: {existing_status})'}), 400
+        
         # Check if username is owned by user and available
         with sqlite3.connect(auctions_db.db_path) as conn:
             cursor = conn.cursor()
@@ -77,7 +87,7 @@ def create_auction():
         )
         
         if not auction_id:
-            return jsonify({'success': False, 'error': 'Gagal membuat auction'}), 500
+            return jsonify({'success': False, 'error': 'Gagal membuat auction. Username mungkin sudah pernah di-auction.'}), 500
         
         return jsonify({
             'success': True,
@@ -90,7 +100,6 @@ def create_auction():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
 
 # ==================== GET AUCTIONS ====================
 
