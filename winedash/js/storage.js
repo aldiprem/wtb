@@ -3453,7 +3453,7 @@
         const auctionsListBtn = document.getElementById('auctionsListBtn');
         
         if (!auctionsGridBtn || !auctionsListBtn) {
-            console.log('[STORAGE] Auctions layout buttons not found');
+            console.log('[STORAGE] Auctions layout buttons not found, skipping');
             return;
         }
         
@@ -3481,7 +3481,6 @@
                 newGridBtn.classList.add('active');
                 newListBtn.classList.remove('active');
                 
-                // Refresh auctions jika module sudah loaded
                 if (typeof window.setAuctionsLayout === 'function') {
                     window.setAuctionsLayout('grid');
                 } else if (typeof window.refreshAuctions === 'function') {
@@ -3502,7 +3501,6 @@
                 newListBtn.classList.add('active');
                 newGridBtn.classList.remove('active');
                 
-                // Refresh auctions jika module sudah loaded
                 if (typeof window.setAuctionsLayout === 'function') {
                     window.setAuctionsLayout('list');
                 } else if (typeof window.refreshAuctions === 'function') {
@@ -4101,6 +4099,4 @@
     };
 
     window.switchToAuctionsMode = switchToAuctionsMode;
-
-    init();
 })();
