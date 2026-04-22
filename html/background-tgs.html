@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Background TGS Pattern</title>
+    <title>Background TGS Wallpaper</title>
     <style>
         * {
             margin: 0;
@@ -18,7 +18,7 @@
             overflow-x: hidden;
         }
 
-        /* Background Container */
+        /* Background Container - FULL LAYAR */
         .tgs-background {
             position: fixed;
             top: 0;
@@ -31,15 +31,14 @@
             background: #0a0a0a;
         }
 
-        /* TGS Item Container - Tanpa animasi gerakan */
+        /* TGS Item Container - Wallpaper style */
         .tgs-item {
             position: absolute;
             pointer-events: none;
             z-index: 1;
             opacity: 0;
-            animation: fadeIn 0.3s ease forwards;
-            /* Pastikan tidak terbalik */
-            transform: translate(-50%, -50%) scale(1) rotate(0deg);
+            animation: fadeIn 0.2s ease forwards;
+            /* Rotasi random akan di-set via JS */
         }
 
         @keyframes fadeIn {
@@ -52,8 +51,6 @@
             width: 100% !important;
             height: 100% !important;
             object-fit: contain;
-            /* Pastikan tidak terbalik */
-            transform: scale(1) rotate(0deg);
         }
 
         /* Loading Overlay */
@@ -90,11 +87,6 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        /* Hapus semua efek animasi gerakan */
-        .tgs-item.no-animation {
-            animation: fadeIn 0.3s ease forwards;
-        }
     </style>
     
     <!-- Libraries -->
@@ -102,13 +94,13 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 </head>
 <body>
-    <!-- Background Container -->
+    <!-- Background Container - FULL LAYAR -->
     <div id="tgsBackground" class="tgs-background"></div>
     
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Loading background patterns...</div>
+        <div class="loading-text">Loading wallpaper patterns...</div>
     </div>
 
     <script>
@@ -119,16 +111,17 @@
             let tgsFiles = [];
             let animations = [];
             let container = document.getElementById('tgsBackground');
+            let isRendering = false;
             
-            // Konfigurasi - JARAK SANGAT DEKAT
+            // Konfigurasi WALLPAPER - RANDOM, TIDAK DI SUSUN
             const CONFIG = {
-                minSize: 35,        // Ukuran minimal (px)
-                maxSize: 80,        // Ukuran maksimal (px)
-                spacingX: 15,       // Jarak horizontal antar item (px) - SANGAT DEKAT
-                spacingY: 15,       // Jarak vertikal antar item (px) - SANGAT DEKAT
-                marginX: 10,        // Margin kiri-kanan (%)
-                marginY: 8,         // Margin atas-bawah (%)
-                maxItemsPerFile: 5  // Setiap file TGS akan ditampilkan 5 kali
+                minSize: 30,           // Ukuran minimal (px)
+                maxSize: 100,          // Ukuran maksimal (px)
+                totalItems: 40,        // Total item yang akan ditampilkan (cukup padat)
+                maxItemsPerFile: 4,    // Setiap file TGS max 4 kali
+                rotationRange: 45,     // Range rotasi -45 sampai +45 derajat (tidak terbalik)
+                extremeRotation: 90,   // Kadang ada yang 90 derajat (tapi tidak terbalik)
+                useExtremeRotation: true // Aktifkan rotasi ekstrim (90 derajat)
             };
             
             // ==================== UTILITY FUNCTIONS ====================
@@ -141,75 +134,67 @@
                 return Math.floor(Math.random() * (max - min + 1)) + min;
             }
             
-            // ==================== GENERATE POSISI GRID DENGAN JARAK DEKAT ====================
+            // ==================== GENERATE ROTASI RANDOM ====================
             
-            function generateGridPositions(itemCount, itemSize) {
+            function getRandomRotation() {
+                // Pilih jenis rotasi
+                const rotationType = Math.random();
+                
+                // 60%: rotasi normal (-45 sampai +45 derajat)
+                if (rotationType < 0.6) {
+                    return randomInt(-CONFIG.rotationRange, CONFIG.rotationRange);
+                }
+                // 25%: rotasi sedang (-70 sampai +70 derajat)
+                else if (rotationType < 0.85) {
+                    return randomInt(-70, 70);
+                }
+                // 15%: rotasi ekstrim (90 derajat atau -90 derajat) - TAPI TIDAK TERBALIK
+                else if (CONFIG.useExtremeRotation) {
+                    // 90 atau -90 derajat, tidak pernah 180 (terbalik)
+                    return Math.random() > 0.5 ? 90 : -90;
+                }
+                // Default
+                return randomInt(-30, 30);
+            }
+            
+            // ==================== GENERATE POSISI RANDOM FULL LAYAR ====================
+            
+            function generateRandomPositions(count, minDistance = 30) {
                 const positions = [];
-                const viewportWidth = window.innerWidth;
-                const viewportHeight = window.innerHeight;
+                const maxAttempts = 100;
                 
-                // Hitung margin dalam pixel
-                const marginXPx = (CONFIG.marginX / 100) * viewportWidth;
-                const marginYPx = (CONFIG.marginY / 100) * viewportHeight;
-                
-                // Area yang tersedia untuk grid
-                const availableWidth = viewportWidth - (marginXPx * 2);
-                const availableHeight = viewportHeight - (marginYPx * 2);
-                
-                // Hitung berapa banyak kolom dan baris yang bisa muat dengan jarak sangat dekat
-                const cols = Math.floor(availableWidth / (itemSize + CONFIG.spacingX));
-                const rows = Math.floor(availableHeight / (itemSize + CONFIG.spacingY));
-                
-                // Total slot yang tersedia
-                const totalSlots = cols * rows;
-                
-                // Jika slot kurang dari item yang dibutuhkan, tambah kolom/baris
-                let finalCols = cols;
-                let finalRows = rows;
-                
-                if (totalSlots < itemCount) {
-                    // Hitung ulang dengan jarak yang lebih kecil
-                    const neededCols = Math.ceil(Math.sqrt(itemCount));
-                    const neededRows = Math.ceil(itemCount / neededCols);
-                    finalCols = neededCols;
-                    finalRows = neededRows;
-                }
-                
-                // Hitung ulang spacing agar pas
-                const actualSpacingX = (availableWidth - (finalCols * itemSize)) / (finalCols - 1);
-                const actualSpacingY = (availableHeight - (finalRows * itemSize)) / (finalRows - 1);
-                
-                const spacingX = Math.max(actualSpacingX, CONFIG.spacingX);
-                const spacingY = Math.max(actualSpacingY, CONFIG.spacingY);
-                
-                // Mulai posisi dari margin
-                let startX = marginXPx + itemSize / 2;
-                let startY = marginYPx + itemSize / 2;
-                
-                // Generate posisi grid
-                let index = 0;
-                for (let row = 0; row < finalRows && index < itemCount; row++) {
-                    for (let col = 0; col < finalCols && index < itemCount; col++) {
-                        const x = startX + (col * (itemSize + spacingX));
-                        const y = startY + (row * (itemSize + spacingY));
+                for (let i = 0; i < count; i++) {
+                    let attempts = 0;
+                    let placed = false;
+                    
+                    while (!placed && attempts < maxAttempts) {
+                        // Posisi random di seluruh layar (0% - 100%)
+                        const x = random(2, 98);
+                        const y = random(2, 98);
                         
-                        // Pastikan tidak keluar batas
-                        if (x + itemSize/2 <= viewportWidth - marginXPx &&
-                            y + itemSize/2 <= viewportHeight - marginYPx) {
-                            positions.push({
-                                x: (x / viewportWidth) * 100,
-                                y: (y / viewportHeight) * 100
-                            });
-                            index++;
+                        // Cek jarak minimal dengan posisi yang sudah ada (opsional, biar tidak terlalu numpuk)
+                        let tooClose = false;
+                        for (const existing of positions) {
+                            const dx = Math.abs(existing.x - x);
+                            const dy = Math.abs(existing.y - y);
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            if (distance < minDistance) {
+                                tooClose = true;
+                                break;
+                            }
                         }
+                        
+                        if (!tooClose) {
+                            positions.push({ x: x, y: y });
+                            placed = true;
+                        }
+                        attempts++;
                     }
-                }
-                
-                // Jika masih kurang, isi dengan posisi random di area yang tersisa
-                while (positions.length < itemCount) {
-                    const randomX = random(CONFIG.marginX, 100 - CONFIG.marginX);
-                    const randomY = random(CONFIG.marginY, 100 - CONFIG.marginY);
-                    positions.push({ x: randomX, y: randomY });
+                    
+                    // Jika gagal setelah banyak attempts, taruh di posisi random saja
+                    if (!placed) {
+                        positions.push({ x: random(0, 100), y: random(0, 100) });
+                    }
                 }
                 
                 return positions;
@@ -242,9 +227,61 @@
                 }
             }
             
-            // ==================== LOAD DAN RENDER TGS ====================
+            // ==================== LOAD SEMUA TGS FILE SECARA PARALEL ====================
             
-            async function loadTGSAnimation(fileName, instanceIndex, totalInstances, position, size, zIndex) {
+            async function loadAllTGSFiles() {
+                const allItems = [];
+                
+                // Hitung berapa banyak item per file
+                const itemsPerFile = Math.ceil(CONFIG.totalItems / tgsFiles.length);
+                const actualItemsPerFile = Math.min(itemsPerFile, CONFIG.maxItemsPerFile);
+                
+                console.log(`[BG] Loading ${tgsFiles.length} files, ~${actualItemsPerFile} items per file, total ~${tgsFiles.length * actualItemsPerFile} items`);
+                
+                // Generate posisi random untuk semua item
+                const totalItems = tgsFiles.length * actualItemsPerFile;
+                const positions = generateRandomPositions(totalItems, 25);
+                
+                let itemIndex = 0;
+                const loadPromises = [];
+                
+                for (const fileName of tgsFiles) {
+                    for (let i = 0; i < actualItemsPerFile && itemIndex < positions.length; i++) {
+                        const position = positions[itemIndex];
+                        const size = randomInt(CONFIG.minSize, CONFIG.maxSize);
+                        const rotation = getRandomRotation();
+                        const zIndex = randomInt(1, 5);
+                        
+                        const promise = loadSingleTGS(fileName, i, position, size, rotation, zIndex);
+                        loadPromises.push(promise);
+                        
+                        itemIndex++;
+                    }
+                }
+                
+                // Update loading text
+                const loadingText = document.querySelector('.loading-text');
+                let completed = 0;
+                
+                // Jalankan semua promise secara paralel dengan progress
+                const results = await Promise.allSettled(
+                    loadPromises.map(async (promise, idx) => {
+                        const result = await promise;
+                        completed++;
+                        if (loadingText) {
+                            loadingText.textContent = `Loading wallpaper patterns... ${Math.round((completed / loadPromises.length) * 100)}%`;
+                        }
+                        return result;
+                    })
+                );
+                
+                console.log(`[BG] Successfully loaded ${animations.length} wallpaper items`);
+                return results;
+            }
+            
+            // ==================== LOAD SINGLE TGS ====================
+            
+            async function loadSingleTGS(fileName, instanceIndex, position, size, rotation, zIndex) {
                 return new Promise((resolve) => {
                     const url = `${BG_PATH}${fileName}`;
                     
@@ -267,20 +304,20 @@
                             
                             // Buat container div untuk animasi
                             const itemDiv = document.createElement('div');
-                            itemDiv.className = 'tgs-item no-animation';
+                            itemDiv.className = 'tgs-item';
                             itemDiv.style.position = 'absolute';
                             itemDiv.style.left = `${position.x}%`;
                             itemDiv.style.top = `${position.y}%`;
                             itemDiv.style.width = `${size}px`;
                             itemDiv.style.height = `${size}px`;
                             itemDiv.style.zIndex = zIndex;
-                            // Pastikan tidak terbalik - gunakan transform yang stabil
-                            itemDiv.style.transform = 'translate(-50%, -50%) scale(1) rotate(0deg)';
-                            itemDiv.style.willChange = 'auto';
+                            // Rotasi random - PASTIKAN TIDAK TERBALIK (tidak 180 derajat)
+                            itemDiv.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
+                            itemDiv.style.willChange = 'transform';
                             
                             container.appendChild(itemDiv);
                             
-                            // Render animation dengan lottie - tanpa loop animasi gerakan
+                            // Render animation dengan lottie
                             const anim = window.lottie.loadAnimation({
                                 container: itemDiv,
                                 renderer: 'svg',
@@ -289,123 +326,59 @@
                                 animationData: animationData,
                                 rendererSettings: {
                                     preserveAspectRatio: 'xMidYMid meet',
-                                    clearCanvas: true,
-                                    progressiveLoad: false,
-                                    hideOnTransparent: false
+                                    clearCanvas: true
                                 }
                             });
-                            
-                            // Pastikan animasi tidak memiliki gerakan translasi/rotasi
-                            // (biarkan animasi internal TGS berjalan, tapi tanpa gerakan elemen)
                             
                             animations.push({
                                 id: `${fileName}_${instanceIndex}`,
                                 animation: anim,
                                 element: itemDiv,
                                 size: size,
-                                position: position
+                                position: position,
+                                rotation: rotation
                             });
                             
-                            resolve();
+                            resolve(true);
                         })
                         .catch(error => {
                             console.error(`[BG] Failed to load ${fileName}:`, error);
-                            resolve();
+                            resolve(false);
                         });
                 });
             }
             
-            // ==================== RENDER SEMUA TGS DENGAN REPLIKASI ====================
+            // ==================== RENDER WALLPAPER ====================
             
-            async function renderAllTGS() {
+            async function renderWallpaper() {
+                if (isRendering) return;
+                isRendering = true;
+                
                 if (!tgsFiles.length) {
                     console.warn('[BG] No TGS files to render');
                     hideLoading();
+                    isRendering = false;
                     return;
                 }
                 
-                console.log(`[BG] Rendering ${tgsFiles.length} TGS files, each repeated ${CONFIG.maxItemsPerFile} times`);
+                console.log(`[BG] Rendering wallpaper with ${tgsFiles.length} TGS files`);
                 
-                // Hitung total item yang akan dirender
-                const totalItems = tgsFiles.length * CONFIG.maxItemsPerFile;
+                await loadAllTGSFiles();
                 
-                // Tentukan ukuran berdasarkan jumlah item
-                let itemSize;
-                if (totalItems <= 20) {
-                    itemSize = randomInt(45, 70);
-                } else if (totalItems <= 50) {
-                    itemSize = randomInt(40, 60);
-                } else {
-                    itemSize = randomInt(35, 50);
-                }
-                
-                // Generate posisi grid untuk semua item
-                const positions = generateGridPositions(totalItems, itemSize);
-                
-                console.log(`[BG] Generated ${positions.length} positions for ${totalItems} items, size: ${itemSize}px`);
-                
-                let currentIndex = 0;
-                let loadedCount = 0;
-                
-                // Update loading text
-                const loadingText = document.querySelector('.loading-text');
-                
-                // Render setiap file TGS beberapa kali
-                for (const fileName of tgsFiles) {
-                    for (let instance = 0; instance < CONFIG.maxItemsPerFile; instance++) {
-                        if (currentIndex >= positions.length) break;
-                        
-                        const position = positions[currentIndex];
-                        const zIndex = randomInt(1, 3);
-                        
-                        await loadTGSAnimation(fileName, instance, CONFIG.maxItemsPerFile, position, itemSize, zIndex);
-                        
-                        loadedCount++;
-                        if (loadingText) {
-                            loadingText.textContent = `Loading background patterns... ${Math.round((loadedCount / totalItems) * 100)}%`;
-                        }
-                        
-                        // Delay kecil agar tidak overload
-                        await new Promise(resolve => setTimeout(resolve, 30));
-                        currentIndex++;
-                    }
-                }
-                
-                console.log(`[BG] Successfully rendered ${animations.length} patterns`);
+                console.log(`[BG] Wallpaper ready with ${animations.length} items`);
                 hideLoading();
+                isRendering = false;
                 
-                // Tambahkan event listener untuk resize window - reposition grid
+                // Tidak perlu reposition on resize karena posisi sudah dalam persentase
+                // Tapi kita tetap update ukuran jika perlu
                 let resizeTimeout;
                 window.addEventListener('resize', () => {
                     clearTimeout(resizeTimeout);
                     resizeTimeout = setTimeout(() => {
-                        repositionOnResize();
+                        // Ukuran akan tetap proporsional karena menggunakan persentase
+                        console.log('[BG] Window resized, wallpaper remains proportional');
                     }, 250);
                 });
-            }
-            
-            // ==================== REPOSITION ON RESIZE ====================
-            
-            function repositionOnResize() {
-                const totalItems = animations.length;
-                if (totalItems === 0) return;
-                
-                // Tentukan ukuran (ambil dari elemen pertama)
-                const itemSize = animations[0]?.size || 50;
-                
-                // Generate ulang posisi
-                const newPositions = generateGridPositions(totalItems, itemSize);
-                
-                // Update posisi setiap elemen
-                for (let i = 0; i < animations.length && i < newPositions.length; i++) {
-                    const anim = animations[i];
-                    const newPos = newPositions[i];
-                    if (anim.element && newPos) {
-                        anim.element.style.left = `${newPos.x}%`;
-                        anim.element.style.top = `${newPos.y}%`;
-                        anim.position = newPos;
-                    }
-                }
             }
             
             // ==================== HIDE LOADING ====================
@@ -420,10 +393,31 @@
                 }
             }
             
+            // ==================== CLEANUP ====================
+            
+            function cleanup() {
+                for (const anim of animations) {
+                    if (anim.animation) {
+                        anim.animation.destroy();
+                    }
+                    if (anim.element && anim.element.parentNode) {
+                        anim.element.parentNode.removeChild(anim.element);
+                    }
+                }
+                animations = [];
+            }
+            
+            // ==================== RELOAD WALLPAPER ====================
+            
+            async function reloadWallpaper() {
+                cleanup();
+                await renderWallpaper();
+            }
+            
             // ==================== INITIALIZATION ====================
             
             async function init() {
-                console.log('[BG] Initializing background TGS patterns...');
+                console.log('[BG] Initializing wallpaper TGS patterns...');
                 
                 if (!container) {
                     container = document.getElementById('tgsBackground');
@@ -434,9 +428,9 @@
                 }
                 
                 await fetchTgsFiles();
-                await renderAllTGS();
+                await renderWallpaper();
                 
-                console.log('[BG] Background TGS patterns ready');
+                console.log('[BG] Wallpaper TGS patterns ready');
             }
             
             // Start initialization
@@ -448,10 +442,11 @@
             
             // Export untuk debugging
             window.bgTGS = {
-                reload: renderAllTGS,
+                reload: reloadWallpaper,
                 animations: () => animations,
                 files: () => tgsFiles,
-                count: () => animations.length
+                count: () => animations.length,
+                cleanup: cleanup
             };
         })();
     </script>
