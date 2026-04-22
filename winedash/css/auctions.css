@@ -150,77 +150,82 @@
     position: relative;
 }
 
-.auction-ended-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background: linear-gradient(135deg, var(--danger), #dc2626);
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 20px;
-    z-index: 3;
-    letter-spacing: 0.5px;
+/* Hapus ended badge yang menimpa background */
+.auction-card-image.ended-image .auction-ended-badge {
+    display: none;
 }
 
 .auction-card-info.ended-info {
     background: rgba(0, 0, 0, 0.3);
 }
 
-.auction-last-bidder {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 0;
-    border-top: 1px solid var(--border-light);
-    margin-top: 4px;
-}
-
-.last-bidder-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    overflow: hidden;
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    flex-shrink: 0;
-}
-
-.last-bidder-avatar img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.last-bidder-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.last-bidder-name {
-    font-size: 10px;
-    font-weight: 500;
-    color: var(--text-secondary);
-}
-
-.last-bid-amount {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--success);
-}
-
 .auction-card-status.ended-status {
     background: rgba(239, 68, 68, 0.15);
     color: var(--danger);
-    border-color: rgba(239, 68, 68, 0.3);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    display: inline-block;
+    width: auto;
+    margin-top: 6px;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    text-align: center;
 }
 
-.no-bids {
-    font-size: 10px;
+/* Card price row untuk ended dan active */
+.card-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.price-with-logo {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.price-logo {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+.based-on-text {
+    font-size: 9px;
     color: var(--text-muted);
-    text-align: center;
-    padding: 8px 0;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* List layout ended - tanpa winner display */
+.auctions-list-item.ended {
+    opacity: 0.85;
+}
+
+.auctions-list-ended-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.ended-label {
+    display: none;
+}
+
+.ended-winner {
+    display: none;
+}
+
+.auctions-list-status.ended-status {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 /* List layout ended */

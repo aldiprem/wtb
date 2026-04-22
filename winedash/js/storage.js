@@ -3479,16 +3479,21 @@
                     window.initAuctions(telegramUser);
                     setupCreateAuctionButton();
                     
-                    // PERBAIKAN: Set default tab ke 'active' dan pastikan filter berfungsi
+                    // PERBAIKAN: Set default tab ke 'all' setelah module loaded
                     setTimeout(() => {
                         if (typeof window.switchAuctionTab === 'function') {
-                            // Cek apakah ada parameter filter dari URL
+                            // Set default ke 'all' jika tidak ada parameter filter
                             const urlParams = new URLSearchParams(window.location.search);
                             const filterParam = urlParams.get('filter');
-                            if (filterParam === 'ended') {
-                                window.switchAuctionTab('ended');
-                            } else {
+                            if (filterParam === 'active') {
                                 window.switchAuctionTab('active');
+                            } else if (filterParam === 'ended') {
+                                window.switchAuctionTab('ended');
+                            } else if (filterParam === 'my-bids') {
+                                window.switchAuctionTab('my-bids');
+                            } else {
+                                // Default ke 'all'
+                                window.switchAuctionTab('all');
                             }
                         }
                     }, 500);

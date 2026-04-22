@@ -263,7 +263,7 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-            
+                
     async function loadAuctions() {
         if (!telegramUser) {
             console.log('[AUCTIONS] No telegram user, skipping load');
@@ -282,7 +282,7 @@
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
                     break;
                 case 'my-auctions':
-                    url = `${API_BEST_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
+                    url = `${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
                     break;
                 case 'my-bids':
                     url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
@@ -363,7 +363,7 @@
             renderAuctionsEmpty();
             return;
         }
-                
+                        
         if (currentLayout === 'grid') {
             auctionsContainer.className = 'auctions-grid';
             let html = '';
@@ -374,6 +374,7 @@
                 const currentPrice = auction.current_price || auction.start_price || 0;
                 const startPrice = auction.start_price || 0;
                 const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
+                const basedOn = auction.based_on || '';
                 
                 let avatarUrl = localStorage.getItem(`avatar_${username}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
@@ -381,7 +382,7 @@
                 }
                 
                 if (isEnded) {
-                    // PERBAIKAN: Hapus tampilan winner yang bug, tampilkan ENDED sederhana
+                    // PERBAIKAN: Tampilan ENDED yang rapi - tanpa bubble berlebih
                     html += `
                         <div class="auction-card ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
                             <div class="auction-card-image ended-image">
@@ -389,12 +390,18 @@
                                     <img src="${avatarUrl}" alt="${escapeHtml(username)}" data-username="${username}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                                 </div>
                                 <div class="auction-card-username">@${escapeHtml(username)}</div>
-                                <div class="auction-ended-badge">ENDED</div>
                             </div>
                             <div class="auction-card-info ended-info">
-                                <div class="auction-card-timer" style="color: var(--danger);">ENDED</div>
-                                <div class="auction-card-current-bid">Start: ${formatNumber(startPrice)} TON</div>
-                                <div class="auction-card-status ended-status">END OFFER</div>
+                                <div class="card-price-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <div class="price-with-logo" style="display: flex; align-items: center; gap: 4px;">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo" style="width: 16px; height: 16px;">
+                                        <span style="font-size: 11px; color: var(--text-muted);">Start: ${formatNumber(startPrice)}</span>
+                                    </div>
+                                    <div class="based-on-text" style="font-size: 9px; color: var(--text-muted); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        ${escapeHtml(basedOn)}
+                                    </div>
+                                </div>
+                                <div class="auction-card-status ended-status" style="margin-top: 4px;">END AUCTION</div>
                             </div>
                         </div>
                     `;
@@ -408,8 +415,16 @@
                                 <div class="auction-card-username">@${escapeHtml(username)}</div>
                             </div>
                             <div class="auction-card-info">
-                                <div class="auction-card-timer" id="timer-${auction.id}">${timeRemaining}</div>
-                                <div class="auction-card-current-bid">Start: ${formatNumber(startPrice)} TON</div>
+                                <div class="card-price-row" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <div class="price-with-logo" style="display: flex; align-items: center; gap: 4px;">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo" style="width: 16px; height: 16px;">
+                                        <span style="font-size: 11px;">Start: ${formatNumber(startPrice)}</span>
+                                    </div>
+                                    <div class="based-on-text" style="font-size: 9px; color: var(--text-muted); max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                        ${escapeHtml(basedOn)}
+                                    </div>
+                                </div>
+                                <div class="auction-card-timer" id="timer-${auction.id}" style="margin-top: 4px;">${timeRemaining}</div>
                                 <div class="auction-card-current-bid" style="color: var(--success);">Current: ${formatNumber(currentPrice)} TON</div>
                                 <div class="auction-card-status">ON AUCTION</div>
                             </div>
@@ -440,7 +455,9 @@
                 const username = auction.username || '';
                 const timeRemaining = formatTimeRemaining(auction.end_time);
                 const startPrice = auction.start_price || 0;
+                const currentPrice = auction.current_price || 0;
                 const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
+                const basedOn = auction.based_on || '';
                 
                 let avatarUrl = localStorage.getItem(`avatar_${username}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
@@ -448,7 +465,7 @@
                 }
                 
                 if (isEnded) {
-                    // PERBAIKAN: Hapus winner display yang bug
+                    // PERBAIKAN: List layout untuk ended - rapi tanpa bubble berlebih
                     html += `
                         <div class="auctions-list-item ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
                             <div class="auctions-list-avatar">
@@ -456,11 +473,17 @@
                             </div>
                             <div class="auctions-list-info">
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
-                                <div class="auctions-list-ended-info">
-                                    <span class="ended-label">ENDED</span>
+                                <div class="auctions-list-ended-info" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                                    <div class="price-with-logo" style="display: flex; align-items: center; gap: 4px;">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 14px; height: 14px;">
+                                        <span style="font-size: 10px; color: var(--text-muted);">Start: ${formatNumber(startPrice)}</span>
+                                    </div>
+                                    <div class="based-on-text" style="font-size: 10px; color: var(--text-muted);">
+                                        Based: ${escapeHtml(basedOn)}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="auctions-list-status ended-status">END OFFER</div>
+                            <div class="auctions-list-status ended-status">END AUCTION</div>
                         </div>
                     `;
                 } else {
@@ -471,8 +494,17 @@
                             </div>
                             <div class="auctions-list-info">
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
-                                <div class="auctions-list-timer" id="timer-${auction.id}">Ends: ${timeRemaining}</div>
-                                <div class="auctions-list-startprice">Start: ${formatNumber(startPrice)} TON</div>
+                                <div class="auctions-list-ended-info" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+                                    <div class="price-with-logo" style="display: flex; align-items: center; gap: 4px;">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" style="width: 14px; height: 14px;">
+                                        <span style="font-size: 10px;">Start: ${formatNumber(startPrice)}</span>
+                                    </div>
+                                    <div class="based-on-text" style="font-size: 10px; color: var(--text-muted);">
+                                        ${escapeHtml(basedOn)}
+                                    </div>
+                                </div>
+                                <div class="auctions-list-timer" id="timer-${auction.id}" style="margin-top: 4px;">⏰ ${timeRemaining}</div>
+                                <div class="auctions-list-startprice" style="color: var(--success);">💰 Current: ${formatNumber(currentPrice)} TON</div>
                             </div>
                             <div class="auctions-list-status">ON AUCTION</div>
                         </div>
@@ -1359,7 +1391,7 @@
     }
     
     // ==================== EXPORT GLOBAL FUNCTIONS ====================
-    
+        
     window.initAuctions = async function(user) {
         console.log('🔨 Auctions - initAuctions called with user:', user);
         
@@ -1391,10 +1423,11 @@
         }
         
         currentAuctions = [];
-        currentAuctionTab = 'active';
+        // PERBAIKAN: Set default tab ke 'all' agar menampilkan semua auctions (active + ended)
+        currentAuctionTab = 'all';
         
         document.querySelectorAll('.auctions-action-btn').forEach(btn => {
-            if (btn.dataset.auctionsTab === 'active') {
+            if (btn.dataset.auctionsTab === 'all') {
                 btn.classList.add('active');
             } else {
                 btn.classList.remove('active');
@@ -1404,7 +1437,7 @@
         await loadAuctions();
         console.log('✅ Auctions initialized successfully');
     };
-    
+
     window.refreshAuctions = async function() {
         console.log('🔄 Auctions - refreshAuctions called');
         if (telegramUser) {
