@@ -253,10 +253,6 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(market_bp)
 app.register_blueprint(source_code_bp)
 
-@app.route('/source-viewer')
-def serve_source_viewer():
-    return send_from_directory(os.path.join(base_dir, 'html'), 'source-code.html')
-
 # ==================== WINEDASH ROUTES ====================
 
 @app.route('/winedash/market-auctions')
