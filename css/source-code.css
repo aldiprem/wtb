@@ -1,0 +1,88 @@
+:root {
+    --note-bg: #ffffff;
+    --note-border: #e0e0e0;
+    --text-main: #2c3e50;
+    --text-muted: #7f8c8d;
+    --accent: #3498db;
+}
+
+body {
+    background-color: #f5f7f9;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+}
+
+.page-wrapper {
+    max-width: 1100px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+    color: #1a1a1a;
+    border-left: 6px solid var(--accent);
+    padding-left: 20px;
+}
+
+.page-subtitle {
+    color: var(--text-muted);
+    margin-bottom: 50px;
+}
+
+.code-section {
+    background: var(--note-bg);
+    border: 1px solid var(--note-border);
+    border-radius: 12px;
+    margin-bottom: 60px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+
+.code-header {
+    padding: 20px 25px;
+    border-bottom: 1px solid var(--note-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fafafa;
+    border-radius: 12px 12px 0 0;
+}
+
+.file-path {
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 1.1rem;
+}
+
+.file-lang {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    background: #eee;
+    padding: 4px 10px;
+    border-radius: 4px;
+    color: #666;
+    letter-spacing: 1px;
+}
+
+.code-body {
+    margin: 0;
+    padding: 0;
+}
+
+/* Customizing Prism Overrides */
+pre[class*="language-"] {
+    margin: 0 !important;
+    border-radius: 0 0 12px 12px !important;
+    border: none !important;
+    font-size: 14px !important;
+    background: #282c34 !important; /* One Dark style background */
+}
+
+code {
+    font-family: 'Fira Code', 'Consolas', monospace !important;
+}

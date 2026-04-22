@@ -40,6 +40,7 @@ from winedash.services.auctions_service import auctions_bp
 from winedash.services.debug_service import debug_bp
 from winedash.services.admin_service import admin_bp
 from winedash.services.market_service import market_bp
+from services.source_code_service import source_code_bp
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -250,6 +251,11 @@ app.register_blueprint(auctions_bp)
 app.register_blueprint(debug_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(market_bp)
+app.register_blueprint(source_code_bp)
+
+@app.route('/source-viewer')
+def serve_source_viewer():
+    return send_from_directory(os.path.join(base_dir, 'html'), 'source-code.html')
 
 # ==================== WINEDASH ROUTES ====================
 
