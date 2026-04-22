@@ -3,58 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TGS Sticker Editor - Multi Sticker</title>
+    <title>TGS Sticker Studio</title>
     <link rel="stylesheet" href="/css/tgs.css">
+    
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <h1>🎨 TGS Sticker Editor</h1>
-        <p class="subtitle">Upload, drag, resize, rotate & multiple stickers</p>
-        
-        <!-- Upload Area -->
-        <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">📁</div>
-            <div class="upload-text">Klik atau drag & drop file .tgs</div>
-            <small>Support: .tgs (Telegram Animated Sticker) | Bisa upload banyak</small>
+    <div class="studio-container">
+        <!-- Sidebar Tools -->
+        <div class="tools-sidebar">
+            <h3><i class="fas fa-ruler"></i> Canvas Settings</h3>
+            <div class="canvas-settings">
+                <div class="setting-row">
+                    <input type="number" id="canvasWidth" placeholder="Width" value="800">
+                    <input type="number" id="canvasHeight" placeholder="Height" value="600">
+                    <button id="resizeCanvasBtn">Resize</button>
+                </div>
+            </div>
+
+            <h3><i class="fas fa-palette"></i> Background</h3>
+            <div class="bg-options">
+                <div class="bg-btn white" data-bg="white" title="White"></div>
+                <div class="bg-btn black" data-bg="black" title="Black"></div>
+                <div class="bg-btn transparent" data-bg="transparent" title="Transparent"></div>
+                <div class="bg-btn grid" data-bg="grid" title="Grid"></div>
+            </div>
+            <div class="color-picker-row">
+                <input type="color" id="customColorPicker" value="#ffffff">
+                <span>Custom Color</span>
+            </div>
+
+            <h3><i class="fas fa-border-all"></i> Pattern</h3>
+            <div class="pattern-options">
+                <button class="pattern-btn" data-pattern="none">None</button>
+                <button class="pattern-btn" data-pattern="dots">Dots</button>
+                <button class="pattern-btn" data-pattern="lines">Lines</button>
+                <button class="pattern-btn" data-pattern="cross">Cross</button>
+                <button class="pattern-btn" data-pattern="grid">Grid</button>
+            </div>
+
+            <h3><i class="fas fa-tools"></i> Actions</h3>
+            <div class="action-buttons">
+                <button id="uploadBtn" class="action-btn primary">📁 Upload TGS</button>
+                <button id="duplicateBtn" class="action-btn">📋 Duplicate</button>
+                <button id="deleteBtn" class="action-btn danger">🗑️ Delete</button>
+                <button id="bringToFrontBtn" class="action-btn">⬆️ Bring to Front</button>
+                <button id="sendToBackBtn" class="action-btn">⬇️ Send to Back</button>
+                <button id="exportBtn" class="action-btn success">📸 Export PNG</button>
+                <button id="clearAllBtn" class="action-btn warning">🗑️ Clear All</button>
+            </div>
+
+            <div class="upload-mini" id="uploadMini">
+                <span>📁 Drag & drop .tgs files here</span>
+            </div>
+            <input type="file" id="fileInput" accept=".tgs" multiple style="display: none">
         </div>
-        
-        <!-- Controls -->
-        <div class="controls">
-            <button id="clearAllBtn" class="btn btn-danger">🗑️ Clear All Stickers</button>
-            <button id="exportBtn" class="btn btn-success">📸 Export as PNG</button>
-            <label class="btn btn-primary">
-                📁 Add More Stickers
-                <input type="file" id="addMoreInput" accept=".tgs" multiple style="display:none">
-            </label>
-        </div>
-        
+
         <!-- Canvas Area -->
-        <div class="canvas-container">
-            <div class="canvas-wrapper" id="canvasWrapper">
-                <canvas id="stickerCanvas" width="1200" height="800"></canvas>
-                <div id="stickerElements"></div>
+        <div class="canvas-area">
+            <div class="canvas-wrapper">
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="mainCanvas" width="800" height="600"></canvas>
+                    <div id="stickerLayer"></div>
+                </div>
             </div>
-        </div>
-        
-        <!-- Info Panel -->
-        <div class="info-panel">
-            <div class="info-item">
-                <span class="info-label">📊 Total Stickers:</span>
-                <span class="info-value" id="totalStickers">0</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">🖱️ Current Selected:</span>
-                <span class="info-value" id="selectedInfo">None</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">💡 Tips:</span>
-                <span class="info-value">Klik sticker untuk select | Seret sudut hijau = resize | Seret sudut kuning = rotate</span>
+            <div class="info-bar">
+                <div>📊 Stickers: <span id="stickerCount">0</span></div>
+                <div>🖱️ Selected: <span id="selectedId">None</span></div>
+                <div>💡 Click sticker | Drag to move | Green corner = resize | Yellow corner = rotate</div>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+
     <script src="/js/tgs.js"></script>
 </body>
 </html>
