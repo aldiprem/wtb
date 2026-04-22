@@ -56,6 +56,7 @@ body {
     background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
+    background-color: #0a0a0a;
     color: var(--text);
     min-height: 100vh;
     line-height: 1.4;
@@ -64,7 +65,6 @@ body {
     position: relative;
 }
 
-/* Overlay gelap agar konten tetap terbaca */
 body::before {
     content: "";
     position: fixed;
@@ -187,40 +187,48 @@ body::before {
     color: var(--primary);
 }
 
+/* storage.css - Fix search container */
+
 .search-container {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
     position: relative;
+    align-items: center;
 }
 
 .search-container .search-input {
     flex: 1;
     padding: 10px 14px;
-    background: var(--surface-light);
-    border: 1px solid var(--border);
-    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
     color: var(--text);
-    font-size: 12px;
+    font-size: 13px;
     outline: none;
     transition: all 0.2s;
-}
-
-.search-container .search-input:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+    min-width: 0;
 }
 
 .search-container .search-apply-btn {
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border: none;
-    border-radius: 16px;
-    padding: 0 16px;
-    color: white;
-    font-size: 12px;
+    background: rgba(64, 167, 227, 0.2);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(64, 167, 227, 0.3);
+    border-radius: 30px;
+    padding: 8px 20px;
+    color: var(--primary);
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
+    min-width: 70px;
+    transition: all 0.2s;
+}
+
+.search-container .search-apply-btn:hover {
+    background: rgba(64, 167, 227, 0.35);
+    transform: scale(1.02);
 }
 
 /* Layout toggle di dalam search container */
@@ -448,9 +456,12 @@ body::before {
     gap: 10px;
 }
 
+/* storage.css - Glassmorphism 2.0 untuk card username */
+
 .username-grid .username-card {
-    background: rgba(26, 26, 26, 0.85);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 26, 26, 0.5);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.2s;
@@ -460,10 +471,29 @@ body::before {
     flex-direction: column;
     height: 200px;
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* Border 3D dengan gradient */
+/* Specular highlight untuk card */
+.username-grid .username-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.4) 20%, 
+        rgba(255, 255, 255, 0.7) 50%, 
+        rgba(255, 255, 255, 0.4) 80%, 
+        transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Border gradient untuk efek 3D */
 .username-grid .username-card::after {
     content: "";
     position: absolute;

@@ -35,7 +35,6 @@
     --tg-content-safe-area-inset-bottom: 0px;
 }
 
-/* Ganti background body dengan gambar */
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background-image: url('https://companel.shop/image/background-website.png');
@@ -43,7 +42,7 @@ body {
     background-position: center;
     background-attachment: fixed;
     background-repeat: no-repeat;
-    position: relative;
+    background-color: #0a0a0a;
     color: var(--text);
     min-height: 100vh;
     line-height: 1.5;
@@ -318,14 +317,15 @@ body::before {
     box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-/* Search container dengan tombol Apply */
+/* web.css - Fix search container dan button Apply */
+
 .search-container {
     display: flex;
     gap: 10px;
     margin-bottom: 16px;
+    align-items: center;
 }
 
-/* Update Style Search Input sesuai HTML yang ada */
 .search-input {
     flex: 1;
     padding: 12px 16px;
@@ -337,18 +337,12 @@ body::before {
     border: none;
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(10px);
     box-shadow: 
         inset 0 1px 1px rgba(255, 255, 255, 0.2), 
         inset 0 -1px 1px rgba(0, 0, 0, 0.3),
         0 4px 15px rgba(0, 0, 0, 0.2);
-    background-image: linear-gradient(to bottom, 
-        transparent 75%, 
-        rgba(255, 255, 255, 0.1) 10%, 
-        transparent 100%);
-    background-size: 100% 100vh;
-    background-attachment: fixed;
-    position: relative;
+    min-width: 0; /* Penting untuk flex shrink */
 }
 
 /* 4. Efek Saat Fokus (Border berubah jadi Biru/Primary) */
@@ -359,27 +353,30 @@ body::before {
         0 0 15px var(--primary-glow);
 }
 
-.search-input::placeholder {
-    color: var(--text-muted);
-    opacity: 0.7;
+/* Hover effect */
+.search-apply-btn:hover {
+    background: rgba(64, 167, 227, 0.35);
+    transform: scale(1.02);
+    border-color: var(--primary);
 }
 
 .search-apply-btn {
-    background: rgba(64, 167, 227, 0.15);
+    background: rgba(64, 167, 227, 0.2);
     backdrop-filter: blur(4px);
-    border: none;
-    border-radius: 20px;
-    padding: 0 20px;
+    border: 1px solid rgba(64, 167, 227, 0.3);
+    border-radius: 30px;
+    padding: 10px 24px;
     color: var(--primary);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
     position: relative;
     overflow: hidden;
-    height: 40px;
-    align-self: center;
+    height: auto;
+    min-width: 80px;
+    letter-spacing: 0.5px;
 }
 
 /* Border 3D untuk tombol Apply */
@@ -491,32 +488,51 @@ body::before {
     display: block;
 }
 
+/* web.css - Glassmorphism 2.0 untuk section-card */
+
 .section-card {
-    background: rgba(17, 17, 17, 0.6);
-    backdrop-filter: blur(10px) saturate(180%);
-    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    background: rgba(17, 17, 17, 0.45);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
     border-radius: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 16px;
     margin-bottom: 16px;
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: var(--shadow);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+/* Specular highlight (pantulan cahaya di tepi atas) */
+.section-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.5) 20%, 
+        rgba(255, 255, 255, 0.8) 50%, 
+        rgba(255, 255, 255, 0.5) 80%, 
+        transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Inner glow untuk efek jelly */
 .section-card::after {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 24px;
     padding: 1px;
-    background: linear-gradient(167deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 20%, 
-        rgba(255, 255, 255, 0) 80%, 
-        rgba(255, 255, 255, 0.4) 100%
-    );
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.25) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;

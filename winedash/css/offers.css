@@ -6,9 +6,12 @@
     gap: 10px;
 }
 
+/* offers.css - Glassmorphism 2.0 untuk offers card */
+
 .offers-card {
-    background: rgba(26, 26, 26, 0.85);
-    backdrop-filter: blur(10px);
+    background: rgba(26, 26, 26, 0.5);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.2s;
@@ -18,10 +21,29 @@
     flex-direction: column;
     height: 180px;
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-/* Border 3D dengan gradient */
+/* Specular highlight */
+.offers-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.4) 20%, 
+        rgba(255, 255, 255, 0.7) 50%, 
+        rgba(255, 255, 255, 0.4) 80%, 
+        transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Border gradient */
 .offers-card::after {
     content: "";
     position: absolute;
