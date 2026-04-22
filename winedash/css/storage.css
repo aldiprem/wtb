@@ -26,10 +26,7 @@
     
     --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
 
-/* Safe Area Support - CSS Fallback */
-:root {
     --tg-safe-area-inset-top: env(safe-area-inset-top, 0px);
     --tg-safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
     --tg-safe-area-inset-left: env(safe-area-inset-left, 0px);
@@ -54,21 +51,41 @@ body {
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
+    background-image: url('https://companel.shop/image/background-website.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     color: var(--text);
     min-height: 100vh;
     line-height: 1.4;
     -webkit-font-smoothing: antialiased;
     font-size: 13px;
+    position: relative;
 }
 
-/* Main Container - Ukuran lebih kecil */
+/* Overlay gelap agar konten tetap terbaca */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: -1;
+    pointer-events: none;
+}
+
 .storage-container {
     max-width: 500px;
     margin: 0 auto;
     padding: 12px;
     padding-bottom: 90px;
     min-height: 100vh;
+    background: transparent;
+    position: relative;
+    z-index: 1;
 }
 
 /* Back Button dan Navigation */
@@ -432,7 +449,8 @@ body {
 }
 
 .username-grid .username-card {
-    background: var(--surface-light);
+    background: rgba(26, 26, 26, 0.85);
+    backdrop-filter: blur(10px);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.2s;
@@ -442,7 +460,7 @@ body {
     flex-direction: column;
     height: 200px;
     width: 100%;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Border 3D dengan gradient */

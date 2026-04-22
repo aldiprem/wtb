@@ -36,12 +36,29 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
+    background-image: url('https://companel.shop/image/background-website.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
     color: var(--text);
     min-height: 100vh;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     font-size: 13px;
+    position: relative;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: -1;
+    pointer-events: none;
 }
 
 /* ==================== LOGIN PAGE ==================== */
@@ -174,6 +191,9 @@ body {
     margin: 0 auto;
     padding: 20px;
     min-height: 100vh;
+    background: transparent;
+    position: relative;
+    z-index: 1;
 }
 
 /* Header */
