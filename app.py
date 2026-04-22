@@ -270,48 +270,6 @@ def source_viewer_page():
     except Exception as e:
         return f"Error: {str(e)}", 500
 
-@app.route('/api/bg-files', methods=['GET', 'OPTIONS'])
-def get_bg_tgs_files():
-    """Get list of .tgs files from image/bg/ directory"""
-    if request.method == 'OPTIONS':
-        response = jsonify({'success': True})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Methods', 'GET, OPTIONS')
-        return response
-    
-    try:
-        bg_dir = os.path.join(base_dir, 'image', 'bg')
-        
-        if not os.path.exists(bg_dir):
-            print(f"[BG] Directory not found: {bg_dir}")
-            return jsonify({'success': True, 'files': [], 'message': 'Directory not found'})
-        
-        files = []
-        for filename in os.listdir(bg_dir):
-            if filename.lower().endswith('.tgs'):
-                files.append(filename)
-        
-        # Urutkan berdasarkan nama
-        files.sort()
-        
-        print(f"[BG] Found {len(files)} TGS files in {bg_dir}")
-        
-        return jsonify({
-            'success': True,
-            'files': files,
-            'count': len(files),
-            'directory': str(bg_dir)
-        })
-        
-    except Exception as e:
-        print(f"[BG] Error listing TGS files: {e}")
-        return jsonify({'success': False, 'error': str(e), 'files': []}), 500
-
-@app.route('/bg-tgs')
-def serve_background_tgs():
-    """Halaman background dengan animasi TGS acak"""
-    return send_from_directory(os.path.join(base_dir, 'html'), 'background-tgs.html')
-
 # ==================== WINEDASH ROUTES ====================
 
 @app.route('/winedash/market-auctions')
