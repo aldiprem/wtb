@@ -201,6 +201,7 @@
             </div>
         </div>
 
+        <!-- Auctions Activity Fullscreen Page - Pagination di Bawah -->
         <div id="auctionsActivityFullscreen" class="fullscreen-page" style="display: none;">
             <div class="fullscreen-header">
                 <div class="fullscreen-header-left">
@@ -214,23 +215,7 @@
                 </button>
             </div>
             <div class="fullscreen-content">
-                <!-- Tabs Navigation -->
-                <div class="activity-tabs-fullscreen">
-                    <button class="activity-tab-fullscreen active" data-activity-tab="my-auctions">
-                        <i class="fas fa-gavel"></i>
-                        <span>My Auctions</span>
-                    </button>
-                    <button class="activity-tab-fullscreen" data-activity-tab="my-bids">
-                        <i class="fas fa-history"></i>
-                        <span>My Bids</span>
-                    </button>
-                    <button class="activity-tab-fullscreen" data-activity-tab="ended">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Ended</span>
-                    </button>
-                </div>
-
-                <!-- Search Bar -->
+                <!-- Search Bar di Atas -->
                 <div class="activity-search-fullscreen">
                     <div class="search-container-fullscreen">
                         <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
@@ -241,6 +226,27 @@
                 <!-- Activity Container -->
                 <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
                     <div class="loading-placeholder">Memuat aktivitas...</div>
+                </div>
+            </div>
+            
+            <!-- Bottom Navigation - Sama seperti storage.html -->
+            <div class="storage-bottom-nav" style="position: absolute; bottom: 20px; left: 16px; right: 16px; width: auto;">
+                <div class="nav-circle" id="activityBackToStorageBtn">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="nav-links-container">
+                    <button class="nav-link active" data-activity-tab="my-auctions">
+                        <i class="fas fa-gavel"></i>
+                        <span>My Auctions</span>
+                    </button>
+                    <button class="nav-link" data-activity-tab="my-bids">
+                        <i class="fas fa-history"></i>
+                        <span>My Bids</span>
+                    </button>
+                    <button class="nav-link" data-activity-tab="ended">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Ended</span>
+                    </button>
                 </div>
             </div>
         </div>

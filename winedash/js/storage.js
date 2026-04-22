@@ -1581,8 +1581,18 @@
                     verification_type: pendingRecord ? pendingRecord.verification_type : null
                 };
 
-                // PERBAIKAN: Tampilan berbeda untuk Pending
+                // PERBAIKAN: Tampilan berbeda untuk Pending dengan status bubble yang jelas
                 if (isPending) {
+                    // Tentukan teks status pending yang lebih informatif
+                    let pendingStatusText = 'PENDING';
+                    let pendingStatusClass = 'pending';
+                    
+                    if (pendingRecord && pendingRecord.verification_type === 'user') {
+                        pendingStatusText = 'PENDING (OTP)';
+                    } else if (pendingRecord && pendingRecord.verification_type !== 'auto') {
+                        pendingStatusText = 'PENDING (WAIT ADMIN)';
+                    }
+                    
                     html += `
                         <div class="username-card pending-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
                             <div class="username-card-image">
@@ -1591,9 +1601,15 @@
                                 </div>
                                 <div class="card-username">@${escapeHtml(usernameStr)}</div>
                             </div>
-                            <div class="username-card-info pending-info">
-                                <div class="card-status ${statusClass}">${statusText}</div>
-                                <div class="pending-text">Pending Username</div>
+                            <div class="username-card-info">
+                                <div class="card-price-row">
+                                    <div class="price-with-logo">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
+                                        <span class="card-price">${formatNumber(username.price)}</span>
+                                    </div>
+                                    <div class="card-status ${pendingStatusClass}">${pendingStatusText}</div>
+                                </div>
+                                <div class="pending-text">Menunggu Verifikasi</div>
                             </div>
                         </div>
                     `;
@@ -1621,7 +1637,7 @@
             }
             elements.usernameContainer.innerHTML = html;
             
-            // PERBAIKAN: Event listener untuk pending card
+            // Event listener untuk pending card - buka inbox panel
             document.querySelectorAll('.username-card').forEach(card => {
                 card.addEventListener('click', (e) => {
                     if (e.target.closest('.card-action-btn')) return;
@@ -1629,7 +1645,7 @@
                     // Cek apakah ini pending card
                     if (card.classList.contains('pending-card')) {
                         hapticLight();
-                        openInboxPanel();  // Buka inbox panel langsung
+                        openInboxPanel();
                         return;
                     }
                     
@@ -1647,11 +1663,10 @@
             }, 100);
             
         } else {
-            // List layout
+            // LIST LAYOUT - sama seperti sebelumnya
             elements.usernameContainer.className = 'username-list';
             let html = '';
             for (const username of usernames) {
-                // Cek apakah username pending
                 const pendingRecord = pendingList.find(p => p.username === username.username);
                 const isPending = !!pendingRecord;
                 
@@ -1687,6 +1702,18 @@
                     verification_type: pendingRecord ? pendingRecord.verification_type : null
                 };
 
+                // Tampilkan status pending di list layout
+                let statusDisplay = `<div class="username-status ${statusClass}">${statusText}</div>`;
+                if (isPending) {
+                    let pendingStatusText = 'PENDING';
+                    if (pendingRecord && pendingRecord.verification_type === 'user') {
+                        pendingStatusText = 'PENDING (OTP)';
+                    } else if (pendingRecord && pendingRecord.verification_type !== 'auto') {
+                        pendingStatusText = 'PENDING';
+                    }
+                    statusDisplay = `<div class="username-status pending">${pendingStatusText}</div>`;
+                }
+
                 html += `
                     <div class="username-item" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
                         <div class="username-avatar">
@@ -1700,7 +1727,7 @@
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
                             <span class="username-price">${formatNumber(username.price)}</span>
                         </div>
-                        <div class="username-status ${statusClass}">${statusText}</div>
+                        ${statusDisplay}
                     </div>
                 `;
             }
@@ -1708,6 +1735,12 @@
             
             document.querySelectorAll('.username-item').forEach(item => {
                 item.addEventListener('click', (e) => {
+                    // Cek apakah ini pending item
+                    if (item.classList.contains('pending-item')) {
+                        hapticLight();
+                        openInboxPanel();
+                        return;
+                    }
                     try {
                         const usernameData = JSON.parse(item.dataset.username.replace(/&#39;/g, "'"));
                         showDetailPanel(usernameData);
@@ -1721,18 +1754,6 @@
                 fetchAllListAvatars();
             }, 100);
         }
-
-        document.querySelectorAll('.username-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                if (e.target.closest('.card-action-btn')) return;
-                try {
-                    const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
-                    showDetailPanel(usernameData);
-                } catch (err) {
-                    console.error('Error parsing username data:', err);
-                }
-            });
-        });
     }
 
     async function fetchAllListAvatars() {
@@ -2028,18 +2049,25 @@
         };
     }
 
-    // Fungsi untuk show detail panel dengan panel-card style
     async function showDetailPanel(username) {
+        // Cek jika panel sudah ada dan sedang dalam proses animasi
         const existingPanel = document.querySelector('.panel-card');
         if (existingPanel) {
+            // Hapus panel yang sudah ada sebelum membuat baru
             closeDetailPanel();
             await new Promise(resolve => setTimeout(resolve, 300));
         }
         
+        // Cek juga jika overlay sudah ada
         let panelOverlay = document.querySelector('.panel-card-overlay');
-        if (!panelOverlay) {
-            panelOverlay = createPanelOverlay('panel-card-overlay');
+        if (panelOverlay) {
+            panelOverlay.classList.remove('active');
+            panelOverlay.remove();
+            panelOverlay = null;
         }
+        
+        // Buat overlay baru
+        panelOverlay = createPanelOverlay('panel-card-overlay');
         
         let usernameStr = username.username;
         if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
@@ -2146,11 +2174,16 @@
         document.body.classList.add('panel-open');
         panelOverlay.classList.add('active');
         
-        setTimeout(() => {
-            panel.classList.add('open');
-        }, 10);
+        // HAPUS TRANSISI SEMENTARA UNTUK MENCEGAH ANIMASI GANDA
+        panel.style.transition = 'none';
+        panel.classList.add('open');
         
-        // Setup drag to close - bisa drag di area mana saja
+        // BERIKAN TRANSISI KEMBALI SETELAH PANEL TERBUKA
+        setTimeout(() => {
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+        }, 50);
+        
+        // Setup drag to close
         const dragCleanup = setupPanelDragToCloseAdvanced(panel, () => {
             if (dragCleanup) dragCleanup.remove();
             closeDetailPanel();
@@ -2783,7 +2816,7 @@
         let activitySearchTerm = '';
         
         // ==================== CREATE FULLSCREEN ACTIVITY PAGE ====================
-                        
+                                
         function createFullscreenActivityPage() {
             const existingFullscreen = document.getElementById('auctionsActivityFullscreen');
             if (existingFullscreen) {
@@ -2797,6 +2830,9 @@
             fullscreenDiv.innerHTML = `
                 <div class="fullscreen-header">
                     <div class="fullscreen-header-left">
+                        <button class="back-btn-fullscreen" id="backFromActivityBtn">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
                         <h2><i class="fas fa-history"></i> Auction Activity</h2>
                     </div>
                     <button class="close-fullscreen-btn" id="closeActivityFullscreenBtn">
@@ -2804,28 +2840,38 @@
                     </button>
                 </div>
                 <div class="fullscreen-content">
-                    <div class="activity-tabs-fullscreen">
-                        <button class="activity-tab-fullscreen active" data-activity-tab="my-auctions">
-                            <i class="fas fa-gavel"></i>
-                            <span>My Auctions</span>
-                        </button>
-                        <button class="activity-tab-fullscreen" data-activity-tab="my-bids">
-                            <i class="fas fa-history"></i>
-                            <span>My Bids</span>
-                        </button>
-                        <button class="activity-tab-fullscreen" data-activity-tab="ended">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Ended</span>
-                        </button>
-                    </div>
+                    <!-- Search Bar di Atas -->
                     <div class="activity-search-fullscreen">
                         <div class="search-container-fullscreen">
                             <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
                             <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
                         </div>
                     </div>
+
+                    <!-- Activity Container -->
                     <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
                         <div class="loading-placeholder">Memuat aktivitas...</div>
+                    </div>
+                </div>
+                
+                <!-- Bottom Navigation -->
+                <div class="storage-bottom-nav" style="position: absolute; bottom: 20px; left: 16px; right: 16px; width: auto;">
+                    <div class="nav-circle" id="activityBackToStorageBtn">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="nav-links-container">
+                        <button class="nav-link active" data-activity-tab="my-auctions">
+                            <i class="fas fa-gavel"></i>
+                            <span>My Auctions</span>
+                        </button>
+                        <button class="nav-link" data-activity-tab="my-bids">
+                            <i class="fas fa-history"></i>
+                            <span>My Bids</span>
+                        </button>
+                        <button class="nav-link" data-activity-tab="ended">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Ended</span>
+                        </button>
                     </div>
                 </div>
             `;
@@ -2835,6 +2881,20 @@
             
             applySafeAreaInsets();
             
+            // Setup back button
+            const backBtn = document.getElementById('backFromActivityBtn');
+            if (backBtn) {
+                const newBackBtn = backBtn.cloneNode(true);
+                backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+                newBackBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeFullscreenActivity();
+                    switchToAuctionsMode();
+                });
+            }
+            
+            // Setup close button
             const closeBtn = document.getElementById('closeActivityFullscreenBtn');
             if (closeBtn) {
                 const newCloseBtn = closeBtn.cloneNode(true);
@@ -2847,20 +2907,38 @@
                 });
             }
             
-            document.querySelectorAll('.activity-tab-fullscreen').forEach(btn => {
+            // Setup back to storage button
+            const backToStorageBtn = document.getElementById('activityBackToStorageBtn');
+            if (backToStorageBtn) {
+                const newBackToStorageBtn = backToStorageBtn.cloneNode(true);
+                backToStorageBtn.parentNode.replaceChild(newBackToStorageBtn, backToStorageBtn);
+                newBackToStorageBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeFullscreenActivity();
+                    // Switch ke fixprice mode
+                    const fixpriceBtn = document.querySelector('.mode-btn[data-mode="fixprice"]');
+                    if (fixpriceBtn) fixpriceBtn.click();
+                });
+            }
+            
+            // Setup bottom navigation tabs
+            document.querySelectorAll('#auctionsActivityFullscreen .nav-link').forEach(btn => {
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
                 newBtn.addEventListener('click', async () => {
                     const tab = newBtn.dataset.activityTab;
                     if (tab) {
                         currentActivityTab = tab;
-                        document.querySelectorAll('.activity-tab-fullscreen').forEach(b => b.classList.remove('active'));
+                        // Update active state
+                        document.querySelectorAll('#auctionsActivityFullscreen .nav-link').forEach(b => b.classList.remove('active'));
                         newBtn.classList.add('active');
                         await loadActivityData();
                     }
                 });
             });
             
+            // Setup search
             const searchBtn = document.getElementById('activityFullscreenSearchBtn');
             if (searchBtn) {
                 const newSearchBtn = searchBtn.cloneNode(true);
