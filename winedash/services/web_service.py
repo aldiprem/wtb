@@ -1162,13 +1162,17 @@ def add_pending_username():
 @winedash_bp.route('/username/pending/confirm', methods=['POST', 'OPTIONS'])
 def confirm_pending_username():
     """Confirm pending username with OTP code (required for user type)"""
+    print(f"🔥 [ENDPOINT] confirm_pending_username CALLED")
+    print(f"🔥 [ENDPOINT] Method: {request.method}")
+    print(f"🔥 [ENDPOINT] URL: {request.url}")
+    
     if request.method == 'OPTIONS':
         response = jsonify({'success': True})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
-    
+
     try:
         data = request.get_json()
         

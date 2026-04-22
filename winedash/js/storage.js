@@ -545,6 +545,36 @@
                 })
             });
             
+            // PERBAIKAN: Cek status response
+            if (!response.ok) {
+                console.error(`[STORAGE] Server returned ${response.status}: ${response.statusText}`);
+                
+                // Fallback: coba endpoint alternatif
+                const fallbackResponse = await fetch(`${API_BASE_URL}/api/winedash/username/pending/confirm-fallback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pending_id: pendingId,
+                        code: code
+                    })
+                });
+                
+                if (!fallbackResponse.ok) {
+                    throw new Error(`Server error: ${response.status}`);
+                }
+                
+                const fallbackData = await fallbackResponse.json();
+                if (fallbackData.success) {
+                    hapticSuccess();
+                    showToast(fallbackData.message || 'Username berhasil diverifikasi!', 'success');
+                    closeInboxPanel();
+                    closeOtpModal();
+                    await loadUsernames();
+                    await loadPendingCount();
+                    return;
+                }
+            }
+            
             const data = await response.json();
             
             if (data.success) {
@@ -552,8 +582,6 @@
                 showToast(data.message || 'Username berhasil diverifikasi!', 'success');
                 closeInboxPanel();
                 closeOtpModal();
-                
-                // PERBAIKAN: Tunggu sebentar lalu reload usernames
                 await new Promise(resolve => setTimeout(resolve, 500));
                 await loadUsernames();
                 await loadPendingCount();
@@ -562,7 +590,13 @@
             }
         } catch (error) {
             console.error('Error confirming pending:', error);
-            showToast('Error verifikasi', 'error');
+            
+            // PERBAIKAN: Tampilkan error yang lebih informatif
+            if (error.message.includes('404')) {
+                showToast('Endpoint tidak ditemukan. Coba refresh halaman.', 'error');
+            } else {
+                showToast('Error verifikasi: ' + error.message, 'error');
+            }
         } finally {
             showLoading(false);
         }
