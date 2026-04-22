@@ -1225,35 +1225,36 @@ body {
     color: var(--danger);
 }
 
-/* Action Row Baru - antara mode-toggle dan search */
 .action-row {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
     overflow-x: auto;
-    padding-bottom: 4px;
+    overflow-y: hidden;
+    padding-bottom: 8px;
     scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    white-space: nowrap;
 }
 
 .action-row::-webkit-scrollbar {
     height: 3px;
 }
 
+.action-row::-webkit-scrollbar-track {
+    background: var(--border-light);
+    border-radius: 3px;
+}
+
+.action-row::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 3px;
+}
+
 .action-row .action-btn {
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 8px 16px;
-    color: var(--text-secondary);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
+    flex-shrink: 0;
     white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 .action-row .action-btn i {
@@ -2864,4 +2865,36 @@ body {
     overscroll-behavior: contain !important;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y !important;
+}
+
+/* Pending Card Styles */
+.username-card.pending-card .username-card-info.pending-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+}
+
+.username-card .pending-text {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--warning);
+    text-align: center;
+}
+
+.username-card .card-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Style untuk card-status ended */
+.username-card .card-status.ended {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }

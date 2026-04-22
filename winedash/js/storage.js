@@ -136,7 +136,11 @@
 
     function showLoading(show) {
         if (elements.loadingOverlay) {
-            elements.loadingOverlay.style.display = show ? 'flex' : 'none';
+            const shouldShow = show && (
+                window.isProcessingTransaction || 
+                window.isCreatingAuction
+            );
+            elements.loadingOverlay.style.display = shouldShow ? 'flex' : 'none';
         }
     }
 
@@ -601,7 +605,7 @@
             showLoading(false);
         }
     }
-    
+
     async function rejectPendingUsername(pendingId) {
         showLoading(true);
         
@@ -929,7 +933,6 @@
         }
         
         isLoadingUsernames = true;
-        showLoading(true);
         
         try {
             console.log('[STORAGE] Loading usernames...');
@@ -1514,7 +1517,6 @@
         }
     }
 
-
     function renderUsernames(usernames) {
         if (!elements.usernameContainer) return;
         
@@ -1579,31 +1581,71 @@
                     verification_type: pendingRecord ? pendingRecord.verification_type : null
                 };
 
-                html += `
-                    <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
-                        <div class="username-card-image">
-                            <div class="card-avatar">
-                                <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
-                            </div>
-                            <div class="card-username">@${escapeHtml(usernameStr)}</div>
-                        </div>
-                        <div class="username-card-info">
-                            <div class="card-price-row">
-                                <div class="price-with-logo">
-                                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
-                                    <span class="card-price">${formatNumber(username.price)}</span>
+                // PERBAIKAN: Tampilan berbeda untuk Pending
+                if (isPending) {
+                    html += `
+                        <div class="username-card pending-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
+                            <div class="username-card-image">
+                                <div class="card-avatar">
+                                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                                 </div>
+                                <div class="card-username">@${escapeHtml(usernameStr)}</div>
+                            </div>
+                            <div class="username-card-info pending-info">
                                 <div class="card-status ${statusClass}">${statusText}</div>
+                                <div class="pending-text">Pending Username</div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    html += `
+                        <div class="username-card" data-id="${username.id}" data-username='${JSON.stringify(usernameData).replace(/'/g, "&#39;")}'>
+                            <div class="username-card-image">
+                                <div class="card-avatar">
+                                    <img src="${avatarUrl}" alt="${escapeHtml(usernameStr)}" data-username="${usernameStr}" class="avatar-img" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                                </div>
+                                <div class="card-username">@${escapeHtml(usernameStr)}</div>
+                            </div>
+                            <div class="username-card-info">
+                                <div class="card-price-row">
+                                    <div class="price-with-logo">
+                                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
+                                        <span class="card-price">${formatNumber(username.price)}</span>
+                                    </div>
+                                    <div class="card-status ${statusClass}">${statusText}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
             }
             elements.usernameContainer.innerHTML = html;
+            
+            // PERBAIKAN: Event listener untuk pending card
+            document.querySelectorAll('.username-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    if (e.target.closest('.card-action-btn')) return;
+                    
+                    // Cek apakah ini pending card
+                    if (card.classList.contains('pending-card')) {
+                        hapticLight();
+                        openInboxPanel();  // Buka inbox panel langsung
+                        return;
+                    }
+                    
+                    try {
+                        const usernameData = JSON.parse(card.dataset.username.replace(/&#39;/g, "'"));
+                        showDetailPanel(usernameData);
+                    } catch (err) {
+                        console.error('Error parsing username data:', err);
+                    }
+                });
+            });
             
             setTimeout(() => {
                 fetchAllCardAvatars();
             }, 100);
+            
         } else {
             // List layout
             elements.usernameContainer.className = 'username-list';
@@ -3958,6 +4000,62 @@
         }
     }
 
+    // ==================== TELEGRAM FULLSCREEN ====================
+
+    function requestFullscreenMode() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) {
+            console.warn('[STORAGE] Telegram WebApp not available');
+            return;
+        }
+        
+        if (typeof tg.requestFullscreen === 'function') {
+            tg.requestFullscreen().catch(err => {
+                console.warn('[STORAGE] Fullscreen request failed:', err);
+            });
+        } else {
+            console.warn('[STORAGE] requestFullscreen not available in this Telegram version');
+        }
+    }
+
+    function exitFullscreenMode() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        if (typeof tg.exitFullscreen === 'function') {
+            tg.exitFullscreen().catch(err => {
+                console.warn('[STORAGE] Exit fullscreen failed:', err);
+            });
+        }
+    }
+
+    function toggleFullscreen() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        if (tg.isFullscreen) {
+            exitFullscreenMode();
+        } else {
+            requestFullscreenMode();
+        }
+    }
+
+    // Panggil saat inisialisasi untuk direct link MiniApp
+    function initFullscreenForDirectLink() {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return;
+        
+        // Cek apakah ini direct link (bukan dari dalam Telegram yang sudah expanded)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isDirectLink = urlParams.get('direct') === '1' || !tg.isExpanded;
+        
+        if (isDirectLink) {
+            setTimeout(() => {
+                requestFullscreenMode();
+            }, 500);
+        }
+    }
+
     // ==================== SAFE AREA INSET & FULLSCREEN ====================
 
     function applySafeAreaInsets() {
@@ -4181,6 +4279,7 @@
         
         initTelegram();
         initSafeArea();
+        initFullscreenForDirectLink();
         showLoading(true);
         
         try {

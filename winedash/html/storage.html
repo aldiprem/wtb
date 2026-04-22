@@ -79,7 +79,7 @@
 
         <!-- ==================== FIX PRICE SECTION ==================== -->
         <div id="fixPriceSection">
-            <!-- Action Row untuk Fix Price - Sekarang dengan Inbox di sini -->
+            <!-- Action Row untuk Fix Price -->
             <div class="action-row">
                 <button class="action-btn add-action-btn" id="addUsernameActionBtn">
                     <i class="fas fa-plus"></i>
@@ -93,7 +93,17 @@
                     <i class="fas fa-arrow-up"></i>
                     <span>Withdraw</span>
                 </button>
-                <!-- INBOX PINDAH KE SINI (disamping tombol Withdraw) -->
+                <!-- Filter Status Button -->
+                <button class="action-btn" id="toggleStatusBtn">
+                    <i class="fas fa-filter"></i>
+                    <span>All</span>
+                </button>
+                <!-- Sort Button -->
+                <button class="action-btn" id="sortBtn">
+                    <i class="fas fa-sort-amount-down-alt"></i>
+                    <span>Sort</span>
+                </button>
+                <!-- Inbox Button -->
                 <div class="inbox-wrapper">
                     <button class="action-btn" id="inboxBtn">
                         <i class="fas fa-inbox"></i>
@@ -118,17 +128,6 @@
                         </button>
                     </div>
                 </div>
-            </div>
-
-            <!-- Action Bar - Sekarang tanpa Inbox dan tanpa Layout Toggle -->
-            <div class="action-bar">
-                <button class="action-btn" id="toggleStatusBtn">
-                    <i class="fas fa-eye"></i>
-                    <span>All</span>
-                </button>
-                <button class="action-btn" id="sortBtn">
-                    <i class="fas fa-sort-amount-down-alt"></i>
-                </button>
             </div>
 
             <!-- Sort Dropdown -->
