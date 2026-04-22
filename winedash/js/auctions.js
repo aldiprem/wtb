@@ -263,7 +263,7 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-    
+        
     async function loadAuctions() {
         if (!telegramUser) {
             console.log('[AUCTIONS] No telegram user, skipping load');
@@ -306,16 +306,19 @@
                 currentAuctions = data.auctions || [];
                 console.log(`[AUCTIONS] ✅ Loaded ${currentAuctions.length} auctions for tab ${currentAuctionTab}`);
                 
-                if (currentAuctions.length > 0) {
-                    console.log(`[AUCTIONS] First auction sample:`, {
-                        id: currentAuctions[0].id,
-                        username: currentAuctions[0].username,
-                        status: currentAuctions[0].status,
-                        end_time: currentAuctions[0].end_time
+                // PERBAIKAN: Untuk tab 'active', filter hanya yang belum expired
+                if (currentAuctionTab === 'active') {
+                    const now = new Date();
+                    const activeAuctions = currentAuctions.filter(auction => {
+                        if (!auction.end_time) return true;
+                        const endTime = new Date(auction.end_time);
+                        return endTime > now;
                     });
+                    console.log(`[AUCTIONS] Filtered to ${activeAuctions.length} active auctions (not expired)`);
+                    renderAuctions(activeAuctions);
+                } else {
+                    renderAuctions(currentAuctions);
                 }
-                
-                renderAuctions(currentAuctions);
                 startTimers();
             } else {
                 console.error(`[AUCTIONS] ❌ Failed to load:`, data.error);
@@ -332,7 +335,7 @@
     }
     
     // ==================== RENDER AUCTIONS ====================
-    
+        
     function renderAuctions(auctions) {
         if (!auctionsContainer) return;
         
@@ -363,17 +366,8 @@
                 const username = auction.username || '';
                 const timeRemaining = formatTimeRemaining(auction.end_time);
                 const currentPrice = auction.current_price || auction.start_price || 0;
+                const startPrice = auction.start_price || 0;
                 const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
-                
-                let lastBidderName = '';
-                let lastBidderPhoto = '';
-                let lastBidAmount = 0;
-                
-                if (isEnded && auction.winner_id) {
-                    lastBidderName = auction.winner_name || auction.winner_username || 'Winner';
-                    lastBidderPhoto = auction.winner_photo || '';
-                    lastBidAmount = auction.winning_bid || auction.current_price || currentPrice;
-                }
                 
                 let avatarUrl = localStorage.getItem(`avatar_${username}`);
                 if (!avatarUrl || avatarUrl === 'https://companel.shop/image/winedash-logo.png') {
@@ -381,28 +375,32 @@
                 }
                 
                 if (isEnded) {
+                    const winnerName = auction.winner_username || auction.winner_name || 'Winner';
+                    const winningBid = auction.winning_bid || auction.current_price || currentPrice;
+                    
                     html += `
                         <div class="auction-card ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
-                            <div class="auction-card-image ended-image">
+                            <div class="auction-card-image">
                                 <div class="auction-card-avatar">
                                     <img src="${avatarUrl}" alt="${escapeHtml(username)}" data-username="${username}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                                 </div>
                                 <div class="auction-card-username">@${escapeHtml(username)}</div>
-                                <div class="auction-ended-badge">ENDED</div>
                             </div>
                             <div class="auction-card-info ended-info">
-                                ${lastBidderName ? `
+                                <div class="auction-card-timer" style="color: var(--danger);">ENDED</div>
+                                <div class="auction-card-current-bid">Start: ${formatNumber(startPrice)} TON</div>
+                                ${winnerName ? `
                                 <div class="auction-last-bidder">
                                     <div class="last-bidder-avatar">
-                                        <img src="${lastBidderPhoto || 'https://companel.shop/image/winedash-logo.png'}" alt="${escapeHtml(lastBidderName)}">
+                                        <img src="${auction.winner_photo || 'https://companel.shop/image/winedash-logo.png'}" alt="${escapeHtml(winnerName)}">
                                     </div>
                                     <div class="last-bidder-info">
-                                        <span class="last-bidder-name">${escapeHtml(lastBidderName)}</span>
-                                        <span class="last-bid-amount">${formatNumber(lastBidAmount)} TON</span>
+                                        <span class="last-bidder-name">Winner: ${escapeHtml(winnerName)}</span>
+                                        <span class="last-bid-amount">${formatNumber(winningBid)} TON</span>
                                     </div>
                                 </div>
                                 ` : '<div class="no-bids">No bids placed</div>'}
-                                <div class="auction-card-status ended-status">END OFFER</div>
+                                <div class="auction-card-status ended-status">ENDED</div>
                             </div>
                         </div>
                     `;
@@ -417,7 +415,8 @@
                             </div>
                             <div class="auction-card-info">
                                 <div class="auction-card-timer" id="timer-${auction.id}">${timeRemaining}</div>
-                                <div class="auction-card-current-bid">Current: ${formatNumber(currentPrice)} TON</div>
+                                <div class="auction-card-current-bid">Start: ${formatNumber(startPrice)} TON</div>
+                                <div class="auction-card-current-bid" style="color: var(--success);">Current: ${formatNumber(currentPrice)} TON</div>
                                 <div class="auction-card-status">ON AUCTION</div>
                             </div>
                         </div>
@@ -441,13 +440,14 @@
             setTimeout(() => fetchAllAuctionAvatars(), 200);
             
         } else {
-            // List layout
+            // List layout - sama seperti sebelumnya
             auctionsContainer.className = 'auctions-list';
             let html = '';
             
             for (const auction of filtered) {
                 const username = auction.username || '';
                 const timeRemaining = formatTimeRemaining(auction.end_time);
+                const startPrice = auction.start_price || 0;
                 const isEnded = auction.status === 'ended' || timeRemaining === 'Ended';
                 
                 let avatarUrl = localStorage.getItem(`avatar_${username}`);
@@ -456,8 +456,8 @@
                 }
                 
                 if (isEnded) {
-                    const lastBidderName = auction.winner_name || auction.winner_username || 'Winner';
-                    const lastBidAmount = auction.winning_bid || auction.current_price || 0;
+                    const winnerName = auction.winner_username || auction.winner_name || 'Winner';
+                    const winningBid = auction.winning_bid || auction.current_price || 0;
                     
                     html += `
                         <div class="auctions-list-item ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
@@ -468,10 +468,10 @@
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
                                 <div class="auctions-list-ended-info">
                                     <span class="ended-label">ENDED</span>
-                                    <span class="ended-winner">Winner: ${escapeHtml(lastBidderName)} (${formatNumber(lastBidAmount)} TON)</span>
+                                    <span class="ended-winner">Winner: ${escapeHtml(winnerName)} (${formatNumber(winningBid)} TON)</span>
                                 </div>
                             </div>
-                            <div class="auctions-list-status ended-status">END OFFER</div>
+                            <div class="auctions-list-status ended-status">ENDED</div>
                         </div>
                     `;
                 } else {
@@ -483,6 +483,7 @@
                             <div class="auctions-list-info">
                                 <div class="auctions-list-username">@${escapeHtml(username)}</div>
                                 <div class="auctions-list-timer" id="timer-${auction.id}">Ends: ${timeRemaining}</div>
+                                <div class="auctions-list-startprice">Start: ${formatNumber(startPrice)} TON</div>
                             </div>
                             <div class="auctions-list-status">ON AUCTION</div>
                         </div>

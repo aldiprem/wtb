@@ -3419,7 +3419,6 @@
                 console.log('🔄 Refreshing auctions data');
                 window.refreshAuctions();
             }
-            // Pastikan create auction button terpasang
             setupCreateAuctionButton();
             return;
         }
@@ -3456,8 +3455,21 @@
                 if (typeof window.initAuctions === 'function') {
                     console.log('🚀 Calling window.initAuctions with telegramUser:', telegramUser);
                     window.initAuctions(telegramUser);
-                    // Setup create auction button setelah module loaded
                     setupCreateAuctionButton();
+                    
+                    // PERBAIKAN: Set default tab ke 'active' dan pastikan filter berfungsi
+                    setTimeout(() => {
+                        if (typeof window.switchAuctionTab === 'function') {
+                            // Cek apakah ada parameter filter dari URL
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const filterParam = urlParams.get('filter');
+                            if (filterParam === 'ended') {
+                                window.switchAuctionTab('ended');
+                            } else {
+                                window.switchAuctionTab('active');
+                            }
+                        }
+                    }, 500);
                 } else {
                     console.error('❌ window.initAuctions not found after loading auctions.js');
                     const auctionsContainer = document.getElementById('auctionsContainer');
