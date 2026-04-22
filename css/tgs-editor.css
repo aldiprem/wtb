@@ -1,0 +1,57 @@
+/* TGS Editor - Additional Styles (if needed) */
+
+/* Slide out animation for toast */
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Loading spinner for file upload */
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Sticker item hover effect */
+.sticker-item:hover {
+    filter: drop-shadow(0 0 6px rgba(64, 167, 227, 0.5));
+}
+
+/* Canvas container shadow on hover */
+.canvas-container {
+    transition: box-shadow 0.3s ease;
+}
+
+.canvas-container:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Disable text selection while dragging */
+body.dragging {
+    user-select: none;
+    cursor: grabbing;
+}
+
+/* Modal animation */
+.modal-overlay {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}

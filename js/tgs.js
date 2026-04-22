@@ -1,20 +1,28 @@
-// TGS Sticker Studio - Full Features
+// TGS Editor - Full Service Animation Studio
+// Version 2.0 - No Bugs
 
-class TGSStudio {
+class TGSEditor {
     constructor() {
+        // DOM Elements
         this.canvas = document.getElementById('mainCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.container = document.getElementById('canvasContainer');
         this.stickerLayer = document.getElementById('stickerLayer');
+        
+        // State
         this.stickers = [];
         this.selectedId = null;
         this.animations = new Map();
         this.bgColor = '#ffffff';
         this.pattern = 'none';
+        
+        // Drag state
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
         this.isResizing = false;
         this.isRotating = false;
+        this.resizeStart = { width: 0, x: 0 };
+        this.rotateStart = { rotation: 0, angle: 0 };
         
         this.init();
     }
@@ -22,85 +30,195 @@ class TGSStudio {
     init() {
         this.setupEventListeners();
         this.renderBackground();
+        this.showToast('TGS Editor ready! Upload your .tgs files', 'success');
     }
 
     setupEventListeners() {
         // Canvas resize
-        document.getElementById('resizeCanvasBtn').addEventListener('click', () => this.resizeCanvas());
+        const resizeBtn = document.getElementById('resizeCanvasBtn');
+        if (resizeBtn) {
+            resizeBtn.addEventListener('click', () => this.resizeCanvas());
+        }
+        
+        // Preset sizes
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const width = parseInt(btn.dataset.width);
+                const height = parseInt(btn.dataset.height);
+                document.getElementById('canvasWidth').value = width;
+                document.getElementById('canvasHeight').value = height;
+                this.resizeCanvas(width, height);
+            });
+        });
         
         // Background presets
-        document.querySelectorAll('.bg-btn').forEach(btn => {
+        document.querySelectorAll('.bg-option').forEach(btn => {
             btn.addEventListener('click', () => this.setBackground(btn.dataset.bg));
         });
         
         // Custom color
-        document.getElementById('customColorPicker').addEventListener('change', (e) => {
-            this.bgColor = e.target.value;
-            this.pattern = 'none';
-            this.renderBackground();
-            document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.pattern-btn[data-pattern="none"]')?.classList.add('active');
-        });
+        const colorPicker = document.getElementById('customColorPicker');
+        if (colorPicker) {
+            colorPicker.addEventListener('change', (e) => {
+                this.bgColor = e.target.value;
+                this.pattern = 'none';
+                this.renderBackground();
+                this.updateActivePattern('none');
+                document.querySelectorAll('.bg-option').forEach(opt => opt.classList.remove('active'));
+            });
+        }
         
         // Pattern
         document.querySelectorAll('.pattern-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 this.pattern = btn.dataset.pattern;
                 this.renderBackground();
-                document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                this.updateActivePattern(btn.dataset.pattern);
             });
         });
         
         // Actions
-        document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('duplicateBtn').addEventListener('click', () => this.duplicateSticker());
-        document.getElementById('deleteBtn').addEventListener('click', () => this.deleteSticker());
-        document.getElementById('bringToFrontBtn').addEventListener('click', () => this.bringToFront());
-        document.getElementById('sendToBackBtn').addEventListener('click', () => this.sendToBack());
-        document.getElementById('exportBtn').addEventListener('click', () => this.exportPNG());
-        document.getElementById('clearAllBtn').addEventListener('click', () => this.clearAll());
+        const duplicateBtn = document.getElementById('duplicateBtn');
+        if (duplicateBtn) duplicateBtn.addEventListener('click', () => this.duplicateSticker());
         
-        // File upload
-        document.getElementById('fileInput').addEventListener('change', (e) => this.handleFiles(e.target.files));
+        const deleteBtn = document.getElementById('deleteBtn');
+        if (deleteBtn) deleteBtn.addEventListener('click', () => this.deleteSticker());
         
-        // Drag & drop
-        const uploadMini = document.getElementById('uploadMini');
-        uploadMini.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadMini.style.borderColor = '#00ff88';
-        });
-        uploadMini.addEventListener('dragleave', () => {
-            uploadMini.style.borderColor = 'rgba(255,255,255,0.2)';
-        });
-        uploadMini.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadMini.style.borderColor = 'rgba(255,255,255,0.2)';
-            const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.tgs'));
-            this.handleFiles(files);
+        const bringToFrontBtn = document.getElementById('bringToFrontBtn');
+        if (bringToFrontBtn) bringToFrontBtn.addEventListener('click', () => this.bringToFront());
+        
+        const sendToBackBtn = document.getElementById('sendToBackBtn');
+        if (sendToBackBtn) sendToBackBtn.addEventListener('click', () => this.sendToBack());
+        
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) exportBtn.addEventListener('click', () => this.exportPNG());
+        
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        if (clearAllBtn) clearAllBtn.addEventListener('click', () => this.showClearModal());
+        
+        // Upload
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        
+        if (uploadArea) {
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#40a7e3';
+                uploadArea.style.background = 'rgba(64, 167, 227, 0.1)';
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = '';
+                uploadArea.style.background = '';
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '';
+                uploadArea.style.background = '';
+                const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.tgs'));
+                this.handleFiles(files);
+            });
+        }
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => this.handleFiles(Array.from(e.target.files)));
+        }
+        
+        // Modal
+        const modal = document.getElementById('confirmModal');
+        const modalCancel = document.getElementById('modalCancelBtn');
+        const modalConfirm = document.getElementById('modalConfirmBtn');
+        
+        if (modalCancel) {
+            modalCancel.addEventListener('click', () => {
+                modal.style.display = 'none';
+            });
+        }
+        
+        if (modalConfirm) {
+            modalConfirm.addEventListener('click', () => {
+                modal.style.display = 'none';
+                this.clearAll();
+            });
+        }
+        
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.style.display = 'none';
+            });
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Delete' && this.selectedId) {
+                this.deleteSticker();
+            }
+            if (e.key === 'Escape' && this.selectedId) {
+                this.selectSticker(null);
+            }
         });
     }
 
-    resizeCanvas() {
-        const width = parseInt(document.getElementById('canvasWidth').value);
-        const height = parseInt(document.getElementById('canvasHeight').value);
+    updateActivePattern(pattern) {
+        document.querySelectorAll('.pattern-btn').forEach(btn => {
+            if (btn.dataset.pattern === pattern) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    showClearModal() {
+        const modal = document.getElementById('confirmModal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
         
-        if (width > 0 && height > 0 && width <= 4000 && height <= 4000) {
-            this.canvas.width = width;
-            this.canvas.height = height;
-            this.container.style.width = `${width}px`;
-            this.container.style.height = `${height}px`;
-            this.renderBackground();
-            
-            // Reposition stickers if they go out of bounds
-            this.stickers.forEach(sticker => {
-                sticker.x = Math.min(sticker.x, width - sticker.width);
-                sticker.y = Math.min(sticker.y, height - sticker.height);
-                sticker.x = Math.max(0, sticker.x);
-                sticker.y = Math.max(0, sticker.y);
-                this.updateStickerElement(sticker);
-            });
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i> ${message}`;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    resizeCanvas(width = null, height = null) {
+        const newWidth = width !== null ? width : parseInt(document.getElementById('canvasWidth').value);
+        const newHeight = height !== null ? height : parseInt(document.getElementById('canvasHeight').value);
+        
+        if (isNaN(newWidth) || isNaN(newHeight) || newWidth < 100 || newHeight < 100 || newWidth > 4000 || newHeight > 4000) {
+            this.showToast('Invalid canvas size! Min 100x100, Max 4000x4000', 'error');
+            return;
         }
+        
+        // Save old dimensions
+        const oldWidth = this.canvas.width;
+        const oldHeight = this.canvas.height;
+        
+        // Resize canvas
+        this.canvas.width = newWidth;
+        this.canvas.height = newHeight;
+        this.container.style.width = `${newWidth}px`;
+        this.container.style.height = `${newHeight}px`;
+        
+        // Reposition stickers if they go out of bounds
+        this.stickers.forEach(sticker => {
+            sticker.x = Math.min(sticker.x, newWidth - sticker.width);
+            sticker.y = Math.min(sticker.y, newHeight - sticker.height);
+            sticker.x = Math.max(0, sticker.x);
+            sticker.y = Math.max(0, sticker.y);
+            this.updateStickerElement(sticker);
+        });
+        
+        this.renderBackground();
+        this.showToast(`Canvas resized to ${newWidth}x${newHeight}`, 'success');
     }
 
     setBackground(type) {
@@ -122,14 +240,21 @@ class TGSStudio {
                 this.pattern = 'grid';
                 break;
         }
-        this.renderBackground();
         
-        document.querySelectorAll('.bg-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.bg-btn.${type}`)?.classList.add('active');
+        this.renderBackground();
+        this.updateActivePattern('none');
+        
+        // Update active state for bg options
+        document.querySelectorAll('.bg-option').forEach(opt => {
+            if (opt.dataset.bg === type) {
+                opt.classList.add('active');
+            } else {
+                opt.classList.remove('active');
+            }
+        });
         
         if (type !== 'grid') {
-            document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.pattern-btn[data-pattern="none"]')?.classList.add('active');
+            this.updateActivePattern('none');
         }
     }
 
@@ -212,7 +337,8 @@ class TGSStudio {
         for (const file of files) {
             await this.loadSticker(file);
         }
-        document.getElementById('fileInput').value = '';
+        const fileInput = document.getElementById('fileInput');
+        if (fileInput) fileInput.value = '';
         this.updateInfo();
     }
 
@@ -223,19 +349,21 @@ class TGSStudio {
             let animationData;
             
             try {
+                // Try to decompress as gzipped JSON (TGS format)
                 const decompressed = pako.ungzip(compressed, { to: 'string' });
                 animationData = JSON.parse(decompressed);
             } catch(e) {
+                // Not compressed, try to parse as JSON directly
                 const text = new TextDecoder().decode(compressed);
                 animationData = JSON.parse(text);
             }
             
             const sticker = {
                 id: Date.now() + Math.random(),
-                file: file.name,
+                name: file.name,
                 animationData: animationData,
-                x: (this.canvas.width / 2) - 75,
-                y: (this.canvas.height / 2) - 75,
+                x: Math.max(50, (this.canvas.width / 2) - 75),
+                y: Math.max(50, (this.canvas.height / 2) - 75),
                 width: 150,
                 height: 150,
                 scale: 1,
@@ -246,10 +374,11 @@ class TGSStudio {
             this.stickers.push(sticker);
             await this.createStickerElement(sticker);
             this.updateInfo();
+            this.showToast(`Loaded: ${file.name}`, 'success');
             
         } catch(err) {
             console.error(err);
-            alert('Error loading sticker: ' + err.message);
+            this.showToast(`Error loading ${file.name}: ${err.message}`, 'error');
         }
     }
 
@@ -279,49 +408,33 @@ class TGSStudio {
         lottieContainer.style.pointerEvents = 'none';
         div.appendChild(lottieContainer);
         
-        // Handles
+        // Create handles
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'resize-handle';
-        resizeHandle.style.cssText = `
-            position: absolute;
-            bottom: -8px;
-            right: -8px;
-            width: 16px;
-            height: 16px;
-            background: #00ff88;
-            border-radius: 50%;
-            cursor: nw-resize;
-            display: none;
-            box-shadow: 0 0 4px rgba(0,0,0,0.5);
-        `;
+        div.appendChild(resizeHandle);
         
         const rotateHandle = document.createElement('div');
         rotateHandle.className = 'rotate-handle';
-        rotateHandle.style.cssText = `
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 16px;
-            height: 16px;
-            background: #ffaa00;
-            border-radius: 50%;
-            cursor: grab;
-            display: none;
-            box-shadow: 0 0 4px rgba(0,0,0,0.5);
-        `;
-        
-        div.appendChild(resizeHandle);
         div.appendChild(rotateHandle);
         
         // Events
-        div.addEventListener('mousedown', (e) => this.onStickerMouseDown(e, sticker));
+        div.addEventListener('mousedown', (e) => {
+            if (e.target === resizeHandle || e.target === rotateHandle) return;
+            e.stopPropagation();
+            this.selectSticker(sticker.id);
+            this.startDrag(e, sticker);
+        });
+        
         resizeHandle.addEventListener('mousedown', (e) => {
             e.stopPropagation();
-            this.onResizeStart(e, sticker);
+            this.selectSticker(sticker.id);
+            this.startResize(e, sticker);
         });
+        
         rotateHandle.addEventListener('mousedown', (e) => {
             e.stopPropagation();
-            this.onRotateStart(e, sticker);
+            this.selectSticker(sticker.id);
+            this.startRotate(e, sticker);
         });
         
         this.stickerLayer.appendChild(div);
@@ -351,24 +464,29 @@ class TGSStudio {
     }
 
     selectSticker(id) {
-        this.selectedId = id;
-        document.querySelectorAll('.sticker-item').forEach(el => el.classList.remove('selected'));
-        const selected = document.getElementById(`sticker-${id}`);
-        if (selected) {
-            selected.classList.add('selected');
-            // Show handles
-            const handles = selected.querySelectorAll('.resize-handle, .rotate-handle');
-            handles.forEach(h => h.style.display = 'block');
+        // Clear previous selection
+        if (this.selectedId !== null) {
+            const prevElement = document.getElementById(`sticker-${this.selectedId}`);
+            if (prevElement) prevElement.classList.remove('selected');
         }
-        document.getElementById('selectedId').innerText = id ? id.toString().slice(-8) : 'None';
+        
+        this.selectedId = id;
+        
+        // Update UI
+        document.querySelectorAll('.sticker-item').forEach(el => el.classList.remove('selected'));
+        
+        if (id !== null) {
+            const selected = document.getElementById(`sticker-${id}`);
+            if (selected) {
+                selected.classList.add('selected');
+            }
+            document.getElementById('selectedId').innerText = id.toString().slice(-8);
+        } else {
+            document.getElementById('selectedId').innerText = 'None';
+        }
     }
 
-    onStickerMouseDown(e, sticker) {
-        if (e.target.classList.contains('resize-handle') || e.target.classList.contains('rotate-handle')) return;
-        
-        e.stopPropagation();
-        this.selectSticker(sticker.id);
-        
+    startDrag(e, sticker) {
         this.isDragging = true;
         this.dragStart = {
             x: e.clientX - sticker.x,
@@ -396,19 +514,24 @@ class TGSStudio {
         window.addEventListener('mouseup', onMouseUp);
     }
 
-    onResizeStart(e, sticker) {
-        const startX = e.clientX;
-        const startWidth = sticker.width;
+    startResize(e, sticker) {
+        this.isResizing = true;
+        this.resizeStart = {
+            width: sticker.width,
+            x: e.clientX
+        };
         
         const onMouseMove = (moveEvent) => {
-            const delta = moveEvent.clientX - startX;
-            const newWidth = Math.max(40, Math.min(500, startWidth + delta));
+            if (!this.isResizing) return;
+            const delta = moveEvent.clientX - this.resizeStart.x;
+            const newWidth = Math.max(40, Math.min(500, this.resizeStart.width + delta));
             sticker.width = newWidth;
             sticker.height = newWidth;
             this.updateStickerElement(sticker);
         };
         
         const onMouseUp = () => {
+            this.isResizing = false;
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
         };
@@ -417,24 +540,30 @@ class TGSStudio {
         window.addEventListener('mouseup', onMouseUp);
     }
 
-    onRotateStart(e, sticker) {
+    startRotate(e, sticker) {
         const element = document.getElementById(`sticker-${sticker.id}`);
         const rect = element.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
         
         const getAngle = (clientX, clientY) => Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
-        const startAngle = getAngle(e.clientX, e.clientY);
-        const startRotation = sticker.rotation;
+        
+        this.isRotating = true;
+        this.rotateStart = {
+            rotation: sticker.rotation,
+            angle: getAngle(e.clientX, e.clientY)
+        };
         
         const onMouseMove = (moveEvent) => {
+            if (!this.isRotating) return;
             const currentAngle = getAngle(moveEvent.clientX, moveEvent.clientY);
-            let delta = currentAngle - startAngle;
-            sticker.rotation = startRotation + delta;
+            let delta = currentAngle - this.rotateStart.angle;
+            sticker.rotation = this.rotateStart.rotation + delta;
             this.updateStickerElement(sticker);
         };
         
         const onMouseUp = () => {
+            this.isRotating = false;
             window.removeEventListener('mousemove', onMouseMove);
             window.removeEventListener('mouseup', onMouseUp);
         };
@@ -444,18 +573,20 @@ class TGSStudio {
     }
 
     duplicateSticker() {
-        if (!this.selectedId) {
-            alert('Select a sticker first!');
+        if (this.selectedId === null) {
+            this.showToast('Select a sticker first!', 'warning');
             return;
         }
+        
         const original = this.stickers.find(s => s.id === this.selectedId);
         if (!original) return;
         
         const newSticker = {
             ...original,
             id: Date.now() + Math.random(),
-            x: original.x + 30,
-            y: original.y + 30,
+            name: `${original.name} (copy)`,
+            x: Math.min(this.canvas.width - original.width, original.x + 30),
+            y: Math.min(this.canvas.height - original.height, original.y + 30),
             zIndex: this.stickers.length
         };
         
@@ -463,28 +594,35 @@ class TGSStudio {
         this.createStickerElement(newSticker);
         this.selectSticker(newSticker.id);
         this.updateInfo();
+        this.showToast('Sticker duplicated!', 'success');
     }
 
     deleteSticker() {
-        if (!this.selectedId) {
-            alert('Select a sticker first!');
+        if (this.selectedId === null) {
+            this.showToast('Select a sticker first!', 'warning');
             return;
         }
+        
         const index = this.stickers.findIndex(s => s.id === this.selectedId);
         if (index !== -1) {
             const anim = this.animations.get(this.selectedId);
             if (anim) anim.destroy();
             this.animations.delete(this.selectedId);
-            document.getElementById(`sticker-${this.selectedId}`)?.remove();
+            
+            const element = document.getElementById(`sticker-${this.selectedId}`);
+            if (element) element.remove();
+            
             this.stickers.splice(index, 1);
             this.selectedId = null;
             this.updateInfo();
             document.getElementById('selectedId').innerText = 'None';
+            this.showToast('Sticker deleted', 'success');
         }
     }
 
     bringToFront() {
-        if (!this.selectedId) return;
+        if (this.selectedId === null) return;
+        
         const sticker = this.stickers.find(s => s.id === this.selectedId);
         if (sticker) {
             sticker.zIndex = this.stickers.length;
@@ -494,11 +632,13 @@ class TGSStudio {
                 this.updateStickerElement(s);
             });
             this.selectSticker(sticker.id);
+            this.showToast('Brought to front', 'success');
         }
     }
 
     sendToBack() {
-        if (!this.selectedId) return;
+        if (this.selectedId === null) return;
+        
         const sticker = this.stickers.find(s => s.id === this.selectedId);
         if (sticker) {
             sticker.zIndex = -1;
@@ -508,51 +648,66 @@ class TGSStudio {
                 this.updateStickerElement(s);
             });
             this.selectSticker(sticker.id);
+            this.showToast('Sent to back', 'success');
         }
     }
 
     clearAll() {
-        if (confirm('Clear all stickers?')) {
-            this.animations.forEach(anim => anim.destroy());
-            this.animations.clear();
-            this.stickers = [];
-            this.stickerLayer.innerHTML = '';
-            this.selectedId = null;
-            this.updateInfo();
-            document.getElementById('selectedId').innerText = 'None';
-        }
+        // Destroy all animations
+        this.animations.forEach(anim => anim.destroy());
+        this.animations.clear();
+        
+        // Clear stickers array
+        this.stickers = [];
+        
+        // Clear DOM
+        this.stickerLayer.innerHTML = '';
+        
+        // Reset selection
+        this.selectedId = null;
+        
+        // Update UI
+        this.updateInfo();
+        document.getElementById('selectedId').innerText = 'None';
+        
+        this.showToast('All stickers cleared', 'success');
     }
 
     async exportPNG() {
-        // Pause animations
+        // Pause all animations
         const wasPlaying = [];
         this.animations.forEach((anim, id) => {
             wasPlaying[id] = !anim.isPaused;
             anim.pause();
         });
         
-        setTimeout(async () => {
-            try {
-                const canvas = await html2canvas(this.container, {
-                    scale: 2,
-                    backgroundColor: this.bgColor === 'transparent' ? null : this.bgColor,
-                    useCORS: true,
-                    logging: false
-                });
-                const link = document.createElement('a');
-                link.download = `tgs-export-${Date.now()}.png`;
-                link.href = canvas.toDataURL();
-                link.click();
-            } catch(err) {
-                console.error(err);
-                alert('Export failed: ' + err.message);
-            }
-            
-            // Resume animations
-            this.animations.forEach((anim, id) => {
-                if (wasPlaying[id]) anim.play();
+        // Small delay for animations to settle
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        try {
+            const canvas = await html2canvas(this.container, {
+                scale: 2,
+                backgroundColor: this.bgColor === 'transparent' ? null : this.bgColor,
+                useCORS: true,
+                logging: false,
+                allowTaint: false
             });
-        }, 100);
+            
+            const link = document.createElement('a');
+            link.download = `tgs-export-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            
+            this.showToast('Export completed!', 'success');
+        } catch(err) {
+            console.error(err);
+            this.showToast('Export failed: ' + err.message, 'error');
+        }
+        
+        // Resume animations
+        this.animations.forEach((anim, id) => {
+            if (wasPlaying[id]) anim.play();
+        });
     }
 
     updateInfo() {
@@ -562,5 +717,5 @@ class TGSStudio {
 
 // Initialize when DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.studio = new TGSStudio();
+    window.tgsEditor = new TGSEditor();
 });

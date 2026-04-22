@@ -2,64 +2,687 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>TGS Sticker Studio</title>
-    <link rel="stylesheet" href="/css/tgs.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>TGS Editor - Animation Studio</title>
     
-    <!-- Libraries -->
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lottie Web -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+    
+    <!-- Pako for TGS decompression -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    
+    <!-- HTML2Canvas for screenshot -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0a;
+            --surface: #111111;
+            --surface-light: #1a1a1a;
+            --primary: #40a7e3;
+            --primary-dark: #2d8bcb;
+            --primary-glow: rgba(64, 167, 227, 0.4);
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --text: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-muted: #6b6b6b;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-light: rgba(255, 255, 255, 0.05);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-blur: blur(10px);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ==================== HEADER ==================== */
+        .tgs-header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .tgs-header h1 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tgs-header h1 i {
+            color: var(--primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--border);
+            border-radius: 30px;
+            padding: 8px 16px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(1.02);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #0d9488);
+            border: none;
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            border: none;
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            border: none;
+            color: white;
+        }
+
+        /* ==================== MAIN LAYOUT ==================== */
+        .tgs-main {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* ==================== SIDEBAR ==================== */
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            height: fit-content;
+            position: sticky;
+            top: 80px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-title i {
+            font-size: 14px;
+        }
+
+        /* Canvas Size Inputs */
+        .size-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .size-input-group input {
+            flex: 1;
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-size: 13px;
+            outline: none;
+        }
+
+        .size-input-group input:focus {
+            border-color: var(--primary);
+        }
+
+        .preset-sizes {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .preset-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 12px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Background Options */
+        .bg-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .bg-option {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .bg-option.active {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .bg-option.white { background: #ffffff; }
+        .bg-option.black { background: #0a0a0a; }
+        .bg-option.transparent { 
+            background: repeating-conic-gradient(#ccc 0% 25%, #eee 0% 50%);
+            background-size: 10px 10px;
+        }
+        .bg-option.grid { 
+            background: repeating-linear-gradient(90deg, #ddd 0px, #ddd 1px, transparent 1px, transparent 20px),
+                        repeating-linear-gradient(0deg, #ddd 0px, #ddd 1px, transparent 1px, transparent 20px);
+            background-color: #fff;
+        }
+
+        .color-picker-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .color-picker-row input {
+            width: 48px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            background: var(--surface-light);
+        }
+
+        .color-picker-row span {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Pattern Options */
+        .pattern-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .pattern-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 12px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pattern-btn.active {
+            background: var(--primary-glass);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .action-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-btn i {
+            width: 20px;
+            font-size: 14px;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(2px);
+        }
+
+        /* Upload Area */
+        .upload-area {
+            margin-top: 16px;
+            padding: 20px;
+            background: var(--surface-light);
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(64, 167, 227, 0.05);
+        }
+
+        .upload-area i {
+            font-size: 24px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .upload-area span {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ==================== CANVAS AREA ==================== */
+        .canvas-area {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .canvas-wrapper {
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 20px;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 500px;
+        }
+
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #mainCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        #stickerLayer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .sticker-item {
+            position: absolute;
+            pointer-events: auto;
+            cursor: grab;
+            transform-origin: center center;
+        }
+
+        .sticker-item:active {
+            cursor: grabbing;
+        }
+
+        .sticker-item.selected {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            filter: drop-shadow(0 0 8px var(--primary-glow));
+        }
+
+        .resize-handle, .rotate-handle {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .resize-handle {
+            bottom: -7px;
+            right: -7px;
+            background: var(--success);
+            cursor: nw-resize;
+        }
+
+        .rotate-handle {
+            top: -7px;
+            right: -7px;
+            background: var(--warning);
+            cursor: grab;
+        }
+
+        .sticker-item.selected .resize-handle,
+        .sticker-item.selected .rotate-handle {
+            display: block;
+        }
+
+        /* ==================== INFO BAR ==================== */
+        .info-bar {
+            margin-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: var(--surface);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            font-size: 12px;
+        }
+
+        .info-bar span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* ==================== TOAST ==================== */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: var(--surface);
+            border-left: 3px solid var(--primary);
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success { border-left-color: var(--success); }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warning); }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* ==================== MODAL ==================== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 24px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 16px;
+        }
+
+        .modal-content p {
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .modal-cancel {
+            background: var(--glass-bg);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .modal-confirm {
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            border: none;
+            color: white;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--border-light);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .tgs-main {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                position: static;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="studio-container">
+    <div class="tgs-header">
+        <h1>
+            <i class="fas fa-cube"></i>
+            TGS Animation Studio
+        </h1>
+        <div class="header-actions">
+            <button class="btn" id="exportBtn">
+                <i class="fas fa-camera"></i> Export PNG
+            </button>
+            <button class="btn btn-danger" id="clearAllBtn">
+                <i class="fas fa-trash"></i> Clear All
+            </button>
+        </div>
+    </div>
+
+    <div class="tgs-main">
         <!-- Sidebar Tools -->
-        <div class="tools-sidebar">
-            <h3><i class="fas fa-ruler"></i> Canvas Settings</h3>
-            <div class="canvas-settings">
-                <div class="setting-row">
-                    <input type="number" id="canvasWidth" placeholder="Width" value="800">
-                    <input type="number" id="canvasHeight" placeholder="Height" value="600">
-                    <button id="resizeCanvasBtn">Resize</button>
+        <div class="sidebar">
+            <!-- Canvas Settings -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-ruler"></i> Canvas Size
+                </div>
+                <div class="size-input-group">
+                    <input type="number" id="canvasWidth" placeholder="Width" value="800" step="1">
+                    <span style="color: var(--text-muted);">x</span>
+                    <input type="number" id="canvasHeight" placeholder="Height" value="600" step="1">
+                    <button class="btn" id="resizeCanvasBtn" style="padding: 10px 16px;">
+                        <i class="fas fa-arrows-alt"></i>
+                    </button>
+                </div>
+                <div class="preset-sizes">
+                    <button class="preset-btn" data-width="390" data-height="850">📱 390x850</button>
+                    <button class="preset-btn" data-width="800" data-height="600">🖥️ 800x600</button>
+                    <button class="preset-btn" data-width="1080" data-height="1920">📱 1080x1920</button>
+                    <button class="preset-btn" data-width="1920" data-height="1080">🖥️ 1920x1080</button>
                 </div>
             </div>
 
-            <h3><i class="fas fa-palette"></i> Background</h3>
-            <div class="bg-options">
-                <div class="bg-btn white" data-bg="white" title="White"></div>
-                <div class="bg-btn black" data-bg="black" title="Black"></div>
-                <div class="bg-btn transparent" data-bg="transparent" title="Transparent"></div>
-                <div class="bg-btn grid" data-bg="grid" title="Grid"></div>
-            </div>
-            <div class="color-picker-row">
-                <input type="color" id="customColorPicker" value="#ffffff">
-                <span>Custom Color</span>
-            </div>
-
-            <h3><i class="fas fa-border-all"></i> Pattern</h3>
-            <div class="pattern-options">
-                <button class="pattern-btn" data-pattern="none">None</button>
-                <button class="pattern-btn" data-pattern="dots">Dots</button>
-                <button class="pattern-btn" data-pattern="lines">Lines</button>
-                <button class="pattern-btn" data-pattern="cross">Cross</button>
-                <button class="pattern-btn" data-pattern="grid">Grid</button>
-            </div>
-
-            <h3><i class="fas fa-tools"></i> Actions</h3>
-            <div class="action-buttons">
-                <button id="uploadBtn" class="action-btn primary">📁 Upload TGS</button>
-                <button id="duplicateBtn" class="action-btn">📋 Duplicate</button>
-                <button id="deleteBtn" class="action-btn danger">🗑️ Delete</button>
-                <button id="bringToFrontBtn" class="action-btn">⬆️ Bring to Front</button>
-                <button id="sendToBackBtn" class="action-btn">⬇️ Send to Back</button>
-                <button id="exportBtn" class="action-btn success">📸 Export PNG</button>
-                <button id="clearAllBtn" class="action-btn warning">🗑️ Clear All</button>
+            <!-- Background Settings -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-palette"></i> Background
+                </div>
+                <div class="bg-options">
+                    <div class="bg-option white" data-bg="white" title="White"></div>
+                    <div class="bg-option black" data-bg="black" title="Black"></div>
+                    <div class="bg-option transparent" data-bg="transparent" title="Transparent"></div>
+                    <div class="bg-option grid" data-bg="grid" title="Grid Pattern"></div>
+                </div>
+                <div class="color-picker-row">
+                    <input type="color" id="customColorPicker" value="#ffffff">
+                    <span>Custom Color</span>
+                </div>
+                <div class="pattern-options" style="margin-top: 12px;">
+                    <button class="pattern-btn" data-pattern="none">None</button>
+                    <button class="pattern-btn" data-pattern="dots">Dots</button>
+                    <button class="pattern-btn" data-pattern="lines">Lines</button>
+                    <button class="pattern-btn" data-pattern="cross">Cross</button>
+                </div>
             </div>
 
-            <div class="upload-mini" id="uploadMini">
-                <span>📁 Drag & drop .tgs files here</span>
+            <!-- Actions -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-tools"></i> Actions
+                </div>
+                <div class="action-buttons">
+                    <button class="action-btn" id="duplicateBtn">
+                        <i class="fas fa-copy"></i> Duplicate
+                    </button>
+                    <button class="action-btn" id="deleteBtn">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button class="action-btn" id="bringToFrontBtn">
+                        <i class="fas fa-layer-group"></i> Bring to Front
+                    </button>
+                    <button class="action-btn" id="sendToBackBtn">
+                        <i class="fas fa-layer-group"></i> Send to Back
+                    </button>
+                </div>
             </div>
-            <input type="file" id="fileInput" accept=".tgs" multiple style="display: none">
+
+            <!-- Upload Area -->
+            <div class="sidebar-section">
+                <div class="sidebar-title">
+                    <i class="fas fa-upload"></i> Upload
+                </div>
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Click or drag .tgs file here</span>
+                </div>
+                <input type="file" id="fileInput" accept=".tgs" multiple style="display: none">
+            </div>
         </div>
 
         <!-- Canvas Area -->
@@ -71,13 +694,26 @@
                 </div>
             </div>
             <div class="info-bar">
-                <div>📊 Stickers: <span id="stickerCount">0</span></div>
-                <div>🖱️ Selected: <span id="selectedId">None</span></div>
-                <div>💡 Click sticker | Drag to move | Green corner = resize | Yellow corner = rotate</div>
+                <div><i class="fas fa-images"></i> Stickers: <span id="stickerCount">0</span></div>
+                <div><i class="fas fa-mouse-pointer"></i> Selected: <span id="selectedId">None</span></div>
+                <div><i class="fas fa-info-circle"></i> Click sticker | Drag to move | Green = Resize | Yellow = Rotate</div>
             </div>
         </div>
     </div>
 
-    <script src="/js/tgs.js"></script>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="modal-overlay" id="confirmModal">
+        <div class="modal-content">
+            <h3><i class="fas fa-exclamation-triangle"></i> Confirm Delete</h3>
+            <p>Are you sure you want to delete all stickers?</p>
+            <div class="modal-buttons">
+                <button class="modal-cancel" id="modalCancelBtn">Cancel</button>
+                <button class="modal-confirm" id="modalConfirmBtn">Delete All</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/tgs-editor.js"></script>
 </body>
 </html>
