@@ -520,73 +520,75 @@
         fullscreenDiv.id = 'auctionsActivityFullscreen';
         fullscreenDiv.className = 'fullscreen-page';
         
-        // Apply initial safe area insets
-        const tg = window.Telegram?.WebApp;
-        let safeTop = 0, safeBottom = 0;
-        if (tg && tg.safeAreaInset) {
-            safeTop = tg.safeAreaInset.top || 0;
-            safeBottom = tg.safeAreaInset.bottom || 0;
+        // Ambil data user dari localStorage atau dari variabel global
+        let userAvatarHtml = '<i class="fas fa-user"></i>';
+        let userBalance = '0.00';
+        
+        if (telegramUser) {
+            if (telegramUser.photo_url) {
+                userAvatarHtml = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            } else {
+                const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
+                const nameForAvatar = encodeURIComponent(fullName || telegramUser.username || 'User');
+                userAvatarHtml = `<img src="https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+            }
         }
         
-        fullscreenDiv.style.paddingTop = `${safeTop}px`;
-        fullscreenDiv.style.paddingBottom = `${safeBottom}px`;
+        // Ambil balance dari localStorage atau dari variabel
+        if (window.currentWalletBalance !== undefined) {
+            userBalance = window.currentWalletBalance.toFixed(2);
+        }
         
         fullscreenDiv.innerHTML = `
-            <div class="fullscreen-header" style="padding-top: ${safeTop + 16}px;">
-                <div class="fullscreen-header-left">
-                    <h2><i class="fas fa-history"></i> Auction Activity</h2>
+            <!-- Header dengan Profile Avatar dan Balance seperti storage.html (tanpa judul, back, close) -->
+            <div class="storage-profile-header" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0;">
+                <div class="storage-profile-avatar" id="activityUserAvatar" style="width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center;">
+                    ${userAvatarHtml}
                 </div>
-                <button class="close-fullscreen-btn" id="closeActivityFullscreenBtn">
-                    <i class="fas fa-times"></i>
+                <div class="storage-balance" id="activityBalanceCard" style="cursor: pointer;">
+                    <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo" style="width: 24px; height: 24px;">
+                    <span class="balance-amount" id="activityBalanceAmount">${userBalance}</span>
+                </div>
+            </div>
+            
+            <!-- Tabs Navigation -->
+            <div class="activity-tabs-fullscreen">
+                <button class="activity-tab-fullscreen active" data-activity-tab="my-auctions">
+                    <i class="fas fa-gavel"></i>
+                    <span>My Auctions</span>
+                </button>
+                <button class="activity-tab-fullscreen" data-activity-tab="my-bids">
+                    <i class="fas fa-history"></i>
+                    <span>My Bids</span>
+                </button>
+                <button class="activity-tab-fullscreen" data-activity-tab="ended">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Ended</span>
                 </button>
             </div>
-            <div class="fullscreen-content" style="padding-bottom: ${safeBottom + 20}px;">
-                <!-- Tabs Navigation -->
-                <div class="activity-tabs-fullscreen">
-                    <button class="activity-tab-fullscreen active" data-activity-tab="my-auctions">
-                        <i class="fas fa-gavel"></i>
-                        <span>My Auctions</span>
-                    </button>
-                    <button class="activity-tab-fullscreen" data-activity-tab="my-bids">
-                        <i class="fas fa-history"></i>
-                        <span>My Bids</span>
-                    </button>
-                    <button class="activity-tab-fullscreen" data-activity-tab="ended">
-                        <i class="fas fa-check-circle"></i>
-                        <span>Ended</span>
-                    </button>
-                </div>
 
-                <!-- Search Bar -->
-                <div class="activity-search-fullscreen">
-                    <div class="search-container-fullscreen">
-                        <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
-                        <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
-                    </div>
+            <!-- Search Bar -->
+            <div class="activity-search-fullscreen">
+                <div class="search-container-fullscreen">
+                    <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
+                    <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
                 </div>
+            </div>
 
-                <!-- Activity Container -->
-                <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
-                    <div class="loading-placeholder">Memuat aktivitas...</div>
-                </div>
+            <!-- Activity Container -->
+            <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
+                <div class="loading-placeholder">Memuat aktivitas...</div>
             </div>
         `;
         
         document.body.appendChild(fullscreenDiv);
         activityFullscreen = fullscreenDiv;
         
-        // Setup tombol close
-        const closeBtn = document.getElementById('closeActivityFullscreenBtn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                closeFullscreenActivity();
-                if (typeof window.switchToAuctionsMode === 'function') {
-                    window.switchToAuctionsMode();
-                }
-            });
-        }
+        // Apply safe area
+        applySafeAreaInsets();
+        
+        // Update balance secara realtime
+        updateActivityBalance();
         
         // Setup tabs
         document.querySelectorAll('.activity-tab-fullscreen').forEach(btn => {
@@ -621,10 +623,33 @@
             });
         }
         
-        // Setup closing behavior untuk fullscreen
-        setupFullscreenClosingBehavior();
-        
         return fullscreenDiv;
+    }
+
+    async function updateActivityBalance() {
+        if (!telegramUser) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+            const data = await response.json();
+            
+            if (data.success && data.user) {
+                const balanceCard = document.getElementById('activityBalanceCard');
+                const balanceAmount = document.getElementById('activityBalanceAmount');
+                if (balanceAmount) {
+                    balanceAmount.textContent = parseFloat(data.user.balance).toFixed(2);
+                }
+                if (balanceCard) {
+                    balanceCard.style.cursor = 'pointer';
+                    balanceCard.onclick = () => {
+                        closeFullscreenActivity();
+                        window.location.href = '/winedash#wallet';
+                    };
+                }
+            }
+        } catch (error) {
+            console.error('Error loading activity balance:', error);
+        }
     }
 
     function setupFullscreenClosingBehavior() {

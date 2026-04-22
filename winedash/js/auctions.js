@@ -263,7 +263,7 @@
     }
     
     // ==================== LOAD AUCTIONS ====================
-        
+            
     async function loadAuctions() {
         if (!telegramUser) {
             console.log('[AUCTIONS] No telegram user, skipping load');
@@ -282,7 +282,7 @@
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
                     break;
                 case 'my-auctions':
-                    url = `${API_BASE_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
+                    url = `${API_BEST_URL}/api/winedash/auctions/my-auctions/${telegramUser.id}`;
                     break;
                 case 'my-bids':
                     url = `${API_BASE_URL}/api/winedash/auctions/my-bids/${telegramUser.id}`;
@@ -290,51 +290,41 @@
                 case 'ended':
                     url = `${API_BASE_URL}/api/winedash/auctions/ended/${telegramUser.id}`;
                     break;
+                case 'all':
+                    // PERBAIKAN: Untuk filter "All", ambil data dari 2 sumber: active + ended
+                    const [activeRes, endedRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/winedash/auctions/active`),
+                        fetch(`${API_BASE_URL}/api/winedash/auctions/ended/${telegramUser.id}`)
+                    ]);
+                    
+                    const activeData = await activeRes.json();
+                    const endedData = await endedRes.json();
+                    
+                    let allAuctions = [];
+                    if (activeData.success) {
+                        allAuctions = [...allAuctions, ...(activeData.auctions || [])];
+                    }
+                    if (endedData.success) {
+                        allAuctions = [...allAuctions, ...(endedData.auctions || [])];
+                    }
+                    
+                    currentAuctions = allAuctions;
+                    console.log(`[AUCTIONS] ✅ Loaded ${currentAuctions.length} total auctions (active + ended)`);
+                    renderAuctions(currentAuctions);
+                    startTimers();
+                    hideSilentLoading();
+                    return;
                 default:
                     url = `${API_BASE_URL}/api/winedash/auctions/active`;
             }
             
-            console.log(`[AUCTIONS] Fetching URL: ${url}`);
-            
             const response = await fetch(url);
-            console.log(`[AUCTIONS] Response status: ${response.status}`);
-            
             const data = await response.json();
-            console.log(`[AUCTIONS] Response data:`, JSON.stringify(data, null, 2));
             
             if (data.success) {
                 currentAuctions = data.auctions || [];
                 console.log(`[AUCTIONS] ✅ Loaded ${currentAuctions.length} auctions for tab ${currentAuctionTab}`);
-                
-                // PERBAIKAN: Untuk tab 'active', filter hanya yang belum expired
-                if (currentAuctionTab === 'active') {
-                    const now = new Date();
-                    const activeAuctions = currentAuctions.filter(auction => {
-                        if (!auction.end_time) return true;
-                        const endTime = new Date(auction.end_time);
-                        return endTime > now;
-                    });
-                    console.log(`[AUCTIONS] Filtered to ${activeAuctions.length} active auctions (not expired)`);
-                    renderAuctions(activeAuctions);
-                } else if (currentAuctionTab === 'my-auctions') {
-                    // PERBAIKAN: Untuk 'my-auctions', tampilkan SEMUA (active, ended, dan expired)
-                    // Tapi beri label yang sesuai berdasarkan status
-                    const now = new Date();
-                    const allAuctions = currentAuctions.map(auction => {
-                        // Update status jika expired tapi masih 'active'
-                        if (auction.status === 'active' && auction.end_time) {
-                            const endTime = new Date(auction.end_time);
-                            if (endTime <= now) {
-                                auction.status = 'ended';
-                            }
-                        }
-                        return auction;
-                    });
-                    console.log(`[AUCTIONS] Showing ${allAuctions.length} total auctions (active + ended)`);
-                    renderAuctions(allAuctions);
-                } else {
-                    renderAuctions(currentAuctions);
-                }
+                renderAuctions(currentAuctions);
                 startTimers();
             } else {
                 console.error(`[AUCTIONS] ❌ Failed to load:`, data.error);
@@ -349,7 +339,7 @@
             hideSilentLoading();
         }
     }
-    
+
     // ==================== RENDER AUCTIONS ====================
             
     function renderAuctions(auctions) {
@@ -373,7 +363,7 @@
             renderAuctionsEmpty();
             return;
         }
-        
+                
         if (currentLayout === 'grid') {
             auctionsContainer.className = 'auctions-grid';
             let html = '';
@@ -391,18 +381,20 @@
                 }
                 
                 if (isEnded) {
+                    // PERBAIKAN: Hapus tampilan winner yang bug, tampilkan ENDED sederhana
                     html += `
                         <div class="auction-card ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
-                            <div class="auction-card-image">
+                            <div class="auction-card-image ended-image">
                                 <div class="auction-card-avatar">
                                     <img src="${avatarUrl}" alt="${escapeHtml(username)}" data-username="${username}" onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                                 </div>
                                 <div class="auction-card-username">@${escapeHtml(username)}</div>
+                                <div class="auction-ended-badge">ENDED</div>
                             </div>
                             <div class="auction-card-info ended-info">
                                 <div class="auction-card-timer" style="color: var(--danger);">ENDED</div>
                                 <div class="auction-card-current-bid">Start: ${formatNumber(startPrice)} TON</div>
-                                <div class="auction-card-status ended-status">ENDED</div>
+                                <div class="auction-card-status ended-status">END OFFER</div>
                             </div>
                         </div>
                     `;
@@ -427,7 +419,7 @@
             }
             
             auctionsContainer.innerHTML = html;
-            
+
             // Attach click events
             document.querySelectorAll('.auction-card').forEach(card => {
                 card.addEventListener('click', (e) => {
@@ -440,9 +432,7 @@
             });
             
             setTimeout(() => fetchAllAuctionAvatars(), 200);
-            
         } else {
-            // List layout
             auctionsContainer.className = 'auctions-list';
             let html = '';
             
@@ -458,6 +448,7 @@
                 }
                 
                 if (isEnded) {
+                    // PERBAIKAN: Hapus winner display yang bug
                     html += `
                         <div class="auctions-list-item ended" data-auction-id="${auction.id}" data-auction='${JSON.stringify(auction).replace(/'/g, "&#39;")}'>
                             <div class="auctions-list-avatar">
@@ -469,7 +460,7 @@
                                     <span class="ended-label">ENDED</span>
                                 </div>
                             </div>
-                            <div class="auctions-list-status ended-status">ENDED</div>
+                            <div class="auctions-list-status ended-status">END OFFER</div>
                         </div>
                     `;
                 } else {
@@ -490,7 +481,7 @@
             }
             
             auctionsContainer.innerHTML = html;
-            
+
             document.querySelectorAll('.auctions-list-item').forEach(item => {
                 item.addEventListener('click', (e) => {
                     e.stopPropagation();
