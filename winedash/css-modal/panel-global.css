@@ -1,0 +1,417 @@
+/* panel-global.css - Khusus untuk panel fullscreen (hampir full layar) */
+
+.panel-global {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--surface);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    overflow: hidden;
+}
+
+.panel-global.open {
+    transform: translateX(0);
+}
+
+.panel-global .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--surface);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.panel-global .panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.panel-global .panel-header-left h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-global .back-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+    font-size: 18px;
+}
+
+.panel-global .back-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(1.02);
+}
+
+.panel-global .close-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+    font-size: 18px;
+}
+
+.panel-global .close-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: var(--danger);
+    color: var(--danger);
+    transform: scale(1.02);
+}
+
+.panel-global .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Overlay untuk panel global */
+.panel-global-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    z-index: 1950;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.panel-global-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Mencegah scroll body saat panel terbuka */
+body.panel-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
+
+/* Tabs dalam panel global */
+.panel-global-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    padding: 4px;
+}
+
+.panel-global-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 10px 12px;
+    border-radius: 16px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.panel-global-tab.active {
+    background: var(--primary-glass);
+    color: var(--primary);
+}
+
+/* Search dalam panel global */
+.panel-global-search {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.panel-global-search-input {
+    flex: 1;
+    padding: 12px 16px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.panel-global-search-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(64, 167, 227, 0.2);
+}
+
+.panel-global-search-btn {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border: none;
+    border-radius: 20px;
+    padding: 0 20px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.panel-global-search-btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+/* Container untuk item dalam panel global */
+.panel-global-items {
+    width: 100%;
+    min-height: 300px;
+}
+
+.panel-global-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border-light);
+}
+
+.panel-global-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.panel-global-item-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+}
+
+.panel-global-item-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.panel-global-item-info {
+    flex: 2;
+    min-width: 0;
+}
+
+.panel-global-item-username {
+    font-size: 15px;
+    font-weight: 600;
+    font-family: monospace;
+    margin-bottom: 6px;
+    word-break: break-all;
+}
+
+.panel-global-item-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.panel-global-item-price {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--success);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.panel-global-item-price img {
+    width: 16px;
+    height: 16px;
+}
+
+.panel-global-item-bid-info {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.panel-global-item-timer {
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--warning);
+}
+
+.panel-global-item-winner {
+    font-size: 11px;
+    color: var(--success);
+    font-weight: 500;
+}
+
+.panel-global-item-winner.winner-me {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.panel-global-item-basedon {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.panel-global-item-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.panel-global-item-status {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.panel-global-item-status.active {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.panel-global-item-status.ended {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.panel-global-item-view-btn {
+    background: rgba(64, 167, 227, 0.15);
+    border: 1px solid rgba(64, 167, 227, 0.3);
+    border-radius: 20px;
+    padding: 6px 16px;
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.panel-global-item-view-btn:hover {
+    background: rgba(64, 167, 227, 0.3);
+    transform: scale(1.02);
+}
+
+/* Empty state */
+.panel-global-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 20px;
+    min-height: 300px;
+}
+
+.panel-global-empty i {
+    font-size: 64px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.panel-global-empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.panel-global-empty-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .panel-global-item {
+        flex-wrap: wrap;
+        padding: 12px;
+    }
+    
+    .panel-global-item-info {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .panel-global-item-right {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        margin-top: 8px;
+    }
+    
+    .panel-global-item-avatar {
+        width: 44px;
+        height: 44px;
+    }
+    
+    .panel-global-item-username {
+        font-size: 13px;
+    }
+    
+    .panel-global-tab span {
+        display: none;
+    }
+    
+    .panel-global-tab i {
+        font-size: 18px;
+    }
+    
+    .panel-global-tabs {
+        padding: 6px;
+    }
+}

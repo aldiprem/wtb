@@ -177,18 +177,15 @@
                         const isEnded = auction.status === 'ended' || (auction.end_time && new Date(auction.end_time) <= new Date());
                         
                         if (isEnded && auction.status === 'ended') {
-                            console.log(`[STORAGE] Auction ${auctionId} for @${username.username} has ended, updating status...`);
+                            console.log(`[STORAGE] Auction ${auctionId} for @${username.username} has ended, updating status to unlisted...`);
                             
-                            // Update status username kembali ke available (listed) jika sebelumnya available
-                            // atau unlisted jika sebelumnya unlisted
-                            // Kita perlu tahu status sebelum auction
-                            // Untuk sementara, set ke available dulu
+                            // Update status username ke unlisted (karena auction ended, username tidak otomatis listed)
                             await fetch(`${API_BASE_URL}/api/winedash/username/toggle`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     username_id: username.id,
-                                    status: 'available',
+                                    status: 'unlisted',
                                     user_id: telegramUser.id
                                 })
                             });
@@ -206,7 +203,7 @@
             console.error('Error refreshing auction statuses:', error);
         }
     }
-    
+
     // ==================== TELEGRAM USER ====================
     
     function getTelegramUserFromWebApp() {
@@ -892,7 +889,6 @@
     }
 
     async function loadUsernames() {
-        // Cegah multiple simultaneous calls
         if (isLoadingUsernames) {
             console.log('[STORAGE] loadUsernames already in progress, skipping...');
             return;
@@ -913,7 +909,7 @@
                     allUsernames = data.usernames.filter(u => u.seller_id === telegramUser.id);
                     console.log(`[STORAGE] Filtered ${allUsernames.length} usernames for user ${telegramUser.id}`);
                     
-                    // ============ TAMBAHKAN: Refresh auction statuses ============
+                    // ============ REFRESH AUCTION STATUSES ============
                     await refreshAuctionStatuses();
                     
                     // Reload lagi setelah refresh jika ada perubahan
@@ -936,7 +932,6 @@
                     refreshAllDefaultAvatars();
                 }, 1000);
                 
-                // Hentikan loading overlay setelah data dirender
                 showLoading(false);
             } else {
                 console.log('[STORAGE] No usernames found or error:', data);
@@ -1793,27 +1788,123 @@
         });
     }
 
-    async function showDetailPanel(username) {
-        const existingPanel = document.querySelector('.detail-panel');
-        if (existingPanel) existingPanel.remove();
+    // ==================== FUNGSI PANEL BARU DENGAN DRAG TO CLOSE YANG LEBIH BAIK ====================
+
+    // Fungsi untuk membuat overlay dengan blur
+    function createPanelOverlay(className = 'panel-overlay') {
+        const overlay = document.createElement('div');
+        overlay.className = className;
+        document.body.appendChild(overlay);
+        return overlay;
+    }
+
+    // Fungsi drag to close yang lebih smooth - bisa drag di area mana saja
+    function setupPanelDragToCloseAdvanced(panel, closeFunction, dragAreaSelector = null) {
+        let startY = 0;
+        let currentY = 0;
+        let isDragging = false;
+        let startTransform = 0;
         
-        if (!detailOverlay) {
-            detailOverlay = document.createElement('div');
-            detailOverlay.className = 'panel-overlay';
-            document.body.appendChild(detailOverlay);
+        // Area yang bisa di-drag (default seluruh panel)
+        const dragArea = dragAreaSelector ? panel.querySelector(dragAreaSelector) : panel;
+        if (!dragArea) return;
+        
+        const onTouchStart = (e) => {
+            // Hanya jika touch dimulai dari area drag (bukan dari elemen yang bisa di-scroll)
+            const target = e.target;
+            const isScrollable = target.closest('.panel-content, .panel-content *');
             
-            detailOverlay.addEventListener('click', () => {
-                closeDetailPanel();
-            });
+            // Jika touch pada content yang scrollable, jangan trigger drag
+            if (isScrollable) {
+                // Cek apakah element tersebut bisa di-scroll
+                const scrollable = target.closest('.panel-content');
+                if (scrollable && scrollable.scrollHeight > scrollable.clientHeight) {
+                    // Jika content bisa di-scroll, jangan trigger drag
+                    return;
+                }
+            }
+            
+            startY = e.touches[0].clientY;
+            isDragging = true;
+            panel.style.transition = 'none';
+            
+            // Dapatkan transform value saat ini
+            const transform = window.getComputedStyle(panel).transform;
+            if (transform !== 'none') {
+                const matrix = transform.match(/matrix.*\((.+)\)/);
+                if (matrix) {
+                    const values = matrix[1].split(', ');
+                    startTransform = parseFloat(values[5]) || 0;
+                }
+            }
+            
+            hapticLight();
+        };
+        
+        const onTouchMove = (e) => {
+            if (!isDragging) return;
+            currentY = e.touches[0].clientY;
+            const deltaY = currentY - startY;
+            
+            if (deltaY > 0) {
+                const maxTranslate = panel.offsetHeight * 0.6;
+                const translateY = Math.min(startTransform + deltaY, maxTranslate);
+                panel.style.transform = `translateY(${translateY}px)`;
+            } else if (deltaY < -30) {
+                // Jika ditarik ke atas, batalkan drag
+                isDragging = false;
+                panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+                panel.style.transform = '';
+            }
+        };
+        
+        const onTouchEnd = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+            
+            const deltaY = currentY - startY;
+            
+            // Jika ditarik ke bawah lebih dari 80px, tutup panel
+            if (deltaY > 80) {
+                closeFunction();
+            } else {
+                panel.style.transform = '';
+            }
+            
+            startTransform = 0;
+        };
+        
+        dragArea.addEventListener('touchstart', onTouchStart, { passive: false });
+        dragArea.addEventListener('touchmove', onTouchMove, { passive: false });
+        dragArea.addEventListener('touchend', onTouchEnd);
+        
+        return {
+            remove: () => {
+                dragArea.removeEventListener('touchstart', onTouchStart);
+                dragArea.removeEventListener('touchmove', onTouchMove);
+                dragArea.removeEventListener('touchend', onTouchEnd);
+            }
+        };
+    }
+
+    // Fungsi untuk show detail panel dengan panel-card style
+    async function showDetailPanel(username) {
+        const existingPanel = document.querySelector('.panel-card');
+        if (existingPanel) {
+            closeDetailPanel();
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
+        let panelOverlay = document.querySelector('.panel-card-overlay');
+        if (!panelOverlay) {
+            panelOverlay = createPanelOverlay('panel-card-overlay');
         }
         
         let usernameStr = username.username;
-        if (typeof usernameStr !== 'string') {
-            usernameStr = String(usernameStr);
-        }
+        if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
         usernameStr = usernameStr.replace(/^b['"]|['"]$/g, '');
         
-        // Cek apakah username pending
         const isPending = username.is_pending === true;
         const pendingId = username.pending_id;
         const verificationType = username.verification_type;
@@ -1826,26 +1917,14 @@
         const isOnAuction = username.status === 'on_auction';
         
         let avatarUrl = "https://companel.shop/image/winedash-logo.png";
-        
         const cached = localStorage.getItem(`avatar_${usernameStr}`);
         if (cached && !cached.includes('winedash-logo.png') && !cached.includes('ui-avatars.com')) {
             avatarUrl = cached;
-        } else {
-            fetchProfilePhoto(usernameStr).then(photoUrl => {
-                if (photoUrl && !photoUrl.includes('ui-avatars.com')) {
-                    const detailImg = document.querySelector('.detail-panel .detail-avatar-img img');
-                    if (detailImg && detailImg.src !== photoUrl) {
-                        detailImg.src = photoUrl;
-                    }
-                }
-            }).catch(console.error);
         }
         
-        // Tentukan action button berdasarkan status
         let actionButtons = '';
         
         if (isPending) {
-            // Untuk username pending, tampilkan tombol Verifikasi dan Tolak
             actionButtons = `
                 <button class="detail-action-btn verify-detail" data-pending-id="${pendingId}" data-username="${usernameStr}" data-type="${verificationType}">
                     <i class="fas fa-check-circle"></i>
@@ -1881,9 +1960,8 @@
         }
         
         const panel = document.createElement('div');
-        panel.className = 'detail-panel';
+        panel.className = 'panel-card';
         panel.innerHTML = `
-            <div class="drag-handle"></div>
             <div class="panel-header">
                 <h3><i class="fas fa-info-circle"></i> Detail Username</h3>
                 <button class="panel-close">&times;</button>
@@ -1925,25 +2003,38 @@
         `;
         
         document.body.appendChild(panel);
-        setupDragToClose(panel);
         document.body.classList.add('panel-open');
-        detailOverlay.classList.add('active');
+        panelOverlay.classList.add('active');
+        
         setTimeout(() => {
             panel.classList.add('open');
-        }, 50);
+        }, 10);
         
+        // Setup drag to close - bisa drag di area mana saja
+        const dragCleanup = setupPanelDragToCloseAdvanced(panel, () => {
+            if (dragCleanup) dragCleanup.remove();
+            closeDetailPanel();
+        });
+        
+        // Close button
         const closeBtn = panel.querySelector('.panel-close');
         if (closeBtn) {
             const newCloseBtn = closeBtn.cloneNode(true);
             closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
             newCloseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                hapticLight();
+                if (dragCleanup) dragCleanup.remove();
                 closeDetailPanel();
             });
         }
         
-        // Tombol Verifikasi untuk pending username
+        // Overlay click
+        panelOverlay.addEventListener('click', () => {
+            if (dragCleanup) dragCleanup.remove();
+            closeDetailPanel();
+        });
+        
+        // Tombol Verifikasi
         const verifyBtn = panel.querySelector('.verify-detail');
         if (verifyBtn) {
             const newVerifyBtn = verifyBtn.cloneNode(true);
@@ -1955,6 +2046,7 @@
                 const type = newVerifyBtn.dataset.type;
                 
                 closeDetailPanel();
+                if (dragCleanup) dragCleanup.remove();
                 
                 if (type === 'user') {
                     showOtpModal(pendingId, username);
@@ -1964,7 +2056,7 @@
             });
         }
         
-        // Tombol Tolak untuk pending username
+        // Tombol Tolak
         const rejectBtn = panel.querySelector('.reject-detail');
         if (rejectBtn) {
             const newRejectBtn = rejectBtn.cloneNode(true);
@@ -1975,11 +2067,12 @@
                 const username = newRejectBtn.dataset.username;
                 
                 closeDetailPanel();
+                if (dragCleanup) dragCleanup.remove();
                 showRejectConfirmModal(pendingId, username);
             });
         }
         
-        // Edit price button (untuk non-pending)
+        // Edit price button
         const editBtn = panel.querySelector('.edit-price-detail');
         if (editBtn) {
             const newEditBtn = editBtn.cloneNode(true);
@@ -1990,13 +2083,14 @@
                 const price = parseFloat(newEditBtn.dataset.price);
                 const status = newEditBtn.dataset.status;
                 closeDetailPanel();
+                if (dragCleanup) dragCleanup.remove();
                 setTimeout(() => {
                     showEditPriceModal(id, price, status);
                 }, 300);
             });
         }
         
-        // View Auction button (untuk username yang sedang on auction)
+        // View Auction button
         const viewAuctionBtn = panel.querySelector('.view-auction-detail');
         if (viewAuctionBtn) {
             const newViewAuctionBtn = viewAuctionBtn.cloneNode(true);
@@ -2005,6 +2099,7 @@
                 e.stopPropagation();
                 const auctionId = newViewAuctionBtn.dataset.auctionId;
                 closeDetailPanel();
+                if (dragCleanup) dragCleanup.remove();
                 window.location.href = `/winedash/storage?mode=auctions&tab=active&auction=${auctionId}`;
             });
         }
@@ -2021,18 +2116,18 @@
                     hapticMedium();
                     await deleteUsername(id);
                     closeDetailPanel();
+                    if (dragCleanup) dragCleanup.remove();
                 }
             });
         }
     }
 
     function closeDetailPanel() {
-        const panel = document.querySelector('.detail-panel');
-        const overlay = document.querySelector('.panel-overlay');
+        const panel = document.querySelector('.panel-card');
+        const overlay = document.querySelector('.panel-card-overlay');
         
         if (panel) {
             panel.classList.remove('open');
-            // Hapus panel setelah animasi selesai
             setTimeout(() => {
                 if (panel && panel.parentNode) panel.remove();
             }, 300);
@@ -2040,12 +2135,37 @@
         
         if (overlay) {
             overlay.classList.remove('active');
-            // JANGAN hapus overlay, hanya sembunyikan
-            // overlay akan digunakan lagi nanti
         }
         
         document.body.classList.remove('panel-open');
+        hapticLight();
+    }
+
+    // Update fungsi inbox panel dengan drag area mana saja
+    function openInboxPanel() {
+        const panel = document.getElementById('inboxPanel');
+        if (!panel) return;
         
+        if (!inboxOverlay) {
+            inboxOverlay = createPanelOverlay('panel-box-overlay');
+            inboxOverlay.addEventListener('click', () => closeInboxPanel());
+        }
+        
+        panel.style.transform = '';
+        panel.style.transition = '';
+        
+        inboxOverlay.classList.add('active');
+        document.body.classList.add('panel-open');
+        panel.style.display = 'flex';
+        
+        setTimeout(() => {
+            panel.classList.add('open');
+        }, 10);
+        
+        // Setup drag to close - bisa drag di area mana saja
+        setupPanelDragToCloseAdvanced(panel, closeInboxPanel);
+        
+        loadPendingList();
         hapticLight();
     }
 
@@ -2059,8 +2179,7 @@
             inboxOverlay.classList.remove('active');
         }
         
-        // Allow scroll
-        document.body.classList.remove('inbox-open');
+        document.body.classList.remove('panel-open');
         
         setTimeout(() => {
             if (panel.style.display !== 'none') {
@@ -2069,54 +2188,6 @@
         }, 300);
         
         hapticLight();
-    }
-
-    // Fungsi untuk drag to close panel
-    function setupDragToClose(panel) {
-        const dragHandle = panel.querySelector('.drag-handle');
-        if (!dragHandle) return;
-        
-        let startY = 0;
-        let currentY = 0;
-        let isDragging = false;
-        
-        const onTouchStart = (e) => {
-            startY = e.touches[0].clientY;
-            isDragging = true;
-            panel.style.transition = 'none';
-            hapticLight();
-        };
-        
-        const onTouchMove = (e) => {
-            if (!isDragging) return;
-            currentY = e.touches[0].clientY;
-            const deltaY = currentY - startY;
-            
-            if (deltaY > 0) {
-                const translateY = Math.min(deltaY, panel.offsetHeight * 0.7);
-                panel.style.transform = `translateY(${translateY}px)`;
-            }
-        };
-        
-        const onTouchEnd = (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            panel.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-            
-            const deltaY = currentY - startY;
-            
-            if (deltaY > 100) {
-                // Swipe cukup jauh -> tutup panel
-                closeDetailPanel();
-            } else {
-                // Kembalikan ke posisi semula
-                panel.style.transform = '';
-            }
-        };
-        
-        dragHandle.addEventListener('touchstart', onTouchStart);
-        dragHandle.addEventListener('touchmove', onTouchMove);
-        dragHandle.addEventListener('touchend', onTouchEnd);
     }
 
     // Fungsi format tanggal Indonesia (Asia/Jakarta)

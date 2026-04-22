@@ -1,0 +1,281 @@
+/* panel-card.css - Khusus untuk card username dan auctions card detail */
+
+.panel-card {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    z-index: 1600;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+    overflow: hidden;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.panel-card.open {
+    transform: translateY(0);
+}
+
+.panel-card .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--surface);
+    flex-shrink: 0;
+}
+
+.panel-card .panel-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.panel-card .panel-close {
+    background: var(--glass-bg);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.panel-card .panel-close:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
+}
+
+.panel-card .detail-avatar {
+    position: relative;
+    width: 100%;
+    min-height: 180px;
+    background-image: url('https://companel.shop/image/bg-storage-card.jpg');
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 0 20px 0;
+    flex-shrink: 0;
+}
+
+.panel-card .detail-avatar::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+.panel-card .detail-avatar-img {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--bg), var(--bg));
+    border-radius: 25%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    margin-bottom: 12px;
+    z-index: 2;
+    position: relative;
+}
+
+.panel-card .detail-avatar-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 25%;
+}
+
+.panel-card .detail-avatar-img i {
+    font-size: 40px;
+    color: white;
+}
+
+.panel-card .detail-username-badge {
+    position: relative;
+    background: var(--text);
+    padding: 6px 18px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: monospace;
+    color: var(--bg);
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+    max-width: calc(100% - 40px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.panel-card .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 20px 80px 20px;
+    background: var(--surface);
+    position: relative;
+    z-index: 2;
+}
+
+.panel-card .detail-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.panel-card .detail-field:last-child {
+    border-bottom: none;
+}
+
+.panel-card .detail-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.panel-card .detail-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: right;
+    flex: 1;
+    margin-left: 16px;
+    word-break: break-word;
+}
+
+.panel-card .detail-value.price {
+    color: var(--success);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.panel-card .detail-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.panel-card .detail-status.listed {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+}
+
+.panel-card .detail-status.unlisted {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+}
+
+.panel-card .detail-status.on-auction {
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    color: white;
+    border: none;
+}
+
+.panel-card .detail-status.pending {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.panel-card .detail-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 10px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-light);
+    background: var(--surface);
+    border-radius: 0 0 24px 24px;
+    z-index: 10;
+}
+
+.panel-card .detail-action-btn {
+    flex: 1;
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.panel-card .detail-action-btn i {
+    font-size: 14px;
+}
+
+.panel-card .detail-action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.panel-card .detail-action-btn.verify-detail {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--success);
+}
+
+.panel-card .detail-action-btn.verify-detail:hover {
+    background: rgba(16, 185, 129, 0.3);
+}
+
+.panel-card .detail-action-btn.reject-detail {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
+
+.panel-card .detail-action-btn.reject-detail:hover {
+    background: rgba(239, 68, 68, 0.3);
+}
+
+.panel-card .detail-action-btn.view-auction-detail {
+    background: linear-gradient(135deg, var(--warning), #d97706);
+    border: none;
+    color: white;
+}
+
+.panel-card .detail-action-btn.delete-detail:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.panel-card .detail-action-btn.edit-price-detail:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
