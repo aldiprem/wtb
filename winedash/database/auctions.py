@@ -222,6 +222,15 @@ class AuctionsDatabase:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 
+                # Update status auction yang expired sebelum query
+                now = self._get_now_str()
+                cursor.execute('''
+                    UPDATE auctions 
+                    SET status = 'ended' 
+                    WHERE status = 'active' AND end_time <= ?
+                ''', (now,))
+                conn.commit()
+                
                 # PERBAIKAN: Ambil semua auction tanpa filter status
                 cursor.execute('''
                     SELECT a.*, 
@@ -244,6 +253,16 @@ class AuctionsDatabase:
                     # Pastikan status tidak None
                     if not auction.get('status'):
                         auction['status'] = 'active'
+                        
+                    # PERBAIKAN: Update username status jika auction ended
+                    if auction.get('status') == 'ended':
+                        cursor.execute('''
+                            UPDATE usernames 
+                            SET status = 'unlisted' 
+                            WHERE id = ? AND status = 'on_auction'
+                        ''', (auction.get('username_id'),))
+                        conn.commit()
+                        
                     auctions.append(auction)
                 
                 print(f"[DB] get_auctions_by_owner: Found {len(auctions)} auctions for owner_id={owner_id}")

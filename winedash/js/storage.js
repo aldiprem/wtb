@@ -1408,6 +1408,30 @@
         if (isPending) {
             return { text: 'PENDING', class: 'pending' };
         } else if (username.status === 'on_auction') {
+            if (username.auction_id) {
+                const auctionData = window.currentAuctionsData ? 
+                    window.currentAuctionsData.find(a => a.id === username.auction_id) : null;
+                
+                if (auctionData) {
+                    const isEnded = auctionData.status === 'ended' || 
+                        (auctionData.end_time && new Date(auctionData.end_time) <= new Date());
+                    
+                    if (isEnded) {
+                        return { text: 'ENDED', class: 'ended' };
+                    }
+                }
+                
+                if (!window.auctionStatusCache) window.auctionStatusCache = {};
+                
+                const cached = window.auctionStatusCache[username.auction_id];
+                if (cached !== undefined) {
+                    return cached ? { text: 'ON AUCTION', class: 'on-auction' } : { text: 'ENDED', class: 'ended' };
+                }
+                
+                // Trigger async check
+                setTimeout(() => checkAuctionStatus(username.auction_id, username.id), 100);
+            }
+            
             return { text: 'ON AUCTION', class: 'on-auction' };
         } else if (username.status === 'available') {
             return { text: 'Listed', class: 'listed' };
@@ -1416,6 +1440,46 @@
         }
         return { text: 'Unknown', class: '' };
     }
+
+    async function checkAuctionStatus(auctionId, usernameId) {
+        if (!auctionId) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/winedash/auctions/detail/${auctionId}`);
+            const data = await response.json();
+            
+            if (data.success && data.auction) {
+                const auction = data.auction;
+                const isEnded = auction.status === 'ended' || 
+                    (auction.end_time && new Date(auction.end_time) <= new Date());
+                
+                if (!window.auctionStatusCache) window.auctionStatusCache = {};
+                window.auctionStatusCache[auctionId] = !isEnded;
+                
+                // Jika ended, update status di database dan refresh UI
+                if (isEnded) {
+                    console.log(`[STORAGE] Auction ${auctionId} has ended, updating username status...`);
+                    
+                    // Update status username ke unlisted
+                    await fetch(`${API_BASE_URL}/api/winedash/username/toggle`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username_id: usernameId,
+                            status: 'unlisted',
+                            user_id: telegramUser?.id
+                        })
+                    });
+                    
+                    // Refresh usernames
+                    await loadUsernames();
+                }
+            }
+        } catch (error) {
+            console.error(`Error checking auction status for ${auctionId}:`, error);
+        }
+    }
+
 
     function renderUsernames(usernames) {
         if (!elements.usernameContainer) return;
@@ -2141,29 +2205,39 @@
         hapticLight();
     }
 
-    // Update fungsi inbox panel dengan drag area mana saja
     function openInboxPanel() {
         const panel = document.getElementById('inboxPanel');
         if (!panel) return;
         
+        // Gunakan overlay dari panel-box
         if (!inboxOverlay) {
-            inboxOverlay = createPanelOverlay('panel-box-overlay');
-            inboxOverlay.addEventListener('click', () => closeInboxPanel());
+            inboxOverlay = document.createElement('div');
+            inboxOverlay.className = 'panel-box-overlay';  // PERBAIKAN: gunakan class panel-box-overlay
+            document.body.appendChild(inboxOverlay);
+            
+            // Klik overlay untuk menutup panel
+            inboxOverlay.addEventListener('click', () => {
+                closeInboxPanel();
+            });
         }
         
+        // Reset transform panel jika sebelumnya pernah di-drag
         panel.style.transform = '';
         panel.style.transition = '';
         
+        // Tampilkan overlay
         inboxOverlay.classList.add('active');
-        document.body.classList.add('panel-open');
+        
+        // Prevent scroll pada body
+        document.body.classList.add('panel-open');  // PERBAIKAN: gunakan panel-open bukan inbox-open
+        
+        // Tampilkan panel dengan animasi
         panel.style.display = 'flex';
         
+        // Trigger animation
         setTimeout(() => {
             panel.classList.add('open');
         }, 10);
-        
-        // Setup drag to close - bisa drag di area mana saja
-        setupPanelDragToCloseAdvanced(panel, closeInboxPanel);
         
         loadPendingList();
         hapticLight();
@@ -2179,7 +2253,7 @@
             inboxOverlay.classList.remove('active');
         }
         
-        document.body.classList.remove('panel-open');
+        document.body.classList.remove('panel-open');  // PERBAIKAN: gunakan panel-open
         
         setTimeout(() => {
             if (panel.style.display !== 'none') {
