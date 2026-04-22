@@ -11,13 +11,9 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Lottie Web -->
+    <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
-    
-    <!-- Pako for TGS decompression -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-    
-    <!-- HTML2Canvas for screenshot -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
@@ -55,7 +51,7 @@
             overflow-x: hidden;
         }
 
-        /* ==================== HEADER ==================== */
+        /* Header */
         .tgs-header {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
@@ -131,13 +127,7 @@
             color: white;
         }
 
-        .btn-warning {
-            background: linear-gradient(135deg, var(--warning), #d97706);
-            border: none;
-            color: white;
-        }
-
-        /* ==================== MAIN LAYOUT ==================== */
+        /* Main Layout */
         .tgs-main {
             display: flex;
             gap: 20px;
@@ -146,7 +136,7 @@
             margin: 0 auto;
         }
 
-        /* ==================== SIDEBAR ==================== */
+        /* Sidebar */
         .sidebar {
             width: 280px;
             flex-shrink: 0;
@@ -175,11 +165,6 @@
             gap: 8px;
         }
 
-        .sidebar-title i {
-            font-size: 14px;
-        }
-
-        /* Canvas Size Inputs */
         .size-input-group {
             display: flex;
             gap: 10px;
@@ -282,6 +267,7 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            margin-top: 12px;
         }
 
         .pattern-btn {
@@ -362,7 +348,7 @@
             color: var(--text-muted);
         }
 
-        /* ==================== CANVAS AREA ==================== */
+        /* Canvas Area */
         .canvas-area {
             flex: 1;
             min-width: 0;
@@ -447,7 +433,7 @@
             display: block;
         }
 
-        /* ==================== INFO BAR ==================== */
+        /* Info Bar */
         .info-bar {
             margin-top: 16px;
             display: flex;
@@ -465,7 +451,7 @@
             font-weight: 600;
         }
 
-        /* ==================== TOAST ==================== */
+        /* Toast */
         .toast-container {
             position: fixed;
             bottom: 20px;
@@ -491,17 +477,16 @@
         .toast.warning { border-left-color: var(--warning); }
 
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
 
-        /* ==================== MODAL ==================== */
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -580,7 +565,6 @@
             .tgs-main {
                 flex-direction: column;
             }
-            
             .sidebar {
                 width: 100%;
                 position: static;
@@ -643,7 +627,7 @@
                     <input type="color" id="customColorPicker" value="#ffffff">
                     <span>Custom Color</span>
                 </div>
-                <div class="pattern-options" style="margin-top: 12px;">
+                <div class="pattern-options">
                     <button class="pattern-btn" data-pattern="none">None</button>
                     <button class="pattern-btn" data-pattern="dots">Dots</button>
                     <button class="pattern-btn" data-pattern="lines">Lines</button>
@@ -714,6 +698,594 @@
         </div>
     </div>
 
-    <script src="/js/tgs-editor.js"></script>
+    <script>
+        // ==================== TGS EDITOR - FULL SCRIPT ====================
+        // All JavaScript is embedded here to avoid external file issues
+        
+        (function() {
+            'use strict';
+            
+            class TGSEditor {
+                constructor() {
+                    this.canvas = document.getElementById('mainCanvas');
+                    this.ctx = this.canvas.getContext('2d');
+                    this.container = document.getElementById('canvasContainer');
+                    this.stickerLayer = document.getElementById('stickerLayer');
+                    
+                    this.stickers = [];
+                    this.selectedId = null;
+                    this.animations = new Map();
+                    this.bgColor = '#ffffff';
+                    this.pattern = 'none';
+                    
+                    this.isDragging = false;
+                    this.dragStart = { x: 0, y: 0 };
+                    this.isResizing = false;
+                    this.isRotating = false;
+                    this.resizeStart = { width: 0, x: 0 };
+                    this.rotateStart = { rotation: 0, angle: 0 };
+                    
+                    this.init();
+                }
+
+                init() {
+                    this.setupEventListeners();
+                    this.renderBackground();
+                    this.showToast('TGS Editor ready! Upload your .tgs files', 'success');
+                }
+
+                setupEventListeners() {
+                    const resizeBtn = document.getElementById('resizeCanvasBtn');
+                    if (resizeBtn) resizeBtn.addEventListener('click', () => this.resizeCanvas());
+                    
+                    document.querySelectorAll('.preset-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const width = parseInt(btn.dataset.width);
+                            const height = parseInt(btn.dataset.height);
+                            document.getElementById('canvasWidth').value = width;
+                            document.getElementById('canvasHeight').value = height;
+                            this.resizeCanvas(width, height);
+                        });
+                    });
+                    
+                    document.querySelectorAll('.bg-option').forEach(btn => {
+                        btn.addEventListener('click', () => this.setBackground(btn.dataset.bg));
+                    });
+                    
+                    const colorPicker = document.getElementById('customColorPicker');
+                    if (colorPicker) {
+                        colorPicker.addEventListener('change', (e) => {
+                            this.bgColor = e.target.value;
+                            this.pattern = 'none';
+                            this.renderBackground();
+                            this.updateActivePattern('none');
+                            document.querySelectorAll('.bg-option').forEach(opt => opt.classList.remove('active'));
+                        });
+                    }
+                    
+                    document.querySelectorAll('.pattern-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            this.pattern = btn.dataset.pattern;
+                            this.renderBackground();
+                            this.updateActivePattern(btn.dataset.pattern);
+                        });
+                    });
+                    
+                    const duplicateBtn = document.getElementById('duplicateBtn');
+                    if (duplicateBtn) duplicateBtn.addEventListener('click', () => this.duplicateSticker());
+                    
+                    const deleteBtn = document.getElementById('deleteBtn');
+                    if (deleteBtn) deleteBtn.addEventListener('click', () => this.deleteSticker());
+                    
+                    const bringToFrontBtn = document.getElementById('bringToFrontBtn');
+                    if (bringToFrontBtn) bringToFrontBtn.addEventListener('click', () => this.bringToFront());
+                    
+                    const sendToBackBtn = document.getElementById('sendToBackBtn');
+                    if (sendToBackBtn) sendToBackBtn.addEventListener('click', () => this.sendToBack());
+                    
+                    const exportBtn = document.getElementById('exportBtn');
+                    if (exportBtn) exportBtn.addEventListener('click', () => this.exportPNG());
+                    
+                    const clearAllBtn = document.getElementById('clearAllBtn');
+                    if (clearAllBtn) clearAllBtn.addEventListener('click', () => this.showClearModal());
+                    
+                    const uploadArea = document.getElementById('uploadArea');
+                    const fileInput = document.getElementById('fileInput');
+                    
+                    if (uploadArea) {
+                        uploadArea.addEventListener('click', () => fileInput.click());
+                        uploadArea.addEventListener('dragover', (e) => {
+                            e.preventDefault();
+                            uploadArea.style.borderColor = '#40a7e3';
+                            uploadArea.style.background = 'rgba(64, 167, 227, 0.1)';
+                        });
+                        uploadArea.addEventListener('dragleave', () => {
+                            uploadArea.style.borderColor = '';
+                            uploadArea.style.background = '';
+                        });
+                        uploadArea.addEventListener('drop', (e) => {
+                            e.preventDefault();
+                            uploadArea.style.borderColor = '';
+                            uploadArea.style.background = '';
+                            const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.tgs'));
+                            this.handleFiles(files);
+                        });
+                    }
+                    
+                    if (fileInput) {
+                        fileInput.addEventListener('change', (e) => this.handleFiles(Array.from(e.target.files)));
+                    }
+                    
+                    const modal = document.getElementById('confirmModal');
+                    const modalCancel = document.getElementById('modalCancelBtn');
+                    const modalConfirm = document.getElementById('modalConfirmBtn');
+                    
+                    if (modalCancel) modalCancel.addEventListener('click', () => modal.style.display = 'none');
+                    if (modalConfirm) modalConfirm.addEventListener('click', () => {
+                        modal.style.display = 'none';
+                        this.clearAll();
+                    });
+                    if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+                    
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Delete' && this.selectedId) this.deleteSticker();
+                        if (e.key === 'Escape' && this.selectedId) this.selectSticker(null);
+                    });
+                }
+
+                updateActivePattern(pattern) {
+                    document.querySelectorAll('.pattern-btn').forEach(btn => {
+                        if (btn.dataset.pattern === pattern) btn.classList.add('active');
+                        else btn.classList.remove('active');
+                    });
+                }
+
+                showClearModal() {
+                    const modal = document.getElementById('confirmModal');
+                    if (modal) modal.style.display = 'flex';
+                }
+
+                showToast(message, type = 'info') {
+                    const container = document.getElementById('toastContainer');
+                    if (!container) return;
+                    const toast = document.createElement('div');
+                    toast.className = `toast ${type}`;
+                    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i> ${message}`;
+                    container.appendChild(toast);
+                    setTimeout(() => {
+                        toast.style.animation = 'slideOut 0.3s ease forwards';
+                        setTimeout(() => toast.remove(), 300);
+                    }, 3000);
+                }
+
+                resizeCanvas(width = null, height = null) {
+                    const newWidth = width !== null ? width : parseInt(document.getElementById('canvasWidth').value);
+                    const newHeight = height !== null ? height : parseInt(document.getElementById('canvasHeight').value);
+                    
+                    if (isNaN(newWidth) || isNaN(newHeight) || newWidth < 100 || newHeight < 100 || newWidth > 4000 || newHeight > 4000) {
+                        this.showToast('Invalid canvas size! Min 100x100, Max 4000x4000', 'error');
+                        return;
+                    }
+                    
+                    this.canvas.width = newWidth;
+                    this.canvas.height = newHeight;
+                    this.container.style.width = `${newWidth}px`;
+                    this.container.style.height = `${newHeight}px`;
+                    
+                    this.stickers.forEach(sticker => {
+                        sticker.x = Math.min(sticker.x, newWidth - sticker.width);
+                        sticker.y = Math.min(sticker.y, newHeight - sticker.height);
+                        sticker.x = Math.max(0, sticker.x);
+                        sticker.y = Math.max(0, sticker.y);
+                        this.updateStickerElement(sticker);
+                    });
+                    
+                    this.renderBackground();
+                    this.showToast(`Canvas resized to ${newWidth}x${newHeight}`, 'success');
+                }
+
+                setBackground(type) {
+                    switch(type) {
+                        case 'white': this.bgColor = '#ffffff'; this.pattern = 'none'; break;
+                        case 'black': this.bgColor = '#0a0a0a'; this.pattern = 'none'; break;
+                        case 'transparent': this.bgColor = 'transparent'; this.pattern = 'none'; break;
+                        case 'grid': this.bgColor = '#ffffff'; this.pattern = 'grid'; break;
+                    }
+                    this.renderBackground();
+                    this.updateActivePattern('none');
+                    document.querySelectorAll('.bg-option').forEach(opt => {
+                        if (opt.dataset.bg === type) opt.classList.add('active');
+                        else opt.classList.remove('active');
+                    });
+                    if (type !== 'grid') this.updateActivePattern('none');
+                }
+
+                renderBackground() {
+                    if (this.bgColor === 'transparent') {
+                        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    } else {
+                        this.ctx.fillStyle = this.bgColor;
+                        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    }
+                    
+                    const size = 20;
+                    switch(this.pattern) {
+                        case 'dots':
+                            this.ctx.fillStyle = '#cccccc';
+                            for (let x = size/2; x < this.canvas.width; x += size) {
+                                for (let y = size/2; y < this.canvas.height; y += size) {
+                                    this.ctx.beginPath();
+                                    this.ctx.arc(x, y, 2, 0, Math.PI * 2);
+                                    this.ctx.fill();
+                                }
+                            }
+                            break;
+                        case 'lines':
+                            this.ctx.strokeStyle = '#dddddd';
+                            this.ctx.lineWidth = 1;
+                            for (let x = 0; x < this.canvas.width; x += size) {
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(x, 0);
+                                this.ctx.lineTo(x, this.canvas.height);
+                                this.ctx.stroke();
+                            }
+                            for (let y = 0; y < this.canvas.height; y += size) {
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(0, y);
+                                this.ctx.lineTo(this.canvas.width, y);
+                                this.ctx.stroke();
+                            }
+                            break;
+                        case 'cross':
+                            this.ctx.strokeStyle = '#dddddd';
+                            this.ctx.lineWidth = 1;
+                            for (let x = size/2; x < this.canvas.width; x += size) {
+                                for (let y = size/2; y < this.canvas.height; y += size) {
+                                    this.ctx.beginPath();
+                                    this.ctx.moveTo(x - 5, y);
+                                    this.ctx.lineTo(x + 5, y);
+                                    this.ctx.moveTo(x, y - 5);
+                                    this.ctx.lineTo(x, y + 5);
+                                    this.ctx.stroke();
+                                }
+                            }
+                            break;
+                        case 'grid':
+                            this.ctx.strokeStyle = '#dddddd';
+                            this.ctx.lineWidth = 1;
+                            const gridSize = 25;
+                            for (let x = 0; x <= this.canvas.width; x += gridSize) {
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(x, 0);
+                                this.ctx.lineTo(x, this.canvas.height);
+                                this.ctx.stroke();
+                            }
+                            for (let y = 0; y <= this.canvas.height; y += gridSize) {
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(0, y);
+                                this.ctx.lineTo(this.canvas.width, y);
+                                this.ctx.stroke();
+                            }
+                            break;
+                    }
+                }
+
+                async handleFiles(files) {
+                    for (const file of files) await this.loadSticker(file);
+                    const fileInput = document.getElementById('fileInput');
+                    if (fileInput) fileInput.value = '';
+                    this.updateInfo();
+                }
+
+                async loadSticker(file) {
+                    try {
+                        const arrayBuffer = await this.readFile(file);
+                        const compressed = new Uint8Array(arrayBuffer);
+                        let animationData;
+                        try {
+                            const decompressed = pako.ungzip(compressed, { to: 'string' });
+                            animationData = JSON.parse(decompressed);
+                        } catch(e) {
+                            const text = new TextDecoder().decode(compressed);
+                            animationData = JSON.parse(text);
+                        }
+                        
+                        const sticker = {
+                            id: Date.now() + Math.random(),
+                            name: file.name,
+                            animationData: animationData,
+                            x: Math.max(50, (this.canvas.width / 2) - 75),
+                            y: Math.max(50, (this.canvas.height / 2) - 75),
+                            width: 150,
+                            height: 150,
+                            rotation: 0,
+                            zIndex: this.stickers.length
+                        };
+                        
+                        this.stickers.push(sticker);
+                        await this.createStickerElement(sticker);
+                        this.updateInfo();
+                        this.showToast(`Loaded: ${file.name}`, 'success');
+                    } catch(err) {
+                        console.error(err);
+                        this.showToast(`Error loading ${file.name}: ${err.message}`, 'error');
+                    }
+                }
+
+                readFile(file) {
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = reject;
+                        reader.readAsArrayBuffer(file);
+                    });
+                }
+
+                async createStickerElement(sticker) {
+                    const div = document.createElement('div');
+                    div.className = 'sticker-item';
+                    div.id = `sticker-${sticker.id}`;
+                    div.style.left = `${sticker.x}px`;
+                    div.style.top = `${sticker.y}px`;
+                    div.style.width = `${sticker.width}px`;
+                    div.style.height = `${sticker.height}px`;
+                    div.style.transform = `rotate(${sticker.rotation}deg)`;
+                    div.style.zIndex = sticker.zIndex;
+                    
+                    const lottieContainer = document.createElement('div');
+                    lottieContainer.style.width = '100%';
+                    lottieContainer.style.height = '100%';
+                    lottieContainer.style.pointerEvents = 'none';
+                    div.appendChild(lottieContainer);
+                    
+                    const resizeHandle = document.createElement('div');
+                    resizeHandle.className = 'resize-handle';
+                    div.appendChild(resizeHandle);
+                    
+                    const rotateHandle = document.createElement('div');
+                    rotateHandle.className = 'rotate-handle';
+                    div.appendChild(rotateHandle);
+                    
+                    div.addEventListener('mousedown', (e) => {
+                        if (e.target === resizeHandle || e.target === rotateHandle) return;
+                        e.stopPropagation();
+                        this.selectSticker(sticker.id);
+                        this.startDrag(e, sticker);
+                    });
+                    
+                    resizeHandle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        this.selectSticker(sticker.id);
+                        this.startResize(e, sticker);
+                    });
+                    
+                    rotateHandle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        this.selectSticker(sticker.id);
+                        this.startRotate(e, sticker);
+                    });
+                    
+                    this.stickerLayer.appendChild(div);
+                    
+                    const anim = lottie.loadAnimation({
+                        container: lottieContainer,
+                        renderer: 'svg',
+                        loop: true,
+                        autoplay: true,
+                        animationData: sticker.animationData,
+                        rendererSettings: { preserveAspectRatio: 'xMidYMid meet' }
+                    });
+                    
+                    this.animations.set(sticker.id, anim);
+                }
+
+                updateStickerElement(sticker) {
+                    const element = document.getElementById(`sticker-${sticker.id}`);
+                    if (element) {
+                        element.style.left = `${sticker.x}px`;
+                        element.style.top = `${sticker.y}px`;
+                        element.style.width = `${sticker.width}px`;
+                        element.style.height = `${sticker.height}px`;
+                        element.style.transform = `rotate(${sticker.rotation}deg)`;
+                        element.style.zIndex = sticker.zIndex;
+                    }
+                }
+
+                selectSticker(id) {
+                    if (this.selectedId !== null) {
+                        const prevElement = document.getElementById(`sticker-${this.selectedId}`);
+                        if (prevElement) prevElement.classList.remove('selected');
+                    }
+                    this.selectedId = id;
+                    document.querySelectorAll('.sticker-item').forEach(el => el.classList.remove('selected'));
+                    if (id !== null) {
+                        const selected = document.getElementById(`sticker-${id}`);
+                        if (selected) selected.classList.add('selected');
+                        document.getElementById('selectedId').innerText = id.toString().slice(-8);
+                    } else {
+                        document.getElementById('selectedId').innerText = 'None';
+                    }
+                }
+
+                startDrag(e, sticker) {
+                    this.isDragging = true;
+                    this.dragStart = { x: e.clientX - sticker.x, y: e.clientY - sticker.y };
+                    
+                    const onMouseMove = (moveEvent) => {
+                        if (!this.isDragging) return;
+                        let newX = moveEvent.clientX - this.dragStart.x;
+                        let newY = moveEvent.clientY - this.dragStart.y;
+                        newX = Math.max(0, Math.min(newX, this.canvas.width - sticker.width));
+                        newY = Math.max(0, Math.min(newY, this.canvas.height - sticker.height));
+                        sticker.x = newX;
+                        sticker.y = newY;
+                        this.updateStickerElement(sticker);
+                    };
+                    const onMouseUp = () => {
+                        this.isDragging = false;
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                }
+
+                startResize(e, sticker) {
+                    this.isResizing = true;
+                    this.resizeStart = { width: sticker.width, x: e.clientX };
+                    
+                    const onMouseMove = (moveEvent) => {
+                        if (!this.isResizing) return;
+                        const delta = moveEvent.clientX - this.resizeStart.x;
+                        const newWidth = Math.max(40, Math.min(500, this.resizeStart.width + delta));
+                        sticker.width = newWidth;
+                        sticker.height = newWidth;
+                        this.updateStickerElement(sticker);
+                    };
+                    const onMouseUp = () => {
+                        this.isResizing = false;
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                }
+
+                startRotate(e, sticker) {
+                    const element = document.getElementById(`sticker-${sticker.id}`);
+                    const rect = element.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const getAngle = (clientX, clientY) => Math.atan2(clientY - centerY, clientX - centerX) * 180 / Math.PI;
+                    
+                    this.isRotating = true;
+                    this.rotateStart = { rotation: sticker.rotation, angle: getAngle(e.clientX, e.clientY) };
+                    
+                    const onMouseMove = (moveEvent) => {
+                        if (!this.isRotating) return;
+                        const currentAngle = getAngle(moveEvent.clientX, moveEvent.clientY);
+                        let delta = currentAngle - this.rotateStart.angle;
+                        sticker.rotation = this.rotateStart.rotation + delta;
+                        this.updateStickerElement(sticker);
+                    };
+                    const onMouseUp = () => {
+                        this.isRotating = false;
+                        window.removeEventListener('mousemove', onMouseMove);
+                        window.removeEventListener('mouseup', onMouseUp);
+                    };
+                    window.addEventListener('mousemove', onMouseMove);
+                    window.addEventListener('mouseup', onMouseUp);
+                }
+
+                duplicateSticker() {
+                    if (this.selectedId === null) {
+                        this.showToast('Select a sticker first!', 'warning');
+                        return;
+                    }
+                    const original = this.stickers.find(s => s.id === this.selectedId);
+                    if (!original) return;
+                    const newSticker = {
+                        ...original,
+                        id: Date.now() + Math.random(),
+                        name: `${original.name} (copy)`,
+                        x: Math.min(this.canvas.width - original.width, original.x + 30),
+                        y: Math.min(this.canvas.height - original.height, original.y + 30),
+                        zIndex: this.stickers.length
+                    };
+                    this.stickers.push(newSticker);
+                    this.createStickerElement(newSticker);
+                    this.selectSticker(newSticker.id);
+                    this.updateInfo();
+                    this.showToast('Sticker duplicated!', 'success');
+                }
+
+                deleteSticker() {
+                    if (this.selectedId === null) {
+                        this.showToast('Select a sticker first!', 'warning');
+                        return;
+                    }
+                    const index = this.stickers.findIndex(s => s.id === this.selectedId);
+                    if (index !== -1) {
+                        const anim = this.animations.get(this.selectedId);
+                        if (anim) anim.destroy();
+                        this.animations.delete(this.selectedId);
+                        const element = document.getElementById(`sticker-${this.selectedId}`);
+                        if (element) element.remove();
+                        this.stickers.splice(index, 1);
+                        this.selectedId = null;
+                        this.updateInfo();
+                        document.getElementById('selectedId').innerText = 'None';
+                        this.showToast('Sticker deleted', 'success');
+                    }
+                }
+
+                bringToFront() {
+                    if (this.selectedId === null) return;
+                    const sticker = this.stickers.find(s => s.id === this.selectedId);
+                    if (sticker) {
+                        sticker.zIndex = this.stickers.length;
+                        this.stickers.sort((a, b) => a.zIndex - b.zIndex);
+                        this.stickers.forEach((s, i) => { s.zIndex = i; this.updateStickerElement(s); });
+                        this.selectSticker(sticker.id);
+                        this.showToast('Brought to front', 'success');
+                    }
+                }
+
+                sendToBack() {
+                    if (this.selectedId === null) return;
+                    const sticker = this.stickers.find(s => s.id === this.selectedId);
+                    if (sticker) {
+                        sticker.zIndex = -1;
+                        this.stickers.sort((a, b) => a.zIndex - b.zIndex);
+                        this.stickers.forEach((s, i) => { s.zIndex = i; this.updateStickerElement(s); });
+                        this.selectSticker(sticker.id);
+                        this.showToast('Sent to back', 'success');
+                    }
+                }
+
+                clearAll() {
+                    this.animations.forEach(anim => anim.destroy());
+                    this.animations.clear();
+                    this.stickers = [];
+                    this.stickerLayer.innerHTML = '';
+                    this.selectedId = null;
+                    this.updateInfo();
+                    document.getElementById('selectedId').innerText = 'None';
+                    this.showToast('All stickers cleared', 'success');
+                }
+
+                async exportPNG() {
+                    const wasPlaying = [];
+                    this.animations.forEach((anim, id) => { wasPlaying[id] = !anim.isPaused; anim.pause(); });
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    try {
+                        const canvas = await html2canvas(this.container, {
+                            scale: 2,
+                            backgroundColor: this.bgColor === 'transparent' ? null : this.bgColor,
+                            useCORS: true,
+                            logging: false
+                        });
+                        const link = document.createElement('a');
+                        link.download = `tgs-export-${Date.now()}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                        this.showToast('Export completed!', 'success');
+                    } catch(err) {
+                        console.error(err);
+                        this.showToast('Export failed: ' + err.message, 'error');
+                    }
+                    this.animations.forEach((anim, id) => { if (wasPlaying[id]) anim.play(); });
+                }
+
+                updateInfo() {
+                    document.getElementById('stickerCount').innerText = this.stickers.length;
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                window.tgsEditor = new TGSEditor();
+            });
+        })();
+    </script>
 </body>
 </html>
