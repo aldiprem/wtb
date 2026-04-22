@@ -1,42 +1,53 @@
 body {
-    background-color: #ffffff;
-    color: #000000;
-    font-family: monospace; /* Font standar AI */
+    background-color: #f4f4f9;
+    color: #333;
+    font-family: 'Courier New', Courier, monospace;
+    margin: 0;
     padding: 20px;
-    line-height: 1.2;
+}
+
+.header {
+    text-align: center;
+    border-bottom: 2px solid #333;
+    margin-bottom: 30px;
+    padding-bottom: 10px;
 }
 
 .container {
-    max-width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-.file-title {
-    background-color: #000;
+.file-block {
+    background: #fff;
+    border: 1px solid #ddd;
+    margin-bottom: 50px;
+    box-shadow: 5px 5px 0px #ddd;
+}
+
+.file-header {
+    background: #333;
     color: #fff;
     padding: 10px;
-    font-size: 18px;
-    margin-top: 50px;
+    font-weight: bold;
+    font-size: 14px;
 }
 
 .file-footer {
-    background-color: #eeeeee;
-    color: #555;
+    background: #eee;
+    color: #888;
     padding: 5px 10px;
-    font-size: 12px;
-    margin-bottom: 20px;
+    font-size: 11px;
+    border-top: 1px dashed #ccc;
 }
 
-.code-content {
-    background-color: #f9f9f9;
-    padding: 15px;
-    border: 1px solid #ccc;
-    white-space: pre-wrap;       /* Menjaga baris baru */
-    word-wrap: break-word;       /* Agar tidak meluber ke kanan */
+.code-raw {
+    padding: 20px;
+    margin: 0;
+    white-space: pre-wrap;       /* Penting agar baris baru terbaca */
+    word-wrap: break-word;
     font-size: 13px;
-    display: block;
-}
-
-.separator {
-    border: 2px solid #000;
-    margin: 40px 0;
+    line-height: 1.5;
+    color: #000;
+    background: #fafafa;
 }

@@ -1,20 +1,17 @@
 import os
-from flask import Blueprint, render_template, abort
 
-source_code_bp = Blueprint('source_code', __name__)
-
-@source_code_bp.route('/source-viewer')
-def source_viewer():
+def get_winedash_source_logic():
     # Path folder winedash
     base_path = os.path.join(os.getcwd(), 'winedash')
-    all_files = []
-    
-    # Ekstensi yang ingin ditampilkan
+    # Ekstensi yang diizinkan
     allowed_extensions = {'.py', '.js', '.html', '.css', '.json'}
-
+    
+    output_html = ""
+    
     if not os.path.exists(base_path):
-        return "Folder winedash tidak ditemukan", 404
+        return "<p>Folder winedash tidak ditemukan</p>"
 
+    # Scan folder secara rekursif
     for root, dirs, files in os.walk(base_path):
         for file in sorted(files):
             if any(file.endswith(ext) for ext in allowed_extensions):
@@ -24,12 +21,18 @@ def source_viewer():
                 try:
                     with open(full_path, 'r', encoding='utf-8') as f:
                         content = f.read()
-                        all_files.append({
-                            'path': rel_path,
-                            'content': content
-                        })
-                except Exception:
+                        # Ganti karakter HTML agar tidak tereksekusi di browser
+                        safe_content = content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                        
+                        # Buat blok teks biasa agar mudah dibaca AI
+                        output_html += f'''
+                        <div class="file-block">
+                            <div class="file-header">--- START OF FILE {rel_path} ---</div>
+                            <pre class="code-raw">{safe_content}</pre>
+                            <div class="file-footer">--- END OF FILE {rel_path} ---</div>
+                        </div>
+                        '''
+                except Exception as e:
                     continue
-
-    # Mengirim data langsung ke file HTML
-    return render_template('source-code.html', files=all_files)
+                    
+    return output_html

@@ -2,23 +2,19 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Full Source Code Data - Winedash</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winedash Source Explorer</title>
     <link rel="stylesheet" href="/css/source-code.css">
 </head>
 <body>
+    <div class="header">
+        <h1>WINEDASH SYSTEM CODE BASE</h1>
+        <p>Gunakan halaman ini untuk analisis AI. Semua kode ditampilkan di bawah dalam format teks biasa.</p>
+    </div>
+    
     <div class="container">
-        <h1>WINEDASH FULL SYSTEM SOURCE CODE</h1>
-        <p>Halaman ini berisi seluruh baris kode untuk dianalisis oleh AI. Format: Nama File diikuti isinya.</p>
-        <hr>
-
-        {% for file in files %}
-        <div class="file-block">
-            <h2 class="file-title">START_FILE: {{ file.path }}</h2>
-            <pre class="code-content">{{ file.content | e }}</pre>
-            <h2 class="file-footer">END_FILE: {{ file.path }}</h2>
-            <hr class="separator">
-        </div>
-        {% endfor %}
+        <!-- Placeholder yang akan diisi oleh Flask -->
+        {{ CONTENT }}
     </div>
 </body>
 </html>

@@ -40,7 +40,7 @@ from winedash.services.auctions_service import auctions_bp
 from winedash.services.debug_service import debug_bp
 from winedash.services.admin_service import admin_bp
 from winedash.services.market_service import market_bp
-from services.source_code_service import source_code_bp
+from services.source_code_service import get_winedash_source_logic
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
@@ -251,7 +251,24 @@ app.register_blueprint(auctions_bp)
 app.register_blueprint(debug_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(market_bp)
-app.register_blueprint(source_code_bp)
+
+@app.route('/source-viewer')
+def source_viewer_page():
+    try:
+        # 1. Ambil konten kode dari service
+        all_code_content = get_winedash_source_logic()
+        
+        # 2. Baca file template HTML secara manual (menghindari TemplateNotFound)
+        template_path = os.path.join(base_dir, 'html', 'source-code.html')
+        with open(template_path, 'r', encoding='utf-8') as f:
+            html_template = f.read()
+        
+        # 3. Inject kode ke dalam placeholder {{ CONTENT }}
+        final_html = html_template.replace('{{ CONTENT }}', all_code_content)
+        
+        return final_html
+    except Exception as e:
+        return f"Error: {str(e)}", 500
 
 # ==================== WINEDASH ROUTES ====================
 
