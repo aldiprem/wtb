@@ -2816,7 +2816,7 @@
         let activitySearchTerm = '';
         
         // ==================== CREATE FULLSCREEN ACTIVITY PAGE ====================
-                                
+                                        
         function createFullscreenActivityPage() {
             const existingFullscreen = document.getElementById('auctionsActivityFullscreen');
             if (existingFullscreen) {
@@ -2827,35 +2827,52 @@
             fullscreenDiv.id = 'auctionsActivityFullscreen';
             fullscreenDiv.className = 'fullscreen-page';
             
+            // Ambil data user dari localStorage atau dari variabel global
+            let userAvatarHtml = '<i class="fas fa-user"></i>';
+            let userBalance = '0.00';
+            
+            if (telegramUser) {
+                if (telegramUser.photo_url) {
+                    userAvatarHtml = `<img src="${telegramUser.photo_url}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                } else {
+                    const fullName = `${telegramUser.first_name || ''} ${telegramUser.last_name || ''}`.trim();
+                    const nameForAvatar = encodeURIComponent(fullName || telegramUser.username || 'User');
+                    userAvatarHtml = `<img src="https://ui-avatars.com/api/?name=${nameForAvatar}&background=40a7e3&color=fff&size=100&rounded=true&bold=true&length=2" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`;
+                }
+            }
+            
+            // Ambil balance dari localStorage atau dari variabel
+            if (window.currentWalletBalance !== undefined) {
+                userBalance = window.currentWalletBalance.toFixed(2);
+            }
+            
             fullscreenDiv.innerHTML = `
-                <div class="fullscreen-header">
-                    <div class="fullscreen-header-left">
-                        <button class="back-btn-fullscreen" id="backFromActivityBtn">
-                            <i class="fas fa-arrow-left"></i>
-                        </button>
-                        <h2><i class="fas fa-history"></i> Auction Activity</h2>
+                <!-- Header dengan Profile Avatar dan Balance seperti storage.html (tanpa judul, back, close) -->
+                <div class="storage-profile-header" style="padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0;">
+                    <div class="storage-profile-avatar" id="activityUserAvatar" style="width: 48px; height: 48px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); display: flex; align-items: center; justify-content: center;">
+                        ${userAvatarHtml}
                     </div>
-                    <button class="close-fullscreen-btn" id="closeActivityFullscreenBtn">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="fullscreen-content">
-                    <!-- Search Bar di Atas -->
-                    <div class="activity-search-fullscreen">
-                        <div class="search-container-fullscreen">
-                            <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
-                            <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
-                        </div>
-                    </div>
-
-                    <!-- Activity Container -->
-                    <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container">
-                        <div class="loading-placeholder">Memuat aktivitas...</div>
+                    <div class="storage-balance" id="activityBalanceCard" style="cursor: pointer;">
+                        <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="balance-logo" style="width: 24px; height: 24px;">
+                        <span class="balance-amount" id="activityBalanceAmount">${userBalance}</span>
                     </div>
                 </div>
                 
+                <!-- Search Bar -->
+                <div class="activity-search-fullscreen" style="padding: 0 16px 16px 16px;">
+                    <div class="search-container-fullscreen">
+                        <input type="text" class="search-input-fullscreen" id="activityFullscreenSearchInput" placeholder="🔍 Cari username...">
+                        <button class="search-btn-fullscreen" id="activityFullscreenSearchBtn">Apply</button>
+                    </div>
+                </div>
+
+                <!-- Activity Container -->
+                <div id="auctionsActivityFullscreenContainer" class="activity-fullscreen-container" style="flex: 1; overflow-y: auto; padding: 0 16px;">
+                    <div class="loading-placeholder">Memuat aktivitas...</div>
+                </div>
+                
                 <!-- Bottom Navigation -->
-                <div class="storage-bottom-nav" style="position: absolute; bottom: 20px; left: 16px; right: 16px; width: auto;">
+                <div class="storage-bottom-nav" style="position: fixed; bottom: 20px; left: 16px; right: 16px; width: auto; margin: 0 auto; max-width: calc(100% - 32px);">
                     <div class="nav-circle" id="activityBackToStorageBtn">
                         <i class="fas fa-database"></i>
                     </div>
@@ -2881,31 +2898,8 @@
             
             applySafeAreaInsets();
             
-            // Setup back button
-            const backBtn = document.getElementById('backFromActivityBtn');
-            if (backBtn) {
-                const newBackBtn = backBtn.cloneNode(true);
-                backBtn.parentNode.replaceChild(newBackBtn, backBtn);
-                newBackBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeFullscreenActivity();
-                    switchToAuctionsMode();
-                });
-            }
-            
-            // Setup close button
-            const closeBtn = document.getElementById('closeActivityFullscreenBtn');
-            if (closeBtn) {
-                const newCloseBtn = closeBtn.cloneNode(true);
-                closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-                newCloseBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    closeFullscreenActivity();
-                    switchToAuctionsMode();
-                });
-            }
+            // Update balance secara realtime
+            updateActivityBalance();
             
             // Setup back to storage button
             const backToStorageBtn = document.getElementById('activityBackToStorageBtn');
@@ -2963,6 +2957,34 @@
             }
             
             return fullscreenDiv;
+        }
+
+        // Tambahkan fungsi untuk update balance di activity
+        async function updateActivityBalance() {
+            if (!telegramUser) return;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/winedash/user/${telegramUser.id}`);
+                const data = await response.json();
+                
+                if (data.success && data.user) {
+                    const balanceCard = document.getElementById('activityBalanceCard');
+                    const balanceAmount = document.getElementById('activityBalanceAmount');
+                    if (balanceAmount) {
+                        balanceAmount.textContent = parseFloat(data.user.balance).toFixed(2);
+                    }
+                    if (balanceCard) {
+                        balanceCard.style.cursor = 'pointer';
+                        // Optional: add click to go to wallet
+                        balanceCard.onclick = () => {
+                            closeFullscreenActivity();
+                            window.location.href = '/winedash#wallet';
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading activity balance:', error);
+            }
         }
 
         function openFullscreenActivity() {
