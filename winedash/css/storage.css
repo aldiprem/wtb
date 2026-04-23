@@ -62,7 +62,12 @@ body {
     line-height: 1.4;
     -webkit-font-smoothing: antialiased;
     font-size: 13px;
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
 }
 
 body::before {
@@ -72,9 +77,15 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background-image: url('https://companel.shop/image/background-website.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     z-index: -1;
     pointer-events: none;
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 .storage-container {
@@ -86,6 +97,8 @@ body::before {
     background: transparent;
     position: relative;
     z-index: 1;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Back Button dan Navigation */
@@ -2886,21 +2899,23 @@ html, body {
     }
 }
 
-body {
+html {
     overscroll-behavior: none !important;
-    overscroll-behavior-y: none !important;
     -webkit-overscroll-behavior: none !important;
-    -webkit-overscroll-behavior-y: none !important;
 }
 
-.storage-container,
+body {
+    overscroll-behavior: none !important;
+    -webkit-overscroll-behavior: none !important;
+}
+
+/* Untuk content scrollable */
 .winedash-container,
-.fullscreen-page,
+.storage-container,
 .fullscreen-content {
     overscroll-behavior: contain !important;
-    overscroll-behavior-y: contain !important;
     -webkit-overscroll-behavior: contain !important;
-    -webkit-overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Untuk fullscreen page */

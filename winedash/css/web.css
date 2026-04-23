@@ -37,19 +37,22 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background-image: url('https://companel.shop/image/background-website.png');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
     background-color: #0a0a0a;
     color: var(--text);
     min-height: 100vh;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     position: relative;
+    /* TAMBAHKAN INI */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
 }
 
+/* GANTI body::before dengan ini */
 body::before {
     content: "";
     position: fixed;
@@ -57,9 +60,15 @@ body::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.65);
+    background-image: url('https://companel.shop/image/background-website.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     z-index: -1;
     pointer-events: none;
+    /* TAMBAHKAN INI UNTUK SMOOTH */
+    will-change: transform;
+    transform: translateZ(0);
 }
 
 /* Loading Overlay */
@@ -146,6 +155,8 @@ body::before {
     background: transparent;
     position: relative;
     z-index: 1;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 .profile-header {
@@ -3054,22 +3065,23 @@ body.filter-open {
     padding: 3px;
 }
 
-/* Mencegah MiniApp tertutup saat scroll mentok ke atas */
-body {
+html {
     overscroll-behavior: none !important;
-    overscroll-behavior-y: none !important;
     -webkit-overscroll-behavior: none !important;
-    -webkit-overscroll-behavior-y: none !important;
 }
 
+body {
+    overscroll-behavior: none !important;
+    -webkit-overscroll-behavior: none !important;
+}
+
+/* Untuk content scrollable */
 .winedash-container,
 .storage-container,
-.fullscreen-page,
 .fullscreen-content {
     overscroll-behavior: contain !important;
-    overscroll-behavior-y: contain !important;
     -webkit-overscroll-behavior: contain !important;
-    -webkit-overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Untuk fullscreen page */

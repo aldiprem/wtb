@@ -4198,20 +4198,11 @@
         
         let contentTop = safeTop;
         let contentBottom = safeBottom;
-        let contentLeft = safeLeft;
-        let contentRight = safeRight;
         
         if (tg.contentSafeAreaInset) {
             contentTop = tg.contentSafeAreaInset.top || safeTop;
             contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
-            contentLeft = tg.contentSafeAreaInset.left || safeLeft;
-            contentRight = tg.contentSafeAreaInset.right || safeRight;
         }
-        
-        document.body.style.paddingTop = `${safeTop}px`;
-        document.body.style.paddingBottom = `${safeBottom}px`;
-        document.body.style.paddingLeft = `${safeLeft}px`;
-        document.body.style.paddingRight = `${safeRight}px`;
         
         const container = document.querySelector('.storage-container');
         if (container) {
@@ -4227,19 +4218,7 @@
             fullscreenPage.style.paddingRight = `${safeRight}px`;
         }
         
-        const fullscreenHeader = document.querySelector('#auctionsActivityFullscreen .fullscreen-header');
-        if (fullscreenHeader) {
-            fullscreenHeader.style.paddingTop = `${contentTop + 16}px`;
-            fullscreenHeader.style.paddingLeft = `${contentLeft + 16}px`;
-            fullscreenHeader.style.paddingRight = `${contentRight + 16}px`;
-        }
-        
-        const fullscreenContent = document.querySelector('#auctionsActivityFullscreen .fullscreen-content');
-        if (fullscreenContent) {
-            fullscreenContent.style.paddingBottom = `${contentBottom + 20}px`;
-        }
-        
-        console.log('[STORAGE] Safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
+        console.log('[STORAGE] Safe area applied (container only):', { safeTop, safeBottom });
     }
 
     function initSafeArea() {
