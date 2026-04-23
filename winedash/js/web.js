@@ -1891,8 +1891,7 @@
             contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
         }
         
-        // PERBAIKAN: Kurangi padding top (sama seperti storage)
-        // Storage menggunakan padding-top: max(8px, ...)
+        // Gunakan padding top yang sama seperti storage
         const topPadding = Math.max(12, contentTop);
         const bottomPadding = Math.max(20, contentBottom);
         
@@ -1904,7 +1903,7 @@
             console.log(`[WEB] Container padding: top=${topPadding}px, bottom=${bottomPadding + 70}px`);
         }
         
-        // Tambahkan padding ke tab container bottom
+        // Update bottom tabs container
         const tabsContainer = document.querySelector('.tabs-container');
         if (tabsContainer) {
             tabsContainer.style.bottom = `${Math.max(20, safeBottom)}px`;
@@ -1920,7 +1919,6 @@
             return;
         }
         
-        // Tunggu DOM siap
         setTimeout(applySafeAreaInsets, 100);
         applySafeAreaInsets();
         
@@ -1946,12 +1944,10 @@
             });
         }
         
-        // Disable vertical swipes untuk mencegah pull-to-refresh
         if (typeof tg.disableVerticalSwipes === 'function') {
             tg.disableVerticalSwipes();
         }
         
-        // Mencegah pergeseran saat keyboard muncul
         if (typeof tg.expand === 'function') {
             tg.expand();
         }
