@@ -11,9 +11,9 @@
 /* auctions.css - Glassmorphism 2.0 untuk auction card */
 
 .auction-card {
-    background: rgba(26, 26, 26, 0.5);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background: rgba(26, 26, 26, 0.55);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.2s;
@@ -23,11 +23,13 @@
     flex-direction: column;
     height: 200px;
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transform: translateZ(0);
+    will-change: transform;
 }
 
-/* Specular highlight */
+/* Specular highlight - dipastikan tetap terlihat di mobile */
 .auction-card::before {
     content: "";
     position: absolute;
@@ -37,9 +39,9 @@
     height: 1px;
     background: linear-gradient(90deg, 
         transparent 0%, 
-        rgba(255, 255, 255, 0.4) 20%, 
-        rgba(255, 255, 255, 0.7) 50%, 
-        rgba(255, 255, 255, 0.4) 80%, 
+        rgba(255, 255, 255, 0.3) 20%, 
+        rgba(255, 255, 255, 0.6) 50%, 
+        rgba(255, 255, 255, 0.3) 80%, 
         transparent 100%);
     pointer-events: none;
     z-index: 1;
@@ -53,10 +55,10 @@
     border-radius: 16px;
     padding: 1px;
     background: linear-gradient(160deg, 
-        rgba(255, 255, 255, 0.3) 0%, 
-        rgba(255, 255, 255, 0) 25%,
-        rgba(255, 255, 255, 0) 75%, 
-        rgba(255, 255, 255, 0.3) 100%);
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.2) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;

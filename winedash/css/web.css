@@ -52,7 +52,6 @@ body {
     overflow-y: auto;
 }
 
-/* GANTI body::before dengan ini */
 body::before {
     content: "";
     position: fixed;
@@ -64,11 +63,23 @@ body::before {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    z-index: -1;
+    z-index: -2;
     pointer-events: none;
-    /* TAMBAHKAN INI UNTUK SMOOTH */
     will-change: transform;
     transform: translateZ(0);
+}
+
+/* TAMBAHKAN overlay gelap di atas background */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.55); /* Opacity 55% - sesuaikan sesuai keinginan */
+    z-index: -1;
+    pointer-events: none;
 }
 
 /* Loading Overlay */
@@ -501,29 +512,32 @@ body::before {
 /* web.css - Glassmorphism 2.0 untuk section-card */
 
 .section-card {
-    background: rgba(17, 17, 17, 0.45);
-    backdrop-filter: blur(6px) saturate(180%);
-    -webkit-backdrop-filter: blur(100px) saturate(180%);
+    background: rgba(17, 17, 17, 0.6);
+    backdrop-filter: blur(8px) saturate(150%);
+    -webkit-backdrop-filter: blur(8px) saturate(150%);
     border-radius: 24px;
     padding: 16px;
     margin-bottom: 16px;
     position: relative;
     overflow: hidden;
+    /* TAMBAHKAN untuk 3D effect yang konsisten */
+    transform: translateZ(0);
+    will-change: transform;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Specular highlight (pantulan cahaya di tepi atas) */
+/* Specular highlight - DIPERKUAT untuk mobile */
 .section-card::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 24px;
-    padding: 1.4px;
+    padding: 1px;
     background: linear-gradient(170deg, 
-        rgba(255, 255, 255, 0.3) 0%, 
-        rgba(255, 255, 255, 0) 20%,
-        rgba(255, 255, 255, 0) 80%, 
-        rgba(255, 255, 255, 0.3) 100%
-    );
+        rgba(255, 255, 255, 0.2) 0%, 
+        rgba(255, 255, 255, 0) 25%,
+        rgba(255, 255, 255, 0) 75%, 
+        rgba(255, 255, 255, 0.15) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
@@ -1339,15 +1353,18 @@ button:disabled {
 }
 
 .wallet-card {
-    background: linear-gradient(135deg, #4d4d4d 0%, #000000 100%);
+    background: linear-gradient(135deg, rgba(77, 77, 77, 0.4) 0%, rgba(0, 0, 0, 0.7) 100%);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
     border-radius: 20px;
     padding: 15px 15px;
     position: relative;
     overflow: hidden;
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     margin-top: 0px;
     margin-bottom: 10px;
+    transform: translateZ(0);
 }
 
 /* Animasi border yang membentang */
@@ -2362,12 +2379,61 @@ body.wallet-panel-open {
     visibility: visible;
 }
 
-/* Fix marketplace card - tanpa tombol beli di dalam */
+/* web.css - Perbaiki marketplace card */
 .marketplace-card {
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    position: relative;
+    background: rgba(26, 26, 26, 0.55);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    border-radius: 16px;
     overflow: hidden;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    width: 100%;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Border gradient untuk efek 3D */
+.marketplace-grid .marketplace-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(160deg, 
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.2) 100%);
+    -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* Specular highlight */
+.marketplace-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.3) 20%, 
+        rgba(255, 255, 255, 0.6) 50%, 
+        rgba(255, 255, 255, 0.3) 80%, 
+        transparent 100%);
+    pointer-events: none;
+    z-index: 1;
 }
 
 .marketplace-card:hover {

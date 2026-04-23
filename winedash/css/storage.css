@@ -70,6 +70,7 @@ body {
     overflow-y: auto;
 }
 
+/* storage.css - Ganti body::before dengan ini */
 body::before {
     content: "";
     position: fixed;
@@ -82,23 +83,23 @@ body::before {
     background-position: center;
     background-repeat: no-repeat;
     background-attachment: fixed;
-    z-index: -1;
+    z-index: -2;
     pointer-events: none;
     will-change: transform;
     transform: translateZ(0);
 }
 
-.storage-container {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 12px;
-    padding-bottom: 90px;
-    min-height: 100vh;
-    background: transparent;
-    position: relative;
-    z-index: 1;
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
+/* TAMBAHKAN overlay gelap di atas background */
+body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: -1;
+    pointer-events: none;
 }
 
 /* Back Button dan Navigation */
@@ -472,9 +473,9 @@ body::before {
 /* storage.css - Glassmorphism 2.0 untuk card username */
 
 .username-grid .username-card {
-    background: rgba(26, 26, 26, 0.5);
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background: rgba(26, 26, 26, 0.55);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
     border-radius: 16px;
     overflow: hidden;
     transition: all 0.2s;
@@ -484,11 +485,13 @@ body::before {
     flex-direction: column;
     height: 200px;
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transform: translateZ(0);
+    will-change: transform;
 }
 
-/* Specular highlight untuk card */
+/* Specular highlight */
 .username-grid .username-card::before {
     content: "";
     position: absolute;
@@ -498,15 +501,15 @@ body::before {
     height: 1px;
     background: linear-gradient(90deg, 
         transparent 0%, 
-        rgba(255, 255, 255, 0.4) 20%, 
-        rgba(255, 255, 255, 0.7) 50%, 
-        rgba(255, 255, 255, 0.4) 80%, 
+        rgba(255, 255, 255, 0.3) 20%, 
+        rgba(255, 255, 255, 0.6) 50%, 
+        rgba(255, 255, 255, 0.3) 80%, 
         transparent 100%);
     pointer-events: none;
     z-index: 1;
 }
 
-/* Border gradient untuk efek 3D */
+/* Border gradient */
 .username-grid .username-card::after {
     content: "";
     position: absolute;
@@ -514,10 +517,10 @@ body::before {
     border-radius: 16px;
     padding: 1px;
     background: linear-gradient(160deg, 
-        rgba(255, 255, 255, 0.3) 0%, 
-        rgba(255, 255, 255, 0) 25%,
-        rgba(255, 255, 255, 0) 75%, 
-        rgba(255, 255, 255, 0.3) 100%);
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0) 70%, 
+        rgba(255, 255, 255, 0.2) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
@@ -1495,7 +1498,6 @@ body::before {
     overflow: hidden;
 }
 
-/* Border 3D dengan gradient di sudut untuk inbox panel */
 .inbox-panel::after {
     content: "";
     position: absolute;
@@ -1503,10 +1505,10 @@ body::before {
     border-radius: 24px 24px 0 0;
     padding: 1px;
     background: linear-gradient(165deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 15%,
-        rgba(255, 255, 255, 0) 85%, 
-        rgba(255, 255, 255, 0.4) 100%);
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0) 20%,
+        rgba(255, 255, 255, 0) 80%, 
+        rgba(255, 255, 255, 0.2) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
@@ -1860,7 +1862,6 @@ body.modal-open {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Border 3D dengan gradient di sudut untuk detail panel */
 .detail-panel::after {
     content: "";
     position: absolute;
@@ -1868,10 +1869,10 @@ body.modal-open {
     border-radius: 24px 24px 0 0;
     padding: 1px;
     background: linear-gradient(165deg, 
-        rgba(255, 255, 255, 0.4) 0%, 
-        rgba(255, 255, 255, 0) 15%,
-        rgba(255, 255, 255, 0) 85%, 
-        rgba(255, 255, 255, 0.4) 100%);
+        rgba(255, 255, 255, 0.25) 0%, 
+        rgba(255, 255, 255, 0) 20%,
+        rgba(255, 255, 255, 0) 80%, 
+        rgba(255, 255, 255, 0.2) 100%);
     -webkit-mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     mask: linear-gradient(#fff, #fff) content-box, linear-gradient(#fff, #fff);
     -webkit-mask-composite: xor;
