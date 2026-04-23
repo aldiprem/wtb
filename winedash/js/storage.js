@@ -4204,12 +4204,23 @@
             contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
         }
         
+        // Padding yang lebih kecil untuk storage
+        const topPadding = Math.max(8, contentTop);
+        const bottomPadding = Math.max(20, contentBottom);
+        
         const container = document.querySelector('.storage-container');
         if (container) {
-            container.style.paddingTop = `${contentTop + 12}px`;
-            container.style.paddingBottom = `${contentBottom + 90}px`;
+            container.style.paddingTop = `${topPadding}px`;
+            container.style.paddingBottom = `${bottomPadding + 70}px`;
         }
         
+        // Update bottom nav
+        const bottomNav = document.querySelector('.storage-bottom-nav');
+        if (bottomNav) {
+            bottomNav.style.bottom = `${Math.max(20, safeBottom)}px`;
+        }
+        
+        // Untuk fullscreen activity
         const fullscreenPage = document.getElementById('auctionsActivityFullscreen');
         if (fullscreenPage) {
             fullscreenPage.style.paddingTop = `${safeTop}px`;
@@ -4218,18 +4229,16 @@
             fullscreenPage.style.paddingRight = `${safeRight}px`;
         }
         
-        console.log('[STORAGE] Safe area applied (container only):', { safeTop, safeBottom });
+        console.log('[STORAGE] Safe area applied:', { safeTop, safeBottom, topPadding });
     }
 
     function initSafeArea() {
         const tg = window.Telegram?.WebApp;
         if (!tg) return;
         
-        // Apply initial after a short delay to ensure DOM is ready
-        setTimeout(applySafeAreaInsets, 50);
+        setTimeout(applySafeAreaInsets, 100);
         applySafeAreaInsets();
         
-        // Listen untuk contentSafeAreaChanged
         if (tg.onEvent) {
             tg.onEvent('safeAreaChanged', () => {
                 console.log('[STORAGE] safeAreaChanged event received');
@@ -4252,9 +4261,12 @@
             });
         }
         
-        // Disable vertical swipes
         if (typeof tg.disableVerticalSwipes === 'function') {
             tg.disableVerticalSwipes();
+        }
+        
+        if (typeof tg.expand === 'function') {
+            tg.expand();
         }
     }
 

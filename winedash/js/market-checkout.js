@@ -336,7 +336,7 @@
     }
     
     // ==================== CHECKOUT PANEL ====================
-    
+        
     async function openCheckoutPanel() {
         if (!telegramUser) {
             showToast('Login terlebih dahulu', 'warning');
@@ -381,8 +381,8 @@
                     <div class="checkout-item" data-id="${item.username_id}">
                         <div class="checkout-item-avatar">
                             <img src="${localStorage.getItem(`avatar_${item.username}`) || 'https://companel.shop/image/winedash-logo.png'}" 
-                                 alt="${escapeHtml(item.username)}"
-                                 onerror="this.src='https://companel.shop/image/winedash-logo.png'">
+                                alt="${escapeHtml(item.username)}"
+                                onerror="this.src='https://companel.shop/image/winedash-logo.png'">
                         </div>
                         <div class="checkout-item-info">
                             <div class="checkout-item-username">@${escapeHtml(item.username)}</div>
@@ -412,16 +412,30 @@
         `;
         
         document.body.appendChild(checkoutPanel);
+        
+        // PERBAIKAN: Aktifkan overlay dulu sebelum menambahkan class panel-open
         checkoutOverlay.classList.add('active');
-        document.body.classList.add('panel-open');
-        setTimeout(() => checkoutPanel.classList.add('open'), 10);
+        
+        // Gunakan requestAnimationFrame untuk menghindari pergeseran layout
+        requestAnimationFrame(() => {
+            document.body.classList.add('panel-open');
+            setTimeout(() => {
+                if (checkoutPanel) {
+                    checkoutPanel.classList.add('open');
+                }
+            }, 10);
+        });
         
         // Setup close button
         const closeBtn = checkoutPanel.querySelector('.panel-close');
         if (closeBtn) {
             const newCloseBtn = closeBtn.cloneNode(true);
             closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
-            newCloseBtn.addEventListener('click', closeCheckoutPanel);
+            newCloseBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                closeCheckoutPanel();
+            });
         }
         
         // Setup remove buttons
@@ -433,8 +447,7 @@
                 const id = parseInt(newBtn.dataset.id);
                 const username = newBtn.dataset.username;
                 await removeFromCart(id, username);
-                await openCheckoutPanel(); // Refresh panel
-                // Update card button state
+                await openCheckoutPanel();
                 updateCardCartButtonState(id, false);
             });
         });
@@ -454,12 +467,14 @@
         
         hapticLight();
     }
-    
+
     function closeCheckoutPanel() {
         if (checkoutPanel) {
             checkoutPanel.classList.remove('open');
             setTimeout(() => {
-                if (checkoutPanel) checkoutPanel.remove();
+                if (checkoutPanel && checkoutPanel.parentNode) {
+                    checkoutPanel.remove();
+                }
                 checkoutPanel = null;
             }, 300);
         }

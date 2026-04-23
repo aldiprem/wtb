@@ -102,6 +102,21 @@ body::after {
     pointer-events: none;
 }
 
+.storage-container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 12px;
+    padding-bottom: 90px;
+    min-height: 100vh;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    width: 100%;
+}
+
 /* Back Button dan Navigation */
 .storage-header {
     display: flex;
@@ -463,11 +478,11 @@ body::after {
     color: var(--primary);
 }
 
-/* Username Grid - Fixed height card */
 .username-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
+    width: 100%;
 }
 
 /* storage.css - Glassmorphism 2.0 untuk card username */
@@ -1115,13 +1130,13 @@ body::after {
     color: white;
 }
 
-/* Profile Header - Sama seperti web.html */
 .storage-profile-header {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     margin-bottom: 16px;
-    padding: 8px 12px;
+    padding: 0;
+    width: 100%;
 }
 
 .storage-profile-avatar {
@@ -1170,14 +1185,15 @@ body::after {
 .storage-bottom-nav {
     position: fixed;
     bottom: 20px;
-    left: 16px;
-    right: 16px;
+    left: 12px;
+    right: 12px;
     display: flex;
     gap: 8px;
     align-items: center;
     z-index: 1000;
-    max-width: calc(500px - 32px);
+    max-width: calc(100% - 24px);
     margin: 0 auto;
+    bottom: max(20px, env(safe-area-inset-bottom, 0px));
 }
 
 .nav-circle {
@@ -1291,7 +1307,7 @@ body::after {
 
 .action-row {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 16px;
     overflow-x: auto;
     overflow-y: hidden;
@@ -1300,6 +1316,7 @@ body::after {
     -webkit-overflow-scrolling: touch;
     scroll-behavior: smooth;
     white-space: nowrap;
+    width: 100%;
 }
 
 .action-row::-webkit-scrollbar {

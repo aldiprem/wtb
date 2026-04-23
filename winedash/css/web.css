@@ -43,13 +43,23 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     position: relative;
-    /* TAMBAHKAN INI */
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    /* PERUBAHAN: position: fixed dihapus, overflow diset ke auto */
+    position: relative;
+    overflow-x: hidden;
     overflow-y: auto;
+    width: 100%;
+    /* Mencegah pergeseran saat keyboard muncul */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+}
+
+@supports (padding: max(0px)) {
+    body {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
+    }
 }
 
 body::before {
@@ -160,7 +170,7 @@ body::after {
 .winedash-container {
     max-width: 500px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 0 12px;
     padding-bottom: 90px;
     min-height: 100vh;
     background: transparent;
@@ -168,14 +178,17 @@ body::after {
     z-index: 1;
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
+    /* Perbaikan safe area top - lebih kecil */
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
 }
 
 .profile-header {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: space-between;
     margin-bottom: 16px;
-    padding: 8px 12px;
+    padding: 0; /* Hapus padding samping */
+    width: 100%;
 }
 
 .profile-left {
@@ -237,6 +250,7 @@ body::after {
     border: none;
     cursor: pointer;
     transition: all 0.2s;
+    margin: 0;
 }
 
 .profile-balance::after {
@@ -339,13 +353,12 @@ body::after {
     box-shadow: 0 4px 12px var(--primary-glow);
 }
 
-/* web.css - Fix search container dan button Apply */
-
 .search-container {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     margin-bottom: 16px;
     align-items: center;
+    width: 100%;
 }
 
 .search-input {
@@ -364,7 +377,8 @@ body::after {
         inset 0 1px 1px rgba(255, 255, 255, 0.2), 
         inset 0 -1px 1px rgba(0, 0, 0, 0.3),
         0 4px 15px rgba(0, 0, 0, 0.2);
-    min-width: 0; /* Penting untuk flex shrink */
+    min-width: 0;
+    font-size: 16px;
 }
 
 /* 4. Efek Saat Fokus (Border berubah jadi Biru/Primary) */
@@ -373,6 +387,34 @@ body::after {
     box-shadow: 
         inset 0 0 0 1px var(--bg),
         0 0 15px var(--primary-glow);
+}
+
+@media (max-width: 768px) {
+    html, body {
+        position: relative;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Pastikan input tidak menyebabkan zoom */
+    input, select, textarea {
+        font-size: 16px !important;
+    }
+    
+    /* Mencegah viewport shift saat keyboard muncul */
+    .winedash-container,
+    .storage-container {
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+    }
+}
+
+.tabs-container,
+.storage-bottom-nav {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
 }
 
 /* Hover effect */
@@ -427,8 +469,8 @@ body::after {
 .tabs-container {
     position: fixed;
     bottom: 20px;
-    left: 16px;
-    right: 16px;
+    left: 12px;
+    right: 12px;
     display: flex;
     gap: 4px;
     background: rgba(17, 17, 17, 0.9);
@@ -438,8 +480,9 @@ body::after {
     z-index: 1000;
     box-shadow: var(--shadow);
     border: none;
-    max-width: calc(500px - 32px);
+    max-width: calc(100% - 24px);
     margin: 0 auto;
+    bottom: max(20px, env(safe-area-inset-bottom, 0px));
 }
 
 .tabs-container::after {
@@ -520,10 +563,10 @@ body::after {
     margin-bottom: 16px;
     position: relative;
     overflow: hidden;
-    /* TAMBAHKAN untuk 3D effect yang konsisten */
     transform: translateZ(0);
     will-change: transform;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    width: 100%;
 }
 
 /* Specular highlight - DIPERKUAT untuk mobile */
@@ -900,10 +943,11 @@ button:disabled {
 .marketplace-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
-    gap: 12px !important;
+    gap: 8px !important;
     margin-bottom: 20px !important;
     border-radius: 16px;
     overflow: hidden;
+    width: 100%;
 }
 
 .marketplace-grid .marketplace-card {

@@ -1860,7 +1860,7 @@
         });
     }
 
-    // ==================== SAFE AREA INSET & FULLSCREEN ====================
+    // ==================== SAFE AREA INSET ====================
 
     function applySafeAreaInsets() {
         const tg = window.Telegram?.WebApp;
@@ -1891,24 +1891,26 @@
             contentBottom = tg.contentSafeAreaInset.bottom || safeBottom;
         }
         
-        // Terapkan padding ke container saja, bukan ke body
+        // PERBAIKAN: Kurangi padding top (sama seperti storage)
+        // Storage menggunakan padding-top: max(8px, ...)
+        const topPadding = Math.max(12, contentTop);
+        const bottomPadding = Math.max(20, contentBottom);
+        
+        // Terapkan padding ke container
         const container = document.querySelector('.winedash-container');
         if (container) {
-            container.style.paddingTop = `${contentTop + 16}px`;
-            container.style.paddingBottom = `${contentBottom + 90}px`;
+            container.style.paddingTop = `${topPadding}px`;
+            container.style.paddingBottom = `${bottomPadding + 70}px`;
+            console.log(`[WEB] Container padding: top=${topPadding}px, bottom=${bottomPadding + 70}px`);
         }
         
-        // ============ PERBAIKAN UNTUK STORAGE PAGE ============
-        const storageContainer = document.querySelector('.storage-container');
-        if (storageContainer) {
-            storageContainer.style.paddingTop = `${contentTop + 12}px`;
-            storageContainer.style.paddingBottom = `${contentBottom + 90}px`;
+        // Tambahkan padding ke tab container bottom
+        const tabsContainer = document.querySelector('.tabs-container');
+        if (tabsContainer) {
+            tabsContainer.style.bottom = `${Math.max(20, safeBottom)}px`;
         }
         
-        console.log('[WEB] Safe area applied (container only):', { 
-            safeTop, safeBottom, 
-            contentTop, contentBottom 
-        });
+        console.log('[WEB] Safe area applied:', { safeTop, safeBottom, contentTop, contentBottom });
     }
 
     function initSafeArea() {
@@ -1918,6 +1920,8 @@
             return;
         }
         
+        // Tunggu DOM siap
+        setTimeout(applySafeAreaInsets, 100);
         applySafeAreaInsets();
         
         if (tg.onEvent) {
@@ -1935,10 +1939,21 @@
                 console.log('[WEB] viewportChanged event received');
                 applySafeAreaInsets();
             });
+            
+            tg.onEvent('fullscreenChanged', () => {
+                console.log('[WEB] fullscreenChanged event received');
+                setTimeout(applySafeAreaInsets, 100);
+            });
         }
         
+        // Disable vertical swipes untuk mencegah pull-to-refresh
         if (typeof tg.disableVerticalSwipes === 'function') {
             tg.disableVerticalSwipes();
+        }
+        
+        // Mencegah pergeseran saat keyboard muncul
+        if (typeof tg.expand === 'function') {
+            tg.expand();
         }
     }
 
