@@ -923,31 +923,22 @@
         if (!elements.usernameList) return;
         
         if (!usernames || usernames.length === 0) {
-            // Empty state dengan animasi di tengah
             elements.usernameList.innerHTML = `
                 <div class="empty-state">
-                    <div class="empty-animation" id="marketplaceEmptyAnimationInner"></div>
+                    <div class="empty-animation" id="marketplaceEmptyAnimationInner" style="width: 120px; height: 120px; margin: 0 auto 20px auto;"></div>
                     <div class="empty-title">No Usernames Available</div>
                     <div class="empty-subtitle">Be the first to list your username!</div>
                 </div>
             `;
-            
-            // Load animasi di tengah
-            const container = document.getElementById('marketplaceEmptyAnimationInner');
-            if (container) {
-                container.style.margin = '0 auto';
-                container.style.display = 'flex';
-                container.style.justifyContent = 'center';
-                container.style.alignItems = 'center';
-                loadMarketplaceTGSAnimation();
-            }
+            loadMarketplaceTGSAnimation();
             return;
         }
 
-        // GRID LAYOUT
+        // GRID LAYOUT - SAMA PERSIS DENGAN STORAGE
         if (currentLayout === 'grid') {
             elements.usernameList.className = 'marketplace-grid';
             let html = '';
+            
             for (const username of usernames) {
                 let usernameStr = username.username || '';
                 if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
@@ -955,13 +946,11 @@
                 
                 const basedOnText = username.based_on || '-';
                 
-                // Ambil foto profil dari cache atau default
                 let avatarUrl = localStorage.getItem(`avatar_${usernameStr}`);
                 if (!avatarUrl || !avatarUrl.startsWith('data:image')) {
                     avatarUrl = "https://companel.shop/image/winedash-logo.png";
                 }
                 
-                // Telegram link
                 const telegramLink = `https://t.me/${usernameStr}`;
                 
                 const usernameData = {
@@ -989,25 +978,23 @@
                                     <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo">
                                     <span class="card-price">${formatNumber(username.price)}</span>
                                 </div>
-                            </div>
-                            <div class="card-telegram-btn-wrapper">
-                                <button class="card-telegram-btn" data-username="${usernameStr}" onclick="window.open('${telegramLink}', '_blank')">
+                                <button class="card-telegram-btn" data-username="${usernameStr}" onclick="event.stopPropagation(); window.open('${telegramLink}', '_blank')">
                                     <i class="fab fa-telegram-plane"></i>
-                                    <span class="telegram-basedon">${escapeHtml(basedOnText)}</span>
+                                    <span class="telegram-basedon">${escapeHtml(basedOnText.length > 15 ? basedOnText.slice(0, 15) + '...' : basedOnText)}</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 `;
             }
+            
             elements.usernameList.innerHTML = html;
             
-            // Attach click events untuk card (kecuali tombol telegram)
+            // Attach click events
             document.querySelectorAll('.marketplace-card').forEach(card => {
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
                 
-                // Handle click card (kecuali tombol telegram)
                 newCard.addEventListener('click', (e) => {
                     if (e.target.closest('.card-telegram-btn')) return;
                     try {
@@ -1019,28 +1006,13 @@
                 });
             });
             
-            // Tambah event untuk tombol telegram
-            document.querySelectorAll('.card-telegram-btn').forEach(btn => {
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                newBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const username = newBtn.dataset.username;
-                    if (username) {
-                        window.open(`https://t.me/${username}`, '_blank');
-                    }
-                });
-            });
-            
-            // Fetch avatars async
-            setTimeout(() => {
-                fetchAllMarketplaceAvatars();
-            }, 200);
+            setTimeout(() => fetchAllMarketplaceAvatars(), 200);
             
         } else {
-            // LIST LAYOUT - dengan jarak yang benar
+            // LIST LAYOUT - SAMA PERSIS DENGAN STORAGE
             elements.usernameList.className = 'marketplace-list';
             let html = '';
+            
             for (const username of usernames) {
                 let usernameStr = username.username || '';
                 if (typeof usernameStr !== 'string') usernameStr = String(usernameStr);
@@ -1079,18 +1051,19 @@
                             <img src="https://companel.shop/image/images-removebg-preview.png" alt="TON" class="price-logo-small">
                             <span class="marketplace-price">${formatNumber(username.price)}</span>
                         </div>
-                        <button class="marketplace-telegram-btn" data-username="${usernameStr}" onclick="window.open('${telegramLink}', '_blank')">
+                        <button class="marketplace-telegram-btn" data-username="${usernameStr}" onclick="event.stopPropagation(); window.open('${telegramLink}', '_blank')">
                             <i class="fab fa-telegram-plane"></i>
                         </button>
                     </div>
                 `;
             }
+            
             elements.usernameList.innerHTML = html;
             
-            // Attach click events untuk item (kecuali tombol telegram)
             document.querySelectorAll('.marketplace-item').forEach(item => {
                 const newItem = item.cloneNode(true);
                 item.parentNode.replaceChild(newItem, item);
+                
                 newItem.addEventListener('click', (e) => {
                     if (e.target.closest('.marketplace-telegram-btn')) return;
                     try {
@@ -1102,23 +1075,7 @@
                 });
             });
             
-            // Tambah event untuk tombol telegram di list view
-            document.querySelectorAll('.marketplace-telegram-btn').forEach(btn => {
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                newBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const username = newBtn.dataset.username;
-                    if (username) {
-                        window.open(`https://t.me/${username}`, '_blank');
-                    }
-                });
-            });
-            
-            // Fetch avatars async
-            setTimeout(() => {
-                fetchAllMarketplaceListAvatars();
-            }, 200);
+            setTimeout(() => fetchAllMarketplaceListAvatars(), 200);
         }
     }
 
@@ -2039,37 +1996,12 @@
         const gridBtn = document.getElementById('marketGridBtn');
         const listBtn = document.getElementById('marketListBtn');
         
-        // Hapus event listener lama dengan clone
-        if (sortBtn) {
-            const newSortBtn = sortBtn.cloneNode(true);
-            sortBtn.parentNode.replaceChild(newSortBtn, sortBtn);
-            newSortBtn.addEventListener('click', () => {
-                showFilterPanel('sort');
-            });
-        }
-        
-        if (priceBtn) {
-            const newPriceBtn = priceBtn.cloneNode(true);
-            priceBtn.parentNode.replaceChild(newPriceBtn, priceBtn);
-            newPriceBtn.addEventListener('click', () => {
-                showFilterPanel('price');
-            });
-        }
-        
-        if (basedOnBtn) {
-            const newBasedOnBtn = basedOnBtn.cloneNode(true);
-            basedOnBtn.parentNode.replaceChild(newBasedOnBtn, basedOnBtn);
-            newBasedOnBtn.addEventListener('click', () => {
-                showFilterPanel('basedon');
-            });
-        }
-        
-        // PERBAIKAN LAYOUT TOGGLE - LANGSUNG BERFUNGSI TANPA REFRESH
+        // Layout toggle - PASTIKAN ACTIVE STATE TERUPDATE
         if (gridBtn) {
             const newGridBtn = gridBtn.cloneNode(true);
             gridBtn.parentNode.replaceChild(newGridBtn, gridBtn);
             
-            // Set initial active state berdasarkan currentLayout
+            // Set initial active state
             if (currentLayout === 'grid') {
                 newGridBtn.classList.add('active');
             } else {
@@ -2079,25 +2011,48 @@
             newGridBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
                 if (currentLayout !== 'grid') {
-                    console.log('[DEBUG] Switching to grid layout');
+                    console.log('[WEB] Switching to grid layout');
                     currentLayout = 'grid';
                     localStorage.setItem('market_layout', 'grid');
                     
-                    // Update UI tombol
+                    // Update button states
                     newGridBtn.classList.add('active');
+                    const currentListBtn = document.getElementById('marketListBtn');
+                    if (currentListBtn) currentListBtn.classList.remove('active');
                     
-                    // Update list button state
-                    if (listBtn) {
-                        // Re-fetch list button karena mungkin sudah di-clone sebelumnya
-                        const currentListBtn = document.getElementById('marketListBtn');
-                        if (currentListBtn) {
-                            currentListBtn.classList.remove('active');
-                        }
-                    }
+                    // Re-render with new layout
+                    applyFiltersAndRender();
+                    hapticLight();
+                }
+            });
+        }
+        
+        if (listBtn) {
+            const newListBtn = listBtn.cloneNode(true);
+            listBtn.parentNode.replaceChild(newListBtn, listBtn);
+            
+            // Set initial active state
+            if (currentLayout === 'list') {
+                newListBtn.classList.add('active');
+            } else {
+                newListBtn.classList.remove('active');
+            }
+            
+            newListBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (currentLayout !== 'list') {
+                    console.log('[WEB] Switching to list layout');
+                    currentLayout = 'list';
+                    localStorage.setItem('market_layout', 'list');
                     
-                    // Render ulang dengan layout baru
+                    // Update button states
+                    newListBtn.classList.add('active');
+                    const currentGridBtn = document.getElementById('marketGridBtn');
+                    if (currentGridBtn) currentGridBtn.classList.remove('active');
+                    
+                    // Re-render with new layout
                     applyFiltersAndRender();
                     hapticLight();
                 }

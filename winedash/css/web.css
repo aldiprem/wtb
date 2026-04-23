@@ -466,7 +466,7 @@ body::after {
     transform: scale(1.02);
 }
 
-/* Tabs Container - Pastikan border tetap ada */
+/* Bottom Floating Tabs Navigation - Stabil */
 .tabs-container {
     position: fixed;
     bottom: 20px;
@@ -474,23 +474,20 @@ body::after {
     right: 12px;
     display: flex;
     gap: 4px;
-    background: rgba(17, 17, 17, 0.9);
+    background: rgba(17, 17, 17, 0.95);
     backdrop-filter: blur(12px);
     border-radius: 28px;
     padding: 6px;
     z-index: 1000;
-    box-shadow: var(--shadow);
-    /* Pastikan border terlihat */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
     max-width: calc(100% - 24px);
     margin: 0 auto;
     bottom: max(20px, env(safe-area-inset-bottom, 0px));
-    /* Tambahkan border gradient seperti sebelumnya */
-    position: relative;
     overflow: hidden;
 }
 
-/* Border gradient untuk tabs container */
+/* Border gradient */
 .tabs-container::after {
     content: "";
     position: absolute;
@@ -509,7 +506,6 @@ body::after {
     pointer-events: none;
 }
 
-/* Tab Button styling */
 .tab-btn {
     flex: 1;
     background: transparent;
@@ -525,7 +521,6 @@ body::after {
     justify-content: center;
     gap: 6px;
     transition: all 0.2s;
-    position: relative;
 }
 
 .tab-btn i {
@@ -537,7 +532,7 @@ body::after {
     color: var(--primary);
 }
 
-/* Hide text on very small screens */
+/* Mobile: hide text, show only icons */
 @media (max-width: 420px) {
     .tab-btn span {
         display: none;
@@ -948,6 +943,7 @@ button:disabled {
 }
 
 /* ==================== PERBAIKAN MARKETPLACE GRID SPACING ==================== */
+
 .marketplace-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr !important;
@@ -1109,9 +1105,54 @@ button:disabled {
     font-size: 14px;
 }
 
-/* Marketplace card info - tambahan margin untuk tombol */
+/* Avatar di card */
+.marketplace-card .card-avatar {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--bg), var(--bg));
+    border-radius: 25%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    margin-top: 0;
+    margin-bottom: 15px;
+    position: relative;
+    z-index: 2;
+}
+
+/* Username badge di card */
+.marketplace-card .card-username {
+    font-size: 11px;
+    font-weight: 600;
+    font-family: monospace;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: var(--text);
+    padding: 4px 12px;
+    border-radius: 5px;
+    margin-top: -10px;
+    margin-bottom: -5px;
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    z-index: 2;
+    width: auto;
+    max-width: calc(100% - 24px);
+    color: var(--bg);
+    display: inline-block;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    line-height: 1.3;
+}
+
+/* Card info - bagian bawah */
 .marketplace-card-info {
-    padding: 8px 10px 12px 10px;
+    padding: 10px 12px 12px 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1120,6 +1161,7 @@ button:disabled {
     border-top: 1px solid var(--border-light);
 }
 
+/* Price row */
 .card-price-row {
     display: flex;
     align-items: center;
@@ -1179,11 +1221,10 @@ button:disabled {
 .marketplace-grid .marketplace-card-image {
     position: relative;
     width: 100%;
-    height: 105px;
+    height: 100px;
     background-image: url('https://companel.shop/image/bg-storage-card.jpg');
     background-size: cover;
     background-position: center;
-    background-repeat: no-repeat;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1256,14 +1297,14 @@ button:disabled {
 
 /* Harga - lebih kecil */
 .marketplace-grid .card-price {
-    font-size: 13px; /* Dikurangi dari 14px */
+    font-size: 14px;
     font-weight: 700;
-    color: var(--success);
+    color: var(--text);
     margin: 0;
 }
 
 .marketplace-grid .price-logo {
-    width: 16px; /* Dikurangi dari 18px */
+    width: 16px;
     height: 16px;
     object-fit: contain;
 }
@@ -1362,7 +1403,6 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: 4px;
-    flex-shrink: 0;
 }
 
 .marketplace-list .marketplace-price-wrapper {
@@ -2460,7 +2500,7 @@ body.wallet-panel-open {
     position: relative;
     display: flex;
     flex-direction: column;
-    height: auto;
+    height: 200px;
     width: 100%;
     border: 1px solid rgba(255, 255, 255, 0.1);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
