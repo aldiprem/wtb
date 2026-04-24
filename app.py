@@ -252,7 +252,7 @@ app.register_blueprint(auctions_bp)
 app.register_blueprint(debug_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(market_bp)
-app.register_blueprint(gift_scanned_bp)
+app.register_blueprint(gift_scanned_bp, url_prefix='/gift-scam')
 
 @app.route('/source-viewer')
 def source_viewer_page():
